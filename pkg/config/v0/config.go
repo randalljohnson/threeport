@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/mitchellh/go-homedir"
 	builder_config "github.com/nukleros/aws-builder/pkg/config"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/threeport/threeport/internal/provider"
@@ -144,7 +143,7 @@ func (cfg *ThreeportConfig) GetThreeportAPIEndpoint(requestedControlPlane string
 func (cfg *ThreeportConfig) GetThreeportAuthEnabled(requestedControlPlane string) (bool, error) {
 	controlPlane, err := cfg.GetControlPlaneConfig(requestedControlPlane)
 	if err != nil {
-		return false, errors.New("current control plane not found when determining if threeport auth is enabled")
+		return false, errors.New("current control plane not found when retrieving threeport API endpoint")
 	}
 
 	return controlPlane.AuthEnabled, nil
@@ -155,7 +154,7 @@ func (cfg *ThreeportConfig) GetThreeportAuthEnabled(requestedControlPlane string
 func (cfg *ThreeportConfig) GetThreeportEncryptionKey(requestedControlPlane string) (string, error) {
 	controlPlane, err := cfg.GetControlPlaneConfig(requestedControlPlane)
 	if err != nil {
-		return "", errors.New("current control plane not found when retrieving threeport encryption key")
+		return "", errors.New("current control plane not found when retrieving threeport API endpoint")
 	}
 
 	return controlPlane.EncryptionKey, nil
@@ -179,6 +178,16 @@ func (cfg *ThreeportConfig) CheckThreeportGenesisControlPlane(requestedControlPl
 		return false, errors.New("current control plane not found when checking for genesis info")
 	}
 	return controlPlane.Genesis, nil
+}
+
+// GetEncryptionKey returns the encryption key from the threeport
+// config.
+func (cfg *ThreeportConfig) GetEncryptionKey(requestedControlPlane string) (string, error) {
+	controlPlane, err := cfg.GetControlPlaneConfig(requestedControlPlane)
+	if err != nil {
+		return "", errors.New("current instance not found when retrieving encryption key")
+	}
+	return controlPlane.EncryptionKey, nil
 }
 
 // GetThreeportCertificatesForControlPlane returns the CA certificate, client
@@ -480,24 +489,4 @@ func DefaultPluginDir() (string, error) {
 	}
 
 	return filepath.Join(home, ".threeport", "plugins"), nil
-}
-
-// InitConfig sets up the threeport config for a CLI.
-func InitConfig(cmd *cobra.Command, cfgFile string) {
-	cfgFile = DetermineThreeportConfigPath(cfgFile)
-
-	// ensure config file exists (except for up command which creates it)
-	if cmd != nil && cmd.Use != "up" {
-		if _, err := os.Stat(cfgFile); errors.Is(err, os.ErrNotExist) {
-			Error(fmt.Sprintf("config file %s does not exist", cfgFile), err)
-			os.Exit(1)
-		}
-	}
-
-	viper.SetConfigFile(cfgFile)
-
-	if err := viper.ReadInConfig(); err != nil {
-		Error("failed to read config", err)
-		os.Exit(1)
-	}
 }

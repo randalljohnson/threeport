@@ -837,15 +837,17 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		kubernetesRuntimeInfraOKE := provider.KubernetesRuntimeInfraOKE{
 			RuntimeInstanceName: provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
 		}
+		// Use CLI region if provided, otherwise fall back to stored config
+		ociRegion := threeportControlPlaneConfig.OKEProviderConfig.OciRegion
+		if cpi.Opts.OciRegion != "" {
+			ociRegion = cpi.Opts.OciRegion
+		}
 		if err := kubernetesRuntimeInfraOKE.LoadOCIConfig(
-			threeportControlPlaneConfig.OKEProviderConfig.OciRegion,
+			ociRegion,
 			threeportControlPlaneConfig.OKEProviderConfig.OciConfigProfile,
 			threeportControlPlaneConfig.OKEProviderConfig.OciCompartmentOcid,
 		); err != nil {
 			return fmt.Errorf("failed to load OCI config: %w", err)
-		}
-		if kubeConnection, err = kubernetesRuntimeInfraOKE.GetConnection(); err != nil {
-			return fmt.Errorf("failed to get connection for OKE kubernetes runtime infra: %w", err)
 		}
 		kubernetesRuntimeInfra = &kubernetesRuntimeInfraOKE
 
@@ -853,6 +855,12 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		// if not infra-only, as this flag implies the user
 		// does not want to depend on control plane state
 		if !cpi.Opts.InfraOnly {
+
+			// TODO: revisit, also should this work with varying regions?
+			if kubeConnection, err = kubernetesRuntimeInfraOKE.GetConnection(); err != nil {
+				return fmt.Errorf("failed to get connection for OKE kubernetes runtime infra: %w", err)
+			}
+
 			// pull OKE stack state from OKE runtime instance
 			// and save to local pulumi state directory
 			okeRuntimeInstance, err := client.GetOciOkeKubernetesRuntimeInstanceByK8sRuntimeInst(

@@ -52,5 +52,9 @@ func init() {
 		&cliArgs.AwsConfigEnv,
 		"aws-config-env", false, "Retrieve AWS credentials from environment variables when using eks provider.",
 	)
+	DownCmd.Flags().StringVar(
+		&cliArgs.OciRegion,
+		"oci-region", "", "OCI region code to tear down threeport in when using oke provider.",
+	)
 	DownCmd.MarkFlagRequired("name")
 }

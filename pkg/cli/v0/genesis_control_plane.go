@@ -269,15 +269,26 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			return fmt.Errorf("failed to deploy eks infrastructure: %w", err)
 		}
 	case v0.KubernetesRuntimeInfraProviderOKE:
-		if err := DeployOkeInfra(
-			cpi,
-			threeportControlPlaneConfig,
-			threeportConfig,
-			&kubernetesRuntimeInfra,
-			kubeConnectionInfo,
-			uninstaller,
-		); err != nil {
-			return fmt.Errorf("failed to deploy oke infrastructure: %w", err)
+		// Create OKE infrastructure
+		kubernetesRuntimeInfraOKE := provider.KubernetesRuntimeInfraOKE{
+			RuntimeInstanceName:    provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
+			WorkerNodeShape:        "VM.Standard.A1.Flex",
+			Version:                "v1.32.1",
+			WorkerNodeInitialCount: int32(0), // TODO: revisit
+		}
+		kubernetesRuntimeInfra = &kubernetesRuntimeInfraOKE
+		uninstaller.kubernetesRuntimeInfra = &kubernetesRuntimeInfraOKE
+
+		if cpi.Opts.ControlPlaneOnly {
+			kubeConnectionInfo, err = kubernetesRuntimeInfraOKE.GetConnection()
+			if err != nil {
+				return fmt.Errorf("failed to get connection info for OKE kubernetes runtime: %w", err)
+			}
+		} else {
+			kubeConnectionInfo, err = kubernetesRuntimeInfra.Create()
+			if err != nil {
+				return uninstaller.cleanOnCreateError("failed to create control plane infra for threeport", err)
+			}
 		}
 	}
 

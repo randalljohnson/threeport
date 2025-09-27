@@ -2,13 +2,20 @@ package provider
 
 import (
 	"context"
+	"crypto/md5"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	ocicontainerengine "github.com/oracle/oci-go-sdk/v65/containerengine"
@@ -57,12 +64,18 @@ type KubernetesRuntimeInfraOKE struct {
 
 	// The path to the Pulumi state directory
 	stateDir string
+
+	// Service user credentials for OCI operations
+	ServiceUserOCID string
+	PrivateKeyPEM   string
+	PublicKeyPEM    string
+	Fingerprint     string
 }
 
 // Create installs a Kubernetes cluster using Oracle Cloud OKE for threeport workloads.
 func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 	// create compartment for this threeport instance
-	if err := i.createCompartment(); err != nil {
+	if err := i.createOCIUserAndCredentials(); err != nil {
 		return nil, fmt.Errorf("failed to create compartment: %w", err)
 	}
 
@@ -75,10 +88,13 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 			return fmt.Errorf("failed to get availability domain: %w", err)
 		}
 
-		// create OCI provider with explicit configuration
+		// create OCI provider with explicit configuration using service user credentials
 		ociProvider, err := oci.NewProvider(ctx, "oci-provider", &oci.ProviderArgs{
 			Region:      pulumi.String(i.Region),
 			TenancyOcid: pulumi.String(i.TenancyOCID),
+			UserOcid:    pulumi.String(i.ServiceUserOCID),
+			Fingerprint: pulumi.String(i.Fingerprint),
+			PrivateKey:  pulumi.String(i.PrivateKeyPEM),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create OCI provider: %w", err)
@@ -530,7 +546,7 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 				},
 			},
 			NodeConfigDetails: &containerengine.NodePoolNodeConfigDetailsArgs{
-				Size: pulumi.Int(int(i.WorkerNodeInitialCount)),
+				Size: pulumi.Int(0), // Set to 0 to test infrastructure creation without nodepool
 				PlacementConfigs: containerengine.NodePoolNodeConfigDetailsPlacementConfigArray{
 					&containerengine.NodePoolNodeConfigDetailsPlacementConfigArgs{
 						AvailabilityDomain: pulumi.String(availabilityDomain),
@@ -1157,9 +1173,9 @@ func (i *KubernetesRuntimeInfraOKE) getStackName() string {
 	return fmt.Sprintf("organization/oke/%s", i.RuntimeInstanceName)
 }
 
-// createCompartment creates a new compartment for the threeport instance.
-func (i *KubernetesRuntimeInfraOKE) createCompartment() error {
-	compartmentName := fmt.Sprintf("threeport-%s", i.RuntimeInstanceName)
+// createOCIUserAndCredentials creates a new compartment and sets up complete OCI user/group infrastructure for the threeport instance.
+func (i *KubernetesRuntimeInfraOKE) createOCIUserAndCredentials() error {
+	fmt.Printf("Creating OCI user and credentials using SDK\n")
 
 	// create a new identity client
 	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(i.ConfigProvider)
@@ -1167,21 +1183,80 @@ func (i *KubernetesRuntimeInfraOKE) createCompartment() error {
 		return fmt.Errorf("failed to create identity client: %w", err)
 	}
 
-	// set the region for the client
-	identityClient.SetRegion(i.Region)
+	// get the default region from the config provider for user/credential operations
+	defaultRegion, err := i.ConfigProvider.Region()
+	if err != nil {
+		return fmt.Errorf("failed to get default region from config provider: %w", err)
+	}
 
-	// check if compartment already exists
+	// set the region for the client to use default region (home region for compartment creation)
+	identityClient.SetRegion(defaultRegion)
+
+	// Create compartment first
+	if err := i.createOCICompartment(identityClient); err != nil {
+		return fmt.Errorf("failed to create compartment: %w", err)
+	}
+
+	// Create service user
+	if err := i.createOCIServiceUser(identityClient); err != nil {
+		return fmt.Errorf("failed to create service user: %w", err)
+	}
+
+	// Generate API key pair
+	if err := i.generateOCIAPIKeyPair(); err != nil {
+		return fmt.Errorf("failed to generate API key pair: %w", err)
+	}
+
+	// Create API key for service user
+	if err := i.createOCIAPIKey(identityClient); err != nil {
+		return fmt.Errorf("failed to create API key: %w", err)
+	}
+
+	// Create groups
+	if err := i.createOCIGroup(identityClient); err != nil {
+		return fmt.Errorf("failed to create groups: %w", err)
+	}
+
+	// Create policies
+	if err := i.createOCIPolicy(identityClient); err != nil {
+		return fmt.Errorf("failed to create policies: %w", err)
+	}
+
+	// Add user to groups
+	if err := i.addOCIUserToGroup(identityClient); err != nil {
+		return fmt.Errorf("failed to add user to groups: %w", err)
+	}
+
+	// Write OCI configuration files
+	if err := i.writeOCIConfiguration(); err != nil {
+		return fmt.Errorf("failed to write OCI configuration: %w", err)
+	}
+
+	// Validate user propagation across all OCI services
+	if err := i.validateOCIUserPropagation(); err != nil {
+		return fmt.Errorf("failed to validate user propagation: %w", err)
+	}
+
+	fmt.Printf("Successfully created OCI user and credentials\n")
+	return nil
+}
+
+// createOCICompartment creates a new compartment for the threeport instance.
+func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.IdentityClient) error {
+	compartmentName := fmt.Sprintf("threeport-%s", i.RuntimeInstanceName)
+
+	// Check if compartment already exists
 	listRequest := identity.ListCompartmentsRequest{
 		CompartmentId: &i.TenancyOCID,
 		Name:          &compartmentName,
 	}
 
-	listResponse, err := identityClient.ListCompartments(context.Background(), listRequest)
+	listResponse, err := client.ListCompartments(context.Background(), listRequest)
 	if err != nil {
 		return fmt.Errorf("failed to list compartments: %w", err)
 	}
 
-	// if compartment exists, use it
+	// If compartment exists, use it
 	for _, compartment := range listResponse.Items {
 		if *compartment.Name == compartmentName {
 			i.CompartmentOCID = *compartment.Id
@@ -1190,7 +1265,7 @@ func (i *KubernetesRuntimeInfraOKE) createCompartment() error {
 		}
 	}
 
-	// create new compartment
+	// Create new compartment
 	createRequest := identity.CreateCompartmentRequest{
 		CreateCompartmentDetails: identity.CreateCompartmentDetails{
 			CompartmentId: &i.TenancyOCID,
@@ -1199,13 +1274,839 @@ func (i *KubernetesRuntimeInfraOKE) createCompartment() error {
 		},
 	}
 
-	createResponse, err := identityClient.CreateCompartment(context.Background(), createRequest)
+	createResponse, err := client.CreateCompartment(context.Background(), createRequest)
 	if err != nil {
 		return fmt.Errorf("failed to create compartment: %w", err)
 	}
 
 	i.CompartmentOCID = *createResponse.Compartment.Id
 	fmt.Printf("Successfully created compartment: %s\n", compartmentName)
-	fmt.Printf("All Pulumi resources will be deployed in this compartment\n")
+	fmt.Printf("All future workload clusters will be deployed in this compartment\n")
 	return nil
+}
+
+// createOCIServiceUser creates the threeport service user.
+func (i *KubernetesRuntimeInfraOKE) createOCIServiceUser(client identity.IdentityClient) error {
+	userName := fmt.Sprintf("threeport-service-%s", i.RuntimeInstanceName)
+	userEmail := fmt.Sprintf("threeport-service-%s@example.com", i.RuntimeInstanceName)
+
+	// Check if user already exists
+	listRequest := identity.ListUsersRequest{
+		CompartmentId: &i.TenancyOCID,
+		Name:          &userName,
+	}
+
+	listResponse, err := client.ListUsers(context.Background(), listRequest)
+	if err != nil {
+		return fmt.Errorf("failed to list users: %w", err)
+	}
+
+	// If user exists, use it
+	for _, user := range listResponse.Items {
+		if *user.Name == userName {
+			i.ServiceUserOCID = *user.Id
+			fmt.Printf("Using existing service user: %s (%s)\n", userName, i.ServiceUserOCID)
+			return nil
+		}
+	}
+
+	// Create new user
+	createRequest := identity.CreateUserRequest{
+		CreateUserDetails: identity.CreateUserDetails{
+			CompartmentId: &i.TenancyOCID,
+			Name:          &userName,
+			Description:   common.String(fmt.Sprintf("Threeport service user for %s", i.RuntimeInstanceName)),
+			Email:         &userEmail,
+		},
+	}
+
+	createResponse, err := client.CreateUser(context.Background(), createRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	i.ServiceUserOCID = *createResponse.User.Id
+	fmt.Printf("Successfully created service user: %s\n", userName)
+	return nil
+}
+
+// generateOCIAPIKeyPair generates or loads existing API key pair.
+func (i *KubernetesRuntimeInfraOKE) generateOCIAPIKeyPair() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	privateKeyPath := filepath.Join(homeDir, ".oci", fmt.Sprintf("threeport-service-%s.pem", i.RuntimeInstanceName))
+
+	// Check if private key already exists
+	if _, err := os.Stat(privateKeyPath); os.IsNotExist(err) {
+		// Generate new key pair
+		keyPair, err := generateOCIAPIKeyPair()
+		if err != nil {
+			return fmt.Errorf("failed to generate API key pair: %w", err)
+		}
+
+		i.PrivateKeyPEM = keyPair.PrivateKeyPEM
+		i.PublicKeyPEM = keyPair.PublicKeyPEM
+		i.Fingerprint = keyPair.Fingerprint
+
+		fmt.Printf("Generated new API key pair\n")
+	} else {
+		// Load existing private key
+		privateKeyPEM, err := os.ReadFile(privateKeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read existing private key: %w", err)
+		}
+
+		// Generate public key from existing private key
+		keyPair, err := getAPIKeyPairFromPrivateKey(string(privateKeyPEM))
+		if err != nil {
+			return fmt.Errorf("failed to generate public key from existing private key: %w", err)
+		}
+
+		i.PrivateKeyPEM = keyPair.PrivateKeyPEM
+		i.PublicKeyPEM = keyPair.PublicKeyPEM
+		i.Fingerprint = keyPair.Fingerprint
+
+		fmt.Printf("Using existing private key: %s\n", privateKeyPath)
+	}
+
+	return nil
+}
+
+// createOCIAPIKey creates the API key for the service user.
+func (i *KubernetesRuntimeInfraOKE) createOCIAPIKey(client identity.IdentityClient) error {
+	// Check if API key with this fingerprint already exists
+	listRequest := identity.ListApiKeysRequest{
+		UserId: &i.ServiceUserOCID,
+	}
+
+	listResponse, err := client.ListApiKeys(context.Background(), listRequest)
+	if err != nil {
+		return fmt.Errorf("failed to list API keys: %w", err)
+	}
+
+	// If key with same fingerprint exists, don't create a new one
+	for _, key := range listResponse.Items {
+		if *key.Fingerprint == i.Fingerprint {
+			fmt.Printf("API key with fingerprint %s already exists\n", i.Fingerprint)
+			return nil
+		}
+	}
+
+	// Create new API key
+	createRequest := identity.UploadApiKeyRequest{
+		UserId: &i.ServiceUserOCID,
+		CreateApiKeyDetails: identity.CreateApiKeyDetails{
+			Key: &i.PublicKeyPEM,
+		},
+	}
+
+	_, err = client.UploadApiKey(context.Background(), createRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create API key: %w", err)
+	}
+
+	fmt.Printf("Successfully created API key with fingerprint: %s\n", i.Fingerprint)
+	return nil
+}
+
+// createOCIGroup creates the threeport bootstrap group.
+func (i *KubernetesRuntimeInfraOKE) createOCIGroup(client identity.IdentityClient) error {
+	groupName := fmt.Sprintf("threeport-bootstrap-%s", i.RuntimeInstanceName)
+	groupDescription := fmt.Sprintf("Threeport bootstrap group for %s", i.RuntimeInstanceName)
+
+	// Check if group already exists
+	listRequest := identity.ListGroupsRequest{
+		CompartmentId: &i.TenancyOCID,
+		Name:          &groupName,
+	}
+
+	listResponse, err := client.ListGroups(context.Background(), listRequest)
+	if err != nil {
+		return fmt.Errorf("failed to list groups: %w", err)
+	}
+
+	// Check if group exists
+	var groupExists bool
+	for _, existingGroup := range listResponse.Items {
+		if *existingGroup.Name == groupName {
+			fmt.Printf("Using existing group: %s (%s)\n", groupName, *existingGroup.Id)
+			groupExists = true
+			break
+		}
+	}
+
+	if !groupExists {
+		// Create new group
+		createRequest := identity.CreateGroupRequest{
+			CreateGroupDetails: identity.CreateGroupDetails{
+				CompartmentId: &i.TenancyOCID,
+				Name:          &groupName,
+				Description:   &groupDescription,
+			},
+		}
+
+		_, err = client.CreateGroup(context.Background(), createRequest)
+		if err != nil {
+			return fmt.Errorf("failed to create group %s: %v", groupName, err)
+		}
+
+		fmt.Printf("Successfully created group: %s\n", groupName)
+	}
+
+	return nil
+}
+
+// createOCIPolicy creates the threeport policy with compartment creation permissions.
+func (i *KubernetesRuntimeInfraOKE) createOCIPolicy(client identity.IdentityClient) error {
+	compartmentName := fmt.Sprintf("threeport-%s", i.RuntimeInstanceName)
+	bootstrapGroupName := fmt.Sprintf("threeport-bootstrap-%s", i.RuntimeInstanceName)
+
+	policyName := fmt.Sprintf("threeport-bootstrap-policy-%s", i.RuntimeInstanceName)
+	policyDescription := fmt.Sprintf("Threeport bootstrap policy for %s", i.RuntimeInstanceName)
+	policyStatements := []string{
+		// fmt.Sprintf("Allow group %s to manage compartments in tenancy",
+		// bootstrapGroupName),
+
+		// fmt.Sprintf("Allow group %s to manage all-resources in tenancy", bootstrapGroupName),
+		// fmt.Sprintf("Allow group %s to manage all-resources in compartment
+		// %s", bootstrapGroupName, compartmentName),
+
+		// https://docs.public.content.oci.oraclecloud.com/en-us/iaas/compute-cloud-at-customer/topics/oke/create-a-user-group-and-policies-that-authorize-members-to-use-oke.htm#create-a-user-group-and-policies-that-authorize-members-to-use-oke
+		fmt.Sprintf("Allow group %s to read all-resources in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage cluster-family in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage instance-family in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage network-load-balancers in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage virtual-network-family in compartment %s", bootstrapGroupName, compartmentName),
+
+
+		// additional policies
+		fmt.Sprintf("Allow group %s to inspect compartments in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage volume-family in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage load-balancers in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to use vnics in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to use network-security-groups in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to use private-ips in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage public-ips in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage object-family in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage tag-namespaces in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to manage tag-defaults in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to use tag-namespaces in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to use subnets in compartment %s", bootstrapGroupName, compartmentName),
+	}
+
+	// Check if policy already exists
+	listRequest := identity.ListPoliciesRequest{
+		CompartmentId: &i.TenancyOCID,
+		Name:          &policyName,
+	}
+
+	listResponse, err := client.ListPolicies(context.Background(), listRequest)
+	if err != nil {
+		return fmt.Errorf("failed to list policies: %w", err)
+	}
+
+	// Check if policy exists
+	var policyExists bool
+	for _, existingPolicy := range listResponse.Items {
+		if *existingPolicy.Name == policyName {
+			fmt.Printf("Using existing policy: %s (%s)\n", policyName, *existingPolicy.Id)
+			policyExists = true
+			break
+		}
+	}
+
+	if !policyExists {
+		// Create new policy
+		createRequest := identity.CreatePolicyRequest{
+			CreatePolicyDetails: identity.CreatePolicyDetails{
+				CompartmentId: &i.TenancyOCID,
+				Name:          &policyName,
+				Description:   &policyDescription,
+				Statements:    policyStatements,
+			},
+		}
+
+		_, err = client.CreatePolicy(context.Background(), createRequest)
+		if err != nil {
+			return fmt.Errorf("failed to create policy %s: %v", policyName, err)
+		}
+
+		fmt.Printf("Successfully created policy: %s\n", policyName)
+	}
+
+	return nil
+}
+
+// addOCIUserToGroup adds the service user to the threeport bootstrap group.
+func (i *KubernetesRuntimeInfraOKE) addOCIUserToGroup(client identity.IdentityClient) error {
+	groupName := fmt.Sprintf("threeport-bootstrap-%s", i.RuntimeInstanceName)
+
+	// Get group ID
+	listRequest := identity.ListGroupsRequest{
+		CompartmentId: &i.TenancyOCID,
+		Name:          &groupName,
+	}
+
+	listResponse, err := client.ListGroups(context.Background(), listRequest)
+	if err != nil {
+		return fmt.Errorf("failed to list groups: %w", err)
+	}
+
+	if len(listResponse.Items) == 0 {
+		return fmt.Errorf("group %s not found", groupName)
+	}
+
+	groupID := *listResponse.Items[0].Id
+
+	// Check if user is already in group
+	membersRequest := identity.ListUserGroupMembershipsRequest{
+		CompartmentId: &i.TenancyOCID,
+		UserId:        &i.ServiceUserOCID,
+		GroupId:       &groupID,
+	}
+
+	membersResponse, err := client.ListUserGroupMemberships(context.Background(), membersRequest)
+	if err != nil {
+		return fmt.Errorf("failed to list group memberships: %w", err)
+	}
+
+	// If user is already in group, skip
+	if len(membersResponse.Items) > 0 {
+		fmt.Printf("User already in group: %s\n", groupName)
+		return nil
+	}
+
+	// Add user to group
+	addRequest := identity.AddUserToGroupRequest{
+		AddUserToGroupDetails: identity.AddUserToGroupDetails{
+			UserId:  &i.ServiceUserOCID,
+			GroupId: &groupID,
+		},
+	}
+
+	_, err = client.AddUserToGroup(context.Background(), addRequest)
+	if err != nil {
+		return fmt.Errorf("failed to add user to group %s: %v", groupName, err)
+	}
+
+	fmt.Printf("Successfully added user to group: %s\n", groupName)
+	return nil
+}
+
+// writeOCIConfiguration writes the OCI configuration files.
+func (i *KubernetesRuntimeInfraOKE) writeOCIConfiguration() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	// Write private key file
+	privateKeyPath := filepath.Join(homeDir, ".oci", fmt.Sprintf("threeport-service-%s.pem", i.RuntimeInstanceName))
+	if _, err := os.Stat(privateKeyPath); os.IsNotExist(err) {
+		if err := os.WriteFile(privateKeyPath, []byte(i.PrivateKeyPEM), 0600); err != nil {
+			return fmt.Errorf("failed to write private key file: %w", err)
+		}
+		fmt.Printf("Successfully created private key: %s\n", privateKeyPath)
+	} else {
+		fmt.Printf("Private key already exists, not overwriting: %s\n", privateKeyPath)
+	}
+
+	// Update OCI config file
+	configPath := filepath.Join(homeDir, ".oci", "config")
+	configContent := fmt.Sprintf(`[THREEPORT_SERVICE]
+user=%s
+fingerprint=%s
+tenancy=%s
+region=%s
+key_file=%s
+`,
+		i.ServiceUserOCID,
+		i.Fingerprint,
+		i.TenancyOCID,
+		i.Region,
+		privateKeyPath,
+	)
+
+	// If config file doesn't exist, create it
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+			return fmt.Errorf("failed to create OCI config: %w", err)
+		}
+	} else {
+		// File exists, update THREEPORT_SERVICE section
+		existingContent, err := os.ReadFile(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to read existing OCI config: %w", err)
+		}
+
+		// Remove existing THREEPORT_SERVICE section
+		lines := strings.Split(string(existingContent), "\n")
+		var newLines []string
+		skipSection := false
+		for _, line := range lines {
+			if strings.TrimSpace(line) == "[THREEPORT_SERVICE]" {
+				skipSection = true
+				continue
+			}
+			if skipSection && strings.HasPrefix(strings.TrimSpace(line), "[") {
+				skipSection = false
+			}
+			if !skipSection {
+				newLines = append(newLines, line)
+			}
+		}
+
+		// Append new section
+		newContent := strings.Join(newLines, "\n") + "\n" + configContent
+
+		// Write back to file
+		if err := os.WriteFile(configPath, []byte(newContent), 0600); err != nil {
+			return fmt.Errorf("failed to update OCI config: %w", err)
+		}
+	}
+
+	fmt.Printf("Successfully updated OCI config: %s\n", configPath)
+	return nil
+}
+
+// ServiceStatus represents the current status of a service propagation check
+type ServiceStatus struct {
+	Name                 string
+	ConsecutiveSuccesses int
+	Attempts             int
+	LastError            error
+	Completed            bool
+	Failed               bool
+}
+
+// validateOCIUserPropagation validates that the service user credentials are propagated across all OCI services.
+func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
+	// Create a raw configuration provider with the service user credentials
+	configProvider := common.NewRawConfigurationProvider(
+		i.TenancyOCID,
+		i.ServiceUserOCID,
+		i.Region,
+		i.Fingerprint,
+		i.PrivateKeyPEM,
+		nil,
+	)
+	const requiredConsecutiveSuccesses = 1
+	const maxAttempts = 450
+	const retryDelay = 2 * time.Second
+
+	services := []struct {
+		id   string
+		name string
+		test func() error
+	}{
+		{
+			id:   "identity",
+			name: "Identity service",
+			test: func() error {
+				identityClient, err := identity.NewIdentityClientWithConfigurationProvider(configProvider)
+				if err != nil {
+					return fmt.Errorf("failed to create identity client: %w", err)
+				}
+				getCompartmentRequest := identity.GetCompartmentRequest{
+					CompartmentId: &i.CompartmentOCID,
+				}
+				_, err = identityClient.GetCompartment(context.Background(), getCompartmentRequest)
+				return err
+			},
+		},
+		{
+			id:   "core",
+			name: "Core service",
+			test: func() error {
+				coreClient, err := ocicore.NewVirtualNetworkClientWithConfigurationProvider(configProvider)
+				if err != nil {
+					return fmt.Errorf("failed to create core client: %w", err)
+				}
+
+				// Test VCN access
+				vcnRequest := ocicore.ListVcnsRequest{
+					CompartmentId: common.String(i.CompartmentOCID),
+					Limit:         common.Int(1),
+				}
+				_, err = coreClient.ListVcns(context.Background(), vcnRequest)
+				if err != nil {
+					return fmt.Errorf("VCN access failed: %w", err)
+				}
+
+				// Test Internet Gateway access
+				igwRequest := ocicore.ListInternetGatewaysRequest{
+					CompartmentId: common.String(i.CompartmentOCID),
+					Limit:         common.Int(1),
+				}
+				_, err = coreClient.ListInternetGateways(context.Background(), igwRequest)
+				if err != nil {
+					return fmt.Errorf("Internet Gateway access failed: %w", err)
+				}
+
+				// Test NAT Gateway access
+				natRequest := ocicore.ListNatGatewaysRequest{
+					CompartmentId: common.String(i.CompartmentOCID),
+					Limit:         common.Int(1),
+				}
+				_, err = coreClient.ListNatGateways(context.Background(), natRequest)
+				if err != nil {
+					return fmt.Errorf("NAT Gateway access failed: %w", err)
+				}
+
+				// Test Service Gateway access
+				sgwRequest := ocicore.ListServiceGatewaysRequest{
+					CompartmentId: common.String(i.CompartmentOCID),
+					Limit:         common.Int(1),
+				}
+				_, err = coreClient.ListServiceGateways(context.Background(), sgwRequest)
+				if err != nil {
+					return fmt.Errorf("Service Gateway access failed: %w", err)
+				}
+
+				// Test Security Lists access
+				secListRequest := ocicore.ListSecurityListsRequest{
+					CompartmentId: common.String(i.CompartmentOCID),
+					Limit:         common.Int(1),
+				}
+				_, err = coreClient.ListSecurityLists(context.Background(), secListRequest)
+				if err != nil {
+					return fmt.Errorf("Security Lists access failed: %w", err)
+				}
+
+				// Test Subnets access
+				subnetRequest := ocicore.ListSubnetsRequest{
+					CompartmentId: common.String(i.CompartmentOCID),
+					Limit:         common.Int(1),
+				}
+				_, err = coreClient.ListSubnets(context.Background(), subnetRequest)
+				if err != nil {
+					return fmt.Errorf("Subnets access failed: %w", err)
+				}
+
+				return nil
+			},
+		},
+		{
+			id:   "container-engine",
+			name: "Container Engine service",
+			test: func() error {
+				ceClient, err := ocicontainerengine.NewContainerEngineClientWithConfigurationProvider(configProvider)
+				if err != nil {
+					return fmt.Errorf("failed to create container engine client: %w", err)
+				}
+				ceRequest := ocicontainerengine.ListClustersRequest{
+					CompartmentId: common.String(i.CompartmentOCID),
+					Limit:         common.Int(1),
+				}
+				_, err = ceClient.ListClusters(context.Background(), ceRequest)
+				return err
+			},
+		},
+	}
+
+	// Initialize status map
+	statusMap := make(map[string]*ServiceStatus)
+	for _, service := range services {
+		statusMap[service.id] = &ServiceStatus{
+			Name: service.name,
+		}
+	}
+
+	// Channel for status updates
+	statusChan := make(chan struct {
+		serviceID string
+		status    ServiceStatus
+	}, 100)
+
+	// Start all services in parallel
+	var wg sync.WaitGroup
+	for _, service := range services {
+		wg.Add(1)
+		go func(svc struct {
+			id   string
+			name string
+			test func() error
+		}) {
+			defer wg.Done()
+
+			consecutiveSuccesses := 0
+			attempts := 0
+
+			for consecutiveSuccesses < requiredConsecutiveSuccesses && attempts < maxAttempts {
+				attempts++
+
+				err := svc.test()
+				if err != nil {
+					consecutiveSuccesses = 0 // Reset on failure
+					// Simplify error display to just show HTTP status code
+					var displayError error
+					if strings.Contains(err.Error(), "Http Status Code:") {
+						// Extract just the HTTP status code
+						parts := strings.Split(err.Error(), "Http Status Code: ")
+						if len(parts) > 1 {
+							codePart := strings.Split(parts[1], ".")[0]
+							displayError = fmt.Errorf("HTTP %s", codePart)
+						} else {
+							displayError = fmt.Errorf("Auth failed")
+						}
+					} else {
+						displayError = fmt.Errorf("Auth failed: %w", err)
+					}
+
+					statusChan <- struct {
+						serviceID string
+						status    ServiceStatus
+					}{
+						serviceID: svc.id,
+						status: ServiceStatus{
+							Name:                 svc.name,
+							ConsecutiveSuccesses: consecutiveSuccesses,
+							Attempts:             attempts,
+							LastError:            displayError,
+							Completed:            false,
+							Failed:               false,
+						},
+					}
+					time.Sleep(retryDelay)
+				} else {
+					consecutiveSuccesses++
+					completed := consecutiveSuccesses >= requiredConsecutiveSuccesses
+					statusChan <- struct {
+						serviceID string
+						status    ServiceStatus
+					}{
+						serviceID: svc.id,
+						status: ServiceStatus{
+							Name:                 svc.name,
+							ConsecutiveSuccesses: consecutiveSuccesses,
+							Attempts:             attempts,
+							LastError:            nil,
+							Completed:            completed,
+							Failed:               false,
+						},
+					}
+					if !completed {
+						time.Sleep(1 * time.Second) // Small delay between successful attempts
+					}
+				}
+			}
+
+			// Mark as failed if max attempts reached
+			if consecutiveSuccesses < requiredConsecutiveSuccesses {
+				statusChan <- struct {
+					serviceID string
+					status    ServiceStatus
+				}{
+					serviceID: svc.id,
+					status: ServiceStatus{
+						Name:                 svc.name,
+						ConsecutiveSuccesses: consecutiveSuccesses,
+						Attempts:             attempts,
+						LastError:            fmt.Errorf("max attempts reached"),
+						Completed:            false,
+						Failed:               true,
+					},
+				}
+			}
+		}(service)
+	}
+
+	// Close channel when all goroutines are done
+	go func() {
+		wg.Wait()
+		close(statusChan)
+	}()
+
+	// Display parallel status updates
+	fmt.Printf("Validating service propagation\n")
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	// Track last displayed status to avoid duplicate outputs
+	lastDisplayTime := time.Now()
+	lastStatuses := make(map[string]ServiceStatus)
+	displayInitialized := false
+
+	displayStatus := func() {
+		// Only display if there's been a meaningful change or enough time has passed
+		hasChanged := false
+		for id, status := range statusMap {
+			if lastStatus, exists := lastStatuses[id]; !exists ||
+				lastStatus.Completed != status.Completed ||
+				lastStatus.Failed != status.Failed {
+				hasChanged = true
+				break
+			}
+		}
+
+		if !hasChanged && time.Since(lastDisplayTime) < 2*time.Second {
+			return
+		}
+
+		if !displayInitialized {
+			// First time - print the initial lines
+			for _, service := range services {
+				status := statusMap[service.id]
+				if status.Completed {
+					fmt.Printf("%s... synced\n", status.Name)
+				} else if status.Failed {
+					fmt.Printf("%s... failed\n", status.Name)
+				} else {
+					fmt.Printf("%s... waiting\n", status.Name)
+				}
+				lastStatuses[service.id] = *status
+			}
+			displayInitialized = true
+		} else {
+			// Move cursor up to overwrite previous lines
+			fmt.Printf("\033[%dA", len(services))
+			for _, service := range services {
+				status := statusMap[service.id]
+				if status.Completed {
+					fmt.Printf("\033[K%s... synced\n", status.Name)
+				} else if status.Failed {
+					fmt.Printf("\033[K%s... failed\n", status.Name)
+				} else {
+					fmt.Printf("\033[K%s... waiting\n", status.Name)
+				}
+				lastStatuses[service.id] = *status
+			}
+		}
+		lastDisplayTime = time.Now()
+	}
+
+	// Main status update loop
+	for {
+		select {
+		case update, ok := <-statusChan:
+			if !ok {
+				// Channel closed, all done
+				displayStatus() // Final display
+
+				// Check for failures
+				for _, status := range statusMap {
+					if status.Failed {
+						return fmt.Errorf("%s failed to propagate", status.Name)
+					}
+				}
+
+				fmt.Printf("All services propagated successfully\n")
+				return nil
+			}
+			statusMap[update.serviceID] = &update.status
+			displayStatus()
+
+		case <-ticker.C:
+			displayStatus()
+		}
+	}
+}
+
+// OCIAPIKeyPair represents an API key pair for OCI authentication
+type OCIAPIKeyPair struct {
+	PrivateKeyPEM string
+	PublicKeyPEM  string
+	Fingerprint   string
+}
+
+// generateOCIAPIKeyPair generates a new API key pair for OCI authentication.
+func generateOCIAPIKeyPair() (*OCIAPIKeyPair, error) {
+	// Generate RSA private key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate RSA key: %w", err)
+	}
+
+	// Convert private key to PEM format
+	privateKeyPKCS1 := x509.MarshalPKCS1PrivateKey(privateKey)
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: privateKeyPKCS1,
+	})
+
+	// Convert public key to PEM format
+	publicKeyPKCS1, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal public key: %w", err)
+	}
+	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyPKCS1,
+	})
+
+	// Calculate fingerprint
+	fingerprint := calculateKeyFingerprint(string(publicKeyPEM))
+
+	return &OCIAPIKeyPair{
+		PrivateKeyPEM: string(privateKeyPEM),
+		PublicKeyPEM:  string(publicKeyPEM),
+		Fingerprint:   fingerprint,
+	}, nil
+}
+
+// getAPIKeyPairFromPrivateKey extracts API key pair details from an existing private key PEM.
+func getAPIKeyPairFromPrivateKey(privateKeyPEM string) (*OCIAPIKeyPair, error) {
+	// Parse the private key
+	block, _ := pem.Decode([]byte(privateKeyPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block")
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Convert public key to PEM format
+	publicKeyPKCS1, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal public key: %w", err)
+	}
+	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyPKCS1,
+	})
+
+	// Calculate fingerprint
+	fingerprint := calculateKeyFingerprint(string(publicKeyPEM))
+
+	return &OCIAPIKeyPair{
+		PrivateKeyPEM: privateKeyPEM,
+		PublicKeyPEM:  string(publicKeyPEM),
+		Fingerprint:   fingerprint,
+	}, nil
+}
+
+// calculateKeyFingerprint calculates the MD5 fingerprint of a public key in PEM format.
+func calculateKeyFingerprint(publicKeyPEM string) string {
+	// Remove PEM headers and footers, and whitespace
+	lines := strings.Split(publicKeyPEM, "\n")
+	var keyData strings.Builder
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "-----") && line != "" {
+			keyData.WriteString(line)
+		}
+	}
+
+	// Decode base64 key data
+	keyBytes, err := base64.StdEncoding.DecodeString(keyData.String())
+	if err != nil {
+		// Fallback: use the raw key data if base64 decoding fails
+		keyBytes = []byte(keyData.String())
+	}
+
+	// Calculate MD5 hash
+	hash := md5.Sum(keyBytes)
+
+	// Format as colon-separated hex pairs
+	fingerprint := make([]string, len(hash))
+	for i, b := range hash {
+		fingerprint[i] = fmt.Sprintf("%02x", b)
+	}
+
+	return strings.Join(fingerprint, ":")
 }

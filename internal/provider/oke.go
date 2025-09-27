@@ -61,6 +61,11 @@ type KubernetesRuntimeInfraOKE struct {
 
 // Create installs a Kubernetes cluster using Oracle Cloud OKE for threeport workloads.
 func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
+	// create compartment for this threeport instance
+	if err := i.createCompartment(); err != nil {
+		return nil, fmt.Errorf("failed to create compartment: %w", err)
+	}
+
 	// set up Pulumi workspace and get stack
 	stack, err := i.setupPulumiWorkspace(func(ctx *pulumi.Context) error {
 
@@ -1150,4 +1155,57 @@ func (i *KubernetesRuntimeInfraOKE) setStateDir() error {
 // getStackName returns the name of the OKE stack
 func (i *KubernetesRuntimeInfraOKE) getStackName() string {
 	return fmt.Sprintf("organization/oke/%s", i.RuntimeInstanceName)
+}
+
+// createCompartment creates a new compartment for the threeport instance.
+func (i *KubernetesRuntimeInfraOKE) createCompartment() error {
+	compartmentName := fmt.Sprintf("threeport-%s", i.RuntimeInstanceName)
+
+	// create a new identity client
+	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(i.ConfigProvider)
+	if err != nil {
+		return fmt.Errorf("failed to create identity client: %w", err)
+	}
+
+	// set the region for the client
+	identityClient.SetRegion(i.Region)
+
+	// check if compartment already exists
+	listRequest := identity.ListCompartmentsRequest{
+		CompartmentId: &i.TenancyOCID,
+		Name:          &compartmentName,
+	}
+
+	listResponse, err := identityClient.ListCompartments(context.Background(), listRequest)
+	if err != nil {
+		return fmt.Errorf("failed to list compartments: %w", err)
+	}
+
+	// if compartment exists, use it
+	for _, compartment := range listResponse.Items {
+		if *compartment.Name == compartmentName {
+			i.CompartmentOCID = *compartment.Id
+			fmt.Printf("Using existing compartment: %s (%s)\n", compartmentName, i.CompartmentOCID)
+			return nil
+		}
+	}
+
+	// create new compartment
+	createRequest := identity.CreateCompartmentRequest{
+		CreateCompartmentDetails: identity.CreateCompartmentDetails{
+			CompartmentId: &i.TenancyOCID,
+			Name:          &compartmentName,
+			Description:   common.String(fmt.Sprintf("Threeport compartment for %s - all workload clusters will be deployed here", i.RuntimeInstanceName)),
+		},
+	}
+
+	createResponse, err := identityClient.CreateCompartment(context.Background(), createRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create compartment: %w", err)
+	}
+
+	i.CompartmentOCID = *createResponse.Compartment.Id
+	fmt.Printf("Successfully created compartment: %s\n", compartmentName)
+	fmt.Printf("All Pulumi resources will be deployed in this compartment\n")
+	return nil
 }

@@ -35,7 +35,13 @@ const (
 	serviceUserEmailFormat      = "threeport-service-%s@example.com"
 	bootstrapGroupNameFormat    = "threeport-bootstrap-%s"
 	bootstrapPolicyNameFormat   = "threeport-bootstrap-policy-%s"
+	ociConfigSectionNameFormat  = "[%s-service]"
 )
+
+// getOCIConfigSectionName returns the standardized OCI config section name for the service user.
+func (i *KubernetesRuntimeInfraOKE) getOCIConfigSectionName() string {
+	return fmt.Sprintf(ociConfigSectionNameFormat, i.RuntimeInstanceName)
+}
 
 // OCI Compartment Operations
 
@@ -544,14 +550,14 @@ func (i *KubernetesRuntimeInfraOKE) createOCIAPIKey(client identity.IdentityClie
 func (i *KubernetesRuntimeInfraOKE) writeOCIConfiguration() error {
 	fmt.Printf("Writing OCI configuration\n")
 
-	config := fmt.Sprintf(`[%s-service]
+	config := fmt.Sprintf(`%s
 user=%s
 fingerprint=%s
 tenancy=%s
 region=%s
 key_file=%s
 `,
-		i.RuntimeInstanceName,
+		i.getOCIConfigSectionName(),
 		i.ServiceUserOCID,
 		i.Fingerprint,
 		i.TenancyOCID,
@@ -575,7 +581,7 @@ key_file=%s
 	}
 
 	// check if configuration section already exists
-	sectionName := fmt.Sprintf("[%s-service]", i.RuntimeInstanceName)
+	sectionName := i.getOCIConfigSectionName()
 	if _, err := os.Stat(configPath); err == nil {
 		// config file exists, check if our section is already there
 		configBytes, err := os.ReadFile(configPath)
@@ -610,6 +616,79 @@ key_file=%s
 	}
 
 	fmt.Printf("Successfully wrote OCI configuration\n")
+	return nil
+}
+
+// deleteOCIConfiguration removes the OCI configuration section and private key file for the service user.
+func (i *KubernetesRuntimeInfraOKE) deleteOCIConfiguration() error {
+	fmt.Printf("Cleaning up OCI configuration\n")
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	configPath := fmt.Sprintf("%s/.oci/config", homeDir)
+	privateKeyPath := fmt.Sprintf("%s/.oci/%s-private-key.pem", homeDir, i.RuntimeInstanceName)
+
+	// remove private key file
+	if err := os.Remove(privateKeyPath); err != nil && !os.IsNotExist(err) {
+		fmt.Printf("Warning: failed to remove private key file: %v\n", err)
+	}
+
+	// remove configuration section from config file
+	sectionName := i.getOCIConfigSectionName()
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// config file doesn't exist, nothing to clean up
+		return nil
+	}
+
+	// read existing config file
+	configBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	configContent := string(configBytes)
+	if !strings.Contains(configContent, sectionName) {
+		// section doesn't exist, nothing to clean up
+		return nil
+	}
+
+	// remove the section and its content
+	lines := strings.Split(configContent, "\n")
+	var filteredLines []string
+	inTargetSection := false
+
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+
+		// check if we're entering our target section
+		if trimmedLine == sectionName {
+			inTargetSection = true
+			continue
+		}
+
+		// check if we're entering a different section (exit our target section)
+		if strings.HasPrefix(trimmedLine, "[") && strings.HasSuffix(trimmedLine, "]") && trimmedLine != sectionName {
+			inTargetSection = false
+		}
+
+		// skip lines that belong to our target section
+		if inTargetSection {
+			continue
+		}
+
+		filteredLines = append(filteredLines, line)
+	}
+
+	// write the filtered content back to the file
+	filteredContent := strings.Join(filteredLines, "\n")
+	if err := os.WriteFile(configPath, []byte(filteredContent), 0600); err != nil {
+		return fmt.Errorf("failed to write updated config file: %w", err)
+	}
+
+	fmt.Printf("Successfully cleaned up OCI configuration\n")
 	return nil
 }
 

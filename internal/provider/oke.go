@@ -1277,6 +1277,11 @@ func (i *KubernetesRuntimeInfraOKE) DeleteOCIResources() error {
 		fmt.Printf("Warning: failed to delete OCI compartment: %v\n", err)
 	}
 
+	// clean up local OCI configuration files
+	if err := i.deleteOCIConfiguration(); err != nil {
+		fmt.Printf("Warning: failed to clean up OCI configuration: %v\n", err)
+	}
+
 	return nil
 }
 

@@ -39,7 +39,6 @@ type GenesisControlPlaneCLIArgs struct {
 	AwsRegion             string
 	OciRegion             string
 	OciConfigProfile      string
-	OciCompartmentOcid    string
 	CfgFile               string
 	ControlPlaneImageRepo string
 	ControlPlaneImageTag  string
@@ -147,7 +146,6 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.AwsRegion = a.AwsRegion
 	cpi.Opts.OciRegion = a.OciRegion
 	cpi.Opts.OciConfigProfile = a.OciConfigProfile
-	cpi.Opts.OciCompartmentOcid = a.OciCompartmentOcid
 	cpi.Opts.CfgFile = a.CfgFile
 	cpi.Opts.CreateRootDomain = a.CreateRootDomain
 	cpi.Opts.CreateAdminEmail = a.CreateAdminEmail

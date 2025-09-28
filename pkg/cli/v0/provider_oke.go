@@ -55,7 +55,6 @@ func DeployOkeInfra(
 		c.OKEProviderConfig = config.OKEProviderConfig{
 			OciRegion:          cpi.Opts.OciRegion,
 			OciConfigProfile:   cpi.Opts.OciConfigProfile,
-			OciCompartmentOcid: cpi.Opts.OciCompartmentOcid,
 		}
 	}); err != nil {
 		return fmt.Errorf("failed to update threeport config: %w", err)

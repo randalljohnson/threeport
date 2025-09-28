@@ -816,7 +816,7 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 		i.PrivateKeyPEM,
 		nil,
 	)
-	const requiredConsecutiveSuccesses = 3
+	const requiredConsecutiveSuccesses = 5
 	const maxAttempts = 450
 	const retryDelay = 2 * time.Second
 

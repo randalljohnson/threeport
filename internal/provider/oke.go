@@ -539,7 +539,7 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 				},
 			},
 			NodeConfigDetails: &containerengine.NodePoolNodeConfigDetailsArgs{
-				Size: pulumi.Int(0), // Set to 0 to test infrastructure creation without nodepool
+				Size: pulumi.Int(i.WorkerNodeInitialCount),
 				PlacementConfigs: containerengine.NodePoolNodeConfigDetailsPlacementConfigArray{
 					&containerengine.NodePoolNodeConfigDetailsPlacementConfigArgs{
 						AvailabilityDomain: pulumi.String(availabilityDomain),
@@ -1284,4 +1284,3 @@ func (i *KubernetesRuntimeInfraOKE) DeleteOCIResources() error {
 
 	return nil
 }
-

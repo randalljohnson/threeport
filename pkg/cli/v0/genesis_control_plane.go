@@ -837,13 +837,8 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		kubernetesRuntimeInfraOKE := provider.KubernetesRuntimeInfraOKE{
 			RuntimeInstanceName: provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
 		}
-		// Use CLI region if provided, otherwise fall back to stored config
-		ociRegion := threeportControlPlaneConfig.OKEProviderConfig.OciRegion
-		if cpi.Opts.OciRegion != "" {
-			ociRegion = cpi.Opts.OciRegion
-		}
 		if err := kubernetesRuntimeInfraOKE.LoadOCIConfig(
-			ociRegion,
+			threeportControlPlaneConfig.OKEProviderConfig.OciRegion,
 			threeportControlPlaneConfig.OKEProviderConfig.OciConfigProfile,
 			threeportControlPlaneConfig.OKEProviderConfig.OciCompartmentOcid,
 		); err != nil {

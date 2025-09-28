@@ -817,7 +817,7 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 		nil,
 	)
 	const requiredConsecutiveSuccesses = 5
-	const maxAttempts = 450
+	const maxAttempts = 600
 	const retryDelay = 2 * time.Second
 
 	services := []struct {
@@ -1074,11 +1074,19 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 			for _, service := range services {
 				status := statusMap[service.id]
 				if status.Completed {
-					fmt.Printf("%s... synced\n", status.Name)
+					fmt.Printf("%-30s synced\n", status.Name+"...")
 				} else if status.Failed {
-					fmt.Printf("%s... failed\n", status.Name)
+					errorMsg := "failed"
+					if status.LastError != nil {
+						errorMsg = status.LastError.Error()
+					}
+					fmt.Printf("%-30s failed    %s\n", status.Name+"...", errorMsg)
 				} else {
-					fmt.Printf("%s... waiting\n", status.Name)
+					errorMsg := ""
+					if status.LastError != nil {
+						errorMsg = status.LastError.Error()
+					}
+					fmt.Printf("%-30s waiting   %s\n", status.Name+"...", errorMsg)
 				}
 				lastStatuses[service.id] = *status
 			}
@@ -1089,11 +1097,19 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 			for _, service := range services {
 				status := statusMap[service.id]
 				if status.Completed {
-					fmt.Printf("\033[K%s... synced\n", status.Name)
+					fmt.Printf("\033[K%-30s synced\n", status.Name+"...")
 				} else if status.Failed {
-					fmt.Printf("\033[K%s... failed\n", status.Name)
+					errorMsg := "failed"
+					if status.LastError != nil {
+						errorMsg = status.LastError.Error()
+					}
+					fmt.Printf("\033[K%-30s failed    %s\n", status.Name+"...", errorMsg)
 				} else {
-					fmt.Printf("\033[K%s... waiting\n", status.Name)
+					errorMsg := ""
+					if status.LastError != nil {
+						errorMsg = status.LastError.Error()
+					}
+					fmt.Printf("\033[K%-30s waiting   %s\n", status.Name+"...", errorMsg)
 				}
 				lastStatuses[service.id] = *status
 			}

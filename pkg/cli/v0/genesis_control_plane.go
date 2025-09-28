@@ -757,7 +757,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 // DeleteGenesisControlPlane deletes a threeport control plane.
 func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller) error {
 	// get threeport config
-	threeportConfig, requestedControlPlane, err := GetThreeportConfig("")
+	threeportConfig, requestedControlPlane, err := GetThreeportConfig(customInstaller.Opts.ControlPlaneName)
 	if err != nil {
 		return fmt.Errorf("failed to get threeport config: %w", err)
 	}
@@ -972,6 +972,16 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			err = provider.DeleteResourceManagerRole(cpi.Opts.ControlPlaneName, *awsConfigUser)
 			if err != nil {
 				return fmt.Errorf("failed to delete threeport AWS IAM resources: %w", err)
+			}
+		case v0.KubernetesRuntimeInfraProviderOKE:
+			// delete Pulumi stack state directory
+			if err := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE).DeletePulumiStackState(); err != nil {
+				Warning(fmt.Sprintf("failed to delete Pulumi stack state: %v", err))
+			}
+
+			// delete OCI user, groups, and compartment
+			if err := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE).DeleteOCIResources(); err != nil {
+				Warning(fmt.Sprintf("failed to delete OCI resources: %v", err))
 			}
 		}
 	}

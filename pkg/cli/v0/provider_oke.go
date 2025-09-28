@@ -49,7 +49,7 @@ func DeployOkeInfra(
 		return fmt.Errorf("failed to load OCI config: %w", err)
 	}
 
-	// update threeport config with eks provider info
+	// update threeport config with oke provider info
 	var err error
 	if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *config.ControlPlane) {
 		c.OKEProviderConfig = config.OKEProviderConfig{

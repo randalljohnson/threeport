@@ -35,6 +35,7 @@ func DeployOkeInfra(
 		WorkerNodeShape:        "VM.Standard.A1.Flex",
 		Version:                "v1.32.1",
 		WorkerNodeInitialCount: int32(2),
+		Region:                 cpi.Opts.OciRegion,
 	}
 	*kubernetesRuntimeInfra = &kubernetesRuntimeInfraOKE
 	uninstaller.kubernetesRuntimeInfra = &kubernetesRuntimeInfraOKE
@@ -44,7 +45,7 @@ func DeployOkeInfra(
 	if err := kubernetesRuntimeInfraOKE.LoadOCIConfig(
 		cpi.Opts.OciRegion,
 		cpi.Opts.OciConfigProfile,
-		cpi.Opts.OciCompartmentOcid,
+		threeportControlPlaneConfig.OKEProviderConfig.OciCompartmentOcid,
 	); err != nil {
 		return fmt.Errorf("failed to load OCI config: %w", err)
 	}
@@ -53,8 +54,8 @@ func DeployOkeInfra(
 	var err error
 	if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *config.ControlPlane) {
 		c.OKEProviderConfig = config.OKEProviderConfig{
-			OciRegion:          cpi.Opts.OciRegion,
-			OciConfigProfile:   cpi.Opts.OciConfigProfile,
+			OciRegion:        cpi.Opts.OciRegion,
+			OciConfigProfile: cpi.Opts.OciConfigProfile,
 		}
 	}); err != nil {
 		return fmt.Errorf("failed to update threeport config: %w", err)
@@ -72,6 +73,13 @@ func DeployOkeInfra(
 			return uninstaller.cleanOnCreateError("failed to create control plane infra for threeport", err)
 		}
 		*kubeConnectionInfo = *connectionInfo
+
+		// update threeport config with compartment OCID after bootstrap creates it
+		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *config.ControlPlane) {
+			c.OKEProviderConfig.OciCompartmentOcid = kubernetesRuntimeInfraOKE.CompartmentOCID
+		}); err != nil {
+			return fmt.Errorf("failed to update threeport config with compartment OCID: %w", err)
+		}
 	}
 
 	return nil

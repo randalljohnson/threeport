@@ -200,14 +200,26 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 
 	// check threeport config to see if it is empty
 	threeportInstanceConfigEmpty := threeportConfig.CheckThreeportConfigEmpty()
-	if !threeportInstanceConfigEmpty && !cpi.Opts.ForceOverwriteConfig {
-		return ErrThreeportConfigAlreadyExists
-	}
 
+	var threeportControlPlaneConfig *ControlPlane
 	genesis := true
 
-	threeportConfig.ControlPlanes = []ControlPlane{}
-	threeportControlPlaneConfig := &ControlPlane{}
+	if cpi.Opts.ControlPlaneOnly && !threeportInstanceConfigEmpty {
+		// for control-plane-only runs, load existing config instead of creating fresh
+		existingConfig, err := threeportConfig.GetControlPlaneConfig(cpi.Opts.ControlPlaneName)
+		if err != nil {
+			return fmt.Errorf("control plane config '%s' not found for --control-plane-only run: %w", cpi.Opts.ControlPlaneName, err)
+		}
+		threeportControlPlaneConfig = existingConfig
+	} else {
+		// for fresh installs, check if config already exists
+		if !threeportInstanceConfigEmpty && !cpi.Opts.ForceOverwriteConfig {
+			return ErrThreeportConfigAlreadyExists
+		}
+		// reset config and create fresh control plane config
+		threeportConfig.ControlPlanes = []ControlPlane{}
+		threeportControlPlaneConfig = &ControlPlane{}
+	}
 
 	// create local registry if requested
 	if cpi.Opts.LocalRegistry {

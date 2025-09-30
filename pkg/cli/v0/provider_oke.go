@@ -53,9 +53,11 @@ func DeployOkeInfra(
 	// update threeport config with oke provider info
 	var err error
 	if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *config.ControlPlane) {
+		existingCompartmentOcid := c.OKEProviderConfig.OciCompartmentOcid
 		c.OKEProviderConfig = config.OKEProviderConfig{
-			OciRegion:        cpi.Opts.OciRegion,
-			OciConfigProfile: cpi.Opts.OciConfigProfile,
+			OciRegion:           cpi.Opts.OciRegion,
+			OciConfigProfile:    cpi.Opts.OciConfigProfile,
+			OciCompartmentOcid:  existingCompartmentOcid,
 		}
 	}); err != nil {
 		return fmt.Errorf("failed to update threeport config: %w", err)

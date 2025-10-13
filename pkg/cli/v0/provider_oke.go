@@ -13,7 +13,6 @@ import (
 	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
-	config "github.com/threeport/threeport/pkg/config/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -23,8 +22,8 @@ import (
 // DeployOkeInfra deploys the OKE infrastructure for the control plane.
 func DeployOkeInfra(
 	cpi *threeport.ControlPlaneInstaller,
-	threeportControlPlaneConfig *config.ControlPlane,
-	threeportConfig *config.ThreeportConfig,
+	threeportControlPlaneConfig *ControlPlane,
+	threeportConfig *ThreeportConfig,
 	kubernetesRuntimeInfra *provider.KubernetesRuntimeInfra,
 	kubeConnectionInfo *kube.KubeConnectionInfo,
 	uninstaller *Uninstaller,
@@ -52,12 +51,12 @@ func DeployOkeInfra(
 
 	// update threeport config with oke provider info
 	var err error
-	if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *config.ControlPlane) {
+	if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *ControlPlane) {
 		existingCompartmentOcid := c.OKEProviderConfig.OciCompartmentOcid
-		c.OKEProviderConfig = config.OKEProviderConfig{
-			OciRegion:           cpi.Opts.OciRegion,
-			OciConfigProfile:    cpi.Opts.OciConfigProfile,
-			OciCompartmentOcid:  existingCompartmentOcid,
+		c.OKEProviderConfig = OKEProviderConfig{
+			OciRegion:          cpi.Opts.OciRegion,
+			OciConfigProfile:   cpi.Opts.OciConfigProfile,
+			OciCompartmentOcid: existingCompartmentOcid,
 		}
 	}); err != nil {
 		return fmt.Errorf("failed to update threeport config: %w", err)
@@ -77,7 +76,7 @@ func DeployOkeInfra(
 		*kubeConnectionInfo = *connectionInfo
 
 		// update threeport config with compartment OCID after bootstrap creates it
-		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *config.ControlPlane) {
+		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *ControlPlane) {
 			c.OKEProviderConfig.OciCompartmentOcid = kubernetesRuntimeInfraOKE.CompartmentOCID
 		}); err != nil {
 			return fmt.Errorf("failed to update threeport config with compartment OCID: %w", err)

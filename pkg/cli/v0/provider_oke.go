@@ -94,7 +94,7 @@ func ConfigureControlPlaneWithOkeConfig(
 
 	// create OCI account using the service user credentials generated during bootstrap
 	ociAccount := v0.OciAccount{
-		Name:           util.Ptr("default-account"),
+		Name:           util.Ptr(kubernetesRuntimeInfraOKE.GetServiceUserName()),
 		UserOCID:       &kubernetesRuntimeInfraOKE.ServiceUserOCID,
 		TenancyOCID:    &kubernetesRuntimeInfraOKE.TenancyOCID,
 		DefaultAccount: util.Ptr(true),

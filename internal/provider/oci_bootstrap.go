@@ -42,6 +42,11 @@ func (i *KubernetesRuntimeInfraOKE) getOCIConfigSectionName() string {
 	return fmt.Sprintf(ociConfigSectionNameFormat, i.RuntimeInstanceName)
 }
 
+// GetServiceUserName returns the standardized service user name for this threeport instance.
+func (i *KubernetesRuntimeInfraOKE) GetServiceUserName() string {
+	return fmt.Sprintf(serviceUserNameFormat, i.RuntimeInstanceName)
+}
+
 // OCI Compartment Operations
 
 // createOCICompartment creates a new compartment for the threeport instance.
@@ -123,7 +128,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.Identit
 
 // createOCIServiceUser creates the threeport service user.
 func (i *KubernetesRuntimeInfraOKE) createOCIServiceUser(client identity.IdentityClient) error {
-	userName := fmt.Sprintf(serviceUserNameFormat, i.RuntimeInstanceName)
+	userName := i.GetServiceUserName()
 	userEmail := fmt.Sprintf(serviceUserEmailFormat, i.RuntimeInstanceName)
 
 	// check if user already exists
@@ -166,7 +171,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCIServiceUser(client identity.Identit
 
 // deleteOCIUser deletes an OCI user by name.
 func (i *KubernetesRuntimeInfraOKE) deleteOCIUser(client identity.IdentityClient) error {
-	userName := fmt.Sprintf(serviceUserNameFormat, i.RuntimeInstanceName)
+	userName := i.GetServiceUserName()
 	// list users to find the one to delete
 	listRequest := identity.ListUsersRequest{
 		CompartmentId: &i.TenancyOCID,

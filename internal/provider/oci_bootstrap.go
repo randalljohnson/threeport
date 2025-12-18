@@ -1,6 +1,5 @@
 package provider
 
-
 import (
 	"context"
 	"crypto/md5"
@@ -30,12 +29,12 @@ type OCIAPIKeyPair struct {
 
 // OCI resource naming constants to ensure consistency between create and delete operations
 const (
-	compartmentNameFormat        = "threeport-%s"
-	serviceUserNameFormat       = "threeport-service-%s"
-	serviceUserEmailFormat      = "threeport-service-%s@example.com"
-	bootstrapGroupNameFormat    = "threeport-bootstrap-%s"
-	bootstrapPolicyNameFormat   = "threeport-bootstrap-policy-%s"
-	ociConfigSectionNameFormat  = "[%s-service]"
+	compartmentNameFormat      = "threeport-%s"
+	serviceUserNameFormat      = "threeport-service-%s"
+	serviceUserEmailFormat     = "threeport-service-%s@example.com"
+	bootstrapGroupNameFormat   = "threeport-bootstrap-%s"
+	bootstrapPolicyNameFormat  = "threeport-bootstrap-policy-%s"
+	ociConfigSectionNameFormat = "[%s-service]"
 )
 
 // getOCIConfigSectionName returns the standardized OCI config section name for the service user.

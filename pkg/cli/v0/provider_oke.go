@@ -1,15 +1,9 @@
 package v0
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 
-	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
@@ -96,62 +90,20 @@ func ConfigureControlPlaneWithOkeConfig(
 	kubernetesRuntimeInstResult *v0.KubernetesRuntimeInstance,
 	kubernetesRuntimeInfra *provider.KubernetesRuntimeInfra,
 ) error {
-
 	kubernetesRuntimeInfraOKE := (*kubernetesRuntimeInfra).(*provider.KubernetesRuntimeInfraOKE)
 
-	// Get user's home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	// Path to OCI config file
-	ociConfigPath := filepath.Join(homeDir, ".oci", "config")
-
-	// Check if config file exists
-	if _, err := os.Stat(ociConfigPath); os.IsNotExist(err) {
-		return fmt.Errorf("OCI config file not found at %s", ociConfigPath)
-	}
-
-	// Load the configuration using the OCI SDK
-	configProvider, err := common.ConfigurationProviderFromFile(ociConfigPath, "")
-	if err != nil {
-		return fmt.Errorf("failed to load OCI configuration: %w", err)
-	}
-
-	var privateKey *rsa.PrivateKey
-	var userOCID, tenancyOCID, keyFingerprint string
-	// get user ocid
-	if userOCID, err = configProvider.UserOCID(); err != nil {
-		return fmt.Errorf("failed to get user OCID: %w", err)
-	}
-
-	// get tenancy ocid
-	if tenancyOCID, err = configProvider.TenancyOCID(); err != nil {
-		return fmt.Errorf("failed to get tenancy OCID: %w", err)
-	}
-
-	// get key fingerprint
-	if keyFingerprint, err = configProvider.KeyFingerprint(); err != nil {
-		return fmt.Errorf("failed to get key fingerprint: %w", err)
-	}
-
-	// get private key
-	if privateKey, err = configProvider.PrivateRSAKey(); err != nil {
-		return fmt.Errorf("failed to get private key: %w", err)
-	}
-
+	// create OCI account using the service user credentials generated during bootstrap
 	ociAccount := v0.OciAccount{
 		Name:           util.Ptr("default-account"),
-		UserOCID:       &userOCID,
-		TenancyOCID:    &tenancyOCID,
+		UserOCID:       &kubernetesRuntimeInfraOKE.ServiceUserOCID,
+		TenancyOCID:    &kubernetesRuntimeInfraOKE.TenancyOCID,
 		DefaultAccount: util.Ptr(true),
 		DefaultRegion:  &kubernetesRuntimeInfraOKE.Region,
-		KeyFingerprint: &keyFingerprint,
-		PrivateKey:     util.Ptr(privateKeyToPEM(privateKey)),
+		KeyFingerprint: &kubernetesRuntimeInfraOKE.Fingerprint,
+		PrivateKey:     &kubernetesRuntimeInfraOKE.PrivateKeyPEM,
 	}
 
-	_, err = client.CreateOciAccount(
+	_, err := client.CreateOciAccount(
 		apiClient,
 		threeportAPIEndpoint,
 		&ociAccount,
@@ -214,21 +166,4 @@ func ConfigureControlPlaneWithOkeConfig(
 		return uninstaller.cleanOnCreateError("failed to create new OCI OKEkubernetes runtime instance for control plane cluster", err)
 	}
 	return nil
-}
-
-// privateKeyToPEM converts an RSA private key to a PEM-encoded string
-func privateKeyToPEM(privateKey *rsa.PrivateKey) string {
-	// Marshal the private key to PKCS#1 format
-	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-
-	// Create a PEM block
-	privateKeyPEM := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: privateKeyBytes,
-		},
-	)
-
-	// Convert to string
-	return string(privateKeyPEM)
 }

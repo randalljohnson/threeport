@@ -26,7 +26,7 @@ func DeployOkeInfra(
 	kubernetesRuntimeInfraOKE := provider.KubernetesRuntimeInfraOKE{
 		RuntimeInstanceName:    provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
 		WorkerNodeShape:        "VM.Standard.A1.Flex",
-		Version:                "v1.32.1",
+		Version:                provider.DefaultOKEKubernetesVersion,
 		WorkerNodeInitialCount: int32(2),
 		Region:                 cpi.Opts.OciRegion,
 	}

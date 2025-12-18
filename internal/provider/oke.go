@@ -28,6 +28,9 @@ import (
 	"gorm.io/datatypes"
 )
 
+// DefaultOKEKubernetesVersion is the default Kubernetes version for OKE clusters.
+const DefaultOKEKubernetesVersion = "v1.32.1"
+
 // KubernetesRuntimeInfraOKE represents the infrastructure for a threeport-managed OKE
 // (Oracle Kubernetes Engine) cluster.
 type KubernetesRuntimeInfraOKE struct {
@@ -882,59 +885,6 @@ func (i *KubernetesRuntimeInfraOKE) getServiceGatewayServiceIdAndCidrBlock() (st
 
 	// If service not found, return an error
 	return "", "", fmt.Errorf("Oracle Services Network service not found in region %s", i.Region)
-}
-
-// getLatestOKEVersion returns the latest Kubernetes version available in OKE
-func (i *KubernetesRuntimeInfraOKE) getLatestOKEVersion() (string, error) {
-	// create a new container engine client
-	containerClient, err := ocicontainerengine.NewContainerEngineClientWithConfigurationProvider(i.ConfigProvider)
-	if err != nil {
-		return "", fmt.Errorf("failed to create container engine client: %w", err)
-	}
-
-	// set the region for the client
-	containerClient.SetRegion(i.Region)
-
-	// create a request to list node pool options
-	request := ocicontainerengine.GetNodePoolOptionsRequest{
-		CompartmentId:    common.String(i.CompartmentOCID),
-		NodePoolOptionId: common.String("all"),
-	}
-
-	// call the API to get node pool options
-	response, err := containerClient.GetNodePoolOptions(context.Background(), request)
-	if err != nil {
-		return "", fmt.Errorf("failed to get node pool options: %w", err)
-	}
-
-	// check if we have any images
-	if len(response.Sources) == 0 {
-		return "", fmt.Errorf("no OKE worker node images found")
-	}
-
-	// find the latest version by parsing version strings
-	latestVersion := ""
-	for _, source := range response.Sources {
-		if sourceType, ok := source.(ocicontainerengine.NodeSourceViaImageOption); ok {
-			name := *sourceType.SourceName
-			// extract version from name (e.g., "OKE-1.30.10")
-			if strings.Contains(name, "OKE-") {
-				version := strings.Split(name, "OKE-")[1]
-				version = strings.Split(version, "-")[0] // remove any trailing parts
-				if latestVersion == "" || version > latestVersion {
-					latestVersion = version
-				}
-			}
-		}
-	}
-
-	if latestVersion == "" {
-		return "", fmt.Errorf("could not determine latest OKE version")
-	}
-
-	latestVersion = "v" + latestVersion
-
-	return latestVersion, nil
 }
 
 // getOKEWorkerNodeImageOCID returns the OCID of the OKE worker node image

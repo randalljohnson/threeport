@@ -860,8 +860,6 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		// if not infra-only, as this flag implies the user
 		// does not want to depend on control plane state
 		if !cpi.Opts.InfraOnly {
-
-			// TODO: revisit, also should this work with varying regions?
 			if kubeConnection, err = kubernetesRuntimeInfraOKE.GetConnection(); err != nil {
 				return fmt.Errorf("failed to get connection for OKE kubernetes runtime infra: %w", err)
 			}

@@ -799,8 +799,8 @@ func calculateKeyFingerprint(publicKeyPEM string) string {
 	return strings.Join(fingerprint, ":")
 }
 
-// ServiceStatus represents the current status of a service propagation check
-type ServiceStatus struct {
+// OCIServiceStatus represents the current status of a service propagation check
+type OCIServiceStatus struct {
 	Name                 string
 	ConsecutiveSuccesses int
 	Attempts             int
@@ -935,9 +935,9 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 	}
 
 	// initialize status map
-	statusMap := make(map[string]*ServiceStatus)
+	statusMap := make(map[string]*OCIServiceStatus)
 	for _, service := range services {
-		statusMap[service.id] = &ServiceStatus{
+		statusMap[service.id] = &OCIServiceStatus{
 			Name: service.name,
 		}
 	}
@@ -945,7 +945,7 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 	// channel for status updates
 	statusChan := make(chan struct {
 		serviceID string
-		status    ServiceStatus
+		status    OCIServiceStatus
 	}, 100)
 
 	// start all services in parallel
@@ -985,10 +985,10 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 
 					statusChan <- struct {
 						serviceID string
-						status    ServiceStatus
+						status    OCIServiceStatus
 					}{
 						serviceID: svc.id,
-						status: ServiceStatus{
+						status: OCIServiceStatus{
 							Name:                 svc.name,
 							ConsecutiveSuccesses: consecutiveSuccesses,
 							Attempts:             attempts,
@@ -1003,10 +1003,10 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 					completed := consecutiveSuccesses >= requiredConsecutiveSuccesses
 					statusChan <- struct {
 						serviceID string
-						status    ServiceStatus
+						status    OCIServiceStatus
 					}{
 						serviceID: svc.id,
-						status: ServiceStatus{
+						status: OCIServiceStatus{
 							Name:                 svc.name,
 							ConsecutiveSuccesses: consecutiveSuccesses,
 							Attempts:             attempts,
@@ -1025,10 +1025,10 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 			if consecutiveSuccesses < requiredConsecutiveSuccesses {
 				statusChan <- struct {
 					serviceID string
-					status    ServiceStatus
+					status    OCIServiceStatus
 				}{
 					serviceID: svc.id,
-					status: ServiceStatus{
+					status: OCIServiceStatus{
 						Name:                 svc.name,
 						ConsecutiveSuccesses: consecutiveSuccesses,
 						Attempts:             attempts,
@@ -1054,7 +1054,7 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 
 	// track last displayed status to avoid duplicate outputs
 	lastDisplayTime := time.Now()
-	lastStatuses := make(map[string]ServiceStatus)
+	lastStatuses := make(map[string]OCIServiceStatus)
 	displayInitialized := false
 
 	displayStatus := func() {

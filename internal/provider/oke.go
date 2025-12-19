@@ -933,6 +933,48 @@ func (i *KubernetesRuntimeInfraOKE) getOKEWorkerNodeImageOCID() (string, error) 
 	return "", fmt.Errorf("no suitable OKE worker node images found with aarch64 architecture and Kubernetes version %s", i.Version)
 }
 
+// getHomeRegion queries OCI to get the tenancy's home region for IAM operations.
+func (i *KubernetesRuntimeInfraOKE) getHomeRegion(identityClient identity.IdentityClient) (string, error) {
+	// use the config file region to make the initial query
+	configRegion, err := i.ConfigProvider.Region()
+	if err != nil {
+		return "", fmt.Errorf("failed to get region from config provider: %w", err)
+	}
+	identityClient.SetRegion(configRegion)
+
+	// query the tenancy to get the home region key
+	tenancyRequest := identity.GetTenancyRequest{
+		TenancyId: common.String(i.TenancyOCID),
+	}
+	tenancyResponse, err := identityClient.GetTenancy(context.Background(), tenancyRequest)
+	if err != nil {
+		return "", fmt.Errorf("failed to get tenancy details: %w", err)
+	}
+
+	if tenancyResponse.Tenancy.HomeRegionKey == nil {
+		return "", fmt.Errorf("home region key not found in tenancy response")
+	}
+
+	// get the list of regions to map the home region key to full region name
+	regionsResponse, err := identityClient.ListRegions(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("failed to list regions: %w", err)
+	}
+
+	// find the region with matching key
+	homeRegionKey := *tenancyResponse.Tenancy.HomeRegionKey
+	for _, region := range regionsResponse.Items {
+		if region.Key != nil && *region.Key == homeRegionKey {
+			if region.Name == nil {
+				return "", fmt.Errorf("region name not found for key %s", homeRegionKey)
+			}
+			return *region.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find region name for home region key %s", homeRegionKey)
+}
+
 // setupPulumiWorkspace sets up the Pulumi workspace and environment for OKE operations
 func (i *KubernetesRuntimeInfraOKE) setupPulumiWorkspace(program pulumi.RunFunc) (auto.Stack, error) {
 
@@ -1126,14 +1168,14 @@ func (i *KubernetesRuntimeInfraOKE) createOCIUserAndCredentials() error {
 		return fmt.Errorf("failed to create identity client: %w", err)
 	}
 
-	// get the default region from the config provider for user/credential operations
-	defaultRegion, err := i.ConfigProvider.Region()
+	// get the home region for IAM operations (compartments, users, policies must be created in home region)
+	homeRegion, err := i.getHomeRegion(identityClient)
 	if err != nil {
-		return fmt.Errorf("failed to get default region from config provider: %w", err)
+		return fmt.Errorf("failed to get home region: %w", err)
 	}
 
-	// set the region for the client to use default region (home region for compartment creation)
-	identityClient.SetRegion(defaultRegion)
+	// set the region for the identity client to home region for IAM operations
+	identityClient.SetRegion(homeRegion)
 
 	// create compartment first
 	if err := i.createOCICompartment(identityClient); err != nil {
@@ -1201,14 +1243,14 @@ func (i *KubernetesRuntimeInfraOKE) DeleteOCIResources() error {
 		return fmt.Errorf("failed to create identity client: %w", err)
 	}
 
-	// get the default region from the config provider
-	defaultRegion, err := i.ConfigProvider.Region()
+	// get the home region for IAM operations (compartments, users, policies must be deleted in home region)
+	homeRegion, err := i.getHomeRegion(identityClient)
 	if err != nil {
-		return fmt.Errorf("failed to get default region from config provider: %w", err)
+		return fmt.Errorf("failed to get home region: %w", err)
 	}
 
-	// set the region for the client to use default region
-	identityClient.SetRegion(defaultRegion)
+	// set the region for the identity client to home region for IAM operations
+	identityClient.SetRegion(homeRegion)
 
 	// delete in reverse order: policies, groups, user, compartment
 	if err := i.deleteOCIPolicy(identityClient); err != nil {

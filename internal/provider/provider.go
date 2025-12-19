@@ -10,7 +10,18 @@ const (
 	// Max length of runtime names prevents infra provider resource names
 	// exceeding maximum lengths imposed by provider.
 	RuntimeNameMaxLength = 30
+
+	// Shared naming prefixes for cloud provider resources.
+	// These represent common cloud concepts used across providers.
+	// Pattern: {Prefix}-{InstanceName} e.g. "ThreeportRuntime-oke-test"
+	ServiceAccountPolicyName = "ThreeportServiceAccount"
+	RuntimeServiceAccount    = "ThreeportRuntime"
 )
+
+// ResourceName returns a standardized resource name combining a prefix and instance name.
+func ResourceName(prefix, instanceName string) string {
+	return fmt.Sprintf("%s-%s", prefix, instanceName)
+}
 
 // KubernetesRuntimeInfra is the interface each provider has to satisfy to manage
 // Kubernetes runtime infra.

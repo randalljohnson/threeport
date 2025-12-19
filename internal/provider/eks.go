@@ -685,9 +685,8 @@ func GetIrsaServiceAccounts(namespace, accountId, roleName string) []*unstructur
 	return output
 }
 
+// AWS-specific naming constants and policy documents.
 const (
-	ServiceAccountPolicyName    = "ThreeportServiceAccount"
-	RuntimeServiceAccount       = "ThreeportRuntime"
 	ResourceManagerRoleName     = "resource-manager-threeport"
 	AssumeAnyRolePolicyDocument = `{
 		"Version": "2012-10-17",

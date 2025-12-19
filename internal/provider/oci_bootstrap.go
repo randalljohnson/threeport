@@ -27,13 +27,17 @@ type OCIAPIKeyPair struct {
 	Fingerprint   string
 }
 
-// OCI resource naming constants to ensure consistency between create and delete operations
+// OCI-specific resource naming prefixes.
+// Pattern: {Prefix}-{InstanceName} e.g. "ThreeportCompartment-oke-test"
 const (
-	compartmentNameFormat      = "threeport-%s"
-	serviceUserNameFormat      = "threeport-service-%s"
-	serviceUserEmailFormat     = "threeport-service-%s@example.com"
-	bootstrapGroupNameFormat   = "threeport-bootstrap-%s"
-	bootstrapPolicyNameFormat  = "threeport-bootstrap-policy-%s"
+	CompartmentPrefix     = "ThreeportCompartment"
+	BootstrapGroupPrefix  = "ThreeportBootstrapGroup"
+	BootstrapPolicyPrefix = "ThreeportBootstrapPolicy"
+)
+
+// OCI resource naming format constants
+const (
+	serviceUserEmailFormat     = "ThreeportService-%s@example.com"
 	ociConfigSectionNameFormat = "[%s-service]"
 )
 
@@ -44,14 +48,14 @@ func (i *KubernetesRuntimeInfraOKE) getOCIConfigSectionName() string {
 
 // GetServiceUserName returns the standardized service user name for this threeport instance.
 func (i *KubernetesRuntimeInfraOKE) GetServiceUserName() string {
-	return fmt.Sprintf(serviceUserNameFormat, i.RuntimeInstanceName)
+	return ResourceName(RuntimeServiceAccount, i.RuntimeInstanceName)
 }
 
 // OCI Compartment Operations
 
 // createOCICompartment creates a new compartment for the threeport instance.
 func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.IdentityClient) error {
-	compartmentName := fmt.Sprintf(compartmentNameFormat, i.RuntimeInstanceName)
+	compartmentName := ResourceName(CompartmentPrefix, i.RuntimeInstanceName)
 	compartmentDescription := fmt.Sprintf("Compartment for threeport instance %s", i.RuntimeInstanceName)
 
 	// check if compartment already exists
@@ -93,7 +97,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.Identit
 
 // deleteOCICompartment deletes an OCI compartment by name.
 func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.IdentityClient) error {
-	compartmentName := fmt.Sprintf(compartmentNameFormat, i.RuntimeInstanceName)
+	compartmentName := ResourceName(CompartmentPrefix, i.RuntimeInstanceName)
 	// list compartments to find the one to delete
 	listRequest := identity.ListCompartmentsRequest{
 		CompartmentId: &i.TenancyOCID,
@@ -229,7 +233,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIUser(client identity.IdentityClient
 
 // createOCIGroup creates a new OCI group for threeport operations.
 func (i *KubernetesRuntimeInfraOKE) createOCIGroup(client identity.IdentityClient) error {
-	groupName := fmt.Sprintf(bootstrapGroupNameFormat, i.RuntimeInstanceName)
+	groupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
 	groupDescription := fmt.Sprintf("Bootstrap group for threeport instance %s", i.RuntimeInstanceName)
 
 	// check if group already exists
@@ -269,7 +273,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCIGroup(client identity.IdentityClien
 
 // addOCIUserToGroup adds a user to an OCI group.
 func (i *KubernetesRuntimeInfraOKE) addOCIUserToGroup(client identity.IdentityClient) error {
-	groupName := fmt.Sprintf(bootstrapGroupNameFormat, i.RuntimeInstanceName)
+	groupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
 
 	// get group OCID
 	listRequest := identity.ListGroupsRequest{
@@ -326,7 +330,7 @@ func (i *KubernetesRuntimeInfraOKE) addOCIUserToGroup(client identity.IdentityCl
 
 // deleteOCIGroup deletes an OCI group by name.
 func (i *KubernetesRuntimeInfraOKE) deleteOCIGroup(client identity.IdentityClient) error {
-	groupName := fmt.Sprintf(bootstrapGroupNameFormat, i.RuntimeInstanceName)
+	groupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
 	// list groups to find the one to delete
 	listRequest := identity.ListGroupsRequest{
 		CompartmentId: &i.TenancyOCID,
@@ -360,10 +364,10 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIGroup(client identity.IdentityClien
 
 // createOCIPolicy creates a new OCI policy for threeport operations.
 func (i *KubernetesRuntimeInfraOKE) createOCIPolicy(client identity.IdentityClient) error {
-	compartmentName := fmt.Sprintf(compartmentNameFormat, i.RuntimeInstanceName)
-	bootstrapGroupName := fmt.Sprintf(bootstrapGroupNameFormat, i.RuntimeInstanceName)
+	compartmentName := ResourceName(CompartmentPrefix, i.RuntimeInstanceName)
+	bootstrapGroupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
 
-	policyName := fmt.Sprintf(bootstrapPolicyNameFormat, i.RuntimeInstanceName)
+	policyName := ResourceName(BootstrapPolicyPrefix, i.RuntimeInstanceName)
 	policyDescription := fmt.Sprintf("Threeport bootstrap policy for %s", i.RuntimeInstanceName)
 	policyStatements := []string{
 
@@ -428,7 +432,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCIPolicy(client identity.IdentityClie
 
 // deleteOCIPolicy deletes an OCI policy by name.
 func (i *KubernetesRuntimeInfraOKE) deleteOCIPolicy(client identity.IdentityClient) error {
-	policyName := fmt.Sprintf(bootstrapPolicyNameFormat, i.RuntimeInstanceName)
+	policyName := ResourceName(BootstrapPolicyPrefix, i.RuntimeInstanceName)
 	// list policies to find the one to delete
 	listRequest := identity.ListPoliciesRequest{
 		CompartmentId: &i.TenancyOCID,

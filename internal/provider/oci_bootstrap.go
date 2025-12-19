@@ -824,7 +824,7 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 		i.PrivateKeyPEM,
 		nil,
 	)
-	const requiredConsecutiveSuccesses = 5
+	const requiredConsecutiveSuccesses = 10
 	const maxAttempts = 600
 	const retryDelay = 2 * time.Second
 
@@ -841,6 +841,8 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 				if err != nil {
 					return fmt.Errorf("failed to create identity client: %w", err)
 				}
+				// set region to ensure we're validating against the target deployment region
+				identityClient.SetRegion(i.Region)
 				getCompartmentRequest := identity.GetCompartmentRequest{
 					CompartmentId: &i.CompartmentOCID,
 				}
@@ -856,6 +858,8 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 				if err != nil {
 					return fmt.Errorf("failed to create core client: %w", err)
 				}
+				// set region to ensure we're validating against the target deployment region
+				coreClient.SetRegion(i.Region)
 
 				// test VCN access
 				vcnRequest := ocicore.ListVcnsRequest{
@@ -928,6 +932,8 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 				if err != nil {
 					return fmt.Errorf("failed to create container engine client: %w", err)
 				}
+				// set region to ensure we're validating against the target deployment region
+				ceClient.SetRegion(i.Region)
 				ceRequest := ocicontainerengine.ListClustersRequest{
 					CompartmentId: common.String(i.CompartmentOCID),
 					Limit:         common.Int(1),

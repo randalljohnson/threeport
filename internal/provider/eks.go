@@ -24,6 +24,11 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+const (
+	ServiceAccountPolicyName = "ThreeportServiceAccount"
+	RuntimeServiceAccount    = "ThreeportRuntime"
+)
+
 // KubernetesRuntimeInfraEKS represents the infrastructure for a threeport-managed EKS
 // cluster.
 type KubernetesRuntimeInfraEKS struct {

@@ -27,41 +27,31 @@ type OCIAPIKeyPair struct {
 	Fingerprint   string
 }
 
-// OCI-specific resource naming prefixes.
-// Pattern: {Prefix}-{InstanceName} e.g. "ThreeportCompartment-oke-test"
-const (
-	CompartmentPrefix     = "ThreeportCompartment"
-	BootstrapGroupPrefix  = "ThreeportBootstrapGroup"
-	BootstrapPolicyPrefix = "ThreeportBootstrapPolicy"
-)
-
-// OCI resource naming format constants
-const (
-	serviceUserEmailFormat     = "ThreeportService-%s@example.com"
-	ociConfigSectionNameFormat = "[%s-service]"
-)
-
 // getOCIConfigSectionName returns the standardized OCI config section name for the service user.
 func (i *KubernetesRuntimeInfraOKE) getOCIConfigSectionName() string {
-	return fmt.Sprintf(ociConfigSectionNameFormat, i.RuntimeInstanceName)
+	return fmt.Sprintf("[%s-service]", i.RuntimeInstanceName)
 }
 
 // GetServiceUserName returns the standardized service user name for this threeport instance.
 func (i *KubernetesRuntimeInfraOKE) GetServiceUserName() string {
-	return ResourceName(RuntimeServiceAccount, i.RuntimeInstanceName)
+	return fmt.Sprintf("%s-user", i.RuntimeInstanceName)
+}
+
+// getServiceUserEmail returns the email for the service user.
+func (i *KubernetesRuntimeInfraOKE) getServiceUserEmail() string {
+	return fmt.Sprintf("%s-user@threeport.io", i.RuntimeInstanceName)
 }
 
 // OCI Compartment Operations
 
 // createOCICompartment creates a new compartment for the threeport instance.
 func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.IdentityClient) error {
-	compartmentName := ResourceName(CompartmentPrefix, i.RuntimeInstanceName)
 	compartmentDescription := fmt.Sprintf("Compartment for threeport instance %s", i.RuntimeInstanceName)
 
 	// check if compartment already exists
 	listRequest := identity.ListCompartmentsRequest{
 		CompartmentId: &i.TenancyOCID,
-		Name:          &compartmentName,
+		Name:          &i.RuntimeInstanceName,
 	}
 
 	response, err := client.ListCompartments(context.Background(), listRequest)
@@ -71,16 +61,16 @@ func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.Identit
 
 	if len(response.Items) > 0 {
 		i.CompartmentOCID = *response.Items[0].Id
-		fmt.Printf("Using existing compartment: %s\n", compartmentName)
+		fmt.Printf("Using existing compartment: %s\n", i.RuntimeInstanceName)
 		return nil
 	}
 
 	// create new compartment
-	fmt.Printf("Creating compartment: %s\n", compartmentName)
+	fmt.Printf("Creating compartment: %s\n", i.RuntimeInstanceName)
 	createRequest := identity.CreateCompartmentRequest{
 		CreateCompartmentDetails: identity.CreateCompartmentDetails{
 			CompartmentId: &i.TenancyOCID,
-			Name:          &compartmentName,
+			Name:          &i.RuntimeInstanceName,
 			Description:   &compartmentDescription,
 		},
 	}
@@ -91,17 +81,16 @@ func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.Identit
 	}
 
 	i.CompartmentOCID = *createResponse.Compartment.Id
-	fmt.Printf("Successfully created compartment: %s\n", compartmentName)
+	fmt.Printf("Successfully created compartment: %s\n", i.RuntimeInstanceName)
 	return nil
 }
 
 // deleteOCICompartment deletes an OCI compartment by name.
 func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.IdentityClient) error {
-	compartmentName := ResourceName(CompartmentPrefix, i.RuntimeInstanceName)
 	// list compartments to find the one to delete
 	listRequest := identity.ListCompartmentsRequest{
 		CompartmentId: &i.TenancyOCID,
-		Name:          &compartmentName,
+		Name:          &i.RuntimeInstanceName,
 	}
 
 	response, err := client.ListCompartments(context.Background(), listRequest)
@@ -110,7 +99,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.Identit
 	}
 
 	if len(response.Items) == 0 {
-		fmt.Printf("Compartment %s not found, skipping deletion\n", compartmentName)
+		fmt.Printf("Compartment %s not found, skipping deletion\n", i.RuntimeInstanceName)
 		return nil
 	}
 
@@ -133,7 +122,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.Identit
 // createOCIServiceUser creates the threeport service user.
 func (i *KubernetesRuntimeInfraOKE) createOCIServiceUser(client identity.IdentityClient) error {
 	userName := i.GetServiceUserName()
-	userEmail := fmt.Sprintf(serviceUserEmailFormat, i.RuntimeInstanceName)
+	userEmail := i.getServiceUserEmail()
 
 	// check if user already exists
 	listRequest := identity.ListUsersRequest{
@@ -233,7 +222,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIUser(client identity.IdentityClient
 
 // createOCIGroup creates a new OCI group for threeport operations.
 func (i *KubernetesRuntimeInfraOKE) createOCIGroup(client identity.IdentityClient) error {
-	groupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
+	groupName := fmt.Sprintf("%s-group", i.RuntimeInstanceName)
 	groupDescription := fmt.Sprintf("Bootstrap group for threeport instance %s", i.RuntimeInstanceName)
 
 	// check if group already exists
@@ -273,7 +262,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCIGroup(client identity.IdentityClien
 
 // addOCIUserToGroup adds a user to an OCI group.
 func (i *KubernetesRuntimeInfraOKE) addOCIUserToGroup(client identity.IdentityClient) error {
-	groupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
+	groupName := fmt.Sprintf("%s-group", i.RuntimeInstanceName)
 
 	// get group OCID
 	listRequest := identity.ListGroupsRequest{
@@ -330,7 +319,7 @@ func (i *KubernetesRuntimeInfraOKE) addOCIUserToGroup(client identity.IdentityCl
 
 // deleteOCIGroup deletes an OCI group by name.
 func (i *KubernetesRuntimeInfraOKE) deleteOCIGroup(client identity.IdentityClient) error {
-	groupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
+	groupName := fmt.Sprintf("%s-group", i.RuntimeInstanceName)
 	// list groups to find the one to delete
 	listRequest := identity.ListGroupsRequest{
 		CompartmentId: &i.TenancyOCID,
@@ -364,34 +353,30 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIGroup(client identity.IdentityClien
 
 // createOCIPolicy creates a new OCI policy for threeport operations.
 func (i *KubernetesRuntimeInfraOKE) createOCIPolicy(client identity.IdentityClient) error {
-	compartmentName := ResourceName(CompartmentPrefix, i.RuntimeInstanceName)
-	bootstrapGroupName := ResourceName(BootstrapGroupPrefix, i.RuntimeInstanceName)
-
-	policyName := ResourceName(BootstrapPolicyPrefix, i.RuntimeInstanceName)
+	groupName := fmt.Sprintf("%s-group", i.RuntimeInstanceName)
+	policyName := fmt.Sprintf("%s-policy", i.RuntimeInstanceName)
 	policyDescription := fmt.Sprintf("Threeport bootstrap policy for %s", i.RuntimeInstanceName)
 	policyStatements := []string{
-
 		// policies recommended in OCI documentation
 		// https://docs.public.content.oci.oraclecloud.com/en-us/iaas/compute-cloud-at-customer/topics/oke/create-a-user-group-and-policies-that-authorize-members-to-use-oke.htm
-		fmt.Sprintf("Allow group %s to read all-resources in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage cluster-family in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage instance-family in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage network-load-balancers in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage virtual-network-family in compartment %s", bootstrapGroupName, compartmentName),
-
+		fmt.Sprintf("Allow group %s to read all-resources in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage cluster-family in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage instance-family in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage network-load-balancers in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage virtual-network-family in compartment %s", groupName, i.RuntimeInstanceName),
 		// additional policies
-		fmt.Sprintf("Allow group %s to inspect compartments in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage volume-family in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage load-balancers in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to use vnics in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to use network-security-groups in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to use private-ips in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage public-ips in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage object-family in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage tag-namespaces in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to manage tag-defaults in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to use tag-namespaces in compartment %s", bootstrapGroupName, compartmentName),
-		fmt.Sprintf("Allow group %s to use subnets in compartment %s", bootstrapGroupName, compartmentName),
+		fmt.Sprintf("Allow group %s to inspect compartments in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage volume-family in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage load-balancers in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to use vnics in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to use network-security-groups in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to use private-ips in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage public-ips in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage object-family in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage tag-namespaces in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to manage tag-defaults in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to use tag-namespaces in compartment %s", groupName, i.RuntimeInstanceName),
+		fmt.Sprintf("Allow group %s to use subnets in compartment %s", groupName, i.RuntimeInstanceName),
 	}
 
 	// check if policy already exists
@@ -432,7 +417,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCIPolicy(client identity.IdentityClie
 
 // deleteOCIPolicy deletes an OCI policy by name.
 func (i *KubernetesRuntimeInfraOKE) deleteOCIPolicy(client identity.IdentityClient) error {
-	policyName := ResourceName(BootstrapPolicyPrefix, i.RuntimeInstanceName)
+	policyName := fmt.Sprintf("%s-policy", i.RuntimeInstanceName)
 	// list policies to find the one to delete
 	listRequest := identity.ListPoliciesRequest{
 		CompartmentId: &i.TenancyOCID,

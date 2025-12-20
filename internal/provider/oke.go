@@ -31,6 +31,9 @@ import (
 // DefaultOKEKubernetesVersion is the default Kubernetes version for OKE clusters.
 const DefaultOKEKubernetesVersion = "v1.32.1"
 
+// ociPluginVersion must match github.com/pulumi/pulumi-oci/sdk version in go.mod
+const ociPluginVersion = "3.9.0"
+
 // KubernetesRuntimeInfraOKE represents the infrastructure for a threeport-managed OKE
 // (Oracle Kubernetes Engine) cluster.
 type KubernetesRuntimeInfraOKE struct {
@@ -91,7 +94,7 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 			UserOcid:    pulumi.String(i.ServiceUserOCID),
 			Fingerprint: pulumi.String(i.Fingerprint),
 			PrivateKey:  pulumi.String(i.PrivateKeyPEM),
-		})
+		}, pulumi.Version(ociPluginVersion))
 		if err != nil {
 			return fmt.Errorf("failed to create OCI provider: %w", err)
 		}
@@ -1124,6 +1127,9 @@ func (i *KubernetesRuntimeInfraOKE) setPulumiEnvVars() error {
 	os.Setenv("PULUMI_ORGANIZATION", "organization") // TODO: update these?
 	os.Setenv("PULUMI_PROJECT", "oke")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "threeport")
+
+	// ignore plugins found in PATH to ensure version consistency
+	os.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
 
 	// set plugin path to the default location
 	userHomeDir, err := os.UserHomeDir()

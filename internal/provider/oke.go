@@ -1164,7 +1164,21 @@ func (i *KubernetesRuntimeInfraOKE) getStackName() string {
 	return fmt.Sprintf("organization/oke/%s", i.RuntimeInstanceName)
 }
 
-// createOCIUserAndCredentials creates a new compartment and sets up complete OCI user/group infrastructure for the threeport instance.
+// createOCIUserAndCredentials creates a new compartment and sets up complete OCI user/group
+// infrastructure for the threeport instance using the OCI SDK directly.
+//
+// This function uses the OCI SDK (not Pulumi) for identity resource creation because OCI identity
+// resources (users, groups, policies, API keys) have propagation delays across OCI's distributed
+// services. After creation, these resources must be synchronized across all OCI regional endpoints
+// before they can be used for authentication. By using the SDK directly, we can synchronously
+// create each resource and then explicitly validate propagation via validateOCIUserPropagation()
+// before proceeding to infrastructure deployment.
+//
+// Pulumi operates asynchronously and cannot wait for cross-service propagation to complete.
+// If we used Pulumi for identity resources, subsequent infrastructure operations would fail
+// with authentication errors because the service user credentials would not yet be available
+// in all required OCI services. The SDK approach ensures the service user is fully operational
+// before Pulumi begins deploying VCN, OKE cluster, and other infrastructure resources.
 func (i *KubernetesRuntimeInfraOKE) createOCIUserAndCredentials() error {
 	fmt.Printf("Creating OCI user and credentials using SDK\n")
 

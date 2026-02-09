@@ -25,7 +25,7 @@ func DeployOkeInfra(
 	kubeConnectionInfo *kube.KubeConnectionInfo,
 	uninstaller *Uninstaller,
 ) error {
-	// Create OKE infrastructure
+	// create OKE infrastructure
 	kubernetesRuntimeInfraOKE := provider.KubernetesRuntimeInfraOKE{
 		RuntimeInstanceName:    provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
 		WorkerNodeShape:        "VM.Standard.A1.Flex",

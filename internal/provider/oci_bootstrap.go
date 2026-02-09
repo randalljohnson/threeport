@@ -18,6 +18,7 @@ import (
 	ocicontainerengine "github.com/oracle/oci-go-sdk/v65/containerengine"
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+	"golang.org/x/term"
 )
 
 // OCIAPIKeyPair represents an API key pair for OCI authentication
@@ -1078,6 +1079,8 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 			return
 		}
 
+		isTTY := term.IsTerminal(int(os.Stdout.Fd()))
+
 		if !displayInitialized {
 			// first time - print the initial lines
 			for _, service := range services {
@@ -1100,7 +1103,7 @@ func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
 				lastStatuses[service.id] = *status
 			}
 			displayInitialized = true
-		} else {
+		} else if isTTY {
 			// move cursor up to overwrite previous lines
 			fmt.Printf("\033[%dA", len(services))
 			for _, service := range services {

@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -38,6 +40,21 @@ var buildCmd = &cobra.Command{
 		if push && load {
 			cli.Error("error: %w", errors.New("cannot use --push and --load together"))
 			os.Exit(1)
+		}
+
+		if push && cliArgs.ControlPlaneImageRepo == "" {
+			cli.Error("error: %w", errors.New("--control-plane-image-namespace/-r is required when --push is specified"))
+			os.Exit(1)
+		}
+
+		// default tag to current git branch name if not specified
+		if cliArgs.ControlPlaneImageTag == "" {
+			branch, err := gitBranchName()
+			if err != nil {
+				cli.Error("failed to determine git branch for default tag:", err)
+				os.Exit(1)
+			}
+			cliArgs.ControlPlaneImageTag = branch
 		}
 
 		components := installer.AllControlPlaneComponents()
@@ -164,6 +181,36 @@ var buildCmd = &cobra.Command{
 		// wait for all workers to finish
 		waitGroup.Wait()
 	},
+}
+
+// gitBranchName returns the current git branch name by reading .git/HEAD directly.
+func gitBranchName() (string, error) {
+	// walk up from current directory to find .git/HEAD
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	for {
+		headPath := filepath.Join(dir, ".git", "HEAD")
+		data, err := os.ReadFile(headPath)
+		if err == nil {
+			ref := strings.TrimSpace(string(data))
+			// .git/HEAD contains "ref: refs/heads/<branch>"
+			if strings.HasPrefix(ref, "ref: refs/heads/") {
+				return strings.TrimPrefix(ref, "ref: refs/heads/"), nil
+			}
+			return "", fmt.Errorf("git HEAD is detached or has unexpected format: %s", ref)
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	return "", fmt.Errorf("not inside a git repository")
 }
 
 func init() {

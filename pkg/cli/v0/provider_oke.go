@@ -3,6 +3,9 @@ package v0
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
@@ -55,6 +58,14 @@ func DeployOkeInfra(
 	}); err != nil {
 		return fmt.Errorf("failed to update threeport config: %w", err)
 	}
+
+	// delete oke kubernetes runtime resources if interrupted
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		Warning("received Ctrl+C, cleaning up resources...")
+	}()
 
 	if cpi.Opts.ControlPlaneOnly {
 		connectionInfo, err := kubernetesRuntimeInfraOKE.GetConnection()

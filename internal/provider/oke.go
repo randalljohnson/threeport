@@ -1248,7 +1248,12 @@ func (i *KubernetesRuntimeInfraOKE) createOCIUserAndCredentials() error {
 
 // DeletePulumiStackState deletes the Pulumi stack state directory.
 func (i *KubernetesRuntimeInfraOKE) DeletePulumiStackState() error {
-	stateDir := filepath.Join(os.TempDir(), "threeport-pulumi", i.getStackName())
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	stateDir := filepath.Join(homeDir, ".threeport", "pulumi-state", i.RuntimeInstanceName)
 	if _, err := os.Stat(stateDir); os.IsNotExist(err) {
 		return nil // directory doesn't exist, nothing to delete
 	}

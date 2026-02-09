@@ -33,6 +33,8 @@ var UpCmd = &cobra.Command{
 		switch cliArgs.InfraProvider {
 		case v0.KubernetesRuntimeInfraProviderEKS:
 			cmd.MarkFlagRequired("aws-region")
+		case v0.KubernetesRuntimeInfraProviderOKE:
+			cmd.MarkFlagRequired("oci-region")
 		}
 
 	},

@@ -315,16 +315,6 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 					Source:    pulumi.String(publicSubnetCidrBlock),
 					Stateless: pulumi.Bool(false),
 				},
-				// allow SSH from anywhere
-				&core.SecurityListIngressSecurityRuleArgs{
-					Protocol: pulumi.String("6"), // TCP
-					Source:   pulumi.String("0.0.0.0/0"),
-					TcpOptions: &core.SecurityListIngressSecurityRuleTcpOptionsArgs{
-						Max: pulumi.Int(22),
-						Min: pulumi.Int(22),
-					},
-					Stateless: pulumi.Bool(false),
-				},
 				// allow all traffic from load balancer subnet
 				&core.SecurityListIngressSecurityRuleArgs{
 					Protocol:  pulumi.String("all"),

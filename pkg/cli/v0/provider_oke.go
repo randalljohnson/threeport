@@ -129,7 +129,7 @@ func ConfigureControlPlaneWithOkeConfig(
 		&ociOkeKubernetesRuntimeDef,
 	)
 	if err != nil {
-		return uninstaller.cleanOnCreateError("failed to create new OCI OKEkubernetes runtime definition for control plane cluster", err)
+		return uninstaller.cleanOnCreateError("failed to create new OCI OKE kubernetes runtime definition for control plane cluster", err)
 	}
 
 	okeRuntimeInstName := provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName)
@@ -163,7 +163,7 @@ func ConfigureControlPlaneWithOkeConfig(
 		&ociOkeKubernetesRuntimeInstance,
 	)
 	if err != nil {
-		return uninstaller.cleanOnCreateError("failed to create new OCI OKEkubernetes runtime instance for control plane cluster", err)
+		return uninstaller.cleanOnCreateError("failed to create new OCI OKE kubernetes runtime instance for control plane cluster", err)
 	}
 	return nil
 }

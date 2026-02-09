@@ -919,21 +919,26 @@ func (i *KubernetesRuntimeInfraOKE) getOKEWorkerNodeImageOCID() (string, error) 
 		return "", fmt.Errorf("no OKE worker node images found")
 	}
 
-	// find an image with the specified Kubernetes version
+	// determine image architecture from node shape
+	arch := "x86_64"
+	if strings.Contains(i.WorkerNodeShape, ".A1.") {
+		arch = "aarch64"
+	}
+
+	// find an image with the specified Kubernetes version and architecture
+	versionWithoutV := strings.TrimPrefix(i.Version, "v")
 	for _, source := range response.Sources {
 		// try to get the concrete type
 		if sourceType, ok := source.(ocicontainerengine.NodeSourceViaImageOption); ok {
 			name := *sourceType.SourceName
-			// remove leading 'v' from version for image search
-			versionWithoutV := strings.TrimPrefix(i.Version, "v")
 			if strings.Contains(name, fmt.Sprintf("OKE-%s", versionWithoutV)) &&
-				strings.Contains(name, "aarch64") {
+				strings.Contains(name, arch) {
 				return *sourceType.ImageId, nil
 			}
 		}
 	}
 
-	return "", fmt.Errorf("no suitable OKE worker node images found with aarch64 architecture and Kubernetes version %s", i.Version)
+	return "", fmt.Errorf("no suitable OKE worker node images found with %s architecture and Kubernetes version %s", arch, i.Version)
 }
 
 // getHomeRegion queries OCI to get the tenancy's home region for IAM operations.

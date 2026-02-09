@@ -554,7 +554,6 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{cluster}))
 		if err != nil {
-			fmt.Printf("Failed to create node pool: %v\n", err)
 			return fmt.Errorf("failed to create node pool: %w", err)
 		}
 		return nil

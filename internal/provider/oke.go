@@ -73,9 +73,9 @@ type KubernetesRuntimeInfraOKE struct {
 
 // Create installs a Kubernetes cluster using Oracle Cloud OKE for threeport workloads.
 func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
-	// create compartment for this threeport instance
+	// create OCI user and credentials for this threeport instance
 	if err := i.createOCIUserAndCredentials(); err != nil {
-		return nil, fmt.Errorf("failed to create compartment: %w", err)
+		return nil, fmt.Errorf("failed to create OCI user and credentials: %w", err)
 	}
 
 	// set up Pulumi workspace and get stack

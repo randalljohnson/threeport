@@ -1127,6 +1127,16 @@ func (u *Uninstaller) cleanOnCreateError(
 		if err := os.Remove(invFile); err != nil {
 			Warning(fmt.Sprintf("failed to remove inventory file %s", invFile))
 		}
+	case v0.KubernetesRuntimeInfraProviderOKE:
+		Info("Deleting Threeport OCI IAM resources")
+		kubernetesRuntimeInfraOKE := u.kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE)
+		if err := kubernetesRuntimeInfraOKE.DeleteOCIResources(); err != nil {
+			Warning(fmt.Sprintf("failed to delete OCI IAM resources: %v", err))
+		}
+		if err := kubernetesRuntimeInfraOKE.DeletePulumiStackState(); err != nil {
+			Warning(fmt.Sprintf("failed to delete Pulumi stack state: %v", err))
+		}
+		Info("Threeport OCI IAM resources deleted")
 	}
 
 	// remove control plane from Threeport config

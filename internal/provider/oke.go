@@ -1117,7 +1117,18 @@ func (i *KubernetesRuntimeInfraOKE) SetStackState(state *datatypes.JSON) error {
 // setPulumiEnvVars sets the environment variables for Pulumi
 func (i *KubernetesRuntimeInfraOKE) setPulumiEnvVars() error {
 	os.Setenv("PULUMI_BACKEND_URL", "file://"+i.stateDir)
-	os.Setenv("PULUMI_HOME", i.stateDir)
+
+	// set PULUMI_HOME to a shared location so the OCI provider plugin is
+	// downloaded once and reused across stacks
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+	pulumiHome := filepath.Join(userHome, ".threeport", "pulumi-home")
+	if err := os.MkdirAll(pulumiHome, 0755); err != nil {
+		return fmt.Errorf("failed to create pulumi home directory: %w", err)
+	}
+	os.Setenv("PULUMI_HOME", pulumiHome)
 	os.Setenv("PULUMI_ORGANIZATION", "organization") // TODO: update these?
 	os.Setenv("PULUMI_PROJECT", "oke")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "threeport")
@@ -1125,13 +1136,8 @@ func (i *KubernetesRuntimeInfraOKE) setPulumiEnvVars() error {
 	// ignore plugins found in PATH to ensure version consistency
 	os.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
 
-	// set plugin path to the default location
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-	defaultPluginPath := filepath.Join(userHomeDir, ".pulumi", "plugins")
-	os.Setenv("PULUMI_PLUGIN_PATH", defaultPluginPath)
+	// set plugin path to shared pulumi home so downloaded plugins are reused
+	os.Setenv("PULUMI_PLUGIN_PATH", filepath.Join(pulumiHome, "plugins"))
 
 	return nil
 }

@@ -1,5 +1,3 @@
-./bin/tptctl down --name oke-test --infra-only
-
 # Build Commands
 **IMPORTANT**: Use mage for building tptctl, NOT go build
 ```bash
@@ -8,9 +6,6 @@ mage build:tptctl
 
 # NOT: go build ./...
 ```
-
-# OKE Testing Command (from launch.json)
-go run cmd/tptctl/main.go up --provider=oke --name=oke-test-9 --oci-region=us-ashburn-1 --oci-config-profile=DEFAULT --force-overwrite-config -r rj9317 -t add-oci-install-guide
 
 # Threeport Code Conventions
 
@@ -360,8 +355,3 @@ Recommendation: Update Pulumi CLI and SDK first - version mismatches often cause
 
 **Why This Matters**: Many debugging issues (especially marshaling errors, nil pointers, and compatibility problems) are caused by version mismatches between external dependencies. Always rule out version issues before deep-diving into code analysis.
 
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

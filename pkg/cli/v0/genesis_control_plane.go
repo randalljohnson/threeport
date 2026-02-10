@@ -1069,9 +1069,10 @@ func (u *Uninstaller) cleanOnCreateError(
 ) error {
 
 	if createErrMsg != "" {
-		// print the error when it happens and then again post-deletion
-		Error(createErrMsg, createErr)
-		createErr = fmt.Errorf("%s: %w", createErrMsg, createErr)
+		// print a brief message — full error details are already visible
+		// in the provider output above
+		Warning(fmt.Sprintf("%s, cleaning up resources...", createErrMsg))
+		createErr = fmt.Errorf("%s", createErrMsg)
 	}
 
 	// if skipTeardown is set, return error without tearing down infras

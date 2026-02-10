@@ -34,6 +34,16 @@ const DefaultOKEKubernetesVersion = "v1.32.1"
 // ociPluginVersion must match github.com/pulumi/pulumi-oci/sdk version in go.mod
 const ociPluginVersion = "3.9.0"
 
+// network CIDR blocks for OKE cluster networking
+const (
+	vcnCidrBlock                = "10.0.0.0/16"
+	publicSubnetCidrBlock       = "10.0.0.0/28"
+	privateSubnetCidrBlock      = "10.0.10.0/24"
+	loadBalancerSubnetCidrBlock = "10.0.20.0/24"
+	podsCidrBlock               = "10.244.0.0/16"
+	servicesCidrBlock           = "10.96.0.0/16"
+)
+
 // KubernetesRuntimeInfraOKE represents the infrastructure for a threeport-managed OKE
 // (Oracle Kubernetes Engine) cluster.
 type KubernetesRuntimeInfraOKE struct {
@@ -102,7 +112,7 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 		// create VCN for the cluster
 		vcn, err := core.NewVcn(ctx, fmt.Sprintf("%s-vcn", i.RuntimeInstanceName), &core.VcnArgs{
 			CompartmentId: pulumi.String(i.CompartmentOCID),
-			CidrBlock:     pulumi.String("10.0.0.0/16"),
+			CidrBlock:     pulumi.String(vcnCidrBlock),
 			DisplayName:   pulumi.String(fmt.Sprintf("%s-vcn", i.RuntimeInstanceName)),
 			DnsLabel:      pulumi.String(createDNSLabel(i.RuntimeInstanceName)),
 			IsIpv6enabled: pulumi.Bool(false),
@@ -201,9 +211,7 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 		}
 
 		// define subnets to be used by security lists, cluster, and load balancer
-		publicSubnetCidrBlock := "10.0.0.0/28"
-		privateSubnetCidrBlock := "10.0.10.0/24"
-		loadBalancerSubnetCidrBlock := "10.0.20.0/24"
+		// subnet CIDR blocks are defined as package-level constants
 
 		// create security list for public subnet
 		publicSecList, err := core.NewSecurityList(ctx, fmt.Sprintf("%s-public-seclist", i.RuntimeInstanceName), &core.SecurityListArgs{
@@ -495,8 +503,8 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 			},
 			Options: &containerengine.ClusterOptionsArgs{
 				KubernetesNetworkConfig: &containerengine.ClusterOptionsKubernetesNetworkConfigArgs{
-					PodsCidr:     pulumi.String("10.244.0.0/16"),
-					ServicesCidr: pulumi.String("10.96.0.0/16"),
+					PodsCidr:     pulumi.String(podsCidrBlock),
+					ServicesCidr: pulumi.String(servicesCidrBlock),
 				},
 				ServiceLbSubnetIds: pulumi.StringArray{loadBalancerSubnet.ID()},
 			},
@@ -1129,9 +1137,8 @@ func (i *KubernetesRuntimeInfraOKE) setPulumiEnvVars() error {
 		return fmt.Errorf("failed to create pulumi home directory: %w", err)
 	}
 	os.Setenv("PULUMI_HOME", pulumiHome)
-	os.Setenv("PULUMI_ORGANIZATION", "organization") // TODO: update these?
 	os.Setenv("PULUMI_PROJECT", "oke")
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "threeport")
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 
 	// ignore plugins found in PATH to ensure version consistency
 	os.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
@@ -1161,7 +1168,7 @@ func (i *KubernetesRuntimeInfraOKE) setStateDir() error {
 
 // getStackName returns the name of the OKE stack
 func (i *KubernetesRuntimeInfraOKE) getStackName() string {
-	return fmt.Sprintf("organization/oke/%s", i.RuntimeInstanceName)
+	return i.RuntimeInstanceName
 }
 
 // createOCIUserAndCredentials creates a new compartment and sets up complete OCI user/group

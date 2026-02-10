@@ -50,7 +50,7 @@ const (
 
 	// propagationSuccessDelay is the wait time between consecutive successes
 	// during the convergence check.
-	propagationSuccessDelay = 1 * time.Second
+	propagationSuccessDelay = 2 * time.Second
 )
 
 // propagationService defines a single OCI service to validate for credential propagation.

@@ -78,11 +78,13 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		// declare flag vars
 		nameVar := fmt.Sprintf("%sName", apiObjGroup.ControllerDomainLower)
 		configPathVar := fmt.Sprintf("%sConfigPath", apiObjGroup.ControllerDomainLower)
+		stdinVar := fmt.Sprintf("%sStdin", apiObjGroup.ControllerDomainLower)
 		versionVar := fmt.Sprintf("%sVersion", apiObjGroup.ControllerDomainLower)
 		outputVar := fmt.Sprintf("%sOutput", apiObjGroup.ControllerDomainLower)
 		commandCode.Var().Defs(
 			Id(nameVar).String(),
 			Id(configPathVar).String(),
+			Id(stdinVar).Bool(),
 			Id(versionVar).String(),
 			Id(outputVar).String(),
 		)
@@ -223,14 +225,17 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											fmt.Sprintf("%s%s", configImportPath, version),
 											objectConfigObj,
 										).Values(),
-										If(Id(configPathVar).Op("!=").Lit("")).Block(
-											Id("configContent").Op(",").Err().Op(":=").Qual("os", "ReadFile").Call(
-												Id(configPathVar),
+										If(Id(configPathVar).Op("!=").Lit("").Op("||").Id(stdinVar)).Block(
+											Id("configContent").Op(",").Err().Op(":=").Qual("github.com/threeport/threeport/pkg/cli/v0", "ReadConfigContent").Call(
+												Id(configPathVar), Id(stdinVar),
 											),
 											If(Err().Op("!=").Nil()).Block(
 												Qual("github.com/threeport/threeport/pkg/cli/v0", "Error").Call(
-													Lit("failed to read config file"), Err()),
+													Lit("failed to read config"), Err()),
 												Qual("os", "Exit").Call(Lit(1)),
+											),
+											If(Id(stdinVar)).Block(
+												Id(configPathVar).Op("=").Lit("."),
 											),
 											If(Err().Op(":=").Qual("gopkg.in/yaml.v2", "UnmarshalStrict").Call(
 												Id("configContent"), Op("&").Id(fmt.Sprintf("%sConfig", rootObjectVar)),
@@ -447,15 +452,18 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								"read %s config",
 								rootCmdStrHuman,
 							))
-							g.Id("configContent").Op(",").Err().Op(":=").Qual("os", "ReadFile").Call(
-								Id(configPathVar),
+							g.Id("configContent").Op(",").Err().Op(":=").Qual("github.com/threeport/threeport/pkg/cli/v0", "ReadConfigContent").Call(
+								Id(configPathVar), Id(stdinVar),
 							)
 							g.If(Err().Op("!=").Nil()).Block(
 								Qual(
 									"github.com/threeport/threeport/pkg/cli/v0",
 									"Error",
-								).Call(Lit("failed to read config file"), Err()),
+								).Call(Lit("failed to read config"), Err()),
 								Qual("os", "Exit").Call(Lit(1)),
+							)
+							g.If(Id(stdinVar)).Block(
+								Id(configPathVar).Op("=").Lit("."),
 							)
 							g.Line()
 							g.Comment(fmt.Sprintf("create %s based on version", rootCmdStrHuman))
@@ -559,7 +567,13 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)),
 							Line(),
 						),
-						Id(createCmdVar).Dot("MarkFlagRequired").Call(Lit("config")),
+						Id(createCmdVar).Dot("Flags").Call().Dot("BoolVar").Call(
+						Line().Op("&").Id(stdinVar),
+						Line().Lit("stdin"),
+						Lit(false),
+						Lit("Read config from stdin instead of file."),
+						Line(),
+					),
 						Id(createCmdVar).Dot("Flags").Call().Dot("StringVarP").Call(
 							Line().Op("&").Id("cliArgs").Dot("ControlPlaneName"),
 							Line().Lit("control-plane-name"),
@@ -656,13 +670,16 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							g.List(
 								Id("configContent"),
 								Err(),
-							).Op(":=").Qual("os", "ReadFile").Call(Id(configPathVar))
+							).Op(":=").Qual("github.com/threeport/threeport/pkg/cli/v0", "ReadConfigContent").Call(Id(configPathVar), Id(stdinVar))
 							g.If(Err().Op("!=").Nil()).Block(
 								Qual(
 									"github.com/threeport/threeport/pkg/cli/v0",
 									"Error",
-								).Call(Lit("failed to read config file"), Err()),
+								).Call(Lit("failed to read config"), Err()),
 								Qual("os", "Exit").Call(Lit(1)),
+							)
+							g.If(Id(stdinVar)).Block(
+								Id(configPathVar).Op("=").Lit("."),
 							)
 							g.Line()
 							g.Comment(fmt.Sprintf("delete %s based on version", rootCmdStrHuman))
@@ -881,14 +898,17 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										fmt.Sprintf("%s%s", configImportPath, version),
 										objectConfigObj,
 									).Values(),
-									If(Id(configPathVar).Op("!=").Lit("")).Block(
-										Id("configContent").Op(",").Err().Op(":=").Qual("os", "ReadFile").Call(
-											Id(configPathVar),
+									If(Id(configPathVar).Op("!=").Lit("").Op("||").Id(stdinVar)).Block(
+										Id("configContent").Op(",").Err().Op(":=").Qual("github.com/threeport/threeport/pkg/cli/v0", "ReadConfigContent").Call(
+											Id(configPathVar), Id(stdinVar),
 										),
 										If(Err().Op("!=").Nil()).Block(
 											Qual("github.com/threeport/threeport/pkg/cli/v0", "Error").Call(
-												Lit("failed to read config file"), Err()),
+												Lit("failed to read config"), Err()),
 											Qual("os", "Exit").Call(Lit(1)),
+										),
+										If(Id(stdinVar)).Block(
+											Id(configPathVar).Op("=").Lit("."),
 										),
 										If(Err().Op(":=").Qual("gopkg.in/yaml.v2", "UnmarshalStrict").Call(
 											Id("configContent"), Op("&").Id(fmt.Sprintf("%sConfig", objectVar)),
@@ -1127,15 +1147,18 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							"read %s config",
 							cmdStrHuman,
 						))
-						g.Id("configContent").Op(",").Err().Op(":=").Qual("os", "ReadFile").Call(
-							Id(configPathVar),
+						g.Id("configContent").Op(",").Err().Op(":=").Qual("github.com/threeport/threeport/pkg/cli/v0", "ReadConfigContent").Call(
+							Id(configPathVar), Id(stdinVar),
 						)
 						g.If(Err().Op("!=").Nil()).Block(
 							Qual(
 								"github.com/threeport/threeport/pkg/cli/v0",
 								"Error",
-							).Call(Lit("failed to read config file"), Err()),
+							).Call(Lit("failed to read config"), Err()),
 							Qual("os", "Exit").Call(Lit(1)),
+						)
+						g.If(Id(stdinVar)).Block(
+							Id(configPathVar).Op("=").Lit("."),
 						)
 						g.Comment(fmt.Sprintf("create %s based on version", cmdStrHuman))
 						g.Switch().Id(versionVar).BlockFunc(func(h *Group) {
@@ -1214,7 +1237,13 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						)),
 						Line(),
 					),
-					Id(createCmdVar).Dot("MarkFlagRequired").Call(Lit("config")),
+					Id(createCmdVar).Dot("Flags").Call().Dot("BoolVar").Call(
+						Line().Op("&").Id(stdinVar),
+						Line().Lit("stdin"),
+						Lit(false),
+						Lit("Read config from stdin instead of file."),
+						Line(),
+					),
 					Id(createCmdVar).Dot("Flags").Call().Dot("StringVarP").Call(
 						Line().Op("&").Id("cliArgs").Dot("ControlPlaneName"),
 						Line().Lit("control-plane-name"),
@@ -1303,13 +1332,16 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Id("configContent"),
 										Err(),
-									).Op(":=").Qual("os", "ReadFile").Call(Id(configPathVar)),
+									).Op(":=").Qual("github.com/threeport/threeport/pkg/cli/v0", "ReadConfigContent").Call(Id(configPathVar), Id(stdinVar)),
 									If(Err().Op("!=").Nil()).Block(
 										Qual(
 											"github.com/threeport/threeport/pkg/cli/v0",
 											"Error",
-										).Call(Lit("failed to read config file"), Err()),
+										).Call(Lit("failed to read config"), Err()),
 										Qual("os", "Exit").Call(Lit(1)),
+									),
+									If(Id(stdinVar)).Block(
+										Id(configPathVar).Op("=").Lit("."),
 									),
 									If(Err().Op(":=").Qual(
 										"gopkg.in/yaml.v2",
@@ -1380,7 +1412,13 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Lit(fmt.Sprintf("Path to file with %s config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.", cmdStrHuman)),
 						Line(),
 					),
-					Id(replaceCmdVar).Dot("MarkFlagRequired").Call(Lit("config")),
+					Id(replaceCmdVar).Dot("Flags").Call().Dot("BoolVar").Call(
+						Line().Op("&").Id(stdinVar),
+						Line().Lit("stdin"),
+						Lit(false),
+						Lit("Read config from stdin instead of file."),
+						Line(),
+					),
 					Id(replaceCmdVar).Dot("Flags").Call().Dot("StringVarP").Call(
 						Line().Op("&").Id(nameVar),
 						Line().Lit("name"),
@@ -1494,7 +1532,7 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										fmt.Sprintf("%s%s", configImportPath, version),
 										objectConfigObj,
 									),
-									If(Id(configPathVar).Op("!=").Lit("")).Block(
+									If(Id(configPathVar).Op("!=").Lit("").Op("||").Id(stdinVar)).Block(
 										Comment(fmt.Sprintf(
 											"load %s config",
 											cmdStrHuman,
@@ -1502,13 +1540,16 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										List(
 											Id("configContent"),
 											Err(),
-										).Op(":=").Qual("os", "ReadFile").Call(Id(configPathVar)),
+										).Op(":=").Qual("github.com/threeport/threeport/pkg/cli/v0", "ReadConfigContent").Call(Id(configPathVar), Id(stdinVar)),
 										If(Err().Op("!=").Nil()).Block(
 											Qual(
 												"github.com/threeport/threeport/pkg/cli/v0",
 												"Error",
-											).Call(Lit("failed to read config file"), Err()),
+											).Call(Lit("failed to read config"), Err()),
 											Qual("os", "Exit").Call(Lit(1)),
+										),
+										If(Id(stdinVar)).Block(
+											Id(configPathVar).Op("=").Lit("."),
 										),
 										If(Err().Op(":=").Qual(
 											"gopkg.in/yaml.v2",

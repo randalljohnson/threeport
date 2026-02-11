@@ -74,6 +74,6 @@ type OciOkeKubernetesRuntimeInstance struct {
 	// The kubernetes runtime instance associated with the OCI OKE cluster.
 	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
 
-	// The OCID for the OKE cluster.
-	ClusterOCID *string `json:"ClusterOCID,omitempty" query:"clusterocid" gorm:"not null" validate:"required"`
+	// The OCID for the OKE cluster. Populated by the controller after cluster creation.
+	ClusterOCID *string `json:"ClusterOCID,omitempty" query:"clusterocid" validate:"optional"`
 }

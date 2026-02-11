@@ -16,6 +16,7 @@ import (
 var (
 	helmWorkloadName       string
 	helmWorkloadConfigPath string
+	helmWorkloadStdin  bool
 	helmWorkloadVersion    string
 	helmWorkloadOutput     string
 )
@@ -49,10 +50,13 @@ var GetHelmWorkloadsCmd = &cobra.Command{
 			// load helm workload values
 			helmWorkloadConfig := config_v0.HelmWorkloadConfig{}
 			if helmWorkloadConfigPath != "" {
-				configContent, err := os.ReadFile(helmWorkloadConfigPath)
+				configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if helmWorkloadStdin {
+					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -147,10 +151,13 @@ var CreateHelmWorkloadCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read helm workload config
-		configContent, err := os.ReadFile(helmWorkloadConfigPath)
+		configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if helmWorkloadStdin {
+			helmWorkloadConfigPath = "."
 		}
 
 		// create helm workload based on version
@@ -199,7 +206,10 @@ func init() {
 		&helmWorkloadConfigPath,
 		"config", "c", "", "Path to file with helm workload config.",
 	)
-	CreateHelmWorkloadCmd.MarkFlagRequired("config")
+	CreateHelmWorkloadCmd.Flags().BoolVar(
+		&helmWorkloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateHelmWorkloadCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -224,10 +234,13 @@ var DeleteHelmWorkloadCmd = &cobra.Command{
 		}
 
 		// read helm workload config
-		configContent, err := os.ReadFile(helmWorkloadConfigPath)
+		configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if helmWorkloadStdin {
+			helmWorkloadConfigPath = "."
 		}
 
 		// delete helm workload based on version
@@ -305,10 +318,13 @@ var GetHelmWorkloadDefinitionsCmd = &cobra.Command{
 			// load values
 			helmWorkloadDefinitionConfig := config_v0.HelmWorkloadDefinitionConfig{}
 			if helmWorkloadConfigPath != "" {
-				configContent, err := os.ReadFile(helmWorkloadConfigPath)
+				configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if helmWorkloadStdin {
+					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -403,10 +419,13 @@ var CreateHelmWorkloadDefinitionCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read helm workload definition config
-		configContent, err := os.ReadFile(helmWorkloadConfigPath)
+		configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if helmWorkloadStdin {
+			helmWorkloadConfigPath = "."
 		}
 		// create helm workload definition based on version
 		switch helmWorkloadVersion {
@@ -443,7 +462,10 @@ func init() {
 		&helmWorkloadConfigPath,
 		"config", "c", "", "Path to file with helm workload definition config.",
 	)
-	CreateHelmWorkloadDefinitionCmd.MarkFlagRequired("config")
+	CreateHelmWorkloadDefinitionCmd.Flags().BoolVar(
+		&helmWorkloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateHelmWorkloadDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -467,10 +489,13 @@ var ReplaceHelmWorkloadDefinitionCmd = &cobra.Command{
 		case "v0":
 			var helmWorkloadDefinitionConfig config_v0.HelmWorkloadDefinitionConfig
 			// load helm workload definition config
-			configContent, err := os.ReadFile(helmWorkloadConfigPath)
+			configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if helmWorkloadStdin {
+				helmWorkloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &helmWorkloadDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -503,7 +528,10 @@ func init() {
 		&helmWorkloadConfigPath,
 		"config", "c", "", "Path to file with helm workload definition config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceHelmWorkloadDefinitionCmd.MarkFlagRequired("config")
+	ReplaceHelmWorkloadDefinitionCmd.Flags().BoolVar(
+		&helmWorkloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceHelmWorkloadDefinitionCmd.Flags().StringVarP(
 		&helmWorkloadName,
 		"name", "n", "", "Name of existing helm workload definition to replace.  If the name in the helm workload definition config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -543,10 +571,13 @@ var DeleteHelmWorkloadDefinitionCmd = &cobra.Command{
 			var helmWorkloadDefinitionConfig config_v0.HelmWorkloadDefinitionConfig
 			if helmWorkloadConfigPath != "" {
 				// load helm workload definition config
-				configContent, err := os.ReadFile(helmWorkloadConfigPath)
+				configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if helmWorkloadStdin {
+					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -628,10 +659,13 @@ var GetHelmWorkloadInstancesCmd = &cobra.Command{
 			// load values
 			helmWorkloadInstanceConfig := config_v0.HelmWorkloadInstanceConfig{}
 			if helmWorkloadConfigPath != "" {
-				configContent, err := os.ReadFile(helmWorkloadConfigPath)
+				configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if helmWorkloadStdin {
+					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -726,10 +760,13 @@ var CreateHelmWorkloadInstanceCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read helm workload instance config
-		configContent, err := os.ReadFile(helmWorkloadConfigPath)
+		configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if helmWorkloadStdin {
+			helmWorkloadConfigPath = "."
 		}
 		// create helm workload instance based on version
 		switch helmWorkloadVersion {
@@ -766,7 +803,10 @@ func init() {
 		&helmWorkloadConfigPath,
 		"config", "c", "", "Path to file with helm workload instance config.",
 	)
-	CreateHelmWorkloadInstanceCmd.MarkFlagRequired("config")
+	CreateHelmWorkloadInstanceCmd.Flags().BoolVar(
+		&helmWorkloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateHelmWorkloadInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -790,10 +830,13 @@ var ReplaceHelmWorkloadInstanceCmd = &cobra.Command{
 		case "v0":
 			var helmWorkloadInstanceConfig config_v0.HelmWorkloadInstanceConfig
 			// load helm workload instance config
-			configContent, err := os.ReadFile(helmWorkloadConfigPath)
+			configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if helmWorkloadStdin {
+				helmWorkloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &helmWorkloadInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -826,7 +869,10 @@ func init() {
 		&helmWorkloadConfigPath,
 		"config", "c", "", "Path to file with helm workload instance config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceHelmWorkloadInstanceCmd.MarkFlagRequired("config")
+	ReplaceHelmWorkloadInstanceCmd.Flags().BoolVar(
+		&helmWorkloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceHelmWorkloadInstanceCmd.Flags().StringVarP(
 		&helmWorkloadName,
 		"name", "n", "", "Name of existing helm workload instance to replace.  If the name in the helm workload instance config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -866,10 +912,13 @@ var DeleteHelmWorkloadInstanceCmd = &cobra.Command{
 			var helmWorkloadInstanceConfig config_v0.HelmWorkloadInstanceConfig
 			if helmWorkloadConfigPath != "" {
 				// load helm workload instance config
-				configContent, err := os.ReadFile(helmWorkloadConfigPath)
+				configContent, err := cli.ReadConfigContent(helmWorkloadConfigPath, helmWorkloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if helmWorkloadStdin {
+					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

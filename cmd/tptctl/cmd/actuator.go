@@ -16,6 +16,7 @@ import (
 var (
 	actuatorName       string
 	actuatorConfigPath string
+	actuatorStdin  bool
 	actuatorVersion    string
 	actuatorOutput     string
 )
@@ -48,10 +49,13 @@ var GetProfilesCmd = &cobra.Command{
 			// load values
 			profileConfig := config_v0.ProfileConfig{}
 			if actuatorConfigPath != "" {
-				configContent, err := os.ReadFile(actuatorConfigPath)
+				configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if actuatorStdin {
+					actuatorConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &profileConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -146,10 +150,13 @@ var CreateProfileCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read profile config
-		configContent, err := os.ReadFile(actuatorConfigPath)
+		configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if actuatorStdin {
+			actuatorConfigPath = "."
 		}
 		// create profile based on version
 		switch actuatorVersion {
@@ -185,7 +192,10 @@ func init() {
 		&actuatorConfigPath,
 		"config", "c", "", "Path to file with profile config.",
 	)
-	CreateProfileCmd.MarkFlagRequired("config")
+	CreateProfileCmd.Flags().BoolVar(
+		&actuatorStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateProfileCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -209,10 +219,13 @@ var ReplaceProfileCmd = &cobra.Command{
 		case "v0":
 			var profileConfig config_v0.ProfileConfig
 			// load profile config
-			configContent, err := os.ReadFile(actuatorConfigPath)
+			configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if actuatorStdin {
+				actuatorConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &profileConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -244,7 +257,10 @@ func init() {
 		&actuatorConfigPath,
 		"config", "c", "", "Path to file with profile config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceProfileCmd.MarkFlagRequired("config")
+	ReplaceProfileCmd.Flags().BoolVar(
+		&actuatorStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceProfileCmd.Flags().StringVarP(
 		&actuatorName,
 		"name", "n", "", "Name of existing profile to replace.  If the name in the profile config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -284,10 +300,13 @@ var DeleteProfileCmd = &cobra.Command{
 			var profileConfig config_v0.ProfileConfig
 			if actuatorConfigPath != "" {
 				// load profile config
-				configContent, err := os.ReadFile(actuatorConfigPath)
+				configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if actuatorStdin {
+					actuatorConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &profileConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -368,10 +387,13 @@ var GetTiersCmd = &cobra.Command{
 			// load values
 			tierConfig := config_v0.TierConfig{}
 			if actuatorConfigPath != "" {
-				configContent, err := os.ReadFile(actuatorConfigPath)
+				configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if actuatorStdin {
+					actuatorConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &tierConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -466,10 +488,13 @@ var CreateTierCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read tier config
-		configContent, err := os.ReadFile(actuatorConfigPath)
+		configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if actuatorStdin {
+			actuatorConfigPath = "."
 		}
 		// create tier based on version
 		switch actuatorVersion {
@@ -505,7 +530,10 @@ func init() {
 		&actuatorConfigPath,
 		"config", "c", "", "Path to file with tier config.",
 	)
-	CreateTierCmd.MarkFlagRequired("config")
+	CreateTierCmd.Flags().BoolVar(
+		&actuatorStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateTierCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -529,10 +557,13 @@ var ReplaceTierCmd = &cobra.Command{
 		case "v0":
 			var tierConfig config_v0.TierConfig
 			// load tier config
-			configContent, err := os.ReadFile(actuatorConfigPath)
+			configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if actuatorStdin {
+				actuatorConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &tierConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -564,7 +595,10 @@ func init() {
 		&actuatorConfigPath,
 		"config", "c", "", "Path to file with tier config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceTierCmd.MarkFlagRequired("config")
+	ReplaceTierCmd.Flags().BoolVar(
+		&actuatorStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceTierCmd.Flags().StringVarP(
 		&actuatorName,
 		"name", "n", "", "Name of existing tier to replace.  If the name in the tier config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -604,10 +638,13 @@ var DeleteTierCmd = &cobra.Command{
 			var tierConfig config_v0.TierConfig
 			if actuatorConfigPath != "" {
 				// load tier config
-				configContent, err := os.ReadFile(actuatorConfigPath)
+				configContent, err := cli.ReadConfigContent(actuatorConfigPath, actuatorStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if actuatorStdin {
+					actuatorConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &tierConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

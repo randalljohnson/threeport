@@ -16,6 +16,7 @@ import (
 var (
 	workloadName       string
 	workloadConfigPath string
+	workloadStdin  bool
 	workloadVersion    string
 	workloadOutput     string
 )
@@ -49,10 +50,13 @@ var GetWorkloadsCmd = &cobra.Command{
 			// load workload values
 			workloadConfig := config_v0.WorkloadConfig{}
 			if workloadConfigPath != "" {
-				configContent, err := os.ReadFile(workloadConfigPath)
+				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if workloadStdin {
+					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -147,10 +151,13 @@ var CreateWorkloadCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read workload config
-		configContent, err := os.ReadFile(workloadConfigPath)
+		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if workloadStdin {
+			workloadConfigPath = "."
 		}
 
 		// create workload based on version
@@ -199,7 +206,10 @@ func init() {
 		&workloadConfigPath,
 		"config", "c", "", "Path to file with workload config.",
 	)
-	CreateWorkloadCmd.MarkFlagRequired("config")
+	CreateWorkloadCmd.Flags().BoolVar(
+		&workloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateWorkloadCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -224,10 +234,13 @@ var DeleteWorkloadCmd = &cobra.Command{
 		}
 
 		// read workload config
-		configContent, err := os.ReadFile(workloadConfigPath)
+		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if workloadStdin {
+			workloadConfigPath = "."
 		}
 
 		// delete workload based on version
@@ -305,10 +318,13 @@ var GetWorkloadDefinitionsCmd = &cobra.Command{
 			// load values
 			workloadDefinitionConfig := config_v0.WorkloadDefinitionConfig{}
 			if workloadConfigPath != "" {
-				configContent, err := os.ReadFile(workloadConfigPath)
+				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if workloadStdin {
+					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -403,10 +419,13 @@ var CreateWorkloadDefinitionCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read workload definition config
-		configContent, err := os.ReadFile(workloadConfigPath)
+		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if workloadStdin {
+			workloadConfigPath = "."
 		}
 		// create workload definition based on version
 		switch workloadVersion {
@@ -443,7 +462,10 @@ func init() {
 		&workloadConfigPath,
 		"config", "c", "", "Path to file with workload definition config.",
 	)
-	CreateWorkloadDefinitionCmd.MarkFlagRequired("config")
+	CreateWorkloadDefinitionCmd.Flags().BoolVar(
+		&workloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateWorkloadDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -467,10 +489,13 @@ var ReplaceWorkloadDefinitionCmd = &cobra.Command{
 		case "v0":
 			var workloadDefinitionConfig config_v0.WorkloadDefinitionConfig
 			// load workload definition config
-			configContent, err := os.ReadFile(workloadConfigPath)
+			configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if workloadStdin {
+				workloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -503,7 +528,10 @@ func init() {
 		&workloadConfigPath,
 		"config", "c", "", "Path to file with workload definition config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceWorkloadDefinitionCmd.MarkFlagRequired("config")
+	ReplaceWorkloadDefinitionCmd.Flags().BoolVar(
+		&workloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceWorkloadDefinitionCmd.Flags().StringVarP(
 		&workloadName,
 		"name", "n", "", "Name of existing workload definition to replace.  If the name in the workload definition config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -543,10 +571,13 @@ var DeleteWorkloadDefinitionCmd = &cobra.Command{
 			var workloadDefinitionConfig config_v0.WorkloadDefinitionConfig
 			if workloadConfigPath != "" {
 				// load workload definition config
-				configContent, err := os.ReadFile(workloadConfigPath)
+				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if workloadStdin {
+					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -628,10 +659,13 @@ var GetWorkloadInstancesCmd = &cobra.Command{
 			// load values
 			workloadInstanceConfig := config_v0.WorkloadInstanceConfig{}
 			if workloadConfigPath != "" {
-				configContent, err := os.ReadFile(workloadConfigPath)
+				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if workloadStdin {
+					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -726,10 +760,13 @@ var CreateWorkloadInstanceCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read workload instance config
-		configContent, err := os.ReadFile(workloadConfigPath)
+		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if workloadStdin {
+			workloadConfigPath = "."
 		}
 		// create workload instance based on version
 		switch workloadVersion {
@@ -765,7 +802,10 @@ func init() {
 		&workloadConfigPath,
 		"config", "c", "", "Path to file with workload instance config.",
 	)
-	CreateWorkloadInstanceCmd.MarkFlagRequired("config")
+	CreateWorkloadInstanceCmd.Flags().BoolVar(
+		&workloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateWorkloadInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -789,10 +829,13 @@ var ReplaceWorkloadInstanceCmd = &cobra.Command{
 		case "v0":
 			var workloadInstanceConfig config_v0.WorkloadInstanceConfig
 			// load workload instance config
-			configContent, err := os.ReadFile(workloadConfigPath)
+			configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if workloadStdin {
+				workloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -824,7 +867,10 @@ func init() {
 		&workloadConfigPath,
 		"config", "c", "", "Path to file with workload instance config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceWorkloadInstanceCmd.MarkFlagRequired("config")
+	ReplaceWorkloadInstanceCmd.Flags().BoolVar(
+		&workloadStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceWorkloadInstanceCmd.Flags().StringVarP(
 		&workloadName,
 		"name", "n", "", "Name of existing workload instance to replace.  If the name in the workload instance config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -864,10 +910,13 @@ var DeleteWorkloadInstanceCmd = &cobra.Command{
 			var workloadInstanceConfig config_v0.WorkloadInstanceConfig
 			if workloadConfigPath != "" {
 				// load workload instance config
-				configContent, err := os.ReadFile(workloadConfigPath)
+				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if workloadStdin {
+					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

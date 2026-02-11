@@ -16,6 +16,7 @@ import (
 var (
 	ociName       string
 	ociConfigPath string
+	ociStdin  bool
 	ociVersion    string
 	ociOutput     string
 	ociDecrypt    bool
@@ -65,10 +66,13 @@ var GetOciAccountsCmd = &cobra.Command{
 			// load values
 			ociAccountConfig := config_v0.OciAccountConfig{}
 			if ociConfigPath != "" {
-				configContent, err := os.ReadFile(ociConfigPath)
+				configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if ociStdin {
+					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociAccountConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -167,10 +171,13 @@ var CreateOciAccountCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read oci account config
-		configContent, err := os.ReadFile(ociConfigPath)
+		configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if ociStdin {
+			ociConfigPath = "."
 		}
 		// create oci account based on version
 		switch ociVersion {
@@ -206,7 +213,10 @@ func init() {
 		&ociConfigPath,
 		"config", "c", "", "Path to file with oci account config.",
 	)
-	CreateOciAccountCmd.MarkFlagRequired("config")
+	CreateOciAccountCmd.Flags().BoolVar(
+		&ociStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateOciAccountCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -230,10 +240,13 @@ var ReplaceOciAccountCmd = &cobra.Command{
 		case "v0":
 			var ociAccountConfig config_v0.OciAccountConfig
 			// load oci account config
-			configContent, err := os.ReadFile(ociConfigPath)
+			configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if ociStdin {
+				ociConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &ociAccountConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -265,7 +278,10 @@ func init() {
 		&ociConfigPath,
 		"config", "c", "", "Path to file with oci account config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceOciAccountCmd.MarkFlagRequired("config")
+	ReplaceOciAccountCmd.Flags().BoolVar(
+		&ociStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceOciAccountCmd.Flags().StringVarP(
 		&ociName,
 		"name", "n", "", "Name of existing oci account to replace.  If the name in the oci account config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -305,10 +321,13 @@ var DeleteOciAccountCmd = &cobra.Command{
 			var ociAccountConfig config_v0.OciAccountConfig
 			if ociConfigPath != "" {
 				// load oci account config
-				configContent, err := os.ReadFile(ociConfigPath)
+				configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if ociStdin {
+					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociAccountConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -390,10 +409,13 @@ var GetOciOkeKubernetesRuntimesCmd = &cobra.Command{
 			// load oci oke kubernetes runtime values
 			ociOkeKubernetesRuntimeConfig := config_v0.OciOkeKubernetesRuntimeConfig{}
 			if ociConfigPath != "" {
-				configContent, err := os.ReadFile(ociConfigPath)
+				configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if ociStdin {
+					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -488,10 +510,13 @@ var CreateOciOkeKubernetesRuntimeCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read oci oke kubernetes runtime config
-		configContent, err := os.ReadFile(ociConfigPath)
+		configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if ociStdin {
+			ociConfigPath = "."
 		}
 
 		// create oci oke kubernetes runtime based on version
@@ -539,7 +564,10 @@ func init() {
 		&ociConfigPath,
 		"config", "c", "", "Path to file with oci oke kubernetes runtime config.",
 	)
-	CreateOciOkeKubernetesRuntimeCmd.MarkFlagRequired("config")
+	CreateOciOkeKubernetesRuntimeCmd.Flags().BoolVar(
+		&ociStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateOciOkeKubernetesRuntimeCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -564,10 +592,13 @@ var DeleteOciOkeKubernetesRuntimeCmd = &cobra.Command{
 		}
 
 		// read oci oke kubernetes runtime config
-		configContent, err := os.ReadFile(ociConfigPath)
+		configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if ociStdin {
+			ociConfigPath = "."
 		}
 
 		// delete oci oke kubernetes runtime based on version
@@ -644,10 +675,13 @@ var GetOciOkeKubernetesRuntimeDefinitionsCmd = &cobra.Command{
 			// load values
 			ociOkeKubernetesRuntimeDefinitionConfig := config_v0.OciOkeKubernetesRuntimeDefinitionConfig{}
 			if ociConfigPath != "" {
-				configContent, err := os.ReadFile(ociConfigPath)
+				configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if ociStdin {
+					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -742,10 +776,13 @@ var CreateOciOkeKubernetesRuntimeDefinitionCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read oci oke kubernetes runtime definition config
-		configContent, err := os.ReadFile(ociConfigPath)
+		configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if ociStdin {
+			ociConfigPath = "."
 		}
 		// create oci oke kubernetes runtime definition based on version
 		switch ociVersion {
@@ -781,7 +818,10 @@ func init() {
 		&ociConfigPath,
 		"config", "c", "", "Path to file with oci oke kubernetes runtime definition config.",
 	)
-	CreateOciOkeKubernetesRuntimeDefinitionCmd.MarkFlagRequired("config")
+	CreateOciOkeKubernetesRuntimeDefinitionCmd.Flags().BoolVar(
+		&ociStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateOciOkeKubernetesRuntimeDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -805,10 +845,13 @@ var ReplaceOciOkeKubernetesRuntimeDefinitionCmd = &cobra.Command{
 		case "v0":
 			var ociOkeKubernetesRuntimeDefinitionConfig config_v0.OciOkeKubernetesRuntimeDefinitionConfig
 			// load oci oke kubernetes runtime definition config
-			configContent, err := os.ReadFile(ociConfigPath)
+			configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if ociStdin {
+				ociConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -840,7 +883,10 @@ func init() {
 		&ociConfigPath,
 		"config", "c", "", "Path to file with oci oke kubernetes runtime definition config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceOciOkeKubernetesRuntimeDefinitionCmd.MarkFlagRequired("config")
+	ReplaceOciOkeKubernetesRuntimeDefinitionCmd.Flags().BoolVar(
+		&ociStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceOciOkeKubernetesRuntimeDefinitionCmd.Flags().StringVarP(
 		&ociName,
 		"name", "n", "", "Name of existing oci oke kubernetes runtime definition to replace.  If the name in the oci oke kubernetes runtime definition config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -880,10 +926,13 @@ var DeleteOciOkeKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			var ociOkeKubernetesRuntimeDefinitionConfig config_v0.OciOkeKubernetesRuntimeDefinitionConfig
 			if ociConfigPath != "" {
 				// load oci oke kubernetes runtime definition config
-				configContent, err := os.ReadFile(ociConfigPath)
+				configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if ociStdin {
+					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -964,10 +1013,13 @@ var GetOciOkeKubernetesRuntimeInstancesCmd = &cobra.Command{
 			// load values
 			ociOkeKubernetesRuntimeInstanceConfig := config_v0.OciOkeKubernetesRuntimeInstanceConfig{}
 			if ociConfigPath != "" {
-				configContent, err := os.ReadFile(ociConfigPath)
+				configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if ociStdin {
+					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1062,10 +1114,13 @@ var CreateOciOkeKubernetesRuntimeInstanceCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read oci oke kubernetes runtime instance config
-		configContent, err := os.ReadFile(ociConfigPath)
+		configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if ociStdin {
+			ociConfigPath = "."
 		}
 		// create oci oke kubernetes runtime instance based on version
 		switch ociVersion {
@@ -1101,7 +1156,10 @@ func init() {
 		&ociConfigPath,
 		"config", "c", "", "Path to file with oci oke kubernetes runtime instance config.",
 	)
-	CreateOciOkeKubernetesRuntimeInstanceCmd.MarkFlagRequired("config")
+	CreateOciOkeKubernetesRuntimeInstanceCmd.Flags().BoolVar(
+		&ociStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateOciOkeKubernetesRuntimeInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -1125,10 +1183,13 @@ var ReplaceOciOkeKubernetesRuntimeInstanceCmd = &cobra.Command{
 		case "v0":
 			var ociOkeKubernetesRuntimeInstanceConfig config_v0.OciOkeKubernetesRuntimeInstanceConfig
 			// load oci oke kubernetes runtime instance config
-			configContent, err := os.ReadFile(ociConfigPath)
+			configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if ociStdin {
+				ociConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -1160,7 +1221,10 @@ func init() {
 		&ociConfigPath,
 		"config", "c", "", "Path to file with oci oke kubernetes runtime instance config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceOciOkeKubernetesRuntimeInstanceCmd.MarkFlagRequired("config")
+	ReplaceOciOkeKubernetesRuntimeInstanceCmd.Flags().BoolVar(
+		&ociStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceOciOkeKubernetesRuntimeInstanceCmd.Flags().StringVarP(
 		&ociName,
 		"name", "n", "", "Name of existing oci oke kubernetes runtime instance to replace.  If the name in the oci oke kubernetes runtime instance config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -1200,10 +1264,13 @@ var DeleteOciOkeKubernetesRuntimeInstanceCmd = &cobra.Command{
 			var ociOkeKubernetesRuntimeInstanceConfig config_v0.OciOkeKubernetesRuntimeInstanceConfig
 			if ociConfigPath != "" {
 				// load oci oke kubernetes runtime instance config
-				configContent, err := os.ReadFile(ociConfigPath)
+				configContent, err := cli.ReadConfigContent(ociConfigPath, ociStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if ociStdin {
+					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

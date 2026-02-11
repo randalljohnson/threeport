@@ -24,7 +24,6 @@ type OciOkeKubernetesRuntimeDefinitionConfig struct {
 // the OciOkeKubernetesRuntimeDefinition API object.
 type OciOkeKubernetesRuntimeDefinitionValues struct {
 	Name                   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	OciAccountName         *string `json:"OciAccountName,omitempty" yaml:"OciAccountName,omitempty"`
 	WorkerNodeShape        *string `json:"WorkerNodeShape,omitempty" yaml:"WorkerNodeShape,omitempty"`
 	WorkerNodeInitialCount *int    `json:"WorkerNodeInitialCount,omitempty" yaml:"WorkerNodeInitialCount,omitempty"`
 	Age                    *string `json:"Age,omitempty" yaml:"Age,omitempty"`
@@ -60,19 +59,9 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Get(
 	// assemble config objects from API objects
 	var ociOkeKubernetesRuntimeDefinitionConfigs []OciOkeKubernetesRuntimeDefinitionConfig
 	for _, ociOkeKubernetesRuntimeDefinition := range *ociOkeKubernetesRuntimeDefinitions {
-		// get OCI account name by looking up account ID
-		var ociAccountName *string
-		if ociOkeKubernetesRuntimeDefinition.OciAccountID != nil {
-			ociAccount, err := client_v0.GetOciAccountByID(apiClient, apiEndpoint, *ociOkeKubernetesRuntimeDefinition.OciAccountID)
-			if err == nil {
-				ociAccountName = ociAccount.Name
-			}
-		}
-
 		ociOkeKubernetesRuntimeDefinitionConfig := OciOkeKubernetesRuntimeDefinitionConfig{
 			OciOkeKubernetesRuntimeDefinition: OciOkeKubernetesRuntimeDefinitionValues{
 				Name:            ociOkeKubernetesRuntimeDefinition.Name,
-				OciAccountName:  ociAccountName,
 				WorkerNodeShape: ociOkeKubernetesRuntimeDefinition.WorkerNodeShape,
 				WorkerNodeInitialCount: func() *int {
 					if ociOkeKubernetesRuntimeDefinition.WorkerNodeInitialCount != nil {
@@ -101,22 +90,11 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for oci oke kubernetes runtime definition with name %s: %w", *ociOkeKubernetesRuntimeDefinitionValues.Name, err)
 	}
 
-	// get OCI account by name if provided
-	var ociAccountID *uint
-	if ociOkeKubernetesRuntimeDefinitionValues.OciAccountName != nil {
-		ociAccount, err := client_v0.GetOciAccountByName(apiClient, apiEndpoint, *ociOkeKubernetesRuntimeDefinitionValues.OciAccountName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get OCI account with name %s: %w", *ociOkeKubernetesRuntimeDefinitionValues.OciAccountName, err)
-		}
-		ociAccountID = ociAccount.ID
-	}
-
 	// construct oci oke kubernetes runtime definition object
 	ociOkeKubernetesRuntimeDefinition := api_v0.OciOkeKubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
 			Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
 		},
-		OciAccountID:    ociAccountID,
 		WorkerNodeShape: ociOkeKubernetesRuntimeDefinitionValues.WorkerNodeShape,
 		WorkerNodeInitialCount: func() *int32 {
 			if ociOkeKubernetesRuntimeDefinitionValues.WorkerNodeInitialCount != nil {
@@ -141,7 +119,6 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Create(
 	createdOciOkeKubernetesRuntimeDefinitionConfig := &OciOkeKubernetesRuntimeDefinitionConfig{
 		OciOkeKubernetesRuntimeDefinition: OciOkeKubernetesRuntimeDefinitionValues{
 			Name:            createdOciOkeKubernetesRuntimeDefinition.Name,
-			OciAccountName:  ociOkeKubernetesRuntimeDefinitionValues.OciAccountName,
 			WorkerNodeShape: createdOciOkeKubernetesRuntimeDefinition.WorkerNodeShape,
 			WorkerNodeInitialCount: func() *int {
 				if createdOciOkeKubernetesRuntimeDefinition.WorkerNodeInitialCount != nil {
@@ -182,16 +159,6 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Replace(
 		return nil, fmt.Errorf("failed to find oci oke kubernetes runtime definition with name %s: %w", name, err)
 	}
 
-	// get OCI account by name if provided
-	var ociAccountID *uint
-	if ociOkeKubernetesRuntimeDefinitionValues.OciAccountName != nil {
-		ociAccount, err := client_v0.GetOciAccountByName(apiClient, apiEndpoint, *ociOkeKubernetesRuntimeDefinitionValues.OciAccountName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get OCI account with name %s: %w", *ociOkeKubernetesRuntimeDefinitionValues.OciAccountName, err)
-		}
-		ociAccountID = ociAccount.ID
-	}
-
 	// construct updated oci oke kubernetes runtime definition object
 	updatedOciOkeKubernetesRuntimeDefinition := &api_v0.OciOkeKubernetesRuntimeDefinition{
 		Common: api_v0.Common{
@@ -200,7 +167,6 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Replace(
 		Definition: api_v0.Definition{
 			Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
 		},
-		OciAccountID:    ociAccountID,
 		WorkerNodeShape: ociOkeKubernetesRuntimeDefinitionValues.WorkerNodeShape,
 		WorkerNodeInitialCount: func() *int32 {
 			if ociOkeKubernetesRuntimeDefinitionValues.WorkerNodeInitialCount != nil {
@@ -225,7 +191,6 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Replace(
 	updatedOciOkeKubernetesRuntimeDefinitionConfig := &OciOkeKubernetesRuntimeDefinitionConfig{
 		OciOkeKubernetesRuntimeDefinition: OciOkeKubernetesRuntimeDefinitionValues{
 			Name:            replacedOciOkeKubernetesRuntimeDefinition.Name,
-			OciAccountName:  ociOkeKubernetesRuntimeDefinitionValues.OciAccountName,
 			WorkerNodeShape: replacedOciOkeKubernetesRuntimeDefinition.WorkerNodeShape,
 			WorkerNodeInitialCount: func() *int {
 				if replacedOciOkeKubernetesRuntimeDefinition.WorkerNodeInitialCount != nil {
@@ -285,11 +250,6 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Validate() error {
 	// ensure name is set
 	if ociOkeKubernetesRuntimeDefinitionValues.Name == nil {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
-	}
-
-	// ensure OciAccountName is set
-	if ociOkeKubernetesRuntimeDefinitionValues.OciAccountName == nil {
-		multiError.AppendError(errors.New("missing required field in config: OciAccountName"))
 	}
 
 	// ensure WorkerNodeShape is set

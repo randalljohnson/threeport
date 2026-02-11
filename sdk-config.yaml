@@ -53,7 +53,7 @@ ApiObjectGroups:
         Enabled: true
 - Name: oci
   Objects:
-    - Name: OciAccount
+    - Name: OciProvider
       Versions:
         - v0
       Tptctl:

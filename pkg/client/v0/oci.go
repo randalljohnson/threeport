@@ -11,106 +11,72 @@ import (
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 )
 
-// GetOciAccountByDefaultAccount fetches the default OCI account.
-func GetOciAccountByDefaultAccount(apiClient *http.Client, apiAddr string) (*v0.OciAccount, error) {
-	var ociAccount v0.OciAccount
+// GetOciProviderByDefaultProvider fetches the default OCI provider.
+func GetOciProviderByDefaultProvider(apiClient *http.Client, apiAddr string) (*v0.OciProvider, error) {
+	var ociProvider v0.OciProvider
 
 	response, err := client_lib.GetResponse(
 		apiClient,
-		fmt.Sprintf("%s/%s/oci-accounts?default=true", apiAddr, ApiVersion),
+		fmt.Sprintf("%s/%s/oci-providers?default=true", apiAddr, ApiVersion),
 		http.MethodGet,
 		new(bytes.Buffer),
 		map[string]string{},
 		http.StatusOK,
 	)
 	if err != nil {
-		return &ociAccount, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+		return &ociProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
 	if len(response.Data) < 1 {
-		return &ociAccount, errors.New("no default OCI account found")
+		return &ociProvider, errors.New("no default OCI provider found")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
-		return &ociAccount, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+		return &ociProvider, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(jsonData))
 	decoder.UseNumber()
-	if err := decoder.Decode(&ociAccount); err != nil {
+	if err := decoder.Decode(&ociProvider); err != nil {
 		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
 	}
 
-	return &ociAccount, nil
+	return &ociProvider, nil
 }
 
-// GetOciAccountByTenancyID fetches a OCI account by the OCI Tenancy ID.
-func GetOciAccountByTenancyID(apiClient *http.Client, apiAddr string, tenancyID string) (*v0.OciAccount, error) {
-	var ociAccount v0.OciAccount
+// GetOciProviderByCompartmentID fetches an OCI provider by the OCI compartment ID.
+func GetOciProviderByCompartmentID(apiClient *http.Client, apiAddr string, compartmentID string) (*v0.OciProvider, error) {
+	var ociProvider v0.OciProvider
 
 	response, err := client_lib.GetResponse(
 		apiClient,
-		fmt.Sprintf("%s/%s/oci-accounts?tenancyid=%s", apiAddr, ApiVersion, tenancyID),
+		fmt.Sprintf("%s/%s/oci-providers?compartmentocid=%s", apiAddr, ApiVersion, compartmentID),
 		http.MethodGet,
 		new(bytes.Buffer),
 		map[string]string{},
 		http.StatusOK,
 	)
 	if err != nil {
-		return &ociAccount, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+		return &ociProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
 	if len(response.Data) < 1 {
-		return &ociAccount, errors.New(fmt.Sprintf("no OCI account found with tenancy ID %s", tenancyID))
+		return &ociProvider, errors.New(fmt.Sprintf("no OCI provider found with compartment ID %s", compartmentID))
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
-		return &ociAccount, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+		return &ociProvider, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(jsonData))
 	decoder.UseNumber()
-	if err := decoder.Decode(&ociAccount); err != nil {
+	if err := decoder.Decode(&ociProvider); err != nil {
 		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
 	}
 
-	return &ociAccount, nil
-}
-
-// GetOciAccountByAccountID fetches a OCI account by the OCI Account ID.
-func GetOciAccountByAccountID(apiClient *http.Client, apiAddr string, accountID string) (*v0.OciAccount, error) {
-	var ociAccount v0.OciAccount
-
-	response, err := client_lib.GetResponse(
-		apiClient,
-		fmt.Sprintf("%s/%s/oci-accounts?accountid=%s", apiAddr, ApiVersion, accountID),
-		http.MethodGet,
-		new(bytes.Buffer),
-		map[string]string{},
-		http.StatusOK,
-	)
-	if err != nil {
-		return &ociAccount, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) < 1 {
-		return &ociAccount, errors.New(fmt.Sprintf("no OCI account found with account ID %s", accountID))
-	}
-
-	jsonData, err := json.Marshal(response.Data[0])
-	if err != nil {
-		return &ociAccount, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
-	}
-
-	decoder := json.NewDecoder(bytes.NewReader(jsonData))
-	decoder.UseNumber()
-	if err := decoder.Decode(&ociAccount); err != nil {
-		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
-	}
-
-	return &ociAccount, nil
+	return &ociProvider, nil
 }
 
 // GetOciOkeKubernetesRuntimeDefinitionByK8sRuntimeDef fetches a OCI OKE kubernetes runtime definition by ID.

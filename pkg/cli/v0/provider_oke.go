@@ -103,24 +103,24 @@ func ConfigureControlPlaneWithOkeConfig(
 ) error {
 	kubernetesRuntimeInfraOKE := (*kubernetesRuntimeInfra).(*provider.KubernetesRuntimeInfraOKE)
 
-	// create OCI account using the service user credentials generated during bootstrap
-	ociAccount := v0.OciAccount{
-		Name:           util.Ptr(kubernetesRuntimeInfraOKE.GetServiceUserName()),
-		UserOCID:       &kubernetesRuntimeInfraOKE.ServiceUserOCID,
-		TenancyOCID:    &kubernetesRuntimeInfraOKE.TenancyOCID,
-		DefaultAccount: util.Ptr(true),
-		DefaultRegion:  &kubernetesRuntimeInfraOKE.Region,
-		KeyFingerprint: &kubernetesRuntimeInfraOKE.Fingerprint,
-		PrivateKey:     &kubernetesRuntimeInfraOKE.PrivateKeyPEM,
+	// create OCI provider using the service user credentials generated during bootstrap
+	ociProvider := v0.OciProvider{
+		Name:            util.Ptr(kubernetesRuntimeInfraOKE.GetServiceUserName()),
+		UserOCID:        &kubernetesRuntimeInfraOKE.ServiceUserOCID,
+		CompartmentOCID: &kubernetesRuntimeInfraOKE.TenancyOCID,
+		DefaultProvider: util.Ptr(true),
+		DefaultRegion:   &kubernetesRuntimeInfraOKE.Region,
+		KeyFingerprint:  &kubernetesRuntimeInfraOKE.Fingerprint,
+		PrivateKey:      &kubernetesRuntimeInfraOKE.PrivateKeyPEM,
 	}
 
-	_, err := client.CreateOciAccount(
+	_, err := client.CreateOciProvider(
 		apiClient,
 		threeportAPIEndpoint,
-		&ociAccount,
+		&ociProvider,
 	)
 	if err != nil {
-		return uninstaller.cleanOnCreateError("failed to create new default OCI account", err)
+		return uninstaller.cleanOnCreateError("failed to create new default OCI provider", err)
 	}
 
 	// create oci oke k8s runtime definition
@@ -129,7 +129,6 @@ func ConfigureControlPlaneWithOkeConfig(
 		Definition: v0.Definition{
 			Name: &okeRuntimeDefName,
 		},
-		OciAccountID:                  ociAccount.ID,
 		WorkerNodeShape:               &kubernetesRuntimeInfraOKE.WorkerNodeShape,
 		WorkerNodeInitialCount:        util.Ptr(kubernetesRuntimeInfraOKE.WorkerNodeInitialCount),
 		KubernetesRuntimeDefinitionID: kubernetesRuntimeDefResult.ID,
@@ -163,6 +162,7 @@ func ConfigureControlPlaneWithOkeConfig(
 		Reconciliation: v0.Reconciliation{
 			Reconciled: util.Ptr(true),
 		},
+		OciProviderID:                       ociProvider.ID,
 		OciOkeKubernetesRuntimeDefinitionID: createdociOkeKubernetesRuntimeDef.ID,
 		KubernetesRuntimeInstanceID:         kubernetesRuntimeInstResult.ID,
 		ClusterOCID:                         &clusterOCID,

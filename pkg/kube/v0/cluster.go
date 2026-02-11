@@ -296,24 +296,14 @@ func refreshOKEConnection(
 		return nil, fmt.Errorf("failed to get OCI OKE kubernetes runtime instance by kubernetes runtime instance ID %d: %w", runtimeInstance.ID, err)
 	}
 
-	// get OKE runtime definition
-	okeRuntimeDefinition, err := client.GetOciOkeKubernetesRuntimeDefinitionByID(
+	// get OCI provider
+	var ociProvider *v0.OciProvider
+	if ociProvider, err = client.GetOciProviderByID(
 		threeportAPIClient,
 		threeportAPIEndpoint,
-		*okeRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to OCI OKE kubernetes runtime definition by ID %d: %w", okeRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID, err)
-	}
-
-	// get OCI account
-	var ociAccount *v0.OciAccount
-	if ociAccount, err = client.GetOciAccountByID(
-		threeportAPIClient,
-		threeportAPIEndpoint,
-		*okeRuntimeDefinition.OciAccountID,
+		*okeRuntimeInstance.OciProviderID,
 	); err != nil {
-		return nil, fmt.Errorf("failed to get OCI account by ID %d: %w", *okeRuntimeDefinition.OciAccountID, err)
+		return nil, fmt.Errorf("failed to get OCI provider by ID %d: %w", *okeRuntimeInstance.OciProviderID, err)
 	}
 
 	var token string
@@ -322,11 +312,11 @@ func refreshOKEConnection(
 	if token, tokenExpirationTime, err = util.GenerateOkeToken(
 		*okeRuntimeInstance.ClusterOCID,
 		common.NewRawConfigurationProvider(
-			*ociAccount.TenancyOCID,
-			*ociAccount.UserOCID,
-			*ociAccount.DefaultRegion,
-			*ociAccount.KeyFingerprint,
-			*ociAccount.PrivateKey,
+			*ociProvider.CompartmentOCID,
+			*ociProvider.UserOCID,
+			*ociProvider.DefaultRegion,
+			*ociProvider.KeyFingerprint,
+			*ociProvider.PrivateKey,
 			nil,
 		),
 	); err != nil {

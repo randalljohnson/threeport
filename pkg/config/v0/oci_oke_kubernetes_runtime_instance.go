@@ -24,6 +24,7 @@ type OciOkeKubernetesRuntimeInstanceConfig struct {
 // the OciOkeKubernetesRuntimeInstance API object.
 type OciOkeKubernetesRuntimeInstanceValues struct {
 	Name                              *string                                  `json:"Name,omitempty" yaml:"Name,omitempty"`
+	OciProviderName                   *string                                  `json:"OciProviderName,omitempty" yaml:"OciProviderName,omitempty"`
 	Region                            *string                                  `json:"Region,omitempty" yaml:"Region,omitempty"`
 	OciOkeKubernetesRuntimeDefinition *OciOkeKubernetesRuntimeDefinitionValues `json:"OciOkeKubernetesRuntimeDefinition,omitempty" yaml:"OciOkeKubernetesRuntimeDefinition,omitempty"`
 	Age                               *string                                  `json:"Age,omitempty" yaml:"Age,omitempty"`
@@ -60,8 +61,21 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Get(
 
 	// assemble config objects from API objects
 	for _, ociOkeKubernetesRuntimeInstance := range *ociOkeKubernetesRuntimeInstances {
-		// related object
+		// related objects
 		var ociOkeKubernetesRuntimeDefinition *OciOkeKubernetesRuntimeDefinitionValues
+		var ociProviderName *string
+
+		// get OCI provider name
+		if ociOkeKubernetesRuntimeInstance.OciProviderID != nil {
+			ociProvider, err := client_v0.GetOciProviderByID(
+				apiClient,
+				apiEndpoint,
+				*ociOkeKubernetesRuntimeInstance.OciProviderID,
+			)
+			if err == nil {
+				ociProviderName = ociProvider.Name
+			}
+		}
 
 		// get OCI OKE kubernetes runtime definition
 		if ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID != nil {
@@ -71,21 +85,8 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Get(
 				*ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID,
 			)
 			if err == nil {
-				// get OCI account name
-				var ociAccountName *string
-				if ociOkeKubernetesRuntimeDefinitionObj.OciAccountID != nil {
-					ociAccount, err := client_v0.GetOciAccountByID(
-						apiClient,
-						apiEndpoint,
-						*ociOkeKubernetesRuntimeDefinitionObj.OciAccountID,
-					)
-					if err == nil {
-						ociAccountName = ociAccount.Name
-					}
-				}
 				ociOkeKubernetesRuntimeDefinition = &OciOkeKubernetesRuntimeDefinitionValues{
 					Name:            ociOkeKubernetesRuntimeDefinitionObj.Name,
-					OciAccountName:  ociAccountName,
 					WorkerNodeShape: ociOkeKubernetesRuntimeDefinitionObj.WorkerNodeShape,
 					WorkerNodeInitialCount: func() *int {
 						if ociOkeKubernetesRuntimeDefinitionObj.WorkerNodeInitialCount != nil {
@@ -101,6 +102,7 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Get(
 		ociOkeKubernetesRuntimeInstanceConfig := OciOkeKubernetesRuntimeInstanceConfig{
 			OciOkeKubernetesRuntimeInstance: OciOkeKubernetesRuntimeInstanceValues{
 				Name:                              ociOkeKubernetesRuntimeInstance.Name,
+				OciProviderName:                   ociProviderName,
 				Region:                            ociOkeKubernetesRuntimeInstance.Region,
 				OciOkeKubernetesRuntimeDefinition: ociOkeKubernetesRuntimeDefinition,
 				Age:                               util.Ptr(util.GetAgeFormatted(ociOkeKubernetesRuntimeInstance.CreatedAt)),
@@ -123,6 +125,20 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for oci oke kubernetes runtime instance with name %s: %w", *ociOkeKubernetesRuntimeInstanceValues.Name, err)
 	}
 
+	// get OCI provider by name
+	var ociProviderID *uint
+	if ociOkeKubernetesRuntimeInstanceValues.OciProviderName != nil {
+		ociProvider, err := client_v0.GetOciProviderByName(
+			apiClient,
+			apiEndpoint,
+			*ociOkeKubernetesRuntimeInstanceValues.OciProviderName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get OCI provider with name %s: %w", *ociOkeKubernetesRuntimeInstanceValues.OciProviderName, err)
+		}
+		ociProviderID = ociProvider.ID
+	}
+
 	// get OCI OKE kubernetes runtime definition by name
 	var ociOkeKubernetesRuntimeDefinitionID *uint
 	if ociOkeKubernetesRuntimeInstanceValues.OciOkeKubernetesRuntimeDefinition != nil && ociOkeKubernetesRuntimeInstanceValues.OciOkeKubernetesRuntimeDefinition.Name != nil {
@@ -142,6 +158,7 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Create(
 		Instance: api_v0.Instance{
 			Name: ociOkeKubernetesRuntimeInstanceValues.Name,
 		},
+		OciProviderID:                       ociProviderID,
 		Region:                              ociOkeKubernetesRuntimeInstanceValues.Region,
 		OciOkeKubernetesRuntimeDefinitionID: ociOkeKubernetesRuntimeDefinitionID,
 	}
@@ -194,6 +211,20 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Replace(
 		return nil, fmt.Errorf("failed to find oci oke kubernetes runtime instance with name %s: %w", name, err)
 	}
 
+	// get OCI provider by name
+	var ociProviderID *uint
+	if ociOkeKubernetesRuntimeInstanceValues.OciProviderName != nil {
+		ociProvider, err := client_v0.GetOciProviderByName(
+			apiClient,
+			apiEndpoint,
+			*ociOkeKubernetesRuntimeInstanceValues.OciProviderName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get OCI provider with name %s: %w", *ociOkeKubernetesRuntimeInstanceValues.OciProviderName, err)
+		}
+		ociProviderID = ociProvider.ID
+	}
+
 	// get OCI OKE kubernetes runtime definition by name
 	var ociOkeKubernetesRuntimeDefinitionID *uint
 	if ociOkeKubernetesRuntimeInstanceValues.OciOkeKubernetesRuntimeDefinition != nil && ociOkeKubernetesRuntimeInstanceValues.OciOkeKubernetesRuntimeDefinition.Name != nil {
@@ -216,6 +247,7 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Replace(
 		Instance: api_v0.Instance{
 			Name: ociOkeKubernetesRuntimeInstanceValues.Name,
 		},
+		OciProviderID:                       ociProviderID,
 		Region:                              ociOkeKubernetesRuntimeInstanceValues.Region,
 		OciOkeKubernetesRuntimeDefinitionID: ociOkeKubernetesRuntimeDefinitionID,
 	}
@@ -287,6 +319,11 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Validate() error {
 	// ensure name is set
 	if ociOkeKubernetesRuntimeInstanceValues.Name == nil {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
+	}
+
+	// ensure OciProviderName is set
+	if ociOkeKubernetesRuntimeInstanceValues.OciProviderName == nil {
+		multiError.AppendError(errors.New("missing required field in config: OciProviderName"))
 	}
 
 	// ensure Region is set

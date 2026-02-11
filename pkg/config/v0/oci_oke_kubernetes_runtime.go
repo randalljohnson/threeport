@@ -22,7 +22,7 @@ type OciOkeKubernetesRuntimeConfig struct {
 // together with a single operation.
 type OciOkeKubernetesRuntimeValues struct {
 	Name                   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	OciAccountName         *string `json:"OciAccountName,omitempty" yaml:"OciAccountName,omitempty"`
+	OciProviderName         *string `json:"OciProviderName,omitempty" yaml:"OciProviderName,omitempty"`
 	WorkerNodeShape        *string `json:"WorkerNodeShape,omitempty" yaml:"WorkerNodeShape,omitempty"`
 	WorkerNodeInitialCount *int    `json:"WorkerNodeInitialCount,omitempty" yaml:"WorkerNodeInitialCount,omitempty"`
 	Region                 *string `json:"Region,omitempty" yaml:"Region,omitempty"`
@@ -149,7 +149,6 @@ func (o *OciOkeKubernetesRuntimeConfig) GetOperations(
 	ociOkeKubernetesRuntimeDefinitionConfig := OciOkeKubernetesRuntimeDefinitionConfig{
 		OciOkeKubernetesRuntimeDefinition: OciOkeKubernetesRuntimeDefinitionValues{
 			Name:                   ociOkeKubernetesRuntimeValues.Name,
-			OciAccountName:         ociOkeKubernetesRuntimeValues.OciAccountName,
 			WorkerNodeShape:        ociOkeKubernetesRuntimeValues.WorkerNodeShape,
 			WorkerNodeInitialCount: ociOkeKubernetesRuntimeValues.WorkerNodeInitialCount,
 		},
@@ -193,6 +192,7 @@ func (o *OciOkeKubernetesRuntimeConfig) GetOperations(
 	ociOkeKubernetesRuntimeInstanceConfig := OciOkeKubernetesRuntimeInstanceConfig{
 		OciOkeKubernetesRuntimeInstance: OciOkeKubernetesRuntimeInstanceValues{
 			Name:                              ociOkeKubernetesRuntimeValues.Name,
+			OciProviderName:                   ociOkeKubernetesRuntimeValues.OciProviderName,
 			Region:                            ociOkeKubernetesRuntimeValues.Region,
 			OciOkeKubernetesRuntimeDefinition: &ociOkeKubernetesRuntimeDefinitionConfig.OciOkeKubernetesRuntimeDefinition,
 		},
@@ -252,7 +252,7 @@ func mapToOciOkeKubernetesRuntimeDefinedInstances(
 				ociOkeKubernetesRuntimeConfig := OciOkeKubernetesRuntimeConfig{
 					OciOkeKubernetesRuntime: OciOkeKubernetesRuntimeValues{
 						Name:                   inst.OciOkeKubernetesRuntimeInstance.Name,
-						OciAccountName:         def.OciOkeKubernetesRuntimeDefinition.OciAccountName,
+						OciProviderName:         inst.OciOkeKubernetesRuntimeInstance.OciProviderName,
 						WorkerNodeShape:        def.OciOkeKubernetesRuntimeDefinition.WorkerNodeShape,
 						WorkerNodeInitialCount: def.OciOkeKubernetesRuntimeDefinition.WorkerNodeInitialCount,
 						Region:                 inst.OciOkeKubernetesRuntimeInstance.Region,

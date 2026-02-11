@@ -4,43 +4,39 @@ import (
 	"gorm.io/datatypes"
 )
 
-// OciAccount is a user account with the Oracle Cloud Infrastructure service provider.
-type OciAccount struct {
+// OciProvider is a provider account with the Oracle Cloud Infrastructure service provider.
+type OciProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
-	// The unique name of an OCI account.
+	// The unique name of an OCI provider.
 	Name *string `json:"Name,omitempty" query:"name" gorm:"not null" validate:"required"`
 
-	// The user OCID credentials for the OCI account.
+	// The user OCID credentials for the OCI provider.
 	UserOCID *string `json:"UserOCID,omitempty" query:"userocid" gorm:"not null" validate:"required"`
 
-	// The tenancy OCID for the OCI account.
-	TenancyOCID *string `json:"TenancyOCID,omitempty" query:"tenancyocid" gorm:"not null" validate:"required"`
+	// The compartment OCID for the OCI provider.
+	CompartmentOCID *string `json:"CompartmentOCID,omitempty" query:"compartmentocid" gorm:"not null" validate:"required"`
 
-	// If true is the OCI Account used if none specified in a definition.
-	DefaultAccount *bool `json:"DefaultAccount,omitempty" query:"defaultaccount" gorm:"default:false" validate:"optional"`
+	// If true is the OCI provider used if none specified in an instance.
+	DefaultProvider *bool `json:"DefaultProvider,omitempty" query:"defaultprovider" gorm:"default:false" validate:"optional"`
 
 	// The region to use for OCI managed services if not specified.
 	DefaultRegion *string `json:"DefaultRegion,omitempty" query:"defaultregion" gorm:"not null" validate:"required"`
 
-	// The fingerprint of the API key for the OCI account.
+	// The fingerprint of the API key for the OCI provider.
 	KeyFingerprint *string `json:"KeyFingerprint,omitempty" gorm:"not null" validate:"required"`
 
-	// The private key for the OCI account.
+	// The private key for the OCI provider.
 	PrivateKey *string `json:"PrivateKey,omitempty" gorm:"not null" validate:"required" encrypt:"true"`
 
-	// The cluster instances deployed in this OCI account.
-	OciOkeKubernetesRuntimeDefinitions []*OciOkeKubernetesRuntimeDefinition `json:"OciOkeKubernetesRuntimeDefinitions,omitempty" validate:"optional,association"`
+	// The cluster instances deployed with this OCI provider.
+	OciOkeKubernetesRuntimeInstances []*OciOkeKubernetesRuntimeInstance `json:"OciOkeKubernetesRuntimeInstances,omitempty" validate:"optional,association"`
 }
 
 // OciOkeKubernetesRuntimeDefinition provides the configuration for OKE cluster instances.
 type OciOkeKubernetesRuntimeDefinition struct {
 	Common     `swaggerignore:"true" mapstructure:",squash"`
 	Definition `mapstructure:",squash"`
-
-	// The OCI account in which the OKE cluster is provisioned. This is the
-	// Threeport-managed OCI account ID, not the OCI account OCID.
-	OciAccountID *uint `json:"OciAccountID,omitempty" query:"ociaccountid" gorm:"not null" validate:"required"`
 
 	// The OCI shape for the worker nodes.
 	WorkerNodeShape *string `json:"WorkerNodeShape,omitempty" query:"workernodeshape" gorm:"not null" validate:"required"`
@@ -60,6 +56,9 @@ type OciOkeKubernetesRuntimeInstance struct {
 	Common         `swaggerignore:"true" mapstructure:",squash"`
 	Instance       `mapstructure:",squash"`
 	Reconciliation `mapstructure:",squash"`
+
+	// The OCI provider used to provision this instance.
+	OciProviderID *uint `json:"OciProviderID,omitempty" query:"ociproviderid" gorm:"not null" validate:"required"`
 
 	// The OCI Region in which the cluster is provisioned. This field is
 	// stored in the instance (as well as definition) since a change to the

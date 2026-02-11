@@ -81,7 +81,7 @@ func dbInterfaces000001() []interface{} {
 		&v0.ObservabilityDashboardInstance{},
 		&v0.ObservabilityStackDefinition{},
 		&v0.ObservabilityStackInstance{},
-		&v0.OciAccount{},
+		&v0.OciProvider{},
 		&v0.OciOkeKubernetesRuntimeDefinition{},
 		&v0.OciOkeKubernetesRuntimeInstance{},
 		&v0.Profile{},

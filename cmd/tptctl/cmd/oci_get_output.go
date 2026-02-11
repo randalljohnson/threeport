@@ -10,25 +10,25 @@ import (
 	config_v0 "github.com/threeport/threeport/pkg/config/v0"
 )
 
-// outputGetv0OciAccountsCmd produces the tabular output for the
+// outputGetv0OciProvidersCmd produces the tabular output for the
 // `get oci-accounts` command.
-func outputGetv0OciAccountsCmd(
-	ociAccounts *[]config_v0.OciAccountConfig,
+func outputGetv0OciProvidersCmd(
+	ociProviders *[]config_v0.OciProviderConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t USER OCID\t TENANCY OCID\t DEFAULT ACCOUNT\t DEFAULT REGION\t AGE")
-	for _, ociAccount := range *ociAccounts {
+	fmt.Fprintln(writer, "NAME\t USER OCID\t COMPARTMENT OCID\t DEFAULT PROVIDER\t DEFAULT REGION\t AGE")
+	for _, ociProvider := range *ociProviders {
 		age := ""
-		if ociAccount.OciAccount.Age != nil {
-			age = *ociAccount.OciAccount.Age
+		if ociProvider.OciProvider.Age != nil {
+			age = *ociProvider.OciProvider.Age
 		}
 		fmt.Fprintln(
 			writer,
-			*ociAccount.OciAccount.Name, "\t",
-			*ociAccount.OciAccount.UserOCID, "\t",
-			*ociAccount.OciAccount.TenancyOCID, "\t",
-			*ociAccount.OciAccount.DefaultAccount, "\t",
-			*ociAccount.OciAccount.DefaultRegion, "\t",
+			*ociProvider.OciProvider.Name, "\t",
+			*ociProvider.OciProvider.UserOCID, "\t",
+			*ociProvider.OciProvider.CompartmentOCID, "\t",
+			*ociProvider.OciProvider.DefaultProvider, "\t",
+			*ociProvider.OciProvider.DefaultRegion, "\t",
 			age,
 		)
 	}
@@ -43,7 +43,7 @@ func outputGetv0OciOkeKubernetesRuntimesCmd(
 	ociOkeKubernetesRuntimes *[]config_v0.OciOkeKubernetesRuntimeConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t ACCOUNT NAME\t WORKER NODE SHAPE\t WORKER NODE INITIAL COUNT\t REGION\t AGE")
+	fmt.Fprintln(writer, "NAME\t PROVIDER NAME\t WORKER NODE SHAPE\t WORKER NODE INITIAL COUNT\t REGION\t AGE")
 	for _, ociOkeKubernetesRuntime := range *ociOkeKubernetesRuntimes {
 		region := ""
 		if ociOkeKubernetesRuntime.OciOkeKubernetesRuntime.Region != nil {
@@ -56,7 +56,7 @@ func outputGetv0OciOkeKubernetesRuntimesCmd(
 		fmt.Fprintln(
 			writer,
 			*ociOkeKubernetesRuntime.OciOkeKubernetesRuntime.Name, "\t",
-			*ociOkeKubernetesRuntime.OciOkeKubernetesRuntime.OciAccountName, "\t",
+			*ociOkeKubernetesRuntime.OciOkeKubernetesRuntime.OciProviderName, "\t",
 			*ociOkeKubernetesRuntime.OciOkeKubernetesRuntime.WorkerNodeShape, "\t",
 			*ociOkeKubernetesRuntime.OciOkeKubernetesRuntime.WorkerNodeInitialCount, "\t",
 			region, "\t",
@@ -74,7 +74,7 @@ func outputGetv0OciOkeKubernetesRuntimeDefinitionsCmd(
 	ociOkeKubernetesRuntimeDefinitions *[]config_v0.OciOkeKubernetesRuntimeDefinitionConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t OCI ACCOUNT NAME\t WORKER NODE SHAPE\t WORKER NODE INITIAL COUNT\t AGE")
+	fmt.Fprintln(writer, "NAME\t WORKER NODE SHAPE\t WORKER NODE INITIAL COUNT\t AGE")
 	for _, ociOkeKubernetesRuntimeDefinition := range *ociOkeKubernetesRuntimeDefinitions {
 		age := ""
 		if ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeDefinition.Age != nil {
@@ -83,7 +83,6 @@ func outputGetv0OciOkeKubernetesRuntimeDefinitionsCmd(
 		fmt.Fprintln(
 			writer,
 			*ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeDefinition.Name, "\t",
-			*ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeDefinition.OciAccountName, "\t",
 			*ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeDefinition.WorkerNodeShape, "\t",
 			*ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeDefinition.WorkerNodeInitialCount, "\t",
 			age,

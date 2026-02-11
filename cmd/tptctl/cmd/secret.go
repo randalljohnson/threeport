@@ -16,6 +16,7 @@ import (
 var (
 	secretName       string
 	secretConfigPath string
+	secretStdin  bool
 	secretVersion    string
 	secretOutput     string
 )
@@ -49,10 +50,13 @@ var GetSecretsCmd = &cobra.Command{
 			// load secret values
 			secretConfig := config_v0.SecretConfig{}
 			if secretConfigPath != "" {
-				configContent, err := os.ReadFile(secretConfigPath)
+				configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if secretStdin {
+					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -147,10 +151,13 @@ var CreateSecretCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read secret config
-		configContent, err := os.ReadFile(secretConfigPath)
+		configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if secretStdin {
+			secretConfigPath = "."
 		}
 
 		// create secret based on version
@@ -199,7 +206,10 @@ func init() {
 		&secretConfigPath,
 		"config", "c", "", "Path to file with secret config.",
 	)
-	CreateSecretCmd.MarkFlagRequired("config")
+	CreateSecretCmd.Flags().BoolVar(
+		&secretStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateSecretCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -224,10 +234,13 @@ var DeleteSecretCmd = &cobra.Command{
 		}
 
 		// read secret config
-		configContent, err := os.ReadFile(secretConfigPath)
+		configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if secretStdin {
+			secretConfigPath = "."
 		}
 
 		// delete secret based on version
@@ -305,10 +318,13 @@ var GetSecretDefinitionsCmd = &cobra.Command{
 			// load values
 			secretDefinitionConfig := config_v0.SecretDefinitionConfig{}
 			if secretConfigPath != "" {
-				configContent, err := os.ReadFile(secretConfigPath)
+				configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if secretStdin {
+					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -403,10 +419,13 @@ var CreateSecretDefinitionCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read secret definition config
-		configContent, err := os.ReadFile(secretConfigPath)
+		configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if secretStdin {
+			secretConfigPath = "."
 		}
 		// create secret definition based on version
 		switch secretVersion {
@@ -443,7 +462,10 @@ func init() {
 		&secretConfigPath,
 		"config", "c", "", "Path to file with secret definition config.",
 	)
-	CreateSecretDefinitionCmd.MarkFlagRequired("config")
+	CreateSecretDefinitionCmd.Flags().BoolVar(
+		&secretStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateSecretDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -467,10 +489,13 @@ var ReplaceSecretDefinitionCmd = &cobra.Command{
 		case "v0":
 			var secretDefinitionConfig config_v0.SecretDefinitionConfig
 			// load secret definition config
-			configContent, err := os.ReadFile(secretConfigPath)
+			configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if secretStdin {
+				secretConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &secretDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -503,7 +528,10 @@ func init() {
 		&secretConfigPath,
 		"config", "c", "", "Path to file with secret definition config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceSecretDefinitionCmd.MarkFlagRequired("config")
+	ReplaceSecretDefinitionCmd.Flags().BoolVar(
+		&secretStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceSecretDefinitionCmd.Flags().StringVarP(
 		&secretName,
 		"name", "n", "", "Name of existing secret definition to replace.  If the name in the secret definition config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -543,10 +571,13 @@ var DeleteSecretDefinitionCmd = &cobra.Command{
 			var secretDefinitionConfig config_v0.SecretDefinitionConfig
 			if secretConfigPath != "" {
 				// load secret definition config
-				configContent, err := os.ReadFile(secretConfigPath)
+				configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if secretStdin {
+					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -628,10 +659,13 @@ var GetSecretInstancesCmd = &cobra.Command{
 			// load values
 			secretInstanceConfig := config_v0.SecretInstanceConfig{}
 			if secretConfigPath != "" {
-				configContent, err := os.ReadFile(secretConfigPath)
+				configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if secretStdin {
+					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -726,10 +760,13 @@ var CreateSecretInstanceCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read secret instance config
-		configContent, err := os.ReadFile(secretConfigPath)
+		configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if secretStdin {
+			secretConfigPath = "."
 		}
 		// create secret instance based on version
 		switch secretVersion {
@@ -766,7 +803,10 @@ func init() {
 		&secretConfigPath,
 		"config", "c", "", "Path to file with secret instance config.",
 	)
-	CreateSecretInstanceCmd.MarkFlagRequired("config")
+	CreateSecretInstanceCmd.Flags().BoolVar(
+		&secretStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateSecretInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -790,10 +830,13 @@ var ReplaceSecretInstanceCmd = &cobra.Command{
 		case "v0":
 			var secretInstanceConfig config_v0.SecretInstanceConfig
 			// load secret instance config
-			configContent, err := os.ReadFile(secretConfigPath)
+			configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if secretStdin {
+				secretConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &secretInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -826,7 +869,10 @@ func init() {
 		&secretConfigPath,
 		"config", "c", "", "Path to file with secret instance config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceSecretInstanceCmd.MarkFlagRequired("config")
+	ReplaceSecretInstanceCmd.Flags().BoolVar(
+		&secretStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceSecretInstanceCmd.Flags().StringVarP(
 		&secretName,
 		"name", "n", "", "Name of existing secret instance to replace.  If the name in the secret instance config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -866,10 +912,13 @@ var DeleteSecretInstanceCmd = &cobra.Command{
 			var secretInstanceConfig config_v0.SecretInstanceConfig
 			if secretConfigPath != "" {
 				// load secret instance config
-				configContent, err := os.ReadFile(secretConfigPath)
+				configContent, err := cli.ReadConfigContent(secretConfigPath, secretStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if secretStdin {
+					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

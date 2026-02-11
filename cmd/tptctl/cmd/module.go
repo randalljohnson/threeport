@@ -15,7 +15,8 @@ import (
 
 var (
 	moduleName         string
-	moduleConfigPath   string
+	moduleConfigPath string
+	moduleStdin  bool
 	moduleVersion      string
 	moduleOutput       string
 	moduleApiRoutePath string
@@ -49,10 +50,13 @@ var GetModuleApisCmd = &cobra.Command{
 			// load values
 			moduleApiConfig := config_v0.ModuleApiConfig{}
 			if moduleConfigPath != "" {
-				configContent, err := os.ReadFile(moduleConfigPath)
+				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if moduleStdin {
+					moduleConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleApiConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -151,11 +155,14 @@ func init() {
 //		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 //
 //		// read module api config
-//		configContent, err := os.ReadFile(moduleConfigPath)
+//		configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //		if err != nil {
-//			cli.Error("failed to read config file", err)
+//			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //		// create module api based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -191,7 +198,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module api config.",
 //	)
-//	CreateModuleApiCmd.MarkFlagRequired("config")
 //	CreateModuleApiCmd.Flags().StringVarP(
 //		&cliArgs.ControlPlaneName,
 //		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -215,11 +221,14 @@ func init() {
 //		case "v0":
 //			var moduleApiConfig config_v0.ModuleApiConfig
 //			// load module api config
-//			configContent, err := os.ReadFile(moduleConfigPath)
+//			configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //			if err != nil {
-//				cli.Error("failed to read config file", err)
+//				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleApiConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -251,7 +260,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module api config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 //	)
-//	ReplaceModuleApiCmd.MarkFlagRequired("config")
 //	ReplaceModuleApiCmd.Flags().StringVarP(
 //		&moduleName,
 //		"name", "n", "", "Name of existing module api to replace.  If the name in the module api config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -291,11 +299,14 @@ func init() {
 //			var moduleApiConfig config_v0.ModuleApiConfig
 //			if moduleConfigPath != "" {
 //				// load module api config
-//				configContent, err := os.ReadFile(moduleConfigPath)
+//				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //				if err != nil {
-//					cli.Error("failed to read config file", err)
+//					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleApiConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)
@@ -376,10 +387,13 @@ var GetModuleApiRoutesCmd = &cobra.Command{
 			// load values
 			moduleApiRouteConfig := config_v0.ModuleApiRouteConfig{}
 			if moduleConfigPath != "" {
-				configContent, err := os.ReadFile(moduleConfigPath)
+				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if moduleStdin {
+					moduleConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleApiRouteConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -478,11 +492,14 @@ func init() {
 //		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 //
 //		// read module api route config
-//		configContent, err := os.ReadFile(moduleConfigPath)
+//		configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //		if err != nil {
-//			cli.Error("failed to read config file", err)
+//			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //		// create module api route based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -518,7 +535,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module api route config.",
 //	)
-//	CreateModuleApiRouteCmd.MarkFlagRequired("config")
 //	CreateModuleApiRouteCmd.Flags().StringVarP(
 //		&cliArgs.ControlPlaneName,
 //		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -542,11 +558,14 @@ func init() {
 //		case "v0":
 //			var moduleApiRouteConfig config_v0.ModuleApiRouteConfig
 //			// load module api route config
-//			configContent, err := os.ReadFile(moduleConfigPath)
+//			configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //			if err != nil {
-//				cli.Error("failed to read config file", err)
+//				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleApiRouteConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -578,7 +597,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module api route config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 //	)
-//	ReplaceModuleApiRouteCmd.MarkFlagRequired("config")
 //	ReplaceModuleApiRouteCmd.Flags().StringVarP(
 //		&moduleName,
 //		"name", "n", "", "Name of existing module api route to replace.  If the name in the module api route config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -618,11 +636,14 @@ func init() {
 //			var moduleApiRouteConfig config_v0.ModuleApiRouteConfig
 //			if moduleConfigPath != "" {
 //				// load module api route config
-//				configContent, err := os.ReadFile(moduleConfigPath)
+//				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //				if err != nil {
-//					cli.Error("failed to read config file", err)
+//					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleApiRouteConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)
@@ -703,10 +724,13 @@ var GetModuleControllersCmd = &cobra.Command{
 			// load values
 			moduleControllerConfig := config_v0.ModuleControllerConfig{}
 			if moduleConfigPath != "" {
-				configContent, err := os.ReadFile(moduleConfigPath)
+				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if moduleStdin {
+					moduleConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleControllerConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -805,11 +829,14 @@ func init() {
 //		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 //
 //		// read module controller config
-//		configContent, err := os.ReadFile(moduleConfigPath)
+//		configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //		if err != nil {
-//			cli.Error("failed to read config file", err)
+//			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //		// create module controller based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -845,7 +872,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module controller config.",
 //	)
-//	CreateModuleControllerCmd.MarkFlagRequired("config")
 //	CreateModuleControllerCmd.Flags().StringVarP(
 //		&cliArgs.ControlPlaneName,
 //		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -869,11 +895,14 @@ func init() {
 //		case "v0":
 //			var moduleControllerConfig config_v0.ModuleControllerConfig
 //			// load module controller config
-//			configContent, err := os.ReadFile(moduleConfigPath)
+//			configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //			if err != nil {
-//				cli.Error("failed to read config file", err)
+//				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleControllerConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -905,7 +934,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module controller config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 //	)
-//	ReplaceModuleControllerCmd.MarkFlagRequired("config")
 //	ReplaceModuleControllerCmd.Flags().StringVarP(
 //		&moduleName,
 //		"name", "n", "", "Name of existing module controller to replace.  If the name in the module controller config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -945,11 +973,14 @@ func init() {
 //			var moduleControllerConfig config_v0.ModuleControllerConfig
 //			if moduleConfigPath != "" {
 //				// load module controller config
-//				configContent, err := os.ReadFile(moduleConfigPath)
+//				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //				if err != nil {
-//					cli.Error("failed to read config file", err)
+//					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleControllerConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)
@@ -1030,10 +1061,13 @@ var GetModuleObjectsCmd = &cobra.Command{
 			// load values
 			moduleObjectConfig := config_v0.ModuleObjectConfig{}
 			if moduleConfigPath != "" {
-				configContent, err := os.ReadFile(moduleConfigPath)
+				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if moduleStdin {
+					moduleConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleObjectConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1132,11 +1166,14 @@ func init() {
 //		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 //
 //		// read module object config
-//		configContent, err := os.ReadFile(moduleConfigPath)
+//		configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //		if err != nil {
-//			cli.Error("failed to read config file", err)
+//			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //		// create module object based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -1172,7 +1209,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module object config.",
 //	)
-//	CreateModuleObjectCmd.MarkFlagRequired("config")
 //	CreateModuleObjectCmd.Flags().StringVarP(
 //		&cliArgs.ControlPlaneName,
 //		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -1196,11 +1232,14 @@ func init() {
 //		case "v0":
 //			var moduleObjectConfig config_v0.ModuleObjectConfig
 //			// load module object config
-//			configContent, err := os.ReadFile(moduleConfigPath)
+//			configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //			if err != nil {
-//				cli.Error("failed to read config file", err)
+//				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleObjectConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -1232,7 +1271,6 @@ func init() {
 //		&moduleConfigPath,
 //		"config", "c", "", "Path to file with module object config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 //	)
-//	ReplaceModuleObjectCmd.MarkFlagRequired("config")
 //	ReplaceModuleObjectCmd.Flags().StringVarP(
 //		&moduleName,
 //		"name", "n", "", "Name of existing module object to replace.  If the name in the module object config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -1272,11 +1310,14 @@ func init() {
 //			var moduleObjectConfig config_v0.ModuleObjectConfig
 //			if moduleConfigPath != "" {
 //				// load module object config
-//				configContent, err := os.ReadFile(moduleConfigPath)
+//				configContent, err := cli.ReadConfigContent(moduleConfigPath, moduleStdin)
 //				if err != nil {
-//					cli.Error("failed to read config file", err)
+//					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
+//if moduleStdin {
+//	moduleConfigPath = "."
+//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleObjectConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)
@@ -1328,3 +1369,8 @@ func init() {
 //		"version", "v", "v0", "Version of module objects object to delete. One of: [v0]",
 //	)
 //}
+
+//	CreateModuleObjectCmd.Flags().BoolVar(
+//		&moduleStdin,
+//		"stdin", false, "Read config from stdin instead of file.",
+//	)

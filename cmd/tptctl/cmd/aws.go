@@ -16,6 +16,7 @@ import (
 var (
 	awsName       string
 	awsConfigPath string
+	awsStdin  bool
 	awsVersion    string
 	awsOutput     string
 	awsDecrypt    bool
@@ -65,10 +66,13 @@ var GetAwsAccountsCmd = &cobra.Command{
 			// load values
 			awsAccountConfig := config_v0.AwsAccountConfig{}
 			if awsConfigPath != "" {
-				configContent, err := os.ReadFile(awsConfigPath)
+				configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if awsStdin {
+					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsAccountConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -167,10 +171,13 @@ var CreateAwsAccountCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read aws account config
-		configContent, err := os.ReadFile(awsConfigPath)
+		configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if awsStdin {
+			awsConfigPath = "."
 		}
 		// create aws account based on version
 		switch awsVersion {
@@ -206,7 +213,10 @@ func init() {
 		&awsConfigPath,
 		"config", "c", "", "Path to file with aws account config.",
 	)
-	CreateAwsAccountCmd.MarkFlagRequired("config")
+	CreateAwsAccountCmd.Flags().BoolVar(
+		&awsStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateAwsAccountCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -230,10 +240,13 @@ var ReplaceAwsAccountCmd = &cobra.Command{
 		case "v0":
 			var awsAccountConfig config_v0.AwsAccountConfig
 			// load aws account config
-			configContent, err := os.ReadFile(awsConfigPath)
+			configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if awsStdin {
+				awsConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &awsAccountConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -265,7 +278,10 @@ func init() {
 		&awsConfigPath,
 		"config", "c", "", "Path to file with aws account config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceAwsAccountCmd.MarkFlagRequired("config")
+	ReplaceAwsAccountCmd.Flags().BoolVar(
+		&awsStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceAwsAccountCmd.Flags().StringVarP(
 		&awsName,
 		"name", "n", "", "Name of existing aws account to replace.  If the name in the aws account config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -305,10 +321,13 @@ var DeleteAwsAccountCmd = &cobra.Command{
 			var awsAccountConfig config_v0.AwsAccountConfig
 			if awsConfigPath != "" {
 				// load aws account config
-				configContent, err := os.ReadFile(awsConfigPath)
+				configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if awsStdin {
+					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsAccountConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -390,10 +409,13 @@ var GetAwsEksKubernetesRuntimesCmd = &cobra.Command{
 			// load aws eks kubernetes runtime values
 			awsEksKubernetesRuntimeConfig := config_v0.AwsEksKubernetesRuntimeConfig{}
 			if awsConfigPath != "" {
-				configContent, err := os.ReadFile(awsConfigPath)
+				configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if awsStdin {
+					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -488,10 +510,13 @@ var CreateAwsEksKubernetesRuntimeCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read aws eks kubernetes runtime config
-		configContent, err := os.ReadFile(awsConfigPath)
+		configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if awsStdin {
+			awsConfigPath = "."
 		}
 
 		// create aws eks kubernetes runtime based on version
@@ -539,7 +564,10 @@ func init() {
 		&awsConfigPath,
 		"config", "c", "", "Path to file with aws eks kubernetes runtime config.",
 	)
-	CreateAwsEksKubernetesRuntimeCmd.MarkFlagRequired("config")
+	CreateAwsEksKubernetesRuntimeCmd.Flags().BoolVar(
+		&awsStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateAwsEksKubernetesRuntimeCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -564,10 +592,13 @@ var DeleteAwsEksKubernetesRuntimeCmd = &cobra.Command{
 		}
 
 		// read aws eks kubernetes runtime config
-		configContent, err := os.ReadFile(awsConfigPath)
+		configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if awsStdin {
+			awsConfigPath = "."
 		}
 
 		// delete aws eks kubernetes runtime based on version
@@ -644,10 +675,13 @@ var GetAwsEksKubernetesRuntimeDefinitionsCmd = &cobra.Command{
 			// load values
 			awsEksKubernetesRuntimeDefinitionConfig := config_v0.AwsEksKubernetesRuntimeDefinitionConfig{}
 			if awsConfigPath != "" {
-				configContent, err := os.ReadFile(awsConfigPath)
+				configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if awsStdin {
+					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -742,10 +776,13 @@ var CreateAwsEksKubernetesRuntimeDefinitionCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read aws eks kubernetes runtime definition config
-		configContent, err := os.ReadFile(awsConfigPath)
+		configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if awsStdin {
+			awsConfigPath = "."
 		}
 		// create aws eks kubernetes runtime definition based on version
 		switch awsVersion {
@@ -781,7 +818,10 @@ func init() {
 		&awsConfigPath,
 		"config", "c", "", "Path to file with aws eks kubernetes runtime definition config.",
 	)
-	CreateAwsEksKubernetesRuntimeDefinitionCmd.MarkFlagRequired("config")
+	CreateAwsEksKubernetesRuntimeDefinitionCmd.Flags().BoolVar(
+		&awsStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateAwsEksKubernetesRuntimeDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -805,10 +845,13 @@ var ReplaceAwsEksKubernetesRuntimeDefinitionCmd = &cobra.Command{
 		case "v0":
 			var awsEksKubernetesRuntimeDefinitionConfig config_v0.AwsEksKubernetesRuntimeDefinitionConfig
 			// load aws eks kubernetes runtime definition config
-			configContent, err := os.ReadFile(awsConfigPath)
+			configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if awsStdin {
+				awsConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -840,7 +883,10 @@ func init() {
 		&awsConfigPath,
 		"config", "c", "", "Path to file with aws eks kubernetes runtime definition config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceAwsEksKubernetesRuntimeDefinitionCmd.MarkFlagRequired("config")
+	ReplaceAwsEksKubernetesRuntimeDefinitionCmd.Flags().BoolVar(
+		&awsStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceAwsEksKubernetesRuntimeDefinitionCmd.Flags().StringVarP(
 		&awsName,
 		"name", "n", "", "Name of existing aws eks kubernetes runtime definition to replace.  If the name in the aws eks kubernetes runtime definition config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -880,10 +926,13 @@ var DeleteAwsEksKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			var awsEksKubernetesRuntimeDefinitionConfig config_v0.AwsEksKubernetesRuntimeDefinitionConfig
 			if awsConfigPath != "" {
 				// load aws eks kubernetes runtime definition config
-				configContent, err := os.ReadFile(awsConfigPath)
+				configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if awsStdin {
+					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -964,10 +1013,13 @@ var GetAwsEksKubernetesRuntimeInstancesCmd = &cobra.Command{
 			// load values
 			awsEksKubernetesRuntimeInstanceConfig := config_v0.AwsEksKubernetesRuntimeInstanceConfig{}
 			if awsConfigPath != "" {
-				configContent, err := os.ReadFile(awsConfigPath)
+				configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if awsStdin {
+					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1062,10 +1114,13 @@ var CreateAwsEksKubernetesRuntimeInstanceCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read aws eks kubernetes runtime instance config
-		configContent, err := os.ReadFile(awsConfigPath)
+		configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 		if err != nil {
-			cli.Error("failed to read config file", err)
+			cli.Error("failed to read config", err)
 			os.Exit(1)
+		}
+		if awsStdin {
+			awsConfigPath = "."
 		}
 		// create aws eks kubernetes runtime instance based on version
 		switch awsVersion {
@@ -1101,7 +1156,10 @@ func init() {
 		&awsConfigPath,
 		"config", "c", "", "Path to file with aws eks kubernetes runtime instance config.",
 	)
-	CreateAwsEksKubernetesRuntimeInstanceCmd.MarkFlagRequired("config")
+	CreateAwsEksKubernetesRuntimeInstanceCmd.Flags().BoolVar(
+		&awsStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	CreateAwsEksKubernetesRuntimeInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
@@ -1125,10 +1183,13 @@ var ReplaceAwsEksKubernetesRuntimeInstanceCmd = &cobra.Command{
 		case "v0":
 			var awsEksKubernetesRuntimeInstanceConfig config_v0.AwsEksKubernetesRuntimeInstanceConfig
 			// load aws eks kubernetes runtime instance config
-			configContent, err := os.ReadFile(awsConfigPath)
+			configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 			if err != nil {
-				cli.Error("failed to read config file", err)
+				cli.Error("failed to read config", err)
 				os.Exit(1)
+			}
+			if awsStdin {
+				awsConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -1160,7 +1221,10 @@ func init() {
 		&awsConfigPath,
 		"config", "c", "", "Path to file with aws eks kubernetes runtime instance config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceAwsEksKubernetesRuntimeInstanceCmd.MarkFlagRequired("config")
+	ReplaceAwsEksKubernetesRuntimeInstanceCmd.Flags().BoolVar(
+		&awsStdin,
+		"stdin", false, "Read config from stdin instead of file.",
+	)
 	ReplaceAwsEksKubernetesRuntimeInstanceCmd.Flags().StringVarP(
 		&awsName,
 		"name", "n", "", "Name of existing aws eks kubernetes runtime instance to replace.  If the name in the aws eks kubernetes runtime instance config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
@@ -1200,10 +1264,13 @@ var DeleteAwsEksKubernetesRuntimeInstanceCmd = &cobra.Command{
 			var awsEksKubernetesRuntimeInstanceConfig config_v0.AwsEksKubernetesRuntimeInstanceConfig
 			if awsConfigPath != "" {
 				// load aws eks kubernetes runtime instance config
-				configContent, err := os.ReadFile(awsConfigPath)
+				configContent, err := cli.ReadConfigContent(awsConfigPath, awsStdin)
 				if err != nil {
-					cli.Error("failed to read config file", err)
+					cli.Error("failed to read config", err)
 					os.Exit(1)
+				}
+				if awsStdin {
+					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

@@ -499,6 +499,13 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 			// from DB
 			if result := h.DB.Delete(&workloadDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if this is a custom HTTP error with specific status code
+				var httpErr *util_v0.HttpError
+				if errors.As(result.Error, &httpErr) {
+					return apiserver_lib.ResponseStatusErr(
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+					)
+				}
 				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 			}
 		}
@@ -912,6 +919,13 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 	// delete object
 	if result := h.DB.Delete(&workloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -1404,6 +1418,13 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 			// from DB
 			if result := h.DB.Delete(&workloadInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if this is a custom HTTP error with specific status code
+				var httpErr *util_v0.HttpError
+				if errors.As(result.Error, &httpErr) {
+					return apiserver_lib.ResponseStatusErr(
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+					)
+				}
 				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 			}
 		}
@@ -1817,6 +1838,13 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 	// delete object
 	if result := h.DB.Delete(&workloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -2228,6 +2256,13 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 	// delete object
 	if result := h.DB.Delete(&workloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 

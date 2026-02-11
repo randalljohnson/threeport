@@ -10,71 +10,17 @@ import (
 )
 
 const (
-	ObjectTypeOciAccount                        string = "OciAccount"
 	ObjectTypeOciOkeKubernetesRuntimeDefinition string = "OciOkeKubernetesRuntimeDefinition"
 	ObjectTypeOciOkeKubernetesRuntimeInstance   string = "OciOkeKubernetesRuntimeInstance"
+	ObjectTypeOciProvider                       string = "OciProvider"
 
-	PathOciAccountVersions                        = "/oci-accounts/versions"
-	PathOciAccounts                               = "/v0/oci-accounts"
 	PathOciOkeKubernetesRuntimeDefinitionVersions = "/oci-oke-kubernetes-runtime-definitions/versions"
 	PathOciOkeKubernetesRuntimeDefinitions        = "/v0/oci-oke-kubernetes-runtime-definitions"
 	PathOciOkeKubernetesRuntimeInstanceVersions   = "/oci-oke-kubernetes-runtime-instances/versions"
 	PathOciOkeKubernetesRuntimeInstances          = "/v0/oci-oke-kubernetes-runtime-instances"
+	PathOciProviderVersions                       = "/oci-providers/versions"
+	PathOciProviders                              = "/v0/oci-providers"
 )
-
-// NotificationPayload returns the notification payload that is delivered to the
-// controller when a change is made.  It includes the object as presented by the
-// client when the change was made.
-func (oa *OciAccount) NotificationPayload(
-	operation notifications.NotificationOperation,
-	requeue bool,
-	creationTime int64,
-) (*[]byte, error) {
-	notif := notifications.Notification{
-		CreationTime:  &creationTime,
-		Object:        oa,
-		ObjectVersion: oa.GetVersion(),
-		Operation:     operation,
-	}
-
-	payload, err := json.Marshal(notif)
-	if err != nil {
-		return &payload, fmt.Errorf("failed to marshal notification payload %+v: %w", oa, err)
-	}
-
-	return &payload, nil
-}
-
-// DecodeNotifObject takes the threeport object in the form of a
-// map[string]interface and returns the typed object by marshalling into JSON
-// and then unmarshalling into the typed object.  We are not using the
-// mapstructure library here as that requires custom decode hooks to manage
-// fields with non-native go types.
-func (oa *OciAccount) DecodeNotifObject(object interface{}) error {
-	jsonObject, err := json.Marshal(object)
-	if err != nil {
-		return fmt.Errorf("failed to marshal object map from consumed notification message: %w", err)
-	}
-	if err := json.Unmarshal(jsonObject, &oa); err != nil {
-		return fmt.Errorf("failed to unmarshal json object to typed object: %w", err)
-	}
-	return nil
-}
-
-// GetId returns the unique ID for the object.
-func (oa *OciAccount) GetId() uint {
-	return *oa.ID
-}
-
-// Type returns the object type.
-func (oa *OciAccount) GetType() string {
-	return "OciAccount"
-}
-
-// Version returns the version of the API object.
-func (oa *OciAccount) GetVersion() string {
-	return "v0"
-}
 
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
@@ -188,4 +134,58 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ookri *OciOkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return ookri.DeletionScheduled
+}
+
+// NotificationPayload returns the notification payload that is delivered to the
+// controller when a change is made.  It includes the object as presented by the
+// client when the change was made.
+func (op *OciProvider) NotificationPayload(
+	operation notifications.NotificationOperation,
+	requeue bool,
+	creationTime int64,
+) (*[]byte, error) {
+	notif := notifications.Notification{
+		CreationTime:  &creationTime,
+		Object:        op,
+		ObjectVersion: op.GetVersion(),
+		Operation:     operation,
+	}
+
+	payload, err := json.Marshal(notif)
+	if err != nil {
+		return &payload, fmt.Errorf("failed to marshal notification payload %+v: %w", op, err)
+	}
+
+	return &payload, nil
+}
+
+// DecodeNotifObject takes the threeport object in the form of a
+// map[string]interface and returns the typed object by marshalling into JSON
+// and then unmarshalling into the typed object.  We are not using the
+// mapstructure library here as that requires custom decode hooks to manage
+// fields with non-native go types.
+func (op *OciProvider) DecodeNotifObject(object interface{}) error {
+	jsonObject, err := json.Marshal(object)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object map from consumed notification message: %w", err)
+	}
+	if err := json.Unmarshal(jsonObject, &op); err != nil {
+		return fmt.Errorf("failed to unmarshal json object to typed object: %w", err)
+	}
+	return nil
+}
+
+// GetId returns the unique ID for the object.
+func (op *OciProvider) GetId() uint {
+	return *op.ID
+}
+
+// Type returns the object type.
+func (op *OciProvider) GetType() string {
+	return "OciProvider"
+}
+
+// Version returns the version of the API object.
+func (op *OciProvider) GetVersion() string {
+	return "v0"
 }

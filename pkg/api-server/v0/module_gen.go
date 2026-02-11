@@ -419,50 +419,6 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		return fmt.Errorf("failed to register oci-controller: %w", result.Error)
 	}
 
-	// registering object OciAccount
-	object = api_v0.ModuleObject{
-		Description: util.Ptr("OciAccount is a user account with the Oracle Cloud Infrastructure service provider."),
-		ModuleApiID: moduleApi.ID,
-		Name:        util.Ptr("OciAccount"),
-		Version:     util.Ptr("v0"),
-	}
-	result = db.Where(api_v0.ModuleObject{
-		ModuleApiID: moduleApi.ID,
-		Name:        object.Name,
-		Version:     object.Version,
-	}).FirstOrCreate(&object)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register OciAccount: %w", result.Error)
-	}
-
-	// registering routes for OciAccount
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathOciAccountVersions),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register version route for OciAccount: %w", result.Error)
-	}
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathOciAccounts),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register object route for OciAccount: %w", result.Error)
-	}
-
 	// registering object OciOkeKubernetesRuntimeDefinition
 	object = api_v0.ModuleObject{
 		Description: util.Ptr("OciOkeKubernetesRuntimeDefinition provides the configuration for OKE cluster instances."),
@@ -550,6 +506,50 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	}).FirstOrCreate(&route)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register object route for OciOkeKubernetesRuntimeInstance: %w", result.Error)
+	}
+
+	// registering object OciProvider
+	object = api_v0.ModuleObject{
+		Description: util.Ptr("OciProvider is a provider account with the Oracle Cloud Infrastructure service provider."),
+		ModuleApiID: moduleApi.ID,
+		Name:        util.Ptr("OciProvider"),
+		Version:     util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register OciProvider: %w", result.Error)
+	}
+
+	// registering routes for OciProvider
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathOciProviderVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for OciProvider: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathOciProviders),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for OciProvider: %w", result.Error)
 	}
 
 	// /////////////////////////////////////////////////////////////////////////////

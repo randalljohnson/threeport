@@ -18,433 +18,6 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////////////
-// OciAccount
-///////////////////////////////////////////////////////////////////////////////
-
-// @Summary GetOciAccountVersions gets the supported versions for the oci account API.
-// @Description Get the supported API versions for oci accounts.
-// @ID ociAccount-get-versions
-// @Produce json
-// @Success 200 {object} apiserver_lib.ApiObjectVersions "OK"
-// @Router /oci-accounts/versions [GET]
-func (h Handler) GetOciAccountVersions(c echo.Context) error {
-	return c.JSON(http.StatusOK, apiserver_lib.ObjectVersions[string(api_v0.ObjectTypeOciAccount)])
-}
-
-// @Summary adds a new oci account.
-// @Description Add a new oci account to the Threeport database.
-// @ID add-v0-ociAccount
-// @Accept json
-// @Produce json
-// @Param ociAccount body api_v0.OciAccount true "OciAccount object"
-// @Success 201 {object} v0.Response "Created"
-// @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 500 {object} v0.Response "Internal Server Error"
-// @Router /v0/oci-accounts [POST]
-func (h Handler) AddOciAccount(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciAccount
-	var ociAccount api_v0.OciAccount
-
-	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
-	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, ociAccount); err != nil {
-		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	if err := c.Bind(&ociAccount); err != nil {
-		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	// check for missing required fields
-	if id, err := apiserver_lib.ValidateBoundData(c, ociAccount, objectType); err != nil {
-		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// check for duplicate names
-	var existingOciAccount api_v0.OciAccount
-	nameUsed := true
-	result := h.DB.Where("name = ?", ociAccount.Name).First(&existingOciAccount)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
-	}
-
-	// persist to DB
-	if result := h.DB.Create(&ociAccount); result.Error != nil {
-		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
-		// check if this is a custom HTTP error with specific status code
-		var httpErr *util_v0.HttpError
-		if errors.As(result.Error, &httpErr) {
-			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	response, err := apiserver_lib.CreateResponse(
-		apiserver_lib.SingleObjectMeta(),
-		ociAccount,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus201(c, *response)
-}
-
-// @Summary gets all oci accounts.
-// @Description Get all oci accounts from the Threeport database.
-// @ID get-v0-ociAccounts
-// @Accept json
-// @Produce json
-// @Param name query string false "oci account search by name"
-// @Success 200 {object} v0.Response "OK"
-// @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 500 {object} v0.Response "Internal Server Error"
-// @Router /v0/oci-accounts [GET]
-func (h Handler) GetOciAccounts(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciAccount
-
-	// get pagination parameters
-	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
-	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
-	}
-
-	// bind filter
-	var filter api_v0.OciAccount
-	if err := c.Bind(&filter); err != nil {
-		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-	}
-
-	pagination := new(apiserver_lib.Pagination)
-	pagination.Limit = pageParams.Limit
-
-	records := &[]api_v0.OciAccount{}
-	var returnedCount int64
-
-	switch {
-	case pageParams.QueryId == "":
-		// no query ID provided, so the client is not requesting a specific page of results
-		// count total number of objects
-		var totalCount int64
-		if result := h.DB.Model(&api_v0.OciAccount{}).Where(&filter).Count(&totalCount); result.Error != nil {
-			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-		}
-
-		// see if total count is greater than the limit
-		pagination.HasMore = totalCount > pagination.Limit
-
-		switch pagination.HasMore {
-		case false:
-			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
-				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-			}
-			returnedCount = int64(len(*records))
-		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
-			queryTable := filter.TableName()
-			viewName, qid, err := h.CreateMaterializedView(queryTable)
-			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
-			pagination.QueryId = qid
-
-			// fetch records from the new materialized view
-			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-			if err != nil {
-				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
-
-			// set the cursor for the next page of results
-			if len(*records) > 0 {
-				pagination.NextCursor = *(*records)[len(*records)-1].ID
-			} else {
-				pagination.NextCursor = 0
-			}
-		}
-	case pageParams.QueryId != "" && pageParams.Cursor == 0:
-		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
-	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
-		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// set the query ID for the next page of results
-		pagination.QueryId = pageParams.QueryId
-
-		// set the cursor for the next page of results
-		if len(*records) > 0 {
-			pagination.NextCursor = *(*records)[len(*records)-1].ID
-		} else {
-			pagination.NextCursor = 0
-		}
-
-		// see if we fetched the last of the records
-		pagination.HasMore = returnedCount >= pagination.Limit
-	}
-
-	// construct response
-	response, err := apiserver_lib.CreateResponse(
-		&apiserver_lib.Meta{
-			ObjectCount: returnedCount,
-			Pagination:  *pagination,
-		},
-		*records,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus200(c, *response)
-}
-
-// @Summary gets a oci account.
-// @Description Get a particular oci account from the database.
-// @ID get-v0-ociAccount
-// @Accept json
-// @Produce json
-// @Param id path int true "ID"
-// @Success 200 {object} v0.Response "OK"
-// @Failure 404 {object} v0.Response "Not Found"
-// @Failure 500 {object} v0.Response "Internal Server Error"
-// @Router /v0/oci-accounts/{id} [GET]
-func (h Handler) GetOciAccount(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciAccount
-	ociAccountID := c.Param("id")
-	var ociAccount api_v0.OciAccount
-	if result := h.DB.First(&ociAccount, ociAccountID); result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
-		}
-		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	response, err := apiserver_lib.CreateResponse(
-		apiserver_lib.SingleObjectMeta(),
-		ociAccount,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus200(c, *response)
-}
-
-// @Summary updates specific fields for an existing oci account.
-// @Description Update a oci account in the database.  Provide one or more fields to update.
-// @Description Note: This API endpint is for updating oci account objects only.
-// @Description Request bodies that include related objects will be accepted, however
-// @Description the related objects will not be changed.  Call the patch or put method for
-// @Description each particular existing object to change them.
-// @ID update-v0-ociAccount
-// @Accept json
-// @Produce json
-// @Param id path int true "ID"
-// @Param ociAccount body api_v0.OciAccount true "OciAccount object"
-// @Success 200 {object} v0.Response "OK"
-// @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 404 {object} v0.Response "Not Found"
-// @Failure 500 {object} v0.Response "Internal Server Error"
-// @Router /v0/oci-accounts/{id} [PATCH]
-func (h Handler) UpdateOciAccount(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciAccount
-	ociAccountID := c.Param("id")
-	var existingOciAccount api_v0.OciAccount
-	if result := h.DB.First(&existingOciAccount, ociAccountID); result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
-		}
-		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// check for empty payload, invalid or unsupported fields, optional associations, etc.
-	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingOciAccount); err != nil {
-		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// bind payload
-	var updatedOciAccount api_v0.OciAccount
-	if err := c.Bind(&updatedOciAccount); err != nil {
-		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	// update object in database
-	if result := h.DB.Model(&existingOciAccount).Updates(updatedOciAccount); result.Error != nil {
-		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	response, err := apiserver_lib.CreateResponse(
-		apiserver_lib.SingleObjectMeta(),
-		existingOciAccount,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus200(c, *response)
-}
-
-// @Summary updates an existing oci account by replacing the entire object.
-// @Description Replace a oci account in the database.  All required fields must be provided.
-// @Description If any optional fields are not provided, they will be null post-update.
-// @Description Note: This API endpint is for updating oci account objects only.
-// @Description Request bodies that include related objects will be accepted, however
-// @Description the related objects will not be changed.  Call the patch or put method for
-// @Description each particular existing object to change them.
-// @ID replace-v0-ociAccount
-// @Accept json
-// @Produce json
-// @Param id path int true "ID"
-// @Param ociAccount body api_v0.OciAccount true "OciAccount object"
-// @Success 200 {object} v0.Response "OK"
-// @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 404 {object} v0.Response "Not Found"
-// @Failure 500 {object} v0.Response "Internal Server Error"
-// @Router /v0/oci-accounts/{id} [PUT]
-func (h Handler) ReplaceOciAccount(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciAccount
-	ociAccountID := c.Param("id")
-	var existingOciAccount api_v0.OciAccount
-	if result := h.DB.First(&existingOciAccount, ociAccountID); result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
-		}
-		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// check for empty payload, invalid or unsupported fields, optional associations, etc.
-	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingOciAccount); err != nil {
-		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// bind payload
-	var updatedOciAccount api_v0.OciAccount
-	if err := c.Bind(&updatedOciAccount); err != nil {
-		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	// check for missing required fields
-	if id, err := apiserver_lib.ValidateBoundData(c, updatedOciAccount, objectType); err != nil {
-		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// persist provided data
-	updatedOciAccount.ID = existingOciAccount.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciAccount); result.Error != nil {
-		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// reload updated data from DB
-	if result := h.DB.First(&existingOciAccount, ociAccountID); result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
-		}
-		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	response, err := apiserver_lib.CreateResponse(
-		apiserver_lib.SingleObjectMeta(),
-		existingOciAccount,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus200(c, *response)
-}
-
-// @Summary deletes a oci account.
-// @Description Delete a oci account by ID from the database.
-// @ID delete-v0-ociAccount
-// @Accept json
-// @Produce json
-// @Param id path int true "ID"
-// @Success 200 {object} v0.Response "OK"
-// @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
-// @Failure 500 {object} v0.Response "Internal Server Error"
-// @Router /v0/oci-accounts/{id} [DELETE]
-func (h Handler) DeleteOciAccount(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciAccount
-	ociAccountID := c.Param("id")
-	var ociAccount api_v0.OciAccount
-	if result := h.DB.First(&ociAccount, ociAccountID); result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
-		}
-		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// delete object
-	if result := h.DB.Delete(&ociAccount); result.Error != nil {
-		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	response, err := apiserver_lib.CreateResponse(
-		apiserver_lib.SingleObjectMeta(),
-		ociAccount,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus200(c, *response)
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // OciOkeKubernetesRuntimeDefinition
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -861,6 +434,13 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	// delete object
 	if result := h.DB.Delete(&ociOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -1353,6 +933,13 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 			// from DB
 			if result := h.DB.Delete(&ociOkeKubernetesRuntimeInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if this is a custom HTTP error with specific status code
+				var httpErr *util_v0.HttpError
+				if errors.As(result.Error, &httpErr) {
+					return apiserver_lib.ResponseStatusErr(
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+					)
+				}
 				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 			}
 		}
@@ -1361,6 +948,440 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		ociOkeKubernetesRuntimeInstance,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// OciProvider
+///////////////////////////////////////////////////////////////////////////////
+
+// @Summary GetOciProviderVersions gets the supported versions for the oci provider API.
+// @Description Get the supported API versions for oci providers.
+// @ID ociProvider-get-versions
+// @Produce json
+// @Success 200 {object} apiserver_lib.ApiObjectVersions "OK"
+// @Router /oci-providers/versions [GET]
+func (h Handler) GetOciProviderVersions(c echo.Context) error {
+	return c.JSON(http.StatusOK, apiserver_lib.ObjectVersions[string(api_v0.ObjectTypeOciProvider)])
+}
+
+// @Summary adds a new oci provider.
+// @Description Add a new oci provider to the Threeport database.
+// @ID add-v0-ociProvider
+// @Accept json
+// @Produce json
+// @Param ociProvider body api_v0.OciProvider true "OciProvider object"
+// @Success 201 {object} v0.Response "Created"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/oci-providers [POST]
+func (h Handler) AddOciProvider(c echo.Context) error {
+	objectType := api_v0.ObjectTypeOciProvider
+	var ociProvider api_v0.OciProvider
+
+	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
+	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, ociProvider); err != nil {
+		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	if err := c.Bind(&ociProvider); err != nil {
+		h.Logger.Error("handler error: error binding object", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	// check for missing required fields
+	if id, err := apiserver_lib.ValidateBoundData(c, ociProvider, objectType); err != nil {
+		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingOciProvider api_v0.OciProvider
+	nameUsed := true
+	result := h.DB.Where("name = ?", ociProvider.Name).First(&existingOciProvider)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+	}
+
+	// persist to DB
+	if result := h.DB.Create(&ociProvider); result.Error != nil {
+		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		ociProvider,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus201(c, *response)
+}
+
+// @Summary gets all oci providers.
+// @Description Get all oci providers from the Threeport database.
+// @ID get-v0-ociProviders
+// @Accept json
+// @Produce json
+// @Param name query string false "oci provider search by name"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/oci-providers [GET]
+func (h Handler) GetOciProviders(c echo.Context) error {
+	objectType := api_v0.ObjectTypeOciProvider
+
+	// get pagination parameters
+	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
+	if err != nil {
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+	}
+
+	// bind filter
+	var filter api_v0.OciProvider
+	if err := c.Bind(&filter); err != nil {
+		h.Logger.Error("handler error: error binding filter", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+	}
+
+	pagination := new(apiserver_lib.Pagination)
+	pagination.Limit = pageParams.Limit
+
+	records := &[]api_v0.OciProvider{}
+	var returnedCount int64
+
+	switch {
+	case pageParams.QueryId == "":
+		// no query ID provided, so the client is not requesting a specific page of results
+		// count total number of objects
+		var totalCount int64
+		if result := h.DB.Model(&api_v0.OciProvider{}).Where(&filter).Count(&totalCount); result.Error != nil {
+			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+		}
+
+		// see if total count is greater than the limit
+		pagination.HasMore = totalCount > pagination.Limit
+
+		switch pagination.HasMore {
+		case false:
+			// if we don't have to paginate, return all records
+			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			}
+			returnedCount = int64(len(*records))
+		case true:
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
+			queryTable := filter.TableName()
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
+			if err != nil {
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
+
+			// set the cursor for the next page of results
+			if len(*records) > 0 {
+				pagination.NextCursor = *(*records)[len(*records)-1].ID
+			} else {
+				pagination.NextCursor = 0
+			}
+		}
+	case pageParams.QueryId != "" && pageParams.Cursor == 0:
+		// client provided a query ID but no cursor, so we cannot fetch the next page of results
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+	case pageParams.QueryId != "" && pageParams.Cursor != 0:
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		if err != nil {
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
+
+		// set the cursor for the next page of results
+		if len(*records) > 0 {
+			pagination.NextCursor = *(*records)[len(*records)-1].ID
+		} else {
+			pagination.NextCursor = 0
+		}
+
+		// see if we fetched the last of the records
+		pagination.HasMore = returnedCount >= pagination.Limit
+	}
+
+	// construct response
+	response, err := apiserver_lib.CreateResponse(
+		&apiserver_lib.Meta{
+			ObjectCount: returnedCount,
+			Pagination:  *pagination,
+		},
+		*records,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary gets a oci provider.
+// @Description Get a particular oci provider from the database.
+// @ID get-v0-ociProvider
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/oci-providers/{id} [GET]
+func (h Handler) GetOciProvider(c echo.Context) error {
+	objectType := api_v0.ObjectTypeOciProvider
+	ociProviderID := c.Param("id")
+	var ociProvider api_v0.OciProvider
+	if result := h.DB.First(&ociProvider, ociProviderID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		ociProvider,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary updates specific fields for an existing oci provider.
+// @Description Update a oci provider in the database.  Provide one or more fields to update.
+// @Description Note: This API endpint is for updating oci provider objects only.
+// @Description Request bodies that include related objects will be accepted, however
+// @Description the related objects will not be changed.  Call the patch or put method for
+// @Description each particular existing object to change them.
+// @ID update-v0-ociProvider
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Param ociProvider body api_v0.OciProvider true "OciProvider object"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/oci-providers/{id} [PATCH]
+func (h Handler) UpdateOciProvider(c echo.Context) error {
+	objectType := api_v0.ObjectTypeOciProvider
+	ociProviderID := c.Param("id")
+	var existingOciProvider api_v0.OciProvider
+	if result := h.DB.First(&existingOciProvider, ociProviderID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for empty payload, invalid or unsupported fields, optional associations, etc.
+	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingOciProvider); err != nil {
+		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// bind payload
+	var updatedOciProvider api_v0.OciProvider
+	if err := c.Bind(&updatedOciProvider); err != nil {
+		h.Logger.Error("handler error: error binding payload", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	// update object in database
+	if result := h.DB.Model(&existingOciProvider).Updates(updatedOciProvider); result.Error != nil {
+		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		existingOciProvider,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary updates an existing oci provider by replacing the entire object.
+// @Description Replace a oci provider in the database.  All required fields must be provided.
+// @Description If any optional fields are not provided, they will be null post-update.
+// @Description Note: This API endpint is for updating oci provider objects only.
+// @Description Request bodies that include related objects will be accepted, however
+// @Description the related objects will not be changed.  Call the patch or put method for
+// @Description each particular existing object to change them.
+// @ID replace-v0-ociProvider
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Param ociProvider body api_v0.OciProvider true "OciProvider object"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/oci-providers/{id} [PUT]
+func (h Handler) ReplaceOciProvider(c echo.Context) error {
+	objectType := api_v0.ObjectTypeOciProvider
+	ociProviderID := c.Param("id")
+	var existingOciProvider api_v0.OciProvider
+	if result := h.DB.First(&existingOciProvider, ociProviderID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for empty payload, invalid or unsupported fields, optional associations, etc.
+	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingOciProvider); err != nil {
+		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// bind payload
+	var updatedOciProvider api_v0.OciProvider
+	if err := c.Bind(&updatedOciProvider); err != nil {
+		h.Logger.Error("handler error: error binding payload", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	// check for missing required fields
+	if id, err := apiserver_lib.ValidateBoundData(c, updatedOciProvider, objectType); err != nil {
+		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// persist provided data
+	updatedOciProvider.ID = existingOciProvider.ID
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciProvider); result.Error != nil {
+		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// reload updated data from DB
+	if result := h.DB.First(&existingOciProvider, ociProviderID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		existingOciProvider,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary deletes a oci provider.
+// @Description Delete a oci provider by ID from the database.
+// @ID delete-v0-ociProvider
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/oci-providers/{id} [DELETE]
+func (h Handler) DeleteOciProvider(c echo.Context) error {
+	objectType := api_v0.ObjectTypeOciProvider
+	ociProviderID := c.Param("id")
+	var ociProvider api_v0.OciProvider
+	if result := h.DB.First(&ociProvider, ociProviderID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// delete object
+	if result := h.DB.Delete(&ociProvider); result.Error != nil {
+		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		ociProvider,
 		objectType,
 	)
 	if err != nil {

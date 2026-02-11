@@ -9,38 +9,6 @@ import (
 	"reflect"
 )
 
-// AddOciAccountVersions adds field validation info and adds it
-// to the REST API versions.
-func AddOciAccountVersions() {
-	apiserver_v0.OciAccountTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
-		Optional:             []string{},
-		OptionalAssociations: []string{},
-		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
-	}
-
-	// parse struct and populate the FieldsByTag object
-	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
-		reflect.ValueOf(new(api_v0.OciAccount)),
-		"",
-		apiserver_lib.Translate,
-		apiserver_v0.OciAccountTaggedFields,
-	)
-
-	// create a version object which contains the object name and versions
-	versionObj := apiserver_lib.VersionObject{
-		Object:  string(api_v0.ObjectTypeOciAccount),
-		Version: "v0",
-	}
-
-	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.OciAccountTaggedFields[apiserver_lib.TagNameValidate]
-
-	// add the object tagged fields to the rest API version
-	apiserver_lib.AddObjectVersion(versionObj)
-}
-
 // AddOciOkeKubernetesRuntimeDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddOciOkeKubernetesRuntimeDefinitionVersions() {
@@ -100,6 +68,38 @@ func AddOciOkeKubernetesRuntimeInstanceVersions() {
 
 	// add the object tagged fields to the global tagged fields map
 	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.OciOkeKubernetesRuntimeInstanceTaggedFields[apiserver_lib.TagNameValidate]
+
+	// add the object tagged fields to the rest API version
+	apiserver_lib.AddObjectVersion(versionObj)
+}
+
+// AddOciProviderVersions adds field validation info and adds it
+// to the REST API versions.
+func AddOciProviderVersions() {
+	apiserver_v0.OciProviderTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+		Optional:             []string{},
+		OptionalAssociations: []string{},
+		Required:             []string{},
+		TagName:              apiserver_lib.TagNameValidate,
+	}
+
+	// parse struct and populate the FieldsByTag object
+	apiserver_lib.ParseStruct(
+		apiserver_lib.TagNameValidate,
+		reflect.ValueOf(new(api_v0.OciProvider)),
+		"",
+		apiserver_lib.Translate,
+		apiserver_v0.OciProviderTaggedFields,
+	)
+
+	// create a version object which contains the object name and versions
+	versionObj := apiserver_lib.VersionObject{
+		Object:  string(api_v0.ObjectTypeOciProvider),
+		Version: "v0",
+	}
+
+	// add the object tagged fields to the global tagged fields map
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.OciProviderTaggedFields[apiserver_lib.TagNameValidate]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

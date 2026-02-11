@@ -8,18 +8,6 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// OciAccountRoutes sets up all routes for the OciAccount handlers.
-func OciAccountRoutes(e *echo.Echo, h *handlers.Handler) {
-	e.GET(v0.PathOciAccountVersions, h.GetOciAccountVersions)
-
-	e.POST(v0.PathOciAccounts, h.AddOciAccount)
-	e.GET(v0.PathOciAccounts, h.GetOciAccounts)
-	e.GET(v0.PathOciAccounts+"/:id", h.GetOciAccount)
-	e.PATCH(v0.PathOciAccounts+"/:id", h.UpdateOciAccount)
-	e.PUT(v0.PathOciAccounts+"/:id", h.ReplaceOciAccount)
-	e.DELETE(v0.PathOciAccounts+"/:id", h.DeleteOciAccount)
-}
-
 // OciOkeKubernetesRuntimeDefinitionRoutes sets up all routes for the OciOkeKubernetesRuntimeDefinition handlers.
 func OciOkeKubernetesRuntimeDefinitionRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.GET(v0.PathOciOkeKubernetesRuntimeDefinitionVersions, h.GetOciOkeKubernetesRuntimeDefinitionVersions)
@@ -42,4 +30,16 @@ func OciOkeKubernetesRuntimeInstanceRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.PATCH(v0.PathOciOkeKubernetesRuntimeInstances+"/:id", h.UpdateOciOkeKubernetesRuntimeInstance)
 	e.PUT(v0.PathOciOkeKubernetesRuntimeInstances+"/:id", h.ReplaceOciOkeKubernetesRuntimeInstance)
 	e.DELETE(v0.PathOciOkeKubernetesRuntimeInstances+"/:id", h.DeleteOciOkeKubernetesRuntimeInstance)
+}
+
+// OciProviderRoutes sets up all routes for the OciProvider handlers.
+func OciProviderRoutes(e *echo.Echo, h *handlers.Handler) {
+	e.GET(v0.PathOciProviderVersions, h.GetOciProviderVersions)
+
+	e.POST(v0.PathOciProviders, h.AddOciProvider)
+	e.GET(v0.PathOciProviders, h.GetOciProviders)
+	e.GET(v0.PathOciProviders+"/:id", h.GetOciProvider)
+	e.PATCH(v0.PathOciProviders+"/:id", h.UpdateOciProvider)
+	e.PUT(v0.PathOciProviders+"/:id", h.ReplaceOciProvider)
+	e.DELETE(v0.PathOciProviders+"/:id", h.DeleteOciProvider)
 }

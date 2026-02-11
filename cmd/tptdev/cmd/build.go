@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -229,7 +230,7 @@ func init() {
 	)
 	buildCmd.Flags().StringVar(
 		&arch,
-		"arch", "amd64", "Which architecture to build images for. Defaults to x86. Options are amd64 and arm64.",
+		"arch", runtime.GOARCH, "Which architecture to build images for. Defaults to the current machine's architecture.",
 	)
 	buildCmd.Flags().IntVar(
 		&parallel,

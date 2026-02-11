@@ -289,6 +289,9 @@ func v0ControlPlaneInstanceCreated(
 			return 0, fmt.Errorf("failed to update resource manager role: %w", err)
 		}
 
+	case v0.KubernetesRuntimeInfraProviderOKE:
+		// OCI OKE does not require provider-specific setup during control plane creation.
+		// OCI credentials are stored in OciProvider and used directly by the OCI controller.
 	}
 
 	// Determine auth enabled and create config if needed
@@ -583,6 +586,59 @@ func v0ControlPlaneInstanceCreated(
 			return 0, fmt.Errorf("failed to create AwsEksKubernetesRuntimeInstance: %w", err)
 		}
 
+	case v0.KubernetesRuntimeInfraProviderOKE:
+		// get OCI OKE runtime definition and instance
+		ociRuntimeDef, err := client.GetOciOkeKubernetesRuntimeDefinitionByK8sRuntimeDef(
+			r.APIClient, r.APIServer, *kubernetesRuntimeDefinition.ID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get OciOkeKubernetesRuntimeDefinition: %w", err)
+		}
+
+		ociRuntimeInstance, err := client.GetOciOkeKubernetesRuntimeInstanceByK8sRuntimeInst(
+			r.APIClient, r.APIServer, *kubernetesRuntimeInstance.ID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get OciOkeKubernetesRuntimeInstance: %w", err)
+		}
+
+		ociProvider, err := client.GetOciProviderByID(
+			r.APIClient, r.APIServer, *ociRuntimeInstance.OciProviderID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get OciProvider: %w", err)
+		}
+
+		// decrypt private key
+		ociProvider.Common = v0.Common{}
+		if ociProvider.PrivateKey != nil && *ociProvider.PrivateKey != "" {
+			decryptedKey, err := encryption.Decrypt(r.EncryptionKey, *ociProvider.PrivateKey)
+			if err != nil {
+				return 0, fmt.Errorf("failed to decrypt OCI provider private key: %w", err)
+			}
+			ociProvider.PrivateKey = &decryptedKey
+		}
+
+		// create OCI provider in child control plane
+		createdOciProvider, err := client.CreateOciProvider(newApiClient, threeportAPIEndpoint, ociProvider)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create OciProvider: %w", err)
+		}
+
+		// create OCI runtime definition in child control plane
+		ociRuntimeDef.Common = v0.Common{}
+		createdOciRuntimeDef, err := client.CreateOciOkeKubernetesRuntimeDefinition(
+			newApiClient, threeportAPIEndpoint, ociRuntimeDef)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create OciOkeKubernetesRuntimeDefinition: %w", err)
+		}
+
+		// create OCI runtime instance in child control plane
+		ociRuntimeInstance.Common = v0.Common{}
+		ociRuntimeInstance.OciProviderID = createdOciProvider.ID
+		ociRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID = createdOciRuntimeDef.ID
+		_, err = client.CreateOciOkeKubernetesRuntimeInstance(
+			newApiClient, threeportAPIEndpoint, ociRuntimeInstance)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create OciOkeKubernetesRuntimeInstance: %w", err)
+		}
 	}
 
 	// onboard control plane definition and instance to new control plane
@@ -774,6 +830,9 @@ func v0ControlPlaneInstanceDeleted(
 		if err != nil {
 			return 0, fmt.Errorf("failed to delete threeport AWS IAM resources: %w", err)
 		}
+	case v0.KubernetesRuntimeInfraProviderOKE:
+		// OCI OKE does not create provider-specific IAM resources during control plane creation,
+		// so no cleanup is needed during deletion.
 	}
 
 	return 0, nil

@@ -82,10 +82,35 @@ type KubernetesRuntimeInfraOKE struct {
 }
 
 // Create installs a Kubernetes cluster using Oracle Cloud OKE for threeport workloads.
+// It creates IAM resources and then provisions infrastructure.
 func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
-	// create OCI user and credentials for this threeport instance
-	if err := i.createOCIUserAndCredentials(); err != nil {
-		return nil, fmt.Errorf("failed to create OCI user and credentials: %w", err)
+	// create OCI IAM resources (user, group, policy, API key)
+	if err := i.CreateIAM(); err != nil {
+		return nil, fmt.Errorf("failed to create OCI IAM resources: %w", err)
+	}
+
+	return i.CreateInfra()
+}
+
+// CreateInfra creates the compartment and provisions OKE cluster infrastructure via Pulumi.
+// It does not create IAM resources — call CreateIAM() first for the bootstrap path,
+// or set ServiceUserOCID/Fingerprint/PrivateKeyPEM directly for the controller path.
+func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, error) {
+	// create compartment for resource isolation
+	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(i.ConfigProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create identity client: %w", err)
+	}
+
+	// get home region for compartment creation (compartments must be created in home region)
+	homeRegion, err := i.getHomeRegion(identityClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home region: %w", err)
+	}
+	identityClient.SetRegion(homeRegion)
+
+	if err := i.createOCICompartment(identityClient); err != nil {
+		return nil, fmt.Errorf("failed to create compartment: %w", err)
 	}
 
 	// set up Pulumi workspace and get stack
@@ -1171,8 +1196,7 @@ func (i *KubernetesRuntimeInfraOKE) getStackName() string {
 	return i.RuntimeInstanceName
 }
 
-// createOCIUserAndCredentials creates a new compartment and sets up complete OCI user/group
-// infrastructure for the threeport instance using the OCI SDK directly.
+// CreateIAM creates OCI IAM resources (user, group, policy, API key) for the threeport instance.
 //
 // This function uses the OCI SDK (not Pulumi) for identity resource creation because OCI identity
 // resources (users, groups, policies, API keys) have propagation delays across OCI's distributed
@@ -1186,7 +1210,7 @@ func (i *KubernetesRuntimeInfraOKE) getStackName() string {
 // with authentication errors because the service user credentials would not yet be available
 // in all required OCI services. The SDK approach ensures the service user is fully operational
 // before Pulumi begins deploying VCN, OKE cluster, and other infrastructure resources.
-func (i *KubernetesRuntimeInfraOKE) createOCIUserAndCredentials() error {
+func (i *KubernetesRuntimeInfraOKE) CreateIAM() error {
 	fmt.Printf("Creating OCI user and credentials using SDK\n")
 
 	// create a new identity client
@@ -1195,7 +1219,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCIUserAndCredentials() error {
 		return fmt.Errorf("failed to create identity client: %w", err)
 	}
 
-	// get the home region for IAM operations (compartments, users, policies must be created in home region)
+	// get the home region for IAM operations (users, policies must be created in home region)
 	homeRegion, err := i.getHomeRegion(identityClient)
 	if err != nil {
 		return fmt.Errorf("failed to get home region: %w", err)
@@ -1203,11 +1227,6 @@ func (i *KubernetesRuntimeInfraOKE) createOCIUserAndCredentials() error {
 
 	// set the region for the identity client to home region for IAM operations
 	identityClient.SetRegion(homeRegion)
-
-	// create compartment first
-	if err := i.createOCICompartment(identityClient); err != nil {
-		return fmt.Errorf("failed to create compartment: %w", err)
-	}
 
 	// create service user
 	if err := i.createOCIServiceUser(identityClient); err != nil {
@@ -1265,6 +1284,59 @@ func (i *KubernetesRuntimeInfraOKE) DeletePulumiStackState() error {
 		return nil // directory doesn't exist, nothing to delete
 	}
 	return os.RemoveAll(stateDir)
+}
+
+// GetStateFilePath returns the path to the Pulumi state JSON file on disk.
+func (i *KubernetesRuntimeInfraOKE) GetStateFilePath() (string, error) {
+	if err := i.setStateDir(); err != nil {
+		return "", fmt.Errorf("failed to set state directory: %w", err)
+	}
+
+	return filepath.Join(
+		i.stateDir,
+		".pulumi", "stacks", "oke",
+		i.RuntimeInstanceName+".json",
+	), nil
+}
+
+// ReadStateFile reads the current Pulumi state directly from disk.
+// Returns nil (not error) if the file doesn't exist yet.
+func (i *KubernetesRuntimeInfraOKE) ReadStateFile() (*datatypes.JSON, error) {
+	stateFilePath, err := i.GetStateFilePath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get state file path: %w", err)
+	}
+
+	// return nil if file doesn't exist yet (Pulumi hasn't written it)
+	if _, err := os.Stat(stateFilePath); os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	stateBytes, err := os.ReadFile(stateFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read state file: %w", err)
+	}
+
+	state := datatypes.JSON(stateBytes)
+	return &state, nil
+}
+
+// DeleteCompartment deletes only the OCI compartment for this instance.
+// Use this for the controller path where no IAM resources were created.
+func (i *KubernetesRuntimeInfraOKE) DeleteCompartment() error {
+	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(i.ConfigProvider)
+	if err != nil {
+		return fmt.Errorf("failed to create identity client: %w", err)
+	}
+
+	// get home region for compartment deletion
+	homeRegion, err := i.getHomeRegion(identityClient)
+	if err != nil {
+		return fmt.Errorf("failed to get home region: %w", err)
+	}
+	identityClient.SetRegion(homeRegion)
+
+	return i.deleteOCICompartment(identityClient)
 }
 
 // DeleteOCIResources deletes all OCI resources created for this instance.

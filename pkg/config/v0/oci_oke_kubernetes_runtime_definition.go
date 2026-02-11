@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -24,6 +25,7 @@ type OciOkeKubernetesRuntimeDefinitionConfig struct {
 // the OciOkeKubernetesRuntimeDefinition API object.
 type OciOkeKubernetesRuntimeDefinitionValues struct {
 	Name                   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	OciProviderName        *string `json:"OciProviderName,omitempty" yaml:"OciProviderName,omitempty"`
 	WorkerNodeShape        *string `json:"WorkerNodeShape,omitempty" yaml:"WorkerNodeShape,omitempty"`
 	WorkerNodeInitialCount *int    `json:"WorkerNodeInitialCount,omitempty" yaml:"WorkerNodeInitialCount,omitempty"`
 	Age                    *string `json:"Age,omitempty" yaml:"Age,omitempty"`
@@ -90,6 +92,31 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for oci oke kubernetes runtime definition with name %s: %w", *ociOkeKubernetesRuntimeDefinitionValues.Name, err)
 	}
 
+	// look up OCI provider by name
+	ociProvider, err := client_v0.GetOciProviderByName(apiClient, apiEndpoint, *ociOkeKubernetesRuntimeDefinitionValues.OciProviderName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find OCI provider with name %s: %w", *ociOkeKubernetesRuntimeDefinitionValues.OciProviderName, err)
+	}
+
+	// construct kubernetes runtime definition
+	infraProvider := api_v0.KubernetesRuntimeInfraProviderOKE
+	kubernetesRuntimeDefinition := api_v0.KubernetesRuntimeDefinition{
+		Definition: api_v0.Definition{
+			Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
+		},
+		Reconciliation: api_v0.Reconciliation{
+			Reconciled: util.Ptr(true),
+		},
+		InfraProvider:            &infraProvider,
+		InfraProviderAccountName: ociProvider.Name,
+	}
+
+	// create kubernetes runtime definition
+	createdKubernetesRuntimeDefinition, err := client_v0.CreateKubernetesRuntimeDefinition(apiClient, apiEndpoint, &kubernetesRuntimeDefinition)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new kubernetes runtime definition for OCI OKE definition: %w", err)
+	}
+
 	// construct oci oke kubernetes runtime definition object
 	ociOkeKubernetesRuntimeDefinition := api_v0.OciOkeKubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
@@ -103,6 +130,7 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Create(
 			}
 			return nil
 		}(),
+		KubernetesRuntimeDefinitionID: createdKubernetesRuntimeDefinition.ID,
 	}
 
 	// create oci oke kubernetes runtime definition
@@ -119,6 +147,7 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Create(
 	createdOciOkeKubernetesRuntimeDefinitionConfig := &OciOkeKubernetesRuntimeDefinitionConfig{
 		OciOkeKubernetesRuntimeDefinition: OciOkeKubernetesRuntimeDefinitionValues{
 			Name:            createdOciOkeKubernetesRuntimeDefinition.Name,
+			OciProviderName: ociOkeKubernetesRuntimeDefinitionValues.OciProviderName,
 			WorkerNodeShape: createdOciOkeKubernetesRuntimeDefinition.WorkerNodeShape,
 			WorkerNodeInitialCount: func() *int {
 				if createdOciOkeKubernetesRuntimeDefinition.WorkerNodeInitialCount != nil {
@@ -222,6 +251,16 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Delete(
 		return nil, fmt.Errorf("failed to find oci oke kubernetes runtime definition with name %s: %w", *ociOkeKubernetesRuntimeDefinitionValues.Name, err)
 	}
 
+	// delete associated kubernetes runtime definition
+	_, err = client_v0.DeleteKubernetesRuntimeDefinition(
+		apiClient,
+		apiEndpoint,
+		*ociOkeKubernetesRuntimeDefinition.KubernetesRuntimeDefinitionID,
+	)
+	if err != nil && !errors.Is(err, client_lib.ErrObjectNotFound) {
+		return nil, fmt.Errorf("failed to delete associated kubernetes runtime definition: %w", err)
+	}
+
 	// delete oci oke kubernetes runtime definition
 	deletedOciOkeKubernetesRuntimeDefinition, err := client_v0.DeleteOciOkeKubernetesRuntimeDefinition(
 		apiClient,
@@ -250,6 +289,11 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Validate() error {
 	// ensure name is set
 	if ociOkeKubernetesRuntimeDefinitionValues.Name == nil {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
+	}
+
+	// ensure oci provider name is set
+	if ociOkeKubernetesRuntimeDefinitionValues.OciProviderName == nil {
+		multiError.AppendError(errors.New("missing required field in config: OciProviderName"))
 	}
 
 	// ensure WorkerNodeShape is set

@@ -148,10 +148,13 @@ func BuildGoBinary(threeportPath, arch string, component *v0.ControlPlaneCompone
 // DockerBuildxImage builds a specified docker image
 // with the 'docker buildx' command.
 func DockerBuildxImage(threeportPath, dockerFilePath, tag, arch string, component *v0.ControlPlaneComponent) error {
-	// set target for terraform controller
+	// set target for controllers that need extra tooling
 	buildTarget := "dev"
 	if component.Name == threeport.ThreeportTerraformControllerName {
 		buildTarget = "dev-terraform"
+	}
+	if component.Name == threeport.ThreeportOciControllerName {
+		buildTarget = "dev-oci"
 	}
 
 	// construct build arguments

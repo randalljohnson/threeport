@@ -74,7 +74,7 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 				return 0, fmt.Errorf("failed to retrieve cluster definition by ID: %w", err)
 			}
 
-			infraOKE, err := buildOkeInfra(r, latestInstance, ociOkeKubernetesRuntimeDefinition)
+			infraOKE, err := buildOkeInfra(r, latestInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
 			if err != nil {
 				return 0, fmt.Errorf("failed to build OKE infra object: %w", err)
 			}
@@ -172,7 +172,7 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 	}
 
 	// build the infra object
-	infraOKE, err := buildOkeInfra(r, ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeDefinition)
+	infraOKE, err := buildOkeInfra(r, ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
 	if err != nil {
 		return 0, fmt.Errorf("failed to build OKE infra object: %w", err)
 	}
@@ -243,7 +243,7 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 				return 0, fmt.Errorf("failed to retrieve cluster definition for deletion cleanup: %w", err)
 			}
 
-			infraOKE, err := buildOkeInfra(r, latestInstance, ociOkeKubernetesRuntimeDefinition)
+			infraOKE, err := buildOkeInfra(r, latestInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
 			if err != nil {
 				return 0, fmt.Errorf("failed to build OKE infra object for deletion cleanup: %w", err)
 			}
@@ -308,7 +308,7 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 	}
 
 	// build infra object
-	infraOKE, err := buildOkeInfra(r, ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeDefinition)
+	infraOKE, err := buildOkeInfra(r, ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
 	if err != nil {
 		return 0, fmt.Errorf("failed to build OKE infra object for deletion: %w", err)
 	}
@@ -331,50 +331,52 @@ func buildOkeInfra(
 	r *controller.Reconciler,
 	instance *v0.OciOkeKubernetesRuntimeInstance,
 	definition *v0.OciOkeKubernetesRuntimeDefinition,
+	log *logr.Logger,
 ) (*provider.KubernetesRuntimeInfraOKE, error) {
-	// get OCI account
-	ociAccount, err := client.GetOciAccountByID(
+	// get OCI provider
+	ociProvider, err := client.GetOciProviderByID(
 		r.APIClient,
 		r.APIServer,
-		*definition.OciAccountID,
+		*instance.OciProviderID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve OCI account by ID: %w", err)
+		return nil, fmt.Errorf("failed to retrieve OCI provider by ID: %w", err)
 	}
 
 	// decrypt private key
-	decryptedPrivateKey, err := encryption.Decrypt(r.EncryptionKey, *ociAccount.PrivateKey)
+	decryptedPrivateKey, err := encryption.Decrypt(r.EncryptionKey, *ociProvider.PrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt OCI account private key: %w", err)
+		return nil, fmt.Errorf("failed to decrypt OCI provider private key: %w", err)
 	}
 
-	// construct OCI config provider from account credentials
+	// construct OCI config provider from provider credentials
 	configProvider := common.NewRawConfigurationProvider(
-		*ociAccount.TenancyOCID,
-		*ociAccount.UserOCID,
-		*ociAccount.DefaultRegion,
-		*ociAccount.KeyFingerprint,
+		*ociProvider.CompartmentOCID,
+		*ociProvider.UserOCID,
+		*ociProvider.DefaultRegion,
+		*ociProvider.KeyFingerprint,
 		decryptedPrivateKey,
 		nil,
 	)
 
-	// use instance region if set, otherwise fall back to account default region
-	region := *ociAccount.DefaultRegion
+	// use instance region if set, otherwise fall back to provider default region
+	region := *ociProvider.DefaultRegion
 	if instance.Region != nil && *instance.Region != "" {
 		region = *instance.Region
 	}
 
 	infraOKE := &provider.KubernetesRuntimeInfraOKE{
-		RuntimeInstanceName:   *instance.Name,
-		Region:                region,
-		TenancyOCID:           *ociAccount.TenancyOCID,
-		ConfigProvider:        configProvider,
-		WorkerNodeShape:       *definition.WorkerNodeShape,
+		RuntimeInstanceName:    *instance.Name,
+		Region:                 region,
+		TenancyOCID:            *ociProvider.CompartmentOCID,
+		ConfigProvider:         configProvider,
+		WorkerNodeShape:        *definition.WorkerNodeShape,
 		WorkerNodeInitialCount: *definition.WorkerNodeInitialCount,
-		Version:               provider.DefaultOKEKubernetesVersion,
-		ServiceUserOCID:       *ociAccount.UserOCID,
-		Fingerprint:           *ociAccount.KeyFingerprint,
-		PrivateKeyPEM:         decryptedPrivateKey,
+		Version:                provider.DefaultOKEKubernetesVersion,
+		ServiceUserOCID:        *ociProvider.UserOCID,
+		Fingerprint:            *ociProvider.KeyFingerprint,
+		PrivateKeyPEM:          decryptedPrivateKey,
+		Logger:                 log,
 	}
 
 	return infraOKE, nil

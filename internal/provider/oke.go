@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	ocicontainerengine "github.com/oracle/oci-go-sdk/v65/containerengine"
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
@@ -18,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi-oci/sdk/v3/go/oci/containerengine"
 	"github.com/pulumi/pulumi-oci/sdk/v3/go/oci/core"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -79,6 +81,11 @@ type KubernetesRuntimeInfraOKE struct {
 	PrivateKeyPEM   string
 	PublicKeyPEM    string
 	Fingerprint     string
+
+	// Logger enables structured logging for Pulumi operations.
+	// When nil, ProgressStreams(os.Stdout) is used (CLI path).
+	// When set, EventStreams is used with structured logr output (controller path).
+	Logger *logr.Logger
 }
 
 // Create installs a Kubernetes cluster using Oracle Cloud OKE for threeport workloads.
@@ -599,7 +606,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 	ctx := context.Background()
 
 	// deploy the stack
-	_, err = stack.Up(ctx, optup.ProgressStreams(os.Stdout))
+	_, err = i.runPulumiUp(ctx, stack)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy stack: %w", err)
 	}
@@ -621,7 +628,7 @@ func (i *KubernetesRuntimeInfraOKE) Delete() error {
 	ctx := context.Background()
 
 	// destroy the stack
-	_, err = stack.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout))
+	_, err = i.runPulumiDestroy(ctx, stack)
 	if err != nil {
 		return fmt.Errorf("failed to destroy stack: %w", err)
 	}
@@ -632,6 +639,90 @@ func (i *KubernetesRuntimeInfraOKE) Delete() error {
 	}
 
 	return nil
+}
+
+// runPulumiUp runs Pulumi stack.Up with either structured logging or progress streams.
+func (i *KubernetesRuntimeInfraOKE) runPulumiUp(ctx context.Context, stack auto.Stack) (auto.UpResult, error) {
+	if i.Logger == nil {
+		return stack.Up(ctx, optup.ProgressStreams(os.Stdout))
+	}
+
+	eventsChan := make(chan events.EngineEvent)
+	go i.logPulumiEvents(eventsChan, "up")
+	return stack.Up(ctx, optup.EventStreams(eventsChan))
+}
+
+// runPulumiDestroy runs Pulumi stack.Destroy with either structured logging or progress streams.
+func (i *KubernetesRuntimeInfraOKE) runPulumiDestroy(ctx context.Context, stack auto.Stack) (auto.DestroyResult, error) {
+	if i.Logger == nil {
+		return stack.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout))
+	}
+
+	eventsChan := make(chan events.EngineEvent)
+	go i.logPulumiEvents(eventsChan, "destroy")
+	return stack.Destroy(ctx, optdestroy.EventStreams(eventsChan))
+}
+
+// logPulumiEvents consumes Pulumi engine events and logs them via structured logging.
+func (i *KubernetesRuntimeInfraOKE) logPulumiEvents(eventsChan <-chan events.EngineEvent, operation string) {
+	logger := i.Logger.WithValues(
+		"component", "pulumi",
+		"pulumiOperation", operation,
+		"runtimeInstance", i.RuntimeInstanceName,
+	)
+
+	seq := 0
+	for event := range eventsChan {
+		seq++
+		i.logPulumiEvent(logger, event, seq)
+	}
+}
+
+// logPulumiEvent logs a single Pulumi engine event.
+func (i *KubernetesRuntimeInfraOKE) logPulumiEvent(logger logr.Logger, event events.EngineEvent, seq int) {
+	switch {
+	case event.DiagnosticEvent != nil:
+		e := event.DiagnosticEvent
+		if e.Severity == "error" {
+			logger.Info("pulumi diagnostic",
+				"sequence", seq,
+				"severity", e.Severity,
+				"message", e.Message,
+				"urn", e.URN,
+			)
+		}
+	case event.ResourcePreEvent != nil:
+		e := event.ResourcePreEvent
+		logger.Info("pulumi resource operation starting",
+			"sequence", seq,
+			"resourceType", e.Metadata.Type,
+			"op", string(e.Metadata.Op),
+			"urn", string(e.Metadata.URN),
+		)
+	case event.ResOutputsEvent != nil:
+		e := event.ResOutputsEvent
+		logger.Info("pulumi resource operation complete",
+			"sequence", seq,
+			"resourceType", e.Metadata.Type,
+			"op", string(e.Metadata.Op),
+			"urn", string(e.Metadata.URN),
+		)
+	case event.ResOpFailedEvent != nil:
+		e := event.ResOpFailedEvent
+		logger.Info("pulumi resource operation failed",
+			"sequence", seq,
+			"resourceType", e.Metadata.Type,
+			"op", string(e.Metadata.Op),
+			"urn", string(e.Metadata.URN),
+		)
+	case event.SummaryEvent != nil:
+		e := event.SummaryEvent
+		logger.Info("pulumi operation summary",
+			"sequence", seq,
+			"durationSeconds", e.DurationSeconds,
+			"resourceChanges", e.ResourceChanges,
+		)
+	}
 }
 
 // GetClusterOCID gets the OCID of the OKE cluster.

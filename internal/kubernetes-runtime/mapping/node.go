@@ -245,6 +245,8 @@ func GetMachineType(provider, nodeProfile, nodeSize string) (string, error) {
 				switch provider {
 				case "aws":
 					return m.AwsMachineType, nil
+				case "oci":
+					return m.OciMachineType, nil
 				default:
 					msg := fmt.Sprintf("provider %s not supported", provider)
 					return "", &ProviderError{Message: msg}

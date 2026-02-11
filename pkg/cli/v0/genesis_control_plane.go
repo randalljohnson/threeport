@@ -447,10 +447,21 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			ClientKey:  util.Base64Encode(clientPrivateKey),
 		}
 
-		// update threeport config with auth info
+		// update threeport config with auth info, replacing any existing
+		// credential with the same name to avoid stale certs
 		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *ControlPlane) {
 			c.AuthEnabled = true
-			c.Credentials = append(c.Credentials, *clientCredentials)
+			replaced := false
+			for i, cred := range c.Credentials {
+				if cred.Name == clientCredentials.Name {
+					c.Credentials[i] = *clientCredentials
+					replaced = true
+					break
+				}
+			}
+			if !replaced {
+				c.Credentials = append(c.Credentials, *clientCredentials)
+			}
 			c.CACert = authConfig.CABase64Encoded
 		}); err != nil {
 			return uninstaller.cleanOnCreateError("failed to update threeport config", err)
@@ -567,32 +578,36 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	}
 	Info("Threeport API is running")
 
-	// install the controllers
+	// collect all control plane component resources for batch application
+	cpi.EnableResourceCollection()
+
 	if err := cpi.InstallThreeportControllers(
 		dynamicKubeClient,
 		mapper,
 		authConfig,
 	); err != nil {
-		return uninstaller.cleanOnCreateError("failed to install threeport controllers", err)
+		return uninstaller.cleanOnCreateError("failed to prepare threeport controllers", err)
 	}
 
-	err = cpi.Opts.PostInstallFunction(kubernetesRuntimeInstance, cpi)
-	if err != nil {
+	if err = cpi.Opts.PostInstallFunction(kubernetesRuntimeInstance, cpi); err != nil {
 		return uninstaller.cleanOnCreateError("failed to run custom postInstall function", err)
 	}
 
-	// install the agent
 	if err := cpi.InstallThreeportAgent(
 		dynamicKubeClient,
 		mapper,
 		authConfig,
 	); err != nil {
-		return uninstaller.cleanOnCreateError("failed to install threeport agent", err)
+		return uninstaller.cleanOnCreateError("failed to prepare threeport agent", err)
 	}
 
-	// install support services CRDs
-	err = threeport.InstallThreeportCRDs(dynamicKubeClient, mapper)
-	if err != nil {
+	// apply all collected resources at once
+	if err := cpi.ApplyCollectedResources(dynamicKubeClient, mapper); err != nil {
+		return uninstaller.cleanOnCreateError("failed to install control plane components", err)
+	}
+
+	// install support services CRDs separately (package-level function)
+	if err = threeport.InstallThreeportCRDs(dynamicKubeClient, mapper); err != nil {
 		return uninstaller.cleanOnCreateError("failed to install threeport support services CRDs", err)
 	}
 

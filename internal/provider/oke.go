@@ -722,6 +722,20 @@ func (i *KubernetesRuntimeInfraOKE) logPulumiEvent(logger logr.Logger, event eve
 			"durationSeconds", e.DurationSeconds,
 			"resourceChanges", e.ResourceChanges,
 		)
+	case event.PreludeEvent != nil:
+		e := event.PreludeEvent
+		logger.Info("pulumi operation starting",
+			"sequence", seq,
+			"config", e.Config,
+		)
+	case event.CancelEvent != nil:
+		logger.Info("pulumi operation cancelled", "sequence", seq)
+	case event.StdoutEvent != nil:
+		e := event.StdoutEvent
+		logger.V(1).Info("pulumi stdout",
+			"sequence", seq,
+			"message", e.Message,
+		)
 	}
 }
 

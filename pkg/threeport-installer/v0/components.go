@@ -89,48 +89,54 @@ func (cpi *ControlPlaneInstaller) UpdateThreeportAPIDeployment(
 
 	dbMigratorArgs := []interface{}{"-env-file=/etc/threeport/env", "up"}
 
-	// secret for 'root' user credentials to database - used for database
-	// initialization
-	var dbRootCertsSecret = &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "v1",
-			"kind":       "Secret",
-			"metadata": map[string]interface{}{
-				"name":      dbRootCertSecretName,
-				"namespace": cpi.Opts.Namespace,
+	// skip overwriting DB cert secrets when updating an existing deployment
+	// (e.g. debug mode) — the existing secrets were generated with the
+	// original CA that CRDB's node certs are signed by, and regenerating
+	// them would break TLS verification
+	if !cpi.Opts.CreateOrUpdateKubeResources {
+		// secret for 'root' user credentials to database - used for database
+		// initialization
+		var dbRootCertsSecret = &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"metadata": map[string]interface{}{
+					"name":      dbRootCertSecretName,
+					"namespace": cpi.Opts.Namespace,
+				},
+				"stringData": map[string]interface{}{
+					"ca.crt":          dbCreds.AuthConfig.CAPemEncoded,
+					"client.root.crt": dbCreds.RootCert,
+					"client.root.key": dbCreds.RootKey,
+				},
 			},
-			"stringData": map[string]interface{}{
-				"ca.crt":          dbCreds.AuthConfig.CAPemEncoded,
-				"client.root.crt": dbCreds.RootCert,
-				"client.root.key": dbCreds.RootKey,
-			},
-		},
-	}
+		}
 
-	if err := cpi.CreateOrUpdateKubeResource(dbRootCertsSecret, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create DB root user certs secret: %w", err)
-	}
+		if err := cpi.CreateOrUpdateKubeResource(dbRootCertsSecret, kubeClient, mapper); err != nil {
+			return fmt.Errorf("failed to create DB root user certs secret: %w", err)
+		}
 
-	// secret for 'threeport' user credentials to database - used by threeport
-	// API for DB connectectivity
-	var dbThreeportCertsSecret = &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "v1",
-			"kind":       "Secret",
-			"metadata": map[string]interface{}{
-				"name":      dbThreeportCertSecretName,
-				"namespace": cpi.Opts.Namespace,
+		// secret for 'threeport' user credentials to database - used by threeport
+		// API for DB connectectivity
+		var dbThreeportCertsSecret = &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"metadata": map[string]interface{}{
+					"name":      dbThreeportCertSecretName,
+					"namespace": cpi.Opts.Namespace,
+				},
+				"stringData": map[string]interface{}{
+					"ca.crt":               dbCreds.AuthConfig.CAPemEncoded,
+					"client.threeport.crt": dbCreds.ThreeportCert,
+					"client.threeport.key": dbCreds.ThreeportKey,
+				},
 			},
-			"stringData": map[string]interface{}{
-				"ca.crt":               dbCreds.AuthConfig.CAPemEncoded,
-				"client.threeport.crt": dbCreds.ThreeportCert,
-				"client.threeport.key": dbCreds.ThreeportKey,
-			},
-		},
-	}
+		}
 
-	if err := cpi.CreateOrUpdateKubeResource(dbThreeportCertsSecret, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create DB threeport user certs secret: %w", err)
+		if err := cpi.CreateOrUpdateKubeResource(dbThreeportCertsSecret, kubeClient, mapper); err != nil {
+			return fmt.Errorf("failed to create DB threeport user certs secret: %w", err)
+		}
 	}
 
 	var dbCreateConfig = &unstructured.Unstructured{
@@ -411,12 +417,20 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 	return nil
 }
 
-// CreateOrUpdateKubeResource creates or updates a Kubernetes resource.
+// CreateOrUpdateKubeResource creates or updates a Kubernetes resource. When
+// pendingResources is non-nil, resources are collected for batch application
+// instead of being applied immediately.
 func (cpi *ControlPlaneInstaller) CreateOrUpdateKubeResource(
 	resource *unstructured.Unstructured,
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) error {
+	// if collecting resources, append and return
+	if cpi.pendingResources != nil {
+		cpi.pendingResources = append(cpi.pendingResources, resource)
+		return nil
+	}
+
 	if cpi.Opts.CreateOrUpdateKubeResources {
 		if _, err := kube.CreateOrUpdateResource(resource, kubeClient, *mapper); err != nil {
 			return fmt.Errorf("failed to create/update resource: %w", err)
@@ -426,6 +440,33 @@ func (cpi *ControlPlaneInstaller) CreateOrUpdateKubeResource(
 			return fmt.Errorf("failed to create resource: %w", err)
 		}
 	}
+	return nil
+}
+
+// EnableResourceCollection enables batch collection mode. Subsequent calls to
+// CreateOrUpdateKubeResource will collect resources instead of applying them.
+func (cpi *ControlPlaneInstaller) EnableResourceCollection() {
+	cpi.pendingResources = make([]*unstructured.Unstructured, 0)
+}
+
+// ApplyCollectedResources applies all collected pending resources and resets
+// the batch.
+func (cpi *ControlPlaneInstaller) ApplyCollectedResources(
+	kubeClient dynamic.Interface,
+	mapper *meta.RESTMapper,
+) error {
+	for _, resource := range cpi.pendingResources {
+		if cpi.Opts.CreateOrUpdateKubeResources {
+			if _, err := kube.CreateOrUpdateResource(resource, kubeClient, *mapper); err != nil {
+				return fmt.Errorf("failed to apply %s %s: %w", resource.GetKind(), resource.GetName(), err)
+			}
+		} else {
+			if _, err := kube.CreateResource(resource, kubeClient, *mapper); err != nil {
+				return fmt.Errorf("failed to apply %s %s: %w", resource.GetKind(), resource.GetName(), err)
+			}
+		}
+	}
+	cpi.pendingResources = nil
 	return nil
 }
 

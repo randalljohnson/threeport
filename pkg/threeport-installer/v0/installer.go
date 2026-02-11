@@ -2,6 +2,7 @@ package v0
 
 import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type InstallerOption func(o *Options)
@@ -136,6 +137,10 @@ type Options struct {
 
 type ControlPlaneInstaller struct {
 	Opts Options
+
+	// pendingResources collects resources for batch application when non-nil.
+	// When nil, CreateOrUpdateKubeResource applies resources immediately.
+	pendingResources []*unstructured.Unstructured
 }
 
 func (cpi *ControlPlaneInstaller) SetAllImageRepo(imageRepo string) {

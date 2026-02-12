@@ -327,13 +327,24 @@ tptctl replace workload-definition --config new-config.yaml --name existing-def
 
 ## tptdev Debug Workflow
 
+### Development Setup
+
+Always use the kind provider with debug mode for local development:
+
+```bash
+# Spin up a dev environment with kind
+tptdev up
+
+# Enable debug mode — ALWAYS do this after `tptdev up`
+tptdev debug
+```
+
+**Why debug mode matters:** `tptdev debug` switches `ImagePullPolicy` to `Always` for all threeport components. Without this, Kubernetes may use cached images instead of freshly built ones, causing confusion where code changes appear to have no effect. Always enable debug mode to avoid stale image issues.
+
 ### Commands
 
 ```bash
-# Spin up a dev environment
-tptdev up
-
-# Enable debug mode for all components (sets debug images, enables delve)
+# Enable debug mode for all components (sets debug images, enables delve, ImagePullPolicy=Always)
 tptdev debug
 
 # Debug specific components only
@@ -345,15 +356,23 @@ tptdev debug --names rest-api --live-reload
 # Enable verbose logging
 tptdev debug --verbose
 
-# Disable debug mode
+# Disable debug mode (reverts ImagePullPolicy, removes debug images)
 tptdev debug --disable
 
-# Build and load images into dev cluster
-tptdev build --names rest-api,workload-controller --load
+# Build and push images to remote registry, then restart deployments
+tptdev build --names rest-api,workload-controller --push
 
 # Tear down dev environment
 tptdev down
 ```
+
+### Build-Test Cycle
+
+After making code changes:
+
+1. Build and push the changed component: `tptdev build --names <component> --push`
+2. Kubernetes pulls the new image automatically (debug mode ensures `ImagePullPolicy=Always`)
+3. Check logs: `kubectl logs deploy/threeport-<component> -n threeport-control-plane -f`
 
 ### Makefile Targets
 

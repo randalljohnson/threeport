@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -24,6 +25,10 @@ import (
 )
 
 const staleOkeAckDurationSeconds = 240
+
+// activeOkeOperations tracks in-progress goroutines per instance ID to prevent
+// duplicate create/delete operations from being spawned simultaneously.
+var activeOkeOperations sync.Map
 
 // v0OciOkeKubernetesRuntimeInstanceCreated performs reconciliation when a v0 OciOkeKubernetesRuntimeInstance
 // has been created.
@@ -179,8 +184,18 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 		return 0, fmt.Errorf("failed to build OKE infra object: %w", err)
 	}
 
+	// guard against duplicate goroutines for the same instance
+	operationKey := fmt.Sprintf("create-%d", *ociOkeKubernetesRuntimeInstance.ID)
+	if _, loaded := activeOkeOperations.LoadOrStore(operationKey, true); loaded {
+		reconLog.Info("create goroutine already active for this instance, skipping")
+		return 120, nil
+	}
+
 	// launch creation in background goroutine
-	go createOkeInfra(r, infraOKE, ociOkeKubernetesRuntimeInstance, &reconLog)
+	go func() {
+		defer activeOkeOperations.Delete(operationKey)
+		createOkeInfra(r, infraOKE, ociOkeKubernetesRuntimeInstance, &reconLog)
+	}()
 
 	return 120, nil
 }
@@ -322,8 +337,18 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 		}
 	}
 
+	// guard against duplicate goroutines for the same instance
+	operationKey := fmt.Sprintf("delete-%d", *ociOkeKubernetesRuntimeInstance.ID)
+	if _, loaded := activeOkeOperations.LoadOrStore(operationKey, true); loaded {
+		reconLog.Info("delete goroutine already active for this instance, skipping")
+		return 60, nil
+	}
+
 	// launch deletion in background goroutine
-	go deleteOkeInfra(r, infraOKE, ociOkeKubernetesRuntimeInstance, &reconLog)
+	go func() {
+		defer activeOkeOperations.Delete(operationKey)
+		deleteOkeInfra(r, infraOKE, ociOkeKubernetesRuntimeInstance, &reconLog)
+	}()
 
 	return 300, nil
 }

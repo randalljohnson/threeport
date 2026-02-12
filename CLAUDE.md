@@ -46,6 +46,18 @@ If any `_gen.go` files show changes, either:
 
 This check ensures generated code stays in sync with its source of truth.
 
+# Command Readability
+
+Before running a `kubectl exec` command (especially piped one-liners), always describe in plain text what the command does. These commands are often long and don't fit on the user's terminal, so the description ensures the user understands what is being executed.
+
+# Infrastructure Cost Awareness
+
+Always be mindful of cloud resource state being managed. Threeport is, at its core, infrastructure management — excess or forgotten resources cost real money in both development and production. Clean up resources promptly after testing. Don't leave clusters, VPCs, or other billable resources running unnecessarily.
+
+# API-First Understanding
+
+Before digging into code to understand the API, refer to the Swagger API spec first to get a full picture of available endpoints, request/response shapes, and object relationships. The spec is the authoritative reference for API behavior.
+
 # Threeport Code Conventions
 
 ## Function Naming

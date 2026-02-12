@@ -489,6 +489,36 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		return uninstaller.cleanOnCreateError("failed to run custom preInstall function", err)
 	}
 
+	// for kind, the API endpoint is known upfront so we can install TLS
+	// secrets before deploying the API server to avoid mount failures
+	if controlPlane.InfraProvider == v0.KubernetesRuntimeInfraProviderKind {
+		// update threeport config with api endpoint
+		var err error
+		threeportAPIEndpoint = threeport.GetLocalThreeportAPIEndpoint(cpi.Opts.AuthEnabled)
+		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *ControlPlane) {
+			c.APIServer = threeportAPIEndpoint
+		}); err != nil {
+			return fmt.Errorf("failed to update threeport config: %w", err)
+		}
+
+		// install TLS assets before API deployment so secrets exist when
+		// the pod mounts them
+		if cpi.Opts.AuthEnabled {
+			threeportApiAltNames := threeport.ThreeportApiAltNames(cpi.Opts.Namespace)
+			threeportApiAltNames = append(threeportApiAltNames, threeportAPIEndpoint)
+
+			Info("Generating server certificate and installing TLS assets")
+			if err := cpi.InstallThreeportAPITLS(
+				dynamicKubeClient,
+				mapper,
+				authConfig,
+				threeportApiAltNames...,
+			); err != nil {
+				return uninstaller.cleanOnCreateError("failed to install threeport API TLS assets", err)
+			}
+		}
+	}
+
 	// install the API
 	if err := cpi.UpdateThreeportAPIDeployment(
 		dynamicKubeClient,
@@ -498,7 +528,8 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		return uninstaller.cleanOnCreateError("failed to install threeport API server", err)
 	}
 
-	// if the control plane is not kind, get the threeport API's public endpoint
+	// for non-kind providers, get the API endpoint from the load balancer
+	// and install TLS after since the endpoint isn't known until deployment
 	if controlPlane.InfraProvider != v0.KubernetesRuntimeInfraProviderKind {
 		threeportAPIEndpoint, err = cpi.GetThreeportAPIEndpoint(dynamicKubeClient, *mapper)
 		if err != nil {
@@ -509,47 +540,35 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}); err != nil {
 			return uninstaller.cleanOnCreateError("failed to update threeport config", err)
 		}
-	} else {
-		// update threeport config with api endpoint
-		var err error
-		threeportAPIEndpoint = threeport.GetLocalThreeportAPIEndpoint(cpi.Opts.AuthEnabled)
-		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *ControlPlane) {
-			c.APIServer = threeportAPIEndpoint
-		}); err != nil {
-			return fmt.Errorf("failed to update threeport config: %w", err)
+
+		// install provider-specific kubernetes resources
+		switch controlPlane.InfraProvider {
+		case v0.KubernetesRuntimeInfraProviderEKS:
+			if err := InstallEksKubernetesResources(
+				cpi,
+				uninstaller,
+				callerIdentity,
+				&dynamicKubeClient,
+				mapper,
+			); err != nil {
+				return uninstaller.cleanOnCreateError("failed to install eks kubernetes resources", err)
+			}
 		}
-	}
 
-	// install provider-specific kubernetes resources
-	switch controlPlane.InfraProvider {
-	case v0.KubernetesRuntimeInfraProviderEKS:
-		if err := InstallEksKubernetesResources(
-			cpi,
-			uninstaller,
-			callerIdentity,
-			&dynamicKubeClient,
-			mapper,
-		); err != nil {
-			return uninstaller.cleanOnCreateError("failed to install eks kubernetes resources", err)
-		}
-	}
+		// install TLS assets after endpoint is known
+		if cpi.Opts.AuthEnabled {
+			threeportApiAltNames := threeport.ThreeportApiAltNames(cpi.Opts.Namespace)
+			threeportApiAltNames = append(threeportApiAltNames, threeportAPIEndpoint)
 
-	// if auth enabled install the threeport API TLS assets that include the alt
-	// name for the remote load balancer if applicable
-	if cpi.Opts.AuthEnabled {
-		// determine the threeport API alt names
-		threeportApiAltNames := threeport.ThreeportApiAltNames(cpi.Opts.Namespace)
-		threeportApiAltNames = append(threeportApiAltNames, threeportAPIEndpoint)
-
-		// generate server certificate and install TLS assets
-		Info("Generating server certificate and installing TLS assets")
-		if err := cpi.InstallThreeportAPITLS(
-			dynamicKubeClient,
-			mapper,
-			authConfig,
-			threeportApiAltNames...,
-		); err != nil {
-			return uninstaller.cleanOnCreateError("failed to install threeport API TLS assets", err)
+			Info("Generating server certificate and installing TLS assets")
+			if err := cpi.InstallThreeportAPITLS(
+				dynamicKubeClient,
+				mapper,
+				authConfig,
+				threeportApiAltNames...,
+			); err != nil {
+				return uninstaller.cleanOnCreateError("failed to install threeport API TLS assets", err)
+			}
 		}
 	}
 

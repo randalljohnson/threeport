@@ -81,11 +81,6 @@ var buildCmd = &cobra.Command{
 			cli.Error("failed to create threeport control plane installer", err)
 		}
 
-		// configure parallel builds
-		if parallel == -1 {
-			parallel = len(componentList)
-		}
-
 		// start build workers
 		for i := 1; i <= parallel; i++ {
 			waitGroup.Add(1)
@@ -234,7 +229,7 @@ func init() {
 	)
 	buildCmd.Flags().IntVar(
 		&parallel,
-		"parallel", -1, "Number of parallel builds to run. Defaults to number of images specified.",
+		"parallel", 1, "Number of parallel builds to run.",
 	)
 	buildCmd.Flags().BoolVar(
 		&noCache,

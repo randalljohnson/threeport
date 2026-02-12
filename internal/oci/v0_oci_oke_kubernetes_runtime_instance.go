@@ -431,6 +431,15 @@ func createOkeInfra(
 			return
 		}
 		log.Info("restored Pulumi state from database for creation retry")
+
+		// refresh stack to sync state with cloud reality and clear stale
+		// pending operations from interrupted runs
+		if err := infraOKE.RefreshStack(); err != nil {
+			log.Error(err, "failed to refresh Pulumi stack state")
+			persistOkeCreateFailure(r, *instance.ID, log)
+			return
+		}
+		log.Info("refreshed Pulumi stack state against cloud reality")
 	}
 
 	// start state streaming via fsnotify

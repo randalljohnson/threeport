@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
@@ -660,6 +661,38 @@ func (i *KubernetesRuntimeInfraOKE) runPulumiDestroy(ctx context.Context, stack 
 	eventsChan := make(chan events.EngineEvent)
 	go i.logPulumiEvents(eventsChan, "destroy")
 	return stack.Destroy(ctx, optdestroy.EventStreams(eventsChan))
+}
+
+// RefreshStack refreshes the Pulumi stack state to match reality in the cloud.
+// This clears stale pending operations and updates drifted resource properties.
+func (i *KubernetesRuntimeInfraOKE) RefreshStack() error {
+	// set up Pulumi workspace and get stack
+	stack, err := i.setupPulumiWorkspace(func(ctx *pulumi.Context) error {
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set up Pulumi workspace for refresh: %w", err)
+	}
+
+	ctx := context.Background()
+
+	// refresh the stack
+	if _, err := i.runPulumiRefresh(ctx, stack); err != nil {
+		return fmt.Errorf("failed to refresh stack: %w", err)
+	}
+
+	return nil
+}
+
+// runPulumiRefresh runs Pulumi stack.Refresh with either structured logging or progress streams.
+func (i *KubernetesRuntimeInfraOKE) runPulumiRefresh(ctx context.Context, stack auto.Stack) (auto.RefreshResult, error) {
+	if i.Logger == nil {
+		return stack.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout))
+	}
+
+	eventsChan := make(chan events.EngineEvent)
+	go i.logPulumiEvents(eventsChan, "refresh")
+	return stack.Refresh(ctx, optrefresh.EventStreams(eventsChan))
 }
 
 // logPulumiEvents consumes Pulumi engine events and logs them via structured logging.

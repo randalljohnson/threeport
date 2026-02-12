@@ -281,6 +281,28 @@ kubectl logs deploy/threeport-kubernetes-runtime-controller -n threeport-control
 4. Purge NATS streams if needed: `make dev-purge-streams`
 5. Subscribe to all NATS messages for debugging: `make dev-sub-nats`
 
+### Tearing Down a Control Plane — CRITICAL
+
+**NEVER** delete a genesis control plane or run `tptdev down` / `tptctl down` while cloud provider resources are still deployed. This is especially easy to forget with kind clusters — deleting the kind cluster orphans cloud resources (EKS clusters, OKE clusters, VPCs, etc.) that will continue incurring costs and must be manually cleaned up.
+
+**Always clean up in this order:**
+
+1. Delete all workload instances and helm workload instances
+2. Delete all kubernetes runtime instances (EKS, OKE, etc.) — wait for cloud resources to be fully deprovisioned
+3. Delete all other managed instances (secrets, terraform, observability, etc.)
+4. Verify no cloud resources remain: check AWS/OCI console
+5. Only then: `tptdev down` or `tptctl down`
+
+```bash
+# Check what's still deployed before tearing down
+tptctl get workload-instances -o json
+tptctl get helm-workload-instances -o json
+tptctl get kubernetes-runtime-instances -o json
+tptctl get aws-eks-kubernetes-runtime-instances -o json
+tptctl get oci-oke-kubernetes-runtime-instances -o json
+tptctl get terraform-instances -o json
+```
+
 ## tptctl Command Reference
 
 ### Syntax

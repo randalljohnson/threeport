@@ -1348,6 +1348,11 @@ func (i *KubernetesRuntimeInfraOKE) CreateIAM() error {
 	// set the region for the identity client to home region for IAM operations
 	identityClient.SetRegion(homeRegion)
 
+	// create compartment before policies — policies reference compartment by name
+	if err := i.createOCICompartment(identityClient); err != nil {
+		return fmt.Errorf("failed to create compartment: %w", err)
+	}
+
 	// create service user
 	if err := i.createOCIServiceUser(identityClient); err != nil {
 		return fmt.Errorf("failed to create service user: %w", err)

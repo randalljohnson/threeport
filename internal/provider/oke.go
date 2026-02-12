@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -1053,12 +1052,14 @@ func (i *KubernetesRuntimeInfraOKE) getOKEWorkerNodeImageOCID() (string, error) 
 	}
 
 	// find an image with the specified Kubernetes version and architecture
+	// use delimiter after version to avoid partial matches (e.g., 1.32.1 matching 1.32.10)
 	versionWithoutV := strings.TrimPrefix(i.Version, "v")
+	versionPattern := fmt.Sprintf("OKE-%s-", versionWithoutV)
 	for _, source := range response.Sources {
 		// try to get the concrete type
 		if sourceType, ok := source.(ocicontainerengine.NodeSourceViaImageOption); ok {
 			name := *sourceType.SourceName
-			if strings.Contains(name, fmt.Sprintf("OKE-%s", versionWithoutV)) &&
+			if strings.Contains(name, versionPattern) &&
 				strings.Contains(name, arch) {
 				return *sourceType.ImageId, nil
 			}
@@ -1111,57 +1112,10 @@ func (i *KubernetesRuntimeInfraOKE) getHomeRegion(identityClient identity.Identi
 }
 
 // setupPulumiWorkspace sets up the Pulumi workspace and environment for OKE operations
-func (i *KubernetesRuntimeInfraOKE) setupPulumiWorkspace(program pulumi.RunFunc) (auto.Stack, error) {
-
-	// set up state directory
-	if err := i.setStateDir(); err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to set state directory: %w", err)
-	}
-
-	// set environment variables for Pulumi configuration
-	if err := i.setPulumiEnvVars(); err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to set Pulumi environment variables: %w", err)
-	}
-
-	// create Pulumi.yaml project file
-	pulumiYaml := `name: oke
-runtime: go
-description: Oracle Kubernetes Engine (OKE) cluster for Threeport
-`
-	pulumiYamlPath := filepath.Join(i.stateDir, "Pulumi.yaml")
-	if err := os.WriteFile(pulumiYamlPath, []byte(pulumiYaml), 0644); err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to create Pulumi.yaml: %w", err)
-	}
-
-	ctx := context.Background()
-
-	// create a new workspace with local state backend
-	workspace, err := auto.NewLocalWorkspace(
-		ctx,
-		auto.Program(program),
-		auto.WorkDir(i.stateDir),
-	)
-	if err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to create workspace: %w", err)
-	}
-
-	// create or select a stack with fully qualified name
-	stack, err := auto.UpsertStack(ctx, i.getStackName(), workspace)
-	if err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to create/select stack: %w", err)
-	}
-
-	// set up stack configuration
-	err = stack.SetConfig(ctx, "oci:region", auto.ConfigValue{Value: i.Region})
-	if err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to set region config: %w", err)
-	}
-
-	return stack, nil
-}
-
-// GetStackState returns the state of the OKE stack as a JSON object
-func (i *KubernetesRuntimeInfraOKE) GetStackState() (*datatypes.JSON, error) {
+// initPulumiWorkspace initializes the Pulumi workspace directory, environment
+// variables, project file, and creates the local workspace. Additional options
+// (e.g. auto.Program) can be passed to customize the workspace.
+func (i *KubernetesRuntimeInfraOKE) initPulumiWorkspace(opts ...auto.LocalWorkspaceOption) (auto.Workspace, error) {
 
 	// set up state directory
 	if err := i.setStateDir(); err != nil {
@@ -1173,16 +1127,62 @@ func (i *KubernetesRuntimeInfraOKE) GetStackState() (*datatypes.JSON, error) {
 		return nil, fmt.Errorf("failed to set Pulumi environment variables: %w", err)
 	}
 
+	// create Pulumi.yaml project file
+	pulumiYaml := `name: oke
+runtime: go
+description: Oracle Kubernetes Engine (OKE) cluster for Threeport
+`
+	pulumiYamlPath := filepath.Join(i.stateDir, "Pulumi.yaml")
+	if err := os.WriteFile(pulumiYamlPath, []byte(pulumiYaml), 0644); err != nil {
+		return nil, fmt.Errorf("failed to create Pulumi.yaml: %w", err)
+	}
+
 	ctx := context.Background()
 
 	// create a new workspace with local state backend
-	workspace, err := auto.NewLocalWorkspace(
-		ctx,
-		auto.WorkDir(i.stateDir),
-	)
+	allOpts := append([]auto.LocalWorkspaceOption{auto.WorkDir(i.stateDir)}, opts...)
+	workspace, err := auto.NewLocalWorkspace(ctx, allOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workspace: %w", err)
 	}
+
+	return workspace, nil
+}
+
+// setupPulumiWorkspace creates and configures a Pulumi stack for the given
+// program, reusing the common workspace initialization.
+func (i *KubernetesRuntimeInfraOKE) setupPulumiWorkspace(program pulumi.RunFunc) (auto.Stack, error) {
+
+	workspace, err := i.initPulumiWorkspace(auto.Program(program))
+	if err != nil {
+		return auto.Stack{}, fmt.Errorf("failed to initialize Pulumi workspace: %w", err)
+	}
+
+	ctx := context.Background()
+
+	// create or select a stack
+	stack, err := auto.UpsertStack(ctx, i.getStackName(), workspace)
+	if err != nil {
+		return auto.Stack{}, fmt.Errorf("failed to create/select stack: %w", err)
+	}
+
+	// set up stack configuration
+	if err := stack.SetConfig(ctx, "oci:region", auto.ConfigValue{Value: i.Region}); err != nil {
+		return auto.Stack{}, fmt.Errorf("failed to set region config: %w", err)
+	}
+
+	return stack, nil
+}
+
+// GetStackState returns the state of the OKE stack as a JSON object.
+func (i *KubernetesRuntimeInfraOKE) GetStackState() (*datatypes.JSON, error) {
+
+	workspace, err := i.initPulumiWorkspace()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Pulumi workspace: %w", err)
+	}
+
+	ctx := context.Background()
 
 	// load stack from workspace
 	stack, err := auto.SelectStack(ctx, i.getStackName(), workspace)
@@ -1206,47 +1206,29 @@ func (i *KubernetesRuntimeInfraOKE) GetStackState() (*datatypes.JSON, error) {
 	return &jsonState, nil
 }
 
-// SetStackState sets the state of the OKE stack from a JSON object
+// SetStackState restores the Pulumi state file from a JSON object stored in the
+// database. The state is written directly to the state file because the
+// ResourceInventory is captured via ReadStateFile (raw file format), not
+// stack.Export (UntypedDeployment format).
 func (i *KubernetesRuntimeInfraOKE) SetStackState(state *datatypes.JSON) error {
 
-	// set up state directory
-	if err := i.setStateDir(); err != nil {
-		return fmt.Errorf("failed to set state directory: %w", err)
+	// initialize workspace to ensure state directory and Pulumi.yaml exist
+	if _, err := i.initPulumiWorkspace(); err != nil {
+		return fmt.Errorf("failed to initialize Pulumi workspace: %w", err)
 	}
 
-	// set environment variables for Pulumi configuration
-	if err := i.setPulumiEnvVars(); err != nil {
-		return fmt.Errorf("failed to set Pulumi environment variables: %w", err)
-	}
-
-	ctx := context.Background()
-
-	// create a new workspace with local state backend
-	workspace, err := auto.NewLocalWorkspace(
-		ctx,
-		auto.WorkDir(i.stateDir),
-	)
+	// get state file path and ensure parent directory exists
+	stateFilePath, err := i.GetStateFilePath()
 	if err != nil {
-		return fmt.Errorf("failed to create workspace: %w", err)
+		return fmt.Errorf("failed to get state file path: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(stateFilePath), 0755); err != nil {
+		return fmt.Errorf("failed to create state file directory: %w", err)
 	}
 
-	// create/select stack
-	stack, err := auto.UpsertStack(ctx, i.getStackName(), workspace)
-	if err != nil {
-		return fmt.Errorf("failed to create/select stack: %w", err)
-	}
-
-	// unmarshal state
-	var pulumiState apitype.UntypedDeployment
-	err = json.Unmarshal(*state, &pulumiState)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal state from JSON: %w", err)
-	}
-
-	// set the stack's state and persist to disk
-	err = stack.Import(ctx, pulumiState)
-	if err != nil {
-		return fmt.Errorf("failed to import stack state: %w", err)
+	// write raw state bytes to file
+	if err := os.WriteFile(stateFilePath, *state, 0644); err != nil {
+		return fmt.Errorf("failed to write state file: %w", err)
 	}
 
 	return nil

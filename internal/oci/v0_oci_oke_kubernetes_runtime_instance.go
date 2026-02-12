@@ -3,6 +3,7 @@
 package oci
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	logr "github.com/go-logr/logr"
 	"github.com/oracle/oci-go-sdk/v65/common"
+	ociidentity "github.com/oracle/oci-go-sdk/v65/identity"
 	"gorm.io/datatypes"
 
 	"github.com/threeport/threeport/internal/provider"
@@ -21,7 +23,7 @@ import (
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 )
 
-const staleOkeAckDurationSeconds = 600
+const staleOkeAckDurationSeconds = 60
 
 // v0OciOkeKubernetesRuntimeInstanceCreated performs reconciliation when a v0 OciOkeKubernetesRuntimeInstance
 // has been created.
@@ -379,6 +381,29 @@ func buildOkeInfra(
 		Logger:                 log,
 	}
 
+	// resolve the compartment OCID by looking up the compartment named after
+	// the runtime instance under the tenancy
+	identityClient, err := ociidentity.NewIdentityClientWithConfigurationProvider(configProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create identity client: %w", err)
+	}
+	identityClient.SetRegion(region)
+
+	listRequest := ociidentity.ListCompartmentsRequest{
+		CompartmentId: ociProvider.CompartmentOCID,
+		Name:          instance.Name,
+	}
+	listResponse, err := identityClient.ListCompartments(context.Background(), listRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list compartments to resolve compartment OCID: %w", err)
+	}
+	if len(listResponse.Items) > 0 {
+		infraOKE.CompartmentOCID = *listResponse.Items[0].Id
+	} else {
+		// fall back to tenancy OCID (compartment may not exist yet for new creates)
+		infraOKE.CompartmentOCID = *ociProvider.CompartmentOCID
+	}
+
 	return infraOKE, nil
 }
 
@@ -393,6 +418,20 @@ func createOkeInfra(
 	quitAck := make(chan bool, 1)
 	go refreshOkeAcknowledgement(r, instance, quitAck, log)
 	defer func() { quitAck <- true }()
+
+	// restore Pulumi state from ResourceInventory if available (retry after
+	// failure or pod restart so Pulumi knows about previously created resources)
+	if instance.ResourceInventory != nil &&
+		len(*instance.ResourceInventory) > 0 &&
+		string(*instance.ResourceInventory) != "{}" &&
+		string(*instance.ResourceInventory) != "null" {
+		if err := infraOKE.SetStackState(instance.ResourceInventory); err != nil {
+			log.Error(err, "failed to restore Pulumi stack state for retry")
+			persistOkeCreateFailure(r, *instance.ID, log)
+			return
+		}
+		log.Info("restored Pulumi state from database for creation retry")
+	}
 
 	// start state streaming via fsnotify
 	quitStream := make(chan bool, 1)

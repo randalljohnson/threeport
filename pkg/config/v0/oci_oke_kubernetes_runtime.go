@@ -149,6 +149,7 @@ func (o *OciOkeKubernetesRuntimeConfig) GetOperations(
 	ociOkeKubernetesRuntimeDefinitionConfig := OciOkeKubernetesRuntimeDefinitionConfig{
 		OciOkeKubernetesRuntimeDefinition: OciOkeKubernetesRuntimeDefinitionValues{
 			Name:                   ociOkeKubernetesRuntimeValues.Name,
+			OciProviderName:        ociOkeKubernetesRuntimeValues.OciProviderName,
 			WorkerNodeShape:        ociOkeKubernetesRuntimeValues.WorkerNodeShape,
 			WorkerNodeInitialCount: ociOkeKubernetesRuntimeValues.WorkerNodeInitialCount,
 		},

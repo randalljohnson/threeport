@@ -23,7 +23,7 @@ import (
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 )
 
-const staleOkeAckDurationSeconds = 60
+const staleOkeAckDurationSeconds = 240
 
 // v0OciOkeKubernetesRuntimeInstanceCreated performs reconciliation when a v0 OciOkeKubernetesRuntimeInstance
 // has been created.

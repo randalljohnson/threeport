@@ -203,14 +203,6 @@ THREEPORT_CONTROL_PLANE_NAMESPACE=%[2]s
 			"protocol":      "TCP",
 		},
 	}
-	if cpi.Opts.Debug {
-		ports = append(ports,
-			map[string]interface{}{
-				"containerPort": 40000,
-				"name":          "dlv",
-				"protocol":      "TCP",
-			})
-	}
 
 	initContainers := []interface{}{
 		map[string]interface{}{
@@ -371,7 +363,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 		// if auth is enabled on API, generate client cert and key and store in
 		// secrets
 		if authConfig != nil {
-
+			fmt.Printf("Generating client certificate for %s\n", controller.Name)
 			certificate, privateKey, err := auth.GenerateCertificate(
 				authConfig.CAConfig,
 				&authConfig.CAPrivateKey,
@@ -1106,6 +1098,9 @@ func (cpi *ControlPlaneInstaller) UpdateThreeportAgentDeployment(
 								},
 							},
 						},
+						"initContainers": []interface{}{
+							cpi.getAPIWaitInitContainer(agentImage),
+						},
 						"containers": []interface{}{
 							map[string]interface{}{
 								"args": []interface{}{
@@ -1396,16 +1391,13 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 		return cpi.getAirArgs("rest-api", args)
 	case cpi.Opts.Debug:
 		args := []interface{}{
-			"--",
 			"-auto-migrate=true",
 			"-verbose=true",
 		}
 		if !cpi.Opts.AuthEnabled {
 			args = append(args, "-auth-enabled=false")
 		}
-
-		// controller arguments must be wrapped in delve arguments
-		return append(util.StringToInterfaceList(cpi.getDelveArgs(cpi.Opts.RestApiInfo.Name)), args...)
+		return args
 	default:
 		args := []interface{}{
 			"-auto-migrate=true",
@@ -1440,12 +1432,7 @@ func (cpi *ControlPlaneInstaller) getControllerArgs(name string) []interface{} {
 		if cpi.Opts.Verbose {
 			args = append(args, "-verbose=true")
 		}
-		if len(args) > 0 {
-			args = append([]interface{}{"--"}, args...)
-		}
-
-		// controller arguments must be wrapped in delve arguments
-		return append(util.StringToInterfaceList(cpi.getDelveArgs(name)), args...)
+		return args
 	default:
 		args := []interface{}{}
 
@@ -1454,7 +1441,6 @@ func (cpi *ControlPlaneInstaller) getControllerArgs(name string) []interface{} {
 		}
 		if cpi.Opts.Verbose {
 			args = append(args, "-verbose=true")
-
 		}
 		return args
 	}
@@ -1814,14 +1800,13 @@ func (cpi *ControlPlaneInstaller) getAgentArgs() []interface{} {
 		}
 	case cpi.Opts.Debug:
 		args := []interface{}{
-			"--",
 			"--metrics-bind-address=127.0.0.1:8080",
 			"--leader-elect",
 		}
 		if !cpi.Opts.AuthEnabled {
-			args = append(args, "-auth-enabled=false")
+			args = append(args, "--auth-enabled=false")
 		}
-		return append(util.StringToInterfaceList(cpi.getDelveArgs(cpi.Opts.AgentInfo.Name)), args...)
+		return args
 	default:
 		// disable auth if authConfig is not set on non-dev deployment
 		args := []interface{}{
@@ -1855,6 +1840,34 @@ func (cpi *ControlPlaneInstaller) getControllerSecret(name, namespace string) *u
 	}
 }
 
+// getAPIWaitInitContainer returns an init container spec that waits for the
+// threeport API server to be reachable before starting the main container.
+// It uses the same image as the main container to trigger an early image pull.
+func (cpi *ControlPlaneInstaller) getAPIWaitInitContainer(image string) map[string]interface{} {
+	apiHost := fmt.Sprintf(
+		"%s.%s.svc.cluster.local",
+		cpi.Opts.RestApiInfo.ServiceResourceName,
+		cpi.Opts.Namespace,
+	)
+	apiPort := 443
+	if !cpi.Opts.AuthEnabled {
+		apiPort = 80
+	}
+
+	return map[string]interface{}{
+		"name":            "wait-for-api",
+		"image":           image,
+		"imagePullPolicy": cpi.getImagePullPolicy(),
+		"command": []interface{}{
+			"/bin/busybox", "sh", "-c",
+			fmt.Sprintf(
+				"until /bin/busybox nc -z %s %d; do /bin/busybox sleep 2; done",
+				apiHost, apiPort,
+			),
+		},
+	}
+}
+
 // getImagePullPolicy returns the image pull policy based on debug mode.
 func (cpi *ControlPlaneInstaller) getImagePullPolicy() string {
 	if cpi.Opts.Debug && !cpi.Opts.LiveReload {
@@ -1881,14 +1894,6 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 	controllerImagePullSecrets := cpi.getImagePullSecrets(controller.ImagePullSecretName)
 
 	ports := []map[string]interface{}{}
-	if cpi.Opts.Debug {
-		ports = append(ports,
-			map[string]interface{}{
-				"containerPort": 40000,
-				"name":          "dlv",
-				"protocol":      "TCP",
-			})
-	}
 
 	envFrom := []interface{}{
 		map[string]interface{}{
@@ -1941,6 +1946,9 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 					},
 					"spec": map[string]interface{}{
 						"serviceAccountName": controller.ServiceAccountName,
+						"initContainers": []interface{}{
+							cpi.getAPIWaitInitContainer(controllerImage),
+						},
 						"containers": []interface{}{
 							map[string]interface{}{
 								"name":            controller.Name,
@@ -2040,7 +2048,7 @@ func (cpi *ControlPlaneInstaller) getCommand(name string) []interface{} {
 		}
 	case cpi.Opts.Debug:
 		return []interface{}{
-			"/usr/local/bin/dlv",
+			fmt.Sprintf("/%s", name),
 		}
 	default:
 		return []interface{}{

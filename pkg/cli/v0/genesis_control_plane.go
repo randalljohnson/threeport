@@ -411,7 +411,8 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		return uninstaller.cleanOnCreateError("failed to generated DB client credentials", err)
 	}
 
-	// install the threeport control plane dependencies
+	// install the threeport control plane dependencies — deployed immediately
+	// so NATS and CockroachDB start initializing while certs are generated
 	if err := cpi.InstallThreeportControlPlaneDependencies(
 		dynamicKubeClient,
 		mapper,
@@ -425,13 +426,15 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	var authConfig *auth.AuthConfig
 	var clientCredentials *Credential
 	if cpi.Opts.AuthEnabled {
-		// get auth config
+		// generate certificate authority
+		Info("Generating certificate authority for threeport API")
 		authConfig, err = auth.GetAuthConfig()
 		if err != nil {
 			return uninstaller.cleanOnCreateError("failed to get auth config", err)
 		}
 
 		// generate client certificate
+		Info("Generating client certificate")
 		clientCertificate, clientPrivateKey, err := auth.GenerateCertificate(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
@@ -538,7 +541,8 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		threeportApiAltNames := threeport.ThreeportApiAltNames(cpi.Opts.Namespace)
 		threeportApiAltNames = append(threeportApiAltNames, threeportAPIEndpoint)
 
-		// install the threeport API TLS assets
+		// generate server certificate and install TLS assets
+		Info("Generating server certificate and installing TLS assets")
 		if err := cpi.InstallThreeportAPITLS(
 			dynamicKubeClient,
 			mapper,
@@ -549,10 +553,36 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}
 	}
 
-	// wait for API server to start running - it is not strictly necessary to
-	// wait for the API before installing the rest of the control plane, however
-	// it is helpful for dev environments and harmless otherwise since the
-	// controllers need the API to be running in order to start
+	// batch controllers and agent for simultaneous deployment — image pulls
+	// start in parallel while the API server finishes initializing
+	cpi.EnableResourceCollection()
+
+	if err := cpi.InstallThreeportControllers(
+		dynamicKubeClient,
+		mapper,
+		authConfig,
+	); err != nil {
+		return uninstaller.cleanOnCreateError("failed to prepare threeport controllers", err)
+	}
+
+	if err = cpi.Opts.PostInstallFunction(kubernetesRuntimeInstance, cpi); err != nil {
+		return uninstaller.cleanOnCreateError("failed to run custom postInstall function", err)
+	}
+
+	if err := cpi.InstallThreeportAgent(
+		dynamicKubeClient,
+		mapper,
+		authConfig,
+	); err != nil {
+		return uninstaller.cleanOnCreateError("failed to prepare threeport agent", err)
+	}
+
+	// apply all collected resources at once — image pulls start immediately
+	if err := cpi.ApplyCollectedResources(dynamicKubeClient, mapper); err != nil {
+		return uninstaller.cleanOnCreateError("failed to install control plane components", err)
+	}
+
+	// wait for API server to start running
 	Info(fmt.Sprintf("Waiting for threeport API to start running at %s", threeportAPIEndpoint))
 	attemptsMax := 60
 	waitDurationSeconds := 5
@@ -577,34 +607,6 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		)
 	}
 	Info("Threeport API is running")
-
-	// collect all control plane component resources for batch application
-	cpi.EnableResourceCollection()
-
-	if err := cpi.InstallThreeportControllers(
-		dynamicKubeClient,
-		mapper,
-		authConfig,
-	); err != nil {
-		return uninstaller.cleanOnCreateError("failed to prepare threeport controllers", err)
-	}
-
-	if err = cpi.Opts.PostInstallFunction(kubernetesRuntimeInstance, cpi); err != nil {
-		return uninstaller.cleanOnCreateError("failed to run custom postInstall function", err)
-	}
-
-	if err := cpi.InstallThreeportAgent(
-		dynamicKubeClient,
-		mapper,
-		authConfig,
-	); err != nil {
-		return uninstaller.cleanOnCreateError("failed to prepare threeport agent", err)
-	}
-
-	// apply all collected resources at once
-	if err := cpi.ApplyCollectedResources(dynamicKubeClient, mapper); err != nil {
-		return uninstaller.cleanOnCreateError("failed to install control plane components", err)
-	}
 
 	// install support services CRDs separately (package-level function)
 	if err = threeport.InstallThreeportCRDs(dynamicKubeClient, mapper); err != nil {

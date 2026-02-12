@@ -294,13 +294,57 @@ tptctl {verb} {object-type} [flags]
 **Common flags:**
 - `-n, --name` — Object name
 - `-c, --config` — Path to YAML config file
+- `--stdin` — Read config from stdin instead of file
 - `-v, --version` — API version (default `v0`)
 - `-o, --output` — Output format: `tabular` (default), `yaml`, `json`
 - `-i, --control-plane-name` — Target control plane name
 
 **Other commands:** `up`, `down`, `config`, `upgrade`, `version`
 
-### Examples with `-o json`
+### Always Use `--stdin` for Create/Replace
+
+**ALWAYS** pipe config into tptctl using `--stdin` instead of writing temporary files. This keeps commands readable for users following along:
+
+```bash
+# CORRECT: pipe config into --stdin
+cat <<EOF | tptctl create workload --stdin
+Workload:
+  Name: my-app
+  YAMLDocument: path/to/manifest.yaml
+  WorkloadInstance:
+    Name: my-app
+EOF
+
+# CORRECT: with variable substitution for credentials
+cat <<EOF | tptctl create aws-account --stdin
+AwsAccount:
+  Name: my-aws
+  AccessKeyID: $AWS_ACCESS_KEY_ID
+  SecretAccessKey: $AWS_SECRET_ACCESS_KEY
+EOF
+
+# WRONG: don't write config files
+tptctl create workload --config /tmp/workload.yaml
+```
+
+### Credential Safety
+
+**NEVER** read private keys, credentials, or secrets directly with the Read tool. If a credential file exists on disk, load it into a shell variable first:
+
+```bash
+# CORRECT: load credential into variable, reference in heredoc
+AWS_KEY=$(cat ~/.aws/secret-key)
+cat <<EOF | tptctl create aws-account --stdin
+AwsAccount:
+  Name: my-aws
+  SecretAccessKey: $AWS_KEY
+EOF
+
+# WRONG: never read credential files directly
+# Read tool on ~/.aws/credentials  <-- DO NOT DO THIS
+```
+
+### Examples
 
 ```bash
 # List all workload instances as JSON
@@ -315,14 +359,24 @@ tptctl get helm-workload-instances -o json
 # List all kubernetes runtime instances
 tptctl get kubernetes-runtime-instances -o json
 
-# Create a workload from config
-tptctl create workload --config path/to/config.yaml
+# Create a workload via stdin
+cat <<EOF | tptctl create workload --stdin
+Workload:
+  Name: my-app
+  YAMLDocument: path/to/manifest.yaml
+  WorkloadInstance:
+    Name: my-app
+EOF
 
 # Delete a workload instance by name
 tptctl delete workload-instance --name my-instance
 
 # Replace (update) a workload definition
-tptctl replace workload-definition --config new-config.yaml --name existing-def
+cat <<EOF | tptctl replace workload-definition --stdin --name existing-def
+WorkloadDefinition:
+  Name: existing-def
+  YAMLDocument: path/to/new-manifest.yaml
+EOF
 ```
 
 ## tptdev Debug Workflow

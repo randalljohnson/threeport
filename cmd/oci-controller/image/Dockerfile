@@ -8,5 +8,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -a -o oci-controller cmd/oc
 
 FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /build/oci-controller /
+COPY --from=busybox:1.37 /bin/busybox /bin/busybox
 USER 65532:65532
 ENTRYPOINT ["/oci-controller"]

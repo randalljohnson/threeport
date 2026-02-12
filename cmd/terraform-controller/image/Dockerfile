@@ -16,6 +16,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -a -o terraform-controller 
 FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /build/terraform-controller /
 COPY --from=builder /terraform /usr/local/bin/
+COPY --from=busybox:1.37 /bin/busybox /bin/busybox
 USER 65532:65532
 
 ENTRYPOINT ["/terraform-controller"]

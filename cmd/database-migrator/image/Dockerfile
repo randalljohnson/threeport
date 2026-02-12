@@ -7,6 +7,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -a -o database-migrator cmd
 
 FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /build/database-migrator /
+COPY --from=busybox:1.37 /bin/busybox /bin/busybox
 USER 65532:65532
 
 ENTRYPOINT ["/database-migrator"]

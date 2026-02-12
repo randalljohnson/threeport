@@ -8,6 +8,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -a -o agent cmd/agent/main.
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /build/agent .
+COPY --from=busybox:1.37 /bin/busybox /bin/busybox
 USER 65532:65532
 
 ENTRYPOINT ["/agent"]

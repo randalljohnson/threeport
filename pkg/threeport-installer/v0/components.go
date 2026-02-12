@@ -363,7 +363,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 		// if auth is enabled on API, generate client cert and key and store in
 		// secrets
 		if authConfig != nil {
-			fmt.Printf("Generating client certificate for %s\n", controller.Name)
+			fmt.Printf("Info: Generating client certificate for %s\n", controller.Name)
 			certificate, privateKey, err := auth.GenerateCertificate(
 				authConfig.CAConfig,
 				&authConfig.CAPrivateKey,
@@ -1859,11 +1859,8 @@ func (cpi *ControlPlaneInstaller) getAPIWaitInitContainer(image string) map[stri
 		"image":           image,
 		"imagePullPolicy": cpi.getImagePullPolicy(),
 		"command": []interface{}{
-			"/bin/busybox", "sh", "-c",
-			fmt.Sprintf(
-				"until /bin/busybox nc -z %s %d; do /bin/busybox sleep 2; done",
-				apiHost, apiPort,
-			),
+			"/wait-for-tcp",
+			fmt.Sprintf("%s:%d", apiHost, apiPort),
 		},
 	}
 }

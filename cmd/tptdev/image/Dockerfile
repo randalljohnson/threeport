@@ -7,6 +7,8 @@ FROM golang:1.24-alpine AS base
 RUN mkdir /threeport
 RUN go install github.com/go-delve/delve/cmd/dlv@latest && \
     mv /go/bin/dlv /usr/local/bin
+COPY cmd/wait-for-tcp/main.go /tmp/wait-for-tcp.go
+RUN CGO_ENABLED=0 go build -o /wait-for-tcp /tmp/wait-for-tcp.go
 WORKDIR /threeport
 
 # live-reload development target

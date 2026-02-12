@@ -5,9 +5,10 @@ RUN mkdir /build
 ADD . /build
 WORKDIR /build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -a -o oci-controller cmd/oci-controller/main_gen.go
+RUN CGO_ENABLED=0 go build -o /wait-for-tcp cmd/wait-for-tcp/main.go
 
 FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /build/oci-controller /
-COPY --from=busybox:1.37 /bin/busybox /bin/busybox
+COPY --from=builder /wait-for-tcp /wait-for-tcp
 USER 65532:65532
 ENTRYPOINT ["/oci-controller"]

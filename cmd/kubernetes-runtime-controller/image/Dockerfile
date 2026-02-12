@@ -5,10 +5,10 @@ RUN mkdir /build
 ADD . /build
 WORKDIR /build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -a -o kubernetes-runtime-controller cmd/kubernetes-runtime-controller/main_gen.go
+RUN CGO_ENABLED=0 go build -o /wait-for-tcp cmd/wait-for-tcp/main.go
 
 FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /build/kubernetes-runtime-controller /
-COPY --from=busybox:1.37 /bin/busybox /bin/busybox
-COPY --from=busybox:1.37 /bin/busybox /bin/busybox
+COPY --from=builder /wait-for-tcp /wait-for-tcp
 USER 65532:65532
 ENTRYPOINT ["/kubernetes-runtime-controller"]

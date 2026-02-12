@@ -714,7 +714,7 @@ func refreshOkeAcknowledgement(
 		select {
 		case <-quitChan:
 			return
-		default:
+		case <-time.After(60 * time.Second):
 			// refresh the acknowledgement timestamp
 			refreshAckTimestamp := time.Now().UTC()
 			ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
@@ -725,16 +725,13 @@ func refreshOkeAcknowledgement(
 					CreationAcknowledged: &refreshAckTimestamp,
 				},
 			}
-			_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
+			if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
 				r.APIClient,
 				r.APIServer,
 				&ackUpdate,
-			)
-			if err != nil {
+			); err != nil {
 				log.Error(err, "failed to refresh creation acknowledged timestamp")
 			}
-
-			time.Sleep(time.Second * 60)
 		}
 	}
 }

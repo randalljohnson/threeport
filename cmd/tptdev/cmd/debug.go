@@ -17,6 +17,7 @@ import (
 )
 
 var disable bool
+var delve bool
 var liveReload bool
 var authEnabled bool
 var debugComponentNames string
@@ -50,6 +51,7 @@ var DebugCmd = &cobra.Command{
 		// set CreateOrUpdateKubeResources so we can update existing deployments
 		cpi.Opts.CreateOrUpdateKubeResources = true
 		cpi.Opts.Debug = !disable
+		cpi.Opts.Delve = delve
 		cpi.Opts.LiveReload = liveReload
 		cpi.Opts.DevEnvironment = false
 		cpi.Opts.AuthEnabled = authEnabled
@@ -115,6 +117,10 @@ func init() {
 	DebugCmd.Flags().BoolVar(
 		&disable,
 		"disable", false, "Disable debug mode.",
+	)
+	DebugCmd.Flags().BoolVar(
+		&delve,
+		"delve", false, "Enable delve debugger for remote debugging.",
 	)
 	DebugCmd.Flags().BoolVar(
 		&liveReload,

@@ -203,6 +203,13 @@ THREEPORT_CONTROL_PLANE_NAMESPACE=%[2]s
 			"protocol":      "TCP",
 		},
 	}
+	if cpi.Opts.Delve {
+		ports = append(ports, map[string]interface{}{
+			"containerPort": 40000,
+			"name":          "dlv",
+			"protocol":      "TCP",
+		})
+	}
 
 	initContainers := []interface{}{
 		map[string]interface{}{
@@ -363,7 +370,6 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 		// if auth is enabled on API, generate client cert and key and store in
 		// secrets
 		if authConfig != nil {
-			fmt.Printf("Info: Generating client certificate for %s\n", controller.Name)
 			certificate, privateKey, err := auth.GenerateCertificate(
 				authConfig.CAConfig,
 				&authConfig.CAPrivateKey,
@@ -1389,6 +1395,19 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 		}
 
 		return cpi.getAirArgs("rest-api", args)
+	case cpi.Opts.Delve:
+		// build delve args with component args appended after "--" separator
+		delveArgs := cpi.getDelveArgs("rest-api")
+		args := make([]interface{}, 0, len(delveArgs)+4)
+		for _, a := range delveArgs {
+			args = append(args, a)
+		}
+		args = append(args, "--")
+		args = append(args, "-auto-migrate=true", "-verbose=true")
+		if !cpi.Opts.AuthEnabled {
+			args = append(args, "-auth-enabled=false")
+		}
+		return args
 	case cpi.Opts.Debug:
 		args := []interface{}{
 			"-auto-migrate=true",
@@ -1424,6 +1443,21 @@ func (cpi *ControlPlaneInstaller) getControllerArgs(name string) []interface{} {
 			return cpi.getAirArgs(name, "")
 		}
 		return cpi.getAirArgs(name, "-auth-enabled=false")
+	case cpi.Opts.Delve:
+		// build delve args with component args appended after "--" separator
+		delveArgs := cpi.getDelveArgs(name)
+		args := make([]interface{}, 0, len(delveArgs)+4)
+		for _, a := range delveArgs {
+			args = append(args, a)
+		}
+		args = append(args, "--")
+		if !cpi.Opts.AuthEnabled {
+			args = append(args, "-auth-enabled=false")
+		}
+		if cpi.Opts.Verbose {
+			args = append(args, "-verbose=true")
+		}
+		return args
 	case cpi.Opts.Debug:
 		args := []interface{}{}
 		if !cpi.Opts.AuthEnabled {
@@ -1891,6 +1925,13 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 	controllerImagePullSecrets := cpi.getImagePullSecrets(controller.ImagePullSecretName)
 
 	ports := []map[string]interface{}{}
+	if cpi.Opts.Delve {
+		ports = append(ports, map[string]interface{}{
+			"containerPort": 40000,
+			"name":          "dlv",
+			"protocol":      "TCP",
+		})
+	}
 
 	envFrom := []interface{}{
 		map[string]interface{}{
@@ -1970,7 +2011,7 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 
 func (cpi *ControlPlaneInstaller) getReadinessProbe() map[string]interface{} {
 	var readinessProbe map[string]interface{}
-	if !cpi.Opts.Debug {
+	if !cpi.Opts.Delve {
 		readinessProbe = map[string]interface{}{
 			"failureThreshold": 1,
 			"httpGet": map[string]interface{}{
@@ -2042,6 +2083,10 @@ func (cpi *ControlPlaneInstaller) getCommand(name string) []interface{} {
 	case cpi.Opts.LiveReload:
 		return []interface{}{
 			"/usr/local/bin/air",
+		}
+	case cpi.Opts.Delve:
+		return []interface{}{
+			"/usr/local/bin/dlv",
 		}
 	case cpi.Opts.Debug:
 		return []interface{}{

@@ -303,6 +303,34 @@ tptctl get oci-oke-kubernetes-runtime-instances -o json
 tptctl get terraform-instances -o json
 ```
 
+### Cloud Resource Modification — Use Threeport First
+
+**ALWAYS** create, modify, and delete cloud resources (Kubernetes clusters, VPCs, load balancers, DNS records, etc.) through threeport's API and CLI. Threeport tracks the state of all managed resources in its database and reconciles them via controllers. Modifying resources directly through cloud-provider CLIs or MCP tools (e.g., `aws`, `oci`, `gcloud`, `kubectl apply`) will cause state drift — threeport won't know about the change and may overwrite it, fail to clean it up, or behave unpredictably.
+
+**When to use cloud-provider tools:**
+- **Debugging**: Inspecting resource state, checking logs, describing cloud objects to understand failures
+- **Orphaned resource cleanup**: After a failed threeport operation leaves resources behind that threeport can no longer manage (e.g., after a force-deleted control plane)
+- **Read-only queries**: Listing resources, checking quotas, verifying configuration
+
+**Always check the correct region.** When debugging or cleaning up cloud resources, make sure you are querying the same region where threeport deployed them. It is easy to conclude that resources are orphaned or missing when you are simply looking in the wrong region. Check the threeport config or runtime instance to confirm the target region before running cloud-provider commands.
+
+```bash
+# CORRECT: create infrastructure through threeport
+cat <<EOF | tptctl create kubernetes-runtime --stdin
+KubernetesRuntime:
+  Name: my-cluster
+  ...
+EOF
+
+# CORRECT: use cloud CLI for debugging
+aws eks describe-cluster --name my-cluster  # read-only inspection
+oci ce cluster get --cluster-id ocid1...    # read-only inspection
+
+# WRONG: create or modify cloud resources directly
+aws eks create-cluster --name my-cluster    # threeport won't know about this
+oci ce cluster update --cluster-id ocid1... # will cause state drift
+```
+
 ## tptctl Command Reference
 
 ### Syntax

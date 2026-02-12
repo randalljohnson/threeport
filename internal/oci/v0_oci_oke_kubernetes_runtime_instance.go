@@ -250,6 +250,22 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 			string(*latestInstance.ResourceInventory) == "{}" ||
 			string(*latestInstance.ResourceInventory) == "null"
 		if inventoryCleared {
+			// update DeletionAcknowledged to prevent this branch from going stale
+			// while compartment cleanup runs
+			refreshTimestamp := time.Now().UTC()
+			refreshUpdate := v0.OciOkeKubernetesRuntimeInstance{
+				Common: v0.Common{
+					ID: latestInstance.ID,
+				},
+				Reconciliation: v0.Reconciliation{
+					DeletionAcknowledged: &refreshTimestamp,
+				},
+			}
+			_, _ = client.UpdateOciOkeKubernetesRuntimeInstance(
+				r.APIClient,
+				r.APIServer,
+				&refreshUpdate,
+			)
 			// resources destroyed — clean up compartment and confirm
 			ociOkeKubernetesRuntimeDefinition, err := client.GetOciOkeKubernetesRuntimeDefinitionByID(
 				r.APIClient,
@@ -298,11 +314,17 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 			return 0, nil
 		}
 
-		// resources not yet destroyed — requeue
-		return 60, nil
+		// resources not yet destroyed — check if deletion acknowledgement is stale
+		// (indicates pod died during delete goroutine)
+		if checkStaleOkeAck(*ociOkeKubernetesRuntimeInstance.DeletionAcknowledged) {
+			reconLog.Info("deletion acknowledgement is stale, re-launching delete goroutine")
+			// fall through to re-launch delete goroutine below
+		} else {
+			return 60, nil
+		}
 	}
 
-	// acknowledge deletion scheduled
+	// acknowledge deletion scheduled (or re-acknowledge after stale detection)
 	timestamp := time.Now().UTC()
 	ociOkeKubernetesRuntimeInstance.DeletionAcknowledged = &timestamp
 	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
@@ -469,13 +491,44 @@ func createOkeInfra(
 
 	// start state streaming via fsnotify
 	quitStream := make(chan bool, 1)
+	streamStopped := false
 	go streamOkeState(r, infraOKE, instance, quitStream, log)
-	defer func() { quitStream <- true }()
+	defer func() {
+		if !streamStopped {
+			quitStream <- true
+		}
+	}()
 
 	// create infrastructure (compartment + Pulumi, no IAM)
 	_, err := infraOKE.CreateInfra()
 	if err != nil {
 		log.Error(err, "failed to create OKE cluster infra")
+
+		// stop the stream watcher before capturing final state
+		quitStream <- true
+		streamStopped = true
+
+		// capture Pulumi state even on failure so retries can restore it
+		// and avoid creating duplicate cloud resources
+		stateJSON, stateErr := infraOKE.GetStackState()
+		if stateErr != nil {
+			log.Error(stateErr, "failed to get Pulumi stack state after failed creation")
+		} else if stateJSON != nil {
+			stateUpdate := v0.OciOkeKubernetesRuntimeInstance{
+				Common: v0.Common{
+					ID: instance.ID,
+				},
+				ResourceInventory: stateJSON,
+			}
+			if _, updateErr := client.UpdateOciOkeKubernetesRuntimeInstance(
+				r.APIClient,
+				r.APIServer,
+				&stateUpdate,
+			); updateErr != nil {
+				log.Error(updateErr, "failed to save partial Pulumi state after failed creation")
+			}
+		}
+
 		persistOkeCreateFailure(r, *instance.ID, log)
 		return
 	}
@@ -521,6 +574,11 @@ func deleteOkeInfra(
 	instance *v0.OciOkeKubernetesRuntimeInstance,
 	log *logr.Logger,
 ) {
+	// refresh the deletion acknowledgement until this function returns
+	quitAck := make(chan bool, 1)
+	go refreshOkeDeletionAcknowledgement(r, instance, quitAck, log)
+	defer func() { quitAck <- true }()
+
 	// destroy Pulumi stack (VCN, subnets, cluster, node pool)
 	if err := infraOKE.Delete(); err != nil {
 		log.Error(err, "failed to delete OKE cluster infra")
@@ -677,6 +735,40 @@ func refreshOkeAcknowledgement(
 			}
 
 			time.Sleep(time.Second * 60)
+		}
+	}
+}
+
+// refreshOkeDeletionAcknowledgement refreshes the deletion acknowledged timestamp
+// every 60 seconds until told to quit, preventing stale detection from re-launching
+// the delete goroutine while it is still running.
+func refreshOkeDeletionAcknowledgement(
+	r *controller.Reconciler,
+	instance *v0.OciOkeKubernetesRuntimeInstance,
+	quitChan chan bool,
+	log *logr.Logger,
+) {
+	for {
+		select {
+		case <-quitChan:
+			return
+		case <-time.After(60 * time.Second):
+			refreshAckTimestamp := time.Now().UTC()
+			ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
+				Common: v0.Common{
+					ID: instance.ID,
+				},
+				Reconciliation: v0.Reconciliation{
+					DeletionAcknowledged: &refreshAckTimestamp,
+				},
+			}
+			if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
+				r.APIClient,
+				r.APIServer,
+				&ackUpdate,
+			); err != nil {
+				log.Error(err, "failed to refresh deletion acknowledged timestamp")
+			}
 		}
 	}
 }

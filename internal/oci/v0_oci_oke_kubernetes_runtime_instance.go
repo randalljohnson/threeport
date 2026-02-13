@@ -184,11 +184,29 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 		return 0, fmt.Errorf("failed to build OKE infra object: %w", err)
 	}
 
-	// guard against duplicate goroutines for the same instance
-	operationKey := fmt.Sprintf("create-%d", *ociOkeKubernetesRuntimeInstance.ID)
+	// guard against duplicate goroutines for the same instance (unified key
+	// prevents concurrent create/delete on the same Pulumi workspace)
+	operationKey := fmt.Sprintf("oke-%d", *ociOkeKubernetesRuntimeInstance.ID)
 	if _, loaded := activeOkeOperations.LoadOrStore(operationKey, true); loaded {
-		reconLog.Info("create goroutine already active for this instance, skipping")
+		reconLog.Info("operation already active for this instance, skipping create")
 		return 120, nil
+	}
+
+	// check if deletion was scheduled while we were preparing to create —
+	// if so, release the guard and let the delete handler proceed
+	latestForDeleteCheck, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
+		r.APIClient,
+		r.APIServer,
+		*ociOkeKubernetesRuntimeInstance.ID,
+	)
+	if err != nil {
+		activeOkeOperations.Delete(operationKey)
+		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
+	}
+	if latestForDeleteCheck.DeletionScheduled != nil {
+		activeOkeOperations.Delete(operationKey)
+		reconLog.Info("deletion scheduled, aborting create to let delete handler proceed")
+		return 0, nil
 	}
 
 	// launch creation in background goroutine
@@ -352,10 +370,11 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 		return 0, fmt.Errorf("failed to build OKE infra object for deletion: %w", err)
 	}
 
-	// guard against duplicate goroutines for the same instance
-	operationKey := fmt.Sprintf("delete-%d", *ociOkeKubernetesRuntimeInstance.ID)
+	// guard against duplicate goroutines for the same instance (unified key
+	// prevents concurrent create/delete on the same Pulumi workspace)
+	operationKey := fmt.Sprintf("oke-%d", *ociOkeKubernetesRuntimeInstance.ID)
 	if _, loaded := activeOkeOperations.LoadOrStore(operationKey, true); loaded {
-		reconLog.Info("delete goroutine already active for this instance, skipping")
+		reconLog.Info("operation already active for this instance, skipping delete")
 		return 60, nil
 	}
 

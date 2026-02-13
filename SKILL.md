@@ -484,6 +484,15 @@ tptdev build --names rest-api,workload-controller --push --restart
 tptdev down
 ```
 
+### tptctl Binary Location
+
+`tptctl` is built by `mage build:tptctl` and placed in `bin/tptctl` relative to the repo root. It is NOT installed globally. To use it, either add the repo's `bin/` directory to `PATH` or reference it by full path:
+
+```bash
+export PATH="$(git rev-parse --show-toplevel)/bin:$PATH"
+tptctl get workload-instances
+```
+
 ### Build-Test Cycle
 
 After making code changes:

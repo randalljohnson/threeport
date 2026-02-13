@@ -581,7 +581,27 @@ func deleteOkeInfra(
 
 	// destroy Pulumi stack (VCN, subnets, cluster, node pool)
 	if err := infraOKE.Delete(); err != nil {
-		log.Error(err, "failed to delete OKE cluster infra")
+		log.Error(err, "failed to delete OKE cluster infra, will retry on next reconciliation")
+
+		// capture updated Pulumi state so retries know which resources remain
+		stateJSON, stateErr := infraOKE.GetStackState()
+		if stateErr != nil {
+			log.Error(stateErr, "failed to get Pulumi stack state after failed deletion")
+		} else if stateJSON != nil {
+			stateUpdate := v0.OciOkeKubernetesRuntimeInstance{
+				Common: v0.Common{
+					ID: instance.ID,
+				},
+				ResourceInventory: stateJSON,
+			}
+			if _, updateErr := client.UpdateOciOkeKubernetesRuntimeInstance(
+				r.APIClient,
+				r.APIServer,
+				&stateUpdate,
+			); updateErr != nil {
+				log.Error(updateErr, "failed to save Pulumi state after failed deletion")
+			}
+		}
 		return
 	}
 

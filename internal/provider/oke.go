@@ -624,8 +624,16 @@ func (i *KubernetesRuntimeInfraOKE) Delete() error {
 		return fmt.Errorf("failed to set up Pulumi workspace: %w", err)
 	}
 
-	// create a context for the automation API
 	ctx := context.Background()
+
+	// refresh state before destroy to clear stale pending operations and
+	// ensure Pulumi knows the current state of all cloud resources
+	if _, err := i.runPulumiRefresh(ctx, stack); err != nil {
+		// log but don't fail - destroy may still succeed without refresh
+		if i.Logger != nil {
+			i.Logger.Error(err, "failed to refresh stack before destroy, proceeding with destroy")
+		}
+	}
 
 	// destroy the stack
 	_, err = i.runPulumiDestroy(ctx, stack)
@@ -1144,7 +1152,6 @@ func (i *KubernetesRuntimeInfraOKE) getHomeRegion(identityClient identity.Identi
 	return "", fmt.Errorf("could not find region name for home region key %s", homeRegionKey)
 }
 
-// setupPulumiWorkspace sets up the Pulumi workspace and environment for OKE operations
 // initPulumiWorkspace initializes the Pulumi workspace directory, environment
 // variables, project file, and creates the local workspace. Additional options
 // (e.g. auto.Program) can be passed to customize the workspace.
@@ -1155,9 +1162,10 @@ func (i *KubernetesRuntimeInfraOKE) initPulumiWorkspace(opts ...auto.LocalWorksp
 		return nil, fmt.Errorf("failed to set state directory: %w", err)
 	}
 
-	// set environment variables for Pulumi configuration
-	if err := i.setPulumiEnvVars(); err != nil {
-		return nil, fmt.Errorf("failed to set Pulumi environment variables: %w", err)
+	// get Pulumi environment variables as a map (not process-global)
+	envVars, err := i.getPulumiEnvVars()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Pulumi environment variables: %w", err)
 	}
 
 	// create Pulumi.yaml project file
@@ -1172,8 +1180,14 @@ description: Oracle Kubernetes Engine (OKE) cluster for Threeport
 
 	ctx := context.Background()
 
-	// create a new workspace with local state backend
-	allOpts := append([]auto.LocalWorkspaceOption{auto.WorkDir(i.stateDir)}, opts...)
+	// create a new workspace with local state backend and per-instance env vars
+	allOpts := append(
+		[]auto.LocalWorkspaceOption{
+			auto.WorkDir(i.stateDir),
+			auto.EnvVars(envVars),
+		},
+		opts...,
+	)
 	workspace, err := auto.NewLocalWorkspace(ctx, allOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workspace: %w", err)
@@ -1267,31 +1281,27 @@ func (i *KubernetesRuntimeInfraOKE) SetStackState(state *datatypes.JSON) error {
 	return nil
 }
 
-// setPulumiEnvVars sets the environment variables for Pulumi
-func (i *KubernetesRuntimeInfraOKE) setPulumiEnvVars() error {
-	os.Setenv("PULUMI_BACKEND_URL", "file://"+i.stateDir)
-
-	// set PULUMI_HOME to a shared location so the OCI provider plugin is
-	// downloaded once and reused across stacks
+// getPulumiEnvVars returns Pulumi environment variables as a map for use with
+// auto.EnvVars(), avoiding process-global os.Setenv which is unsafe for
+// concurrent goroutines operating on different stacks.
+func (i *KubernetesRuntimeInfraOKE) getPulumiEnvVars() (map[string]string, error) {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 	pulumiHome := filepath.Join(userHome, ".threeport", "pulumi-home")
 	if err := os.MkdirAll(pulumiHome, 0755); err != nil {
-		return fmt.Errorf("failed to create pulumi home directory: %w", err)
+		return nil, fmt.Errorf("failed to create pulumi home directory: %w", err)
 	}
-	os.Setenv("PULUMI_HOME", pulumiHome)
-	os.Setenv("PULUMI_PROJECT", "oke")
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 
-	// ignore plugins found in PATH to ensure version consistency
-	os.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
-
-	// set plugin path to shared pulumi home so downloaded plugins are reused
-	os.Setenv("PULUMI_PLUGIN_PATH", filepath.Join(pulumiHome, "plugins"))
-
-	return nil
+	return map[string]string{
+		"PULUMI_BACKEND_URL":             "file://" + i.stateDir,
+		"PULUMI_HOME":                    pulumiHome,
+		"PULUMI_PROJECT":                 "oke",
+		"PULUMI_CONFIG_PASSPHRASE":       "",
+		"PULUMI_IGNORE_AMBIENT_PLUGINS":  "true",
+		"PULUMI_PLUGIN_PATH":             filepath.Join(pulumiHome, "plugins"),
+	}, nil
 }
 
 // setStateDir sets the state directory for the OKE stack

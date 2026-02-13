@@ -352,18 +352,19 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 		return 0, fmt.Errorf("failed to build OKE infra object for deletion: %w", err)
 	}
 
-	// restore Pulumi state from ResourceInventory
-	if ociOkeKubernetesRuntimeInstance.ResourceInventory != nil {
-		if err := infraOKE.SetStackState(ociOkeKubernetesRuntimeInstance.ResourceInventory); err != nil {
-			return 0, fmt.Errorf("failed to restore Pulumi stack state: %w", err)
-		}
-	}
-
 	// guard against duplicate goroutines for the same instance
 	operationKey := fmt.Sprintf("delete-%d", *ociOkeKubernetesRuntimeInstance.ID)
 	if _, loaded := activeOkeOperations.LoadOrStore(operationKey, true); loaded {
 		reconLog.Info("delete goroutine already active for this instance, skipping")
 		return 60, nil
+	}
+
+	// restore Pulumi state from ResourceInventory
+	if ociOkeKubernetesRuntimeInstance.ResourceInventory != nil {
+		if err := infraOKE.SetStackState(ociOkeKubernetesRuntimeInstance.ResourceInventory); err != nil {
+			activeOkeOperations.Delete(operationKey)
+			return 0, fmt.Errorf("failed to restore Pulumi stack state: %w", err)
+		}
 	}
 
 	// launch deletion in background goroutine

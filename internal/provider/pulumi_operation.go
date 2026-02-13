@@ -233,12 +233,14 @@ func executePulumiCreate(config PulumiCreateConfig) {
 
 	// create infrastructure
 	err := config.Infra.DeployInfra()
+
+	// stop the stream watcher before capturing final state to prevent
+	// a late fsnotify event from overwriting the authoritative state
+	quitStream <- true
+	streamStopped = true
+
 	if err != nil {
 		config.Log.Error(err, "failed to create infrastructure")
-
-		// stop the stream watcher before capturing final state
-		quitStream <- true
-		streamStopped = true
 
 		// capture Pulumi state even on failure so retries can restore it
 		// and avoid creating duplicate cloud resources
@@ -365,6 +367,13 @@ func streamState(
 				continue
 			}
 			if state == nil {
+				continue
+			}
+
+			// validate JSON before uploading to prevent partial writes
+			// from overwriting good state in the database
+			if !json.Valid(*state) {
+				log.V(1).Info("skipping partial state file write (invalid JSON)")
 				continue
 			}
 

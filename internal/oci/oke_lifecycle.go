@@ -1,10 +1,13 @@
 package oci
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	ociidentity "github.com/oracle/oci-go-sdk/v65/identity"
 	"gorm.io/datatypes"
 
 	notif "github.com/threeport/threeport/internal/oci/notif"
@@ -12,6 +15,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 )
 
@@ -372,4 +376,88 @@ func newOkeLifecycleConfig(
 
 		Log: log,
 	}
+}
+
+// buildOkeInfra constructs a KubernetesRuntimeInfraOKE from API objects.
+func buildOkeInfra(
+	r *controller.Reconciler,
+	instance *v0.OciOkeKubernetesRuntimeInstance,
+	definition *v0.OciOkeKubernetesRuntimeDefinition,
+	log *logr.Logger,
+) (*provider.KubernetesRuntimeInfraOKE, error) {
+	// get OCI provider
+	ociProvider, err := client.GetOciProviderByID(
+		r.APIClient,
+		r.APIServer,
+		*instance.OciProviderID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve OCI provider by ID: %w", err)
+	}
+
+	// decrypt private key
+	decryptedPrivateKey, err := encryption.Decrypt(r.EncryptionKey, *ociProvider.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt OCI provider private key: %w", err)
+	}
+
+	// construct OCI config provider from provider credentials
+	configProvider := common.NewRawConfigurationProvider(
+		*ociProvider.CompartmentOCID,
+		*ociProvider.UserOCID,
+		*ociProvider.DefaultRegion,
+		*ociProvider.KeyFingerprint,
+		decryptedPrivateKey,
+		nil,
+	)
+
+	// use instance region if set, otherwise fall back to provider default region
+	region := *ociProvider.DefaultRegion
+	if instance.Region != nil && *instance.Region != "" {
+		region = *instance.Region
+	}
+
+	infraOKE := &provider.KubernetesRuntimeInfraOKE{
+		PulumiWorkspace: provider.PulumiWorkspace{
+			RuntimeInstanceName: *instance.Name,
+			ProjectName:         "oke",
+			ProjectDescription:  "Oracle Kubernetes Engine (OKE) cluster for Threeport",
+			StackConfigs:        map[string]string{"oci:region": region},
+			Logger:              log,
+		},
+		Region:                 region,
+		TenancyOCID:            *ociProvider.CompartmentOCID,
+		ConfigProvider:         configProvider,
+		WorkerNodeShape:        *definition.WorkerNodeShape,
+		WorkerNodeInitialCount: *definition.WorkerNodeInitialCount,
+		Version:                provider.DefaultOKEKubernetesVersion,
+		ServiceUserOCID:        *ociProvider.UserOCID,
+		Fingerprint:            *ociProvider.KeyFingerprint,
+		PrivateKeyPEM:          decryptedPrivateKey,
+	}
+
+	// resolve the compartment OCID by looking up the compartment named after
+	// the runtime instance under the tenancy
+	identityClient, err := ociidentity.NewIdentityClientWithConfigurationProvider(configProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create identity client: %w", err)
+	}
+	identityClient.SetRegion(region)
+
+	listRequest := ociidentity.ListCompartmentsRequest{
+		CompartmentId: ociProvider.CompartmentOCID,
+		Name:          instance.Name,
+	}
+	listResponse, err := identityClient.ListCompartments(context.Background(), listRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list compartments to resolve compartment OCID: %w", err)
+	}
+	if len(listResponse.Items) > 0 {
+		infraOKE.CompartmentOCID = *listResponse.Items[0].Id
+	} else {
+		// fall back to tenancy OCID (compartment may not exist yet for new creates)
+		infraOKE.CompartmentOCID = *ociProvider.CompartmentOCID
+	}
+
+	return infraOKE, nil
 }

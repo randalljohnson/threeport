@@ -177,7 +177,6 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 	}
 
 	// check if deletion was scheduled while we were preparing to create
-	operationKey := fmt.Sprintf("oke-%d", *ociOkeKubernetesRuntimeInstance.ID)
 	latestForDeleteCheck, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
 		r.APIClient,
 		r.APIServer,
@@ -267,6 +266,17 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 				reconLog.Error(err, "failed to update OKE instance with resource inventory and cluster OCID")
 			}
 
+			// check if deletion was scheduled during the create operation
+			latestForDelete, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
+				r.APIClient,
+				r.APIServer,
+				instanceID,
+			)
+			if err == nil && latestForDelete.DeletionScheduled != nil {
+				reconLog.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
+				return nil
+			}
+
 			// publish NATS notification to trigger immediate re-reconciliation
 			notifPayload, notifErr := ociOkeKubernetesRuntimeInstance.NotificationPayload(
 				notifications.NotificationOperationCreated,
@@ -287,7 +297,6 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 	}
 
 	return provider.LaunchPulumiCreate(provider.PulumiCreateConfig{
-		OperationKey:  operationKey,
 		Infra:         infraOKE,
 		ExistingState: ociOkeKubernetesRuntimeInstance.ResourceInventory,
 		Callbacks:     callbacks,
@@ -326,6 +335,14 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 	// check if already confirmed
 	if ociOkeKubernetesRuntimeInstance.DeletionConfirmed != nil {
 		return 0, nil
+	}
+
+	// check if a create operation is still in progress on another replica
+	if ociOkeKubernetesRuntimeInstance.CreationAcknowledged != nil &&
+		!provider.CheckStaleAck(*ociOkeKubernetesRuntimeInstance.CreationAcknowledged) &&
+		ociOkeKubernetesRuntimeInstance.CreationConfirmed == nil {
+		reconLog.Info("create operation still in progress, requeueing delete")
+		return 60, nil
 	}
 
 	// check if previously acknowledged
@@ -447,8 +464,6 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 		return 0, fmt.Errorf("failed to build OKE infra object for deletion: %w", err)
 	}
 
-	operationKey := fmt.Sprintf("oke-%d", *ociOkeKubernetesRuntimeInstance.ID)
-
 	// capture instance ID for closures
 	instanceID := *ociOkeKubernetesRuntimeInstance.ID
 
@@ -522,7 +537,6 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 	}
 
 	return provider.LaunchPulumiDelete(provider.PulumiDeleteConfig{
-		OperationKey:  operationKey,
 		Infra:         infraOKE,
 		ExistingState: ociOkeKubernetesRuntimeInstance.ResourceInventory,
 		Callbacks:     callbacks,

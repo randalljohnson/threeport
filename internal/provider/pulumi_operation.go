@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -16,10 +15,6 @@ import (
 // staleAckDurationSeconds is the threshold after which an acknowledgement
 // timestamp is considered stale, indicating the operation was interrupted.
 const staleAckDurationSeconds = 240
-
-// activePulumiOperations tracks in-progress goroutines per operation key to
-// prevent duplicate create/delete operations from being spawned simultaneously.
-var activePulumiOperations sync.Map
 
 // pulumiSemaphore limits concurrent Pulumi operations to prevent OOM from
 // too many simultaneous infrastructure deployments.
@@ -60,10 +55,6 @@ type PulumiCreateCallbacks struct {
 // PulumiCreateConfig contains all parameters needed to launch a Pulumi create
 // operation in a background goroutine.
 type PulumiCreateConfig struct {
-	// OperationKey is a unique key (e.g. "oke-42") used to guard against
-	// duplicate goroutines for the same instance.
-	OperationKey string
-
 	// Infra is the provider's infrastructure object that implements PulumiInfra.
 	Infra PulumiInfra
 
@@ -96,10 +87,6 @@ type PulumiDeleteCallbacks struct {
 // PulumiDeleteConfig contains all parameters needed to launch a Pulumi delete
 // operation in a background goroutine.
 type PulumiDeleteConfig struct {
-	// OperationKey is a unique key (e.g. "oke-42") used to guard against
-	// duplicate goroutines for the same instance.
-	OperationKey string
-
 	// Infra is the provider's infrastructure object that implements PulumiInfra.
 	Infra PulumiInfra
 
@@ -119,25 +106,17 @@ type PulumiDeleteConfig struct {
 // then launches executePulumiCreate in a background goroutine. Returns a
 // requeue delay for the reconciler.
 func LaunchPulumiCreate(config PulumiCreateConfig) (int64, error) {
-	// guard against duplicate goroutines for the same instance
-	if _, loaded := activePulumiOperations.LoadOrStore(config.OperationKey, true); loaded {
-		config.Log.Info("operation already active for this instance, skipping create")
-		return 120, nil
-	}
-
 	// acquire Pulumi concurrency semaphore
 	select {
 	case pulumiSemaphore <- struct{}{}:
 		// acquired slot
 	default:
-		activePulumiOperations.Delete(config.OperationKey)
 		config.Log.Info("Pulumi worker pool full, requeuing")
 		return 30, nil
 	}
 
 	// launch creation in background goroutine
 	go func() {
-		defer activePulumiOperations.Delete(config.OperationKey)
 		defer func() { <-pulumiSemaphore }()
 		executePulumiCreate(config)
 	}()
@@ -149,25 +128,17 @@ func LaunchPulumiCreate(config PulumiCreateConfig) (int64, error) {
 // then launches executePulumiDelete in a background goroutine. Returns a
 // requeue delay for the reconciler.
 func LaunchPulumiDelete(config PulumiDeleteConfig) (int64, error) {
-	// guard against duplicate goroutines for the same instance
-	if _, loaded := activePulumiOperations.LoadOrStore(config.OperationKey, true); loaded {
-		config.Log.Info("operation already active for this instance, skipping delete")
-		return 60, nil
-	}
-
 	// acquire Pulumi concurrency semaphore
 	select {
 	case pulumiSemaphore <- struct{}{}:
 		// acquired slot
 	default:
-		activePulumiOperations.Delete(config.OperationKey)
 		config.Log.Info("Pulumi worker pool full, requeuing")
 		return 30, nil
 	}
 
 	// launch deletion in background goroutine
 	go func() {
-		defer activePulumiOperations.Delete(config.OperationKey)
 		defer func() { <-pulumiSemaphore }()
 		executePulumiDelete(config)
 	}()
@@ -180,20 +151,6 @@ func LaunchPulumiDelete(config PulumiDeleteConfig) (int64, error) {
 func CheckStaleAck(ackTimestamp time.Time) bool {
 	duration := time.Now().UTC().Sub(ackTimestamp)
 	return duration.Seconds() > staleAckDurationSeconds
-}
-
-// ReleaseOperationGuard releases the operation guard for the given key. This
-// is used by the reconciler when it needs to release the guard before calling
-// LaunchPulumiCreate (e.g. after a deletion check fails).
-func ReleaseOperationGuard(operationKey string) {
-	activePulumiOperations.Delete(operationKey)
-}
-
-// CheckOperationGuard checks if an operation is already active for the given
-// key without acquiring it. Returns true if active.
-func CheckOperationGuard(operationKey string) bool {
-	_, loaded := activePulumiOperations.Load(operationKey)
-	return loaded
 }
 
 // executePulumiCreate runs the full Pulumi create lifecycle in a goroutine.

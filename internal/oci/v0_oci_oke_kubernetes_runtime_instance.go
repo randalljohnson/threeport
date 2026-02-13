@@ -678,23 +678,26 @@ func streamOkeState(
 		return
 	}
 
-	// debounce channel approach: timer fires into a channel that the select
-	// loop reads, ensuring state uploads run within the loop and cannot race
-	// with quit
-	debounceCh := make(chan struct{}, 1)
-	var debounceTimer *time.Timer
 	stateFileName := filepath.Base(stateFilePath)
 
 	for {
 		select {
 		case <-quit:
-			if debounceTimer != nil {
-				debounceTimer.Stop()
-			}
 			return
 
-		case <-debounceCh:
-			// debounce fired - read and push state within the select loop
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			// only react to write/create events for the state file
+			if filepath.Base(event.Name) != stateFileName {
+				continue
+			}
+			if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
+				continue
+			}
+
+			// read and upload state immediately
 			state, err := infraOKE.ReadStateFile()
 			if err != nil {
 				log.Error(err, "failed to read state file during streaming")
@@ -718,31 +721,6 @@ func streamOkeState(
 			); err != nil {
 				log.Error(err, "failed to update resource inventory during state streaming")
 			}
-
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
-			}
-			// only react to write events for the state file
-			if filepath.Base(event.Name) != stateFileName {
-				continue
-			}
-			if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
-				continue
-			}
-
-			// debounce: reset timer on each write, fire into channel after
-			// 3 seconds of quiet
-			if debounceTimer != nil {
-				debounceTimer.Stop()
-			}
-			debounceTimer = time.AfterFunc(3*time.Second, func() {
-				select {
-				case debounceCh <- struct{}{}:
-				default:
-					// channel already has a pending signal
-				}
-			})
 
 		case err, ok := <-watcher.Errors:
 			if !ok {

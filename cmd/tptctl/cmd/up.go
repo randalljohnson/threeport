@@ -175,8 +175,8 @@ func init() {
 		"debug", false, "Enable debug mode. Defaults to false.",
 	)
 	UpCmd.Flags().BoolVar(
-		&cliArgs.SkipTeardown,
-		"skip-teardown", false, "Skip the teardown of control plane components if an error is encountered.",
+		&cliArgs.TeardownOnFailure,
+		"teardown-on-failure", false, "Automatically tear down control plane resources if an error is encountered.",
 	)
 	UpCmd.Flags().BoolVar(
 		&cliArgs.ControlPlaneOnly,

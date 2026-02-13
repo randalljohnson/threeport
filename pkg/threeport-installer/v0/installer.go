@@ -130,8 +130,8 @@ type Options struct {
 	// A general map to pass around information between various install phases.
 	AdditionalOptions map[string]interface{}
 
-	// Skip teardown of control plane components if an error is encountered.
-	SkipTeardown bool
+	// Automatically tear down control plane resources if an error is encountered.
+	TeardownOnFailure bool
 
 	// Create and connect local container registry for local control plane
 	// clusters.

@@ -54,7 +54,7 @@ type GenesisControlPlaneCLIArgs struct {
 	ThreeportPath         string
 	Debug                 bool
 	Verbose               bool
-	SkipTeardown          bool
+	TeardownOnFailure     bool
 	ControlPlaneOnly      bool
 	InfraOnly             bool
 	KindPortMappings      []string
@@ -73,7 +73,7 @@ type Uninstaller struct {
 	cleanConfig            *bool
 	cpi                    *threeport.ControlPlaneInstaller
 	awsConfig              *aws.Config
-	skipTeardown           *bool
+	teardownOnFailure      *bool
 }
 
 const tier = threeport.ControlPlaneTierDev
@@ -164,7 +164,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.ControlPlaneOnly = a.ControlPlaneOnly
 	cpi.Opts.InfraOnly = a.InfraOnly
 	cpi.Opts.RestApiEksLoadBalancer = true
-	cpi.Opts.SkipTeardown = a.SkipTeardown
+	cpi.Opts.TeardownOnFailure = a.TeardownOnFailure
 	cpi.Opts.LocalRegistry = a.LocalRegistry
 	cpi.Opts.KindPortMappings = a.KindPortMappings
 
@@ -194,7 +194,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	// configure uninstaller
 	uninstaller := &Uninstaller{
 		cpi:          cpi,
-		skipTeardown: &cpi.Opts.SkipTeardown,
+		teardownOnFailure: &cpi.Opts.TeardownOnFailure,
 		cleanConfig:  util.Ptr(true),
 	}
 
@@ -1115,8 +1115,8 @@ func (u *Uninstaller) cleanOnCreateError(
 		createErr = fmt.Errorf("%s: %w", createErrMsg, createErr)
 	}
 
-	// if skipTeardown is set, return error without tearing down infras
-	if *u.skipTeardown {
+	// if teardownOnFailure is not set, return error without tearing down infras
+	if !*u.teardownOnFailure {
 		return createErr
 	}
 

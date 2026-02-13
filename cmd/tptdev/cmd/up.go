@@ -101,8 +101,8 @@ func init() {
 		"verbose", false, "Enable verbose logging in control plane components, delve, and cli logs.",
 	)
 	upCmd.Flags().BoolVar(
-		&cliArgs.SkipTeardown,
-		"skip-teardown", false, "Skip the teardown of control plane components if an error is encountered.",
+		&cliArgs.TeardownOnFailure,
+		"teardown-on-failure", false, "Automatically tear down control plane resources if an error is encountered.",
 	)
 	upCmd.Flags().BoolVar(
 		&cliArgs.LocalRegistry,

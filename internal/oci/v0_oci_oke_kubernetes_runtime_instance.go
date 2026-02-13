@@ -447,13 +447,7 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 		return 0, fmt.Errorf("failed to build OKE infra object for deletion: %w", err)
 	}
 
-	// restore Pulumi state from ResourceInventory before launching delete
 	operationKey := fmt.Sprintf("oke-%d", *ociOkeKubernetesRuntimeInstance.ID)
-	if ociOkeKubernetesRuntimeInstance.ResourceInventory != nil {
-		if err := infraOKE.SetStackState(ociOkeKubernetesRuntimeInstance.ResourceInventory); err != nil {
-			return 0, fmt.Errorf("failed to restore Pulumi stack state: %w", err)
-		}
-	}
 
 	// capture instance ID for closures
 	instanceID := *ociOkeKubernetesRuntimeInstance.ID
@@ -528,10 +522,11 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 	}
 
 	return provider.LaunchPulumiDelete(provider.PulumiDeleteConfig{
-		OperationKey: operationKey,
-		Infra:        infraOKE,
-		Callbacks:    callbacks,
-		Log:          &reconLog,
+		OperationKey:  operationKey,
+		Infra:         infraOKE,
+		ExistingState: ociOkeKubernetesRuntimeInstance.ResourceInventory,
+		Callbacks:     callbacks,
+		Log:           &reconLog,
 	})
 }
 

@@ -103,6 +103,11 @@ type PulumiDeleteConfig struct {
 	// Infra is the provider's infrastructure object that implements PulumiInfra.
 	Infra PulumiInfra
 
+	// ExistingState is the previously saved Pulumi state from ResourceInventory.
+	// When non-nil and non-empty, state is restored before destroying so Pulumi
+	// knows which cloud resources to delete.
+	ExistingState *datatypes.JSON
+
 	// Callbacks contains provider-specific functions invoked during the operation.
 	Callbacks PulumiDeleteCallbacks
 
@@ -284,6 +289,35 @@ func executePulumiDelete(config PulumiDeleteConfig) {
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
 	defer func() { quitAck <- true }()
+
+	// restore Pulumi state from ResourceInventory if available so Pulumi
+	// knows which cloud resources to destroy
+	if config.ExistingState != nil &&
+		len(*config.ExistingState) > 0 &&
+		string(*config.ExistingState) != "{}" &&
+		string(*config.ExistingState) != "null" {
+		// validate state JSON before restoring — corrupt/truncated state from
+		// a partial fsnotify write would cause SetStackState to fail
+		if !json.Valid(*config.ExistingState) {
+			config.Log.Error(
+				fmt.Errorf("existing state is not valid JSON (%d bytes)", len(*config.ExistingState)),
+				"skipping state restoration for delete, will attempt destroy without state",
+			)
+		} else {
+			if err := config.Infra.SetStackState(config.ExistingState); err != nil {
+				config.Log.Error(err, "failed to restore Pulumi stack state for delete, proceeding without state")
+			} else {
+				config.Log.Info("restored Pulumi state from database for deletion")
+
+				// refresh stack to sync state with cloud reality
+				if err := config.Infra.RefreshStack(); err != nil {
+					config.Log.Error(err, "failed to refresh Pulumi stack state before delete, proceeding with destroy")
+				} else {
+					config.Log.Info("refreshed Pulumi stack state against cloud reality")
+				}
+			}
+		}
+	}
 
 	// destroy Pulumi stack
 	if err := config.Infra.DestroyInfra(); err != nil {

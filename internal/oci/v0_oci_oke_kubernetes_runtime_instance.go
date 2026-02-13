@@ -17,11 +17,13 @@ import (
 	ociidentity "github.com/oracle/oci-go-sdk/v65/identity"
 	"gorm.io/datatypes"
 
+	notif "github.com/threeport/threeport/internal/oci/notif"
 	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 )
 
 const staleOkeAckDurationSeconds = 240
@@ -585,6 +587,21 @@ func createOkeInfra(
 	if err != nil {
 		log.Error(err, "failed to update OKE instance with resource inventory and cluster OCID")
 	}
+
+	// publish NATS notification to trigger immediate re-reconciliation
+	notifPayload, notifErr := instance.NotificationPayload(
+		notifications.NotificationOperationCreated,
+		false,
+		time.Now().Unix(),
+	)
+	if notifErr != nil {
+		log.Error(notifErr, "failed to create notification payload after OKE creation")
+	} else if _, notifErr = r.JetStreamContext.Publish(
+		notif.OciOkeKubernetesRuntimeInstanceCreateSubject,
+		*notifPayload,
+	); notifErr != nil {
+		log.Error(notifErr, "failed to publish completion notification after OKE creation")
+	}
 }
 
 // deleteOkeInfra deletes the OKE cluster infrastructure in a background goroutine.
@@ -640,6 +657,21 @@ func deleteOkeInfra(
 	)
 	if err != nil {
 		log.Error(err, "failed to clear resource inventory after deletion")
+	}
+
+	// publish NATS notification to trigger immediate re-reconciliation
+	notifPayload, notifErr := instance.NotificationPayload(
+		notifications.NotificationOperationDeleted,
+		false,
+		time.Now().Unix(),
+	)
+	if notifErr != nil {
+		log.Error(notifErr, "failed to create notification payload after OKE deletion")
+	} else if _, notifErr = r.JetStreamContext.Publish(
+		notif.OciOkeKubernetesRuntimeInstanceDeleteSubject,
+		*notifPayload,
+	); notifErr != nil {
+		log.Error(notifErr, "failed to publish completion notification after OKE deletion")
 	}
 }
 

@@ -881,7 +881,12 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		kubernetesRuntimeInfra = kubernetesRuntimeInfraEKS
 	case v0.KubernetesRuntimeInfraProviderOKE:
 		kubernetesRuntimeInfraOKE := provider.KubernetesRuntimeInfraOKE{
-			RuntimeInstanceName: provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
+			PulumiWorkspace: provider.PulumiWorkspace{
+				RuntimeInstanceName: provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
+				ProjectName:         "oke",
+				ProjectDescription:  "Oracle Kubernetes Engine (OKE) cluster for Threeport",
+				// StackConfigs set by LoadOCIConfig after region is resolved
+			},
 		}
 		if err := kubernetesRuntimeInfraOKE.LoadOCIConfig(
 			threeportControlPlaneConfig.OKEProviderConfig.OciRegion,
@@ -1019,7 +1024,7 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			}
 		case v0.KubernetesRuntimeInfraProviderOKE:
 			// delete Pulumi stack state directory
-			if err := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE).DeletePulumiStackState(); err != nil {
+			if err := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE).DeleteStackState(); err != nil {
 				Warning(fmt.Sprintf("failed to delete Pulumi stack state: %v", err))
 			}
 
@@ -1169,7 +1174,7 @@ func (u *Uninstaller) cleanOnCreateError(
 		if err := kubernetesRuntimeInfraOKE.DeleteOCIResources(); err != nil {
 			Warning(fmt.Sprintf("failed to delete OCI IAM resources: %v", err))
 		}
-		if err := kubernetesRuntimeInfraOKE.DeletePulumiStackState(); err != nil {
+		if err := kubernetesRuntimeInfraOKE.DeleteStackState(); err != nil {
 			Warning(fmt.Sprintf("failed to delete Pulumi stack state: %v", err))
 		}
 		Info("Threeport OCI IAM resources deleted")

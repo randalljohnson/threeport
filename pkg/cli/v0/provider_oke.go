@@ -27,7 +27,12 @@ func DeployOkeInfra(
 ) error {
 	// create OKE infrastructure
 	kubernetesRuntimeInfraOKE := provider.KubernetesRuntimeInfraOKE{
-		RuntimeInstanceName:    provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
+		PulumiWorkspace: provider.PulumiWorkspace{
+			RuntimeInstanceName: provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
+			ProjectName:         "oke",
+			ProjectDescription:  "Oracle Kubernetes Engine (OKE) cluster for Threeport",
+			// StackConfigs set by LoadOCIConfig after region is resolved
+		},
 		WorkerNodeShape:        "VM.Standard.A1.Flex",
 		Version:                provider.DefaultOKEKubernetesVersion,
 		WorkerNodeInitialCount: int32(2),

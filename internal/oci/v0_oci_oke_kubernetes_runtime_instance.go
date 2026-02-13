@@ -4,22 +4,17 @@ package oci
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	logr "github.com/go-logr/logr"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	ociidentity "github.com/oracle/oci-go-sdk/v65/identity"
-	"gorm.io/datatypes"
 
-	notif "github.com/threeport/threeport/internal/oci/notif"
 	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
-	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 )
 
 // v0OciOkeKubernetesRuntimeInstanceCreated performs reconciliation when a v0 OciOkeKubernetesRuntimeInstance
@@ -29,279 +24,13 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 	ociOkeKubernetesRuntimeInstance *v0.OciOkeKubernetesRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// add log metadata
 	reconLog := log.WithValues(
 		"ociOkeKubernetesRuntimeInstanceID", *ociOkeKubernetesRuntimeInstance.ID,
 		"ociOkeKubernetesRuntimeInstanceName", *ociOkeKubernetesRuntimeInstance.Name,
 	)
 
-	// fetch latest state from API
-	ociOkeKubernetesRuntimeInstance, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
-		r.APIClient,
-		r.APIServer,
-		*ociOkeKubernetesRuntimeInstance.ID,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get latest version of OCI OKE kubernetes runtime instance: %w", err)
-	}
-
-	// check if already reconciled
-	if ociOkeKubernetesRuntimeInstance.CreationConfirmed != nil {
-		return 0, nil
-	}
-
-	// check if previously acknowledged
-	if ociOkeKubernetesRuntimeInstance.CreationAcknowledged != nil && !*ociOkeKubernetesRuntimeInstance.CreationFailed {
-		// check if creation is complete by looking for ClusterOCID
-		latestInstance, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
-			r.APIClient,
-			r.APIServer,
-			*ociOkeKubernetesRuntimeInstance.ID,
-		)
-		if err != nil {
-			return 0, fmt.Errorf("failed to check OKE cluster creation status: %w", err)
-		}
-
-		if latestInstance.ClusterOCID != nil && *latestInstance.ClusterOCID != "" {
-			// creation complete — get connection info and confirm
-			ociOkeKubernetesRuntimeDefinition, err := client.GetOciOkeKubernetesRuntimeDefinitionByID(
-				r.APIClient,
-				r.APIServer,
-				*latestInstance.OciOkeKubernetesRuntimeDefinitionID,
-			)
-			if err != nil {
-				return 0, fmt.Errorf("failed to retrieve cluster definition by ID: %w", err)
-			}
-
-			infraOKE, err := buildOkeInfra(r, latestInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
-			if err != nil {
-				return 0, fmt.Errorf("failed to build OKE infra object: %w", err)
-			}
-
-			// get kubernetes cluster connection info
-			kubeConnectionInfo, err := infraOKE.GetConnection()
-			if err != nil {
-				return 0, fmt.Errorf("failed to get Kubernetes API connection info: %w", err)
-			}
-
-			// get kubernetes runtime instance to update kube connection info
-			kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
-				r.APIClient,
-				r.APIServer,
-				*latestInstance.KubernetesRuntimeInstanceID,
-			)
-			if err != nil {
-				return 0, fmt.Errorf("failed to get kubernetes runtime instance to update kube connection info: %w", err)
-			}
-
-			// update kube connection info
-			kubeRuntimeReconciled := false
-			kubernetesRuntimeInstance.APIEndpoint = &kubeConnectionInfo.APIEndpoint
-			kubernetesRuntimeInstance.CACertificate = &kubeConnectionInfo.CACertificate
-			kubernetesRuntimeInstance.ConnectionToken = &kubeConnectionInfo.Token
-			kubernetesRuntimeInstance.ConnectionTokenExpiration = &kubeConnectionInfo.TokenExpiration
-			kubernetesRuntimeInstance.Reconciled = &kubeRuntimeReconciled
-			_, err = client.UpdateKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				kubernetesRuntimeInstance,
-			)
-			if err != nil {
-				return 0, fmt.Errorf("failed to update kubernetes runtime instance with kube connection info: %w", err)
-			}
-
-			// confirm creation and set reconciled to true
-			creationReconciled := true
-			creationTimestamp := time.Now().UTC()
-			confirmedInstance := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: latestInstance.ID,
-				},
-				Reconciliation: v0.Reconciliation{
-					Reconciled:        &creationReconciled,
-					CreationConfirmed: &creationTimestamp,
-				},
-			}
-			_, err = client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&confirmedInstance,
-			)
-			if err != nil {
-				return 0, fmt.Errorf("failed to confirm creation of OKE cluster infra resources: %w", err)
-			}
-
-			reconLog.Info("OKE cluster creation confirmed")
-			return 0, nil
-		}
-
-		// not complete yet — check if acknowledgement is stale
-		if !provider.CheckStaleAck(*ociOkeKubernetesRuntimeInstance.CreationAcknowledged) {
-			return 120, nil
-		}
-	}
-
-	// one of the following is true:
-	// 1. creation has not been acknowledged — new create request
-	// 2. creation has previously failed — time to retry
-	// 3. the last acknowledgement is stale — creation was interrupted
-
-	// acknowledge creation and set creation failure to false
-	creationAckTimestamp := time.Now().UTC()
-	creationFailed := false
-	ociOkeKubernetesRuntimeInstance.CreationAcknowledged = &creationAckTimestamp
-	ociOkeKubernetesRuntimeInstance.CreationFailed = &creationFailed
-	_, err = client.UpdateOciOkeKubernetesRuntimeInstance(
-		r.APIClient,
-		r.APIServer,
-		ociOkeKubernetesRuntimeInstance,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to set creation acknowledged timestamp: %w", err)
-	}
-
-	// get cluster definition
-	ociOkeKubernetesRuntimeDefinition, err := client.GetOciOkeKubernetesRuntimeDefinitionByID(
-		r.APIClient,
-		r.APIServer,
-		*ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to retrieve cluster definition by ID: %w", err)
-	}
-
-	// build the infra object
-	infraOKE, err := buildOkeInfra(r, ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
-	if err != nil {
-		return 0, fmt.Errorf("failed to build OKE infra object: %w", err)
-	}
-
-	// check if deletion was scheduled while we were preparing to create
-	latestForDeleteCheck, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
-		r.APIClient,
-		r.APIServer,
-		*ociOkeKubernetesRuntimeInstance.ID,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
-	}
-	if latestForDeleteCheck.DeletionScheduled != nil {
-		reconLog.Info("deletion scheduled, aborting create to let delete handler proceed")
-		return 0, nil
-	}
-
-	// capture instance ID and references for closures
-	instanceID := *ociOkeKubernetesRuntimeInstance.ID
-
-	// build callbacks with closures capturing reconciler + instance
-	callbacks := provider.PulumiCreateCallbacks{
-		RefreshAck: func() error {
-			refreshAckTimestamp := time.Now().UTC()
-			ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: &instanceID,
-				},
-				Reconciliation: v0.Reconciliation{
-					CreationAcknowledged: &refreshAckTimestamp,
-				},
-			}
-			_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&ackUpdate,
-			)
-			return err
-		},
-		SaveState: func(state *datatypes.JSON) error {
-			stateUpdate := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: &instanceID,
-				},
-				ResourceInventory: state,
-			}
-			_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&stateUpdate,
-			)
-			return err
-		},
-		PersistFailure: func() error {
-			creationFailed := true
-			failedInstance := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: &instanceID,
-				},
-				Reconciliation: v0.Reconciliation{
-					CreationFailed: &creationFailed,
-				},
-			}
-			_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&failedInstance,
-			)
-			return err
-		},
-		OnSuccess: func(state *datatypes.JSON) error {
-			// get cluster OCID
-			clusterOCID, err := infraOKE.GetClusterOCID(infraOKE.RuntimeInstanceName)
-			if err != nil {
-				return fmt.Errorf("failed to get OKE cluster OCID: %w", err)
-			}
-
-			// update instance with final state and cluster OCID
-			updatedInstance := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: &instanceID,
-				},
-				ResourceInventory: state,
-				ClusterOCID:       &clusterOCID,
-			}
-			if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&updatedInstance,
-			); err != nil {
-				reconLog.Error(err, "failed to update OKE instance with resource inventory and cluster OCID")
-			}
-
-			// check if deletion was scheduled during the create operation
-			latestForDelete, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
-				r.APIClient,
-				r.APIServer,
-				instanceID,
-			)
-			if err == nil && latestForDelete.DeletionScheduled != nil {
-				reconLog.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
-				return nil
-			}
-
-			// publish NATS notification to trigger immediate re-reconciliation
-			notifPayload, notifErr := ociOkeKubernetesRuntimeInstance.NotificationPayload(
-				notifications.NotificationOperationCreated,
-				false,
-				time.Now().Unix(),
-			)
-			if notifErr != nil {
-				reconLog.Error(notifErr, "failed to create notification payload after OKE creation")
-			} else if _, notifErr = r.JetStreamContext.Publish(
-				notif.OciOkeKubernetesRuntimeInstanceCreateSubject,
-				*notifPayload,
-			); notifErr != nil {
-				reconLog.Error(notifErr, "failed to publish completion notification after OKE creation")
-			}
-
-			return nil
-		},
-	}
-
-	return provider.LaunchPulumiCreate(provider.PulumiCreateConfig{
-		Infra:         infraOKE,
-		ExistingState: ociOkeKubernetesRuntimeInstance.ResourceInventory,
-		Callbacks:     callbacks,
-		Log:           &reconLog,
-	})
+	config := newOkeLifecycleConfig(r, ociOkeKubernetesRuntimeInstance, &reconLog)
+	return provider.HandlePulumiCreate(config)
 }
 
 // v0OciOkeKubernetesRuntimeInstanceUpdated performs reconciliation when a v0 OciOkeKubernetesRuntimeInstance
@@ -321,227 +50,13 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 	ociOkeKubernetesRuntimeInstance *v0.OciOkeKubernetesRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// add log metadata
 	reconLog := log.WithValues(
 		"ociOkeKubernetesRuntimeInstanceID", *ociOkeKubernetesRuntimeInstance.ID,
 		"ociOkeKubernetesRuntimeInstanceName", *ociOkeKubernetesRuntimeInstance.Name,
 	)
 
-	// check that deletion is scheduled
-	if ociOkeKubernetesRuntimeInstance.DeletionScheduled == nil {
-		return 0, errors.New("deletion notification received but not scheduled")
-	}
-
-	// check if already confirmed
-	if ociOkeKubernetesRuntimeInstance.DeletionConfirmed != nil {
-		return 0, nil
-	}
-
-	// check if a create operation is still in progress on another replica
-	if ociOkeKubernetesRuntimeInstance.CreationAcknowledged != nil &&
-		!provider.CheckStaleAck(*ociOkeKubernetesRuntimeInstance.CreationAcknowledged) &&
-		ociOkeKubernetesRuntimeInstance.CreationConfirmed == nil {
-		reconLog.Info("create operation still in progress, requeueing delete")
-		return 60, nil
-	}
-
-	// check if previously acknowledged
-	if ociOkeKubernetesRuntimeInstance.DeletionAcknowledged != nil {
-		// check if Pulumi destroy is complete (ResourceInventory cleared)
-		latestInstance, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
-			r.APIClient,
-			r.APIServer,
-			*ociOkeKubernetesRuntimeInstance.ID,
-		)
-		if err != nil {
-			return 0, fmt.Errorf("failed to check OKE cluster deletion status: %w", err)
-		}
-
-		inventoryCleared := latestInstance.ResourceInventory == nil ||
-			len(*latestInstance.ResourceInventory) == 0 ||
-			string(*latestInstance.ResourceInventory) == "{}" ||
-			string(*latestInstance.ResourceInventory) == "null"
-		if inventoryCleared {
-			// update DeletionAcknowledged to prevent this branch from going stale
-			// while compartment cleanup runs
-			refreshTimestamp := time.Now().UTC()
-			refreshUpdate := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: latestInstance.ID,
-				},
-				Reconciliation: v0.Reconciliation{
-					DeletionAcknowledged: &refreshTimestamp,
-				},
-			}
-			_, _ = client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&refreshUpdate,
-			)
-			// resources destroyed — clean up compartment and confirm
-			ociOkeKubernetesRuntimeDefinition, err := client.GetOciOkeKubernetesRuntimeDefinitionByID(
-				r.APIClient,
-				r.APIServer,
-				*latestInstance.OciOkeKubernetesRuntimeDefinitionID,
-			)
-			if err != nil {
-				return 0, fmt.Errorf("failed to retrieve cluster definition for deletion cleanup: %w", err)
-			}
-
-			infraOKE, err := buildOkeInfra(r, latestInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
-			if err != nil {
-				return 0, fmt.Errorf("failed to build OKE infra object for deletion cleanup: %w", err)
-			}
-
-			// delete compartment (no IAM resources were created by controller)
-			if err := infraOKE.DeleteCompartment(); err != nil {
-				reconLog.Error(err, "failed to delete OCI compartment")
-			}
-
-			// delete Pulumi stack state
-			if err := infraOKE.DeletePulumiStackState(); err != nil {
-				reconLog.Error(err, "failed to delete Pulumi stack state")
-			}
-
-			// confirm deletion
-			deletionTimestamp := time.Now().UTC()
-			confirmedInstance := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: latestInstance.ID,
-				},
-				Reconciliation: v0.Reconciliation{
-					DeletionConfirmed: &deletionTimestamp,
-				},
-			}
-			_, err = client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&confirmedInstance,
-			)
-			if err != nil {
-				return 0, fmt.Errorf("failed to confirm deletion of OKE cluster: %w", err)
-			}
-
-			reconLog.Info("OKE cluster deletion confirmed")
-			return 0, nil
-		}
-
-		// resources not yet destroyed — check if deletion acknowledgement is stale
-		// (indicates pod died during delete goroutine)
-		if provider.CheckStaleAck(*ociOkeKubernetesRuntimeInstance.DeletionAcknowledged) {
-			reconLog.Info("deletion acknowledgement is stale, re-launching delete goroutine")
-			// fall through to re-launch delete goroutine below
-		} else {
-			return 60, nil
-		}
-	}
-
-	// acknowledge deletion scheduled (or re-acknowledge after stale detection)
-	timestamp := time.Now().UTC()
-	ociOkeKubernetesRuntimeInstance.DeletionAcknowledged = &timestamp
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		r.APIClient,
-		r.APIServer,
-		ociOkeKubernetesRuntimeInstance,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to set deletion acknowledged timestamp: %w", err)
-	}
-
-	// get cluster definition
-	ociOkeKubernetesRuntimeDefinition, err := client.GetOciOkeKubernetesRuntimeDefinitionByID(
-		r.APIClient,
-		r.APIServer,
-		*ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to retrieve cluster definition for deletion: %w", err)
-	}
-
-	// build infra object
-	infraOKE, err := buildOkeInfra(r, ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeDefinition, &reconLog)
-	if err != nil {
-		return 0, fmt.Errorf("failed to build OKE infra object for deletion: %w", err)
-	}
-
-	// capture instance ID for closures
-	instanceID := *ociOkeKubernetesRuntimeInstance.ID
-
-	// build callbacks with closures capturing reconciler + instance
-	callbacks := provider.PulumiDeleteCallbacks{
-		RefreshAck: func() error {
-			refreshAckTimestamp := time.Now().UTC()
-			ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: &instanceID,
-				},
-				Reconciliation: v0.Reconciliation{
-					DeletionAcknowledged: &refreshAckTimestamp,
-				},
-			}
-			_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&ackUpdate,
-			)
-			return err
-		},
-		SaveState: func(state *datatypes.JSON) error {
-			stateUpdate := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: &instanceID,
-				},
-				ResourceInventory: state,
-			}
-			_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&stateUpdate,
-			)
-			return err
-		},
-		OnSuccess: func() error {
-			// clear ResourceInventory to signal deletion complete
-			emptyInventory := datatypes.JSON([]byte("{}"))
-			clearedInstance := v0.OciOkeKubernetesRuntimeInstance{
-				Common: v0.Common{
-					ID: &instanceID,
-				},
-				ResourceInventory: &emptyInventory,
-			}
-			if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-				r.APIClient,
-				r.APIServer,
-				&clearedInstance,
-			); err != nil {
-				reconLog.Error(err, "failed to clear resource inventory after deletion")
-			}
-
-			// publish NATS notification to trigger immediate re-reconciliation
-			notifPayload, notifErr := ociOkeKubernetesRuntimeInstance.NotificationPayload(
-				notifications.NotificationOperationDeleted,
-				false,
-				time.Now().Unix(),
-			)
-			if notifErr != nil {
-				reconLog.Error(notifErr, "failed to create notification payload after OKE deletion")
-			} else if _, notifErr = r.JetStreamContext.Publish(
-				notif.OciOkeKubernetesRuntimeInstanceDeleteSubject,
-				*notifPayload,
-			); notifErr != nil {
-				reconLog.Error(notifErr, "failed to publish completion notification after OKE deletion")
-			}
-
-			return nil
-		},
-	}
-
-	return provider.LaunchPulumiDelete(provider.PulumiDeleteConfig{
-		Infra:         infraOKE,
-		ExistingState: ociOkeKubernetesRuntimeInstance.ResourceInventory,
-		Callbacks:     callbacks,
-		Log:           &reconLog,
-	})
+	config := newOkeLifecycleConfig(r, ociOkeKubernetesRuntimeInstance, &reconLog)
+	return provider.HandlePulumiDelete(config)
 }
 
 // buildOkeInfra constructs a KubernetesRuntimeInfraOKE from API objects.
@@ -584,7 +99,13 @@ func buildOkeInfra(
 	}
 
 	infraOKE := &provider.KubernetesRuntimeInfraOKE{
-		RuntimeInstanceName:    *instance.Name,
+		PulumiWorkspace: provider.PulumiWorkspace{
+			RuntimeInstanceName: *instance.Name,
+			ProjectName:         "oke",
+			ProjectDescription:  "Oracle Kubernetes Engine (OKE) cluster for Threeport",
+			StackConfigs:        map[string]string{"oci:region": region},
+			Logger:              log,
+		},
 		Region:                 region,
 		TenancyOCID:            *ociProvider.CompartmentOCID,
 		ConfigProvider:         configProvider,
@@ -594,7 +115,6 @@ func buildOkeInfra(
 		ServiceUserOCID:        *ociProvider.UserOCID,
 		Fingerprint:            *ociProvider.KeyFingerprint,
 		PrivateKeyPEM:          decryptedPrivateKey,
-		Logger:                 log,
 	}
 
 	// resolve the compartment OCID by looking up the compartment named after

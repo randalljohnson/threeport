@@ -3,14 +3,12 @@ package provider
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	ocicontainerengine "github.com/oracle/oci-go-sdk/v65/containerengine"
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
@@ -18,17 +16,10 @@ import (
 	"github.com/pulumi/pulumi-oci/sdk/v3/go/oci"
 	"github.com/pulumi/pulumi-oci/sdk/v3/go/oci/containerengine"
 	"github.com/pulumi/pulumi-oci/sdk/v3/go/oci/core"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"gopkg.in/yaml.v2"
-	"gorm.io/datatypes"
 )
 
 // DefaultOKEKubernetesVersion is the default Kubernetes version for OKE clusters.
@@ -50,8 +41,8 @@ const (
 // KubernetesRuntimeInfraOKE represents the infrastructure for a threeport-managed OKE
 // (Oracle Kubernetes Engine) cluster.
 type KubernetesRuntimeInfraOKE struct {
-	// The unique name of the kubernetes runtime instance managed by threeport.
-	RuntimeInstanceName string
+	// PulumiWorkspace provides all Pulumi workspace, stack, and state management.
+	PulumiWorkspace
 
 	// Version of the OKE cluster.
 	Version string
@@ -74,19 +65,11 @@ type KubernetesRuntimeInfraOKE struct {
 	// The number of nodes initially created for the worker node pool.
 	WorkerNodeInitialCount int32
 
-	// The path to the Pulumi state directory
-	stateDir string
-
 	// Service user credentials for OCI operations
 	ServiceUserOCID string
 	PrivateKeyPEM   string
 	PublicKeyPEM    string
 	Fingerprint     string
-
-	// Logger enables structured logging for Pulumi operations.
-	// When nil, ProgressStreams(os.Stdout) is used (CLI path).
-	// When set, EventStreams is used with structured logr output (controller path).
-	Logger *logr.Logger
 }
 
 // Create installs a Kubernetes cluster using Oracle Cloud OKE for threeport workloads.
@@ -122,7 +105,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 	}
 
 	// set up Pulumi workspace and get stack
-	stack, err := i.setupPulumiWorkspace(func(ctx *pulumi.Context) error {
+	stack, err := i.SetupStack(func(ctx *pulumi.Context) error {
 
 		// get the availability domain name
 		availabilityDomain, err := i.getAvailabilityDomainName()
@@ -621,7 +604,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 	ctx := context.Background()
 
 	// deploy the stack
-	_, err = i.runPulumiUp(ctx, stack)
+	_, err = i.RunUp(ctx, stack)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy stack: %w", err)
 	}
@@ -646,168 +629,9 @@ func (i *KubernetesRuntimeInfraOKE) DestroyInfra() error {
 
 // Delete deletes an Oracle Cloud OKE cluster.
 func (i *KubernetesRuntimeInfraOKE) Delete() error {
-	// set up Pulumi workspace and get stack
-	stack, err := i.setupPulumiWorkspace(func(ctx *pulumi.Context) error {
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to set up Pulumi workspace: %w", err)
-	}
-
-	ctx := context.Background()
-
-	// refresh state before destroy to clear stale pending operations and
-	// ensure Pulumi knows the current state of all cloud resources
-	if _, err := i.runPulumiRefresh(ctx, stack); err != nil {
-		// log but don't fail - destroy may still succeed without refresh
-		if i.Logger != nil {
-			i.Logger.Error(err, "failed to refresh stack before destroy, proceeding with destroy")
-		}
-	}
-
-	// destroy the stack
-	_, err = i.runPulumiDestroy(ctx, stack)
-	if err != nil {
-		return fmt.Errorf("failed to destroy stack: %w", err)
-	}
-
-	// remove the state directory after successful destruction
-	if err := os.RemoveAll(i.stateDir); err != nil {
-		return fmt.Errorf("failed to remove state directory: %w", err)
-	}
-
-	return nil
+	return i.DestroyStack()
 }
 
-// runPulumiUp runs Pulumi stack.Up with either structured logging or progress streams.
-func (i *KubernetesRuntimeInfraOKE) runPulumiUp(ctx context.Context, stack auto.Stack) (auto.UpResult, error) {
-	if i.Logger == nil {
-		return stack.Up(ctx, optup.ProgressStreams(os.Stdout))
-	}
-
-	eventsChan := make(chan events.EngineEvent)
-	go i.logPulumiEvents(eventsChan, "up")
-	return stack.Up(ctx, optup.EventStreams(eventsChan))
-}
-
-// runPulumiDestroy runs Pulumi stack.Destroy with either structured logging or progress streams.
-func (i *KubernetesRuntimeInfraOKE) runPulumiDestroy(ctx context.Context, stack auto.Stack) (auto.DestroyResult, error) {
-	if i.Logger == nil {
-		return stack.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout))
-	}
-
-	eventsChan := make(chan events.EngineEvent)
-	go i.logPulumiEvents(eventsChan, "destroy")
-	return stack.Destroy(ctx, optdestroy.EventStreams(eventsChan))
-}
-
-// RefreshStack refreshes the Pulumi stack state to match reality in the cloud.
-// This clears stale pending operations and updates drifted resource properties.
-func (i *KubernetesRuntimeInfraOKE) RefreshStack() error {
-	// set up Pulumi workspace and get stack
-	stack, err := i.setupPulumiWorkspace(func(ctx *pulumi.Context) error {
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to set up Pulumi workspace for refresh: %w", err)
-	}
-
-	ctx := context.Background()
-
-	// refresh the stack
-	if _, err := i.runPulumiRefresh(ctx, stack); err != nil {
-		return fmt.Errorf("failed to refresh stack: %w", err)
-	}
-
-	return nil
-}
-
-// runPulumiRefresh runs Pulumi stack.Refresh with either structured logging or progress streams.
-func (i *KubernetesRuntimeInfraOKE) runPulumiRefresh(ctx context.Context, stack auto.Stack) (auto.RefreshResult, error) {
-	if i.Logger == nil {
-		return stack.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout))
-	}
-
-	eventsChan := make(chan events.EngineEvent)
-	go i.logPulumiEvents(eventsChan, "refresh")
-	return stack.Refresh(ctx, optrefresh.EventStreams(eventsChan))
-}
-
-// logPulumiEvents consumes Pulumi engine events and logs them via structured logging.
-func (i *KubernetesRuntimeInfraOKE) logPulumiEvents(eventsChan <-chan events.EngineEvent, operation string) {
-	logger := i.Logger.WithValues(
-		"component", "pulumi",
-		"pulumiOperation", operation,
-		"runtimeInstance", i.RuntimeInstanceName,
-	)
-
-	seq := 0
-	for event := range eventsChan {
-		seq++
-		i.logPulumiEvent(logger, event, seq)
-	}
-}
-
-// logPulumiEvent logs a single Pulumi engine event.
-func (i *KubernetesRuntimeInfraOKE) logPulumiEvent(logger logr.Logger, event events.EngineEvent, seq int) {
-	switch {
-	case event.DiagnosticEvent != nil:
-		e := event.DiagnosticEvent
-		if e.Severity == "error" {
-			logger.Info("pulumi diagnostic",
-				"sequence", seq,
-				"severity", e.Severity,
-				"message", e.Message,
-				"urn", e.URN,
-			)
-		}
-	case event.ResourcePreEvent != nil:
-		e := event.ResourcePreEvent
-		logger.Info("pulumi resource operation starting",
-			"sequence", seq,
-			"resourceType", e.Metadata.Type,
-			"op", string(e.Metadata.Op),
-			"urn", string(e.Metadata.URN),
-		)
-	case event.ResOutputsEvent != nil:
-		e := event.ResOutputsEvent
-		logger.Info("pulumi resource operation complete",
-			"sequence", seq,
-			"resourceType", e.Metadata.Type,
-			"op", string(e.Metadata.Op),
-			"urn", string(e.Metadata.URN),
-		)
-	case event.ResOpFailedEvent != nil:
-		e := event.ResOpFailedEvent
-		logger.Info("pulumi resource operation failed",
-			"sequence", seq,
-			"resourceType", e.Metadata.Type,
-			"op", string(e.Metadata.Op),
-			"urn", string(e.Metadata.URN),
-		)
-	case event.SummaryEvent != nil:
-		e := event.SummaryEvent
-		logger.Info("pulumi operation summary",
-			"sequence", seq,
-			"durationSeconds", e.DurationSeconds,
-			"resourceChanges", e.ResourceChanges,
-		)
-	case event.PreludeEvent != nil:
-		e := event.PreludeEvent
-		logger.Info("pulumi operation starting",
-			"sequence", seq,
-			"config", e.Config,
-		)
-	case event.CancelEvent != nil:
-		logger.Info("pulumi operation cancelled", "sequence", seq)
-	case event.StdoutEvent != nil:
-		e := event.StdoutEvent
-		logger.V(1).Info("pulumi stdout",
-			"sequence", seq,
-			"message", e.Message,
-		)
-	}
-}
 
 // GetClusterOCID gets the OCID of the OKE cluster.
 func (i *KubernetesRuntimeInfraOKE) GetClusterOCID(okeClusterName string) (string, error) {
@@ -997,6 +821,9 @@ func (i *KubernetesRuntimeInfraOKE) LoadOCIConfig(
 		i.CompartmentOCID = i.TenancyOCID
 	}
 
+	// set stack configs now that region is resolved
+	i.StackConfigs = map[string]string{"oci:region": i.Region}
+
 	return nil
 }
 
@@ -1182,197 +1009,6 @@ func (i *KubernetesRuntimeInfraOKE) getHomeRegion(identityClient identity.Identi
 	return "", fmt.Errorf("could not find region name for home region key %s", homeRegionKey)
 }
 
-// initPulumiWorkspace initializes the Pulumi workspace directory, environment
-// variables, project file, and creates the local workspace. Additional options
-// (e.g. auto.Program) can be passed to customize the workspace.
-func (i *KubernetesRuntimeInfraOKE) initPulumiWorkspace(opts ...auto.LocalWorkspaceOption) (auto.Workspace, error) {
-
-	// set up state directory
-	if err := i.setStateDir(); err != nil {
-		return nil, fmt.Errorf("failed to set state directory: %w", err)
-	}
-
-	// get Pulumi environment variables as a map (not process-global)
-	envVars, err := i.getPulumiEnvVars()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Pulumi environment variables: %w", err)
-	}
-
-	// create Pulumi.yaml project file
-	pulumiYaml := `name: oke
-runtime: go
-description: Oracle Kubernetes Engine (OKE) cluster for Threeport
-`
-	pulumiYamlPath := filepath.Join(i.stateDir, "Pulumi.yaml")
-	if err := os.WriteFile(pulumiYamlPath, []byte(pulumiYaml), 0644); err != nil {
-		return nil, fmt.Errorf("failed to create Pulumi.yaml: %w", err)
-	}
-
-	ctx := context.Background()
-
-	// create a new workspace with local state backend and per-instance env vars
-	allOpts := append(
-		[]auto.LocalWorkspaceOption{
-			auto.WorkDir(i.stateDir),
-			auto.EnvVars(envVars),
-		},
-		opts...,
-	)
-	workspace, err := auto.NewLocalWorkspace(ctx, allOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create workspace: %w", err)
-	}
-
-	return workspace, nil
-}
-
-// setupPulumiWorkspace creates and configures a Pulumi stack for the given
-// program, reusing the common workspace initialization.
-func (i *KubernetesRuntimeInfraOKE) setupPulumiWorkspace(program pulumi.RunFunc) (auto.Stack, error) {
-
-	workspace, err := i.initPulumiWorkspace(auto.Program(program))
-	if err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to initialize Pulumi workspace: %w", err)
-	}
-
-	ctx := context.Background()
-
-	// create or select a stack
-	stack, err := auto.UpsertStack(ctx, i.getStackName(), workspace)
-	if err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to create/select stack: %w", err)
-	}
-
-	// set up stack configuration
-	if err := stack.SetConfig(ctx, "oci:region", auto.ConfigValue{Value: i.Region}); err != nil {
-		return auto.Stack{}, fmt.Errorf("failed to set region config: %w", err)
-	}
-
-	return stack, nil
-}
-
-// GetStackState returns the state of the OKE stack as a JSON object.
-func (i *KubernetesRuntimeInfraOKE) GetStackState() (*datatypes.JSON, error) {
-
-	workspace, err := i.initPulumiWorkspace()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Pulumi workspace: %w", err)
-	}
-
-	ctx := context.Background()
-
-	// load stack from workspace
-	stack, err := auto.SelectStack(ctx, i.getStackName(), workspace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to select stack: %w", err)
-	}
-
-	// get the stack's state
-	state, err := stack.Export(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to export stack state: %w", err)
-	}
-
-	// convert state to JSON
-	stateJSON, err := json.Marshal(state)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal state to JSON: %w", err)
-	}
-
-	jsonState := datatypes.JSON(stateJSON)
-	return &jsonState, nil
-}
-
-// SetStackState restores the Pulumi state from a JSON object stored in the
-// database. State in export/deployment format (from GetStackState via
-// stack.Export) is imported via stack.Import which converts to the backend's
-// checkpoint format. State in raw checkpoint format (from ReadStateFile during
-// streaming) is written directly to the state file.
-func (i *KubernetesRuntimeInfraOKE) SetStackState(state *datatypes.JSON) error {
-
-	// initialize workspace and create/select the stack
-	workspace, err := i.initPulumiWorkspace()
-	if err != nil {
-		return fmt.Errorf("failed to initialize Pulumi workspace: %w", err)
-	}
-
-	ctx := context.Background()
-
-	stack, err := auto.UpsertStack(ctx, i.getStackName(), workspace)
-	if err != nil {
-		return fmt.Errorf("failed to create/select stack for state import: %w", err)
-	}
-
-	// try to unmarshal as UntypedDeployment (export format from GetStackState)
-	var deployment apitype.UntypedDeployment
-	if err := json.Unmarshal(*state, &deployment); err == nil && deployment.Deployment != nil {
-		// export format — use stack.Import for proper backend format conversion
-		if err := stack.Import(ctx, deployment); err != nil {
-			return fmt.Errorf("failed to import stack state: %w", err)
-		}
-		return nil
-	}
-
-	// checkpoint format (from ReadStateFile) — write directly to state file
-	stateFilePath, err := i.GetStateFilePath()
-	if err != nil {
-		return fmt.Errorf("failed to get state file path: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(stateFilePath), 0755); err != nil {
-		return fmt.Errorf("failed to create state file directory: %w", err)
-	}
-	if err := os.WriteFile(stateFilePath, *state, 0644); err != nil {
-		return fmt.Errorf("failed to write state file: %w", err)
-	}
-
-	return nil
-}
-
-// getPulumiEnvVars returns Pulumi environment variables as a map for use with
-// auto.EnvVars(), avoiding process-global os.Setenv which is unsafe for
-// concurrent goroutines operating on different stacks.
-func (i *KubernetesRuntimeInfraOKE) getPulumiEnvVars() (map[string]string, error) {
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
-	pulumiHome := filepath.Join(userHome, ".threeport", "pulumi-home")
-	if err := os.MkdirAll(pulumiHome, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create pulumi home directory: %w", err)
-	}
-
-	return map[string]string{
-		"PULUMI_BACKEND_URL":             "file://" + i.stateDir,
-		"PULUMI_HOME":                    pulumiHome,
-		"PULUMI_PROJECT":                 "oke",
-		"PULUMI_CONFIG_PASSPHRASE":       "",
-		"PULUMI_IGNORE_AMBIENT_PLUGINS":  "true",
-		"PULUMI_PLUGIN_PATH":             filepath.Join(pulumiHome, "plugins"),
-	}, nil
-}
-
-// setStateDir sets the state directory for the OKE stack
-func (i *KubernetesRuntimeInfraOKE) setStateDir() error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	i.stateDir = filepath.Join(homeDir, ".threeport", "pulumi-state", i.RuntimeInstanceName)
-
-	// ensure state directory exists
-	if err := os.MkdirAll(i.stateDir, 0755); err != nil {
-		return fmt.Errorf("failed to create state directory: %w", err)
-	}
-
-	return nil
-}
-
-// getStackName returns the name of the OKE stack
-func (i *KubernetesRuntimeInfraOKE) getStackName() string {
-	return i.RuntimeInstanceName
-}
-
 // CreateIAM creates OCI IAM resources (user, group, policy, API key) for the threeport instance.
 //
 // This function uses the OCI SDK (not Pulumi) for identity resource creation because OCI identity
@@ -1452,55 +1088,6 @@ func (i *KubernetesRuntimeInfraOKE) CreateIAM() error {
 
 	fmt.Printf("Successfully created OCI user and credentials\n")
 	return nil
-}
-
-// DeletePulumiStackState deletes the Pulumi stack state directory.
-func (i *KubernetesRuntimeInfraOKE) DeletePulumiStackState() error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	stateDir := filepath.Join(homeDir, ".threeport", "pulumi-state", i.RuntimeInstanceName)
-	if _, err := os.Stat(stateDir); os.IsNotExist(err) {
-		return nil // directory doesn't exist, nothing to delete
-	}
-	return os.RemoveAll(stateDir)
-}
-
-// GetStateFilePath returns the path to the Pulumi state JSON file on disk.
-func (i *KubernetesRuntimeInfraOKE) GetStateFilePath() (string, error) {
-	if err := i.setStateDir(); err != nil {
-		return "", fmt.Errorf("failed to set state directory: %w", err)
-	}
-
-	return filepath.Join(
-		i.stateDir,
-		".pulumi", "stacks", "oke",
-		i.RuntimeInstanceName+".json",
-	), nil
-}
-
-// ReadStateFile reads the current Pulumi state directly from disk.
-// Returns nil (not error) if the file doesn't exist yet.
-func (i *KubernetesRuntimeInfraOKE) ReadStateFile() (*datatypes.JSON, error) {
-	stateFilePath, err := i.GetStateFilePath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get state file path: %w", err)
-	}
-
-	// return nil if file doesn't exist yet (Pulumi hasn't written it)
-	if _, err := os.Stat(stateFilePath); os.IsNotExist(err) {
-		return nil, nil
-	}
-
-	stateBytes, err := os.ReadFile(stateFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read state file: %w", err)
-	}
-
-	state := datatypes.JSON(stateBytes)
-	return &state, nil
 }
 
 // DeleteCompartment deletes only the OCI compartment for this instance.

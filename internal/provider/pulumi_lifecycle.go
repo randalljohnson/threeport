@@ -2,6 +2,7 @@ package provider
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,9 +33,320 @@ type PulumiInfra interface {
 	RefreshStack() error
 }
 
-// PulumiCreateCallbacks contains provider-specific callback functions invoked
+// ReconciliationSnapshot captures the reconciliation timestamps and resource
+// inventory for a provider instance at a point in time. This decouples the
+// lifecycle handler from any specific API object type.
+type ReconciliationSnapshot struct {
+	CreationAcknowledged *time.Time
+	CreationConfirmed    *time.Time
+	CreationFailed       bool
+	DeletionScheduled    *time.Time
+	DeletionAcknowledged *time.Time
+	DeletionConfirmed    *time.Time
+	ResourceInventory    *datatypes.JSON
+}
+
+// PulumiLifecycleConfig contains all provider-specific closures needed by the
+// HandlePulumiCreate and HandlePulumiDelete state machines. A provider fills
+// in the closures for its specific behavior; the lifecycle handler does
+// everything else (ack/confirm checks, stale detection, goroutine wiring,
+// NATS notifications).
+type PulumiLifecycleConfig struct {
+	// GetReconciliation fetches the latest reconciliation state and resource
+	// inventory from the API. Called at the start of each handler invocation
+	// and again during deletion-during-create checks.
+	GetReconciliation func() (*ReconciliationSnapshot, error)
+
+	// BuildInfra constructs the PulumiInfra implementor for this provider.
+	// Called once per handler invocation before launching the goroutine.
+	BuildInfra func() (PulumiInfra, error)
+
+	// IsCreateComplete checks whether the async create operation has finished
+	// (e.g., ClusterOCID is set for OKE). Called during the confirmation
+	// check when CreationAcknowledged is set but CreationConfirmed is not.
+	IsCreateComplete func() (bool, error)
+
+	// OnCreateConfirmed performs provider-specific post-creation work after
+	// the create operation has been confirmed complete (e.g., get connection
+	// info, update dependent objects). Called before ConfirmCreation.
+	OnCreateConfirmed func(infra PulumiInfra) error
+
+	// SaveCreateOutputs saves provider-specific outputs (e.g., ClusterOCID)
+	// and the final Pulumi state from the goroutine's OnSuccess callback.
+	SaveCreateOutputs func(infra PulumiInfra, state *datatypes.JSON) error
+
+	// OnDeleteConfirmed performs provider-specific post-deletion cleanup
+	// after Pulumi resources have been destroyed and inventory cleared
+	// (e.g., delete compartment, delete Pulumi stack state).
+	OnDeleteConfirmed func(infra PulumiInfra) error
+
+	// AckCreation sets CreationAcknowledged and clears CreationFailed in the API.
+	AckCreation func() error
+
+	// RefreshCreationAck updates CreationAcknowledged to prevent stale detection.
+	RefreshCreationAck func() error
+
+	// SetCreationFailed marks CreationFailed=true in the API.
+	SetCreationFailed func() error
+
+	// ConfirmCreation sets CreationConfirmed and Reconciled=true in the API.
+	ConfirmCreation func() error
+
+	// AckDeletion sets DeletionAcknowledged in the API.
+	AckDeletion func() error
+
+	// RefreshDeletionAck updates DeletionAcknowledged to prevent stale detection.
+	RefreshDeletionAck func() error
+
+	// ConfirmDeletion sets DeletionConfirmed in the API.
+	ConfirmDeletion func() error
+
+	// SaveState persists intermediate Pulumi state to the API for crash recovery.
+	SaveState func(state *datatypes.JSON) error
+
+	// ClearInventory sets ResourceInventory to "{}" to signal destroy complete.
+	ClearInventory func() error
+
+	// PublishCreateNotification publishes a NATS notification for creation.
+	PublishCreateNotification func() error
+
+	// PublishDeleteNotification publishes a NATS notification for deletion.
+	PublishDeleteNotification func() error
+
+	// Log is the structured logger for the operation.
+	Log *logr.Logger
+}
+
+// HandlePulumiCreate implements the create state machine for any Pulumi-backed
+// provider. It checks reconciliation state, manages ack/confirm transitions,
+// and launches the create goroutine when needed.
+func HandlePulumiCreate(config PulumiLifecycleConfig) (int64, error) {
+	// fetch latest state from API
+	snap, err := config.GetReconciliation()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get reconciliation state: %w", err)
+	}
+
+	// check if already reconciled
+	if snap.CreationConfirmed != nil {
+		return 0, nil
+	}
+
+	// check if previously acknowledged and not failed
+	if snap.CreationAcknowledged != nil && !snap.CreationFailed {
+		// check if creation is complete
+		complete, err := config.IsCreateComplete()
+		if err != nil {
+			return 0, fmt.Errorf("failed to check create completion: %w", err)
+		}
+
+		if complete {
+			// build infra for post-creation work (e.g., GetConnection)
+			infra, err := config.BuildInfra()
+			if err != nil {
+				return 0, fmt.Errorf("failed to build infra for create confirmation: %w", err)
+			}
+
+			// perform provider-specific post-creation work
+			if err := config.OnCreateConfirmed(infra); err != nil {
+				return 0, fmt.Errorf("failed to run post-creation work: %w", err)
+			}
+
+			// confirm creation
+			if err := config.ConfirmCreation(); err != nil {
+				return 0, fmt.Errorf("failed to confirm creation: %w", err)
+			}
+
+			config.Log.Info("creation confirmed")
+			return 0, nil
+		}
+
+		// not complete yet — check if acknowledgement is stale
+		if !checkStaleAck(*snap.CreationAcknowledged) {
+			return 120, nil
+		}
+	}
+
+	// one of the following is true:
+	// 1. creation has not been acknowledged — new create request
+	// 2. creation has previously failed — time to retry
+	// 3. the last acknowledgement is stale — creation was interrupted
+
+	// acknowledge creation
+	if err := config.AckCreation(); err != nil {
+		return 0, fmt.Errorf("failed to acknowledge creation: %w", err)
+	}
+
+	// build infra
+	infra, err := config.BuildInfra()
+	if err != nil {
+		return 0, fmt.Errorf("failed to build infra for create: %w", err)
+	}
+
+	// check if deletion was scheduled while we were preparing to create
+	snap, err = config.GetReconciliation()
+	if err != nil {
+		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
+	}
+	if snap.DeletionScheduled != nil {
+		config.Log.Info("deletion scheduled, aborting create to let delete handler proceed")
+		return 0, nil
+	}
+
+	// wire callbacks and launch goroutine
+	callbacks := pulumiCreateCallbacks{
+		RefreshAck: config.RefreshCreationAck,
+		SaveState:  config.SaveState,
+		PersistFailure: config.SetCreationFailed,
+		OnSuccess: func(state *datatypes.JSON) error {
+			// save provider-specific outputs
+			if err := config.SaveCreateOutputs(infra, state); err != nil {
+				return fmt.Errorf("failed to save create outputs: %w", err)
+			}
+
+			// check if deletion was scheduled during the create operation
+			latestSnap, err := config.GetReconciliation()
+			if err == nil && latestSnap.DeletionScheduled != nil {
+				config.Log.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
+				return nil
+			}
+
+			// publish notification
+			if err := config.PublishCreateNotification(); err != nil {
+				config.Log.Error(err, "failed to publish create notification")
+			}
+
+			return nil
+		},
+	}
+
+	return launchPulumiCreate(pulumiCreateConfig{
+		Infra:         infra,
+		ExistingState: snap.ResourceInventory,
+		Callbacks:     callbacks,
+		Log:           config.Log,
+	})
+}
+
+// HandlePulumiDelete implements the delete state machine for any Pulumi-backed
+// provider. It checks reconciliation state, manages ack/confirm transitions,
+// handles cross-replica safety, and launches the delete goroutine when needed.
+func HandlePulumiDelete(config PulumiLifecycleConfig) (int64, error) {
+	// fetch latest state from API
+	snap, err := config.GetReconciliation()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get reconciliation state: %w", err)
+	}
+
+	// validate that deletion is scheduled
+	if snap.DeletionScheduled == nil {
+		return 0, errors.New("deletion notification received but not scheduled")
+	}
+
+	// check if already confirmed
+	if snap.DeletionConfirmed != nil {
+		return 0, nil
+	}
+
+	// cross-replica safety: if a create operation is still in progress on
+	// another replica, requeue to let it finish
+	if snap.CreationAcknowledged != nil &&
+		!checkStaleAck(*snap.CreationAcknowledged) &&
+		snap.CreationConfirmed == nil {
+		config.Log.Info("create operation still in progress, requeueing delete")
+		return 60, nil
+	}
+
+	// check if previously acknowledged
+	if snap.DeletionAcknowledged != nil {
+		// re-fetch to check if inventory has been cleared
+		latestSnap, err := config.GetReconciliation()
+		if err != nil {
+			return 0, fmt.Errorf("failed to check deletion status: %w", err)
+		}
+
+		if inventoryCleared(latestSnap.ResourceInventory) {
+			// refresh ack to prevent stale detection during cleanup
+			if err := config.RefreshDeletionAck(); err != nil {
+				config.Log.Error(err, "failed to refresh deletion ack during cleanup")
+			}
+
+			// build infra for post-deletion cleanup
+			infra, err := config.BuildInfra()
+			if err != nil {
+				return 0, fmt.Errorf("failed to build infra for delete confirmation: %w", err)
+			}
+
+			// perform provider-specific post-deletion cleanup
+			if err := config.OnDeleteConfirmed(infra); err != nil {
+				config.Log.Error(err, "failed to run post-deletion cleanup")
+			}
+
+			// confirm deletion
+			if err := config.ConfirmDeletion(); err != nil {
+				return 0, fmt.Errorf("failed to confirm deletion: %w", err)
+			}
+
+			config.Log.Info("deletion confirmed")
+			return 0, nil
+		}
+
+		// resources not yet destroyed — check if ack is stale
+		if checkStaleAck(*snap.DeletionAcknowledged) {
+			config.Log.Info("deletion acknowledgement is stale, re-launching delete goroutine")
+			// fall through to re-launch
+		} else {
+			return 60, nil
+		}
+	}
+
+	// acknowledge deletion
+	if err := config.AckDeletion(); err != nil {
+		return 0, fmt.Errorf("failed to acknowledge deletion: %w", err)
+	}
+
+	// build infra
+	infra, err := config.BuildInfra()
+	if err != nil {
+		return 0, fmt.Errorf("failed to build infra for delete: %w", err)
+	}
+
+	// re-fetch for latest resource inventory
+	snap, err = config.GetReconciliation()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get resource inventory for delete: %w", err)
+	}
+
+	// wire callbacks and launch goroutine
+	callbacks := pulumiDeleteCallbacks{
+		RefreshAck: config.RefreshDeletionAck,
+		SaveState:  config.SaveState,
+		OnSuccess: func() error {
+			// clear inventory to signal destroy complete
+			if err := config.ClearInventory(); err != nil {
+				config.Log.Error(err, "failed to clear resource inventory after deletion")
+			}
+
+			// publish notification
+			if err := config.PublishDeleteNotification(); err != nil {
+				config.Log.Error(err, "failed to publish delete notification")
+			}
+
+			return nil
+		},
+	}
+
+	return launchPulumiDelete(pulumiDeleteConfig{
+		Infra:         infra,
+		ExistingState: snap.ResourceInventory,
+		Callbacks:     callbacks,
+		Log:           config.Log,
+	})
+}
+
+// pulumiCreateCallbacks contains provider-specific callback functions invoked
 // at various points during the create goroutine lifecycle.
-type PulumiCreateCallbacks struct {
+type pulumiCreateCallbacks struct {
 	// RefreshAck updates the creation acknowledged timestamp to prevent
 	// stale detection while the operation is still running.
 	RefreshAck func() error
@@ -52,9 +364,9 @@ type PulumiCreateCallbacks struct {
 	OnSuccess func(state *datatypes.JSON) error
 }
 
-// PulumiCreateConfig contains all parameters needed to launch a Pulumi create
+// pulumiCreateConfig contains all parameters needed to launch a Pulumi create
 // operation in a background goroutine.
-type PulumiCreateConfig struct {
+type pulumiCreateConfig struct {
 	// Infra is the provider's infrastructure object that implements PulumiInfra.
 	Infra PulumiInfra
 
@@ -63,15 +375,15 @@ type PulumiCreateConfig struct {
 	ExistingState *datatypes.JSON
 
 	// Callbacks contains provider-specific functions invoked during the operation.
-	Callbacks PulumiCreateCallbacks
+	Callbacks pulumiCreateCallbacks
 
 	// Log is the structured logger for the operation.
 	Log *logr.Logger
 }
 
-// PulumiDeleteCallbacks contains provider-specific callback functions invoked
+// pulumiDeleteCallbacks contains provider-specific callback functions invoked
 // at various points during the delete goroutine lifecycle.
-type PulumiDeleteCallbacks struct {
+type pulumiDeleteCallbacks struct {
 	// RefreshAck updates the deletion acknowledged timestamp to prevent
 	// stale detection while the operation is still running.
 	RefreshAck func() error
@@ -84,9 +396,9 @@ type PulumiDeleteCallbacks struct {
 	OnSuccess func() error
 }
 
-// PulumiDeleteConfig contains all parameters needed to launch a Pulumi delete
+// pulumiDeleteConfig contains all parameters needed to launch a Pulumi delete
 // operation in a background goroutine.
-type PulumiDeleteConfig struct {
+type pulumiDeleteConfig struct {
 	// Infra is the provider's infrastructure object that implements PulumiInfra.
 	Infra PulumiInfra
 
@@ -96,16 +408,23 @@ type PulumiDeleteConfig struct {
 	ExistingState *datatypes.JSON
 
 	// Callbacks contains provider-specific functions invoked during the operation.
-	Callbacks PulumiDeleteCallbacks
+	Callbacks pulumiDeleteCallbacks
 
 	// Log is the structured logger for the operation.
 	Log *logr.Logger
 }
 
-// LaunchPulumiCreate acquires the operation guard and concurrency semaphore,
-// then launches executePulumiCreate in a background goroutine. Returns a
-// requeue delay for the reconciler.
-func LaunchPulumiCreate(config PulumiCreateConfig) (int64, error) {
+// checkStaleAck returns true if the given acknowledgement timestamp has gone
+// stale, indicating the operation was interrupted (e.g. pod restart).
+func checkStaleAck(ackTimestamp time.Time) bool {
+	duration := time.Now().UTC().Sub(ackTimestamp)
+	return duration.Seconds() > staleAckDurationSeconds
+}
+
+// launchPulumiCreate acquires the concurrency semaphore, then launches
+// executePulumiCreate in a background goroutine. Returns a requeue delay
+// for the reconciler.
+func launchPulumiCreate(config pulumiCreateConfig) (int64, error) {
 	// acquire Pulumi concurrency semaphore
 	select {
 	case pulumiSemaphore <- struct{}{}:
@@ -124,10 +443,10 @@ func LaunchPulumiCreate(config PulumiCreateConfig) (int64, error) {
 	return 120, nil
 }
 
-// LaunchPulumiDelete acquires the operation guard and concurrency semaphore,
-// then launches executePulumiDelete in a background goroutine. Returns a
-// requeue delay for the reconciler.
-func LaunchPulumiDelete(config PulumiDeleteConfig) (int64, error) {
+// launchPulumiDelete acquires the concurrency semaphore, then launches
+// executePulumiDelete in a background goroutine. Returns a requeue delay
+// for the reconciler.
+func launchPulumiDelete(config pulumiDeleteConfig) (int64, error) {
 	// acquire Pulumi concurrency semaphore
 	select {
 	case pulumiSemaphore <- struct{}{}:
@@ -146,15 +465,8 @@ func LaunchPulumiDelete(config PulumiDeleteConfig) (int64, error) {
 	return 300, nil
 }
 
-// CheckStaleAck returns true if the given acknowledgement timestamp has gone
-// stale, indicating the operation was interrupted (e.g. pod restart).
-func CheckStaleAck(ackTimestamp time.Time) bool {
-	duration := time.Now().UTC().Sub(ackTimestamp)
-	return duration.Seconds() > staleAckDurationSeconds
-}
-
 // executePulumiCreate runs the full Pulumi create lifecycle in a goroutine.
-func executePulumiCreate(config PulumiCreateConfig) {
+func executePulumiCreate(config pulumiCreateConfig) {
 	// refresh the creation acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
@@ -241,7 +553,7 @@ func executePulumiCreate(config PulumiCreateConfig) {
 }
 
 // executePulumiDelete runs the full Pulumi delete lifecycle in a goroutine.
-func executePulumiDelete(config PulumiDeleteConfig) {
+func executePulumiDelete(config pulumiDeleteConfig) {
 	// refresh the deletion acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
@@ -467,4 +779,13 @@ func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 
 	log.Info("state verification passed", "resourceCount", resourceCount)
 	return nil
+}
+
+// inventoryCleared returns true if the ResourceInventory is nil, empty,
+// or contains only "{}" or "null".
+func inventoryCleared(inventory *datatypes.JSON) bool {
+	return inventory == nil ||
+		len(*inventory) == 0 ||
+		string(*inventory) == "{}" ||
+		string(*inventory) == "null"
 }

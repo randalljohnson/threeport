@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"os"
@@ -823,6 +825,38 @@ func (i *KubernetesRuntimeInfraOKE) LoadOCIConfig(
 
 	// set stack configs now that region is resolved
 	i.StackConfigs = map[string]string{"oci:region": i.Region}
+
+	return nil
+}
+
+// LoadServiceCredentialsFromConfig populates ServiceUserOCID, Fingerprint, and
+// PrivateKeyPEM from the already-loaded OCI ConfigProvider. Used in the
+// control-plane-only path where IAM bootstrap is skipped.
+func (i *KubernetesRuntimeInfraOKE) LoadServiceCredentialsFromConfig() error {
+	// get user OCID from config provider
+	userOCID, err := i.ConfigProvider.UserOCID()
+	if err != nil {
+		return fmt.Errorf("failed to get user OCID from config: %w", err)
+	}
+	i.ServiceUserOCID = userOCID
+
+	// get fingerprint from config provider
+	fingerprint, err := i.ConfigProvider.KeyFingerprint()
+	if err != nil {
+		return fmt.Errorf("failed to get key fingerprint from config: %w", err)
+	}
+	i.Fingerprint = fingerprint
+
+	// get private key from config provider
+	privateKey, err := i.ConfigProvider.PrivateRSAKey()
+	if err != nil {
+		return fmt.Errorf("failed to get private key from config: %w", err)
+	}
+	privateKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+	i.PrivateKeyPEM = string(privateKeyBytes)
 
 	return nil
 }

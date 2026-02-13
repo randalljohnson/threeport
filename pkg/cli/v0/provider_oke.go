@@ -73,6 +73,12 @@ func DeployOkeInfra(
 	}()
 
 	if cpi.Opts.ControlPlaneOnly {
+		// populate service user credentials from the OCI config provider
+		// so the OCI provider record has valid credentials for token refresh
+		if err := kubernetesRuntimeInfraOKE.LoadServiceCredentialsFromConfig(); err != nil {
+			return fmt.Errorf("failed to load OCI service credentials from config: %w", err)
+		}
+
 		connectionInfo, err := kubernetesRuntimeInfraOKE.GetConnection()
 		if err != nil {
 			return fmt.Errorf("failed to get connection info for OKE kubernetes runtime: %w", err)

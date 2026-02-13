@@ -32,6 +32,10 @@ const staleOkeAckDurationSeconds = 240
 // duplicate create/delete operations from being spawned simultaneously.
 var activeOkeOperations sync.Map
 
+// pulumiSemaphore limits concurrent Pulumi operations to prevent OOM from
+// too many simultaneous infrastructure deployments.
+var pulumiSemaphore = make(chan struct{}, 5)
+
 // v0OciOkeKubernetesRuntimeInstanceCreated performs reconciliation when a v0 OciOkeKubernetesRuntimeInstance
 // has been created.
 func v0OciOkeKubernetesRuntimeInstanceCreated(
@@ -211,9 +215,20 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 		return 0, nil
 	}
 
+	// acquire Pulumi concurrency semaphore
+	select {
+	case pulumiSemaphore <- struct{}{}:
+		// acquired slot
+	default:
+		activeOkeOperations.Delete(operationKey)
+		reconLog.Info("Pulumi worker pool full, requeuing")
+		return 30, nil
+	}
+
 	// launch creation in background goroutine
 	go func() {
 		defer activeOkeOperations.Delete(operationKey)
+		defer func() { <-pulumiSemaphore }()
 		createOkeInfra(r, infraOKE, ociOkeKubernetesRuntimeInstance, &reconLog)
 	}()
 
@@ -388,9 +403,20 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 		}
 	}
 
+	// acquire Pulumi concurrency semaphore
+	select {
+	case pulumiSemaphore <- struct{}{}:
+		// acquired slot
+	default:
+		activeOkeOperations.Delete(operationKey)
+		reconLog.Info("Pulumi worker pool full, requeuing")
+		return 30, nil
+	}
+
 	// launch deletion in background goroutine
 	go func() {
 		defer activeOkeOperations.Delete(operationKey)
+		defer func() { <-pulumiSemaphore }()
 		deleteOkeInfra(r, infraOKE, ociOkeKubernetesRuntimeInstance, &reconLog)
 	}()
 

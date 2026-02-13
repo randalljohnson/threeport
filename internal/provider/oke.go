@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi-oci/sdk/v3/go/oci/core"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -1282,18 +1283,37 @@ func (i *KubernetesRuntimeInfraOKE) GetStackState() (*datatypes.JSON, error) {
 	return &jsonState, nil
 }
 
-// SetStackState restores the Pulumi state file from a JSON object stored in the
-// database. The state is written directly to the state file because the
-// ResourceInventory is captured via ReadStateFile (raw file format), not
-// stack.Export (UntypedDeployment format).
+// SetStackState restores the Pulumi state from a JSON object stored in the
+// database. State in export/deployment format (from GetStackState via
+// stack.Export) is imported via stack.Import which converts to the backend's
+// checkpoint format. State in raw checkpoint format (from ReadStateFile during
+// streaming) is written directly to the state file.
 func (i *KubernetesRuntimeInfraOKE) SetStackState(state *datatypes.JSON) error {
 
-	// initialize workspace to ensure state directory and Pulumi.yaml exist
-	if _, err := i.initPulumiWorkspace(); err != nil {
+	// initialize workspace and create/select the stack
+	workspace, err := i.initPulumiWorkspace()
+	if err != nil {
 		return fmt.Errorf("failed to initialize Pulumi workspace: %w", err)
 	}
 
-	// get state file path and ensure parent directory exists
+	ctx := context.Background()
+
+	stack, err := auto.UpsertStack(ctx, i.getStackName(), workspace)
+	if err != nil {
+		return fmt.Errorf("failed to create/select stack for state import: %w", err)
+	}
+
+	// try to unmarshal as UntypedDeployment (export format from GetStackState)
+	var deployment apitype.UntypedDeployment
+	if err := json.Unmarshal(*state, &deployment); err == nil && deployment.Deployment != nil {
+		// export format — use stack.Import for proper backend format conversion
+		if err := stack.Import(ctx, deployment); err != nil {
+			return fmt.Errorf("failed to import stack state: %w", err)
+		}
+		return nil
+	}
+
+	// checkpoint format (from ReadStateFile) — write directly to state file
 	stateFilePath, err := i.GetStateFilePath()
 	if err != nil {
 		return fmt.Errorf("failed to get state file path: %w", err)
@@ -1301,8 +1321,6 @@ func (i *KubernetesRuntimeInfraOKE) SetStackState(state *datatypes.JSON) error {
 	if err := os.MkdirAll(filepath.Dir(stateFilePath), 0755); err != nil {
 		return fmt.Errorf("failed to create state file directory: %w", err)
 	}
-
-	// write raw state bytes to file
 	if err := os.WriteFile(stateFilePath, *state, 0644); err != nil {
 		return fmt.Errorf("failed to write state file: %w", err)
 	}

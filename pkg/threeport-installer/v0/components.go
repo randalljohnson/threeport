@@ -1803,21 +1803,14 @@ func (cpi *ControlPlaneInstaller) getAPIServiceAnnotations() map[string]interfac
 }
 
 // GetAPIServicePort returns threeport API's service port based on infra
-// provider.  For kind returns 80 or 443 based on whether authentication is
-// enabled.
+// provider.  Returns port 443 for all providers. The port name reflects
+// whether authentication (TLS) is enabled.
 func (cpi *ControlPlaneInstaller) GetAPIServicePort() (string, int32) {
-	if cpi.Opts.InfraProvider == "kind" {
-		if cpi.Opts.AuthEnabled {
-			return "https", 443
-		}
-		return "http", 80
-	}
-
 	if cpi.Opts.AuthEnabled {
 		return "https", 443
 	}
 
-	return "http", 80
+	return "http", 443
 }
 
 // getAgentArgs returns the args that are passed to the threeport agent.  In
@@ -2060,10 +2053,7 @@ func (cpi *ControlPlaneInstaller) getImagePullSecrets(imagePullSecretName string
 
 // GetThreeportAPIPort returns the port that the threeport API is running on.
 func GetThreeportAPIPort(authEnabled bool) int {
-	if authEnabled {
-		return 443
-	}
-	return 80
+	return 443
 }
 
 // GetLocalThreeportAPIEndpoint returns the endpoint for the threeport API

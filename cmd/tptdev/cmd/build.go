@@ -52,7 +52,7 @@ var buildCmd = &cobra.Command{
 		if cliArgs.ControlPlaneImageTag == "" {
 			branch, err := gitBranchName()
 			if err != nil {
-				cli.Error("failed to determine git branch for default tag:", err)
+				cli.Error(fmt.Sprintf("failed to determine git branch for default tag: %s\nspecify a tag explicitly with --tag/-t", err), nil)
 				os.Exit(1)
 			}
 			cliArgs.ControlPlaneImageTag = branch

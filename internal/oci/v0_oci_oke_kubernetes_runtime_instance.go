@@ -822,13 +822,16 @@ func refreshOkeDeletionAcknowledgement(
 }
 
 // persistOkeCreateFailure calls the threeport API to set CreationFailed to true.
-// If the call to the API fails, it is retried every 10 seconds until it succeeds.
+// If the call to the API fails, it is retried every 10 seconds up to 30 times
+// (5 minutes). After exhausting retries, the goroutine returns and stale ack
+// detection will recover the operation.
 func persistOkeCreateFailure(
 	r *controller.Reconciler,
 	instanceID uint,
 	log *logr.Logger,
 ) {
-	for {
+	const maxRetries = 30
+	for attempt := 0; attempt < maxRetries; attempt++ {
 		creationFailed := true
 		failedInstance := v0.OciOkeKubernetesRuntimeInstance{
 			Common: v0.Common{
@@ -844,13 +847,18 @@ func persistOkeCreateFailure(
 			&failedInstance,
 		)
 		if err != nil {
-			log.Error(err, "failed to persist failure of OKE cluster infra resource creation - retrying in 10 sec")
+			log.Error(err, "failed to persist failure of OKE cluster infra resource creation - retrying in 10 sec",
+				"attempt", attempt+1, "maxRetries", maxRetries)
 			time.Sleep(time.Second * 10)
 			continue
 		}
 
 		return
 	}
+	log.Error(
+		fmt.Errorf("exhausted %d retries", maxRetries),
+		"failed to persist OKE creation failure, stale ack detection will recover",
+	)
 }
 
 // checkStaleOkeAck checks if the creation acknowledged timestamp has gone stale,

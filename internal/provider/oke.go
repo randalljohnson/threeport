@@ -148,6 +148,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			DisplayName:   pulumi.String(fmt.Sprintf("%s-vcn", i.RuntimeInstanceName)),
 			DnsLabel:      pulumi.String(createDNSLabel(i.RuntimeInstanceName)),
 			IsIpv6enabled: pulumi.Bool(false),
+			FreeformTags:  pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DeleteBeforeReplace(true),
 			pulumi.Protect(false))
@@ -161,6 +162,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			VcnId:         vcn.ID(),
 			DisplayName:   pulumi.String(fmt.Sprintf("%s-ig", i.RuntimeInstanceName)),
 			Enabled:       pulumi.Bool(true),
+			FreeformTags:  pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{vcn}))
 		if err != nil {
@@ -173,6 +175,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			VcnId:         vcn.ID(),
 			DisplayName:   pulumi.String(fmt.Sprintf("%s-ng", i.RuntimeInstanceName)),
 			BlockTraffic:  pulumi.Bool(false),
+			FreeformTags:  pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{vcn}))
 		if err != nil {
@@ -195,6 +198,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 					ServiceId: pulumi.String(serviceID),
 				},
 			},
+			FreeformTags: pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{vcn}))
 		if err != nil {
@@ -213,6 +217,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 					NetworkEntityId: internetGateway.ID(),
 				},
 			},
+			FreeformTags: pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{internetGateway}))
 		if err != nil {
@@ -236,6 +241,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 					NetworkEntityId: serviceGateway.ID(),
 				},
 			},
+			FreeformTags: pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{natGateway, serviceGateway}))
 		if err != nil {
@@ -250,6 +256,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			CompartmentId: pulumi.String(i.CompartmentOCID),
 			VcnId:         vcn.ID(),
 			DisplayName:   pulumi.String(fmt.Sprintf("%s-public-seclist", i.RuntimeInstanceName)),
+			FreeformTags:  pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 			IngressSecurityRules: core.SecurityListIngressSecurityRuleArray{
 				// allow Kubernetes API server traffic from anywhere
 				&core.SecurityListIngressSecurityRuleArgs{
@@ -332,6 +339,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			CompartmentId: pulumi.String(i.CompartmentOCID),
 			VcnId:         vcn.ID(),
 			DisplayName:   pulumi.String(fmt.Sprintf("%s-worker-nodes-seclist", i.RuntimeInstanceName)),
+			FreeformTags:  pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 			IngressSecurityRules: core.SecurityListIngressSecurityRuleArray{
 				// allow all traffic from private subnet
 				&core.SecurityListIngressSecurityRuleArgs{
@@ -438,6 +446,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			CompartmentId: pulumi.String(i.CompartmentOCID),
 			VcnId:         vcn.ID(),
 			DisplayName:   pulumi.String(fmt.Sprintf("%s-load-balancer-seclist", i.RuntimeInstanceName)),
+			FreeformTags:  pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 			IngressSecurityRules: core.SecurityListIngressSecurityRuleArray{
 				// allow 443 from anywhere
 				&core.SecurityListIngressSecurityRuleArgs{
@@ -484,6 +493,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			ProhibitPublicIpOnVnic: pulumi.Bool(false),
 			RouteTableId:           publicRouteTable.ID(),
 			SecurityListIds:        pulumi.StringArray{publicSecList.ID()},
+			FreeformTags:           pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{vcn, publicRouteTable, publicSecList}))
 		if err != nil {
@@ -500,6 +510,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			ProhibitPublicIpOnVnic: pulumi.Bool(true),
 			RouteTableId:           privateRouteTable.ID(),
 			SecurityListIds:        pulumi.StringArray{workerNodesSecList.ID()},
+			FreeformTags:           pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{vcn, privateRouteTable, workerNodesSecList}))
 		if err != nil {
@@ -516,6 +527,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			ProhibitPublicIpOnVnic: pulumi.Bool(false),
 			RouteTableId:           publicRouteTable.ID(),
 			SecurityListIds:        pulumi.StringArray{loadBalancerSecList.ID()},
+			FreeformTags:           pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 		}, pulumi.Provider(ociProvider),
 			pulumi.DependsOn([]pulumi.Resource{vcn, publicRouteTable, loadBalancerSecList}))
 		if err != nil {
@@ -528,6 +540,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			Name:              pulumi.String(i.RuntimeInstanceName),
 			VcnId:             vcn.ID(),
 			KubernetesVersion: pulumi.String(i.Version),
+			FreeformTags:      pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 			EndpointConfig: &containerengine.ClusterEndpointConfigArgs{
 				IsPublicIpEnabled: pulumi.Bool(true),
 				SubnetId:          publicSubnet.ID(),
@@ -568,6 +581,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 			Name:              pulumi.String(fmt.Sprintf("%s-nodepool", i.RuntimeInstanceName)),
 			NodeShape:         pulumi.String(i.WorkerNodeShape),
 			KubernetesVersion: pulumi.String(i.Version),
+			FreeformTags:      pulumi.StringMap{"threeport-instance": pulumi.String(i.RuntimeInstanceName)},
 			InitialNodeLabels: containerengine.NodePoolInitialNodeLabelArray{
 				&containerengine.NodePoolInitialNodeLabelArgs{
 					Key:   pulumi.String("threeport.io/managed"),

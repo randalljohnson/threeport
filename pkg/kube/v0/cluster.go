@@ -306,6 +306,12 @@ func refreshOKEConnection(
 		return nil, fmt.Errorf("failed to get OCI provider by ID %d: %w", *okeRuntimeInstance.OciProviderID, err)
 	}
 
+	// decrypt the private key before passing to OCI SDK
+	decryptedPrivateKey, err := encryption.Decrypt(encryptionKey, *ociProvider.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt OCI provider private key: %w", err)
+	}
+
 	var token string
 	var tokenExpirationTime time.Time
 
@@ -316,7 +322,7 @@ func refreshOKEConnection(
 			*ociProvider.UserOCID,
 			*ociProvider.DefaultRegion,
 			*ociProvider.KeyFingerprint,
-			*ociProvider.PrivateKey,
+			decryptedPrivateKey,
 			nil,
 		),
 	); err != nil {

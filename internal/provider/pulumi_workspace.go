@@ -178,7 +178,9 @@ func (w *PulumiWorkspace) ReadStateFile() (*datatypes.JSON, error) {
 }
 
 // SetupStack creates and configures a Pulumi stack for the given program,
-// reusing the common workspace initialization.
+// reusing the common workspace initialization. If existing state is detected
+// from a previous run, it refreshes the stack to reconcile with cloud state
+// and clear pending operations from interrupted runs.
 func (w *PulumiWorkspace) SetupStack(program pulumi.RunFunc) (auto.Stack, error) {
 	workspace, err := w.initWorkspace(auto.Program(program))
 	if err != nil {
@@ -197,6 +199,17 @@ func (w *PulumiWorkspace) SetupStack(program pulumi.RunFunc) (auto.Stack, error)
 	for key, value := range w.StackConfigs {
 		if err := stack.SetConfig(ctx, key, auto.ConfigValue{Value: value}); err != nil {
 			return auto.Stack{}, fmt.Errorf("failed to set stack config %q: %w", key, err)
+		}
+	}
+
+	// if existing state is detected, reconcile with cloud state to clear
+	// pending operations from interrupted runs before deploying
+	stateFilePath, _ := w.GetStateFilePath()
+	if _, err := os.Stat(stateFilePath); err == nil {
+		fmt.Printf("Existing Pulumi state detected, reconciling with cloud state...\n")
+		if _, refreshErr := w.runRefresh(ctx, stack); refreshErr != nil {
+			// log but don't fail — the subsequent up may still succeed
+			fmt.Printf("Warning: failed to reconcile stack state: %v\n", refreshErr)
 		}
 	}
 

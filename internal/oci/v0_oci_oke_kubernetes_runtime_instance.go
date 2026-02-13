@@ -658,7 +658,10 @@ func streamOkeState(
 		return
 	}
 
-	// debounce timer for coalescing rapid writes
+	// debounce channel approach: timer fires into a channel that the select
+	// loop reads, ensuring state uploads run within the loop and cannot race
+	// with quit
+	debounceCh := make(chan struct{}, 1)
 	var debounceTimer *time.Timer
 	stateFileName := filepath.Base(stateFilePath)
 
@@ -669,6 +672,32 @@ func streamOkeState(
 				debounceTimer.Stop()
 			}
 			return
+
+		case <-debounceCh:
+			// debounce fired - read and push state within the select loop
+			state, err := infraOKE.ReadStateFile()
+			if err != nil {
+				log.Error(err, "failed to read state file during streaming")
+				continue
+			}
+			if state == nil {
+				continue
+			}
+
+			// push state to API
+			stateUpdate := v0.OciOkeKubernetesRuntimeInstance{
+				Common: v0.Common{
+					ID: instance.ID,
+				},
+				ResourceInventory: state,
+			}
+			if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
+				r.APIClient,
+				r.APIServer,
+				&stateUpdate,
+			); err != nil {
+				log.Error(err, "failed to update resource inventory during state streaming")
+			}
 
 		case event, ok := <-watcher.Events:
 			if !ok {
@@ -682,34 +711,16 @@ func streamOkeState(
 				continue
 			}
 
-			// debounce: reset timer on each write, fire after 3 seconds of quiet
+			// debounce: reset timer on each write, fire into channel after
+			// 3 seconds of quiet
 			if debounceTimer != nil {
 				debounceTimer.Stop()
 			}
 			debounceTimer = time.AfterFunc(3*time.Second, func() {
-				state, err := infraOKE.ReadStateFile()
-				if err != nil {
-					log.Error(err, "failed to read state file during streaming")
-					return
-				}
-				if state == nil {
-					return
-				}
-
-				// push state to API
-				stateUpdate := v0.OciOkeKubernetesRuntimeInstance{
-					Common: v0.Common{
-						ID: instance.ID,
-					},
-					ResourceInventory: state,
-				}
-				_, err = client.UpdateOciOkeKubernetesRuntimeInstance(
-					r.APIClient,
-					r.APIServer,
-					&stateUpdate,
-				)
-				if err != nil {
-					log.Error(err, "failed to update resource inventory during state streaming")
+				select {
+				case debounceCh <- struct{}{}:
+				default:
+					// channel already has a pending signal
 				}
 			})
 

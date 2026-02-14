@@ -615,16 +615,16 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 }
 
 // DeployInfra creates the compartment and provisions OKE cluster infrastructure
-// via Pulumi, discarding the connection info. This satisfies the PulumiInfra
-// interface for use with the shared Pulumi operation abstraction.
+// via Pulumi, discarding the connection info. This satisfies the InfraProvider
+// interface for use with the shared infrastructure lifecycle abstraction.
 func (i *KubernetesRuntimeInfraOKE) DeployInfra() error {
 	_, err := i.CreateInfra()
 	return err
 }
 
 // DestroyInfra destroys the OKE cluster infrastructure via Pulumi. This
-// satisfies the PulumiInfra interface for use with the shared Pulumi operation
-// abstraction.
+// satisfies the InfraProvider interface for use with the shared infrastructure
+// lifecycle abstraction.
 func (i *KubernetesRuntimeInfraOKE) DestroyInfra() error {
 	return i.Delete()
 }

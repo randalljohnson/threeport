@@ -23,7 +23,7 @@ func v0OciOkeKubernetesRuntimeInstanceCreated(
 	)
 
 	config := newOkeLifecycleConfig(r, ociOkeKubernetesRuntimeInstance, &reconLog)
-	return provider.HandlePulumiCreate(config)
+	return provider.HandleInfraCreate(config)
 }
 
 // v0OciOkeKubernetesRuntimeInstanceUpdated performs reconciliation when a v0 OciOkeKubernetesRuntimeInstance
@@ -49,5 +49,5 @@ func v0OciOkeKubernetesRuntimeInstanceDeleted(
 	)
 
 	config := newOkeLifecycleConfig(r, ociOkeKubernetesRuntimeInstance, &reconLog)
-	return provider.HandlePulumiDelete(config)
+	return provider.HandleInfraDelete(config)
 }

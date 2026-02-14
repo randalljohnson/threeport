@@ -17,21 +17,9 @@ import (
 // timestamp is considered stale, indicating the operation was interrupted.
 const staleAckDurationSeconds = 240
 
-// pulumiSemaphore limits concurrent Pulumi operations to prevent OOM from
-// too many simultaneous infrastructure deployments.
-var pulumiSemaphore = make(chan struct{}, 5)
-
-// PulumiInfra defines the interface each provider's infrastructure object
-// must implement to use the shared Pulumi operation orchestration.
-type PulumiInfra interface {
-	DeployInfra() error
-	DestroyInfra() error
-	SetStackState(state *datatypes.JSON) error
-	GetStackState() (*datatypes.JSON, error)
-	ReadStateFile() (*datatypes.JSON, error)
-	GetStateFilePath() (string, error)
-	RefreshStack() error
-}
+// infraSemaphore limits concurrent infrastructure operations to prevent OOM
+// from too many simultaneous deployments.
+var infraSemaphore = make(chan struct{}, 5)
 
 // ReconciliationSnapshot captures the reconciliation timestamps and resource
 // inventory for a provider instance at a point in time. This decouples the
@@ -46,20 +34,20 @@ type ReconciliationSnapshot struct {
 	ResourceInventory    *datatypes.JSON
 }
 
-// PulumiLifecycleConfig contains all provider-specific closures needed by the
-// HandlePulumiCreate and HandlePulumiDelete state machines. A provider fills
+// InfraLifecycleConfig contains all provider-specific closures needed by the
+// HandleInfraCreate and HandleInfraDelete state machines. A provider fills
 // in the closures for its specific behavior; the lifecycle handler does
 // everything else (ack/confirm checks, stale detection, goroutine wiring,
 // NATS notifications).
-type PulumiLifecycleConfig struct {
+type InfraLifecycleConfig struct {
 	// GetReconciliation fetches the latest reconciliation state and resource
 	// inventory from the API. Called at the start of each handler invocation
 	// and again during deletion-during-create checks.
 	GetReconciliation func() (*ReconciliationSnapshot, error)
 
-	// BuildInfra constructs the PulumiInfra implementor for this provider.
+	// BuildInfra constructs the InfraProvider implementor for this provider.
 	// Called once per handler invocation before launching the goroutine.
-	BuildInfra func() (PulumiInfra, error)
+	BuildInfra func() (InfraProvider, error)
 
 	// IsCreateComplete checks whether the async create operation has finished
 	// (e.g., ClusterOCID is set for OKE). Called during the confirmation
@@ -69,16 +57,16 @@ type PulumiLifecycleConfig struct {
 	// OnCreateConfirmed performs provider-specific post-creation work after
 	// the create operation has been confirmed complete (e.g., get connection
 	// info, update dependent objects). Called before ConfirmCreation.
-	OnCreateConfirmed func(infra PulumiInfra) error
+	OnCreateConfirmed func(infra InfraProvider) error
 
 	// SaveCreateOutputs saves provider-specific outputs (e.g., ClusterOCID)
-	// and the final Pulumi state from the goroutine's OnSuccess callback.
-	SaveCreateOutputs func(infra PulumiInfra, state *datatypes.JSON) error
+	// and the final state from the goroutine's OnSuccess callback.
+	SaveCreateOutputs func(infra InfraProvider, state *datatypes.JSON) error
 
 	// OnDeleteConfirmed performs provider-specific post-deletion cleanup
-	// after Pulumi resources have been destroyed and inventory cleared
-	// (e.g., delete compartment, delete Pulumi stack state).
-	OnDeleteConfirmed func(infra PulumiInfra) error
+	// after resources have been destroyed and inventory cleared
+	// (e.g., delete compartment, delete stack state).
+	OnDeleteConfirmed func(infra InfraProvider) error
 
 	// AckCreation sets CreationAcknowledged and clears CreationFailed in the API.
 	AckCreation func() error
@@ -101,7 +89,7 @@ type PulumiLifecycleConfig struct {
 	// ConfirmDeletion sets DeletionConfirmed in the API.
 	ConfirmDeletion func() error
 
-	// SaveState persists intermediate Pulumi state to the API for crash recovery.
+	// SaveState persists intermediate state to the API for crash recovery.
 	SaveState func(state *datatypes.JSON) error
 
 	// ClearInventory sets ResourceInventory to "{}" to signal destroy complete.
@@ -117,10 +105,10 @@ type PulumiLifecycleConfig struct {
 	Log *logr.Logger
 }
 
-// HandlePulumiCreate implements the create state machine for any Pulumi-backed
+// HandleInfraCreate implements the create state machine for any infrastructure
 // provider. It checks reconciliation state, manages ack/confirm transitions,
 // and launches the create goroutine when needed.
-func HandlePulumiCreate(config PulumiLifecycleConfig) (int64, error) {
+func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 	// fetch latest state from API
 	snap, err := config.GetReconciliation()
 	if err != nil {
@@ -194,9 +182,9 @@ func HandlePulumiCreate(config PulumiLifecycleConfig) (int64, error) {
 	}
 
 	// wire callbacks and launch goroutine
-	callbacks := pulumiCreateCallbacks{
-		RefreshAck: config.RefreshCreationAck,
-		SaveState:  config.SaveState,
+	callbacks := infraCreateCallbacks{
+		RefreshAck:     config.RefreshCreationAck,
+		SaveState:      config.SaveState,
 		PersistFailure: config.SetCreationFailed,
 		OnSuccess: func(state *datatypes.JSON) error {
 			// save provider-specific outputs
@@ -220,7 +208,7 @@ func HandlePulumiCreate(config PulumiLifecycleConfig) (int64, error) {
 		},
 	}
 
-	return launchPulumiCreate(pulumiCreateConfig{
+	return launchInfraCreate(infraCreateConfig{
 		Infra:         infra,
 		ExistingState: snap.ResourceInventory,
 		Callbacks:     callbacks,
@@ -228,10 +216,10 @@ func HandlePulumiCreate(config PulumiLifecycleConfig) (int64, error) {
 	})
 }
 
-// HandlePulumiDelete implements the delete state machine for any Pulumi-backed
+// HandleInfraDelete implements the delete state machine for any infrastructure
 // provider. It checks reconciliation state, manages ack/confirm transitions,
 // handles cross-replica safety, and launches the delete goroutine when needed.
-func HandlePulumiDelete(config PulumiLifecycleConfig) (int64, error) {
+func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 	// fetch latest state from API
 	snap, err := config.GetReconciliation()
 	if err != nil {
@@ -318,7 +306,7 @@ func HandlePulumiDelete(config PulumiLifecycleConfig) (int64, error) {
 	}
 
 	// wire callbacks and launch goroutine
-	callbacks := pulumiDeleteCallbacks{
+	callbacks := infraDeleteCallbacks{
 		RefreshAck: config.RefreshDeletionAck,
 		SaveState:  config.SaveState,
 		OnSuccess: func() error {
@@ -336,7 +324,7 @@ func HandlePulumiDelete(config PulumiLifecycleConfig) (int64, error) {
 		},
 	}
 
-	return launchPulumiDelete(pulumiDeleteConfig{
+	return launchInfraDelete(infraDeleteConfig{
 		Infra:         infra,
 		ExistingState: snap.ResourceInventory,
 		Callbacks:     callbacks,
@@ -344,14 +332,14 @@ func HandlePulumiDelete(config PulumiLifecycleConfig) (int64, error) {
 	})
 }
 
-// pulumiCreateCallbacks contains provider-specific callback functions invoked
+// infraCreateCallbacks contains provider-specific callback functions invoked
 // at various points during the create goroutine lifecycle.
-type pulumiCreateCallbacks struct {
+type infraCreateCallbacks struct {
 	// RefreshAck updates the creation acknowledged timestamp to prevent
 	// stale detection while the operation is still running.
 	RefreshAck func() error
 
-	// SaveState persists intermediate Pulumi state to the API for crash recovery.
+	// SaveState persists intermediate state to the API for crash recovery.
 	SaveState func(state *datatypes.JSON) error
 
 	// PersistFailure marks the operation as failed in the API so the
@@ -359,36 +347,36 @@ type pulumiCreateCallbacks struct {
 	PersistFailure func() error
 
 	// OnSuccess is called after successful infrastructure creation with the
-	// final Pulumi state. The provider should save state, provider-specific
-	// fields, and publish a NATS notification.
+	// final state. The provider should save state, provider-specific fields,
+	// and publish a NATS notification.
 	OnSuccess func(state *datatypes.JSON) error
 }
 
-// pulumiCreateConfig contains all parameters needed to launch a Pulumi create
-// operation in a background goroutine.
-type pulumiCreateConfig struct {
-	// Infra is the provider's infrastructure object that implements PulumiInfra.
-	Infra PulumiInfra
+// infraCreateConfig contains all parameters needed to launch an infrastructure
+// create operation in a background goroutine.
+type infraCreateConfig struct {
+	// Infra is the provider's infrastructure object that implements InfraProvider.
+	Infra InfraProvider
 
-	// ExistingState is the previously saved Pulumi state from ResourceInventory.
+	// ExistingState is the previously saved state from ResourceInventory.
 	// When non-nil and non-empty, state is restored before creating.
 	ExistingState *datatypes.JSON
 
 	// Callbacks contains provider-specific functions invoked during the operation.
-	Callbacks pulumiCreateCallbacks
+	Callbacks infraCreateCallbacks
 
 	// Log is the structured logger for the operation.
 	Log *logr.Logger
 }
 
-// pulumiDeleteCallbacks contains provider-specific callback functions invoked
+// infraDeleteCallbacks contains provider-specific callback functions invoked
 // at various points during the delete goroutine lifecycle.
-type pulumiDeleteCallbacks struct {
+type infraDeleteCallbacks struct {
 	// RefreshAck updates the deletion acknowledged timestamp to prevent
 	// stale detection while the operation is still running.
 	RefreshAck func() error
 
-	// SaveState persists intermediate Pulumi state to the API for crash recovery.
+	// SaveState persists intermediate state to the API for crash recovery.
 	SaveState func(state *datatypes.JSON) error
 
 	// OnSuccess is called after successful infrastructure deletion. The provider
@@ -396,19 +384,19 @@ type pulumiDeleteCallbacks struct {
 	OnSuccess func() error
 }
 
-// pulumiDeleteConfig contains all parameters needed to launch a Pulumi delete
-// operation in a background goroutine.
-type pulumiDeleteConfig struct {
-	// Infra is the provider's infrastructure object that implements PulumiInfra.
-	Infra PulumiInfra
+// infraDeleteConfig contains all parameters needed to launch an infrastructure
+// delete operation in a background goroutine.
+type infraDeleteConfig struct {
+	// Infra is the provider's infrastructure object that implements InfraProvider.
+	Infra InfraProvider
 
-	// ExistingState is the previously saved Pulumi state from ResourceInventory.
-	// When non-nil and non-empty, state is restored before destroying so Pulumi
-	// knows which cloud resources to delete.
+	// ExistingState is the previously saved state from ResourceInventory.
+	// When non-nil and non-empty, state is restored before destroying so the
+	// provider knows which cloud resources to delete.
 	ExistingState *datatypes.JSON
 
 	// Callbacks contains provider-specific functions invoked during the operation.
-	Callbacks pulumiDeleteCallbacks
+	Callbacks infraDeleteCallbacks
 
 	// Log is the structured logger for the operation.
 	Log *logr.Logger
@@ -421,109 +409,114 @@ func checkStaleAck(ackTimestamp time.Time) bool {
 	return duration.Seconds() > staleAckDurationSeconds
 }
 
-// launchPulumiCreate acquires the concurrency semaphore, then launches
-// executePulumiCreate in a background goroutine. Returns a requeue delay
+// launchInfraCreate acquires the concurrency semaphore, then launches
+// executeInfraCreate in a background goroutine. Returns a requeue delay
 // for the reconciler.
-func launchPulumiCreate(config pulumiCreateConfig) (int64, error) {
-	// acquire Pulumi concurrency semaphore
+func launchInfraCreate(config infraCreateConfig) (int64, error) {
+	// acquire infrastructure concurrency semaphore
 	select {
-	case pulumiSemaphore <- struct{}{}:
+	case infraSemaphore <- struct{}{}:
 		// acquired slot
 	default:
-		config.Log.Info("Pulumi worker pool full, requeuing")
+		config.Log.Info("infrastructure worker pool full, requeuing")
 		return 30, nil
 	}
 
 	// launch creation in background goroutine
 	go func() {
-		defer func() { <-pulumiSemaphore }()
-		executePulumiCreate(config)
+		defer func() { <-infraSemaphore }()
+		executeInfraCreate(config)
 	}()
 
 	return 120, nil
 }
 
-// launchPulumiDelete acquires the concurrency semaphore, then launches
-// executePulumiDelete in a background goroutine. Returns a requeue delay
+// launchInfraDelete acquires the concurrency semaphore, then launches
+// executeInfraDelete in a background goroutine. Returns a requeue delay
 // for the reconciler.
-func launchPulumiDelete(config pulumiDeleteConfig) (int64, error) {
-	// acquire Pulumi concurrency semaphore
+func launchInfraDelete(config infraDeleteConfig) (int64, error) {
+	// acquire infrastructure concurrency semaphore
 	select {
-	case pulumiSemaphore <- struct{}{}:
+	case infraSemaphore <- struct{}{}:
 		// acquired slot
 	default:
-		config.Log.Info("Pulumi worker pool full, requeuing")
+		config.Log.Info("infrastructure worker pool full, requeuing")
 		return 30, nil
 	}
 
 	// launch deletion in background goroutine
 	go func() {
-		defer func() { <-pulumiSemaphore }()
-		executePulumiDelete(config)
+		defer func() { <-infraSemaphore }()
+		executeInfraDelete(config)
 	}()
 
 	return 300, nil
 }
 
-// executePulumiCreate runs the full Pulumi create lifecycle in a goroutine.
-func executePulumiCreate(config pulumiCreateConfig) {
+// executeInfraCreate runs the full infrastructure create lifecycle in a
+// goroutine. It handles state restoration, optional streaming for providers
+// that support it, and captures final state on success or failure.
+func executeInfraCreate(config infraCreateConfig) {
 	// refresh the creation acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
 	defer func() { quitAck <- true }()
 
-	// restore Pulumi state from ResourceInventory if available (retry after
-	// failure or pod restart so Pulumi knows about previously created resources)
-	if config.ExistingState != nil &&
-		len(*config.ExistingState) > 0 &&
-		string(*config.ExistingState) != "{}" &&
-		string(*config.ExistingState) != "null" {
+	// restore state from ResourceInventory if available (retry after failure
+	// or pod restart so the provider knows about previously created resources)
+	if hasExistingState(config.ExistingState) {
 		if err := config.Infra.SetStackState(config.ExistingState); err != nil {
-			config.Log.Error(err, "failed to restore Pulumi stack state for retry")
+			config.Log.Error(err, "failed to restore stack state for retry")
 			persistFailure(config.Callbacks.PersistFailure, config.Log)
 			return
 		}
-		config.Log.Info("restored Pulumi state from database for creation retry")
+		config.Log.Info("restored state from database for creation retry")
 
-		// refresh stack to sync state with cloud reality and clear stale
-		// pending operations from interrupted runs
-		if err := config.Infra.RefreshStack(); err != nil {
-			config.Log.Error(err, "failed to refresh Pulumi stack state")
-			persistFailure(config.Callbacks.PersistFailure, config.Log)
-			return
+		// refresh state to sync with cloud reality if provider supports it
+		if refreshable, ok := config.Infra.(RefreshableProvider); ok {
+			if err := refreshable.RefreshStack(); err != nil {
+				config.Log.Error(err, "failed to refresh stack state")
+				persistFailure(config.Callbacks.PersistFailure, config.Log)
+				return
+			}
+			config.Log.Info("refreshed stack state against cloud reality")
 		}
-		config.Log.Info("refreshed Pulumi stack state against cloud reality")
 	}
 
-	// start state streaming via fsnotify
-	quitStream := make(chan bool, 1)
+	// start state streaming if provider supports it
+	var quitStream chan bool
 	streamStopped := false
-	go streamState(config.Infra, config.Callbacks.SaveState, quitStream, config.Log)
-	defer func() {
-		if !streamStopped {
-			quitStream <- true
-		}
-	}()
+	if streamable, ok := config.Infra.(StreamableProvider); ok {
+		quitStream = make(chan bool, 1)
+		go streamState(streamable, config.Callbacks.SaveState, quitStream, config.Log)
+		defer func() {
+			if !streamStopped {
+				quitStream <- true
+			}
+		}()
+	}
 
 	// create infrastructure
 	err := config.Infra.DeployInfra()
 
 	// stop the stream watcher before capturing final state to prevent
 	// a late fsnotify event from overwriting the authoritative state
-	quitStream <- true
-	streamStopped = true
+	if quitStream != nil && !streamStopped {
+		quitStream <- true
+		streamStopped = true
+	}
 
 	if err != nil {
 		config.Log.Error(err, "failed to create infrastructure")
 
-		// capture Pulumi state even on failure so retries can restore it
-		// and avoid creating duplicate cloud resources
+		// capture state even on failure so retries can restore it and
+		// avoid creating duplicate cloud resources
 		stateJSON, stateErr := config.Infra.GetStackState()
 		if stateErr != nil {
-			config.Log.Error(stateErr, "failed to get Pulumi stack state after failed creation")
+			config.Log.Error(stateErr, "failed to get stack state after failed creation")
 		} else if stateJSON != nil {
 			if saveErr := config.Callbacks.SaveState(stateJSON); saveErr != nil {
-				config.Log.Error(saveErr, "failed to save partial Pulumi state after failed creation")
+				config.Log.Error(saveErr, "failed to save partial state after failed creation")
 			}
 		}
 
@@ -531,10 +524,10 @@ func executePulumiCreate(config pulumiCreateConfig) {
 		return
 	}
 
-	// capture final Pulumi state
+	// capture final state
 	stateJSON, err := config.Infra.GetStackState()
 	if err != nil {
-		config.Log.Error(err, "failed to get Pulumi stack state after creation")
+		config.Log.Error(err, "failed to get stack state after creation")
 		persistFailure(config.Callbacks.PersistFailure, config.Log)
 		return
 	}
@@ -552,19 +545,18 @@ func executePulumiCreate(config pulumiCreateConfig) {
 	}
 }
 
-// executePulumiDelete runs the full Pulumi delete lifecycle in a goroutine.
-func executePulumiDelete(config pulumiDeleteConfig) {
+// executeInfraDelete runs the full infrastructure delete lifecycle in a
+// goroutine. It handles state restoration, optional refresh for providers
+// that support it, and captures updated state on failure.
+func executeInfraDelete(config infraDeleteConfig) {
 	// refresh the deletion acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
 	defer func() { quitAck <- true }()
 
-	// restore Pulumi state from ResourceInventory if available so Pulumi
+	// restore state from ResourceInventory if available so the provider
 	// knows which cloud resources to destroy
-	if config.ExistingState != nil &&
-		len(*config.ExistingState) > 0 &&
-		string(*config.ExistingState) != "{}" &&
-		string(*config.ExistingState) != "null" {
+	if hasExistingState(config.ExistingState) {
 		// validate state JSON before restoring — corrupt/truncated state from
 		// a partial fsnotify write would cause SetStackState to fail
 		if !json.Valid(*config.ExistingState) {
@@ -574,31 +566,33 @@ func executePulumiDelete(config pulumiDeleteConfig) {
 			)
 		} else {
 			if err := config.Infra.SetStackState(config.ExistingState); err != nil {
-				config.Log.Error(err, "failed to restore Pulumi stack state for delete, proceeding without state")
+				config.Log.Error(err, "failed to restore stack state for delete, proceeding without state")
 			} else {
-				config.Log.Info("restored Pulumi state from database for deletion")
+				config.Log.Info("restored state from database for deletion")
 
-				// refresh stack to sync state with cloud reality
-				if err := config.Infra.RefreshStack(); err != nil {
-					config.Log.Error(err, "failed to refresh Pulumi stack state before delete, proceeding with destroy")
-				} else {
-					config.Log.Info("refreshed Pulumi stack state against cloud reality")
+				// refresh state to sync with cloud reality if provider supports it
+				if refreshable, ok := config.Infra.(RefreshableProvider); ok {
+					if err := refreshable.RefreshStack(); err != nil {
+						config.Log.Error(err, "failed to refresh stack state before delete, proceeding with destroy")
+					} else {
+						config.Log.Info("refreshed stack state against cloud reality")
+					}
 				}
 			}
 		}
 	}
 
-	// destroy Pulumi stack
+	// destroy infrastructure
 	if err := config.Infra.DestroyInfra(); err != nil {
 		config.Log.Error(err, "failed to delete infrastructure, will retry on next reconciliation")
 
-		// capture updated Pulumi state so retries know which resources remain
+		// capture updated state so retries know which resources remain
 		stateJSON, stateErr := config.Infra.GetStackState()
 		if stateErr != nil {
-			config.Log.Error(stateErr, "failed to get Pulumi stack state after failed deletion")
+			config.Log.Error(stateErr, "failed to get stack state after failed deletion")
 		} else if stateJSON != nil {
 			if saveErr := config.Callbacks.SaveState(stateJSON); saveErr != nil {
-				config.Log.Error(saveErr, "failed to save Pulumi state after failed deletion")
+				config.Log.Error(saveErr, "failed to save state after failed deletion")
 			}
 		}
 		return
@@ -610,16 +604,17 @@ func executePulumiDelete(config pulumiDeleteConfig) {
 	}
 }
 
-// streamState watches the Pulumi state file via fsnotify and pushes changes
-// to the API using the saveState callback on every Write/Create event.
+// streamState watches the state file via fsnotify and pushes changes to the
+// API using the saveState callback on every Write/Create event. Only called
+// for providers that implement StreamableProvider.
 func streamState(
-	infra PulumiInfra,
+	provider StreamableProvider,
 	saveState func(state *datatypes.JSON) error,
 	quit chan bool,
 	log *logr.Logger,
 ) {
 	// get state file path and pre-create directory
-	stateFilePath, err := infra.GetStateFilePath()
+	stateFilePath, err := provider.GetStateFilePath()
 	if err != nil {
 		log.Error(err, "failed to get state file path for streaming")
 		return
@@ -664,7 +659,7 @@ func streamState(
 			}
 
 			// read and upload state immediately
-			state, err := infra.ReadStateFile()
+			state, err := provider.ReadStateFile()
 			if err != nil {
 				log.Error(err, "failed to read state file during streaming")
 				continue
@@ -738,7 +733,7 @@ func persistFailure(
 	)
 }
 
-// verifyState checks the integrity of a Pulumi state JSON object to ensure it
+// verifyState checks the integrity of a state JSON object to ensure it
 // represents a valid deployment with resources.
 func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 	if state == nil {
@@ -788,4 +783,13 @@ func inventoryCleared(inventory *datatypes.JSON) bool {
 		len(*inventory) == 0 ||
 		string(*inventory) == "{}" ||
 		string(*inventory) == "null"
+}
+
+// hasExistingState returns true if the state is non-nil, non-empty, and not
+// a placeholder value ("{}" or "null").
+func hasExistingState(state *datatypes.JSON) bool {
+	return state != nil &&
+		len(*state) > 0 &&
+		string(*state) != "{}" &&
+		string(*state) != "null"
 }

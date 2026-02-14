@@ -20,16 +20,16 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// newOkeLifecycleConfig constructs a PulumiLifecycleConfig with all
+// newOkeLifecycleConfig constructs an InfraLifecycleConfig with all
 // OKE-specific closures for a given runtime instance.
 func newOkeLifecycleConfig(
 	r *controller.Reconciler,
 	instance *v0.OciOkeKubernetesRuntimeInstance,
 	log *logr.Logger,
-) provider.PulumiLifecycleConfig {
+) provider.InfraLifecycleConfig {
 	instanceID := *instance.ID
 
-	return provider.PulumiLifecycleConfig{
+	return provider.InfraLifecycleConfig{
 		GetReconciliation: func() (*provider.ReconciliationSnapshot, error) {
 			latest, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
 				r.APIClient,
@@ -54,7 +54,7 @@ func newOkeLifecycleConfig(
 			}, nil
 		},
 
-		BuildInfra: func() (provider.PulumiInfra, error) {
+		BuildInfra: func() (provider.InfraProvider, error) {
 			// re-fetch instance for latest state
 			latest, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
 				r.APIClient,
@@ -87,7 +87,7 @@ func newOkeLifecycleConfig(
 			return latest.ClusterOCID != nil && *latest.ClusterOCID != "", nil
 		},
 
-		OnCreateConfirmed: func(infra provider.PulumiInfra) error {
+		OnCreateConfirmed: func(infra provider.InfraProvider) error {
 			infraOKE := infra.(*provider.KubernetesRuntimeInfraOKE)
 
 			// get kubernetes cluster connection info
@@ -134,7 +134,7 @@ func newOkeLifecycleConfig(
 			return nil
 		},
 
-		SaveCreateOutputs: func(infra provider.PulumiInfra, state *datatypes.JSON) error {
+		SaveCreateOutputs: func(infra provider.InfraProvider, state *datatypes.JSON) error {
 			infraOKE := infra.(*provider.KubernetesRuntimeInfraOKE)
 
 			// get cluster OCID
@@ -162,7 +162,7 @@ func newOkeLifecycleConfig(
 			return nil
 		},
 
-		OnDeleteConfirmed: func(infra provider.PulumiInfra) error {
+		OnDeleteConfirmed: func(infra provider.InfraProvider) error {
 			infraOKE := infra.(*provider.KubernetesRuntimeInfraOKE)
 
 			// delete compartment

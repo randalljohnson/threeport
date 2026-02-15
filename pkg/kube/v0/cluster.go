@@ -264,6 +264,76 @@ func GetRestConfig(
 	return &restConfig, nil
 }
 
+// tokenRefreshTransport wraps an http.RoundTripper to inject a fresh bearer
+// token on every outgoing request. Used during bootstrap when the threeport API
+// is not yet available for the normal token refresh path.
+type tokenRefreshTransport struct {
+	base           http.RoundTripper
+	tokenGenerator func() (string, error)
+}
+
+// RoundTrip generates a fresh token and sets the Authorization header before
+// delegating to the underlying transport.
+func (t *tokenRefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	token, err := t.tokenGenerator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate fresh token: %w", err)
+	}
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+token)
+	return t.base.RoundTrip(req)
+}
+
+// GetClientWithTokenRefresh creates a dynamic client interface and rest mapper
+// that automatically refreshes the bearer token on every request. This is used
+// during bootstrap when the threeport API is not yet available to support the
+// normal token refresh flow in GetRestConfig.
+func GetClientWithTokenRefresh(
+	runtime *v0.KubernetesRuntimeInstance,
+	tokenGenerator func() (string, error),
+) (dynamic.Interface, *meta.RESTMapper, error) {
+	if runtime.APIEndpoint == nil {
+		return nil, nil, errors.New("cannot create client without API endpoint")
+	}
+
+	// build rest config directly — skip GetRestConfig to avoid the API-based
+	// token refresh path which requires a threeport API client not available
+	// during bootstrap
+	baseConfig := &rest.Config{
+		Host: *runtime.APIEndpoint,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: []byte(*runtime.CACertificate),
+		},
+		WrapTransport: func(rt http.RoundTripper) http.RoundTripper {
+			return &tokenRefreshTransport{
+				base:           rt,
+				tokenGenerator: tokenGenerator,
+			}
+		},
+	}
+
+	// create dynamic client
+	dynamicKubeClient, err := dynamic.NewForConfig(baseConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create dynamic kube client: %w", err)
+	}
+
+	// create discovery client from a copy (NewForConfig mutates the config)
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(rest.CopyConfig(baseConfig))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create new discovery client from rest config: %w", err)
+	}
+
+	// the rest mapper allows us to determine resource types
+	groupResources, err := restmapper.GetAPIGroupResources(discoveryClient)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get kube API group resources: %w", err)
+	}
+	mapper := restmapper.NewDiscoveryRESTMapper(groupResources)
+
+	return dynamicKubeClient, &mapper, nil
+}
+
 // checkTokenExpiring checks the expiration datetime for a token.  It returns
 // true if it is expired or will expire within 3 minutes.
 func checkTokenExpiring(

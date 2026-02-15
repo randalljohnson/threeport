@@ -1876,10 +1876,7 @@ func (cpi *ControlPlaneInstaller) getAPIWaitInitContainer(image string) map[stri
 		cpi.Opts.RestApiInfo.ServiceResourceName,
 		cpi.Opts.Namespace,
 	)
-	apiPort := 443
-	if !cpi.Opts.AuthEnabled {
-		apiPort = 80
-	}
+	_, apiPort := cpi.GetAPIServicePort()
 
 	return map[string]interface{}{
 		"name":            "wait-for-api",

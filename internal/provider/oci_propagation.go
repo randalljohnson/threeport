@@ -157,9 +157,15 @@ func (d *propagationDisplay) formatStatusLine(status *OCIServiceStatus) string {
 
 // validateOCIUserPropagation validates that the service user credentials are propagated across all OCI services.
 func (i *KubernetesRuntimeInfraOKE) validateOCIUserPropagation() error {
+	// derive tenancy OCID for the raw configuration provider
+	tenancyOCID, err := i.getTenancyOCID()
+	if err != nil {
+		return err
+	}
+
 	// create a raw configuration provider with the service user credentials
 	configProvider := common.NewRawConfigurationProvider(
-		i.TenancyOCID,
+		tenancyOCID,
 		i.ServiceUserOCID,
 		i.Region,
 		i.Fingerprint,

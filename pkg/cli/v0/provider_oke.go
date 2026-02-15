@@ -114,11 +114,13 @@ func ConfigureControlPlaneWithOkeConfig(
 ) error {
 	kubernetesRuntimeInfraOKE := (*kubernetesRuntimeInfra).(*provider.KubernetesRuntimeInfraOKE)
 
-	// create OCI provider using the service user credentials generated during bootstrap
+	// create OCI provider using the service user credentials generated during bootstrap.
+	// CompartmentOCID stores the genesis compartment — workload clusters create
+	// child compartments under it.
 	ociProvider := v0.OciProvider{
 		Name:            util.Ptr(kubernetesRuntimeInfraOKE.GetServiceUserName()),
 		UserOCID:        &kubernetesRuntimeInfraOKE.ServiceUserOCID,
-		CompartmentOCID: &kubernetesRuntimeInfraOKE.TenancyOCID,
+		CompartmentOCID: &kubernetesRuntimeInfraOKE.CompartmentOCID,
 		DefaultProvider: util.Ptr(true),
 		DefaultRegion:   &kubernetesRuntimeInfraOKE.Region,
 		KeyFingerprint:  &kubernetesRuntimeInfraOKE.Fingerprint,

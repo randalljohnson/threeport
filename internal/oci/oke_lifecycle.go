@@ -468,7 +468,6 @@ func buildOkeInfra(
 			Logger:              log,
 		},
 		Region:                 region,
-		TenancyOCID:            *ociProvider.CompartmentOCID,
 		ConfigProvider:         configProvider,
 		WorkerNodeShape:        *definition.WorkerNodeShape,
 		WorkerNodeInitialCount: *definition.WorkerNodeInitialCount,
@@ -478,8 +477,8 @@ func buildOkeInfra(
 		PrivateKeyPEM:          decryptedPrivateKey,
 	}
 
-	// resolve the compartment OCID by looking up the compartment named after
-	// the runtime instance under the tenancy
+	// resolve the compartment OCID by looking up the workload compartment
+	// under the parent (genesis compartment from OCI provider record)
 	identityClient, err := ociidentity.NewIdentityClientWithConfigurationProvider(configProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity client: %w", err)
@@ -497,7 +496,8 @@ func buildOkeInfra(
 	if len(listResponse.Items) > 0 {
 		infraOKE.CompartmentOCID = *listResponse.Items[0].Id
 	} else {
-		// fall back to tenancy OCID (compartment may not exist yet for new creates)
+		// compartment doesn't exist yet — set parent as CompartmentOCID
+		// so createOCICompartment will create the child under it
 		infraOKE.CompartmentOCID = *ociProvider.CompartmentOCID
 	}
 

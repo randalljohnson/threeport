@@ -50,10 +50,11 @@ type KubernetesRuntimeInfraOKE struct {
 	// Version of the OKE cluster.
 	Version string
 
-	// The Oracle Cloud tenancy ID where the cluster infra is provisioned.
-	TenancyOCID string
-
 	// The Oracle Cloud compartment ID where resources will be created.
+	// For genesis bootstrap, this starts as the tenancy OCID and is overwritten
+	// with the genesis compartment OCID after createOCICompartment runs.
+	// For workload clusters, this starts as the parent compartment OCID
+	// (genesis compartment) and is overwritten with the child compartment OCID.
 	CompartmentOCID string
 
 	// The Oracle Cloud config provider.
@@ -90,6 +91,12 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 // It does not create IAM resources — call CreateIAM() first for the bootstrap path,
 // or set ServiceUserOCID/Fingerprint/PrivateKeyPEM directly for the controller path.
 func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, error) {
+	// derive tenancy OCID from config provider for Pulumi provider configuration
+	tenancyOCID, err := i.ConfigProvider.TenancyOCID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenancy OCID from config provider: %w", err)
+	}
+
 	// create compartment for resource isolation
 	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(i.ConfigProvider)
 	if err != nil {
@@ -119,7 +126,7 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 		// create OCI provider with explicit configuration using service user credentials
 		ociProvider, err := oci.NewProvider(ctx, "oci-provider", &oci.ProviderArgs{
 			Region:      pulumi.String(i.Region),
-			TenancyOcid: pulumi.String(i.TenancyOCID),
+			TenancyOcid: pulumi.String(tenancyOCID),
 			UserOcid:    pulumi.String(i.ServiceUserOCID),
 			Fingerprint: pulumi.String(i.Fingerprint),
 			PrivateKey:  pulumi.String(i.PrivateKeyPEM),
@@ -795,11 +802,11 @@ func (i *KubernetesRuntimeInfraOKE) LoadOCIConfig(
 	}
 	i.ConfigProvider = configProvider
 
-	// get the tenancy OCID
-	i.TenancyOCID, err = configProvider.TenancyOCID()
+	// validate tenancy OCID is available
+	tenancyOCID, err := configProvider.TenancyOCID()
 	if err != nil {
 		return fmt.Errorf("failed to get tenancy OCID: %w", err)
-	} else if i.TenancyOCID == "" {
+	} else if tenancyOCID == "" {
 		return fmt.Errorf("tenancy OCID not found in OCI config")
 	}
 
@@ -821,7 +828,7 @@ func (i *KubernetesRuntimeInfraOKE) LoadOCIConfig(
 	if compartmentOCID != "" {
 		i.CompartmentOCID = compartmentOCID
 	} else {
-		i.CompartmentOCID = i.TenancyOCID
+		i.CompartmentOCID = tenancyOCID
 	}
 
 	// set stack configs now that region is resolved
@@ -1011,9 +1018,15 @@ func (i *KubernetesRuntimeInfraOKE) getHomeRegion(identityClient identity.Identi
 	}
 	identityClient.SetRegion(configRegion)
 
+	// derive tenancy OCID from config provider
+	tenancyOCID, err := i.ConfigProvider.TenancyOCID()
+	if err != nil {
+		return "", fmt.Errorf("failed to get tenancy OCID from config provider: %w", err)
+	}
+
 	// query the tenancy to get the home region key
 	tenancyRequest := identity.GetTenancyRequest{
-		TenancyId: common.String(i.TenancyOCID),
+		TenancyId: common.String(tenancyOCID),
 	}
 	tenancyResponse, err := identityClient.GetTenancy(context.Background(), tenancyRequest)
 	if err != nil {

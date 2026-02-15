@@ -84,6 +84,15 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 		return nil, fmt.Errorf("failed to create OCI IAM resources: %w", err)
 	}
 
+	// reset CompartmentOCID to tenancy — CreateIAM overwrites it with the
+	// child compartment, but CreateInfra needs the parent (tenancy) so it
+	// can idempotently find or create the compartment under it
+	tenancyOCID, err := i.ConfigProvider.TenancyOCID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenancy OCID: %w", err)
+	}
+	i.CompartmentOCID = tenancyOCID
+
 	return i.CreateInfra()
 }
 

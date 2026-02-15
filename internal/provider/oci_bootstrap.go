@@ -633,7 +633,8 @@ func (i *KubernetesRuntimeInfraOKE) writeOCIConfiguration() error {
 
 	fmt.Printf("Writing OCI configuration\n")
 
-	config := fmt.Sprintf(`%s
+	config := fmt.Sprintf(`
+%s
 user=%s
 fingerprint=%s
 tenancy=%s

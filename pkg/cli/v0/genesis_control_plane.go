@@ -246,6 +246,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	uninstaller.controlPlane = &controlPlane
 
 	var kubernetesRuntimeInfra provider.KubernetesRuntimeInfra
+	var tokenGenerator func() (string, error)
 	var threeportAPIEndpoint string
 	var callerIdentity *sts.GetCallerIdentityOutput
 	kubeConnectionInfo := &kube.KubeConnectionInfo{}
@@ -366,6 +367,20 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}
 	case v0.KubernetesRuntimeInfraProviderOKE:
 		kubernetesRuntimeInfraOKE := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE)
+
+		// build token generator for automatic refresh during bootstrap
+		okeClusterOCID, err := kubernetesRuntimeInfraOKE.GetClusterOCID(
+			provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
+		)
+		if err != nil {
+			return uninstaller.cleanOnCreateError("failed to get OKE cluster OCID for token refresh", err)
+		}
+		okeConfigProvider := kubernetesRuntimeInfraOKE.ConfigProvider
+		tokenGenerator = func() (string, error) {
+			t, _, err := util.GenerateOkeToken(okeClusterOCID, okeConfigProvider)
+			return t, err
+		}
+
 		location, err := mapping.GetLocationForOciRegion(kubernetesRuntimeInfraOKE.Region)
 		if err != nil {
 			return uninstaller.cleanOnCreateError(
@@ -391,15 +406,24 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	}
 
 	// get kubernetes client and mapper for use with kube API
-	// we don't have a client or endpoint for threeport API yet - but those are
-	// only used when a token refresh is needed and that should not be necessary
-	dynamicKubeClient, mapper, err := kube.GetClient(
-		kubernetesRuntimeInstance,
-		false,
-		nil,
-		"",
-		"",
-	)
+	// if a token generator is available (OKE), use it to automatically refresh
+	// the bearer token on each request, avoiding expiration during bootstrap
+	var dynamicKubeClient dynamic.Interface
+	var mapper *meta.RESTMapper
+	if tokenGenerator != nil {
+		dynamicKubeClient, mapper, err = kube.GetClientWithTokenRefresh(
+			kubernetesRuntimeInstance,
+			tokenGenerator,
+		)
+	} else {
+		dynamicKubeClient, mapper, err = kube.GetClient(
+			kubernetesRuntimeInstance,
+			false,
+			nil,
+			"",
+			"",
+		)
+	}
 	if err != nil {
 		return uninstaller.cleanOnCreateError("failed to get a Kubernetes client and mapper", err)
 	}
@@ -703,13 +727,20 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	// before this step as kube.GetClient() may require a refresh of the connection
 	// token, which depends on those objects existing in the Threeport API
 	time.Sleep(time.Second * 10)
-	dynamicKubeClient, mapper, err = kube.GetClient(
-		kubernetesRuntimeInstResult,
-		false,
-		apiClient,
-		threeportAPIEndpoint,
-		encryptionKey,
-	)
+	if tokenGenerator != nil {
+		dynamicKubeClient, mapper, err = kube.GetClientWithTokenRefresh(
+			kubernetesRuntimeInstResult,
+			tokenGenerator,
+		)
+	} else {
+		dynamicKubeClient, mapper, err = kube.GetClient(
+			kubernetesRuntimeInstResult,
+			false,
+			apiClient,
+			threeportAPIEndpoint,
+			encryptionKey,
+		)
+	}
 	if err != nil {
 		return uninstaller.cleanOnCreateError("failed to refresh the Kubernetes client and mapper", err)
 	}

@@ -388,26 +388,25 @@ func (i *KubernetesRuntimeInfraOKE) createOCIPolicy(client identity.IdentityClie
 	policyName := i.getPolicyName()
 	policyDescription := fmt.Sprintf("Threeport bootstrap policy for %s", i.RuntimeInstanceName)
 	policyStatements := []string{
-		// policies recommended in OCI documentation
-		// https://docs.public.content.oci.oraclecloud.com/en-us/iaas/compute-cloud-at-customer/topics/oke/create-a-user-group-and-policies-that-authorize-members-to-use-oke.htm
-		fmt.Sprintf("Allow group %s to read all-resources in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage cluster-family in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage instance-family in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage network-load-balancers in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage virtual-network-family in compartment %s", groupName, i.RuntimeInstanceName),
-		// additional policies
-		fmt.Sprintf("Allow group %s to inspect compartments in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage volume-family in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage load-balancers in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to use vnics in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to use network-security-groups in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to use private-ips in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage public-ips in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage object-family in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage tag-namespaces in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to manage tag-defaults in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to use tag-namespaces in compartment %s", groupName, i.RuntimeInstanceName),
-		fmt.Sprintf("Allow group %s to use subnets in compartment %s", groupName, i.RuntimeInstanceName),
+		// tenancy-scoped policies: workload compartments are siblings of genesis,
+		// so we can't scope to a single compartment at policy-creation time
+		fmt.Sprintf("Allow group %s to manage compartments in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to read all-resources in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage cluster-family in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage instance-family in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage network-load-balancers in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage virtual-network-family in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage volume-family in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage load-balancers in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to use vnics in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to use network-security-groups in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to use private-ips in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage public-ips in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage object-family in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage tag-namespaces in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to manage tag-defaults in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to use tag-namespaces in tenancy", groupName),
+		fmt.Sprintf("Allow group %s to use subnets in tenancy", groupName),
 	}
 
 	// check if policy already exists

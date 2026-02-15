@@ -406,3 +406,22 @@ Recommendation: Update Pulumi CLI and SDK first - version mismatches often cause
 
 **Why This Matters**: Many debugging issues (especially marshaling errors, nil pointers, and compatibility problems) are caused by version mismatches between external dependencies. Always rule out version issues before deep-diving into code analysis.
 
+# OCI Development
+
+## Free Tier Testing Strategy
+- OKE control plane creation is free; only worker nodes incur cost
+- For workload cluster testing, set `workerInitialNodeCount` to 0
+- Genesis control planes can be left running (free tier)
+
+## Teardown Order (CRITICAL)
+- Always destroy ALL workload clusters BEFORE genesis — even with 0 worker nodes
+- 0 nodes ≠ no infrastructure (OKE cluster, VCN, subnets, gateways still exist)
+- Workload cluster resources are managed by genesis controllers — once gone, orphaned
+- Correct order: workload clusters → genesis
+- NEVER delete DB records for clusters with real cloud infra
+
+## tptdev and tptctl Flags
+- Always push container images to remote registry — never assume local images are sufficient
+- Always use `-n <name>` for `tptdev up/down/debug`
+- Use `-t <branch>` for image tags in worktrees (auto-detection breaks)
+- Temporarily reduce sleep/backoff durations for dev loops (don't commit)

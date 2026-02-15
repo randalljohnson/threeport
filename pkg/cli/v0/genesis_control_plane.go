@@ -2,6 +2,7 @@ package v0
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -920,8 +921,14 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 				)
 			}
 
-			if err := kubernetesRuntimeInfraOKE.SetStackState(okeRuntimeInstance.ResourceInventory); err != nil {
-				return fmt.Errorf("failed to set OKE stack state: %w", err)
+			// validate state JSON before restoring — if corrupt, proceed
+			// without state (matches controller fallback behavior)
+			if okeRuntimeInstance.ResourceInventory != nil && len(*okeRuntimeInstance.ResourceInventory) > 0 {
+				if !json.Valid(*okeRuntimeInstance.ResourceInventory) {
+					Warning("stored state is corrupt, proceeding with destroy without state restoration")
+				} else if err := kubernetesRuntimeInfraOKE.SetStackState(okeRuntimeInstance.ResourceInventory); err != nil {
+					Warning(fmt.Sprintf("failed to restore state, proceeding with destroy: %v", err))
+				}
 			}
 		}
 	}

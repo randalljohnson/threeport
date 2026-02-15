@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -1159,27 +1160,35 @@ func (i *KubernetesRuntimeInfraOKE) DeleteOCIResources() error {
 	// set the region for the identity client to home region for IAM operations
 	identityClient.SetRegion(homeRegion)
 
-	// delete in reverse order: policies, groups, user, compartment
+	// delete in reverse order: policies, groups, user, compartment.
+	// collect all errors so callers know what failed.
+	var errs []error
+
 	if err := i.deleteOCIPolicy(identityClient); err != nil {
 		fmt.Printf("Warning: failed to delete OCI policy: %v\n", err)
+		errs = append(errs, fmt.Errorf("policy: %w", err))
 	}
 
 	if err := i.deleteOCIGroup(identityClient); err != nil {
 		fmt.Printf("Warning: failed to delete OCI group: %v\n", err)
+		errs = append(errs, fmt.Errorf("group: %w", err))
 	}
 
 	if err := i.deleteOCIUser(identityClient); err != nil {
 		fmt.Printf("Warning: failed to delete OCI user: %v\n", err)
+		errs = append(errs, fmt.Errorf("user: %w", err))
 	}
 
 	if err := i.deleteOCICompartment(identityClient); err != nil {
 		fmt.Printf("Warning: failed to delete OCI compartment: %v\n", err)
+		errs = append(errs, fmt.Errorf("compartment: %w", err))
 	}
 
 	// clean up local OCI configuration files
 	if err := i.deleteOCIConfiguration(); err != nil {
 		fmt.Printf("Warning: failed to clean up OCI configuration: %v\n", err)
+		errs = append(errs, fmt.Errorf("config cleanup: %w", err))
 	}
 
-	return nil
+	return errors.Join(errs...)
 }

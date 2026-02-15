@@ -17,7 +17,6 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
-	kube "github.com/threeport/threeport/pkg/kube/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
@@ -142,7 +141,7 @@ var buildCmd = &cobra.Command{
 						}
 					}
 
-					// restart pods
+					// restart pods with debug mode enabled
 					if (push || load) && restart {
 						// create dynamic client and rest mapper
 						dynamicKubeClient, mapper, err := client_lib.GetKubeDynamicClientAndMapper(kubeconfigPath)
@@ -151,15 +150,37 @@ var buildCmd = &cobra.Command{
 							os.Exit(1)
 						}
 
-						// delete pod
-						if err := kube.DeletePod(
-							dynamicKubeClient,
-							&mapper,
-							component.Name,
-							installer.ControlPlaneNamespace,
-						); err != nil {
-							cli.Error("failed to delete pod", err)
-							os.Exit(1)
+						cpi.Opts.CreateOrUpdateKubeResources = true
+						cpi.Opts.Debug = true
+						cpi.Opts.Namespace = installer.ControlPlaneNamespace
+
+						switch component.Name {
+						case "rest-api":
+							if err := cpi.UpdateThreeportAPIDeployment(
+								dynamicKubeClient,
+								&mapper,
+								nil,
+							); err != nil {
+								cli.Error("failed to update rest-api deployment", err)
+								os.Exit(1)
+							}
+						case "agent":
+							if err := cpi.UpdateThreeportAgentDeployment(
+								dynamicKubeClient,
+								&mapper,
+							); err != nil {
+								cli.Error("failed to update agent deployment", err)
+								os.Exit(1)
+							}
+						default:
+							if err := cpi.UpdateControllerDeployment(
+								dynamicKubeClient,
+								&mapper,
+								*component,
+							); err != nil {
+								cli.Error("failed to update controller deployment", err)
+								os.Exit(1)
+							}
 						}
 					}
 				}

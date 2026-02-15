@@ -86,27 +86,11 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 	return i.CreateInfra()
 }
 
-// CreateInfra creates the compartment and provisions OKE cluster infrastructure via Pulumi.
-// It does not create IAM resources — call CreateIAM() first for the bootstrap path,
-// or set ServiceUserOCID/Fingerprint/PrivateKeyPEM directly for the controller path.
+// CreateInfra provisions OKE cluster infrastructure via Pulumi.
+// It does not create IAM resources or compartments — call CreateIAM() first for
+// the bootstrap path. For the controller path, CompartmentOCID must already be
+// set to the genesis compartment.
 func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, error) {
-	// create compartment for resource isolation
-	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(i.ConfigProvider)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create identity client: %w", err)
-	}
-
-	// get home region for compartment creation (compartments must be created in home region)
-	homeRegion, err := i.getHomeRegion(identityClient)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home region: %w", err)
-	}
-	identityClient.SetRegion(homeRegion)
-
-	if err := i.createOCICompartment(identityClient); err != nil {
-		return nil, fmt.Errorf("failed to create compartment: %w", err)
-	}
-
 	// set up Pulumi workspace and get stack
 	stack, err := i.SetupStack(func(ctx *pulumi.Context) error {
 

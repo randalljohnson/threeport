@@ -135,8 +135,15 @@ func (w *PulumiWorkspace) SetStackState(state *datatypes.JSON) error {
 	if err := os.MkdirAll(filepath.Dir(stateFilePath), 0755); err != nil {
 		return fmt.Errorf("failed to create state file directory: %w", err)
 	}
-	if err := os.WriteFile(stateFilePath, *state, 0644); err != nil {
-		return fmt.Errorf("failed to write state file: %w", err)
+	// write state atomically via temp file + rename to prevent corruption
+	// if the process crashes mid-write
+	tmpFile := stateFilePath + ".tmp"
+	if err := os.WriteFile(tmpFile, *state, 0644); err != nil {
+		return fmt.Errorf("failed to write temporary state file: %w", err)
+	}
+	if err := os.Rename(tmpFile, stateFilePath); err != nil {
+		os.Remove(tmpFile)
+		return fmt.Errorf("failed to rename state file: %w", err)
 	}
 
 	return nil

@@ -10,10 +10,22 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+)
+
+// OCI resource naming format strings. These constants ensure create/delete
+// pairs always reference the same resource names.
+const (
+	ociConfigSectionFormat = "[%s-service]"
+	serviceUserNameFormat  = "%s-user"
+	serviceUserEmailFormat = "%s-user@threeport.io"
+	groupNameFormat        = "%s-group"
+	policyNameFormat       = "%s-policy"
+	privateKeyFileFormat   = "%s-private-key.pem"
 )
 
 // OCIAPIKeyPair represents an API key pair for OCI authentication
@@ -25,27 +37,32 @@ type OCIAPIKeyPair struct {
 
 // getOCIConfigSectionName returns the standardized OCI config section name for the service user.
 func (i *KubernetesRuntimeInfraOKE) getOCIConfigSectionName() string {
-	return fmt.Sprintf("[%s-service]", i.RuntimeInstanceName)
+	return fmt.Sprintf(ociConfigSectionFormat, i.RuntimeInstanceName)
 }
 
 // GetServiceUserName returns the standardized service user name for this threeport instance.
 func (i *KubernetesRuntimeInfraOKE) GetServiceUserName() string {
-	return fmt.Sprintf("%s-user", i.RuntimeInstanceName)
+	return fmt.Sprintf(serviceUserNameFormat, i.RuntimeInstanceName)
 }
 
 // getServiceUserEmail returns the email for the service user.
 func (i *KubernetesRuntimeInfraOKE) getServiceUserEmail() string {
-	return fmt.Sprintf("%s-user@threeport.io", i.RuntimeInstanceName)
+	return fmt.Sprintf(serviceUserEmailFormat, i.RuntimeInstanceName)
 }
 
 // getGroupName returns the standardized group name for this threeport instance.
 func (i *KubernetesRuntimeInfraOKE) getGroupName() string {
-	return fmt.Sprintf("%s-group", i.RuntimeInstanceName)
+	return fmt.Sprintf(groupNameFormat, i.RuntimeInstanceName)
 }
 
 // getPolicyName returns the standardized policy name for this threeport instance.
 func (i *KubernetesRuntimeInfraOKE) getPolicyName() string {
-	return fmt.Sprintf("%s-policy", i.RuntimeInstanceName)
+	return fmt.Sprintf(policyNameFormat, i.RuntimeInstanceName)
+}
+
+// getPrivateKeyFilename returns the private key filename for this threeport instance.
+func (i *KubernetesRuntimeInfraOKE) getPrivateKeyFilename() string {
+	return fmt.Sprintf(privateKeyFileFormat, i.RuntimeInstanceName)
 }
 
 // OCI Compartment Operations
@@ -465,7 +482,7 @@ func (i *KubernetesRuntimeInfraOKE) generateOCIAPIKeyPair() error {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	privateKeyPath := fmt.Sprintf("%s/.oci/%s-private-key.pem", homeDir, i.RuntimeInstanceName)
+	privateKeyPath := filepath.Join(homeDir, ".oci", i.getPrivateKeyFilename())
 
 	// try to load existing key from disk
 	if _, err := os.Stat(privateKeyPath); err == nil {
@@ -561,7 +578,7 @@ key_file=%s
 		i.Fingerprint,
 		i.TenancyOCID,
 		i.Region,
-		fmt.Sprintf("~/.oci/%s-private-key.pem", i.RuntimeInstanceName),
+		filepath.Join("~/.oci", i.getPrivateKeyFilename()),
 	)
 
 	// write configuration to OCI config file
@@ -571,7 +588,7 @@ key_file=%s
 	}
 
 	configPath := fmt.Sprintf("%s/.oci/config", homeDir)
-	privateKeyPath := fmt.Sprintf("%s/.oci/%s-private-key.pem", homeDir, i.RuntimeInstanceName)
+	privateKeyPath := filepath.Join(homeDir, ".oci", i.getPrivateKeyFilename())
 
 	// ensure .oci directory exists
 	ociDir := fmt.Sprintf("%s/.oci", homeDir)
@@ -628,7 +645,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIConfiguration() error {
 	}
 
 	configPath := fmt.Sprintf("%s/.oci/config", homeDir)
-	privateKeyPath := fmt.Sprintf("%s/.oci/%s-private-key.pem", homeDir, i.RuntimeInstanceName)
+	privateKeyPath := filepath.Join(homeDir, ".oci", i.getPrivateKeyFilename())
 
 	// remove private key file
 	if err := os.Remove(privateKeyPath); err != nil && !os.IsNotExist(err) {

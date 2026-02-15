@@ -3,7 +3,6 @@ package oci
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -165,6 +164,11 @@ func newOkeLifecycleConfig(
 
 		OnDeleteConfirmed: func(infra provider.InfraProvider) error {
 			infraOKE := infra.(*provider.KubernetesRuntimeInfraOKE)
+
+			// delete compartment
+			if err := infraOKE.DeleteCompartment(); err != nil {
+				log.Error(err, "failed to delete OCI compartment")
+			}
 
 			// delete Pulumi stack state
 			if err := infraOKE.DeleteStackState(); err != nil {
@@ -474,11 +478,8 @@ func buildOkeInfra(
 		PrivateKeyPEM:          decryptedPrivateKey,
 	}
 
-	// resolve the compartment OCID — workload clusters share the genesis
-	// compartment. The provider name follows serviceUserNameFormat ("%s-user")
-	// where %s is the genesis RuntimeInstanceName = compartment name.
-	genesisCompartmentName := strings.TrimSuffix(*ociProvider.Name, "-user")
-
+	// resolve the compartment OCID by looking up the compartment named after
+	// the runtime instance under the tenancy
 	identityClient, err := ociidentity.NewIdentityClientWithConfigurationProvider(configProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity client: %w", err)
@@ -487,7 +488,7 @@ func buildOkeInfra(
 
 	listRequest := ociidentity.ListCompartmentsRequest{
 		CompartmentId: ociProvider.CompartmentOCID,
-		Name:          &genesisCompartmentName,
+		Name:          instance.Name,
 	}
 	listResponse, err := identityClient.ListCompartments(context.Background(), listRequest)
 	if err != nil {
@@ -496,7 +497,8 @@ func buildOkeInfra(
 	if len(listResponse.Items) > 0 {
 		infraOKE.CompartmentOCID = *listResponse.Items[0].Id
 	} else {
-		return nil, fmt.Errorf("genesis compartment %s not found — genesis must be deployed first", genesisCompartmentName)
+		// fall back to tenancy OCID (compartment may not exist yet for new creates)
+		infraOKE.CompartmentOCID = *ociProvider.CompartmentOCID
 	}
 
 	return infraOKE, nil

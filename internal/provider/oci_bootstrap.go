@@ -133,6 +133,14 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.Identit
 
 	_, err = client.DeleteCompartment(context.Background(), deleteRequest)
 	if err != nil {
+		// provide actionable guidance for non-empty compartments
+		if strings.Contains(err.Error(), "BulkDeleteResource") ||
+			strings.Contains(err.Error(), "409") {
+			return fmt.Errorf(
+				"compartment %s still contains resources — delete all resources first or wait for async cleanup: %w",
+				i.RuntimeInstanceName, err,
+			)
+		}
 		return fmt.Errorf("failed to delete compartment: %w", err)
 	}
 

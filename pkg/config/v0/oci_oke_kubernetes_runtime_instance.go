@@ -355,7 +355,7 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Delete(
 	}
 
 	// wait for OCI OKE kubernetes runtime instance to be deleted
-	util.Retry(90, 10, func() error {
+	if err := util.Retry(90, 10, func() error {
 		if _, err := client_v0.GetOciOkeKubernetesRuntimeInstanceByName(
 			apiClient,
 			apiEndpoint,
@@ -364,7 +364,9 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Delete(
 			return errors.New("OCI OKE kubernetes runtime instance not deleted")
 		}
 		return nil
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("timed out waiting for OCI OKE kubernetes runtime instance to be deleted: %w", err)
+	}
 
 	// get associated kubernetes runtime instance
 	kubernetesRuntimeInstance, err := client_v0.GetKubernetesRuntimeInstanceByID(
@@ -406,7 +408,7 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Delete(
 		}
 
 		// wait for kubernetes runtime instance to be deleted
-		util.Retry(10, 1, func() error {
+		if err := util.Retry(10, 1, func() error {
 			if _, err := client_v0.GetKubernetesRuntimeInstanceByName(
 				apiClient,
 				apiEndpoint,
@@ -415,7 +417,9 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Delete(
 				return errors.New("kubernetes runtime instance not deleted")
 			}
 			return nil
-		})
+		}); err != nil {
+			return nil, fmt.Errorf("timed out waiting for kubernetes runtime instance to be deleted: %w", err)
+		}
 	}
 
 	// construct deleted oci oke kubernetes runtime instance config

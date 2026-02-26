@@ -99,7 +99,7 @@ func outputGetv0OciOkeKubernetesRuntimeInstancesCmd(
 	ociOkeKubernetesRuntimeInstances *[]config_v0.OciOkeKubernetesRuntimeInstanceConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t OCI OKE KUBERNETES RUNTIME DEFINITION\t REGION\t AGE")
+	fmt.Fprintln(writer, "NAME\t OCI OKE KUBERNETES RUNTIME DEFINITION\t REGION\t STATUS\t AGE")
 	for _, ociOkeKubernetesRuntimeInstance := range *ociOkeKubernetesRuntimeInstances {
 		ociOkeDefinitionName := ""
 		if ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeDefinition != nil &&
@@ -110,6 +110,10 @@ func outputGetv0OciOkeKubernetesRuntimeInstancesCmd(
 		if ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.Region != nil {
 			region = *ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.Region
 		}
+		status := ""
+		if ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.Status != nil {
+			status = *ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.Status
+		}
 		age := ""
 		if ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.Age != nil {
 			age = *ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.Age
@@ -119,6 +123,7 @@ func outputGetv0OciOkeKubernetesRuntimeInstancesCmd(
 			*ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeInstance.Name, "\t",
 			ociOkeDefinitionName, "\t",
 			region, "\t",
+			status, "\t",
 			age,
 		)
 	}

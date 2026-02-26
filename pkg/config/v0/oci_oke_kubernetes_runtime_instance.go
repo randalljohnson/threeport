@@ -30,6 +30,7 @@ type OciOkeKubernetesRuntimeInstanceValues struct {
 	OciProviderName                   *string                                  `json:"OciProviderName,omitempty" yaml:"OciProviderName,omitempty"`
 	Region                            *string                                  `json:"Region,omitempty" yaml:"Region,omitempty"`
 	OciOkeKubernetesRuntimeDefinition *OciOkeKubernetesRuntimeDefinitionValues `json:"OciOkeKubernetesRuntimeDefinition,omitempty" yaml:"OciOkeKubernetesRuntimeDefinition,omitempty"`
+	Status                            *string                                  `json:"Status,omitempty" yaml:"Status,omitempty"`
 	Age                               *string                                  `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
@@ -102,12 +103,16 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Get(
 			}
 		}
 
+		// derive status from reconciliation state
+		status := ociOkeRuntimeInstanceStatus(&ociOkeKubernetesRuntimeInstance)
+
 		ociOkeKubernetesRuntimeInstanceConfig := OciOkeKubernetesRuntimeInstanceConfig{
 			OciOkeKubernetesRuntimeInstance: OciOkeKubernetesRuntimeInstanceValues{
 				Name:                              ociOkeKubernetesRuntimeInstance.Name,
 				OciProviderName:                   ociProviderName,
 				Region:                            ociOkeKubernetesRuntimeInstance.Region,
 				OciOkeKubernetesRuntimeDefinition: ociOkeKubernetesRuntimeDefinition,
+				Status:                            &status,
 				Age:                               util.Ptr(util.GetAgeFormatted(ociOkeKubernetesRuntimeInstance.CreatedAt)),
 			},
 		}
@@ -115,6 +120,30 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Get(
 	}
 
 	return &ociOkeKubernetesRuntimeInstanceConfigs, nil
+}
+
+// ociOkeRuntimeInstanceStatus derives a human-readable status string from
+// the reconciliation fields on an OciOkeKubernetesRuntimeInstance.
+func ociOkeRuntimeInstanceStatus(instance *api_v0.OciOkeKubernetesRuntimeInstance) string {
+	if instance.DeletionConfirmed != nil {
+		return "Deleted"
+	}
+	if instance.DeletionAcknowledged != nil {
+		return "Deleting"
+	}
+	if instance.DeletionScheduled != nil {
+		return "DeletePending"
+	}
+	if instance.CreationFailed != nil && *instance.CreationFailed {
+		return "Failed"
+	}
+	if instance.CreationConfirmed != nil {
+		return "Ready"
+	}
+	if instance.CreationAcknowledged != nil {
+		return "Creating"
+	}
+	return "Pending"
 }
 
 // Create creates a oci oke kubernetes runtime instance in the Threeport API.

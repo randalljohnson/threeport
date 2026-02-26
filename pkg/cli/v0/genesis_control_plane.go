@@ -1068,7 +1068,7 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 
 			// delete OCI user, groups, and compartment
 			if err := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE).DeleteOCIResources(); err != nil {
-				Warning(fmt.Sprintf("failed to delete OCI resources: %v", err))
+				return fmt.Errorf("failed to delete OCI IAM resources: %w", err)
 			}
 		}
 	}

@@ -89,7 +89,7 @@ func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.Identit
 		CompartmentId: &parentCompartmentOCID,
 	})
 	if err == nil && getResponse.Name != nil && *getResponse.Name == i.RuntimeInstanceName {
-		fmt.Printf("Using existing compartment: %s\n", i.RuntimeInstanceName)
+		i.logInfo(fmt.Sprintf("using existing compartment: %s", i.RuntimeInstanceName))
 		return nil
 	}
 
@@ -106,12 +106,12 @@ func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.Identit
 
 	if len(response.Items) > 0 {
 		i.CompartmentOCID = *response.Items[0].Id
-		fmt.Printf("Using existing compartment: %s\n", i.RuntimeInstanceName)
+		i.logInfo(fmt.Sprintf("using existing compartment: %s", i.RuntimeInstanceName))
 		return nil
 	}
 
 	// create new compartment under parent
-	fmt.Printf("Creating compartment: %s\n", i.RuntimeInstanceName)
+	i.logInfo(fmt.Sprintf("creating compartment: %s", i.RuntimeInstanceName))
 	createRequest := identity.CreateCompartmentRequest{
 		CreateCompartmentDetails: identity.CreateCompartmentDetails{
 			CompartmentId: &parentCompartmentOCID,
@@ -126,14 +126,14 @@ func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.Identit
 	}
 
 	i.CompartmentOCID = *createResponse.Compartment.Id
-	fmt.Printf("Successfully created compartment: %s\n", i.RuntimeInstanceName)
+	i.logInfo(fmt.Sprintf("successfully created compartment: %s", i.RuntimeInstanceName))
 	return nil
 }
 
 // deleteOCICompartment deletes the OCI compartment referenced by CompartmentOCID.
 func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.IdentityClient) error {
 	if i.CompartmentOCID == "" {
-		fmt.Printf("Compartment OCID not set, skipping deletion\n")
+		i.logInfo("compartment OCID not set, skipping deletion")
 		return nil
 	}
 
@@ -143,13 +143,12 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.Identit
 	}
 	getResponse, err := client.GetCompartment(context.Background(), getRequest)
 	if err != nil {
-		fmt.Printf("Compartment %s not found, skipping deletion\n", i.RuntimeInstanceName)
-		return nil
+		return fmt.Errorf("failed to get compartment: %w", err)
 	}
 
 	// skip if already deleted
 	if getResponse.LifecycleState == identity.CompartmentLifecycleStateDeleted {
-		fmt.Printf("Compartment %s already deleted\n", i.RuntimeInstanceName)
+		i.logInfo(fmt.Sprintf("compartment %s already deleted", i.RuntimeInstanceName))
 		return nil
 	}
 
@@ -171,7 +170,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCICompartment(client identity.Identit
 		return fmt.Errorf("failed to delete compartment: %w", err)
 	}
 
-	fmt.Printf("Compartment deletion initiated (may take time to complete)\n")
+	i.logInfo("compartment deletion initiated (may take time to complete)")
 	return nil
 }
 
@@ -245,7 +244,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIUser(client identity.IdentityClient
 	}
 
 	if len(response.Items) == 0 {
-		fmt.Printf("User %s not found, skipping deletion\n", userName)
+		i.logInfo(fmt.Sprintf("user %s not found, skipping deletion", userName))
 		return nil
 	}
 
@@ -269,7 +268,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIUser(client identity.IdentityClient
 
 		_, err = client.DeleteApiKey(context.Background(), deleteKeyRequest)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to delete API key: %v\n", err)
+			i.logError(err, "failed to delete API key")
 		}
 	}
 
@@ -415,7 +414,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIGroup(client identity.IdentityClien
 	}
 
 	if len(response.Items) == 0 {
-		fmt.Printf("Group %s not found, skipping deletion\n", groupName)
+		i.logInfo(fmt.Sprintf("group %s not found, skipping deletion", groupName))
 		return nil
 	}
 
@@ -525,7 +524,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIPolicy(client identity.IdentityClie
 	}
 
 	if len(response.Items) == 0 {
-		fmt.Printf("Policy %s not found, skipping deletion\n", policyName)
+		i.logInfo(fmt.Sprintf("policy %s not found, skipping deletion", policyName))
 		return nil
 	}
 
@@ -715,7 +714,7 @@ key_file=%s
 
 // deleteOCIConfiguration removes the OCI configuration section and private key file for the service user.
 func (i *KubernetesRuntimeInfraOKE) deleteOCIConfiguration() error {
-	fmt.Printf("Cleaning up OCI configuration\n")
+	i.logInfo("cleaning up OCI configuration")
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -727,7 +726,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIConfiguration() error {
 
 	// remove private key file
 	if err := os.Remove(privateKeyPath); err != nil && !os.IsNotExist(err) {
-		fmt.Printf("Warning: failed to remove private key file: %v\n", err)
+		i.logError(err, "failed to remove private key file")
 	}
 
 	// remove configuration section from config file
@@ -782,7 +781,7 @@ func (i *KubernetesRuntimeInfraOKE) deleteOCIConfiguration() error {
 		return fmt.Errorf("failed to write updated config file: %w", err)
 	}
 
-	fmt.Printf("Successfully cleaned up OCI configuration\n")
+	i.logInfo("successfully cleaned up OCI configuration")
 	return nil
 }
 

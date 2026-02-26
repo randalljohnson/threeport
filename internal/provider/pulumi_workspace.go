@@ -209,14 +209,16 @@ func (w *PulumiWorkspace) SetupStack(program pulumi.RunFunc) (auto.Stack, error)
 		}
 	}
 
-	// if existing state is detected, reconcile with cloud state to clear
-	// pending operations from interrupted runs before deploying
+	// if existing state with actual resources is detected, reconcile with
+	// cloud state to clear pending operations from interrupted runs before
+	// deploying. UpsertStack creates an empty state file, so check file
+	// size to distinguish real state from a freshly-initialized stack.
 	stateFilePath, _ := w.GetStateFilePath()
-	if _, err := os.Stat(stateFilePath); err == nil {
-		fmt.Printf("Existing Pulumi state detected, reconciling with cloud state...\n")
+	if fi, err := os.Stat(stateFilePath); err == nil && fi.Size() > 0 {
+		w.Logger.Info("existing Pulumi state detected, reconciling with cloud state")
 		if _, refreshErr := w.runRefresh(ctx, stack); refreshErr != nil {
 			// log but don't fail — the subsequent up may still succeed
-			fmt.Printf("Warning: failed to reconcile stack state: %v\n", refreshErr)
+			w.Logger.Info("warning: failed to reconcile stack state", "error", refreshErr)
 		}
 	}
 

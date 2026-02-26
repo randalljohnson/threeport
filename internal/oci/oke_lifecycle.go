@@ -165,12 +165,13 @@ func newOkeLifecycleConfig(
 		OnDeleteConfirmed: func(infra provider.InfraProvider) error {
 			infraOKE := infra.(*provider.KubernetesRuntimeInfraOKE)
 
-			// delete compartment
+			// delete compartment — this is critical, failing here means
+			// cloud resources are orphaned so we must return the error
 			if err := infraOKE.DeleteCompartment(); err != nil {
-				log.Error(err, "failed to delete OCI compartment")
+				return fmt.Errorf("failed to delete OCI compartment: %w", err)
 			}
 
-			// delete Pulumi stack state
+			// delete Pulumi stack state (best-effort, just metadata)
 			if err := infraOKE.DeleteStackState(); err != nil {
 				log.Error(err, "failed to delete Pulumi stack state")
 			}

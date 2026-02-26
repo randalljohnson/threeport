@@ -267,7 +267,8 @@ func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 
 			// perform provider-specific post-deletion cleanup
 			if err := config.OnDeleteConfirmed(infra); err != nil {
-				config.Log.Error(err, "failed to run post-deletion cleanup")
+				config.Log.Error(err, "failed to run post-deletion cleanup, will retry")
+				return 60, nil
 			}
 
 			// confirm deletion

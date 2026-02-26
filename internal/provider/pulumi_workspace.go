@@ -46,6 +46,26 @@ type PulumiWorkspace struct {
 	Logger *logr.Logger
 }
 
+// logInfo logs an informational message using the structured logger if
+// available, otherwise falls back to fmt.Println for the CLI path.
+func (w *PulumiWorkspace) logInfo(msg string, keysAndValues ...interface{}) {
+	if w.Logger != nil {
+		w.Logger.Info(msg, keysAndValues...)
+	} else {
+		fmt.Println(msg)
+	}
+}
+
+// logError logs an error message using the structured logger if available,
+// otherwise falls back to fmt.Fprintf(os.Stderr) for the CLI path.
+func (w *PulumiWorkspace) logError(err error, msg string) {
+	if w.Logger != nil {
+		w.Logger.Error(err, msg)
+	} else {
+		fmt.Fprintf(os.Stderr, "Error: %s: %v\n", msg, err)
+	}
+}
+
 // RefreshStack refreshes the Pulumi stack state to match reality in the cloud.
 // This clears stale pending operations and updates drifted resource properties.
 func (w *PulumiWorkspace) RefreshStack() error {
@@ -215,10 +235,10 @@ func (w *PulumiWorkspace) SetupStack(program pulumi.RunFunc) (auto.Stack, error)
 	// size to distinguish real state from a freshly-initialized stack.
 	stateFilePath, _ := w.GetStateFilePath()
 	if fi, err := os.Stat(stateFilePath); err == nil && fi.Size() > 0 {
-		w.Logger.Info("existing Pulumi state detected, reconciling with cloud state")
+		w.logInfo("existing Pulumi state detected, reconciling with cloud state")
 		if _, refreshErr := w.runRefresh(ctx, stack); refreshErr != nil {
 			// log but don't fail — the subsequent up may still succeed
-			w.Logger.Info("warning: failed to reconcile stack state", "error", refreshErr)
+			w.logInfo("warning: failed to reconcile stack state", "error", refreshErr)
 		}
 	}
 
@@ -264,9 +284,7 @@ func (w *PulumiWorkspace) DestroyStack() error {
 	// ensure Pulumi knows the current state of all cloud resources
 	if _, err := w.runRefresh(ctx, stack); err != nil {
 		// log but don't fail - destroy may still succeed without refresh
-		if w.Logger != nil {
-			w.Logger.Error(err, "failed to refresh stack before destroy, proceeding with destroy")
-		}
+		w.logError(err, "failed to refresh stack before destroy, proceeding with destroy")
 	}
 
 	// destroy the stack

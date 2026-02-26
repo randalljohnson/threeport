@@ -426,6 +426,12 @@ func launchInfraCreate(config infraCreateConfig) (int64, error) {
 	// launch creation in background goroutine
 	go func() {
 		defer func() { <-infraSemaphore }()
+		defer func() {
+			if r := recover(); r != nil {
+				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure create goroutine")
+				persistFailure(config.Callbacks.PersistFailure, config.Log)
+			}
+		}()
 		executeInfraCreate(config)
 	}()
 
@@ -448,6 +454,11 @@ func launchInfraDelete(config infraDeleteConfig) (int64, error) {
 	// launch deletion in background goroutine
 	go func() {
 		defer func() { <-infraSemaphore }()
+		defer func() {
+			if r := recover(); r != nil {
+				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure delete goroutine")
+			}
+		}()
 		executeInfraDelete(config)
 	}()
 

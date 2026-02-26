@@ -83,6 +83,16 @@ func (i *KubernetesRuntimeInfraOKE) createOCICompartment(client identity.Identit
 	compartmentDescription := fmt.Sprintf("Compartment for threeport instance %s", i.RuntimeInstanceName)
 	parentCompartmentOCID := i.CompartmentOCID
 
+	// check if CompartmentOCID already points to the target compartment
+	// (e.g., on retry after buildOkeInfra resolved it)
+	getResponse, err := client.GetCompartment(context.Background(), identity.GetCompartmentRequest{
+		CompartmentId: &parentCompartmentOCID,
+	})
+	if err == nil && getResponse.Name != nil && *getResponse.Name == i.RuntimeInstanceName {
+		fmt.Printf("Using existing compartment: %s\n", i.RuntimeInstanceName)
+		return nil
+	}
+
 	// check if compartment already exists under parent
 	listRequest := identity.ListCompartmentsRequest{
 		CompartmentId: &parentCompartmentOCID,

@@ -445,7 +445,7 @@ func buildOkeInfra(
 
 	// construct OCI config provider from provider credentials
 	configProvider := common.NewRawConfigurationProvider(
-		*ociProvider.CompartmentOCID,
+		*ociProvider.TenancyOCID,
 		*ociProvider.UserOCID,
 		*ociProvider.DefaultRegion,
 		*ociProvider.KeyFingerprint,

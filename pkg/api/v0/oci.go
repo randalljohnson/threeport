@@ -14,6 +14,9 @@ type OciProvider struct {
 	// The user OCID credentials for the OCI provider.
 	UserOCID *string `json:"UserOCID,omitempty" query:"userocid" gorm:"not null" validate:"required"`
 
+	// The tenancy OCID for the OCI provider account.
+	TenancyOCID *string `json:"TenancyOCID,omitempty" query:"tenancyocid" gorm:"not null" validate:"required"`
+
 	// The compartment OCID for the OCI provider.
 	CompartmentOCID *string `json:"CompartmentOCID,omitempty" query:"compartmentocid" gorm:"not null" validate:"required"`
 

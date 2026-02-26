@@ -114,12 +114,19 @@ func ConfigureControlPlaneWithOkeConfig(
 ) error {
 	kubernetesRuntimeInfraOKE := (*kubernetesRuntimeInfra).(*provider.KubernetesRuntimeInfraOKE)
 
+	// derive tenancy OCID from the config provider
+	tenancyOCID, err := kubernetesRuntimeInfraOKE.ConfigProvider.TenancyOCID()
+	if err != nil {
+		return fmt.Errorf("failed to get tenancy OCID from config provider: %w", err)
+	}
+
 	// create OCI provider using the service user credentials generated during bootstrap.
 	// CompartmentOCID stores the genesis compartment — workload clusters create
 	// child compartments under it.
 	ociProvider := v0.OciProvider{
 		Name:            util.Ptr(kubernetesRuntimeInfraOKE.GetServiceUserName()),
 		UserOCID:        &kubernetesRuntimeInfraOKE.ServiceUserOCID,
+		TenancyOCID:     &tenancyOCID,
 		CompartmentOCID: &kubernetesRuntimeInfraOKE.CompartmentOCID,
 		DefaultProvider: util.Ptr(true),
 		DefaultRegion:   &kubernetesRuntimeInfraOKE.Region,
@@ -127,12 +134,11 @@ func ConfigureControlPlaneWithOkeConfig(
 		PrivateKey:      &kubernetesRuntimeInfraOKE.PrivateKeyPEM,
 	}
 
-	_, err := client.CreateOciProvider(
+	if _, err = client.CreateOciProvider(
 		apiClient,
 		threeportAPIEndpoint,
 		&ociProvider,
-	)
-	if err != nil {
+	); err != nil {
 		return uninstaller.cleanOnCreateError("failed to create new default OCI provider", err)
 	}
 

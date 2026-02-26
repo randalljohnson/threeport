@@ -889,6 +889,7 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	var awsConfigUser *aws.Config
 	var awsConfigResourceManager *aws.Config
 	var kubeConnection *kube.KubeConnectionInfo
+	infraAlreadyDestroyed := false
 
 	// perform provider-specific deletion prep
 	switch threeportControlPlaneConfig.Provider {
@@ -929,10 +930,18 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}
 		kubernetesRuntimeInfra = &kubernetesRuntimeInfraOKE
 
+		// check if infrastructure has already been destroyed (no local
+		// Pulumi state dir). This happens when a previous teardown
+		// destroyed infra but IAM cleanup failed.
+		infraAlreadyDestroyed = !kubernetesRuntimeInfraOKE.HasStateDir()
+		if infraAlreadyDestroyed {
+			Info("Infrastructure already destroyed, skipping to IAM cleanup")
+		}
+
 		// pull OKE stack state from OKE runtime instance
 		// if not infra-only, as this flag implies the user
 		// does not want to depend on control plane state
-		if !cpi.Opts.InfraOnly {
+		if !cpi.Opts.InfraOnly && !infraAlreadyDestroyed {
 			if kubeConnection, err = kubernetesRuntimeInfraOKE.GetConnection(); err != nil {
 				return fmt.Errorf("failed to get connection for OKE kubernetes runtime infra: %w", err)
 			}
@@ -965,7 +974,8 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	}
 
 	// Only tear down control plane first if not infra-only
-	if !cpi.Opts.InfraOnly {
+	// and infrastructure hasn't already been destroyed
+	if !cpi.Opts.InfraOnly && !infraAlreadyDestroyed {
 
 		// check for workload instances on non-kind kubernetes runtimes - halt delete if
 		// any are present
@@ -1038,6 +1048,13 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 
 	if cpi.Opts.ControlPlaneOnly {
 		Info("Skipping infra teardown")
+	} else if infraAlreadyDestroyed {
+		// infrastructure already destroyed in a previous run — skip
+		// Pulumi destroy and go straight to IAM cleanup
+		Info("Skipping infra destroy (already completed)")
+		if err := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraOKE).DeleteOCIResources(); err != nil {
+			return fmt.Errorf("failed to delete OCI IAM resources: %w", err)
+		}
 	} else {
 
 		// delete control plane infra

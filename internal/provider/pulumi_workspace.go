@@ -315,6 +315,18 @@ func (w *PulumiWorkspace) DeleteStackState() error {
 	return os.RemoveAll(stateDir)
 }
 
+// HasStateDir returns true if the Pulumi state directory exists on disk,
+// indicating infrastructure may still exist or has state to clean up.
+func (w *PulumiWorkspace) HasStateDir() bool {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	stateDir := filepath.Join(homeDir, ".threeport", "pulumi-state", w.RuntimeInstanceName)
+	_, err = os.Stat(stateDir)
+	return err == nil
+}
+
 // initWorkspace initializes the Pulumi workspace directory, environment
 // variables, project file, and creates the local workspace. Additional options
 // (e.g. auto.Program) can be passed to customize the workspace.

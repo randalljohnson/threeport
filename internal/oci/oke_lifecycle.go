@@ -156,7 +156,7 @@ func newOkeLifecycleConfig(
 				r.APIServer,
 				&updatedInstance,
 			); err != nil {
-				log.Error(err, "failed to update OKE instance with resource inventory and cluster OCID")
+				return fmt.Errorf("failed to update OKE instance with resource inventory and cluster OCID: %w", err)
 			}
 
 			return nil

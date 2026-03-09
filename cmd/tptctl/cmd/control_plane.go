@@ -55,9 +55,6 @@ var GetControlPlanesCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if controlPlaneStdin {
-					controlPlaneConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &controlPlaneConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -156,9 +153,6 @@ var CreateControlPlaneCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if controlPlaneStdin {
-			controlPlaneConfigPath = "."
-		}
 
 		// create control plane based on version
 		switch controlPlaneVersion {
@@ -237,9 +231,6 @@ var DeleteControlPlaneCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if controlPlaneStdin {
-			controlPlaneConfigPath = "."
 		}
 
 		// delete control plane based on version
@@ -320,9 +311,6 @@ var GetControlPlaneDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if controlPlaneStdin {
-					controlPlaneConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &controlPlaneDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -422,9 +410,6 @@ var CreateControlPlaneDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if controlPlaneStdin {
-			controlPlaneConfigPath = "."
-		}
 		// create control plane definition based on version
 		switch controlPlaneVersion {
 		case "v0":
@@ -490,9 +475,6 @@ var ReplaceControlPlaneDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if controlPlaneStdin {
-				controlPlaneConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &controlPlaneDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -571,9 +553,6 @@ var DeleteControlPlaneDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if controlPlaneStdin {
-					controlPlaneConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &controlPlaneDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -658,9 +637,6 @@ var GetControlPlaneInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if controlPlaneStdin {
-					controlPlaneConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &controlPlaneInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -760,9 +736,6 @@ var CreateControlPlaneInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if controlPlaneStdin {
-			controlPlaneConfigPath = "."
-		}
 		// create control plane instance based on version
 		switch controlPlaneVersion {
 		case "v0":
@@ -828,9 +801,6 @@ var ReplaceControlPlaneInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if controlPlaneStdin {
-				controlPlaneConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &controlPlaneInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -909,9 +879,6 @@ var DeleteControlPlaneInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if controlPlaneStdin {
-					controlPlaneConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &controlPlaneInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

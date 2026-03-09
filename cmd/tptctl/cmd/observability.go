@@ -55,9 +55,6 @@ var GetObservabilityStacksCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if observabilityStdin {
-					observabilityConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &observabilityStackConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -156,9 +153,6 @@ var CreateObservabilityStackCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if observabilityStdin {
-			observabilityConfigPath = "."
-		}
 
 		// create observability stack based on version
 		switch observabilityVersion {
@@ -238,9 +232,6 @@ var DeleteObservabilityStackCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if observabilityStdin {
-			observabilityConfigPath = "."
 		}
 
 		// delete observability stack based on version
@@ -322,9 +313,6 @@ var GetObservabilityStackDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if observabilityStdin {
-					observabilityConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &observabilityStackDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -424,9 +412,6 @@ var CreateObservabilityStackDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if observabilityStdin {
-			observabilityConfigPath = "."
-		}
 		// create observability stack definition based on version
 		switch observabilityVersion {
 		case "v0":
@@ -493,9 +478,6 @@ var ReplaceObservabilityStackDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if observabilityStdin {
-				observabilityConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &observabilityStackDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -575,9 +557,6 @@ var DeleteObservabilityStackDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if observabilityStdin {
-					observabilityConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &observabilityStackDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -663,9 +642,6 @@ var GetObservabilityStackInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if observabilityStdin {
-					observabilityConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &observabilityStackInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -765,9 +741,6 @@ var CreateObservabilityStackInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if observabilityStdin {
-			observabilityConfigPath = "."
-		}
 		// create observability stack instance based on version
 		switch observabilityVersion {
 		case "v0":
@@ -834,9 +807,6 @@ var ReplaceObservabilityStackInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if observabilityStdin {
-				observabilityConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &observabilityStackInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -916,9 +886,6 @@ var DeleteObservabilityStackInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if observabilityStdin {
-					observabilityConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &observabilityStackInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

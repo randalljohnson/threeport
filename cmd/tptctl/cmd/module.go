@@ -55,9 +55,6 @@ var GetModuleApisCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if moduleStdin {
-					moduleConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleApiConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -160,9 +157,6 @@ func init() {
 //			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //		// create module api based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -226,9 +220,6 @@ func init() {
 //				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleApiConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -304,9 +295,6 @@ func init() {
 //					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleApiConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)
@@ -391,9 +379,6 @@ var GetModuleApiRoutesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if moduleStdin {
-					moduleConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleApiRouteConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -497,9 +482,6 @@ func init() {
 //			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //		// create module api route based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -563,9 +545,6 @@ func init() {
 //				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleApiRouteConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -641,9 +620,6 @@ func init() {
 //					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleApiRouteConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)
@@ -728,9 +704,6 @@ var GetModuleControllersCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if moduleStdin {
-					moduleConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleControllerConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -834,9 +807,6 @@ func init() {
 //			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //		// create module controller based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -900,9 +870,6 @@ func init() {
 //				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleControllerConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -978,9 +945,6 @@ func init() {
 //					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleControllerConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)
@@ -1065,9 +1029,6 @@ var GetModuleObjectsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if moduleStdin {
-					moduleConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &moduleObjectConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1171,9 +1132,6 @@ func init() {
 //			cli.Error("failed to read config", err)
 //			os.Exit(1)
 //		}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //		// create module object based on version
 //		switch moduleVersion {
 //		case "v0":
@@ -1237,9 +1195,6 @@ func init() {
 //				cli.Error("failed to read config", err)
 //				os.Exit(1)
 //			}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //			if err := yaml.UnmarshalStrict(configContent, &moduleObjectConfig); err != nil {
 //				cli.Error("failed to unmarshal config file yaml content", err)
 //				os.Exit(1)
@@ -1315,9 +1270,6 @@ func init() {
 //					cli.Error("failed to read config", err)
 //					os.Exit(1)
 //				}
-//if moduleStdin {
-//	moduleConfigPath = "."
-//}
 //				if err := yaml.UnmarshalStrict(configContent, &moduleObjectConfig); err != nil {
 //					cli.Error("failed to unmarshal config file yaml content", err)
 //					os.Exit(1)

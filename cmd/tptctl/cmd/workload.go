@@ -55,9 +55,6 @@ var GetWorkloadsCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if workloadStdin {
-					workloadConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -156,9 +153,6 @@ var CreateWorkloadCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if workloadStdin {
-			workloadConfigPath = "."
-		}
 
 		// create workload based on version
 		switch workloadVersion {
@@ -238,9 +232,6 @@ var DeleteWorkloadCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if workloadStdin {
-			workloadConfigPath = "."
 		}
 
 		// delete workload based on version
@@ -322,9 +313,6 @@ var GetWorkloadDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if workloadStdin {
-					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -424,9 +412,6 @@ var CreateWorkloadDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if workloadStdin {
-			workloadConfigPath = "."
-		}
 		// create workload definition based on version
 		switch workloadVersion {
 		case "v0":
@@ -493,9 +478,6 @@ var ReplaceWorkloadDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if workloadStdin {
-				workloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -575,9 +557,6 @@ var DeleteWorkloadDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if workloadStdin {
-					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -663,9 +642,6 @@ var GetWorkloadInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if workloadStdin {
-					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -765,9 +741,6 @@ var CreateWorkloadInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if workloadStdin {
-			workloadConfigPath = "."
-		}
 		// create workload instance based on version
 		switch workloadVersion {
 		case "v0":
@@ -833,9 +806,6 @@ var ReplaceWorkloadInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if workloadStdin {
-				workloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -914,9 +884,6 @@ var DeleteWorkloadInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if workloadStdin {
-					workloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

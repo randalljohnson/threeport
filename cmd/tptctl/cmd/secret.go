@@ -55,9 +55,6 @@ var GetSecretsCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if secretStdin {
-					secretConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &secretConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -156,9 +153,6 @@ var CreateSecretCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if secretStdin {
-			secretConfigPath = "."
-		}
 
 		// create secret based on version
 		switch secretVersion {
@@ -238,9 +232,6 @@ var DeleteSecretCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if secretStdin {
-			secretConfigPath = "."
 		}
 
 		// delete secret based on version
@@ -322,9 +313,6 @@ var GetSecretDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if secretStdin {
-					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -424,9 +412,6 @@ var CreateSecretDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if secretStdin {
-			secretConfigPath = "."
-		}
 		// create secret definition based on version
 		switch secretVersion {
 		case "v0":
@@ -493,9 +478,6 @@ var ReplaceSecretDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if secretStdin {
-				secretConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &secretDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -575,9 +557,6 @@ var DeleteSecretDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if secretStdin {
-					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -663,9 +642,6 @@ var GetSecretInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if secretStdin {
-					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -765,9 +741,6 @@ var CreateSecretInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if secretStdin {
-			secretConfigPath = "."
-		}
 		// create secret instance based on version
 		switch secretVersion {
 		case "v0":
@@ -834,9 +807,6 @@ var ReplaceSecretInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if secretStdin {
-				secretConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &secretInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -916,9 +886,6 @@ var DeleteSecretInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if secretStdin {
-					secretConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &secretInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

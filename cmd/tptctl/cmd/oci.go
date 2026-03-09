@@ -71,9 +71,6 @@ var GetOciProvidersCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if ociStdin {
-					ociConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &ociProviderConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -176,9 +173,6 @@ var CreateOciProviderCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if ociStdin {
-			ociConfigPath = "."
-		}
 		// create oci provider based on version
 		switch ociVersion {
 		case "v0":
@@ -244,9 +238,6 @@ var ReplaceOciProviderCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if ociStdin {
-				ociConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &ociProviderConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -325,9 +316,6 @@ var DeleteOciProviderCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if ociStdin {
-					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociProviderConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -413,9 +401,6 @@ var GetOciOkeKubernetesRuntimesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if ociStdin {
-					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -515,9 +500,6 @@ var CreateOciOkeKubernetesRuntimeCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if ociStdin {
-			ociConfigPath = "."
-		}
 
 		// create oci oke kubernetes runtime based on version
 		switch ociVersion {
@@ -596,9 +578,6 @@ var DeleteOciOkeKubernetesRuntimeCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if ociStdin {
-			ociConfigPath = "."
 		}
 
 		// delete oci oke kubernetes runtime based on version
@@ -679,9 +658,6 @@ var GetOciOkeKubernetesRuntimeDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if ociStdin {
-					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -781,9 +757,6 @@ var CreateOciOkeKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if ociStdin {
-			ociConfigPath = "."
-		}
 		// create oci oke kubernetes runtime definition based on version
 		switch ociVersion {
 		case "v0":
@@ -849,9 +822,6 @@ var ReplaceOciOkeKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if ociStdin {
-				ociConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -930,9 +900,6 @@ var DeleteOciOkeKubernetesRuntimeDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if ociStdin {
-					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1017,9 +984,6 @@ var GetOciOkeKubernetesRuntimeInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if ociStdin {
-					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1119,9 +1083,6 @@ var CreateOciOkeKubernetesRuntimeInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if ociStdin {
-			ociConfigPath = "."
-		}
 		// create oci oke kubernetes runtime instance based on version
 		switch ociVersion {
 		case "v0":
@@ -1187,9 +1148,6 @@ var ReplaceOciOkeKubernetesRuntimeInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if ociStdin {
-				ociConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -1268,9 +1226,6 @@ var DeleteOciOkeKubernetesRuntimeInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if ociStdin {
-					ociConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &ociOkeKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

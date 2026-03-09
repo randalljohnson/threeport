@@ -71,9 +71,6 @@ var GetAwsAccountsCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if awsStdin {
-					awsConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &awsAccountConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -176,9 +173,6 @@ var CreateAwsAccountCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if awsStdin {
-			awsConfigPath = "."
-		}
 		// create aws account based on version
 		switch awsVersion {
 		case "v0":
@@ -244,9 +238,6 @@ var ReplaceAwsAccountCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if awsStdin {
-				awsConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &awsAccountConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -325,9 +316,6 @@ var DeleteAwsAccountCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if awsStdin {
-					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsAccountConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -413,9 +401,6 @@ var GetAwsEksKubernetesRuntimesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if awsStdin {
-					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -515,9 +500,6 @@ var CreateAwsEksKubernetesRuntimeCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if awsStdin {
-			awsConfigPath = "."
-		}
 
 		// create aws eks kubernetes runtime based on version
 		switch awsVersion {
@@ -596,9 +578,6 @@ var DeleteAwsEksKubernetesRuntimeCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if awsStdin {
-			awsConfigPath = "."
 		}
 
 		// delete aws eks kubernetes runtime based on version
@@ -679,9 +658,6 @@ var GetAwsEksKubernetesRuntimeDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if awsStdin {
-					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -781,9 +757,6 @@ var CreateAwsEksKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if awsStdin {
-			awsConfigPath = "."
-		}
 		// create aws eks kubernetes runtime definition based on version
 		switch awsVersion {
 		case "v0":
@@ -849,9 +822,6 @@ var ReplaceAwsEksKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if awsStdin {
-				awsConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -930,9 +900,6 @@ var DeleteAwsEksKubernetesRuntimeDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if awsStdin {
-					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1017,9 +984,6 @@ var GetAwsEksKubernetesRuntimeInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if awsStdin {
-					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1119,9 +1083,6 @@ var CreateAwsEksKubernetesRuntimeInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if awsStdin {
-			awsConfigPath = "."
-		}
 		// create aws eks kubernetes runtime instance based on version
 		switch awsVersion {
 		case "v0":
@@ -1187,9 +1148,6 @@ var ReplaceAwsEksKubernetesRuntimeInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if awsStdin {
-				awsConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -1268,9 +1226,6 @@ var DeleteAwsEksKubernetesRuntimeInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if awsStdin {
-					awsConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &awsEksKubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

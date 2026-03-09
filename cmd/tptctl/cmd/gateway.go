@@ -55,9 +55,6 @@ var GetDomainNamesCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &domainNameConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -156,9 +153,6 @@ var CreateDomainNameCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
-		}
 
 		// create domain name based on version
 		switch gatewayVersion {
@@ -237,9 +231,6 @@ var DeleteDomainNameCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
 		}
 
 		// delete domain name based on version
@@ -320,9 +311,6 @@ var GetDomainNameDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &domainNameDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -422,9 +410,6 @@ var CreateDomainNameDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
-		}
 		// create domain name definition based on version
 		switch gatewayVersion {
 		case "v0":
@@ -490,9 +475,6 @@ var ReplaceDomainNameDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if gatewayStdin {
-				gatewayConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &domainNameDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -571,9 +553,6 @@ var DeleteDomainNameDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &domainNameDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -658,9 +637,6 @@ var GetDomainNameInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &domainNameInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -760,9 +736,6 @@ var CreateDomainNameInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
-		}
 		// create domain name instance based on version
 		switch gatewayVersion {
 		case "v0":
@@ -828,9 +801,6 @@ var ReplaceDomainNameInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if gatewayStdin {
-				gatewayConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &domainNameInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -909,9 +879,6 @@ var DeleteDomainNameInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &domainNameInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -997,9 +964,6 @@ var GetGatewaysCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &gatewayConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1099,9 +1063,6 @@ var CreateGatewayCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
-		}
 
 		// create gateway based on version
 		switch gatewayVersion {
@@ -1180,9 +1141,6 @@ var DeleteGatewayCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
 		}
 
 		// delete gateway based on version
@@ -1263,9 +1221,6 @@ var GetGatewayDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &gatewayDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1365,9 +1320,6 @@ var CreateGatewayDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
-		}
 		// create gateway definition based on version
 		switch gatewayVersion {
 		case "v0":
@@ -1433,9 +1385,6 @@ var ReplaceGatewayDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if gatewayStdin {
-				gatewayConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &gatewayDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -1514,9 +1463,6 @@ var DeleteGatewayDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &gatewayDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1601,9 +1547,6 @@ var GetGatewayInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &gatewayInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -1703,9 +1646,6 @@ var CreateGatewayInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if gatewayStdin {
-			gatewayConfigPath = "."
-		}
 		// create gateway instance based on version
 		switch gatewayVersion {
 		case "v0":
@@ -1771,9 +1711,6 @@ var ReplaceGatewayInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if gatewayStdin {
-				gatewayConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &gatewayInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -1852,9 +1789,6 @@ var DeleteGatewayInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if gatewayStdin {
-					gatewayConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &gatewayInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

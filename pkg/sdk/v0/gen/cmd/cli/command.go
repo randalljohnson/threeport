@@ -234,9 +234,6 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 													Lit("failed to read config"), Err()),
 												Qual("os", "Exit").Call(Lit(1)),
 											),
-											If(Id(stdinVar)).Block(
-												Id(configPathVar).Op("=").Lit("."),
-											),
 											If(Err().Op(":=").Qual("gopkg.in/yaml.v2", "UnmarshalStrict").Call(
 												Id("configContent"), Op("&").Id(fmt.Sprintf("%sConfig", rootObjectVar)),
 											), Err().Op("!=").Nil()).Block(
@@ -462,9 +459,6 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								).Call(Lit("failed to read config"), Err()),
 								Qual("os", "Exit").Call(Lit(1)),
 							)
-							g.If(Id(stdinVar)).Block(
-								Id(configPathVar).Op("=").Lit("."),
-							)
 							g.Line()
 							g.Comment(fmt.Sprintf("create %s based on version", rootCmdStrHuman))
 							g.Switch(Id(versionVar)).BlockFunc(func(h *Group) {
@@ -677,9 +671,6 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									"Error",
 								).Call(Lit("failed to read config"), Err()),
 								Qual("os", "Exit").Call(Lit(1)),
-							)
-							g.If(Id(stdinVar)).Block(
-								Id(configPathVar).Op("=").Lit("."),
 							)
 							g.Line()
 							g.Comment(fmt.Sprintf("delete %s based on version", rootCmdStrHuman))
@@ -906,9 +897,6 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											Qual("github.com/threeport/threeport/pkg/cli/v0", "Error").Call(
 												Lit("failed to read config"), Err()),
 											Qual("os", "Exit").Call(Lit(1)),
-										),
-										If(Id(stdinVar)).Block(
-											Id(configPathVar).Op("=").Lit("."),
 										),
 										If(Err().Op(":=").Qual("gopkg.in/yaml.v2", "UnmarshalStrict").Call(
 											Id("configContent"), Op("&").Id(fmt.Sprintf("%sConfig", objectVar)),
@@ -1157,9 +1145,6 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Lit("failed to read config"), Err()),
 							Qual("os", "Exit").Call(Lit(1)),
 						)
-						g.If(Id(stdinVar)).Block(
-							Id(configPathVar).Op("=").Lit("."),
-						)
 						g.Comment(fmt.Sprintf("create %s based on version", cmdStrHuman))
 						g.Switch().Id(versionVar).BlockFunc(func(h *Group) {
 							for _, version := range apiObj.Versions {
@@ -1339,9 +1324,6 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											"Error",
 										).Call(Lit("failed to read config"), Err()),
 										Qual("os", "Exit").Call(Lit(1)),
-									),
-									If(Id(stdinVar)).Block(
-										Id(configPathVar).Op("=").Lit("."),
 									),
 									If(Err().Op(":=").Qual(
 										"gopkg.in/yaml.v2",
@@ -1547,9 +1529,6 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 												"Error",
 											).Call(Lit("failed to read config"), Err()),
 											Qual("os", "Exit").Call(Lit(1)),
-										),
-										If(Id(stdinVar)).Block(
-											Id(configPathVar).Op("=").Lit("."),
 										),
 										If(Err().Op(":=").Qual(
 											"gopkg.in/yaml.v2",

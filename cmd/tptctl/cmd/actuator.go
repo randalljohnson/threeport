@@ -54,9 +54,6 @@ var GetProfilesCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if actuatorStdin {
-					actuatorConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &profileConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -155,9 +152,6 @@ var CreateProfileCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if actuatorStdin {
-			actuatorConfigPath = "."
-		}
 		// create profile based on version
 		switch actuatorVersion {
 		case "v0":
@@ -223,9 +217,6 @@ var ReplaceProfileCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if actuatorStdin {
-				actuatorConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &profileConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -304,9 +295,6 @@ var DeleteProfileCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if actuatorStdin {
-					actuatorConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &profileConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -391,9 +379,6 @@ var GetTiersCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if actuatorStdin {
-					actuatorConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &tierConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -493,9 +478,6 @@ var CreateTierCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if actuatorStdin {
-			actuatorConfigPath = "."
-		}
 		// create tier based on version
 		switch actuatorVersion {
 		case "v0":
@@ -561,9 +543,6 @@ var ReplaceTierCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if actuatorStdin {
-				actuatorConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &tierConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -642,9 +621,6 @@ var DeleteTierCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if actuatorStdin {
-					actuatorConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &tierConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

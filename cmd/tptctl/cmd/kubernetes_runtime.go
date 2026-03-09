@@ -55,9 +55,6 @@ var GetKubernetesRuntimesCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if kubernetesRuntimeStdin {
-					kubernetesRuntimeConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &kubernetesRuntimeConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -156,9 +153,6 @@ var CreateKubernetesRuntimeCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if kubernetesRuntimeStdin {
-			kubernetesRuntimeConfigPath = "."
-		}
 
 		// create kubernetes runtime based on version
 		switch kubernetesRuntimeVersion {
@@ -237,9 +231,6 @@ var DeleteKubernetesRuntimeCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if kubernetesRuntimeStdin {
-			kubernetesRuntimeConfigPath = "."
 		}
 
 		// delete kubernetes runtime based on version
@@ -320,9 +311,6 @@ var GetKubernetesRuntimeDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if kubernetesRuntimeStdin {
-					kubernetesRuntimeConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &kubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -422,9 +410,6 @@ var CreateKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if kubernetesRuntimeStdin {
-			kubernetesRuntimeConfigPath = "."
-		}
 		// create kubernetes runtime definition based on version
 		switch kubernetesRuntimeVersion {
 		case "v0":
@@ -490,9 +475,6 @@ var ReplaceKubernetesRuntimeDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if kubernetesRuntimeStdin {
-				kubernetesRuntimeConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &kubernetesRuntimeDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -571,9 +553,6 @@ var DeleteKubernetesRuntimeDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if kubernetesRuntimeStdin {
-					kubernetesRuntimeConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &kubernetesRuntimeDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -658,9 +637,6 @@ var GetKubernetesRuntimeInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if kubernetesRuntimeStdin {
-					kubernetesRuntimeConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &kubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -760,9 +736,6 @@ var CreateKubernetesRuntimeInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if kubernetesRuntimeStdin {
-			kubernetesRuntimeConfigPath = "."
-		}
 		// create kubernetes runtime instance based on version
 		switch kubernetesRuntimeVersion {
 		case "v0":
@@ -828,9 +801,6 @@ var ReplaceKubernetesRuntimeInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if kubernetesRuntimeStdin {
-				kubernetesRuntimeConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &kubernetesRuntimeInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -909,9 +879,6 @@ var DeleteKubernetesRuntimeInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if kubernetesRuntimeStdin {
-					kubernetesRuntimeConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &kubernetesRuntimeInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

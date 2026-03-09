@@ -72,9 +72,6 @@ var GetTerraformsCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if terraformStdin {
-					terraformConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &terraformConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -177,9 +174,6 @@ var CreateTerraformCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if terraformStdin {
-			terraformConfigPath = "."
-		}
 
 		// create terraform based on version
 		switch terraformVersion {
@@ -259,9 +253,6 @@ var DeleteTerraformCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if terraformStdin {
-			terraformConfigPath = "."
 		}
 
 		// delete terraform based on version
@@ -343,9 +334,6 @@ var GetTerraformDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if terraformStdin {
-					terraformConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &terraformDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -445,9 +433,6 @@ var CreateTerraformDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if terraformStdin {
-			terraformConfigPath = "."
-		}
 		// create terraform definition based on version
 		switch terraformVersion {
 		case "v0":
@@ -514,9 +499,6 @@ var ReplaceTerraformDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if terraformStdin {
-				terraformConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &terraformDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -596,9 +578,6 @@ var DeleteTerraformDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if terraformStdin {
-					terraformConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &terraformDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -700,9 +679,6 @@ var GetTerraformInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if terraformStdin {
-					terraformConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &terraformInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -806,9 +782,6 @@ var CreateTerraformInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if terraformStdin {
-			terraformConfigPath = "."
-		}
 		// create terraform instance based on version
 		switch terraformVersion {
 		case "v0":
@@ -875,9 +848,6 @@ var ReplaceTerraformInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if terraformStdin {
-				terraformConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &terraformInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -957,9 +927,6 @@ var DeleteTerraformInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if terraformStdin {
-					terraformConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &terraformInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

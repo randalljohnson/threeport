@@ -55,9 +55,6 @@ var GetHelmWorkloadsCmd = &cobra.Command{
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if helmWorkloadStdin {
-					helmWorkloadConfigPath = "."
-				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
@@ -156,9 +153,6 @@ var CreateHelmWorkloadCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if helmWorkloadStdin {
-			helmWorkloadConfigPath = "."
-		}
 
 		// create helm workload based on version
 		switch helmWorkloadVersion {
@@ -238,9 +232,6 @@ var DeleteHelmWorkloadCmd = &cobra.Command{
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
-		}
-		if helmWorkloadStdin {
-			helmWorkloadConfigPath = "."
 		}
 
 		// delete helm workload based on version
@@ -322,9 +313,6 @@ var GetHelmWorkloadDefinitionsCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if helmWorkloadStdin {
-					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -424,9 +412,6 @@ var CreateHelmWorkloadDefinitionCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if helmWorkloadStdin {
-			helmWorkloadConfigPath = "."
-		}
 		// create helm workload definition based on version
 		switch helmWorkloadVersion {
 		case "v0":
@@ -493,9 +478,6 @@ var ReplaceHelmWorkloadDefinitionCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if helmWorkloadStdin {
-				helmWorkloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &helmWorkloadDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -575,9 +557,6 @@ var DeleteHelmWorkloadDefinitionCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if helmWorkloadStdin {
-					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -663,9 +642,6 @@ var GetHelmWorkloadInstancesCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if helmWorkloadStdin {
-					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
@@ -765,9 +741,6 @@ var CreateHelmWorkloadInstanceCmd = &cobra.Command{
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
-		if helmWorkloadStdin {
-			helmWorkloadConfigPath = "."
-		}
 		// create helm workload instance based on version
 		switch helmWorkloadVersion {
 		case "v0":
@@ -834,9 +807,6 @@ var ReplaceHelmWorkloadInstanceCmd = &cobra.Command{
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
-			}
-			if helmWorkloadStdin {
-				helmWorkloadConfigPath = "."
 			}
 			if err := yaml.UnmarshalStrict(configContent, &helmWorkloadInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
@@ -916,9 +886,6 @@ var DeleteHelmWorkloadInstanceCmd = &cobra.Command{
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
-				}
-				if helmWorkloadStdin {
-					helmWorkloadConfigPath = "."
 				}
 				if err := yaml.UnmarshalStrict(configContent, &helmWorkloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)

@@ -16,7 +16,7 @@ import (
 var (
 	workloadName       string
 	workloadConfigPath string
-	workloadStdin  bool
+	workloadStdin      bool
 	workloadVersion    string
 	workloadOutput     string
 )

@@ -16,7 +16,7 @@ import (
 var (
 	secretName       string
 	secretConfigPath string
-	secretStdin  bool
+	secretStdin      bool
 	secretVersion    string
 	secretOutput     string
 )

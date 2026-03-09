@@ -16,7 +16,7 @@ import (
 var (
 	helmWorkloadName       string
 	helmWorkloadConfigPath string
-	helmWorkloadStdin  bool
+	helmWorkloadStdin      bool
 	helmWorkloadVersion    string
 	helmWorkloadOutput     string
 )

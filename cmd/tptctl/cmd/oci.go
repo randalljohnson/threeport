@@ -16,7 +16,7 @@ import (
 var (
 	ociName       string
 	ociConfigPath string
-	ociStdin  bool
+	ociStdin      bool
 	ociVersion    string
 	ociOutput     string
 	ociDecrypt    bool

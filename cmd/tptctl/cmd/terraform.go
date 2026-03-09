@@ -16,7 +16,7 @@ import (
 var (
 	terraformName       string
 	terraformConfigPath string
-	terraformStdin  bool
+	terraformStdin      bool
 	terraformVersion    string
 	terraformOutput     string
 	terraformDecrypt    bool

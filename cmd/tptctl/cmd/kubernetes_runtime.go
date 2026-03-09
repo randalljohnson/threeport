@@ -16,7 +16,7 @@ import (
 var (
 	kubernetesRuntimeName       string
 	kubernetesRuntimeConfigPath string
-	kubernetesRuntimeStdin  bool
+	kubernetesRuntimeStdin      bool
 	kubernetesRuntimeVersion    string
 	kubernetesRuntimeOutput     string
 )

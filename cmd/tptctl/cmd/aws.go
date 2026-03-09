@@ -16,7 +16,7 @@ import (
 var (
 	awsName       string
 	awsConfigPath string
-	awsStdin  bool
+	awsStdin      bool
 	awsVersion    string
 	awsOutput     string
 	awsDecrypt    bool

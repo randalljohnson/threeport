@@ -16,7 +16,7 @@ import (
 var (
 	actuatorName       string
 	actuatorConfigPath string
-	actuatorStdin  bool
+	actuatorStdin      bool
 	actuatorVersion    string
 	actuatorOutput     string
 )

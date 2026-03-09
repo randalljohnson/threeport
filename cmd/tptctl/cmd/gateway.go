@@ -16,7 +16,7 @@ import (
 var (
 	gatewayName       string
 	gatewayConfigPath string
-	gatewayStdin  bool
+	gatewayStdin      bool
 	gatewayVersion    string
 	gatewayOutput     string
 )

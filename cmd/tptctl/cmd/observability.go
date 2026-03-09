@@ -16,7 +16,7 @@ import (
 var (
 	observabilityName       string
 	observabilityConfigPath string
-	observabilityStdin  bool
+	observabilityStdin      bool
 	observabilityVersion    string
 	observabilityOutput     string
 )

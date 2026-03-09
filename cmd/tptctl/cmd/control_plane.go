@@ -16,7 +16,7 @@ import (
 var (
 	controlPlaneName       string
 	controlPlaneConfigPath string
-	controlPlaneStdin  bool
+	controlPlaneStdin      bool
 	controlPlaneVersion    string
 	controlPlaneOutput     string
 )

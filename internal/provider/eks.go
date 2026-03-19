@@ -24,11 +24,6 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-const (
-	ServiceAccountPolicyName = "ThreeportServiceAccount"
-	RuntimeServiceAccount    = "ThreeportRuntime"
-)
-
 // KubernetesRuntimeInfraEKS represents the infrastructure for a threeport-managed EKS
 // cluster.
 type KubernetesRuntimeInfraEKS struct {
@@ -690,8 +685,9 @@ func GetIrsaServiceAccounts(namespace, accountId, roleName string) []*unstructur
 	return output
 }
 
-// AWS-specific naming constants and policy documents.
 const (
+	ServiceAccountPolicyName    = "ThreeportServiceAccount"
+	RuntimeServiceAccount       = "ThreeportRuntime"
 	ResourceManagerRoleName     = "resource-manager-threeport"
 	AssumeAnyRolePolicyDocument = `{
 		"Version": "2012-10-17",

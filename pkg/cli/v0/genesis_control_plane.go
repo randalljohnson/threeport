@@ -1156,8 +1156,7 @@ func (u *Uninstaller) cleanOnCreateError(
 ) error {
 
 	if createErrMsg != "" {
-		// print a brief message and preserve the original error
-		Warning(fmt.Sprintf("%s, cleaning up resources...", createErrMsg))
+		Error(createErrMsg, createErr)
 		createErr = fmt.Errorf("%s: %w", createErrMsg, createErr)
 	}
 

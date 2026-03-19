@@ -81,7 +81,7 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// wait for API server to be reachable before proceeding
-	util.WaitForTCP(threeportAPIServer, util.TCPDefaultPort, setupLog, util.TCPDefaultMaxRetries)
+	util.WaitForAPI(threeportAPIServer, setupLog)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,

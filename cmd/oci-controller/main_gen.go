@@ -74,7 +74,7 @@ func main() {
 	}
 
 	// wait for API server to be reachable before proceeding
-	v0.WaitForTCP(*apiServer, v0.TCPDefaultPort, log, v0.TCPDefaultMaxRetries)
+	v0.WaitForAPI(*apiServer, log)
 
 	// connect to NATS server
 	natsConn := fmt.Sprintf(

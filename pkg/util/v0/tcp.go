@@ -10,41 +10,41 @@ import (
 )
 
 const (
-	// TCPDialTimeout is the timeout for each TCP connection attempt.
-	TCPDialTimeout = 2 * time.Second
+	// tcpDialTimeout is the timeout for each TCP connection attempt.
+	tcpDialTimeout = 2 * time.Second
 
-	// TCPRetryInterval is the sleep duration between TCP connection attempts.
-	TCPRetryInterval = 2 * time.Second
+	// tcpRetryInterval is the sleep duration between TCP connection attempts.
+	tcpRetryInterval = 2 * time.Second
 
-	// TCPDefaultMaxRetries is the default maximum number of TCP connection
-	// retries before the process exits.
-	TCPDefaultMaxRetries = 60
+	// tcpMaxRetries is the maximum number of TCP connection retries before
+	// the process exits.
+	tcpMaxRetries = 60
 
-	// TCPDefaultPort is the default port used for the threeport API service.
-	TCPDefaultPort = 443
+	// tcpAPIPort is the port used for the threeport API service.
+	tcpAPIPort = 443
 )
 
-// WaitForTCP waits for a TCP endpoint to become reachable. It retries up to
-// maxRetries times with a 2-second dial timeout and 2-second sleep between
-// attempts. If the endpoint is not reachable after all retries, the process
-// exits with code 1 to trigger a pod restart.
-func WaitForTCP(host string, port int, log logr.Logger, maxRetries int) {
-	addr := fmt.Sprintf("%s:%d", host, port)
-	log.Info("waiting for TCP endpoint", "address", addr, "maxRetries", maxRetries)
+// WaitForAPI waits for the threeport API server to become reachable on port
+// 443. It retries up to 60 times with a 2-second dial timeout and 2-second
+// sleep between attempts (~4 minutes total). If the endpoint is not reachable
+// after all retries, the process exits with code 1 to trigger a pod restart.
+func WaitForAPI(host string, log logr.Logger) {
+	addr := fmt.Sprintf("%s:%d", host, tcpAPIPort)
+	log.Info("waiting for API server", "address", addr)
 
-	for i := 0; i < maxRetries; i++ {
-		conn, err := net.DialTimeout("tcp", addr, TCPDialTimeout)
+	for i := 0; i < tcpMaxRetries; i++ {
+		conn, err := net.DialTimeout("tcp", addr, tcpDialTimeout)
 		if err == nil {
 			conn.Close()
-			log.Info("TCP endpoint is reachable", "address", addr)
+			log.Info("API server is reachable", "address", addr)
 			return
 		}
-		time.Sleep(TCPRetryInterval)
+		time.Sleep(tcpRetryInterval)
 	}
 
 	log.Error(
-		fmt.Errorf("TCP endpoint not reachable after %d retries", maxRetries),
-		"failed to connect to TCP endpoint",
+		fmt.Errorf("API server not reachable after %d retries", tcpMaxRetries),
+		"failed to connect to API server",
 		"address", addr,
 	)
 	os.Exit(1)

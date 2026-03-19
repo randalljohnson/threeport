@@ -22,7 +22,7 @@ type OciOkeKubernetesRuntimeConfig struct {
 // together with a single operation.
 type OciOkeKubernetesRuntimeValues struct {
 	Name                   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	OciProviderName         *string `json:"OciProviderName,omitempty" yaml:"OciProviderName,omitempty"`
+	OciProviderName        *string `json:"OciProviderName,omitempty" yaml:"OciProviderName,omitempty"`
 	WorkerNodeShape        *string `json:"WorkerNodeShape,omitempty" yaml:"WorkerNodeShape,omitempty"`
 	WorkerNodeInitialCount *int    `json:"WorkerNodeInitialCount,omitempty" yaml:"WorkerNodeInitialCount,omitempty"`
 	Region                 *string `json:"Region,omitempty" yaml:"Region,omitempty"`
@@ -253,7 +253,7 @@ func mapToOciOkeKubernetesRuntimeDefinedInstances(
 				ociOkeKubernetesRuntimeConfig := OciOkeKubernetesRuntimeConfig{
 					OciOkeKubernetesRuntime: OciOkeKubernetesRuntimeValues{
 						Name:                   inst.OciOkeKubernetesRuntimeInstance.Name,
-						OciProviderName:         inst.OciOkeKubernetesRuntimeInstance.OciProviderName,
+						OciProviderName:        inst.OciOkeKubernetesRuntimeInstance.OciProviderName,
 						WorkerNodeShape:        def.OciOkeKubernetesRuntimeDefinition.WorkerNodeShape,
 						WorkerNodeInitialCount: def.OciOkeKubernetesRuntimeDefinition.WorkerNodeInitialCount,
 						Region:                 inst.OciOkeKubernetesRuntimeInstance.Region,

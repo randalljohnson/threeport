@@ -651,7 +651,6 @@ func (i *KubernetesRuntimeInfraOKE) Delete() error {
 	return i.DestroyStack()
 }
 
-
 // GetClusterOCID gets the OCID of the OKE cluster.
 func (i *KubernetesRuntimeInfraOKE) GetClusterOCID(okeClusterName string) (string, error) {
 

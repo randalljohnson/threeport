@@ -194,9 +194,9 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 
 	// configure uninstaller
 	uninstaller := &Uninstaller{
-		cpi:          cpi,
+		cpi:               cpi,
 		teardownOnFailure: &cpi.Opts.TeardownOnFailure,
-		cleanConfig:  util.Ptr(true),
+		cleanConfig:       util.Ptr(true),
 	}
 
 	// check threeport config to see if it is empty

@@ -24,14 +24,14 @@ type OciProviderConfig struct {
 // OciProviderValues contains all the attributes needed to manage
 // the OciProvider API object.
 type OciProviderValues struct {
-	Name           *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	UserOCID       *string `json:"UserOCID,omitempty" yaml:"UserOCID,omitempty"`
-	CompartmentOCID    *string `json:"CompartmentOCID,omitempty" yaml:"CompartmentOCID,omitempty"`
+	Name            *string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	UserOCID        *string `json:"UserOCID,omitempty" yaml:"UserOCID,omitempty"`
+	CompartmentOCID *string `json:"CompartmentOCID,omitempty" yaml:"CompartmentOCID,omitempty"`
 	DefaultProvider *bool   `json:"DefaultProvider,omitempty" yaml:"DefaultProvider,omitempty"`
-	DefaultRegion  *string `json:"DefaultRegion,omitempty" yaml:"DefaultRegion,omitempty"`
-	KeyFingerprint *string `json:"KeyFingerprint,omitempty" yaml:"KeyFingerprint,omitempty"`
-	PrivateKey     *string `json:"PrivateKey,omitempty" yaml:"PrivateKey,omitempty"`
-	Age            *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	DefaultRegion   *string `json:"DefaultRegion,omitempty" yaml:"DefaultRegion,omitempty"`
+	KeyFingerprint  *string `json:"KeyFingerprint,omitempty" yaml:"KeyFingerprint,omitempty"`
+	PrivateKey      *string `json:"PrivateKey,omitempty" yaml:"PrivateKey,omitempty"`
+	Age             *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets oci providers from the Threeport API.
@@ -79,14 +79,14 @@ func (o *OciProviderConfig) Get(
 
 		ociProviderConfig := OciProviderConfig{
 			OciProvider: OciProviderValues{
-				Name:           ociProvider.Name,
-				UserOCID:       ociProvider.UserOCID,
-				CompartmentOCID:    ociProvider.CompartmentOCID,
+				Name:            ociProvider.Name,
+				UserOCID:        ociProvider.UserOCID,
+				CompartmentOCID: ociProvider.CompartmentOCID,
 				DefaultProvider: ociProvider.DefaultProvider,
-				DefaultRegion:  ociProvider.DefaultRegion,
-				KeyFingerprint: ociProvider.KeyFingerprint,
-				PrivateKey:     ociProvider.PrivateKey,
-				Age:            util.Ptr(util.GetAgeFormatted(ociProvider.CreatedAt)),
+				DefaultRegion:   ociProvider.DefaultRegion,
+				KeyFingerprint:  ociProvider.KeyFingerprint,
+				PrivateKey:      ociProvider.PrivateKey,
+				Age:             util.Ptr(util.GetAgeFormatted(ociProvider.CreatedAt)),
 			},
 		}
 		ociProviderConfigs = append(ociProviderConfigs, ociProviderConfig)
@@ -108,13 +108,13 @@ func (o *OciProviderConfig) Create(
 
 	// construct oci provider object
 	ociProvider := api_v0.OciProvider{
-		Name:           ociProviderValues.Name,
-		UserOCID:       ociProviderValues.UserOCID,
-		CompartmentOCID:    ociProviderValues.CompartmentOCID,
+		Name:            ociProviderValues.Name,
+		UserOCID:        ociProviderValues.UserOCID,
+		CompartmentOCID: ociProviderValues.CompartmentOCID,
 		DefaultProvider: ociProviderValues.DefaultProvider,
-		DefaultRegion:  ociProviderValues.DefaultRegion,
-		KeyFingerprint: ociProviderValues.KeyFingerprint,
-		PrivateKey:     ociProviderValues.PrivateKey,
+		DefaultRegion:   ociProviderValues.DefaultRegion,
+		KeyFingerprint:  ociProviderValues.KeyFingerprint,
+		PrivateKey:      ociProviderValues.PrivateKey,
 	}
 
 	// create oci provider
@@ -130,14 +130,14 @@ func (o *OciProviderConfig) Create(
 	// construct oci provider config
 	createdOciProviderConfig := &OciProviderConfig{
 		OciProvider: OciProviderValues{
-			Name:           createdOciProvider.Name,
-			UserOCID:       createdOciProvider.UserOCID,
-			CompartmentOCID:    createdOciProvider.CompartmentOCID,
+			Name:            createdOciProvider.Name,
+			UserOCID:        createdOciProvider.UserOCID,
+			CompartmentOCID: createdOciProvider.CompartmentOCID,
 			DefaultProvider: createdOciProvider.DefaultProvider,
-			DefaultRegion:  createdOciProvider.DefaultRegion,
-			KeyFingerprint: createdOciProvider.KeyFingerprint,
-			PrivateKey:     createdOciProvider.PrivateKey,
-			Age:            util.Ptr(util.GetAgeFormatted(createdOciProvider.CreatedAt)),
+			DefaultRegion:   createdOciProvider.DefaultRegion,
+			KeyFingerprint:  createdOciProvider.KeyFingerprint,
+			PrivateKey:      createdOciProvider.PrivateKey,
+			Age:             util.Ptr(util.GetAgeFormatted(createdOciProvider.CreatedAt)),
 		},
 	}
 
@@ -174,13 +174,13 @@ func (o *OciProviderConfig) Replace(
 		Common: api_v0.Common{
 			ID: existingOciProvider.ID,
 		},
-		Name:           ociProviderValues.Name,
-		UserOCID:       ociProviderValues.UserOCID,
-		CompartmentOCID:    ociProviderValues.CompartmentOCID,
+		Name:            ociProviderValues.Name,
+		UserOCID:        ociProviderValues.UserOCID,
+		CompartmentOCID: ociProviderValues.CompartmentOCID,
 		DefaultProvider: ociProviderValues.DefaultProvider,
-		DefaultRegion:  ociProviderValues.DefaultRegion,
-		KeyFingerprint: ociProviderValues.KeyFingerprint,
-		PrivateKey:     ociProviderValues.PrivateKey,
+		DefaultRegion:   ociProviderValues.DefaultRegion,
+		KeyFingerprint:  ociProviderValues.KeyFingerprint,
+		PrivateKey:      ociProviderValues.PrivateKey,
 	}
 
 	// replace oci provider
@@ -196,14 +196,14 @@ func (o *OciProviderConfig) Replace(
 	// construct updated oci provider config
 	updatedOciProviderConfig := &OciProviderConfig{
 		OciProvider: OciProviderValues{
-			Name:           replacedOciProvider.Name,
-			UserOCID:       replacedOciProvider.UserOCID,
-			CompartmentOCID:    replacedOciProvider.CompartmentOCID,
+			Name:            replacedOciProvider.Name,
+			UserOCID:        replacedOciProvider.UserOCID,
+			CompartmentOCID: replacedOciProvider.CompartmentOCID,
 			DefaultProvider: replacedOciProvider.DefaultProvider,
-			DefaultRegion:  replacedOciProvider.DefaultRegion,
-			KeyFingerprint: replacedOciProvider.KeyFingerprint,
-			PrivateKey:     replacedOciProvider.PrivateKey,
-			Age:            util.Ptr(util.GetAgeFormatted(replacedOciProvider.CreatedAt)),
+			DefaultRegion:   replacedOciProvider.DefaultRegion,
+			KeyFingerprint:  replacedOciProvider.KeyFingerprint,
+			PrivateKey:      replacedOciProvider.PrivateKey,
+			Age:             util.Ptr(util.GetAgeFormatted(replacedOciProvider.CreatedAt)),
 		},
 	}
 

@@ -8,9 +8,9 @@ import (
 	"slices"
 
 	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"github.com/threeport/threeport/pkg/sdk/v0/gen"
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 )
 
 // GenRestApiDockerfile generates the REST API's Dockerfiles and writes them if

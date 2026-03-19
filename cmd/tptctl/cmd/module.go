@@ -15,7 +15,7 @@ import (
 
 var (
 	moduleName         string
-	moduleConfigPath string
+	moduleConfigPath   string
 	moduleStdin        bool
 	moduleVersion      string
 	moduleOutput       string

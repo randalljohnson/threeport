@@ -562,12 +562,12 @@ func GenCliCommands(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Line(),
 						),
 						Id(createCmdVar).Dot("Flags").Call().Dot("BoolVar").Call(
-						Line().Op("&").Id(stdinVar),
-						Line().Lit("stdin"),
-						Lit(false),
-						Lit("Read config from stdin instead of file."),
-						Line(),
-					),
+							Line().Op("&").Id(stdinVar),
+							Line().Lit("stdin"),
+							Lit(false),
+							Lit("Read config from stdin instead of file."),
+							Line(),
+						),
 						Id(createCmdVar).Dot("Flags").Call().Dot("StringVarP").Call(
 							Line().Op("&").Id("cliArgs").Dot("ControlPlaneName"),
 							Line().Lit("control-plane-name"),

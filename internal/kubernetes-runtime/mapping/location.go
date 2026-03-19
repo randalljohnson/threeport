@@ -97,10 +97,6 @@ func GetRegionMap() *[]RegionMap {
 			OciRegion: "ca-montreal-1",
 		},
 		{
-			Location:  "NorthAmerica:Ashburn",
-			OciRegion: "us-ashburn-1",
-		},
-		{
 			Location:  "NorthAmerica:Monterrey",
 			AwsRegion: "mx-central-1",
 			OciRegion: "mx-monterrey-1",

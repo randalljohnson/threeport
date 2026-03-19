@@ -42,6 +42,7 @@ import (
 	"github.com/threeport/threeport/internal/agent/notify"
 	controlplanev1alpha1 "github.com/threeport/threeport/pkg/agent/api/v1alpha1"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -78,6 +79,9 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	// wait for API server to be reachable before proceeding
+	util.WaitForTCP(threeportAPIServer, util.TCPDefaultPort, setupLog, util.TCPDefaultMaxRetries)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,

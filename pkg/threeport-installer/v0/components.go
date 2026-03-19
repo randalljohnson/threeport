@@ -1104,9 +1104,6 @@ func (cpi *ControlPlaneInstaller) UpdateThreeportAgentDeployment(
 								},
 							},
 						},
-						"initContainers": []interface{}{
-							cpi.getAPIWaitInitContainer(agentImage),
-						},
 						"containers": []interface{}{
 							map[string]interface{}{
 								"args": []interface{}{
@@ -1867,28 +1864,6 @@ func (cpi *ControlPlaneInstaller) getControllerSecret(name, namespace string) *u
 	}
 }
 
-// getAPIWaitInitContainer returns an init container spec that waits for the
-// threeport API server to be reachable before starting the main container.
-// It uses the same image as the main container to trigger an early image pull.
-func (cpi *ControlPlaneInstaller) getAPIWaitInitContainer(image string) map[string]interface{} {
-	apiHost := fmt.Sprintf(
-		"%s.%s.svc.cluster.local",
-		cpi.Opts.RestApiInfo.ServiceResourceName,
-		cpi.Opts.Namespace,
-	)
-	_, apiPort := cpi.GetAPIServicePort()
-
-	return map[string]interface{}{
-		"name":            "wait-for-api",
-		"image":           image,
-		"imagePullPolicy": cpi.getImagePullPolicy(),
-		"command": []interface{}{
-			"/wait-for-tcp",
-			fmt.Sprintf("%s:%d", apiHost, apiPort),
-		},
-	}
-}
-
 // getImagePullPolicy returns the image pull policy based on debug mode.
 func (cpi *ControlPlaneInstaller) getImagePullPolicy() string {
 	if cpi.Opts.Debug && !cpi.Opts.LiveReload {
@@ -1974,9 +1949,6 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 					},
 					"spec": map[string]interface{}{
 						"serviceAccountName": controller.ServiceAccountName,
-						"initContainers": []interface{}{
-							cpi.getAPIWaitInitContainer(controllerImage),
-						},
 						"containers": []interface{}{
 							map[string]interface{}{
 								"name":            controller.Name,

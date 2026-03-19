@@ -17,6 +17,7 @@ import (
 	tpclient_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
+	v0 "github.com/threeport/threeport/pkg/util/v0"
 	zap "go.uber.org/zap"
 	"net/http"
 	"os"
@@ -81,6 +82,9 @@ func main() {
 		}
 		log = zapr.NewLogger(zapLog).WithValues("controllerID", controllerID)
 	}
+
+	// wait for API server to be reachable before proceeding
+	v0.WaitForTCP(*apiServer, v0.TCPDefaultPort, log, v0.TCPDefaultMaxRetries)
 
 	// connect to NATS server
 	natsConn := fmt.Sprintf(

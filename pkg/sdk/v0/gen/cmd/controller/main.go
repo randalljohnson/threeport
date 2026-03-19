@@ -188,6 +188,17 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					),
 				),
 
+				Line().Comment("wait for API server to be reachable before proceeding"),
+				Qual(
+					"github.com/threeport/threeport/pkg/util/v0",
+					"WaitForTCP",
+				).Call(
+					Op("*").Id("apiServer"),
+					Qual("github.com/threeport/threeport/pkg/util/v0", "TCPDefaultPort"),
+					Id("log"),
+					Qual("github.com/threeport/threeport/pkg/util/v0", "TCPDefaultMaxRetries"),
+				),
+
 				Line().Comment("connect to NATS server"),
 				Id("natsConn").Op(":=").Qual("fmt", "Sprintf").Call(
 					Line().Lit("nats://%s:%s@%s:%s"),

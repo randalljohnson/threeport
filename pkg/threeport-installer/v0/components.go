@@ -415,20 +415,12 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 	return nil
 }
 
-// CreateOrUpdateKubeResource creates or updates a Kubernetes resource. When
-// pendingResources is non-nil, resources are collected for batch application
-// instead of being applied immediately.
+// CreateOrUpdateKubeResource creates or updates a Kubernetes resource.
 func (cpi *ControlPlaneInstaller) CreateOrUpdateKubeResource(
 	resource *unstructured.Unstructured,
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) error {
-	// if collecting resources, append and return
-	if cpi.pendingResources != nil {
-		cpi.pendingResources = append(cpi.pendingResources, resource)
-		return nil
-	}
-
 	if cpi.Opts.CreateOrUpdateKubeResources {
 		if _, err := kube.CreateOrUpdateResource(resource, kubeClient, *mapper); err != nil {
 			return fmt.Errorf("failed to create/update resource: %w", err)
@@ -438,33 +430,6 @@ func (cpi *ControlPlaneInstaller) CreateOrUpdateKubeResource(
 			return fmt.Errorf("failed to create resource: %w", err)
 		}
 	}
-	return nil
-}
-
-// EnableResourceCollection enables batch collection mode. Subsequent calls to
-// CreateOrUpdateKubeResource will collect resources instead of applying them.
-func (cpi *ControlPlaneInstaller) EnableResourceCollection() {
-	cpi.pendingResources = make([]*unstructured.Unstructured, 0)
-}
-
-// ApplyCollectedResources applies all collected pending resources and resets
-// the batch.
-func (cpi *ControlPlaneInstaller) ApplyCollectedResources(
-	kubeClient dynamic.Interface,
-	mapper *meta.RESTMapper,
-) error {
-	for _, resource := range cpi.pendingResources {
-		if cpi.Opts.CreateOrUpdateKubeResources {
-			if _, err := kube.CreateOrUpdateResource(resource, kubeClient, *mapper); err != nil {
-				return fmt.Errorf("failed to apply %s %s: %w", resource.GetKind(), resource.GetName(), err)
-			}
-		} else {
-			if _, err := kube.CreateResource(resource, kubeClient, *mapper); err != nil {
-				return fmt.Errorf("failed to apply %s %s: %w", resource.GetKind(), resource.GetName(), err)
-			}
-		}
-	}
-	cpi.pendingResources = nil
 	return nil
 }
 

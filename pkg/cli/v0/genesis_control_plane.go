@@ -597,16 +597,12 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}
 	}
 
-	// batch controllers and agent for simultaneous deployment — image pulls
-	// start in parallel while the API server finishes initializing
-	cpi.EnableResourceCollection()
-
 	if err := cpi.InstallThreeportControllers(
 		dynamicKubeClient,
 		mapper,
 		authConfig,
 	); err != nil {
-		return uninstaller.cleanOnCreateError("failed to prepare threeport controllers", err)
+		return uninstaller.cleanOnCreateError("failed to install threeport controllers", err)
 	}
 
 	if err = cpi.Opts.PostInstallFunction(kubernetesRuntimeInstance, cpi); err != nil {
@@ -618,12 +614,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		mapper,
 		authConfig,
 	); err != nil {
-		return uninstaller.cleanOnCreateError("failed to prepare threeport agent", err)
-	}
-
-	// apply all collected resources at once — image pulls start immediately
-	if err := cpi.ApplyCollectedResources(dynamicKubeClient, mapper); err != nil {
-		return uninstaller.cleanOnCreateError("failed to install control plane components", err)
+		return uninstaller.cleanOnCreateError("failed to install threeport agent", err)
 	}
 
 	// wait for API server to start running

@@ -952,14 +952,17 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 				)
 			}
 
-			// validate state JSON before restoring — if corrupt, proceed
-			// without state (matches controller fallback behavior)
-			if okeRuntimeInstance.ResourceInventory != nil && len(*okeRuntimeInstance.ResourceInventory) > 0 {
-				if !json.Valid(*okeRuntimeInstance.ResourceInventory) {
-					Warning("stored state is corrupt, proceeding with destroy without state restoration")
-				} else if err := kubernetesRuntimeInfraOKE.SetStackState(okeRuntimeInstance.ResourceInventory); err != nil {
-					Warning(fmt.Sprintf("failed to restore state, proceeding with destroy: %v", err))
-				}
+			// restore pulumi state from DB — this is the only source of
+			// state, so failure here means destroy would be a no-op and
+			// leave orphaned cloud resources
+			if okeRuntimeInstance.ResourceInventory == nil || len(*okeRuntimeInstance.ResourceInventory) == 0 {
+				return fmt.Errorf("no resource inventory found for OKE runtime instance %d, cannot destroy infrastructure", *okeRuntimeInstance.ID)
+			}
+			if !json.Valid(*okeRuntimeInstance.ResourceInventory) {
+				return fmt.Errorf("stored resource inventory for OKE runtime instance %d is corrupt, cannot destroy infrastructure", *okeRuntimeInstance.ID)
+			}
+			if err := kubernetesRuntimeInfraOKE.SetStackState(okeRuntimeInstance.ResourceInventory); err != nil {
+				return fmt.Errorf("failed to restore state for OKE runtime instance %d: %w", *okeRuntimeInstance.ID, err)
 			}
 		}
 	}

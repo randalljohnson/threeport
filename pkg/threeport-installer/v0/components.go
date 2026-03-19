@@ -2047,10 +2047,6 @@ func (cpi *ControlPlaneInstaller) getCommand(name string) []interface{} {
 		return []interface{}{
 			"/usr/local/bin/dlv",
 		}
-	case cpi.Opts.Debug:
-		return []interface{}{
-			fmt.Sprintf("/%s", name),
-		}
 	default:
 		return []interface{}{
 			fmt.Sprintf("/%s", name),

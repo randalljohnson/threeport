@@ -67,19 +67,17 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Get(
 	for _, ociOkeKubernetesRuntimeInstance := range *ociOkeKubernetesRuntimeInstances {
 		// related objects
 		var ociOkeKubernetesRuntimeDefinition *OciOkeKubernetesRuntimeDefinitionValues
-		var ociProviderName *string
 
 		// get OCI provider name
-		if ociOkeKubernetesRuntimeInstance.OciProviderID != nil {
-			ociProvider, err := client_v0.GetOciProviderByID(
-				apiClient,
-				apiEndpoint,
-				*ociOkeKubernetesRuntimeInstance.OciProviderID,
-			)
-			if err == nil {
-				ociProviderName = ociProvider.Name
-			}
+		ociProvider, err := client_v0.GetOciProviderByID(
+			apiClient,
+			apiEndpoint,
+			*ociOkeKubernetesRuntimeInstance.OciProviderID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get OCI provider by ID: %w", err)
 		}
+		ociProviderName := ociProvider.Name
 
 		// get OCI OKE kubernetes runtime definition
 		if ociOkeKubernetesRuntimeInstance.OciOkeKubernetesRuntimeDefinitionID != nil {

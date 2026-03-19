@@ -42,9 +42,13 @@ RUN wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform
 # static development target for OCI controller (with Pulumi)
 FROM base AS dev-oci
 ARG BINARY
-ARG PULUMI_VERSION=3.198.0
+ARG PULUMI_VERSION=3.185.0
 COPY bin/${BINARY} /${BINARY}
-RUN apk add --no-cache ca-certificates curl
+# install pulumi using official install script
+RUN apk update && apk add --no-cache ca-certificates curl
 RUN curl -fsSL https://get.pulumi.com | sh -s -- --version ${PULUMI_VERSION}
 ENV PATH="/root/.pulumi/bin:${PATH}"
+# create state directory
+RUN mkdir -p /.threeport
+ENV HOME=/.threeport
 

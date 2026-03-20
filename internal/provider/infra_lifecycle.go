@@ -34,75 +34,69 @@ type ReconciliationSnapshot struct {
 	ResourceInventory    *datatypes.JSON
 }
 
-// InfraLifecycleConfig contains all provider-specific closures needed by the
-// HandleInfraCreate and HandleInfraDelete state machines. A provider fills
-// in the closures for its specific behavior; the lifecycle handler does
-// everything else (ack/confirm checks, stale detection, goroutine wiring,
-// NATS notifications).
-type InfraLifecycleConfig struct {
+// InfraLifecycleProvider defines the provider-specific operations needed by the
+// HandleInfraCreate and HandleInfraDelete state machines. Each infrastructure
+// provider implements this interface; the lifecycle handler does everything
+// else (ack/confirm checks, stale detection, goroutine wiring).
+type InfraLifecycleProvider interface {
 	// GetReconciliation fetches the latest reconciliation state and resource
-	// inventory from the API. Called at the start of each handler invocation
-	// and again during deletion-during-create checks.
-	GetReconciliation func() (*ReconciliationSnapshot, error)
+	// inventory from the API.
+	GetReconciliation() (*ReconciliationSnapshot, error)
 
 	// BuildInfra constructs the InfraProvider implementor for this provider.
-	// Called once per handler invocation before launching the goroutine.
-	BuildInfra func() (InfraProvider, error)
+	BuildInfra() (InfraProvider, error)
 
-	// IsCreateComplete checks whether the async create operation has finished
-	// (e.g., ClusterOCID is set for OKE). Called during the confirmation
-	// check when CreationAcknowledged is set but CreationConfirmed is not.
-	IsCreateComplete func() (bool, error)
+	// IsCreateComplete checks whether the async create operation has finished.
+	IsCreateComplete() (bool, error)
 
-	// OnCreateConfirmed performs provider-specific post-creation work after
-	// the create operation has been confirmed complete (e.g., get connection
-	// info, update dependent objects). Called before ConfirmCreation.
-	OnCreateConfirmed func(infra InfraProvider) error
+	// OnCreateConfirmed performs provider-specific post-creation work.
+	OnCreateConfirmed(infra InfraProvider) error
 
-	// SaveCreateOutputs saves provider-specific outputs (e.g., ClusterOCID)
-	// and the final state from the goroutine's OnSuccess callback.
-	SaveCreateOutputs func(infra InfraProvider, state *datatypes.JSON) error
+	// SaveCreateOutputs saves provider-specific outputs and final state.
+	SaveCreateOutputs(infra InfraProvider, state *datatypes.JSON) error
 
-	// OnDeleteConfirmed performs provider-specific post-deletion cleanup
-	// after resources have been destroyed and inventory cleared
-	// (e.g., delete compartment, delete stack state).
-	OnDeleteConfirmed func(infra InfraProvider) error
+	// OnDeleteConfirmed performs provider-specific post-deletion cleanup.
+	OnDeleteConfirmed(infra InfraProvider) error
 
 	// AckCreation sets CreationAcknowledged and clears CreationFailed in the API.
-	AckCreation func() error
+	AckCreation() error
 
 	// RefreshCreationAck updates CreationAcknowledged to prevent stale detection.
-	RefreshCreationAck func() error
+	RefreshCreationAck() error
 
 	// SetCreationFailed marks CreationFailed=true in the API.
-	SetCreationFailed func() error
+	SetCreationFailed() error
 
 	// ConfirmCreation sets CreationConfirmed and Reconciled=true in the API.
-	ConfirmCreation func() error
+	ConfirmCreation() error
 
 	// AckDeletion sets DeletionAcknowledged in the API.
-	AckDeletion func() error
+	AckDeletion() error
 
 	// RefreshDeletionAck updates DeletionAcknowledged to prevent stale detection.
-	RefreshDeletionAck func() error
+	RefreshDeletionAck() error
 
 	// ConfirmDeletion sets DeletionConfirmed in the API.
-	ConfirmDeletion func() error
+	ConfirmDeletion() error
 
 	// SaveState persists intermediate state to the API for crash recovery.
-	SaveState func(state *datatypes.JSON) error
+	SaveState(state *datatypes.JSON) error
 
 	// ClearInventory sets ResourceInventory to "{}" to signal destroy complete.
-	ClearInventory func() error
+	ClearInventory() error
 
 	// PublishCreateNotification publishes a NATS notification for creation.
-	PublishCreateNotification func() error
+	PublishCreateNotification() error
 
 	// PublishDeleteNotification publishes a NATS notification for deletion.
-	PublishDeleteNotification func() error
+	PublishDeleteNotification() error
+}
 
-	// Log is the structured logger for the operation.
-	Log *logr.Logger
+// InfraLifecycleConfig pairs a provider implementation with a logger for use
+// by HandleInfraCreate and HandleInfraDelete.
+type InfraLifecycleConfig struct {
+	Provider InfraLifecycleProvider
+	Log      *logr.Logger
 }
 
 // HandleInfraCreate implements the create state machine for any infrastructure
@@ -110,7 +104,7 @@ type InfraLifecycleConfig struct {
 // and launches the create goroutine when needed.
 func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 	// fetch latest state from API
-	snap, err := config.GetReconciliation()
+	snap, err := config.Provider.GetReconciliation()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get reconciliation state: %w", err)
 	}
@@ -123,25 +117,25 @@ func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 	// check if previously acknowledged and not failed
 	if snap.CreationAcknowledged != nil && !snap.CreationFailed {
 		// check if creation is complete
-		complete, err := config.IsCreateComplete()
+		complete, err := config.Provider.IsCreateComplete()
 		if err != nil {
 			return 0, fmt.Errorf("failed to check create completion: %w", err)
 		}
 
 		if complete {
 			// build infra for post-creation work (e.g., GetConnection)
-			infra, err := config.BuildInfra()
+			infra, err := config.Provider.BuildInfra()
 			if err != nil {
 				return 0, fmt.Errorf("failed to build infra for create confirmation: %w", err)
 			}
 
 			// perform provider-specific post-creation work
-			if err := config.OnCreateConfirmed(infra); err != nil {
+			if err := config.Provider.OnCreateConfirmed(infra); err != nil {
 				return 0, fmt.Errorf("failed to run post-creation work: %w", err)
 			}
 
 			// confirm creation
-			if err := config.ConfirmCreation(); err != nil {
+			if err := config.Provider.ConfirmCreation(); err != nil {
 				return 0, fmt.Errorf("failed to confirm creation: %w", err)
 			}
 
@@ -161,18 +155,18 @@ func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 	// 3. the last acknowledgement is stale — creation was interrupted
 
 	// acknowledge creation
-	if err := config.AckCreation(); err != nil {
+	if err := config.Provider.AckCreation(); err != nil {
 		return 0, fmt.Errorf("failed to acknowledge creation: %w", err)
 	}
 
 	// build infra
-	infra, err := config.BuildInfra()
+	infra, err := config.Provider.BuildInfra()
 	if err != nil {
 		return 0, fmt.Errorf("failed to build infra for create: %w", err)
 	}
 
 	// check if deletion was scheduled while we were preparing to create
-	snap, err = config.GetReconciliation()
+	snap, err = config.Provider.GetReconciliation()
 	if err != nil {
 		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
 	}
@@ -183,24 +177,24 @@ func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 
 	// wire callbacks and launch goroutine
 	callbacks := infraCallbacks{
-		RefreshAck:     config.RefreshCreationAck,
-		SaveState:      config.SaveState,
-		PersistFailure: config.SetCreationFailed,
+		RefreshAck:     config.Provider.RefreshCreationAck,
+		SaveState:      config.Provider.SaveState,
+		PersistFailure: config.Provider.SetCreationFailed,
 		OnSuccess: func(state *datatypes.JSON) error {
 			// save provider-specific outputs
-			if err := config.SaveCreateOutputs(infra, state); err != nil {
+			if err := config.Provider.SaveCreateOutputs(infra, state); err != nil {
 				return fmt.Errorf("failed to save create outputs: %w", err)
 			}
 
 			// check if deletion was scheduled during the create operation
-			latestSnap, err := config.GetReconciliation()
+			latestSnap, err := config.Provider.GetReconciliation()
 			if err == nil && latestSnap.DeletionScheduled != nil {
 				config.Log.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
 				return nil
 			}
 
 			// publish notification
-			if err := config.PublishCreateNotification(); err != nil {
+			if err := config.Provider.PublishCreateNotification(); err != nil {
 				config.Log.Error(err, "failed to publish create notification")
 			}
 
@@ -221,7 +215,7 @@ func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 // handles cross-replica safety, and launches the delete goroutine when needed.
 func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 	// fetch latest state from API
-	snap, err := config.GetReconciliation()
+	snap, err := config.Provider.GetReconciliation()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get reconciliation state: %w", err)
 	}
@@ -248,31 +242,31 @@ func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 	// check if previously acknowledged
 	if snap.DeletionAcknowledged != nil {
 		// re-fetch to check if inventory has been cleared
-		latestSnap, err := config.GetReconciliation()
+		latestSnap, err := config.Provider.GetReconciliation()
 		if err != nil {
 			return 0, fmt.Errorf("failed to check deletion status: %w", err)
 		}
 
 		if inventoryCleared(latestSnap.ResourceInventory) {
 			// refresh ack to prevent stale detection during cleanup
-			if err := config.RefreshDeletionAck(); err != nil {
+			if err := config.Provider.RefreshDeletionAck(); err != nil {
 				config.Log.Error(err, "failed to refresh deletion ack during cleanup")
 			}
 
 			// build infra for post-deletion cleanup
-			infra, err := config.BuildInfra()
+			infra, err := config.Provider.BuildInfra()
 			if err != nil {
 				return 0, fmt.Errorf("failed to build infra for delete confirmation: %w", err)
 			}
 
 			// perform provider-specific post-deletion cleanup
-			if err := config.OnDeleteConfirmed(infra); err != nil {
+			if err := config.Provider.OnDeleteConfirmed(infra); err != nil {
 				config.Log.Error(err, "failed to run post-deletion cleanup, will retry")
 				return 60, nil
 			}
 
 			// confirm deletion
-			if err := config.ConfirmDeletion(); err != nil {
+			if err := config.Provider.ConfirmDeletion(); err != nil {
 				return 0, fmt.Errorf("failed to confirm deletion: %w", err)
 			}
 
@@ -290,34 +284,34 @@ func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 	}
 
 	// acknowledge deletion
-	if err := config.AckDeletion(); err != nil {
+	if err := config.Provider.AckDeletion(); err != nil {
 		return 0, fmt.Errorf("failed to acknowledge deletion: %w", err)
 	}
 
 	// build infra
-	infra, err := config.BuildInfra()
+	infra, err := config.Provider.BuildInfra()
 	if err != nil {
 		return 0, fmt.Errorf("failed to build infra for delete: %w", err)
 	}
 
 	// re-fetch for latest resource inventory
-	snap, err = config.GetReconciliation()
+	snap, err = config.Provider.GetReconciliation()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get resource inventory for delete: %w", err)
 	}
 
 	// wire callbacks and launch goroutine
 	callbacks := infraCallbacks{
-		RefreshAck: config.RefreshDeletionAck,
-		SaveState:  config.SaveState,
+		RefreshAck: config.Provider.RefreshDeletionAck,
+		SaveState:  config.Provider.SaveState,
 		OnSuccess: func(_ *datatypes.JSON) error {
 			// clear inventory to signal destroy complete
-			if err := config.ClearInventory(); err != nil {
+			if err := config.Provider.ClearInventory(); err != nil {
 				config.Log.Error(err, "failed to clear resource inventory after deletion")
 			}
 
 			// publish notification
-			if err := config.PublishDeleteNotification(); err != nil {
+			if err := config.Provider.PublishDeleteNotification(); err != nil {
 				config.Log.Error(err, "failed to publish delete notification")
 			}
 

@@ -871,14 +871,56 @@ func v0ControlPlaneInstanceDeleted(
 		return 0, fmt.Errorf("failed to get control plane kubernetesRuntime definition by ID: %w", err)
 	}
 
-	// create a dynamic client to connect to kube API
-	dynamicKubeClient, mapper, err := kube.GetClient(
-		kubernetesRuntimeInstance,
-		true,
-		r.APIClient,
-		r.APIServer,
-		r.EncryptionKey,
-	)
+	// create a dynamic client to connect to kube API — use token refresh
+	// for OKE to handle short-lived tokens
+	var deleteDynamicClient dynamic.Interface
+	var deleteMapper *meta.RESTMapper
+	switch *kubernetesRuntimeDefinition.InfraProvider {
+	case v0.KubernetesRuntimeInfraProviderOKE:
+		ociRuntimeInstance, err := client.GetOciOkeKubernetesRuntimeInstanceByK8sRuntimeInst(
+			r.APIClient, r.APIServer, *kubernetesRuntimeInstance.ID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get OCI OKE runtime instance for delete: %w", err)
+		}
+		ociProvider, err := client.GetOciProviderByID(
+			r.APIClient, r.APIServer, *ociRuntimeInstance.OciProviderID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get OCI provider for delete: %w", err)
+		}
+		decryptedPrivateKey, err := encryption.Decrypt(r.EncryptionKey, *ociProvider.PrivateKey)
+		if err != nil {
+			return 0, fmt.Errorf("failed to decrypt OCI provider private key for delete: %w", err)
+		}
+		configProvider := common.NewRawConfigurationProvider(
+			*ociProvider.TenancyOCID,
+			*ociProvider.UserOCID,
+			*ociProvider.DefaultRegion,
+			*ociProvider.KeyFingerprint,
+			decryptedPrivateKey,
+			nil,
+		)
+		if ociRuntimeInstance.ClusterOCID == nil || *ociRuntimeInstance.ClusterOCID == "" {
+			return 0, fmt.Errorf("OCI OKE runtime instance has no cluster OCID set for delete")
+		}
+		clusterOCID := *ociRuntimeInstance.ClusterOCID
+		deleteDynamicClient, deleteMapper, err = kube.GetClientWithTokenRefresh(
+			kubernetesRuntimeInstance,
+			func() (string, error) {
+				t, _, err := util.GenerateOkeToken(clusterOCID, configProvider)
+				return t, err
+			},
+		)
+	default:
+		deleteDynamicClient, deleteMapper, err = kube.GetClient(
+			kubernetesRuntimeInstance,
+			true,
+			r.APIClient,
+			r.APIServer,
+			r.EncryptionKey,
+		)
+	}
 	if err != nil {
 		return 0, fmt.Errorf("failed to create dynamic kube API client: %w", err)
 	}
@@ -894,7 +936,7 @@ func v0ControlPlaneInstanceDeleted(
 	}
 
 	// delete the namespace
-	if err := kube.DeleteResource(namespace, dynamicKubeClient, *mapper); err != nil {
+	if err := kube.DeleteResource(namespace, deleteDynamicClient, *deleteMapper); err != nil {
 		return 0, fmt.Errorf("failed to delete the control plane namespace: %w", err)
 	}
 

@@ -29,21 +29,17 @@ type okeLifecycle struct {
 	log        *logr.Logger
 }
 
-// newOkeLifecycleConfig constructs an InfraLifecycleConfig with an OKE
-// lifecycle provider for a given runtime instance.
-func newOkeLifecycleConfig(
+// newOkeLifecycleProvider constructs an InfraLifecycleProvider for OKE.
+func newOkeLifecycleProvider(
 	r *controller.Reconciler,
 	instance *v0.OciOkeKubernetesRuntimeInstance,
 	log *logr.Logger,
-) provider.InfraLifecycleConfig {
-	return provider.InfraLifecycleConfig{
-		Provider: &okeLifecycle{
-			r:          r,
-			instanceID: *instance.ID,
-			instance:   instance,
-			log:        log,
-		},
-		Log: log,
+) *okeLifecycle {
+	return &okeLifecycle{
+		r:          r,
+		instanceID: *instance.ID,
+		instance:   instance,
+		log:        log,
 	}
 }
 

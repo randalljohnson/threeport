@@ -182,7 +182,7 @@ func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 	}
 
 	// wire callbacks and launch goroutine
-	callbacks := infraCreateCallbacks{
+	callbacks := infraCallbacks{
 		RefreshAck:     config.RefreshCreationAck,
 		SaveState:      config.SaveState,
 		PersistFailure: config.SetCreationFailed,
@@ -208,7 +208,7 @@ func HandleInfraCreate(config InfraLifecycleConfig) (int64, error) {
 		},
 	}
 
-	return launchInfraCreate(infraCreateConfig{
+	return launchInfraCreate(infraConfig{
 		Infra:         infra,
 		ExistingState: snap.ResourceInventory,
 		Callbacks:     callbacks,
@@ -307,10 +307,10 @@ func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 	}
 
 	// wire callbacks and launch goroutine
-	callbacks := infraDeleteCallbacks{
+	callbacks := infraCallbacks{
 		RefreshAck: config.RefreshDeletionAck,
 		SaveState:  config.SaveState,
-		OnSuccess: func() error {
+		OnSuccess: func(_ *datatypes.JSON) error {
 			// clear inventory to signal destroy complete
 			if err := config.ClearInventory(); err != nil {
 				config.Log.Error(err, "failed to clear resource inventory after deletion")
@@ -325,7 +325,7 @@ func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 		},
 	}
 
-	return launchInfraDelete(infraDeleteConfig{
+	return launchInfraDelete(infraConfig{
 		Infra:         infra,
 		ExistingState: snap.ResourceInventory,
 		Callbacks:     callbacks,
@@ -333,71 +333,37 @@ func HandleInfraDelete(config InfraLifecycleConfig) (int64, error) {
 	})
 }
 
-// infraCreateCallbacks contains provider-specific callback functions invoked
-// at various points during the create goroutine lifecycle.
-type infraCreateCallbacks struct {
-	// RefreshAck updates the creation acknowledged timestamp to prevent
-	// stale detection while the operation is still running.
+// infraCallbacks contains callback functions invoked at various points during
+// create and delete goroutine lifecycles.
+type infraCallbacks struct {
+	// RefreshAck updates the acknowledged timestamp to prevent stale detection
+	// while the operation is still running.
 	RefreshAck func() error
 
 	// SaveState persists intermediate state to the API for crash recovery.
 	SaveState func(state *datatypes.JSON) error
 
 	// PersistFailure marks the operation as failed in the API so the
-	// reconciler knows to retry.
+	// reconciler knows to retry. Set for create operations, nil for delete.
 	PersistFailure func() error
 
-	// OnSuccess is called after successful infrastructure creation with the
-	// final state. The provider should save state, provider-specific fields,
-	// and publish a NATS notification.
+	// OnSuccess is called after successful infrastructure create or delete.
+	// For create, state contains the final Pulumi state; for delete, state is nil.
 	OnSuccess func(state *datatypes.JSON) error
 }
 
-// infraCreateConfig contains all parameters needed to launch an infrastructure
-// create operation in a background goroutine.
-type infraCreateConfig struct {
+// infraConfig contains all parameters needed to launch an infrastructure
+// create or delete operation in a background goroutine.
+type infraConfig struct {
 	// Infra is the provider's infrastructure object that implements InfraProvider.
 	Infra InfraProvider
 
 	// ExistingState is the previously saved state from ResourceInventory.
-	// When non-nil and non-empty, state is restored before creating.
+	// When non-nil and non-empty, state is restored before operating.
 	ExistingState *datatypes.JSON
 
-	// Callbacks contains provider-specific functions invoked during the operation.
-	Callbacks infraCreateCallbacks
-
-	// Log is the structured logger for the operation.
-	Log *logr.Logger
-}
-
-// infraDeleteCallbacks contains provider-specific callback functions invoked
-// at various points during the delete goroutine lifecycle.
-type infraDeleteCallbacks struct {
-	// RefreshAck updates the deletion acknowledged timestamp to prevent
-	// stale detection while the operation is still running.
-	RefreshAck func() error
-
-	// SaveState persists intermediate state to the API for crash recovery.
-	SaveState func(state *datatypes.JSON) error
-
-	// OnSuccess is called after successful infrastructure deletion. The provider
-	// should clear ResourceInventory and publish a NATS notification.
-	OnSuccess func() error
-}
-
-// infraDeleteConfig contains all parameters needed to launch an infrastructure
-// delete operation in a background goroutine.
-type infraDeleteConfig struct {
-	// Infra is the provider's infrastructure object that implements InfraProvider.
-	Infra InfraProvider
-
-	// ExistingState is the previously saved state from ResourceInventory.
-	// When non-nil and non-empty, state is restored before destroying so the
-	// provider knows which cloud resources to delete.
-	ExistingState *datatypes.JSON
-
-	// Callbacks contains provider-specific functions invoked during the operation.
-	Callbacks infraDeleteCallbacks
+	// Callbacks contains functions invoked during the operation.
+	Callbacks infraCallbacks
 
 	// Log is the structured logger for the operation.
 	Log *logr.Logger
@@ -413,7 +379,7 @@ func checkStaleAck(ackTimestamp time.Time) bool {
 // launchInfraCreate acquires the concurrency semaphore, then launches
 // executeInfraCreate in a background goroutine. Returns a requeue delay
 // for the reconciler.
-func launchInfraCreate(config infraCreateConfig) (int64, error) {
+func launchInfraCreate(config infraConfig) (int64, error) {
 	// acquire infrastructure concurrency semaphore
 	select {
 	case infraSemaphore <- struct{}{}:
@@ -441,7 +407,7 @@ func launchInfraCreate(config infraCreateConfig) (int64, error) {
 // launchInfraDelete acquires the concurrency semaphore, then launches
 // executeInfraDelete in a background goroutine. Returns a requeue delay
 // for the reconciler.
-func launchInfraDelete(config infraDeleteConfig) (int64, error) {
+func launchInfraDelete(config infraConfig) (int64, error) {
 	// acquire infrastructure concurrency semaphore
 	select {
 	case infraSemaphore <- struct{}{}:
@@ -468,7 +434,7 @@ func launchInfraDelete(config infraDeleteConfig) (int64, error) {
 // executeInfraCreate runs the full infrastructure create lifecycle in a
 // goroutine. It handles state restoration, optional streaming for providers
 // that support it, and captures final state on success or failure.
-func executeInfraCreate(config infraCreateConfig) {
+func executeInfraCreate(config infraConfig) {
 	// refresh the creation acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
@@ -560,7 +526,7 @@ func executeInfraCreate(config infraCreateConfig) {
 // executeInfraDelete runs the full infrastructure delete lifecycle in a
 // goroutine. It handles state restoration, optional refresh for providers
 // that support it, and captures updated state on failure.
-func executeInfraDelete(config infraDeleteConfig) {
+func executeInfraDelete(config infraConfig) {
 	// refresh the deletion acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
@@ -611,7 +577,7 @@ func executeInfraDelete(config infraDeleteConfig) {
 	}
 
 	// call provider-specific success handler
-	if err := config.Callbacks.OnSuccess(); err != nil {
+	if err := config.Callbacks.OnSuccess(nil); err != nil {
 		config.Log.Error(err, "failed to execute delete success callback")
 	}
 }

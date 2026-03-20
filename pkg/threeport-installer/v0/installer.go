@@ -117,8 +117,8 @@ type Options struct {
 	// Port mappings for kind infra provider
 	KindPortMappings []string
 
-	// If true, an EKS load balancer is provisioned for the threeport API.
-	RestApiEksLoadBalancer bool
+	// If true, a cloud load balancer is provisioned for the threeport API.
+	RestApiLoadBalancer bool
 
 	// verbose logging
 	Verbose bool

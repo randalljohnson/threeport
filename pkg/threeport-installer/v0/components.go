@@ -89,11 +89,12 @@ func (cpi *ControlPlaneInstaller) UpdateThreeportAPIDeployment(
 
 	dbMigratorArgs := []interface{}{"-env-file=/etc/threeport/env", "up"}
 
-	// skip overwriting DB cert secrets when updating an existing deployment
-	// (e.g. debug mode) — the existing secrets were generated with the
-	// original CA that CRDB's node certs are signed by, and regenerating
-	// them would break TLS verification
-	if !cpi.Opts.CreateOrUpdateKubeResources {
+	// only create DB cert secrets if they don't already exist — regenerating
+	// them would break TLS against a running CRDB whose node certs are signed
+	// by the original CA (e.g. tptdev debug). On reconciler retry the secrets
+	// may not exist yet, so we check rather than relying on CreateOrUpdateKubeResources.
+	_, dbCertErr := kube.GetResource("", "v1", "Secret", cpi.Opts.Namespace, dbRootCertSecretName, kubeClient, *mapper)
+	if dbCertErr != nil {
 		// secret for 'root' user credentials to database - used for database
 		// initialization
 		var dbRootCertsSecret = &unstructured.Unstructured{
@@ -1740,7 +1741,7 @@ func (cpi *ControlPlaneInstaller) getAPIServiceType() string {
 		return "NodePort"
 	}
 
-	if !cpi.Opts.RestApiEksLoadBalancer {
+	if !cpi.Opts.RestApiLoadBalancer {
 		return "ClusterIP"
 	}
 
@@ -1751,7 +1752,7 @@ func (cpi *ControlPlaneInstaller) getAPIServiceType() string {
 // on infra provider to provision the correct load balancer.
 func (cpi *ControlPlaneInstaller) getAPIServiceAnnotations() map[string]interface{} {
 	switch {
-	case cpi.Opts.InfraProvider == v0.KubernetesRuntimeInfraProviderEKS && cpi.Opts.RestApiEksLoadBalancer:
+	case cpi.Opts.InfraProvider == v0.KubernetesRuntimeInfraProviderEKS && cpi.Opts.RestApiLoadBalancer:
 		return map[string]interface{}{
 			"service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
 		}

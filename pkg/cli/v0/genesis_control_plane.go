@@ -164,7 +164,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.CreateOrUpdateKubeResources = false
 	cpi.Opts.ControlPlaneOnly = a.ControlPlaneOnly
 	cpi.Opts.InfraOnly = a.InfraOnly
-	cpi.Opts.RestApiEksLoadBalancer = true
+	cpi.Opts.RestApiLoadBalancer = true
 	cpi.Opts.TeardownOnFailure = a.TeardownOnFailure
 	cpi.Opts.LocalRegistry = a.LocalRegistry
 	cpi.Opts.KindPortMappings = a.KindPortMappings

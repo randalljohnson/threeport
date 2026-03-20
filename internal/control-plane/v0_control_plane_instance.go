@@ -111,11 +111,16 @@ func v0ControlPlaneInstanceCreated(
 		return 0, fmt.Errorf("failed to get self control plane instance: %w", err)
 	}
 
+	// determine if child deploys to a different cluster than genesis —
+	// cross-cluster needs a load balancer, same-cluster uses ClusterIP
+	sameCluster := *selfInstance.KubernetesRuntimeInstanceID == *controlPlaneInstance.KubernetesRuntimeInstanceID
+
 	// Configure installer for new control plane instance
 	cpi := threeport.NewInstaller(threeport.Namespace(*controlPlaneInstance.Namespace))
 	cpi.Opts.ControlPlaneName = *controlPlaneInstance.Name
 	cpi.Opts.InThreeport = true
-	cpi.Opts.RestApiEksLoadBalancer = false
+	// enable load balancer for cross-cluster cloud provider deployments
+	cpi.Opts.RestApiLoadBalancer = !sameCluster && *kubernetesRuntimeDefinition.InfraProvider != v0.KubernetesRuntimeInfraProviderKind
 	// If this is not the first run of the creation reconciler, we want to use createOrUpdate mode
 	cpi.Opts.CreateOrUpdateKubeResources = notFirstRun
 
@@ -312,23 +317,12 @@ func v0ControlPlaneInstanceCreated(
 			nil,
 		)
 
-		// get cluster OCID for token generation
-		region := *ociProvider.DefaultRegion
-		if ociRuntimeInstance.Region != nil && *ociRuntimeInstance.Region != "" {
-			region = *ociRuntimeInstance.Region
+		// use the cluster OCID already stored on the OKE runtime instance
+		// for token generation — avoids compartment/region lookup issues
+		if ociRuntimeInstance.ClusterOCID == nil || *ociRuntimeInstance.ClusterOCID == "" {
+			return 0, fmt.Errorf("OCI OKE runtime instance %s has no cluster OCID set", *ociRuntimeInstance.Name)
 		}
-		infraOKE := &provider.KubernetesRuntimeInfraOKE{
-			PulumiWorkspace: provider.PulumiWorkspace{
-				RuntimeInstanceName: *kubernetesRuntimeInstance.Name,
-			},
-			CompartmentOCID: *ociProvider.CompartmentOCID,
-			ConfigProvider:  configProvider,
-			Region:          region,
-		}
-		clusterOCID, err := infraOKE.GetClusterOCID(*kubernetesRuntimeInstance.Name)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get OKE cluster OCID for token refresh: %w", err)
-		}
+		clusterOCID := *ociRuntimeInstance.ClusterOCID
 
 		tokenGenerator = func() (string, error) {
 			t, _, err := util.GenerateOkeToken(clusterOCID, configProvider)
@@ -437,11 +431,20 @@ func v0ControlPlaneInstanceCreated(
 		return 0, fmt.Errorf("failed to install threeport API server: %w", err)
 	}
 
-	// for a cloud provider installed control plane:
-	// * determine the threeport API's remote endpoint to add to the threeport
-	//   config and to add to the server certificate's alt names when TLS
-	//   assets are installed
-	// * install provider-specific kubernetes resources
+	// for cloud providers, get the load balancer endpoint so the genesis
+	// reconciler can reach the child API across clusters
+	var lbEndpoint string
+	if *kubernetesRuntimeDefinition.InfraProvider != v0.KubernetesRuntimeInfraProviderKind {
+		lbEndpoint, err = cpi.GetThreeportAPIEndpoint(dynamicKubeClient, *mapper)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get threeport API load balancer endpoint: %w", err)
+		}
+		_, port := cpi.GetAPIServicePort()
+		threeportAPIEndpoint = fmt.Sprintf("%s:%d", lbEndpoint, port)
+		controlPlaneInstance.ApiServerEndpoint = &threeportAPIEndpoint
+	}
+
+	// install provider-specific kubernetes resources
 	switch *kubernetesRuntimeDefinition.InfraProvider {
 	case v0.KubernetesRuntimeInfraProviderEKS:
 		// create and configure service accounts for workload and aws controllers,
@@ -468,6 +471,11 @@ func v0ControlPlaneInstanceCreated(
 		// determine the threeport API alt names
 		threeportApiAltNames := threeport.ThreeportApiAltNames(cpi.Opts.Namespace)
 		threeportApiAltNames = append(threeportApiAltNames, threeportAPIEndpoint)
+		// add the raw LB endpoint (IP or hostname without port) so
+		// net.ParseIP can add it as an IP SAN in the certificate
+		if lbEndpoint != "" {
+			threeportApiAltNames = append(threeportApiAltNames, lbEndpoint)
+		}
 
 		// install the threeport API TLS assets
 		if err := cpi.InstallThreeportAPITLS(

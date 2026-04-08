@@ -121,6 +121,26 @@ func DeleteObjectByTypeAndID(apiClient *http.Client, apiAddr string, objectType 
 			return fmt.Errorf("failed to delete LoggingInstance: %w", err)
 		}
 
+	case "v0.MachineRuntimeDefinition":
+		if _, err := DeleteMachineRuntimeDefinition(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete MachineRuntimeDefinition: %w", err)
+		}
+
+	case "v0.MachineRuntimeInstance":
+		if _, err := DeleteMachineRuntimeInstance(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete MachineRuntimeInstance: %w", err)
+		}
+
+	case "v0.MachineWorkloadDefinition":
+		if _, err := DeleteMachineWorkloadDefinition(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete MachineWorkloadDefinition: %w", err)
+		}
+
+	case "v0.MachineWorkloadInstance":
+		if _, err := DeleteMachineWorkloadInstance(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete MachineWorkloadInstance: %w", err)
+		}
+
 	case "v0.MetricsDefinition":
 		if _, err := DeleteMetricsDefinition(apiClient, apiAddr, id); err != nil {
 			return fmt.Errorf("failed to delete MetricsDefinition: %w", err)

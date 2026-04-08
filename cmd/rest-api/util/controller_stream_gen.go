@@ -10,6 +10,8 @@ import (
 	gateway_notif "github.com/threeport/threeport/internal/gateway/notif"
 	helmworkload_notif "github.com/threeport/threeport/internal/helm-workload/notif"
 	kubernetesruntime_notif "github.com/threeport/threeport/internal/kubernetes-runtime/notif"
+	notif1 "github.com/threeport/threeport/internal/machine-runtime/notif"
+	notif2 "github.com/threeport/threeport/internal/machine-workload/notif"
 	observability_notif "github.com/threeport/threeport/internal/observability/notif"
 	notif "github.com/threeport/threeport/internal/oci/notif"
 	secret_notif "github.com/threeport/threeport/internal/secret/notif"
@@ -71,6 +73,22 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not add stream %s: %w", helmworkload_notif.HelmWorkloadStreamName, err)
+	}
+
+	_, err = js.AddStream(&nats.StreamConfig{
+		Name:     notif1.MachineRuntimeStreamName,
+		Subjects: notif1.GetMachineRuntimeSubjects(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not add stream %s: %w", notif1.MachineRuntimeStreamName, err)
+	}
+
+	_, err = js.AddStream(&nats.StreamConfig{
+		Name:     notif2.MachineWorkloadStreamName,
+		Subjects: notif2.GetMachineWorkloadSubjects(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not add stream %s: %w", notif2.MachineWorkloadStreamName, err)
 	}
 
 	_, err = js.AddStream(&nats.StreamConfig{

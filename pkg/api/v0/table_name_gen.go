@@ -132,6 +132,26 @@ func (LoggingInstance) TableName() string {
 	return "v0_logging_instances"
 }
 
+// TableName sets the name of the table for the MachineRuntimeDefinition objects in the database.
+func (MachineRuntimeDefinition) TableName() string {
+	return "v0_machine_runtime_definitions"
+}
+
+// TableName sets the name of the table for the MachineRuntimeInstance objects in the database.
+func (MachineRuntimeInstance) TableName() string {
+	return "v0_machine_runtime_instances"
+}
+
+// TableName sets the name of the table for the MachineWorkloadDefinition objects in the database.
+func (MachineWorkloadDefinition) TableName() string {
+	return "v0_machine_workload_definitions"
+}
+
+// TableName sets the name of the table for the MachineWorkloadInstance objects in the database.
+func (MachineWorkloadInstance) TableName() string {
+	return "v0_machine_workload_instances"
+}
+
 // TableName sets the name of the table for the MetricsDefinition objects in the database.
 func (MetricsDefinition) TableName() string {
 	return "v0_metrics_definitions"

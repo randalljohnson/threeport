@@ -152,6 +152,32 @@ ApiObjectGroups:
       Tptctl:
         Enabled: true
         ConfigPath: true
+- Name: machine_runtime
+  Objects:
+    - Name: MachineRuntimeDefinition
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: MachineRuntimeInstance
+      Versions:
+        - v0
+      Reconcilable: true
+      Tptctl:
+        Enabled: true
+- Name: machine_workload
+  Objects:
+    - Name: MachineWorkloadDefinition
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: MachineWorkloadInstance
+      Versions:
+        - v0
+      Reconcilable: true
+      Tptctl:
+        Enabled: true
 - Name: kubernetes_runtime
   Objects:
     - Name: KubernetesRuntimeDefinition

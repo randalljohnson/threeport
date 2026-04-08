@@ -22,9 +22,9 @@ type MachineWorkloadDefinitionConfig struct {
 // MachineWorkloadDefinitionValues contains all the attributes needed to manage
 // the MachineWorkloadDefinition API object.
 type MachineWorkloadDefinitionValues struct {
-	// TODO: add config abstraction fields needed for user to manage a MachineWorkloadDefinition
-	Name *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Age  *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	Script *string `json:"Script,omitempty" yaml:"Script,omitempty"`
+	Age    *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets machine workload definitions from the Threeport API.
@@ -58,11 +58,11 @@ func (m *MachineWorkloadDefinitionConfig) Get(
 	// assemble config objects from API objects
 	var machineWorkloadDefinitionConfigs []MachineWorkloadDefinitionConfig
 	for _, machineWorkloadDefinition := range *machineWorkloadDefinitions {
-		// TODO: add config abstraction fields needed for user to manage a MachineWorkloadDefinition
 		machineWorkloadDefinitionConfig := MachineWorkloadDefinitionConfig{
 			MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
-				Age:  util.Ptr(util.GetAgeFormatted(machineWorkloadDefinition.CreatedAt)),
-				Name: machineWorkloadDefinition.Name,
+				Name:   machineWorkloadDefinition.Name,
+				Script: machineWorkloadDefinition.Script,
+				Age:    util.Ptr(util.GetAgeFormatted(machineWorkloadDefinition.CreatedAt)),
 			},
 		}
 		machineWorkloadDefinitionConfigs = append(machineWorkloadDefinitionConfigs, machineWorkloadDefinitionConfig)
@@ -84,11 +84,11 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 	}
 
 	// construct machine workload definition object
-	// TODO: add API object fields as needed for MachineWorkloadDefinition
 	machineWorkloadDefinition := api_v0.MachineWorkloadDefinition{
 		Definition: api_v0.Definition{
 			Name: machineWorkloadDefinitionValues.Name,
 		},
+		Script: machineWorkloadDefinitionValues.Script,
 	}
 
 	// create machine workload definition
@@ -102,11 +102,11 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 	}
 
 	// construct machine workload definition config
-	// TODO: add config abstraction fields needed for user to manage a MachineWorkloadDefinition
 	createdMachineWorkloadDefinitionConfig := &MachineWorkloadDefinitionConfig{
 		MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
-			Age:  util.Ptr(util.GetAgeFormatted(createdMachineWorkloadDefinition.CreatedAt)),
-			Name: createdMachineWorkloadDefinition.Name,
+			Name:   createdMachineWorkloadDefinition.Name,
+			Script: createdMachineWorkloadDefinition.Script,
+			Age:    util.Ptr(util.GetAgeFormatted(createdMachineWorkloadDefinition.CreatedAt)),
 		},
 	}
 
@@ -140,7 +140,6 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 	}
 
 	// construct updated machine workload definition object
-	// TODO: add API object fields as needed for MachineWorkloadDefinition
 	updatedMachineWorkloadDefinition := &api_v0.MachineWorkloadDefinition{
 		Common: api_v0.Common{
 			ID: existingMachineWorkloadDefinition.ID,
@@ -148,6 +147,7 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 		Definition: api_v0.Definition{
 			Name: machineWorkloadDefinitionValues.Name,
 		},
+		Script: machineWorkloadDefinitionValues.Script,
 	}
 
 	// replace machine workload definition
@@ -161,11 +161,11 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 	}
 
 	// construct updated machine workload definition config
-	// TODO: add config abstraction fields needed for user to manage a MachineWorkloadDefinition
 	updatedMachineWorkloadDefinitionConfig := &MachineWorkloadDefinitionConfig{
 		MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
-			Age:  util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadDefinition.CreatedAt)),
-			Name: replacedMachineWorkloadDefinition.Name,
+			Name:   replacedMachineWorkloadDefinition.Name,
+			Script: replacedMachineWorkloadDefinition.Script,
+			Age:    util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadDefinition.CreatedAt)),
 		},
 	}
 
@@ -220,7 +220,10 @@ func (m *MachineWorkloadDefinitionConfig) Validate() error {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
 	}
 
-	// TODO: add additional validation as needed
+	// ensure script is set
+	if machineWorkloadDefinitionValues.Script == nil {
+		multiError.AppendError(errors.New("missing required field in config: Script"))
+	}
 
 	return multiError.Error()
 }

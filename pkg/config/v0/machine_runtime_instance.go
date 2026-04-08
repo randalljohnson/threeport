@@ -22,8 +22,11 @@ type MachineRuntimeInstanceConfig struct {
 // MachineRuntimeInstanceValues contains all the attributes needed to manage
 // the MachineRuntimeInstance API object.
 type MachineRuntimeInstanceValues struct {
-	// TODO: add config abstraction fields needed for user to manage a MachineRuntimeInstance
 	Name                     *string                         `json:"Name,omitempty" yaml:"Name,omitempty"`
+	Hostname                 *string                         `json:"Hostname,omitempty" yaml:"Hostname,omitempty"`
+	SSHUser                  *string                         `json:"SSHUser,omitempty" yaml:"SSHUser,omitempty"`
+	SSHCredential            *string                         `json:"SSHCredential,omitempty" yaml:"SSHCredential,omitempty"`
+	Port                     *int                            `json:"Port,omitempty" yaml:"Port,omitempty"`
 	MachineRuntimeDefinition *MachineRuntimeDefinitionValues `json:"MachineRuntimeDefinition,omitempty" yaml:"MachineRuntimeDefinition,omitempty"`
 	Age                      *string                         `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
@@ -59,11 +62,28 @@ func (m *MachineRuntimeInstanceConfig) Get(
 	// assemble config objects from API objects
 	var machineRuntimeInstanceConfigs []MachineRuntimeInstanceConfig
 	for _, machineRuntimeInstance := range *machineRuntimeInstances {
-		// TODO: add config abstraction fields needed for user to manage a MachineRuntimeInstance
+		// get related machine runtime definition if present.
+		// MachineRuntimeDefinitionID is optional — imported machines may not
+		// have an associated definition.
+		var machineRuntimeDefinition *MachineRuntimeDefinitionValues
+		if machineRuntimeInstance.MachineRuntimeDefinitionID != nil {
+			mrd, err := client_v0.GetMachineRuntimeDefinitionByID(apiClient, apiEndpoint, *machineRuntimeInstance.MachineRuntimeDefinitionID)
+			if err == nil {
+				machineRuntimeDefinition = &MachineRuntimeDefinitionValues{
+					Name: mrd.Name,
+				}
+			}
+		}
+
 		machineRuntimeInstanceConfig := MachineRuntimeInstanceConfig{
 			MachineRuntimeInstance: MachineRuntimeInstanceValues{
-				Age:  util.Ptr(util.GetAgeFormatted(machineRuntimeInstance.CreatedAt)),
-				Name: machineRuntimeInstance.Name,
+				Name:                     machineRuntimeInstance.Name,
+				Hostname:                 machineRuntimeInstance.Hostname,
+				SSHUser:                  machineRuntimeInstance.SSHUser,
+				SSHCredential:            machineRuntimeInstance.SSHCredential,
+				Port:                     machineRuntimeInstance.Port,
+				MachineRuntimeDefinition: machineRuntimeDefinition,
+				Age:                      util.Ptr(util.GetAgeFormatted(machineRuntimeInstance.CreatedAt)),
 			},
 		}
 		machineRuntimeInstanceConfigs = append(machineRuntimeInstanceConfigs, machineRuntimeInstanceConfig)
@@ -84,12 +104,26 @@ func (m *MachineRuntimeInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for machine runtime instance with name %s: %w", *machineRuntimeInstanceValues.Name, err)
 	}
 
+	// look up machine runtime definition by name if provided
+	var machineRuntimeDefinitionID *uint
+	if machineRuntimeInstanceValues.MachineRuntimeDefinition != nil && machineRuntimeInstanceValues.MachineRuntimeDefinition.Name != nil {
+		machineRuntimeDefinition, err := client_v0.GetMachineRuntimeDefinitionByName(apiClient, apiEndpoint, *machineRuntimeInstanceValues.MachineRuntimeDefinition.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find machine runtime definition with name %s: %w", *machineRuntimeInstanceValues.MachineRuntimeDefinition.Name, err)
+		}
+		machineRuntimeDefinitionID = machineRuntimeDefinition.ID
+	}
+
 	// construct machine runtime instance object
-	// TODO: add API object fields as needed for MachineRuntimeInstance
 	machineRuntimeInstance := api_v0.MachineRuntimeInstance{
 		Instance: api_v0.Instance{
 			Name: machineRuntimeInstanceValues.Name,
 		},
+		Hostname:                   machineRuntimeInstanceValues.Hostname,
+		SSHUser:                    machineRuntimeInstanceValues.SSHUser,
+		SSHCredential:              machineRuntimeInstanceValues.SSHCredential,
+		Port:                       machineRuntimeInstanceValues.Port,
+		MachineRuntimeDefinitionID: machineRuntimeDefinitionID,
 	}
 
 	// create machine runtime instance
@@ -103,11 +137,14 @@ func (m *MachineRuntimeInstanceConfig) Create(
 	}
 
 	// construct machine runtime instance config
-	// TODO: add config abstraction fields needed for user to manage a MachineRuntimeInstance
 	createdMachineRuntimeInstanceConfig := &MachineRuntimeInstanceConfig{
 		MachineRuntimeInstance: MachineRuntimeInstanceValues{
-			Age:  util.Ptr(util.GetAgeFormatted(createdMachineRuntimeInstance.CreatedAt)),
-			Name: createdMachineRuntimeInstance.Name,
+			Name:          createdMachineRuntimeInstance.Name,
+			Hostname:      createdMachineRuntimeInstance.Hostname,
+			SSHUser:       createdMachineRuntimeInstance.SSHUser,
+			SSHCredential: createdMachineRuntimeInstance.SSHCredential,
+			Port:          createdMachineRuntimeInstance.Port,
+			Age:           util.Ptr(util.GetAgeFormatted(createdMachineRuntimeInstance.CreatedAt)),
 		},
 	}
 
@@ -141,7 +178,6 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 	}
 
 	// construct updated machine runtime instance object
-	// TODO: add API object fields as needed for MachineRuntimeInstance
 	updatedMachineRuntimeInstance := &api_v0.MachineRuntimeInstance{
 		Common: api_v0.Common{
 			ID: existingMachineRuntimeInstance.ID,
@@ -149,6 +185,10 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 		Instance: api_v0.Instance{
 			Name: machineRuntimeInstanceValues.Name,
 		},
+		Hostname:      machineRuntimeInstanceValues.Hostname,
+		SSHUser:       machineRuntimeInstanceValues.SSHUser,
+		SSHCredential: machineRuntimeInstanceValues.SSHCredential,
+		Port:          machineRuntimeInstanceValues.Port,
 	}
 
 	// replace machine runtime instance
@@ -162,11 +202,14 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 	}
 
 	// construct updated machine runtime instance config
-	// TODO: add config abstraction fields needed for user to manage a MachineRuntimeInstance
 	updatedMachineRuntimeInstanceConfig := &MachineRuntimeInstanceConfig{
 		MachineRuntimeInstance: MachineRuntimeInstanceValues{
-			Age:  util.Ptr(util.GetAgeFormatted(replacedMachineRuntimeInstance.CreatedAt)),
-			Name: replacedMachineRuntimeInstance.Name,
+			Name:          replacedMachineRuntimeInstance.Name,
+			Hostname:      replacedMachineRuntimeInstance.Hostname,
+			SSHUser:       replacedMachineRuntimeInstance.SSHUser,
+			SSHCredential: replacedMachineRuntimeInstance.SSHCredential,
+			Port:          replacedMachineRuntimeInstance.Port,
+			Age:           util.Ptr(util.GetAgeFormatted(replacedMachineRuntimeInstance.CreatedAt)),
 		},
 	}
 
@@ -221,7 +264,20 @@ func (m *MachineRuntimeInstanceConfig) Validate() error {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
 	}
 
-	// TODO: add additional validation as needed
+	// ensure hostname is set
+	if machineRuntimeInstanceValues.Hostname == nil {
+		multiError.AppendError(errors.New("missing required field in config: Hostname"))
+	}
+
+	// ensure ssh user is set
+	if machineRuntimeInstanceValues.SSHUser == nil {
+		multiError.AppendError(errors.New("missing required field in config: SSHUser"))
+	}
+
+	// ensure ssh credential is set
+	if machineRuntimeInstanceValues.SSHCredential == nil {
+		multiError.AppendError(errors.New("missing required field in config: SSHCredential"))
+	}
 
 	return multiError.Error()
 }

@@ -514,7 +514,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									If(Id("err").Op("!=").Nil()).Block(
 										Return(Qual("fmt", "Errorf").Call(
 											Lit(fmt.Sprintf(
-												"failed to replace %s instances with name %%s: %%w",
+												"failed to replace %s instance with name %%s: %%w",
 												defInstObjectHuman,
 											)),
 											Id("name"),

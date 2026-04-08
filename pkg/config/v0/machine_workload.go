@@ -4,8 +4,9 @@ package v0
 
 import (
 	"fmt"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"net/http"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // MachineWorkloadConfig is a container for a MachineWorkload which is a config abstraction for
@@ -20,9 +21,10 @@ type MachineWorkloadConfig struct {
 // MachineWorkloadDefinition and MachineWorkloadInstance API objects
 // together with a single operation.
 type MachineWorkloadValues struct {
-	// TODO: add fields needed for user to manage a MachineWorkloadDefinition and MachineWorkloadInstance together
-	Name *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Age  *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	Script                 *string `json:"Script,omitempty" yaml:"Script,omitempty"`
+	MachineRuntimeInstance *string `json:"MachineRuntimeInstance,omitempty" yaml:"MachineRuntimeInstance,omitempty"`
+	Age                    *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a machine workload definition and instance from the Threeport API.
@@ -140,8 +142,12 @@ func (m *MachineWorkloadConfig) GetOperations(
 	operations := util.Operations{}
 
 	// add machine workload definition operation
-	// TODO: add appropriate fields to definition values object
-	machineWorkloadDefinitionConfig := MachineWorkloadDefinitionConfig{MachineWorkloadDefinition: MachineWorkloadDefinitionValues{Name: machineWorkloadValues.Name}}
+	machineWorkloadDefinitionConfig := MachineWorkloadDefinitionConfig{
+		MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
+			Name:   machineWorkloadValues.Name,
+			Script: machineWorkloadValues.Script,
+		},
+	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
 			machineWorkloadDefinition, err := machineWorkloadDefinitionConfig.Create(apiClient, apiEndpoint)
@@ -178,11 +184,17 @@ func (m *MachineWorkloadConfig) GetOperations(
 	})
 
 	// add machine workload instance operation
-	// TODO: add appropriate fields to instance values object
-	machineWorkloadInstanceConfig := MachineWorkloadInstanceConfig{MachineWorkloadInstance: MachineWorkloadInstanceValues{
-		Age:  machineWorkloadValues.Age,
-		Name: machineWorkloadValues.Name,
-	}}
+	machineWorkloadInstanceConfig := MachineWorkloadInstanceConfig{
+		MachineWorkloadInstance: MachineWorkloadInstanceValues{
+			Name: machineWorkloadValues.Name,
+			MachineWorkloadDefinition: &MachineWorkloadDefinitionValues{
+				Name: machineWorkloadValues.Name,
+			},
+			MachineRuntimeInstance: &MachineRuntimeInstanceValues{
+				Name: machineWorkloadValues.MachineRuntimeInstance,
+			},
+		},
+	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
 			machineWorkloadInstance, err := machineWorkloadInstanceConfig.Create(apiClient, apiEndpoint)
@@ -211,7 +223,7 @@ func (m *MachineWorkloadConfig) GetOperations(
 		Replace: func(name string) error {
 			machineWorkloadInstance, err := machineWorkloadInstanceConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
-				return fmt.Errorf("failed to replace machine workload instances with name %s: %w", name, err)
+				return fmt.Errorf("failed to replace machine workload instance with name %s: %w", name, err)
 			}
 			operatedMachineWorkloadInstances = append(operatedMachineWorkloadInstances, *machineWorkloadInstance)
 			return nil
@@ -235,16 +247,19 @@ func mapToMachineWorkloadDefinedInstances(
 			// a defined instance must have matching names for definition and instance
 			// and the definition must be associated with the instance
 			if instName == defName && *inst.MachineWorkloadInstance.MachineWorkloadDefinition.Name == *def.MachineWorkloadDefinition.Name {
-				// TODO: add fields needed for user to manage a MachineWorkloadDefinition and MachineWorkloadInstance together
+				var machineRuntimeInstanceName *string
+				if inst.MachineWorkloadInstance.MachineRuntimeInstance != nil {
+					machineRuntimeInstanceName = inst.MachineWorkloadInstance.MachineRuntimeInstance.Name
+				}
 				machineWorkloadConfig := MachineWorkloadConfig{
 					MachineWorkload: MachineWorkloadValues{
-						Age:  inst.MachineWorkloadInstance.Age,
-						Name: inst.MachineWorkloadInstance.Name,
+						Name:                   inst.MachineWorkloadInstance.Name,
+						Script:                 def.MachineWorkloadDefinition.Script,
+						MachineRuntimeInstance: machineRuntimeInstanceName,
+						Age:                    inst.MachineWorkloadInstance.Age,
 					},
 				}
 				machineWorkloadConfigs = append(machineWorkloadConfigs, machineWorkloadConfig)
-				// an instance can only have one matching definition for a defined instance
-				// we can break out of the loop after finding the first matching definition
 				break
 			}
 		}

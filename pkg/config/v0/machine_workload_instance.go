@@ -22,9 +22,9 @@ type MachineWorkloadInstanceConfig struct {
 // MachineWorkloadInstanceValues contains all the attributes needed to manage
 // the MachineWorkloadInstance API object.
 type MachineWorkloadInstanceValues struct {
-	// TODO: add config abstraction fields needed for user to manage a MachineWorkloadInstance
 	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
 	MachineWorkloadDefinition *MachineWorkloadDefinitionValues `json:"MachineWorkloadDefinition,omitempty" yaml:"MachineWorkloadDefinition,omitempty"`
+	MachineRuntimeInstance    *MachineRuntimeInstanceValues    `json:"MachineRuntimeInstance,omitempty" yaml:"MachineRuntimeInstance,omitempty"`
 	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
@@ -59,11 +59,34 @@ func (m *MachineWorkloadInstanceConfig) Get(
 	// assemble config objects from API objects
 	var machineWorkloadInstanceConfigs []MachineWorkloadInstanceConfig
 	for _, machineWorkloadInstance := range *machineWorkloadInstances {
-		// TODO: add config abstraction fields needed for user to manage a MachineWorkloadInstance
+		// get related machine workload definition
+		var machineWorkloadDefinition *MachineWorkloadDefinitionValues
+		if machineWorkloadInstance.MachineWorkloadDefinitionID != nil {
+			mwd, err := client_v0.GetMachineWorkloadDefinitionByID(apiClient, apiEndpoint, *machineWorkloadInstance.MachineWorkloadDefinitionID)
+			if err == nil {
+				machineWorkloadDefinition = &MachineWorkloadDefinitionValues{
+					Name: mwd.Name,
+				}
+			}
+		}
+
+		// get related machine runtime instance
+		var machineRuntimeInstance *MachineRuntimeInstanceValues
+		if machineWorkloadInstance.MachineRuntimeInstanceID != nil {
+			mri, err := client_v0.GetMachineRuntimeInstanceByID(apiClient, apiEndpoint, *machineWorkloadInstance.MachineRuntimeInstanceID)
+			if err == nil {
+				machineRuntimeInstance = &MachineRuntimeInstanceValues{
+					Name: mri.Name,
+				}
+			}
+		}
+
 		machineWorkloadInstanceConfig := MachineWorkloadInstanceConfig{
 			MachineWorkloadInstance: MachineWorkloadInstanceValues{
-				Age:  util.Ptr(util.GetAgeFormatted(machineWorkloadInstance.CreatedAt)),
-				Name: machineWorkloadInstance.Name,
+				Name:                      machineWorkloadInstance.Name,
+				MachineWorkloadDefinition: machineWorkloadDefinition,
+				MachineRuntimeInstance:    machineRuntimeInstance,
+				Age:                       util.Ptr(util.GetAgeFormatted(machineWorkloadInstance.CreatedAt)),
 			},
 		}
 		machineWorkloadInstanceConfigs = append(machineWorkloadInstanceConfigs, machineWorkloadInstanceConfig)
@@ -84,12 +107,33 @@ func (m *MachineWorkloadInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for machine workload instance with name %s: %w", *machineWorkloadInstanceValues.Name, err)
 	}
 
+	// look up machine workload definition by name
+	machineWorkloadDefinition, err := client_v0.GetMachineWorkloadDefinitionByName(
+		apiClient,
+		apiEndpoint,
+		*machineWorkloadInstanceValues.MachineWorkloadDefinition.Name,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find machine workload definition with name %s: %w", *machineWorkloadInstanceValues.MachineWorkloadDefinition.Name, err)
+	}
+
+	// look up machine runtime instance by name
+	machineRuntimeInstance, err := client_v0.GetMachineRuntimeInstanceByName(
+		apiClient,
+		apiEndpoint,
+		*machineWorkloadInstanceValues.MachineRuntimeInstance.Name,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find machine runtime instance with name %s: %w", *machineWorkloadInstanceValues.MachineRuntimeInstance.Name, err)
+	}
+
 	// construct machine workload instance object
-	// TODO: add API object fields as needed for MachineWorkloadInstance
 	machineWorkloadInstance := api_v0.MachineWorkloadInstance{
 		Instance: api_v0.Instance{
 			Name: machineWorkloadInstanceValues.Name,
 		},
+		MachineWorkloadDefinitionID: machineWorkloadDefinition.ID,
+		MachineRuntimeInstanceID:    machineRuntimeInstance.ID,
 	}
 
 	// create machine workload instance
@@ -103,11 +147,10 @@ func (m *MachineWorkloadInstanceConfig) Create(
 	}
 
 	// construct machine workload instance config
-	// TODO: add config abstraction fields needed for user to manage a MachineWorkloadInstance
 	createdMachineWorkloadInstanceConfig := &MachineWorkloadInstanceConfig{
 		MachineWorkloadInstance: MachineWorkloadInstanceValues{
-			Age:  util.Ptr(util.GetAgeFormatted(createdMachineWorkloadInstance.CreatedAt)),
 			Name: createdMachineWorkloadInstance.Name,
+			Age:  util.Ptr(util.GetAgeFormatted(createdMachineWorkloadInstance.CreatedAt)),
 		},
 	}
 
@@ -141,7 +184,6 @@ func (m *MachineWorkloadInstanceConfig) Replace(
 	}
 
 	// construct updated machine workload instance object
-	// TODO: add API object fields as needed for MachineWorkloadInstance
 	updatedMachineWorkloadInstance := &api_v0.MachineWorkloadInstance{
 		Common: api_v0.Common{
 			ID: existingMachineWorkloadInstance.ID,
@@ -149,6 +191,8 @@ func (m *MachineWorkloadInstanceConfig) Replace(
 		Instance: api_v0.Instance{
 			Name: machineWorkloadInstanceValues.Name,
 		},
+		MachineWorkloadDefinitionID: existingMachineWorkloadInstance.MachineWorkloadDefinitionID,
+		MachineRuntimeInstanceID:    existingMachineWorkloadInstance.MachineRuntimeInstanceID,
 	}
 
 	// replace machine workload instance
@@ -162,11 +206,10 @@ func (m *MachineWorkloadInstanceConfig) Replace(
 	}
 
 	// construct updated machine workload instance config
-	// TODO: add config abstraction fields needed for user to manage a MachineWorkloadInstance
 	updatedMachineWorkloadInstanceConfig := &MachineWorkloadInstanceConfig{
 		MachineWorkloadInstance: MachineWorkloadInstanceValues{
-			Age:  util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadInstance.CreatedAt)),
 			Name: replacedMachineWorkloadInstance.Name,
+			Age:  util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadInstance.CreatedAt)),
 		},
 	}
 
@@ -221,7 +264,15 @@ func (m *MachineWorkloadInstanceConfig) Validate() error {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
 	}
 
-	// TODO: add additional validation as needed
+	// ensure machine workload definition is set
+	if machineWorkloadInstanceValues.MachineWorkloadDefinition == nil || machineWorkloadInstanceValues.MachineWorkloadDefinition.Name == nil {
+		multiError.AppendError(errors.New("missing required field in config: MachineWorkloadDefinition.Name"))
+	}
+
+	// ensure machine runtime instance is set
+	if machineWorkloadInstanceValues.MachineRuntimeInstance == nil || machineWorkloadInstanceValues.MachineRuntimeInstance.Name == nil {
+		multiError.AppendError(errors.New("missing required field in config: MachineRuntimeInstance.Name"))
+	}
 
 	return multiError.Error()
 }

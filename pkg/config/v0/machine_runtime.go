@@ -4,8 +4,9 @@ package v0
 
 import (
 	"fmt"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"net/http"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // MachineRuntimeConfig is a container for a MachineRuntime which is a config abstraction for
@@ -20,9 +21,12 @@ type MachineRuntimeConfig struct {
 // MachineRuntimeDefinition and MachineRuntimeInstance API objects
 // together with a single operation.
 type MachineRuntimeValues struct {
-	// TODO: add fields needed for user to manage a MachineRuntimeDefinition and MachineRuntimeInstance together
-	Name *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Age  *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name          *string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	Hostname      *string `json:"Hostname,omitempty" yaml:"Hostname,omitempty"`
+	SSHUser       *string `json:"SSHUser,omitempty" yaml:"SSHUser,omitempty"`
+	SSHCredential *string `json:"SSHCredential,omitempty" yaml:"SSHCredential,omitempty"`
+	Port          *int    `json:"Port,omitempty" yaml:"Port,omitempty"`
+	Age           *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a machine runtime definition and instance from the Threeport API.
@@ -140,8 +144,11 @@ func (m *MachineRuntimeConfig) GetOperations(
 	operations := util.Operations{}
 
 	// add machine runtime definition operation
-	// TODO: add appropriate fields to definition values object
-	machineRuntimeDefinitionConfig := MachineRuntimeDefinitionConfig{MachineRuntimeDefinition: MachineRuntimeDefinitionValues{Name: machineRuntimeValues.Name}}
+	machineRuntimeDefinitionConfig := MachineRuntimeDefinitionConfig{
+		MachineRuntimeDefinition: MachineRuntimeDefinitionValues{
+			Name: machineRuntimeValues.Name,
+		},
+	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
 			machineRuntimeDefinition, err := machineRuntimeDefinitionConfig.Create(apiClient, apiEndpoint)
@@ -178,11 +185,18 @@ func (m *MachineRuntimeConfig) GetOperations(
 	})
 
 	// add machine runtime instance operation
-	// TODO: add appropriate fields to instance values object
-	machineRuntimeInstanceConfig := MachineRuntimeInstanceConfig{MachineRuntimeInstance: MachineRuntimeInstanceValues{
-		Age:  machineRuntimeValues.Age,
-		Name: machineRuntimeValues.Name,
-	}}
+	machineRuntimeInstanceConfig := MachineRuntimeInstanceConfig{
+		MachineRuntimeInstance: MachineRuntimeInstanceValues{
+			Name:          machineRuntimeValues.Name,
+			Hostname:      machineRuntimeValues.Hostname,
+			SSHUser:       machineRuntimeValues.SSHUser,
+			SSHCredential: machineRuntimeValues.SSHCredential,
+			Port:          machineRuntimeValues.Port,
+			MachineRuntimeDefinition: &MachineRuntimeDefinitionValues{
+				Name: machineRuntimeValues.Name,
+			},
+		},
+	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
 			machineRuntimeInstance, err := machineRuntimeInstanceConfig.Create(apiClient, apiEndpoint)
@@ -211,7 +225,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 		Replace: func(name string) error {
 			machineRuntimeInstance, err := machineRuntimeInstanceConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
-				return fmt.Errorf("failed to replace machine runtime instances with name %s: %w", name, err)
+				return fmt.Errorf("failed to replace machine runtime instance with name %s: %w", name, err)
 			}
 			operatedMachineRuntimeInstances = append(operatedMachineRuntimeInstances, *machineRuntimeInstance)
 			return nil
@@ -222,7 +236,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 }
 
 // mapToMachineRuntimeDefinedInstances maps a slice of machine runtime definition and instance configs
-// to a slice of machine runtime config objects
+// to a slice of machine runtime config objects.
 func mapToMachineRuntimeDefinedInstances(
 	machineRuntimeDefinitions *[]MachineRuntimeDefinitionConfig,
 	machineRuntimeInstances *[]MachineRuntimeInstanceConfig,
@@ -235,11 +249,14 @@ func mapToMachineRuntimeDefinedInstances(
 			// a defined instance must have matching names for definition and instance
 			// and the definition must be associated with the instance
 			if instName == defName && *inst.MachineRuntimeInstance.MachineRuntimeDefinition.Name == *def.MachineRuntimeDefinition.Name {
-				// TODO: add fields needed for user to manage a MachineRuntimeDefinition and MachineRuntimeInstance together
 				machineRuntimeConfig := MachineRuntimeConfig{
 					MachineRuntime: MachineRuntimeValues{
-						Age:  inst.MachineRuntimeInstance.Age,
-						Name: inst.MachineRuntimeInstance.Name,
+						Name:          inst.MachineRuntimeInstance.Name,
+						Hostname:      inst.MachineRuntimeInstance.Hostname,
+						SSHUser:       inst.MachineRuntimeInstance.SSHUser,
+						SSHCredential: inst.MachineRuntimeInstance.SSHCredential,
+						Port:          inst.MachineRuntimeInstance.Port,
+						Age:           inst.MachineRuntimeInstance.Age,
 					},
 				}
 				machineRuntimeConfigs = append(machineRuntimeConfigs, machineRuntimeConfig)

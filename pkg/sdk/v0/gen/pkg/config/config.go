@@ -38,8 +38,11 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					instsVar := pluralize.Pluralize(instVar, 2, false)
 					defValuesObjectName := fmt.Sprintf("%sValues", defObject)
 					instValuesObjectName := fmt.Sprintf("%sValues", instObject)
-					defValuesVar := strcase.ToLowerCamel(defValuesObjectName)
-					instValuesVar := strcase.ToLowerCamel(instValuesObjectName)
+					defConfigObjectName := fmt.Sprintf("%sConfig", defObject)
+					instConfigObjectName := fmt.Sprintf("%sConfig", instObject)
+					defConfigVar := strcase.ToLowerCamel(defConfigObjectName)
+					instConfigVar := strcase.ToLowerCamel(instConfigObjectName)
+					defInstValuesVar := strcase.ToLowerCamel(defInstValuesObjectName)
 					operatedDefsVar := pluralize.Pluralize(fmt.Sprintf("operated%s", defObject), 2, false)
 					operatedInstsVar := pluralize.Pluralize(fmt.Sprintf("operated%s", instObject), 2, false)
 					mapToDefInstsFunc := fmt.Sprintf("mapTo%sDefinedInstances", defInstObject)
@@ -316,6 +319,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Op("*").Index().Id(fmt.Sprintf("%sConfig", defObject)),
 						Op("*").Index().Id(fmt.Sprintf("%sConfig", instObject)),
 					).Block(
+						Id(defInstValuesVar).Op(":=").Id(defInstMethodVar).Dot(defInstObject),
 						Var().Id("err").Error(),
 						Var().Id(operatedDefsVar).Index().Id(fmt.Sprintf("%sConfig", defObject)),
 						Var().Id(operatedInstsVar).Index().Id(fmt.Sprintf("%sConfig", instObject)),
@@ -329,11 +333,11 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 						Commentf("add %s definition operation", defInstObjectHuman),
 						Comment("TODO: add appropriate fields to definition values object"),
-						Id(defValuesVar).Op(":=").Id(defValuesObjectName).Values(
-							Dict{
-								Line().Id("Name"): Id(defInstMethodVar).Dot(defInstObject).Dot("Name").Op(",").Line(),
-							},
-						),
+						Id(defConfigVar).Op(":=").Id(defConfigObjectName).Values(Dict{
+							Id(defObject): Id(defValuesObjectName).Values(Dict{
+								Id("Name"): Id(defInstValuesVar).Dot("Name"),
+							}),
+						}),
 						Id("operations").Dot("AppendOperation").Call(Qual(
 							"github.com/threeport/threeport/pkg/util/v0",
 							"Operation",
@@ -343,7 +347,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Id(defsVar),
 										Id("err"),
-									).Op(":=").Id(defValuesVar).Dot("Get").Call(
+									).Op(":=").Id(defConfigVar).Dot("Get").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 									),
@@ -366,7 +370,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Id(defVar),
 										Id("err"),
-									).Op(":=").Id(defValuesVar).Dot("Create").Call(
+									).Op(":=").Id(defConfigVar).Dot("Create").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 									),
@@ -376,7 +380,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 												"failed to create %s definition with name %%s: %%w",
 												defInstObjectHuman,
 											)),
-											Op("*").Id(defInstMethodVar).Dot(defInstObject).Dot("Name"),
+											Op("*").Id(defInstValuesVar).Dot("Name"),
 											Id("err"),
 										)),
 									),
@@ -390,7 +394,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Id(defVar),
 										Id("err"),
-									).Op(":=").Id(defValuesVar).Dot("Replace").Call(
+									).Op(":=").Id(defConfigVar).Dot("Replace").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 										Id("name"),
@@ -415,7 +419,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Op("_"),
 										Id("err"),
-									).Op("=").Id(defValuesVar).Dot("Delete").Call(
+									).Op("=").Id(defConfigVar).Dot("Delete").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 									),
@@ -426,7 +430,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 													"failed to delete %s definition with name %%s: %%w",
 													defInstObjectHuman,
 												)),
-												Op("*").Id(defInstMethodVar).Dot(defInstObject).Dot("Name"),
+												Op("*").Id(defInstValuesVar).Dot("Name"),
 												Id("err"),
 											),
 										),
@@ -440,12 +444,12 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 						Commentf("add %s instance operation", defInstObjectHuman),
 						Comment("TODO: add appropriate fields to instance values object"),
-						Id(instValuesVar).Op(":=").Id(instValuesObjectName).Values(
-							Dict{
-								Id("Name"): Id(defInstMethodVar).Dot(defInstObject).Dot("Name"),
-								Id("Age"):  Id(defInstMethodVar).Dot(defInstObject).Dot("Age"),
-							},
-						),
+						Id(instConfigVar).Op(":=").Id(instConfigObjectName).Values(Dict{
+							Id(instObject): Id(instValuesObjectName).Values(Dict{
+								Id("Name"): Id(defInstValuesVar).Dot("Name"),
+								Id("Age"):  Id(defInstValuesVar).Dot("Age"),
+							}),
+						}),
 						Id("operations").Dot("AppendOperation").Call(Qual(
 							"github.com/threeport/threeport/pkg/util/v0",
 							"Operation",
@@ -455,7 +459,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Id(instsVar),
 										Id("err"),
-									).Op(":=").Id(instValuesVar).Dot("Get").Call(
+									).Op(":=").Id(instConfigVar).Dot("Get").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 									),
@@ -478,7 +482,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Id(instVar),
 										Id("err"),
-									).Op(":=").Id(instValuesVar).Dot("Create").Call(
+									).Op(":=").Id(instConfigVar).Dot("Create").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 									),
@@ -488,7 +492,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 												"failed to create %s instance with name %%s: %%w",
 												defInstObjectHuman,
 											)),
-											Op("*").Id(defInstMethodVar).Dot(defInstObject).Dot("Name"),
+											Op("*").Id(defInstValuesVar).Dot("Name"),
 											Id("err"),
 										)),
 									),
@@ -502,7 +506,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Id(instVar),
 										Id("err"),
-									).Op(":=").Id(instValuesVar).Dot("Replace").Call(
+									).Op(":=").Id(instConfigVar).Dot("Replace").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 										Id("name"),
@@ -527,7 +531,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									List(
 										Op("_"),
 										Id("err"),
-									).Op("=").Id(instValuesVar).Dot("Delete").Call(
+									).Op("=").Id(instConfigVar).Dot("Delete").Call(
 										Id("apiClient"),
 										Id("apiEndpoint"),
 									),
@@ -537,7 +541,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 												"failed to delete %s instance with name %%s: %%w",
 												defInstObjectHuman,
 											)),
-											Op("*").Id(defInstMethodVar).Dot(defInstObject).Dot("Name"),
+											Op("*").Id(defInstValuesVar).Dot("Name"),
 											Id("err"),
 										)),
 									),

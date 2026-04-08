@@ -132,6 +132,7 @@ func (m *MachineWorkloadConfig) GetOperations(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*util.Operations, *[]MachineWorkloadDefinitionConfig, *[]MachineWorkloadInstanceConfig) {
+	machineWorkloadValues := m.MachineWorkload
 	var err error
 	var operatedMachineWorkloadDefinitions []MachineWorkloadDefinitionConfig
 	var operatedMachineWorkloadInstances []MachineWorkloadInstanceConfig
@@ -140,27 +141,25 @@ func (m *MachineWorkloadConfig) GetOperations(
 
 	// add machine workload definition operation
 	// TODO: add appropriate fields to definition values object
-	machineWorkloadDefinitionValues := MachineWorkloadDefinitionValues{
-		Name: m.MachineWorkload.Name,
-	}
+	machineWorkloadDefinitionConfig := MachineWorkloadDefinitionConfig{MachineWorkloadDefinition: MachineWorkloadDefinitionValues{Name: machineWorkloadValues.Name}}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
-			machineWorkloadDefinition, err := machineWorkloadDefinitionValues.Create(apiClient, apiEndpoint)
+			machineWorkloadDefinition, err := machineWorkloadDefinitionConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create machine workload definition with name %s: %w", *m.MachineWorkload.Name, err)
+				return fmt.Errorf("failed to create machine workload definition with name %s: %w", *machineWorkloadValues.Name, err)
 			}
 			operatedMachineWorkloadDefinitions = append(operatedMachineWorkloadDefinitions, *machineWorkloadDefinition)
 			return nil
 		},
 		Delete: func() error {
-			_, err = machineWorkloadDefinitionValues.Delete(apiClient, apiEndpoint)
+			_, err = machineWorkloadDefinitionConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete machine workload definition with name %s: %w", *m.MachineWorkload.Name, err)
+				return fmt.Errorf("failed to delete machine workload definition with name %s: %w", *machineWorkloadValues.Name, err)
 			}
 			return nil
 		},
 		Get: func() error {
-			machineWorkloadDefinitions, err := machineWorkloadDefinitionValues.Get(apiClient, apiEndpoint)
+			machineWorkloadDefinitions, err := machineWorkloadDefinitionConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to get machine workload definitions: %w", err)
 			}
@@ -169,7 +168,7 @@ func (m *MachineWorkloadConfig) GetOperations(
 		},
 		Name: "machine workload definition",
 		Replace: func(name string) error {
-			machineWorkloadDefinition, err := machineWorkloadDefinitionValues.Replace(apiClient, apiEndpoint, name)
+			machineWorkloadDefinition, err := machineWorkloadDefinitionConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
 				return fmt.Errorf("failed to replace machine workload definition with name %s: %w", name, err)
 			}
@@ -180,28 +179,28 @@ func (m *MachineWorkloadConfig) GetOperations(
 
 	// add machine workload instance operation
 	// TODO: add appropriate fields to instance values object
-	machineWorkloadInstanceValues := MachineWorkloadInstanceValues{
-		Age:  m.MachineWorkload.Age,
-		Name: m.MachineWorkload.Name,
-	}
+	machineWorkloadInstanceConfig := MachineWorkloadInstanceConfig{MachineWorkloadInstance: MachineWorkloadInstanceValues{
+		Age:  machineWorkloadValues.Age,
+		Name: machineWorkloadValues.Name,
+	}}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
-			machineWorkloadInstance, err := machineWorkloadInstanceValues.Create(apiClient, apiEndpoint)
+			machineWorkloadInstance, err := machineWorkloadInstanceConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create machine workload instance with name %s: %w", *m.MachineWorkload.Name, err)
+				return fmt.Errorf("failed to create machine workload instance with name %s: %w", *machineWorkloadValues.Name, err)
 			}
 			operatedMachineWorkloadInstances = append(operatedMachineWorkloadInstances, *machineWorkloadInstance)
 			return nil
 		},
 		Delete: func() error {
-			_, err = machineWorkloadInstanceValues.Delete(apiClient, apiEndpoint)
+			_, err = machineWorkloadInstanceConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete machine workload instance with name %s: %w", *m.MachineWorkload.Name, err)
+				return fmt.Errorf("failed to delete machine workload instance with name %s: %w", *machineWorkloadValues.Name, err)
 			}
 			return nil
 		},
 		Get: func() error {
-			machineWorkloadInstances, err := machineWorkloadInstanceValues.Get(apiClient, apiEndpoint)
+			machineWorkloadInstances, err := machineWorkloadInstanceConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to get machine workload instances: %w", err)
 			}
@@ -210,7 +209,7 @@ func (m *MachineWorkloadConfig) GetOperations(
 		},
 		Name: "machine workload instance",
 		Replace: func(name string) error {
-			machineWorkloadInstance, err := machineWorkloadInstanceValues.Replace(apiClient, apiEndpoint, name)
+			machineWorkloadInstance, err := machineWorkloadInstanceConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
 				return fmt.Errorf("failed to replace machine workload instances with name %s: %w", name, err)
 			}

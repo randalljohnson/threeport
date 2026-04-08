@@ -1242,6 +1242,212 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	}
 
 	// /////////////////////////////////////////////////////////////////////////////
+	// registering controllers, objects and routes for MachineRuntime object group
+	// /////////////////////////////////////////////////////////////////////////////
+	// registering controller machine-runtime-controller
+	controller = api_v0.ModuleController{
+		DeploymentName: util.Ptr(threeportNamespace + "/threeport-machine-runtime-controller"),
+		ModuleApiID:    moduleApi.ID,
+		Name:           util.Ptr("machine-runtime-controller"),
+	}
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register machine-runtime-controller: %w", result.Error)
+	}
+
+	// registering object MachineRuntimeDefinition
+	object = api_v0.ModuleObject{
+		Description: util.Ptr("MachineRuntimeDefinition is the configuration for a machine runtime. It serves as a template for provisioning machine runtime instances."),
+		ModuleApiID: moduleApi.ID,
+		Name:        util.Ptr("MachineRuntimeDefinition"),
+		Version:     util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register MachineRuntimeDefinition: %w", result.Error)
+	}
+
+	// registering routes for MachineRuntimeDefinition
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineRuntimeDefinitionVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for MachineRuntimeDefinition: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineRuntimeDefinitions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for MachineRuntimeDefinition: %w", result.Error)
+	}
+
+	// registering object MachineRuntimeInstance
+	object = api_v0.ModuleObject{
+		Description:        util.Ptr("MachineRuntimeInstance is a machine that serves as a runtime for workloads."),
+		ModuleApiID:        moduleApi.ID,
+		ModuleControllerID: controller.ID,
+		Name:               util.Ptr("MachineRuntimeInstance"),
+		Version:            util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register MachineRuntimeInstance: %w", result.Error)
+	}
+
+	// registering routes for MachineRuntimeInstance
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineRuntimeInstanceVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for MachineRuntimeInstance: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineRuntimeInstances),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for MachineRuntimeInstance: %w", result.Error)
+	}
+
+	// /////////////////////////////////////////////////////////////////////////////
+	// registering controllers, objects and routes for MachineWorkload object group
+	// /////////////////////////////////////////////////////////////////////////////
+	// registering controller machine-workload-controller
+	controller = api_v0.ModuleController{
+		DeploymentName: util.Ptr(threeportNamespace + "/threeport-machine-workload-controller"),
+		ModuleApiID:    moduleApi.ID,
+		Name:           util.Ptr("machine-workload-controller"),
+	}
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register machine-workload-controller: %w", result.Error)
+	}
+
+	// registering object MachineWorkloadDefinition
+	object = api_v0.ModuleObject{
+		Description: util.Ptr("MachineWorkloadDefinition is the configuration for a workload that runs on a machine runtime."),
+		ModuleApiID: moduleApi.ID,
+		Name:        util.Ptr("MachineWorkloadDefinition"),
+		Version:     util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register MachineWorkloadDefinition: %w", result.Error)
+	}
+
+	// registering routes for MachineWorkloadDefinition
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineWorkloadDefinitionVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for MachineWorkloadDefinition: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineWorkloadDefinitions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for MachineWorkloadDefinition: %w", result.Error)
+	}
+
+	// registering object MachineWorkloadInstance
+	object = api_v0.ModuleObject{
+		Description:        util.Ptr("MachineWorkloadInstance is a deployed instance of a workload running on a machine runtime."),
+		ModuleApiID:        moduleApi.ID,
+		ModuleControllerID: controller.ID,
+		Name:               util.Ptr("MachineWorkloadInstance"),
+		Version:            util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register MachineWorkloadInstance: %w", result.Error)
+	}
+
+	// registering routes for MachineWorkloadInstance
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineWorkloadInstanceVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for MachineWorkloadInstance: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathMachineWorkloadInstances),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for MachineWorkloadInstance: %w", result.Error)
+	}
+
+	// /////////////////////////////////////////////////////////////////////////////
 	// registering controllers, objects and routes for KubernetesRuntime object group
 	// /////////////////////////////////////////////////////////////////////////////
 	// registering controller kubernetes-runtime-controller

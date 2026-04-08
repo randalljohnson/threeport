@@ -132,6 +132,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*util.Operations, *[]MachineRuntimeDefinitionConfig, *[]MachineRuntimeInstanceConfig) {
+	machineRuntimeValues := m.MachineRuntime
 	var err error
 	var operatedMachineRuntimeDefinitions []MachineRuntimeDefinitionConfig
 	var operatedMachineRuntimeInstances []MachineRuntimeInstanceConfig
@@ -140,27 +141,25 @@ func (m *MachineRuntimeConfig) GetOperations(
 
 	// add machine runtime definition operation
 	// TODO: add appropriate fields to definition values object
-	machineRuntimeDefinitionValues := MachineRuntimeDefinitionValues{
-		Name: m.MachineRuntime.Name,
-	}
+	machineRuntimeDefinitionConfig := MachineRuntimeDefinitionConfig{MachineRuntimeDefinition: MachineRuntimeDefinitionValues{Name: machineRuntimeValues.Name}}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
-			machineRuntimeDefinition, err := machineRuntimeDefinitionValues.Create(apiClient, apiEndpoint)
+			machineRuntimeDefinition, err := machineRuntimeDefinitionConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create machine runtime definition with name %s: %w", *m.MachineRuntime.Name, err)
+				return fmt.Errorf("failed to create machine runtime definition with name %s: %w", *machineRuntimeValues.Name, err)
 			}
 			operatedMachineRuntimeDefinitions = append(operatedMachineRuntimeDefinitions, *machineRuntimeDefinition)
 			return nil
 		},
 		Delete: func() error {
-			_, err = machineRuntimeDefinitionValues.Delete(apiClient, apiEndpoint)
+			_, err = machineRuntimeDefinitionConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete machine runtime definition with name %s: %w", *m.MachineRuntime.Name, err)
+				return fmt.Errorf("failed to delete machine runtime definition with name %s: %w", *machineRuntimeValues.Name, err)
 			}
 			return nil
 		},
 		Get: func() error {
-			machineRuntimeDefinitions, err := machineRuntimeDefinitionValues.Get(apiClient, apiEndpoint)
+			machineRuntimeDefinitions, err := machineRuntimeDefinitionConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to get machine runtime definitions: %w", err)
 			}
@@ -169,7 +168,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 		},
 		Name: "machine runtime definition",
 		Replace: func(name string) error {
-			machineRuntimeDefinition, err := machineRuntimeDefinitionValues.Replace(apiClient, apiEndpoint, name)
+			machineRuntimeDefinition, err := machineRuntimeDefinitionConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
 				return fmt.Errorf("failed to replace machine runtime definition with name %s: %w", name, err)
 			}
@@ -180,28 +179,28 @@ func (m *MachineRuntimeConfig) GetOperations(
 
 	// add machine runtime instance operation
 	// TODO: add appropriate fields to instance values object
-	machineRuntimeInstanceValues := MachineRuntimeInstanceValues{
-		Age:  m.MachineRuntime.Age,
-		Name: m.MachineRuntime.Name,
-	}
+	machineRuntimeInstanceConfig := MachineRuntimeInstanceConfig{MachineRuntimeInstance: MachineRuntimeInstanceValues{
+		Age:  machineRuntimeValues.Age,
+		Name: machineRuntimeValues.Name,
+	}}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
-			machineRuntimeInstance, err := machineRuntimeInstanceValues.Create(apiClient, apiEndpoint)
+			machineRuntimeInstance, err := machineRuntimeInstanceConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create machine runtime instance with name %s: %w", *m.MachineRuntime.Name, err)
+				return fmt.Errorf("failed to create machine runtime instance with name %s: %w", *machineRuntimeValues.Name, err)
 			}
 			operatedMachineRuntimeInstances = append(operatedMachineRuntimeInstances, *machineRuntimeInstance)
 			return nil
 		},
 		Delete: func() error {
-			_, err = machineRuntimeInstanceValues.Delete(apiClient, apiEndpoint)
+			_, err = machineRuntimeInstanceConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete machine runtime instance with name %s: %w", *m.MachineRuntime.Name, err)
+				return fmt.Errorf("failed to delete machine runtime instance with name %s: %w", *machineRuntimeValues.Name, err)
 			}
 			return nil
 		},
 		Get: func() error {
-			machineRuntimeInstances, err := machineRuntimeInstanceValues.Get(apiClient, apiEndpoint)
+			machineRuntimeInstances, err := machineRuntimeInstanceConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to get machine runtime instances: %w", err)
 			}
@@ -210,7 +209,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 		},
 		Name: "machine runtime instance",
 		Replace: func(name string) error {
-			machineRuntimeInstance, err := machineRuntimeInstanceValues.Replace(apiClient, apiEndpoint, name)
+			machineRuntimeInstance, err := machineRuntimeInstanceConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
 				return fmt.Errorf("failed to replace machine runtime instances with name %s: %w", name, err)
 			}

@@ -334,9 +334,12 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Commentf("add %s definition operation", defInstObjectHuman),
 						Comment("TODO: add appropriate fields to definition values object"),
 						Id(defConfigVar).Op(":=").Id(defConfigObjectName).Values(Dict{
-							Id(defObject): Id(defValuesObjectName).Values(Dict{
-								Id("Name"): Id(defInstValuesVar).Dot("Name"),
-							}),
+							Line().Id(defObject): Id(defValuesObjectName).Values(
+								Dict{
+									Id("Name"): Id(defInstValuesVar).Dot("Name"),
+									Id("Age"):  Id(defInstValuesVar).Dot("Age"),
+								},
+							).Op(",").Line(),
 						}),
 						Id("operations").Dot("AppendOperation").Call(Qual(
 							"github.com/threeport/threeport/pkg/util/v0",
@@ -445,10 +448,12 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Commentf("add %s instance operation", defInstObjectHuman),
 						Comment("TODO: add appropriate fields to instance values object"),
 						Id(instConfigVar).Op(":=").Id(instConfigObjectName).Values(Dict{
-							Id(instObject): Id(instValuesObjectName).Values(Dict{
-								Id("Name"): Id(defInstValuesVar).Dot("Name"),
-								Id("Age"):  Id(defInstValuesVar).Dot("Age"),
-							}),
+							Line().Id(instObject): Id(instValuesObjectName).Values(
+								Dict{
+									Id("Name"): Id(defInstValuesVar).Dot("Name"),
+									Id("Age"):  Id(defInstValuesVar).Dot("Age"),
+								},
+							).Op(",").Line(),
 						}),
 						Id("operations").Dot("AppendOperation").Call(Qual(
 							"github.com/threeport/threeport/pkg/util/v0",

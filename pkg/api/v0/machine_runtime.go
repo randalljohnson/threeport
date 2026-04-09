@@ -24,7 +24,10 @@ type MachineRuntimeInstance struct {
 	SSHUser *string `json:"SSHUser,omitempty" query:"sshuser" gorm:"not null" validate:"required"`
 
 	// The SSH private key for authenticating to the machine.
-	SSHCredential *string `json:"SSHCredential,omitempty" gorm:"not null" validate:"required" encrypt:"true"`
+	SSHKey *string `json:"SSHKey,omitempty" validate:"optional" encrypt:"true"`
+
+	// The SSH password for authenticating to the machine.
+	SSHPassword *string `json:"SSHPassword,omitempty" validate:"optional" encrypt:"true"`
 
 	// The SSH port on the machine.
 	Port *int `json:"Port,omitempty" query:"port" gorm:"default:22" validate:"optional"`

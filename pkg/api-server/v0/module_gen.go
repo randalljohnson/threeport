@@ -2078,7 +2078,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 
 	// registering object WorkloadEvent
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("WorkloadEvent is a summary of a Kubernetes Event that is associated with a WorkloadResourceInstance."),
+		Description: util.Ptr("WorkloadEvent is a summary of an event associated with a workload instance."),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("WorkloadEvent"),
 		Version:     util.Ptr("v0"),

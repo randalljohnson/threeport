@@ -92,19 +92,20 @@ type WorkloadResourceInstance struct {
 	ScheduledForDeletion *time.Time `json:"ScheduledForDeletion,omitempty" query:"scheduledfordeletion" validate:"optional"`
 }
 
-// WorkloadEvent is a summary of a Kubernetes Event that is associated with a
-// WorkloadResourceInstance.
+// WorkloadEvent is a summary of an event associated with a workload instance.
 type WorkloadEvent struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
-	// A unique ID for de-duplicating purposes.  It is one of two thing:
+	// A unique ID for de-duplicating purposes.  It is one of:
 	// * The Kubernetes Event resource UID: when the WorkloadEvent is derived
 	// directly from a Kubernetes Event.
 	// * The workload controller ID: when the WorkloadEvent is emitted by the
 	// workload controller.
+	// * The machine workload controller ID: when the WorkloadEvent is emitted
+	// by the machine workload controller.
 	RuntimeEventUID *string `json:"RuntimeEventUID,omitempty" query:"runtimeeventuid" gorm:"not null" validate:"required"`
 
-	// The type of event that occurred in Kubernetes.
+	// The type of event that occurred (e.g. Normal, Warning).
 	Type *string `json:"Type,omitempty" query:"type" gorm:"not null" validate:"required"`
 
 	// The reason for the event.
@@ -113,7 +114,7 @@ type WorkloadEvent struct {
 	// The message associated with the event.
 	Message *string `json:"Message,omitempty" query:"message" gorm:"not null" validate:"required"`
 
-	// The timestamp for the event in the kubernetes runtime.
+	// The timestamp for the event.
 	Timestamp *time.Time `json:"Timestamp,omitempty" query:"timestamp" gorm:"not null" validate:"required"`
 
 	// The related workload instance.
@@ -124,4 +125,7 @@ type WorkloadEvent struct {
 
 	// The related helm workload instance.
 	HelmWorkloadInstanceID *uint `json:"HelmWorkloadInstanceID,omitempty" query:"helmworkloadinstanceid" validate:"optional"`
+
+	// The related machine workload instance.
+	MachineWorkloadInstanceID *uint `json:"MachineWorkloadInstanceID,omitempty" query:"machineworkloadinstanceid" validate:"optional"`
 }

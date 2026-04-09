@@ -5,10 +5,11 @@ package v0
 import (
 	errors "errors"
 	"fmt"
+	"net/http"
+
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
-	"net/http"
 )
 
 // MachineRuntimeInstanceConfig is a config abstraction for the MachineRuntimeInstance API object.
@@ -25,7 +26,8 @@ type MachineRuntimeInstanceValues struct {
 	Name                     *string                         `json:"Name,omitempty" yaml:"Name,omitempty"`
 	Hostname                 *string                         `json:"Hostname,omitempty" yaml:"Hostname,omitempty"`
 	SSHUser                  *string                         `json:"SSHUser,omitempty" yaml:"SSHUser,omitempty"`
-	SSHCredential            *string                         `json:"SSHCredential,omitempty" yaml:"SSHCredential,omitempty"`
+	SSHKey                   *string                         `json:"SSHKey,omitempty" yaml:"SSHKey,omitempty"`
+	SSHPassword              *string                         `json:"SSHPassword,omitempty" yaml:"SSHPassword,omitempty"`
 	Port                     *int                            `json:"Port,omitempty" yaml:"Port,omitempty"`
 	MachineRuntimeDefinition *MachineRuntimeDefinitionValues `json:"MachineRuntimeDefinition,omitempty" yaml:"MachineRuntimeDefinition,omitempty"`
 	Age                      *string                         `json:"Age,omitempty" yaml:"Age,omitempty"`
@@ -80,7 +82,8 @@ func (m *MachineRuntimeInstanceConfig) Get(
 				Name:                     machineRuntimeInstance.Name,
 				Hostname:                 machineRuntimeInstance.Hostname,
 				SSHUser:                  machineRuntimeInstance.SSHUser,
-				SSHCredential:            machineRuntimeInstance.SSHCredential,
+				SSHKey:                   machineRuntimeInstance.SSHKey,
+				SSHPassword:              machineRuntimeInstance.SSHPassword,
 				Port:                     machineRuntimeInstance.Port,
 				MachineRuntimeDefinition: machineRuntimeDefinition,
 				Age:                      util.Ptr(util.GetAgeFormatted(machineRuntimeInstance.CreatedAt)),
@@ -121,7 +124,8 @@ func (m *MachineRuntimeInstanceConfig) Create(
 		},
 		Hostname:                   machineRuntimeInstanceValues.Hostname,
 		SSHUser:                    machineRuntimeInstanceValues.SSHUser,
-		SSHCredential:              machineRuntimeInstanceValues.SSHCredential,
+		SSHKey:                     machineRuntimeInstanceValues.SSHKey,
+		SSHPassword:                machineRuntimeInstanceValues.SSHPassword,
 		Port:                       machineRuntimeInstanceValues.Port,
 		MachineRuntimeDefinitionID: machineRuntimeDefinitionID,
 	}
@@ -139,12 +143,13 @@ func (m *MachineRuntimeInstanceConfig) Create(
 	// construct machine runtime instance config
 	createdMachineRuntimeInstanceConfig := &MachineRuntimeInstanceConfig{
 		MachineRuntimeInstance: MachineRuntimeInstanceValues{
-			Name:          createdMachineRuntimeInstance.Name,
-			Hostname:      createdMachineRuntimeInstance.Hostname,
-			SSHUser:       createdMachineRuntimeInstance.SSHUser,
-			SSHCredential: createdMachineRuntimeInstance.SSHCredential,
-			Port:          createdMachineRuntimeInstance.Port,
-			Age:           util.Ptr(util.GetAgeFormatted(createdMachineRuntimeInstance.CreatedAt)),
+			Name:        createdMachineRuntimeInstance.Name,
+			Hostname:    createdMachineRuntimeInstance.Hostname,
+			SSHUser:     createdMachineRuntimeInstance.SSHUser,
+			SSHKey:      createdMachineRuntimeInstance.SSHKey,
+			SSHPassword: createdMachineRuntimeInstance.SSHPassword,
+			Port:        createdMachineRuntimeInstance.Port,
+			Age:         util.Ptr(util.GetAgeFormatted(createdMachineRuntimeInstance.CreatedAt)),
 		},
 	}
 
@@ -185,10 +190,11 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 		Instance: api_v0.Instance{
 			Name: machineRuntimeInstanceValues.Name,
 		},
-		Hostname:      machineRuntimeInstanceValues.Hostname,
-		SSHUser:       machineRuntimeInstanceValues.SSHUser,
-		SSHCredential: machineRuntimeInstanceValues.SSHCredential,
-		Port:          machineRuntimeInstanceValues.Port,
+		Hostname:    machineRuntimeInstanceValues.Hostname,
+		SSHUser:     machineRuntimeInstanceValues.SSHUser,
+		SSHKey:      machineRuntimeInstanceValues.SSHKey,
+		SSHPassword: machineRuntimeInstanceValues.SSHPassword,
+		Port:        machineRuntimeInstanceValues.Port,
 	}
 
 	// replace machine runtime instance
@@ -204,12 +210,13 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 	// construct updated machine runtime instance config
 	updatedMachineRuntimeInstanceConfig := &MachineRuntimeInstanceConfig{
 		MachineRuntimeInstance: MachineRuntimeInstanceValues{
-			Name:          replacedMachineRuntimeInstance.Name,
-			Hostname:      replacedMachineRuntimeInstance.Hostname,
-			SSHUser:       replacedMachineRuntimeInstance.SSHUser,
-			SSHCredential: replacedMachineRuntimeInstance.SSHCredential,
-			Port:          replacedMachineRuntimeInstance.Port,
-			Age:           util.Ptr(util.GetAgeFormatted(replacedMachineRuntimeInstance.CreatedAt)),
+			Name:        replacedMachineRuntimeInstance.Name,
+			Hostname:    replacedMachineRuntimeInstance.Hostname,
+			SSHUser:     replacedMachineRuntimeInstance.SSHUser,
+			SSHKey:      replacedMachineRuntimeInstance.SSHKey,
+			SSHPassword: replacedMachineRuntimeInstance.SSHPassword,
+			Port:        replacedMachineRuntimeInstance.Port,
+			Age:         util.Ptr(util.GetAgeFormatted(replacedMachineRuntimeInstance.CreatedAt)),
 		},
 	}
 
@@ -275,8 +282,9 @@ func (m *MachineRuntimeInstanceConfig) Validate() error {
 	}
 
 	// ensure ssh credential is set
-	if machineRuntimeInstanceValues.SSHCredential == nil {
-		multiError.AppendError(errors.New("missing required field in config: SSHCredential"))
+	// at least one of SSHKey or SSHPassword must be provided
+	if machineRuntimeInstanceValues.SSHKey == nil && machineRuntimeInstanceValues.SSHPassword == nil {
+		multiError.AppendError(errors.New("one of SSHKey or SSHPassword must be provided"))
 	}
 
 	return multiError.Error()

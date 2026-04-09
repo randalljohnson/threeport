@@ -21,12 +21,13 @@ type MachineRuntimeConfig struct {
 // MachineRuntimeDefinition and MachineRuntimeInstance API objects
 // together with a single operation.
 type MachineRuntimeValues struct {
-	Name          *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Hostname      *string `json:"Hostname,omitempty" yaml:"Hostname,omitempty"`
-	SSHUser       *string `json:"SSHUser,omitempty" yaml:"SSHUser,omitempty"`
-	SSHCredential *string `json:"SSHCredential,omitempty" yaml:"SSHCredential,omitempty"`
-	Port          *int    `json:"Port,omitempty" yaml:"Port,omitempty"`
-	Age           *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name        *string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	Hostname    *string `json:"Hostname,omitempty" yaml:"Hostname,omitempty"`
+	SSHUser     *string `json:"SSHUser,omitempty" yaml:"SSHUser,omitempty"`
+	SSHKey      *string `json:"SSHKey,omitempty" yaml:"SSHKey,omitempty"`
+	SSHPassword *string `json:"SSHPassword,omitempty" yaml:"SSHPassword,omitempty"`
+	Port        *int    `json:"Port,omitempty" yaml:"Port,omitempty"`
+	Age         *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a machine runtime definition and instance from the Threeport API.
@@ -187,11 +188,12 @@ func (m *MachineRuntimeConfig) GetOperations(
 	// add machine runtime instance operation
 	machineRuntimeInstanceConfig := MachineRuntimeInstanceConfig{
 		MachineRuntimeInstance: MachineRuntimeInstanceValues{
-			Name:          machineRuntimeValues.Name,
-			Hostname:      machineRuntimeValues.Hostname,
-			SSHUser:       machineRuntimeValues.SSHUser,
-			SSHCredential: machineRuntimeValues.SSHCredential,
-			Port:          machineRuntimeValues.Port,
+			Name:        machineRuntimeValues.Name,
+			Hostname:    machineRuntimeValues.Hostname,
+			SSHUser:     machineRuntimeValues.SSHUser,
+			SSHKey:      machineRuntimeValues.SSHKey,
+			SSHPassword: machineRuntimeValues.SSHPassword,
+			Port:        machineRuntimeValues.Port,
 			MachineRuntimeDefinition: &MachineRuntimeDefinitionValues{
 				Name: machineRuntimeValues.Name,
 			},
@@ -251,12 +253,13 @@ func mapToMachineRuntimeDefinedInstances(
 			if instName == defName && *inst.MachineRuntimeInstance.MachineRuntimeDefinition.Name == *def.MachineRuntimeDefinition.Name {
 				machineRuntimeConfig := MachineRuntimeConfig{
 					MachineRuntime: MachineRuntimeValues{
-						Name:          inst.MachineRuntimeInstance.Name,
-						Hostname:      inst.MachineRuntimeInstance.Hostname,
-						SSHUser:       inst.MachineRuntimeInstance.SSHUser,
-						SSHCredential: inst.MachineRuntimeInstance.SSHCredential,
-						Port:          inst.MachineRuntimeInstance.Port,
-						Age:           inst.MachineRuntimeInstance.Age,
+						Name:        inst.MachineRuntimeInstance.Name,
+						Hostname:    inst.MachineRuntimeInstance.Hostname,
+						SSHUser:     inst.MachineRuntimeInstance.SSHUser,
+						SSHKey:      inst.MachineRuntimeInstance.SSHKey,
+						SSHPassword: inst.MachineRuntimeInstance.SSHPassword,
+						Port:        inst.MachineRuntimeInstance.Port,
+						Age:         inst.MachineRuntimeInstance.Age,
 					},
 				}
 				machineRuntimeConfigs = append(machineRuntimeConfigs, machineRuntimeConfig)

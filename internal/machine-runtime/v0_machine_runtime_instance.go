@@ -3,18 +3,69 @@
 package machineruntime
 
 import (
+	"fmt"
+	"time"
+
 	logr "github.com/go-logr/logr"
+
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	machine "github.com/threeport/threeport/pkg/machine/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // v0MachineRuntimeInstanceCreated performs reconciliation when a v0 MachineRuntimeInstance
-// has been created.
+// has been created.  It verifies the machine is reachable via SSH and records
+// an event reflecting the result.
 func v0MachineRuntimeInstanceCreated(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// establish an ssh connection to the machine
+	sshClient, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
+	if err != nil {
+		// add a WorkloadEvent to surface the problem
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
+			Type:            util.Ptr("Warning"),
+			Reason:          util.Ptr("SSHConnectFailed"),
+			Message:         util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)),
+			Timestamp:       util.Ptr(time.Now()),
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for ssh connect error")
+		}
+		return 0, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+	}
+	defer sshClient.Close()
+
+	// verify the connection is usable
+	if err := machine.Ping(sshClient); err != nil {
+		// add a WorkloadEvent to surface the problem
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
+			Type:            util.Ptr("Warning"),
+			Reason:          util.Ptr("SSHPingFailed"),
+			Message:         util.Ptr(fmt.Sprintf("failed to ping machine runtime instance: %s", err)),
+			Timestamp:       util.Ptr(time.Now()),
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for ssh ping error")
+		}
+		return 0, fmt.Errorf("failed to ping machine runtime instance: %w", err)
+	}
+
+	// add a WorkloadEvent to surface successful reachability
+	if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+		RuntimeEventUID: util.Ptr(r.ControllerID.String()),
+		Type:            util.Ptr("Normal"),
+		Reason:          util.Ptr("SSHReachable"),
+		Message:         util.Ptr(fmt.Sprintf("machine runtime instance %s is reachable via ssh", *machineRuntimeInstance.Name)),
+		Timestamp:       util.Ptr(time.Now()),
+	}); eventErr != nil {
+		log.Error(eventErr, "failed to create workload event for ssh reachable")
+	}
+
 	return 0, nil
 }
 

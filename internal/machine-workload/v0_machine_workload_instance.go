@@ -3,23 +3,219 @@
 package machineworkload
 
 import (
+	"fmt"
+	"time"
+
 	logr "github.com/go-logr/logr"
+
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	machine "github.com/threeport/threeport/pkg/machine/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// v0MachineWorkloadInstanceCreated performs reconciliation when a v0 MachineWorkloadInstance
-// has been created.
+const (
+	// defaultShell is used when the MachineWorkloadDefinition does not specify a shell.
+	defaultShell = "/bin/bash"
+
+	// runtimeNotReadyRequeueSeconds is the custom requeue delay applied when
+	// a workload instance is created before its associated machine runtime
+	// has been reconciled.
+	runtimeNotReadyRequeueSeconds int64 = 30
+
+	// maxEventMessageBytes caps the size of a WorkloadEvent message so we
+	// don't write arbitrarily large rows to the DB when a script emits
+	// megabytes of output.
+	maxEventMessageBytes = 4096
+
+	// status values written to MachineWorkloadInstance.Status
+	statusSucceeded = "Succeeded"
+	statusFailed    = "Failed"
+	statusTimedOut  = "TimedOut"
+	statusError     = "Error"
+)
+
+// v0MachineWorkloadInstanceCreated performs reconciliation when a v0
+// MachineWorkloadInstance has been created.  It resolves the related machine
+// runtime and workload definition, opens an SSH connection, executes the
+// script, records events for the output, and updates the instance with the
+// resulting Status and ReturnCode.
 func v0MachineWorkloadInstanceCreated(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// get related machine workload definition
+	mwd, err := client.GetMachineWorkloadDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineWorkloadInstance.MachineWorkloadDefinitionID,
+	)
+	if err != nil {
+		// add a WorkloadEvent to surface the problem
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("DefinitionLookupFailed"),
+			Message:                   util.Ptr(fmt.Sprintf("failed to get machine workload definition: %s", err)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for definition lookup error")
+		}
+		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
+	}
+
+	// get related machine runtime instance
+	mri, err := client.GetMachineRuntimeInstanceByID(
+		r.APIClient,
+		r.APIServer,
+		*machineWorkloadInstance.MachineRuntimeInstanceID,
+	)
+	if err != nil {
+		// add a WorkloadEvent to surface the problem
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("RuntimeLookupFailed"),
+			Message:                   util.Ptr(fmt.Sprintf("failed to get machine runtime instance: %s", err)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for runtime lookup error")
+		}
+		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
+	}
+
+	// wait for the runtime to be reconciled before running workloads against it
+	if mri.Reconciled == nil || !*mri.Reconciled {
+		return runtimeNotReadyRequeueSeconds, nil
+	}
+
+	// establish ssh connection to the runtime
+	sshClient, err := machine.GetClient(mri, r.EncryptionKey)
+	if err != nil {
+		// add a WorkloadEvent to surface the problem
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("SSHConnectFailed"),
+			Message:                   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance: %s", err)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for ssh connect error")
+		}
+		return 0, fmt.Errorf("failed to connect to machine runtime instance: %w", err)
+	}
+	defer sshClient.Close()
+
+	// merge env - instance env overrides definition env on duplicate keys
+	effectiveEnv := machine.MergeEnv(mwd.Env, machineWorkloadInstance.Env)
+
+	// resolve shell and working dir defaults
+	shell := util.DerefString(mwd.Shell)
+	if shell == "" {
+		shell = defaultShell
+	}
+	workDir := util.DerefString(mwd.WorkingDir)
+
+	// run the script on the remote machine
+	stdout, stderr, exitCode, timedOut, runErr := machine.RunScript(
+		sshClient,
+		*mwd.Script,
+		shell,
+		workDir,
+		effectiveEnv,
+		mwd.Timeout,
+	)
+
+	// record captured stdout as an event
+	if stdout != "" {
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Normal"),
+			Reason:                    util.Ptr("Stdout"),
+			Message:                   util.Ptr(truncateMessage(stdout)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for stdout")
+		}
+	}
+
+	// record captured stderr as an event
+	if stderr != "" {
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("Stderr"),
+			Message:                   util.Ptr(truncateMessage(stderr)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for stderr")
+		}
+	}
+
+	// record any transport-level execution error
+	if runErr != nil {
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("ExecError"),
+			Message:                   util.Ptr(runErr.Error()),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for exec error")
+		}
+	}
+
+	// derive status from the execution result
+	var status string
+	switch {
+	case timedOut:
+		status = statusTimedOut
+	case runErr != nil:
+		status = statusError
+	case exitCode == 0:
+		status = statusSucceeded
+	default:
+		status = statusFailed
+	}
+
+	// record the exit event
+	exitType := "Normal"
+	if status != statusSucceeded {
+		exitType = "Warning"
+	}
+	if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+		RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+		Type:                      util.Ptr(exitType),
+		Reason:                    util.Ptr("Exit"),
+		Message:                   util.Ptr(fmt.Sprintf("status=%s exit_code=%d", status, exitCode)),
+		Timestamp:                 util.Ptr(time.Now()),
+		MachineWorkloadInstanceID: machineWorkloadInstance.ID,
+	}); eventErr != nil {
+		log.Error(eventErr, "failed to create workload event for exit status")
+	}
+
+	// update the instance with the final status and return code
+	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
+		Common:     v0.Common{ID: machineWorkloadInstance.ID},
+		Status:     &status,
+		ReturnCode: &exitCode,
+	}); err != nil {
+		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
+	}
+
 	return 0, nil
 }
 
-// v0MachineWorkloadInstanceUpdated performs reconciliation when a v0 MachineWorkloadInstance
-// has been updated.
+// v0MachineWorkloadInstanceUpdated performs reconciliation when a v0
+// MachineWorkloadInstance has been updated.
 func v0MachineWorkloadInstanceUpdated(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
@@ -28,12 +224,21 @@ func v0MachineWorkloadInstanceUpdated(
 	return 0, nil
 }
 
-// v0MachineWorkloadInstanceDeleted performs reconciliation when a v0 MachineWorkloadInstance
-// has been deleted.
+// v0MachineWorkloadInstanceDeleted performs reconciliation when a v0
+// MachineWorkloadInstance has been deleted.
 func v0MachineWorkloadInstanceDeleted(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
 	return 0, nil
+}
+
+// truncateMessage caps a message at maxEventMessageBytes, appending a marker
+// when truncation occurs so readers know the original was longer.
+func truncateMessage(msg string) string {
+	if len(msg) <= maxEventMessageBytes {
+		return msg
+	}
+	return msg[:maxEventMessageBytes] + "\n...[truncated]"
 }

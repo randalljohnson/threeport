@@ -228,6 +228,29 @@ func NewOCIInfrastructureRefactored(
 - **Comma placement**: After each parameter except the last
 - **Consistent alignment**: Parameters should align vertically
 
+### Struct Literal Field Alignment
+- **Do not hand-align struct literal fields** — always rely on `gofmt` (or the editor's format-on-save, which runs gofmt)
+- `gofmt` aligns struct literal fields per-literal based on the longest field name in that specific literal, using tabs
+- Different struct literals in the same file will have different alignment depending on their longest field — this is correct behavior, don't try to make them all match
+- After editing struct literals, run `gofmt -w <file>` if you can't rely on the editor
+- Manual alignment gets overwritten on save anyway, so spending effort on it is wasted time
+
+```go
+// CORRECT (gofmt-aligned): MachineRuntimeDefinition is the longest field in this literal
+machineRuntimeInstance := MachineRuntimeInstanceValues{
+    Name:                     instance.Name,
+    Hostname:                 instance.Hostname,
+    MachineRuntimeDefinition: def,
+}
+
+// CORRECT (gofmt-aligned): SSHPassword is the longest field in this literal
+sshConfig := MachineRuntimeInstanceValues{
+    Name:        instance.Name,
+    Hostname:    instance.Hostname,
+    SSHPassword: instance.SSHPassword,
+}
+```
+
 ## Inline Comment Conventions
 
 ### Step Comments Within Functions

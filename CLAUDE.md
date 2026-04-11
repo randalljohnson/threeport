@@ -251,6 +251,59 @@ sshConfig := MachineRuntimeInstanceValues{
 }
 ```
 
+### Nil Checks on API Type Pointer Fields
+- **Do not add defensive nil checks for fields that are guaranteed non-nil by GORM constraints** — if a field has `gorm:"not null"` and `validate:"required"`, it cannot be nil when read from the database
+- Reconcilers and other code that receives API objects from the database or notification payloads can dereference these fields directly without a nil guard
+- Only check for nil on fields that are actually nullable — i.e., those with `validate:"optional"` and no `gorm:"not null"` constraint
+- The distinction is load-bearing: defensive nil checks on non-nullable fields add noise, suggest to readers that the field might legitimately be missing (it can't), and hide real bugs if the field does somehow end up nil (the reconciler silently skips instead of failing loudly)
+
+```go
+// MachineRuntimeInstance field definitions:
+//   Hostname    *string `gorm:"not null" validate:"required"`  // never nil
+//   SSHKey      *string `validate:"optional" encrypt:"true"`    // nullable
+//   SSHPassword *string `validate:"optional" encrypt:"true"`    // nullable
+
+// CORRECT: direct dereference on non-nullable field, nil check only on nullable ones
+addr := fmt.Sprintf("%s:22", *mri.Hostname)
+if mri.SSHKey != nil {
+    decryptedKey, err := encryption.Decrypt(key, *mri.SSHKey)
+    // ...
+}
+
+// WRONG: defensive nil check on non-nullable field
+if mri.Hostname == nil {
+    return fmt.Errorf("hostname is nil") // can never happen - wastes a check and misleads readers
+}
+```
+
+### Use util.Ptr for Inline Pointer Values
+- **When constructing a struct with pointer fields**, prefer `util.Ptr(...)` over declaring a local variable just to take its address
+- The helper lives at `pkg/util/v0/ptr.go`: `func Ptr[T any](input T) *T { return &input }`
+- This applies especially to event recording, API object construction, and any struct literal where the value is only referenced once
+- For values used multiple times (e.g., a shared timestamp written to several events), a local variable is still appropriate — `util.Ptr` is for one-shot inline use
+
+```go
+// WRONG: verbose local variables just to take addresses
+eventType := "Warning"
+eventReason := "SSHConnectFailed"
+eventMessage := fmt.Sprintf("failed to connect: %s", err)
+timestamp := time.Now()
+event := v0.WorkloadEvent{
+    Type:      &eventType,
+    Reason:    &eventReason,
+    Message:   &eventMessage,
+    Timestamp: &timestamp,
+}
+
+// CORRECT: inline with util.Ptr
+event := v0.WorkloadEvent{
+    Type:      util.Ptr("Warning"),
+    Reason:    util.Ptr("SSHConnectFailed"),
+    Message:   util.Ptr(fmt.Sprintf("failed to connect: %s", err)),
+    Timestamp: util.Ptr(time.Now()),
+}
+```
+
 ## Inline Comment Conventions
 
 ### Step Comments Within Functions

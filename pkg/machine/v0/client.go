@@ -113,7 +113,7 @@ func RunScript(
 	script string,
 	shell string,
 	workingDir string,
-	env []*string,
+	env []string,
 	timeout *int,
 ) (stdout string, stderr string, exitCode int, timedOut bool, err error) {
 	session, err := client.NewSession()
@@ -192,18 +192,18 @@ func RunScript(
 // MergeEnv merges two env slices in KEY=VALUE format, with entries from b
 // taking precedence over entries in a on duplicate keys.  Returns a new slice
 // containing the merged result.
-func MergeEnv(a []*string, b []*string) []*string {
+func MergeEnv(a []string, b []string) []string {
 	seen := make(map[string]int)
-	var merged []*string
+	var merged []string
 
-	add := func(entries []*string) {
+	add := func(entries []string) {
 		for _, e := range entries {
-			if e == nil || *e == "" {
+			if e == "" {
 				continue
 			}
-			key := *e
-			if idx := strings.Index(*e, "="); idx >= 0 {
-				key = (*e)[:idx]
+			key := e
+			if idx := strings.Index(e, "="); idx >= 0 {
+				key = e[:idx]
 			}
 			if pos, ok := seen[key]; ok {
 				merged[pos] = e
@@ -244,18 +244,18 @@ func buildAuthMethods(key string, password string) ([]ssh.AuthMethod, error) {
 // buildScript assembles the full script to pipe to the remote shell, prefixing
 // with `cd <workingDir>` when set and `export KEY=VALUE` statements for each
 // entry in env.  The user's script is appended verbatim at the end.
-func buildScript(script string, workingDir string, env []*string) string {
+func buildScript(script string, workingDir string, env []string) string {
 	var b strings.Builder
 	b.WriteString("set -e\n")
 	if workingDir != "" {
 		fmt.Fprintf(&b, "cd %s\n", shellQuote(workingDir))
 	}
 	for _, e := range env {
-		if e == nil || *e == "" {
+		if e == "" {
 			continue
 		}
 		// env entries are KEY=VALUE - split on the first '=' to quote only the value
-		parts := strings.SplitN(*e, "=", 2)
+		parts := strings.SplitN(e, "=", 2)
 		if len(parts) != 2 {
 			// no '=' - export the bare name (unusual but harmless)
 			fmt.Fprintf(&b, "export %s\n", parts[0])

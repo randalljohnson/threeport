@@ -62,11 +62,11 @@ var buildCmd = &cobra.Command{
 			cliArgs.ControlPlaneImageTag = branch
 		}
 
-		components := installer.AllControlPlaneComponents()
-		components = append(components, installer.DatabaseMigrator)
-
 		// create list of components to build
-		componentList, err := GetComponentList(buildComponentNames, components)
+		componentList, err := GetComponentList(
+			buildComponentNames,
+			installer.AllControlPlaneComponents(),
+		)
 
 		if err != nil {
 			cli.Error("failed to get component list:", err)

@@ -1,5 +1,6 @@
 package v0
 
+
 // MachineWorkloadDefinition is the configuration for a workload that runs on
 // a machine runtime.
 type MachineWorkloadDefinition struct {
@@ -19,7 +20,7 @@ type MachineWorkloadDefinition struct {
 	Timeout *int `json:"Timeout,omitempty" validate:"optional"`
 
 	// The environment variables to set for the workload in KEY=VALUE format.
-	Env []*string `json:"Env,omitempty" validate:"optional"`
+	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional"`
 
 	// The associated machine workload instances that are deployed from this
 	// definition.
@@ -49,5 +50,5 @@ type MachineWorkloadInstance struct {
 	ReturnCode *int `json:"ReturnCode,omitempty" validate:"optional"`
 
 	// The environment variables set for the workload in KEY=VALUE format.
-	Env []*string `json:"Env,omitempty" validate:"optional"`
+	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional"`
 }

@@ -19,7 +19,6 @@ import (
 var disable bool
 var delve bool
 var liveReload bool
-var authEnabled bool
 var debugComponentNames string
 var kubeconfigPath string
 var controlPlaneNamespace string
@@ -54,7 +53,6 @@ var DebugCmd = &cobra.Command{
 		cpi.Opts.Delve = delve
 		cpi.Opts.LiveReload = liveReload
 		cpi.Opts.DevEnvironment = false
-		cpi.Opts.AuthEnabled = authEnabled
 		cpi.Opts.Namespace = controlPlaneNamespace
 
 		// create dynamic client and rest mapper
@@ -63,6 +61,9 @@ var DebugCmd = &cobra.Command{
 			cli.Error("failed to create dynamic kube client and mapper", err)
 			os.Exit(1)
 		}
+
+		// detect auth state from the running API server deployment
+		cpi.Opts.AuthEnabled = detectAuthEnabled(dynamicKubeClient)
 
 		// update deployments
 		for _, component := range debugComponents {
@@ -129,10 +130,6 @@ func init() {
 	DebugCmd.Flags().BoolVar(
 		&cliArgs.Verbose,
 		"verbose", false, "Enable verbose logging in control plane components, delve, and cli logs.",
-	)
-	DebugCmd.Flags().BoolVar(
-		&authEnabled,
-		"auth-enabled", false, "Specify if auth is enabled on target control plane.",
 	)
 	DebugCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,

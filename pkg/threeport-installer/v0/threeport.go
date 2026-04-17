@@ -246,7 +246,6 @@ func AllControlPlaneComponents() []*v0.ControlPlaneComponent {
 	allControlPlaneComponents := ThreeportControllerList
 	allControlPlaneComponents = append(allControlPlaneComponents, ThreeportRestApi)
 	allControlPlaneComponents = append(allControlPlaneComponents, ThreeportAgent)
-	allControlPlaneComponents = append(allControlPlaneComponents, DatabaseMigrator)
 	return allControlPlaneComponents
 }
 

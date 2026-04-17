@@ -22,11 +22,15 @@ type MachineWorkloadDefinitionConfig struct {
 // MachineWorkloadDefinitionValues contains all the attributes needed to manage
 // the MachineWorkloadDefinition API object.
 type MachineWorkloadDefinitionValues struct {
-	Name         *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	CreateScript *string `json:"CreateScript,omitempty" yaml:"CreateScript,omitempty"`
-	UpdateScript *string `json:"UpdateScript,omitempty" yaml:"UpdateScript,omitempty"`
-	DeleteScript *string `json:"DeleteScript,omitempty" yaml:"DeleteScript,omitempty"`
-	Age          *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name         *string  `json:"Name,omitempty" yaml:"Name,omitempty"`
+	CreateScript *string  `json:"CreateScript,omitempty" yaml:"CreateScript,omitempty"`
+	UpdateScript *string  `json:"UpdateScript,omitempty" yaml:"UpdateScript,omitempty"`
+	DeleteScript *string  `json:"DeleteScript,omitempty" yaml:"DeleteScript,omitempty"`
+	Shell        *string  `json:"Shell,omitempty" yaml:"Shell,omitempty"`
+	WorkingDir   *string  `json:"WorkingDir,omitempty" yaml:"WorkingDir,omitempty"`
+	Timeout      *int     `json:"Timeout,omitempty" yaml:"Timeout,omitempty"`
+	Env          []string `json:"Env,omitempty" yaml:"Env,omitempty"`
+	Age          *string  `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets machine workload definitions from the Threeport API.
@@ -66,6 +70,10 @@ func (m *MachineWorkloadDefinitionConfig) Get(
 				CreateScript: machineWorkloadDefinition.CreateScript,
 				UpdateScript: machineWorkloadDefinition.UpdateScript,
 				DeleteScript: machineWorkloadDefinition.DeleteScript,
+				Shell:        machineWorkloadDefinition.Shell,
+				WorkingDir:   machineWorkloadDefinition.WorkingDir,
+				Timeout:      machineWorkloadDefinition.Timeout,
+				Env:          machineWorkloadDefinition.Env,
 				Age:          util.Ptr(util.GetAgeFormatted(machineWorkloadDefinition.CreatedAt)),
 			},
 		}
@@ -95,6 +103,10 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 		CreateScript: machineWorkloadDefinitionValues.CreateScript,
 		UpdateScript: machineWorkloadDefinitionValues.UpdateScript,
 		DeleteScript: machineWorkloadDefinitionValues.DeleteScript,
+		Shell:        machineWorkloadDefinitionValues.Shell,
+		WorkingDir:   machineWorkloadDefinitionValues.WorkingDir,
+		Timeout:      machineWorkloadDefinitionValues.Timeout,
+		Env:          machineWorkloadDefinitionValues.Env,
 	}
 
 	// create machine workload definition
@@ -114,6 +126,10 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 			CreateScript: createdMachineWorkloadDefinition.CreateScript,
 			UpdateScript: createdMachineWorkloadDefinition.UpdateScript,
 			DeleteScript: createdMachineWorkloadDefinition.DeleteScript,
+			Shell:        createdMachineWorkloadDefinition.Shell,
+			WorkingDir:   createdMachineWorkloadDefinition.WorkingDir,
+			Timeout:      createdMachineWorkloadDefinition.Timeout,
+			Env:          createdMachineWorkloadDefinition.Env,
 			Age:          util.Ptr(util.GetAgeFormatted(createdMachineWorkloadDefinition.CreatedAt)),
 		},
 	}
@@ -158,6 +174,10 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 		CreateScript: machineWorkloadDefinitionValues.CreateScript,
 		UpdateScript: machineWorkloadDefinitionValues.UpdateScript,
 		DeleteScript: machineWorkloadDefinitionValues.DeleteScript,
+		Shell:        machineWorkloadDefinitionValues.Shell,
+		WorkingDir:   machineWorkloadDefinitionValues.WorkingDir,
+		Timeout:      machineWorkloadDefinitionValues.Timeout,
+		Env:          machineWorkloadDefinitionValues.Env,
 	}
 
 	// replace machine workload definition
@@ -177,6 +197,10 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 			CreateScript: replacedMachineWorkloadDefinition.CreateScript,
 			UpdateScript: replacedMachineWorkloadDefinition.UpdateScript,
 			DeleteScript: replacedMachineWorkloadDefinition.DeleteScript,
+			Shell:        replacedMachineWorkloadDefinition.Shell,
+			WorkingDir:   replacedMachineWorkloadDefinition.WorkingDir,
+			Timeout:      replacedMachineWorkloadDefinition.Timeout,
+			Env:          replacedMachineWorkloadDefinition.Env,
 			Age:          util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadDefinition.CreatedAt)),
 		},
 	}

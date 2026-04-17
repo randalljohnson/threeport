@@ -1,14 +1,19 @@
 package v0
 
-
 // MachineWorkloadDefinition is the configuration for a workload that runs on
 // a machine runtime.
 type MachineWorkloadDefinition struct {
 	Common     `swaggerignore:"true" mapstructure:",squash"`
 	Definition `mapstructure:",squash"`
 
-	// The shell script that defines the workload to be executed on the machine.
-	Script *string `json:"Script,omitempty" gorm:"not null" validate:"required"`
+	// The shell script to run when a machine workload instance is created.
+	CreateScript *string `json:"CreateScript,omitempty" gorm:"not null" validate:"required"`
+
+	// The shell script to run when a machine workload instance is updated.
+	UpdateScript *string `json:"UpdateScript,omitempty" validate:"optional"`
+
+	// The shell script to run when a machine workload instance is deleted.
+	DeleteScript *string `json:"DeleteScript,omitempty" gorm:"not null" validate:"required"`
 
 	// The shell to use for script execution.
 	Shell *string `json:"Shell,omitempty" gorm:"default:/bin/bash" validate:"optional"`
@@ -45,9 +50,6 @@ type MachineWorkloadInstance struct {
 
 	// All events generated for the machine workload instance.
 	Events []*WorkloadEvent `json:"Events,omitempty" query:"events" validate:"optional"`
-
-	// The exit code returned by the script execution.
-	ReturnCode *int `json:"ReturnCode,omitempty" validate:"optional"`
 
 	// The environment variables set for the workload in KEY=VALUE format.
 	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional"`

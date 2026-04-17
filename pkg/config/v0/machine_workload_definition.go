@@ -22,9 +22,11 @@ type MachineWorkloadDefinitionConfig struct {
 // MachineWorkloadDefinitionValues contains all the attributes needed to manage
 // the MachineWorkloadDefinition API object.
 type MachineWorkloadDefinitionValues struct {
-	Name   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Script *string `json:"Script,omitempty" yaml:"Script,omitempty"`
-	Age    *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name         *string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	CreateScript *string `json:"CreateScript,omitempty" yaml:"CreateScript,omitempty"`
+	UpdateScript *string `json:"UpdateScript,omitempty" yaml:"UpdateScript,omitempty"`
+	DeleteScript *string `json:"DeleteScript,omitempty" yaml:"DeleteScript,omitempty"`
+	Age          *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets machine workload definitions from the Threeport API.
@@ -60,9 +62,11 @@ func (m *MachineWorkloadDefinitionConfig) Get(
 	for _, machineWorkloadDefinition := range *machineWorkloadDefinitions {
 		machineWorkloadDefinitionConfig := MachineWorkloadDefinitionConfig{
 			MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
-				Name:   machineWorkloadDefinition.Name,
-				Script: machineWorkloadDefinition.Script,
-				Age:    util.Ptr(util.GetAgeFormatted(machineWorkloadDefinition.CreatedAt)),
+				Name:         machineWorkloadDefinition.Name,
+				CreateScript: machineWorkloadDefinition.CreateScript,
+				UpdateScript: machineWorkloadDefinition.UpdateScript,
+				DeleteScript: machineWorkloadDefinition.DeleteScript,
+				Age:          util.Ptr(util.GetAgeFormatted(machineWorkloadDefinition.CreatedAt)),
 			},
 		}
 		machineWorkloadDefinitionConfigs = append(machineWorkloadDefinitionConfigs, machineWorkloadDefinitionConfig)
@@ -88,7 +92,9 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 		Definition: api_v0.Definition{
 			Name: machineWorkloadDefinitionValues.Name,
 		},
-		Script: machineWorkloadDefinitionValues.Script,
+		CreateScript: machineWorkloadDefinitionValues.CreateScript,
+		UpdateScript: machineWorkloadDefinitionValues.UpdateScript,
+		DeleteScript: machineWorkloadDefinitionValues.DeleteScript,
 	}
 
 	// create machine workload definition
@@ -104,9 +110,11 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 	// construct machine workload definition config
 	createdMachineWorkloadDefinitionConfig := &MachineWorkloadDefinitionConfig{
 		MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
-			Name:   createdMachineWorkloadDefinition.Name,
-			Script: createdMachineWorkloadDefinition.Script,
-			Age:    util.Ptr(util.GetAgeFormatted(createdMachineWorkloadDefinition.CreatedAt)),
+			Name:         createdMachineWorkloadDefinition.Name,
+			CreateScript: createdMachineWorkloadDefinition.CreateScript,
+			UpdateScript: createdMachineWorkloadDefinition.UpdateScript,
+			DeleteScript: createdMachineWorkloadDefinition.DeleteScript,
+			Age:          util.Ptr(util.GetAgeFormatted(createdMachineWorkloadDefinition.CreatedAt)),
 		},
 	}
 
@@ -147,7 +155,9 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 		Definition: api_v0.Definition{
 			Name: machineWorkloadDefinitionValues.Name,
 		},
-		Script: machineWorkloadDefinitionValues.Script,
+		CreateScript: machineWorkloadDefinitionValues.CreateScript,
+		UpdateScript: machineWorkloadDefinitionValues.UpdateScript,
+		DeleteScript: machineWorkloadDefinitionValues.DeleteScript,
 	}
 
 	// replace machine workload definition
@@ -163,9 +173,11 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 	// construct updated machine workload definition config
 	updatedMachineWorkloadDefinitionConfig := &MachineWorkloadDefinitionConfig{
 		MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
-			Name:   replacedMachineWorkloadDefinition.Name,
-			Script: replacedMachineWorkloadDefinition.Script,
-			Age:    util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadDefinition.CreatedAt)),
+			Name:         replacedMachineWorkloadDefinition.Name,
+			CreateScript: replacedMachineWorkloadDefinition.CreateScript,
+			UpdateScript: replacedMachineWorkloadDefinition.UpdateScript,
+			DeleteScript: replacedMachineWorkloadDefinition.DeleteScript,
+			Age:          util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadDefinition.CreatedAt)),
 		},
 	}
 
@@ -220,9 +232,14 @@ func (m *MachineWorkloadDefinitionConfig) Validate() error {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
 	}
 
-	// ensure script is set
-	if machineWorkloadDefinitionValues.Script == nil {
-		multiError.AppendError(errors.New("missing required field in config: Script"))
+	// ensure create script is set
+	if machineWorkloadDefinitionValues.CreateScript == nil {
+		multiError.AppendError(errors.New("missing required field in config: CreateScript"))
+	}
+
+	// ensure delete script is set
+	if machineWorkloadDefinitionValues.DeleteScript == nil {
+		multiError.AppendError(errors.New("missing required field in config: DeleteScript"))
 	}
 
 	return multiError.Error()

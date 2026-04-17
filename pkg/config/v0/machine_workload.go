@@ -22,7 +22,7 @@ type MachineWorkloadConfig struct {
 // together with a single operation.
 type MachineWorkloadValues struct {
 	Name                   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Script                 *string `json:"Script,omitempty" yaml:"Script,omitempty"`
+	CreateScript           *string `json:"CreateScript,omitempty" yaml:"CreateScript,omitempty"`
 	MachineRuntimeInstance *string `json:"MachineRuntimeInstance,omitempty" yaml:"MachineRuntimeInstance,omitempty"`
 	Age                    *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
@@ -144,8 +144,8 @@ func (m *MachineWorkloadConfig) GetOperations(
 	// add machine workload definition operation
 	machineWorkloadDefinitionConfig := MachineWorkloadDefinitionConfig{
 		MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
-			Name:   machineWorkloadValues.Name,
-			Script: machineWorkloadValues.Script,
+			Name:         machineWorkloadValues.Name,
+			CreateScript: machineWorkloadValues.CreateScript,
 		},
 	}
 	operations.AppendOperation(util.Operation{
@@ -254,7 +254,7 @@ func mapToMachineWorkloadDefinedInstances(
 				machineWorkloadConfig := MachineWorkloadConfig{
 					MachineWorkload: MachineWorkloadValues{
 						Name:                   inst.MachineWorkloadInstance.Name,
-						Script:                 def.MachineWorkloadDefinition.Script,
+						CreateScript:           def.MachineWorkloadDefinition.CreateScript,
 						MachineRuntimeInstance: machineRuntimeInstanceName,
 						Age:                    inst.MachineWorkloadInstance.Age,
 					},

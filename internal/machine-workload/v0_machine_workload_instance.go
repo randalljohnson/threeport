@@ -8,6 +8,7 @@ import (
 
 	logr "github.com/go-logr/logr"
 
+	status "github.com/threeport/threeport/internal/workload/status"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
@@ -28,19 +29,12 @@ const (
 	// don't write arbitrarily large rows to the DB when a script emits
 	// megabytes of output.
 	maxEventMessageBytes = 4096
-
-	// status values written to MachineWorkloadInstance.Status
-	statusSucceeded = "Succeeded"
-	statusFailed    = "Failed"
-	statusTimedOut  = "TimedOut"
-	statusError     = "Error"
 )
 
 // v0MachineWorkloadInstanceCreated performs reconciliation when a v0
 // MachineWorkloadInstance has been created.  It resolves the related machine
 // runtime and workload definition, opens an SSH connection, executes the
-// script, records events for the output, and updates the instance with the
-// resulting Status and ReturnCode.
+// create script, and records events for the output.
 func v0MachineWorkloadInstanceCreated(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
@@ -53,17 +47,6 @@ func v0MachineWorkloadInstanceCreated(
 		*machineWorkloadInstance.MachineWorkloadDefinitionID,
 	)
 	if err != nil {
-		// add a WorkloadEvent to surface the problem
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("DefinitionLookupFailed"),
-			Message:                   util.Ptr(fmt.Sprintf("failed to get machine workload definition: %s", err)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for definition lookup error")
-		}
 		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
 	}
 
@@ -74,17 +57,6 @@ func v0MachineWorkloadInstanceCreated(
 		*machineWorkloadInstance.MachineRuntimeInstanceID,
 	)
 	if err != nil {
-		// add a WorkloadEvent to surface the problem
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("RuntimeLookupFailed"),
-			Message:                   util.Ptr(fmt.Sprintf("failed to get machine runtime instance: %s", err)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for runtime lookup error")
-		}
 		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
 	}
 
@@ -93,120 +65,13 @@ func v0MachineWorkloadInstanceCreated(
 		return runtimeNotReadyRequeueSeconds, nil
 	}
 
-	// establish ssh connection to the runtime
-	sshClient, err := machine.GetClient(mri, r.EncryptionKey)
-	if err != nil {
-		// add a WorkloadEvent to surface the problem
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("SSHConnectFailed"),
-			Message:                   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance: %s", err)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for ssh connect error")
-		}
-		return 0, fmt.Errorf("failed to connect to machine runtime instance: %w", err)
-	}
-	defer sshClient.Close()
+	// run the create script and record results
+	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.CreateScript, "create", log)
 
-	// merge env - instance env overrides definition env on duplicate keys
-	effectiveEnv := machine.MergeEnv(mwd.Env, machineWorkloadInstance.Env)
-
-	// resolve shell and working dir defaults
-	shell := util.DerefString(mwd.Shell)
-	if shell == "" {
-		shell = defaultShell
-	}
-	workDir := util.DerefString(mwd.WorkingDir)
-
-	// run the script on the remote machine
-	stdout, stderr, exitCode, timedOut, runErr := machine.RunScript(
-		sshClient,
-		*mwd.Script,
-		shell,
-		workDir,
-		effectiveEnv,
-		mwd.Timeout,
-	)
-
-	// record captured stdout as an event
-	if stdout != "" {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Normal"),
-			Reason:                    util.Ptr("Stdout"),
-			Message:                   util.Ptr(truncateMessage(stdout)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for stdout")
-		}
-	}
-
-	// record captured stderr as an event
-	if stderr != "" {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("Stderr"),
-			Message:                   util.Ptr(truncateMessage(stderr)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for stderr")
-		}
-	}
-
-	// record any transport-level execution error
-	if runErr != nil {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("ExecError"),
-			Message:                   util.Ptr(runErr.Error()),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: machineWorkloadInstance.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for exec error")
-		}
-	}
-
-	// derive status from the execution result
-	var status string
-	switch {
-	case timedOut:
-		status = statusTimedOut
-	case runErr != nil:
-		status = statusError
-	case exitCode == 0:
-		status = statusSucceeded
-	default:
-		status = statusFailed
-	}
-
-	// record the exit event
-	exitType := "Normal"
-	if status != statusSucceeded {
-		exitType = "Warning"
-	}
-	if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-		RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-		Type:                      util.Ptr(exitType),
-		Reason:                    util.Ptr("Exit"),
-		Message:                   util.Ptr(fmt.Sprintf("status=%s exit_code=%d", status, exitCode)),
-		Timestamp:                 util.Ptr(time.Now()),
-		MachineWorkloadInstanceID: machineWorkloadInstance.ID,
-	}); eventErr != nil {
-		log.Error(eventErr, "failed to create workload event for exit status")
-	}
-
-	// update the instance with the final status and return code
+	// update the instance with the final status
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
-		Common:     v0.Common{ID: machineWorkloadInstance.ID},
-		Status:     &status,
-		ReturnCode: &exitCode,
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Status: util.Ptr(string(wlStatus)),
 	}); err != nil {
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
@@ -225,13 +90,168 @@ func v0MachineWorkloadInstanceUpdated(
 }
 
 // v0MachineWorkloadInstanceDeleted performs reconciliation when a v0
-// MachineWorkloadInstance has been deleted.
+// MachineWorkloadInstance has been deleted.  It runs the delete script from the
+// associated definition before the generated reconciler removes the instance
+// from the database.
 func v0MachineWorkloadInstanceDeleted(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// get related machine workload definition (FK is still valid — gen
+	// reconciler calls our handler before deleting the instance)
+	mwd, err := client.GetMachineWorkloadDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineWorkloadInstance.MachineWorkloadDefinitionID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
+	}
+
+	// get related machine runtime instance
+	mri, err := client.GetMachineRuntimeInstanceByID(
+		r.APIClient,
+		r.APIServer,
+		*machineWorkloadInstance.MachineRuntimeInstanceID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
+	}
+
+	// run the delete script and record results
+	runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
+
 	return 0, nil
+}
+
+// runScript establishes an SSH connection to the machine runtime, executes the
+// given script, and records WorkloadEvent records for the captured output and
+// exit status.  Returns the derived workload instance status.
+func runScript(
+	r *controller.Reconciler,
+	mwi *v0.MachineWorkloadInstance,
+	mri *v0.MachineRuntimeInstance,
+	mwd *v0.MachineWorkloadDefinition,
+	script string,
+	scriptName string,
+	log *logr.Logger,
+) status.WorkloadInstanceStatus {
+	// establish ssh connection to the runtime
+	sshClient, err := machine.GetClient(mri, r.EncryptionKey)
+	if err != nil {
+		// ssh failure is user-visible — the machine isn't reachable
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("SSHConnectFailed"),
+			Message:                   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance: %s", err)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: mwi.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for ssh connect error")
+		}
+		return status.WorkloadInstanceStatusError
+	}
+	defer sshClient.Close()
+
+	// merge env - instance env overrides definition env on duplicate keys
+	effectiveEnv := machine.MergeEnv(mwd.Env, mwi.Env)
+
+	// resolve shell and working dir defaults
+	shell := util.DerefString(mwd.Shell)
+	if shell == "" {
+		shell = defaultShell
+	}
+	workDir := util.DerefString(mwd.WorkingDir)
+
+	// run the script on the remote machine
+	stdout, stderr, exitCode, timedOut, runErr := machine.RunScript(
+		sshClient,
+		script,
+		shell,
+		workDir,
+		effectiveEnv,
+		mwd.Timeout,
+	)
+
+	// record captured stdout as an event
+	if stdout != "" {
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Normal"),
+			Reason:                    util.Ptr("Stdout"),
+			Message:                   util.Ptr(truncateMessage(stdout)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: mwi.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for stdout")
+		}
+	}
+
+	// record captured stderr as an event
+	if stderr != "" {
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("Stderr"),
+			Message:                   util.Ptr(truncateMessage(stderr)),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: mwi.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for stderr")
+		}
+	}
+
+	// record any transport-level execution error
+	if runErr != nil {
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+			Type:                      util.Ptr("Warning"),
+			Reason:                    util.Ptr("ExecError"),
+			Message:                   util.Ptr(runErr.Error()),
+			Timestamp:                 util.Ptr(time.Now()),
+			MachineWorkloadInstanceID: mwi.ID,
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for exec error")
+		}
+	}
+
+	// derive status from the execution result
+	var wlStatus status.WorkloadInstanceStatus
+	switch {
+	case timedOut:
+		wlStatus = status.WorkloadInstanceStatusDown
+	case runErr != nil:
+		wlStatus = status.WorkloadInstanceStatusError
+	case exitCode == 0:
+		wlStatus = status.WorkloadInstanceStatusHealthy
+	default:
+		wlStatus = status.WorkloadInstanceStatusUnhealthy
+	}
+
+	// record the exit event with reason indicating success or failure
+	reason := "ScriptSucceeded"
+	eventType := "Normal"
+	if wlStatus != status.WorkloadInstanceStatusHealthy {
+		reason = "ScriptFailed"
+		eventType = "Warning"
+	}
+	if timedOut {
+		reason = "ScriptTimedOut"
+	}
+	if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+		RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
+		Type:                      util.Ptr(eventType),
+		Reason:                    util.Ptr(reason),
+		Message:                   util.Ptr(fmt.Sprintf("%s script completed with exit code %d", scriptName, exitCode)),
+		Timestamp:                 util.Ptr(time.Now()),
+		MachineWorkloadInstanceID: mwi.ID,
+	}); eventErr != nil {
+		log.Error(eventErr, "failed to create workload event for exit status")
+	}
+
+	return wlStatus
 }
 
 // truncateMessage caps a message at maxEventMessageBytes, appending a marker

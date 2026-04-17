@@ -23,7 +23,11 @@ var DownCmd = &cobra.Command{
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		// confirm with user before tearing down
-		fmt.Printf("This will tear down the threeport control plane '%s' and its underlying infrastructure.\n", cliArgs.ControlPlaneName)
+		if cliArgs.ControlPlaneOnly {
+			fmt.Printf("This will tear down the threeport control plane '%s' (infrastructure will be left intact).\n", cliArgs.ControlPlaneName)
+		} else {
+			fmt.Printf("This will tear down the threeport control plane '%s' and its underlying infrastructure.\n", cliArgs.ControlPlaneName)
+		}
 		fmt.Print("Are you sure? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')

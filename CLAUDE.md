@@ -318,6 +318,7 @@ event := v0.WorkloadEvent{
 - **Use action verbs**: Start with verbs like "create", "set", "get", "delete", "configure", "validate", etc.
 - **Be concise**: Keep comments brief and focused on the action being performed
 - **Maintain indentation**: Follow the same indentation level as the code they describe
+- **Describe what, not why-we-discussed-it**: Comments should state what the code does, not replay the reasoning or conversation that led to the implementation. If context is needed, keep it to one short clause — don't write paragraphs explaining trade-offs or alternative approaches in inline comments
 
 ### Examples of correct inline comment format:
 ```go

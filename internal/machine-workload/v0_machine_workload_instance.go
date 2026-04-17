@@ -20,11 +20,6 @@ const (
 	// defaultShell is used when the MachineWorkloadDefinition does not specify a shell.
 	defaultShell = "/bin/bash"
 
-	// runtimeNotReadyRequeueSeconds is the custom requeue delay applied when
-	// a workload instance is created before its associated machine runtime
-	// has been reconciled.
-	runtimeNotReadyRequeueSeconds int64 = 30
-
 	// maxEventMessageBytes caps the size of a WorkloadEvent message so we
 	// don't write arbitrarily large rows to the DB when a script emits
 	// megabytes of output.
@@ -62,7 +57,7 @@ func v0MachineWorkloadInstanceCreated(
 
 	// wait for the runtime to be reconciled before running workloads against it
 	if mri.Reconciled == nil || !*mri.Reconciled {
-		return runtimeNotReadyRequeueSeconds, nil
+		return 30, nil
 	}
 
 	// run the create script and record results
@@ -98,8 +93,7 @@ func v0MachineWorkloadInstanceDeleted(
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// get related machine workload definition (FK is still valid — gen
-	// reconciler calls our handler before deleting the instance)
+	// get related machine workload definition
 	mwd, err := client.GetMachineWorkloadDefinitionByID(
 		r.APIClient,
 		r.APIServer,
@@ -175,80 +169,40 @@ func runScript(
 		mwd.Timeout,
 	)
 
-	// record captured stdout as an event
-	if stdout != "" {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Normal"),
-			Reason:                    util.Ptr("Stdout"),
-			Message:                   util.Ptr(truncateMessage(stdout)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: mwi.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for stdout")
-		}
-	}
-
-	// record captured stderr as an event
-	if stderr != "" {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("Stderr"),
-			Message:                   util.Ptr(truncateMessage(stderr)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: mwi.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for stderr")
-		}
-	}
-
-	// record any transport-level execution error
-	if runErr != nil {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("ExecError"),
-			Message:                   util.Ptr(runErr.Error()),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: mwi.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for exec error")
-		}
-	}
-
-	// derive status from the execution result
+	// derive status and record events based on execution result
 	var wlStatus status.WorkloadInstanceStatus
+	var reason, eventType, message string
 	switch {
 	case timedOut:
 		wlStatus = status.WorkloadInstanceStatusDown
+		reason = "ScriptTimedOut"
+		eventType = "Warning"
+		message = fmt.Sprintf("%s script timed out (stderr: %s)", scriptName, truncateMessage(stderr))
 	case runErr != nil:
 		wlStatus = status.WorkloadInstanceStatusError
-	case exitCode == 0:
-		wlStatus = status.WorkloadInstanceStatusHealthy
-	default:
-		wlStatus = status.WorkloadInstanceStatusUnhealthy
-	}
-
-	// record the exit event with reason indicating success or failure
-	reason := "ScriptSucceeded"
-	eventType := "Normal"
-	if wlStatus != status.WorkloadInstanceStatusHealthy {
 		reason = "ScriptFailed"
 		eventType = "Warning"
-	}
-	if timedOut {
-		reason = "ScriptTimedOut"
+		message = fmt.Sprintf("%s script transport error: %s", scriptName, runErr.Error())
+	case exitCode == 0:
+		wlStatus = status.WorkloadInstanceStatusHealthy
+		reason = "ScriptSucceeded"
+		eventType = "Normal"
+		message = fmt.Sprintf("%s script completed successfully (stdout: %s)", scriptName, truncateMessage(stdout))
+	default:
+		wlStatus = status.WorkloadInstanceStatusUnhealthy
+		reason = "ScriptFailed"
+		eventType = "Warning"
+		message = fmt.Sprintf("%s script failed with exit code %d (stderr: %s)", scriptName, exitCode, truncateMessage(stderr))
 	}
 	if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
 		RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
 		Type:                      util.Ptr(eventType),
 		Reason:                    util.Ptr(reason),
-		Message:                   util.Ptr(fmt.Sprintf("%s script completed with exit code %d", scriptName, exitCode)),
+		Message:                   util.Ptr(truncateMessage(message)),
 		Timestamp:                 util.Ptr(time.Now()),
 		MachineWorkloadInstanceID: mwi.ID,
 	}); eventErr != nil {
-		log.Error(eventErr, "failed to create workload event for exit status")
+		log.Error(eventErr, "failed to create workload event")
 	}
 
 	return wlStatus

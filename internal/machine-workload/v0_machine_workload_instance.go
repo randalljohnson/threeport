@@ -20,10 +20,10 @@ const (
 	// defaultShell is used when the MachineWorkloadDefinition does not specify a shell.
 	defaultShell = "/bin/bash"
 
-	// maxEventMessageBytes caps the size of a WorkloadEvent message so we
+	// maxEventMessageChars caps the size of a WorkloadEvent message so we
 	// don't write arbitrarily large rows to the DB when a script emits
 	// megabytes of output.
-	maxEventMessageBytes = 4096
+	maxEventMessageChars = 4096
 )
 
 // v0MachineWorkloadInstanceCreated performs reconciliation when a v0
@@ -218,11 +218,12 @@ func runScript(
 	return wlStatus
 }
 
-// truncateMessage caps a message at maxEventMessageBytes, appending a marker
-// when truncation occurs so readers know the original was longer.
+// truncateMessage caps a message at maxEventMessageChars characters, appending
+// a marker when truncation occurs so readers know the original was longer.
 func truncateMessage(msg string) string {
-	if len(msg) <= maxEventMessageBytes {
+	runes := []rune(msg)
+	if len(runes) <= maxEventMessageChars {
 		return msg
 	}
-	return msg[:maxEventMessageBytes] + "\n...[truncated]"
+	return string(runes[:maxEventMessageChars]) + "\n...[truncated]"
 }

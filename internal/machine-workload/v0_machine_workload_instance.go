@@ -71,6 +71,11 @@ func v0MachineWorkloadInstanceCreated(
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
+	// requeue on failure so the script is retried
+	if wlStatus != status.WorkloadInstanceStatusHealthy {
+		return 0, fmt.Errorf("create script failed with status %s", wlStatus)
+	}
+
 	return 0, nil
 }
 
@@ -114,7 +119,12 @@ func v0MachineWorkloadInstanceDeleted(
 	}
 
 	// run the delete script and record results
-	runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
+	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
+
+	// requeue on failure so the script is retried
+	if wlStatus != status.WorkloadInstanceStatusHealthy {
+		return 0, fmt.Errorf("delete script failed with status %s", wlStatus)
+	}
 
 	return 0, nil
 }

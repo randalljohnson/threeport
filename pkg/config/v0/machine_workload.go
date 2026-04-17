@@ -21,10 +21,16 @@ type MachineWorkloadConfig struct {
 // MachineWorkloadDefinition and MachineWorkloadInstance API objects
 // together with a single operation.
 type MachineWorkloadValues struct {
-	Name                   *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	CreateScript           *string `json:"CreateScript,omitempty" yaml:"CreateScript,omitempty"`
-	MachineRuntimeInstance *string `json:"MachineRuntimeInstance,omitempty" yaml:"MachineRuntimeInstance,omitempty"`
-	Age                    *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                   *string  `json:"Name,omitempty" yaml:"Name,omitempty"`
+	CreateScript           *string  `json:"CreateScript,omitempty" yaml:"CreateScript,omitempty"`
+	UpdateScript           *string  `json:"UpdateScript,omitempty" yaml:"UpdateScript,omitempty"`
+	DeleteScript           *string  `json:"DeleteScript,omitempty" yaml:"DeleteScript,omitempty"`
+	Shell                  *string  `json:"Shell,omitempty" yaml:"Shell,omitempty"`
+	WorkingDir             *string  `json:"WorkingDir,omitempty" yaml:"WorkingDir,omitempty"`
+	Timeout                *int     `json:"Timeout,omitempty" yaml:"Timeout,omitempty"`
+	Env                    []string `json:"Env,omitempty" yaml:"Env,omitempty"`
+	MachineRuntimeInstance *string  `json:"MachineRuntimeInstance,omitempty" yaml:"MachineRuntimeInstance,omitempty"`
+	Age                    *string  `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a machine workload definition and instance from the Threeport API.
@@ -146,6 +152,12 @@ func (m *MachineWorkloadConfig) GetOperations(
 		MachineWorkloadDefinition: MachineWorkloadDefinitionValues{
 			Name:         machineWorkloadValues.Name,
 			CreateScript: machineWorkloadValues.CreateScript,
+			UpdateScript: machineWorkloadValues.UpdateScript,
+			DeleteScript: machineWorkloadValues.DeleteScript,
+			Shell:        machineWorkloadValues.Shell,
+			WorkingDir:   machineWorkloadValues.WorkingDir,
+			Timeout:      machineWorkloadValues.Timeout,
+			Env:          machineWorkloadValues.Env,
 		},
 	}
 	operations.AppendOperation(util.Operation{
@@ -255,6 +267,12 @@ func mapToMachineWorkloadDefinedInstances(
 					MachineWorkload: MachineWorkloadValues{
 						Name:                   inst.MachineWorkloadInstance.Name,
 						CreateScript:           def.MachineWorkloadDefinition.CreateScript,
+						UpdateScript:           def.MachineWorkloadDefinition.UpdateScript,
+						DeleteScript:           def.MachineWorkloadDefinition.DeleteScript,
+						Shell:                  def.MachineWorkloadDefinition.Shell,
+						WorkingDir:             def.MachineWorkloadDefinition.WorkingDir,
+						Timeout:                def.MachineWorkloadDefinition.Timeout,
+						Env:                    def.MachineWorkloadDefinition.Env,
 						MachineRuntimeInstance: machineRuntimeInstanceName,
 						Age:                    inst.MachineWorkloadInstance.Age,
 					},

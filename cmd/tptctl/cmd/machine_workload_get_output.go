@@ -57,14 +57,21 @@ func outputGetv0MachineWorkloadInstancesCmd(
 	machineWorkloadInstances *[]config_v0.MachineWorkloadInstanceConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	// TODO: add columns for each field that users should see
-	// TODO: available fields are defined in the MachineWorkloadInstanceValues object in pkg/config/v0/machine_workload_instance.go
-	fmt.Fprintln(writer, "NAME\t AGE")
+	fmt.Fprintln(writer, "NAME\t STATUS\t AGE")
 	for _, machineWorkloadInstance := range *machineWorkloadInstances {
+		status := ""
+		if machineWorkloadInstance.MachineWorkloadInstance.Status != nil {
+			status = *machineWorkloadInstance.MachineWorkloadInstance.Status
+		}
+		age := ""
+		if machineWorkloadInstance.MachineWorkloadInstance.Age != nil {
+			age = *machineWorkloadInstance.MachineWorkloadInstance.Age
+		}
 		fmt.Fprintln(
 			writer,
 			*machineWorkloadInstance.MachineWorkloadInstance.Name, "\t",
-			*machineWorkloadInstance.MachineWorkloadInstance.Age,
+			status, "\t",
+			age,
 		)
 	}
 	writer.Flush()

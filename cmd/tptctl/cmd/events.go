@@ -26,11 +26,11 @@ var (
 //
 // Mirrors `kubectl events` conventions: a flat `events` resource filterable
 // by `--for <kind>/<name>`. Full event details (including the complete
-// script stdout/stderr captured in Message) are available via `-o yaml`.
+// script stdout/stderr captured in Note) are available via `-o yaml`.
 var GetEventsCmd = &cobra.Command{
 	Aliases: []string{"event"},
-	Example: "  # get all workload events\n  tptctl get events\n\n  # get events for a specific machine workload instance\n  tptctl get events --for machine-workload-instance/my-workload",
-	Long:    "Get workload events from the system.\n\nUse --for <kind>/<name> to filter events to a specific object. Currently supported kinds: machine-workload-instance.\n\nFull event messages (including captured script stdout/stderr) can be viewed with -o yaml.",
+	Example: "  # get all events\n  tptctl get events\n\n  # get events for a specific machine workload instance\n  tptctl get events --for machine-workload-instance/my-workload\n\n  # get events for a specific machine runtime instance\n  tptctl get events --for machine-runtime-instance/my-runtime",
+	Long:    "Get events from the system.\n\nUse --for <kind>/<name> to filter events to a specific object. Currently supported kinds: machine-workload-instance, machine-runtime-instance.\n\nFull event notes (including captured script stdout/stderr) can be viewed with -o yaml.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
@@ -42,8 +42,8 @@ var GetEventsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// fetch events
-		events, err := client_v0.GetWorkloadEventsByQueryString(apiClient, apiEndpoint, queryString)
+		// fetch events joined to attached object references
+		events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(apiClient, apiEndpoint, queryString)
 		if err != nil {
 			cli.Error("failed to retrieve events", err)
 			os.Exit(1)
@@ -59,7 +59,7 @@ var GetEventsCmd = &cobra.Command{
 
 		// sort oldest → newest
 		sort.SliceStable(*events, func(i, j int) bool {
-			ti, tj := (*events)[i].Timestamp, (*events)[j].Timestamp
+			ti, tj := (*events)[i].EventTime, (*events)[j].EventTime
 			if ti == nil || tj == nil {
 				return ti != nil
 			}
@@ -88,7 +88,7 @@ var GetEventsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 	},
-	Short:        "Get workload events from the system",
+	Short:        "Get events from the system",
 	SilenceUsage: true,
 	Use:          "events",
 }
@@ -98,7 +98,7 @@ func init() {
 
 	GetEventsCmd.Flags().StringVar(
 		&eventsFor,
-		"for", "", "Filter events by object, in the form <kind>/<name>. Supported kinds: machine-workload-instance.",
+		"for", "", "Filter events by object, in the form <kind>/<name>. Supported kinds: machine-workload-instance, machine-runtime-instance.",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&eventsOutput,
@@ -111,8 +111,9 @@ func init() {
 }
 
 // buildEventsQueryString resolves the --for flag into a query string suitable
-// for client_v0.GetWorkloadEventsByQueryString. An empty --for returns an
-// empty query (all events).
+// for client_v0.GetEventsJoinAttachedObjectReferenceByQueryString. An empty
+// --for returns an empty query (all events). The query filters via the joined
+// AttachedObjectReference's ObjectID column.
 func buildEventsQueryString(apiClient *http.Client, apiEndpoint string, forFlag string) (string, error) {
 	if forFlag == "" {
 		return "", nil
@@ -129,39 +130,45 @@ func buildEventsQueryString(apiClient *http.Client, apiEndpoint string, forFlag 
 		if err != nil {
 			return "", fmt.Errorf("failed to find machine workload instance %q: %w", name, err)
 		}
-		return fmt.Sprintf("machineworkloadinstanceid=%d", *mwi.ID), nil
+		return fmt.Sprintf("objectid=%d", *mwi.ID), nil
+	case "machine-runtime-instance":
+		mri, err := client_v0.GetMachineRuntimeInstanceByName(apiClient, apiEndpoint, name)
+		if err != nil {
+			return "", fmt.Errorf("failed to find machine runtime instance %q: %w", name, err)
+		}
+		return fmt.Sprintf("objectid=%d", *mri.ID), nil
 	default:
-		return "", fmt.Errorf("unsupported kind %q in --for. Supported kinds: machine-workload-instance", kind)
+		return "", fmt.Errorf("unsupported kind %q in --for. Supported kinds: machine-workload-instance, machine-runtime-instance", kind)
 	}
 }
 
 // outputGetv0EventsCmd produces the tabular output for the
-// 'get events' command. MESSAGE is truncated to eventMessageTableMax chars
+// 'get events' command. NOTE is truncated to eventMessageTableMax chars
 // with newlines collapsed so the column stays one-line per event; use
-// -o yaml to see the full message.
+// -o yaml to see the full note.
 func outputGetv0EventsCmd(
 	apiClient *http.Client,
 	apiEndpoint string,
-	events *[]v0.WorkloadEvent,
+	events *[]v0.Event,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "AGE\t TYPE\t REASON\t OBJECT\t MESSAGE")
+	fmt.Fprintln(writer, "AGE\t TYPE\t REASON\t OBJECT\t NOTE")
 
-	// cache per-kind-id lookups so we don't hit the API once per row
-	mwiNames := map[uint]string{}
+	// cache per-event object resolutions so we don't hit the API once per row
+	objectCache := map[uint]string{}
 
 	anyTruncated := false
-	for _, event := range *events {
-		age := util.GetAgeFormatted(event.Timestamp)
-		eventType := util.DerefString(event.Type)
-		reason := util.DerefString(event.Reason)
+	for _, e := range *events {
+		age := util.GetAgeFormatted(e.EventTime)
+		eventType := util.DerefString(e.Type)
+		reason := util.DerefString(e.Reason)
 
-		object := resolveEventObject(apiClient, apiEndpoint, &event, mwiNames)
+		object := resolveEventObject(apiClient, apiEndpoint, &e, objectCache)
 
-		rawMessage := util.DerefString(event.Message)
-		message := strings.Join(strings.Fields(rawMessage), " ")
-		if len(message) > eventMessageTableMax {
-			message = util.TruncateString(message, eventMessageTableMax)
+		rawNote := util.DerefString(e.Note)
+		note := strings.Join(strings.Fields(rawNote), " ")
+		if len(note) > eventMessageTableMax {
+			note = util.TruncateString(note, eventMessageTableMax)
 			anyTruncated = true
 		}
 
@@ -171,48 +178,78 @@ func outputGetv0EventsCmd(
 			eventType, "\t",
 			reason, "\t",
 			object, "\t",
-			message,
+			note,
 		)
 	}
 	writer.Flush()
 
 	if anyTruncated {
-		fmt.Println("(use -o yaml to see full message)")
+		fmt.Println("(use -o yaml to see full note)")
 	}
 	return nil
 }
 
 // resolveEventObject formats the owning object of an event as `<kind>/<name>`.
-// Names are resolved via per-kind client lookups and cached in the caller-
-// supplied map to avoid repeat API calls within a single output run.
+// It looks up the associated AttachedObjectReference to determine the object
+// type and id, then resolves a friendly name for supported kinds. Resolutions
+// are cached in the caller-supplied map keyed by event id to avoid repeat
+// API calls within a single output run.
 func resolveEventObject(
 	apiClient *http.Client,
 	apiEndpoint string,
-	event *v0.WorkloadEvent,
-	mwiNames map[uint]string,
+	e *v0.Event,
+	cache map[uint]string,
 ) string {
-	switch {
-	case event.MachineWorkloadInstanceID != nil:
-		id := *event.MachineWorkloadInstanceID
-		name, ok := mwiNames[id]
-		if !ok {
-			mwi, err := client_v0.GetMachineWorkloadInstanceByID(apiClient, apiEndpoint, id)
-			if err == nil && mwi.Name != nil {
-				name = *mwi.Name
-			}
-			mwiNames[id] = name
-		}
-		if name == "" {
-			return fmt.Sprintf("machine-workload-instance/<id=%d>", id)
-		}
-		return fmt.Sprintf("machine-workload-instance/%s", name)
-	case event.WorkloadInstanceID != nil:
-		return fmt.Sprintf("workload-instance/<id=%d>", *event.WorkloadInstanceID)
-	case event.HelmWorkloadInstanceID != nil:
-		return fmt.Sprintf("helm-workload-instance/<id=%d>", *event.HelmWorkloadInstanceID)
-	case event.WorkloadResourceInstanceID != nil:
-		return fmt.Sprintf("workload-resource-instance/<id=%d>", *event.WorkloadResourceInstanceID)
-	default:
+	if e.ID == nil {
 		return ""
 	}
+	if cached, ok := cache[*e.ID]; ok {
+		return cached
+	}
+
+	// look up the attached object reference for this event
+	aors, err := client_v0.GetAttachedObjectReferencesByQueryString(
+		apiClient,
+		apiEndpoint,
+		fmt.Sprintf("attachedobjectid=%d", *e.ID),
+	)
+	if err != nil || aors == nil || len(*aors) == 0 {
+		cache[*e.ID] = ""
+		return ""
+	}
+	aor := (*aors)[0]
+	if aor.ObjectType == nil || aor.ObjectID == nil {
+		cache[*e.ID] = ""
+		return ""
+	}
+
+	// strip version prefix like "v0." from stored ObjectType
+	rawType := *aor.ObjectType
+	typeSuffix := rawType
+	if idx := strings.LastIndex(rawType, "."); idx >= 0 {
+		typeSuffix = rawType[idx+1:]
+	}
+
+	var result string
+	switch typeSuffix {
+	case "MachineWorkloadInstance":
+		mwi, err := client_v0.GetMachineWorkloadInstanceByID(apiClient, apiEndpoint, *aor.ObjectID)
+		if err == nil && mwi.Name != nil {
+			result = fmt.Sprintf("machine-workload-instance/%s", *mwi.Name)
+		} else {
+			result = fmt.Sprintf("machine-workload-instance/<id=%d>", *aor.ObjectID)
+		}
+	case "MachineRuntimeInstance":
+		mri, err := client_v0.GetMachineRuntimeInstanceByID(apiClient, apiEndpoint, *aor.ObjectID)
+		if err == nil && mri.Name != nil {
+			result = fmt.Sprintf("machine-runtime-instance/%s", *mri.Name)
+		} else {
+			result = fmt.Sprintf("machine-runtime-instance/<id=%d>", *aor.ObjectID)
+		}
+	default:
+		result = fmt.Sprintf("%s/<id=%d>", rawType, *aor.ObjectID)
+	}
+
+	cache[*e.ID] = result
+	return result
 }

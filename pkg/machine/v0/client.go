@@ -5,6 +5,7 @@ package v0
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
@@ -32,22 +33,23 @@ const (
 // encryption key and used to build auth methods (key preferred, password
 // fallback).  Port defaults to 22 if not set on the instance.
 //
-// TODO: replace ssh.InsecureIgnoreHostKey() with a known_hosts-backed callback
-// so we can verify the remote host's identity.
-func GetClient(mri *v0.MachineRuntimeInstance, encryptionKey string) (*ssh.Client, error) {
+// If HostKey is set on the instance, the server's host key is verified against
+// it.  If HostKey is nil, the server's key is accepted and returned as the
+// second value so the caller can persist it for future verification.
+func GetClient(mri *v0.MachineRuntimeInstance, encryptionKey string) (*ssh.Client, string, error) {
 	// decrypt ssh credentials (at least one is guaranteed by BeforeCreate hook)
 	var decryptedKey, decryptedPassword string
 	if mri.SSHKey != nil {
 		dk, err := encryption.Decrypt(encryptionKey, *mri.SSHKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt ssh key: %w", err)
+			return nil, "", fmt.Errorf("failed to decrypt ssh key: %w", err)
 		}
 		decryptedKey = dk
 	}
 	if mri.SSHPassword != nil {
 		dp, err := encryption.Decrypt(encryptionKey, *mri.SSHPassword)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt ssh password: %w", err)
+			return nil, "", fmt.Errorf("failed to decrypt ssh password: %w", err)
 		}
 		decryptedPassword = dp
 	}
@@ -55,21 +57,27 @@ func GetClient(mri *v0.MachineRuntimeInstance, encryptionKey string) (*ssh.Clien
 	// build auth methods
 	authMethods, err := buildAuthMethods(decryptedKey, decryptedPassword)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build ssh auth methods: %w", err)
+		return nil, "", fmt.Errorf("failed to build ssh auth methods: %w", err)
 	}
 
-	// resolve port (gorm default:22 means this will normally be populated from
-	// the DB, but fall back just in case)
+	// resolve port
 	port := defaultSSHPort
 	if mri.Port != nil {
 		port = *mri.Port
+	}
+
+	// build host key callback
+	var capturedHostKey string
+	hostKeyCallback, err := buildHostKeyCallback(mri.HostKey, &capturedHostKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to build host key callback: %w", err)
 	}
 
 	// build client config
 	config := &ssh.ClientConfig{
 		User:            *mri.SSHUser,
 		Auth:            authMethods,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         connectTimeout,
 	}
 
@@ -77,10 +85,45 @@ func GetClient(mri *v0.MachineRuntimeInstance, encryptionKey string) (*ssh.Clien
 	addr := net.JoinHostPort(*mri.Hostname, strconv.Itoa(port))
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to dial ssh %s: %w", addr, err)
+		return nil, "", fmt.Errorf("failed to dial ssh %s: %w", addr, err)
 	}
 
-	return client, nil
+	return client, capturedHostKey, nil
+}
+
+// buildHostKeyCallback returns an ssh.HostKeyCallback based on whether a known
+// host key is provided.  If knownHostKey is non-nil, the callback verifies the
+// server's key matches.  If nil, the callback accepts any key and writes the
+// base64-encoded public key to capturedKey for the caller to persist.
+func buildHostKeyCallback(knownHostKey *string, capturedKey *string) (ssh.HostKeyCallback, error) {
+	if knownHostKey == nil {
+		// capture mode: accept any key, record it
+		return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			*capturedKey = base64.StdEncoding.EncodeToString(key.Marshal())
+			return nil
+		}, nil
+	}
+
+	// verification mode: parse the known key and compare
+	knownKeyBytes, err := base64.StdEncoding.DecodeString(*knownHostKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode stored host key: %w", err)
+	}
+	knownPubKey, err := ssh.ParsePublicKey(knownKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse stored host key: %w", err)
+	}
+
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		if !bytes.Equal(key.Marshal(), knownPubKey.Marshal()) {
+			return fmt.Errorf("host key mismatch for %s: expected %s, got %s",
+				hostname,
+				base64.StdEncoding.EncodeToString(knownPubKey.Marshal()),
+				base64.StdEncoding.EncodeToString(key.Marshal()),
+			)
+		}
+		return nil
+	}, nil
 }
 
 // Ping runs `true` on the remote over the existing SSH client to verify the

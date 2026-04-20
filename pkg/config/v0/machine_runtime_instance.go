@@ -29,6 +29,7 @@ type MachineRuntimeInstanceValues struct {
 	SSHKey                   *string                         `json:"SSHKey,omitempty" yaml:"SSHKey,omitempty"`
 	SSHPassword              *string                         `json:"SSHPassword,omitempty" yaml:"SSHPassword,omitempty"`
 	Port                     *int                            `json:"Port,omitempty" yaml:"Port,omitempty"`
+	HostKey                  *string                         `json:"HostKey,omitempty" yaml:"HostKey,omitempty"`
 	MachineRuntimeDefinition *MachineRuntimeDefinitionValues `json:"MachineRuntimeDefinition,omitempty" yaml:"MachineRuntimeDefinition,omitempty"`
 	Age                      *string                         `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
@@ -85,6 +86,7 @@ func (m *MachineRuntimeInstanceConfig) Get(
 				SSHKey:                   machineRuntimeInstance.SSHKey,
 				SSHPassword:              machineRuntimeInstance.SSHPassword,
 				Port:                     machineRuntimeInstance.Port,
+				HostKey:                  machineRuntimeInstance.HostKey,
 				MachineRuntimeDefinition: machineRuntimeDefinition,
 				Age:                      util.Ptr(util.GetAgeFormatted(machineRuntimeInstance.CreatedAt)),
 			},
@@ -127,6 +129,7 @@ func (m *MachineRuntimeInstanceConfig) Create(
 		SSHKey:                     machineRuntimeInstanceValues.SSHKey,
 		SSHPassword:                machineRuntimeInstanceValues.SSHPassword,
 		Port:                       machineRuntimeInstanceValues.Port,
+		HostKey:                    machineRuntimeInstanceValues.HostKey,
 		MachineRuntimeDefinitionID: machineRuntimeDefinitionID,
 	}
 
@@ -149,6 +152,7 @@ func (m *MachineRuntimeInstanceConfig) Create(
 			SSHKey:      createdMachineRuntimeInstance.SSHKey,
 			SSHPassword: createdMachineRuntimeInstance.SSHPassword,
 			Port:        createdMachineRuntimeInstance.Port,
+			HostKey:     createdMachineRuntimeInstance.HostKey,
 			Age:         util.Ptr(util.GetAgeFormatted(createdMachineRuntimeInstance.CreatedAt)),
 		},
 	}
@@ -216,6 +220,7 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 			SSHKey:      replacedMachineRuntimeInstance.SSHKey,
 			SSHPassword: replacedMachineRuntimeInstance.SSHPassword,
 			Port:        replacedMachineRuntimeInstance.Port,
+			HostKey:     replacedMachineRuntimeInstance.HostKey,
 			Age:         util.Ptr(util.GetAgeFormatted(replacedMachineRuntimeInstance.CreatedAt)),
 		},
 	}

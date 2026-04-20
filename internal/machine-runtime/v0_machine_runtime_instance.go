@@ -24,9 +24,8 @@ func v0MachineRuntimeInstanceCreated(
 	log *logr.Logger,
 ) (int64, error) {
 	// establish an ssh connection to the machine
-	sshClient, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
+	sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
-		// add a WorkloadEvent to surface the problem
 		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
 			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
 			Type:            util.Ptr("Warning"),
@@ -40,9 +39,27 @@ func v0MachineRuntimeInstanceCreated(
 	}
 	defer sshClient.Close()
 
+	// save captured host key if this is the first connection
+	if capturedHostKey != "" {
+		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
+			Common:  v0.Common{ID: machineRuntimeInstance.ID},
+			HostKey: &capturedHostKey,
+		}); err != nil {
+			return 0, fmt.Errorf("failed to save captured host key: %w", err)
+		}
+		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
+			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
+			Type:            util.Ptr("Normal"),
+			Reason:          util.Ptr("HostKeyCaptured"),
+			Message:         util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
+			Timestamp:       util.Ptr(time.Now()),
+		}); eventErr != nil {
+			log.Error(eventErr, "failed to create workload event for host key capture")
+		}
+	}
+
 	// verify the connection is usable
 	if err := machine.Ping(sshClient); err != nil {
-		// add a WorkloadEvent to surface the problem
 		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
 			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
 			Type:            util.Ptr("Warning"),

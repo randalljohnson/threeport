@@ -142,7 +142,7 @@ func runScript(
 	log *logr.Logger,
 ) status.WorkloadInstanceStatus {
 	// establish ssh connection to the runtime
-	sshClient, err := machine.GetClient(mri, r.EncryptionKey)
+	sshClient, _, err := machine.GetClient(mri, r.EncryptionKey)
 	if err != nil {
 		// ssh failure is user-visible — the machine isn't reachable
 		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{

@@ -32,6 +32,10 @@ type MachineRuntimeInstance struct {
 	// The SSH port on the machine.
 	Port *int `json:"Port,omitempty" query:"port" gorm:"default:22" validate:"optional"`
 
+	// The remote machine's SSH public host key, used to verify identity on
+	// connection. If not provided, captured on first connection.
+	HostKey *string `json:"HostKey,omitempty" validate:"optional"`
+
 	// The machine runtime definition for this instance.  Optional because
 	// imported machines may not have an associated definition.
 	MachineRuntimeDefinitionID *uint `json:"MachineRuntimeDefinitionID,omitempty" query:"machineruntimedefinitionid" validate:"optional"`

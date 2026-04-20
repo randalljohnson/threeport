@@ -27,6 +27,7 @@ type MachineRuntimeValues struct {
 	SSHKey      *string `json:"SSHKey,omitempty" yaml:"SSHKey,omitempty"`
 	SSHPassword *string `json:"SSHPassword,omitempty" yaml:"SSHPassword,omitempty"`
 	Port        *int    `json:"Port,omitempty" yaml:"Port,omitempty"`
+	HostKey     *string `json:"HostKey,omitempty" yaml:"HostKey,omitempty"`
 	Age         *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
@@ -194,6 +195,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 			SSHKey:      machineRuntimeValues.SSHKey,
 			SSHPassword: machineRuntimeValues.SSHPassword,
 			Port:        machineRuntimeValues.Port,
+			HostKey:     machineRuntimeValues.HostKey,
 			MachineRuntimeDefinition: &MachineRuntimeDefinitionValues{
 				Name: machineRuntimeValues.Name,
 			},
@@ -259,6 +261,7 @@ func mapToMachineRuntimeDefinedInstances(
 						SSHKey:      inst.MachineRuntimeInstance.SSHKey,
 						SSHPassword: inst.MachineRuntimeInstance.SSHPassword,
 						Port:        inst.MachineRuntimeInstance.Port,
+						HostKey:     inst.MachineRuntimeInstance.HostKey,
 						Age:         inst.MachineRuntimeInstance.Age,
 					},
 				}

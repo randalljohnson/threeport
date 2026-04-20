@@ -33,7 +33,9 @@ type MachineRuntimeDefinitionValues struct {
 func (m *MachineRuntimeDefinitionConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
+	encryptionKey string,
 ) (*[]MachineRuntimeDefinitionConfig, error) {
+	_ = encryptionKey
 	machineRuntimeDefinitionValues := m.MachineRuntimeDefinition
 
 	// get API objects

@@ -35,11 +35,13 @@ type MachineRuntimeValues struct {
 func (m *MachineRuntimeConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
+	encryptionKey string,
 ) (*[]MachineRuntimeConfig, error) {
 	// get operations
 	operations, machineRuntimeDefinitions, machineRuntimeInstances := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		encryptionKey,
 	)
 
 	// execute get operations
@@ -65,6 +67,7 @@ func (m *MachineRuntimeConfig) Create(
 	operations, machineRuntimeDefinitions, machineRuntimeInstances := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		"",
 	)
 
 	// execute create operations
@@ -92,6 +95,7 @@ func (m *MachineRuntimeConfig) Replace(
 	operations, machineRuntimeDefinitions, machineRuntimeInstances := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		"",
 	)
 
 	// execute replace operations
@@ -118,6 +122,7 @@ func (m *MachineRuntimeConfig) Delete(
 	operations, _, _ := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		"",
 	)
 
 	// execute delete operations
@@ -137,6 +142,7 @@ func (m *MachineRuntimeConfig) Delete(
 func (m *MachineRuntimeConfig) GetOperations(
 	apiClient *http.Client,
 	apiEndpoint string,
+	encryptionKey string,
 ) (*util.Operations, *[]MachineRuntimeDefinitionConfig, *[]MachineRuntimeInstanceConfig) {
 	machineRuntimeValues := m.MachineRuntime
 	var err error
@@ -168,7 +174,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 			return nil
 		},
 		Get: func() error {
-			machineRuntimeDefinitions, err := machineRuntimeDefinitionConfig.Get(apiClient, apiEndpoint)
+			machineRuntimeDefinitions, err := machineRuntimeDefinitionConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				return fmt.Errorf("failed to get machine runtime definitions: %w", err)
 			}
@@ -218,7 +224,7 @@ func (m *MachineRuntimeConfig) GetOperations(
 			return nil
 		},
 		Get: func() error {
-			machineRuntimeInstances, err := machineRuntimeInstanceConfig.Get(apiClient, apiEndpoint)
+			machineRuntimeInstances, err := machineRuntimeInstanceConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				return fmt.Errorf("failed to get machine runtime instances: %w", err)
 			}

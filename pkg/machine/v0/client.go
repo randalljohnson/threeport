@@ -232,6 +232,24 @@ func RunScript(
 	}
 }
 
+// DecryptEnv decrypts the VALUE portion of each KEY=VALUE entry using the
+// provided encryption key, leaving keys in plaintext.
+func DecryptEnv(env []string, encryptionKey string) ([]string, error) {
+	decrypted := make([]string, len(env))
+	for i, entry := range env {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("env entry %d %q is not in KEY=VALUE format", i, entry)
+		}
+		decValue, err := encryption.Decrypt(encryptionKey, parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt env entry %d: %w", i, err)
+		}
+		decrypted[i] = parts[0] + "=" + decValue
+	}
+	return decrypted, nil
+}
+
 // MergeEnv merges two env slices in KEY=VALUE format, with entries from b
 // taking precedence over entries in a on duplicate keys.  Returns a new slice
 // containing the merged result.

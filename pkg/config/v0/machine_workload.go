@@ -37,11 +37,13 @@ type MachineWorkloadValues struct {
 func (m *MachineWorkloadConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
+	encryptionKey string,
 ) (*[]MachineWorkloadConfig, error) {
 	// get operations
 	operations, machineWorkloadDefinitions, machineWorkloadInstances := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		encryptionKey,
 	)
 
 	// execute get operations
@@ -67,6 +69,7 @@ func (m *MachineWorkloadConfig) Create(
 	operations, machineWorkloadDefinitions, machineWorkloadInstances := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		"",
 	)
 
 	// execute create operations
@@ -94,6 +97,7 @@ func (m *MachineWorkloadConfig) Replace(
 	operations, machineWorkloadDefinitions, machineWorkloadInstances := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		"",
 	)
 
 	// execute replace operations
@@ -120,6 +124,7 @@ func (m *MachineWorkloadConfig) Delete(
 	operations, _, _ := m.GetOperations(
 		apiClient,
 		apiEndpoint,
+		"",
 	)
 
 	// execute delete operations
@@ -139,6 +144,7 @@ func (m *MachineWorkloadConfig) Delete(
 func (m *MachineWorkloadConfig) GetOperations(
 	apiClient *http.Client,
 	apiEndpoint string,
+	encryptionKey string,
 ) (*util.Operations, *[]MachineWorkloadDefinitionConfig, *[]MachineWorkloadInstanceConfig) {
 	machineWorkloadValues := m.MachineWorkload
 	var err error
@@ -177,7 +183,7 @@ func (m *MachineWorkloadConfig) GetOperations(
 			return nil
 		},
 		Get: func() error {
-			machineWorkloadDefinitions, err := machineWorkloadDefinitionConfig.Get(apiClient, apiEndpoint)
+			machineWorkloadDefinitions, err := machineWorkloadDefinitionConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				return fmt.Errorf("failed to get machine workload definitions: %w", err)
 			}
@@ -224,7 +230,7 @@ func (m *MachineWorkloadConfig) GetOperations(
 			return nil
 		},
 		Get: func() error {
-			machineWorkloadInstances, err := machineWorkloadInstanceConfig.Get(apiClient, apiEndpoint)
+			machineWorkloadInstances, err := machineWorkloadInstanceConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				return fmt.Errorf("failed to get machine workload instances: %w", err)
 			}

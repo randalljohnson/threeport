@@ -18,6 +18,7 @@ var (
 	machineRuntimeStdin      bool
 	machineRuntimeVersion    string
 	machineRuntimeOutput     string
+	machineRuntimeDecrypt    bool
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -32,6 +33,22 @@ var GetMachineRuntimesCmd = &cobra.Command{
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
+
+		// get encryption key if necessary
+		var encryptionKey string
+		if machineRuntimeDecrypt {
+			threeportConfig, _, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config: %w", err)
+				os.Exit(1)
+			}
+			key, err := threeportConfig.GetThreeportEncryptionKey(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get encryption key from threeport config: %w", err)
+				os.Exit(1)
+			}
+			encryptionKey = key
+		}
 
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
@@ -67,7 +84,7 @@ var GetMachineRuntimesCmd = &cobra.Command{
 			}
 
 			// get machine runtime
-			machineRuntimeConfigs, err := machineRuntimeConfig.Get(apiClient, apiEndpoint)
+			machineRuntimeConfigs, err := machineRuntimeConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				cli.Error("failed to retrieve machine runtime", err)
 				os.Exit(1)
@@ -135,6 +152,10 @@ func init() {
 	GetMachineRuntimesCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	GetMachineRuntimesCmd.Flags().BoolVarP(
+		&machineRuntimeDecrypt,
+		"decrypt-secrets", "d", false, "Decrypt any encrypted secrets in output.",
 	)
 }
 
@@ -291,6 +312,22 @@ var GetMachineRuntimeDefinitionsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
 
+		// get encryption key if necessary
+		var encryptionKey string
+		if machineRuntimeDecrypt {
+			threeportConfig, _, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config: %w", err)
+				os.Exit(1)
+			}
+			key, err := threeportConfig.GetThreeportEncryptionKey(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get encryption key from threeport config: %w", err)
+				os.Exit(1)
+			}
+			encryptionKey = key
+		}
+
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
 			machineRuntimeConfigPath,
@@ -324,7 +361,7 @@ var GetMachineRuntimeDefinitionsCmd = &cobra.Command{
 			}
 
 			// get machine runtime definitions
-			machineRuntimeDefinitions, err := machineRuntimeDefinitionConfig.Get(apiClient, apiEndpoint)
+			machineRuntimeDefinitions, err := machineRuntimeDefinitionConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				cli.Error("failed to retrieve machine runtime definitions", err)
 				os.Exit(1)
@@ -392,6 +429,10 @@ func init() {
 	GetMachineRuntimeDefinitionsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	GetMachineRuntimeDefinitionsCmd.Flags().BoolVarP(
+		&machineRuntimeDecrypt,
+		"decrypt-secrets", "d", false, "Decrypt any encrypted secrets in output.",
 	)
 }
 
@@ -617,6 +658,22 @@ var GetMachineRuntimeInstancesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
 
+		// get encryption key if necessary
+		var encryptionKey string
+		if machineRuntimeDecrypt {
+			threeportConfig, _, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config: %w", err)
+				os.Exit(1)
+			}
+			key, err := threeportConfig.GetThreeportEncryptionKey(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get encryption key from threeport config: %w", err)
+				os.Exit(1)
+			}
+			encryptionKey = key
+		}
+
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
 			machineRuntimeConfigPath,
@@ -650,7 +707,7 @@ var GetMachineRuntimeInstancesCmd = &cobra.Command{
 			}
 
 			// get machine runtime instances
-			machineRuntimeInstances, err := machineRuntimeInstanceConfig.Get(apiClient, apiEndpoint)
+			machineRuntimeInstances, err := machineRuntimeInstanceConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				cli.Error("failed to retrieve machine runtime instances", err)
 				os.Exit(1)
@@ -718,6 +775,10 @@ func init() {
 	GetMachineRuntimeInstancesCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	GetMachineRuntimeInstancesCmd.Flags().BoolVarP(
+		&machineRuntimeDecrypt,
+		"decrypt-secrets", "d", false, "Decrypt any encrypted secrets in output.",
 	)
 }
 

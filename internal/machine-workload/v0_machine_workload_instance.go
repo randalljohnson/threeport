@@ -23,7 +23,7 @@ const (
 	// maxEventMessageChars caps the size of a WorkloadEvent message so we
 	// don't write arbitrarily large rows to the DB when a script emits
 	// megabytes of output.
-	maxEventMessageChars = 4096
+	maxEventMessageChars = 32768
 )
 
 // v0MachineWorkloadInstanceCreated performs reconciliation when a v0

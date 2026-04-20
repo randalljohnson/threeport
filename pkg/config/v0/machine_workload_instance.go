@@ -26,6 +26,7 @@ type MachineWorkloadInstanceValues struct {
 	MachineWorkloadDefinition *MachineWorkloadDefinitionValues `json:"MachineWorkloadDefinition,omitempty" yaml:"MachineWorkloadDefinition,omitempty"`
 	MachineRuntimeInstance    *MachineRuntimeInstanceValues    `json:"MachineRuntimeInstance,omitempty" yaml:"MachineRuntimeInstance,omitempty"`
 	Env                       []string                         `json:"Env,omitempty" yaml:"Env,omitempty"`
+	Status                    *string                          `json:"Status,omitempty" yaml:"Status,omitempty"`
 	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
@@ -88,6 +89,7 @@ func (m *MachineWorkloadInstanceConfig) Get(
 				MachineWorkloadDefinition: machineWorkloadDefinition,
 				MachineRuntimeInstance:    machineRuntimeInstance,
 				Env:                       machineWorkloadInstance.Env,
+				Status:                    machineWorkloadInstance.Status,
 				Age:                       util.Ptr(util.GetAgeFormatted(machineWorkloadInstance.CreatedAt)),
 			},
 		}

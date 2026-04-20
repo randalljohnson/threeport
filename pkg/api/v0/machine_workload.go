@@ -25,7 +25,7 @@ type MachineWorkloadDefinition struct {
 	Timeout *int `json:"Timeout,omitempty" validate:"optional"`
 
 	// The environment variables to set for the workload in KEY=VALUE format.
-	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional"`
+	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
 
 	// The associated machine workload instances that are deployed from this
 	// definition.
@@ -52,5 +52,5 @@ type MachineWorkloadInstance struct {
 	Events []*WorkloadEvent `json:"Events,omitempty" query:"events" validate:"optional"`
 
 	// The environment variables set for the workload in KEY=VALUE format.
-	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional"`
+	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
 }

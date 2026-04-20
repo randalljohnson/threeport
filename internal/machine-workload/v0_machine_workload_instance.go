@@ -159,8 +159,20 @@ func runScript(
 	}
 	defer sshClient.Close()
 
+	// decrypt env from definition and instance
+	defEnv, err := machine.DecryptEnv(mwd.Env, r.EncryptionKey)
+	if err != nil {
+		log.Error(err, "failed to decrypt definition env")
+		return status.WorkloadInstanceStatusError
+	}
+	instEnv, err := machine.DecryptEnv(mwi.Env, r.EncryptionKey)
+	if err != nil {
+		log.Error(err, "failed to decrypt instance env")
+		return status.WorkloadInstanceStatusError
+	}
+
 	// merge env - instance env overrides definition env on duplicate keys
-	effectiveEnv := machine.MergeEnv(mwd.Env, mwi.Env)
+	effectiveEnv := machine.MergeEnv(defEnv, instEnv)
 
 	// resolve shell and working dir defaults
 	shell := util.DerefString(mwd.Shell)

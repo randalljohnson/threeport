@@ -18,6 +18,7 @@ var (
 	machineWorkloadStdin      bool
 	machineWorkloadVersion    string
 	machineWorkloadOutput     string
+	machineWorkloadDecrypt    bool
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -32,6 +33,22 @@ var GetMachineWorkloadsCmd = &cobra.Command{
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
+
+		// get encryption key if necessary
+		var encryptionKey string
+		if machineWorkloadDecrypt {
+			threeportConfig, _, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config: %w", err)
+				os.Exit(1)
+			}
+			key, err := threeportConfig.GetThreeportEncryptionKey(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get encryption key from threeport config: %w", err)
+				os.Exit(1)
+			}
+			encryptionKey = key
+		}
 
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
@@ -67,7 +84,7 @@ var GetMachineWorkloadsCmd = &cobra.Command{
 			}
 
 			// get machine workload
-			machineWorkloadConfigs, err := machineWorkloadConfig.Get(apiClient, apiEndpoint)
+			machineWorkloadConfigs, err := machineWorkloadConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				cli.Error("failed to retrieve machine workload", err)
 				os.Exit(1)
@@ -135,6 +152,10 @@ func init() {
 	GetMachineWorkloadsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	GetMachineWorkloadsCmd.Flags().BoolVarP(
+		&machineWorkloadDecrypt,
+		"decrypt-secrets", "d", false, "Decrypt any encrypted secrets in output.",
 	)
 }
 
@@ -291,6 +312,22 @@ var GetMachineWorkloadDefinitionsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
 
+		// get encryption key if necessary
+		var encryptionKey string
+		if machineWorkloadDecrypt {
+			threeportConfig, _, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config: %w", err)
+				os.Exit(1)
+			}
+			key, err := threeportConfig.GetThreeportEncryptionKey(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get encryption key from threeport config: %w", err)
+				os.Exit(1)
+			}
+			encryptionKey = key
+		}
+
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
 			machineWorkloadConfigPath,
@@ -324,7 +361,7 @@ var GetMachineWorkloadDefinitionsCmd = &cobra.Command{
 			}
 
 			// get machine workload definitions
-			machineWorkloadDefinitions, err := machineWorkloadDefinitionConfig.Get(apiClient, apiEndpoint)
+			machineWorkloadDefinitions, err := machineWorkloadDefinitionConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				cli.Error("failed to retrieve machine workload definitions", err)
 				os.Exit(1)
@@ -392,6 +429,10 @@ func init() {
 	GetMachineWorkloadDefinitionsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	GetMachineWorkloadDefinitionsCmd.Flags().BoolVarP(
+		&machineWorkloadDecrypt,
+		"decrypt-secrets", "d", false, "Decrypt any encrypted secrets in output.",
 	)
 }
 
@@ -617,6 +658,22 @@ var GetMachineWorkloadInstancesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
 
+		// get encryption key if necessary
+		var encryptionKey string
+		if machineWorkloadDecrypt {
+			threeportConfig, _, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config: %w", err)
+				os.Exit(1)
+			}
+			key, err := threeportConfig.GetThreeportEncryptionKey(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get encryption key from threeport config: %w", err)
+				os.Exit(1)
+			}
+			encryptionKey = key
+		}
+
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
 			machineWorkloadConfigPath,
@@ -650,7 +707,7 @@ var GetMachineWorkloadInstancesCmd = &cobra.Command{
 			}
 
 			// get machine workload instances
-			machineWorkloadInstances, err := machineWorkloadInstanceConfig.Get(apiClient, apiEndpoint)
+			machineWorkloadInstances, err := machineWorkloadInstanceConfig.Get(apiClient, apiEndpoint, encryptionKey)
 			if err != nil {
 				cli.Error("failed to retrieve machine workload instances", err)
 				os.Exit(1)
@@ -718,6 +775,10 @@ func init() {
 	GetMachineWorkloadInstancesCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	GetMachineWorkloadInstancesCmd.Flags().BoolVarP(
+		&machineWorkloadDecrypt,
+		"decrypt-secrets", "d", false, "Decrypt any encrypted secrets in output.",
 	)
 }
 

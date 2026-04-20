@@ -7,6 +7,7 @@ import (
 	"fmt"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
+	"github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"net/http"
 )
@@ -36,6 +37,7 @@ type MachineWorkloadInstanceValues struct {
 func (m *MachineWorkloadInstanceConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
+	encryptionKey string,
 ) (*[]MachineWorkloadInstanceConfig, error) {
 	machineWorkloadInstanceValues := m.MachineWorkloadInstance
 
@@ -61,6 +63,18 @@ func (m *MachineWorkloadInstanceConfig) Get(
 	// assemble config objects from API objects
 	var machineWorkloadInstanceConfigs []MachineWorkloadInstanceConfig
 	for _, machineWorkloadInstance := range *machineWorkloadInstances {
+		// handle encryption if needed
+		if encryptionKey != "" {
+			a, err := encryption.DecryptValues(&machineWorkloadInstance, encryptionKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decrypt machine workload instance secret values: %w", err)
+			}
+			machineWorkloadInstance = *(a.(*api_v0.MachineWorkloadInstance))
+		} else {
+			a := encryption.RedactEncryptedValues(&machineWorkloadInstance)
+			machineWorkloadInstance = *(a.(*api_v0.MachineWorkloadInstance))
+		}
+
 		// get related machine workload definition
 		var machineWorkloadDefinition *MachineWorkloadDefinitionValues
 		if machineWorkloadInstance.MachineWorkloadDefinitionID != nil {

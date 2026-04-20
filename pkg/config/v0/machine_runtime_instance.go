@@ -9,6 +9,7 @@ import (
 
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
+	"github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -40,6 +41,7 @@ type MachineRuntimeInstanceValues struct {
 func (m *MachineRuntimeInstanceConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
+	encryptionKey string,
 ) (*[]MachineRuntimeInstanceConfig, error) {
 	machineRuntimeInstanceValues := m.MachineRuntimeInstance
 
@@ -65,6 +67,18 @@ func (m *MachineRuntimeInstanceConfig) Get(
 	// assemble config objects from API objects
 	var machineRuntimeInstanceConfigs []MachineRuntimeInstanceConfig
 	for _, machineRuntimeInstance := range *machineRuntimeInstances {
+		// handle encryption if needed
+		if encryptionKey != "" {
+			a, err := encryption.DecryptValues(&machineRuntimeInstance, encryptionKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decrypt machine runtime instance secret values: %w", err)
+			}
+			machineRuntimeInstance = *(a.(*api_v0.MachineRuntimeInstance))
+		} else {
+			a := encryption.RedactEncryptedValues(&machineRuntimeInstance)
+			machineRuntimeInstance = *(a.(*api_v0.MachineRuntimeInstance))
+		}
+
 		// get related machine runtime definition if present.
 		// MachineRuntimeDefinitionID is optional — imported machines may not
 		// have an associated definition.

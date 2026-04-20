@@ -4,13 +4,13 @@ package machineruntime
 
 import (
 	"fmt"
-	"time"
 
 	logr "github.com/go-logr/logr"
 
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	machine "github.com/threeport/threeport/pkg/machine/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -26,14 +26,17 @@ func v0MachineRuntimeInstanceCreated(
 	// establish an ssh connection to the machine
 	sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
-			Type:            util.Ptr("Warning"),
-			Reason:          util.Ptr("SSHConnectFailed"),
-			Message:         util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)),
-			Timestamp:       util.Ptr(time.Now()),
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for ssh connect error")
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHConnectFailed"),
+				Note:   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)),
+			},
+			*machineRuntimeInstance.ID,
+			"v0",
+			util.TypeName(v0.MachineRuntimeInstance{}),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
 		return 0, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
 	}
@@ -47,40 +50,49 @@ func v0MachineRuntimeInstanceCreated(
 		}); err != nil {
 			return 0, fmt.Errorf("failed to save captured host key: %w", err)
 		}
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
-			Type:            util.Ptr("Normal"),
-			Reason:          util.Ptr("HostKeyCaptured"),
-			Message:         util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
-			Timestamp:       util.Ptr(time.Now()),
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for host key capture")
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeNormal),
+				Reason: util.Ptr("HostKeyCaptured"),
+				Note:   util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
+			},
+			*machineRuntimeInstance.ID,
+			"v0",
+			util.TypeName(v0.MachineRuntimeInstance{}),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for host key capture")
 		}
 	}
 
 	// verify the connection is usable
 	if err := machine.Ping(sshClient); err != nil {
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID: util.Ptr(r.ControllerID.String()),
-			Type:            util.Ptr("Warning"),
-			Reason:          util.Ptr("SSHPingFailed"),
-			Message:         util.Ptr(fmt.Sprintf("failed to ping machine runtime instance: %s", err)),
-			Timestamp:       util.Ptr(time.Now()),
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for ssh ping error")
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHPingFailed"),
+				Note:   util.Ptr(fmt.Sprintf("failed to ping machine runtime instance: %s", err)),
+			},
+			*machineRuntimeInstance.ID,
+			"v0",
+			util.TypeName(v0.MachineRuntimeInstance{}),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh ping error")
 		}
 		return 0, fmt.Errorf("failed to ping machine runtime instance: %w", err)
 	}
 
-	// add a WorkloadEvent to surface successful reachability
-	if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-		RuntimeEventUID: util.Ptr(r.ControllerID.String()),
-		Type:            util.Ptr("Normal"),
-		Reason:          util.Ptr("SSHReachable"),
-		Message:         util.Ptr(fmt.Sprintf("machine runtime instance %s is reachable via ssh", *machineRuntimeInstance.Name)),
-		Timestamp:       util.Ptr(time.Now()),
-	}); eventErr != nil {
-		log.Error(eventErr, "failed to create workload event for ssh reachable")
+	// record successful reachability event
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr("SSHReachable"),
+			Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s is reachable via ssh", *machineRuntimeInstance.Name)),
+		},
+		*machineRuntimeInstance.ID,
+		"v0",
+		util.TypeName(v0.MachineRuntimeInstance{}),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for ssh reachable")
 	}
 
 	return 0, nil

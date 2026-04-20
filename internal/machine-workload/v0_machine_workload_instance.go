@@ -4,7 +4,6 @@ package machineworkload
 
 import (
 	"fmt"
-	"time"
 
 	logr "github.com/go-logr/logr"
 
@@ -12,6 +11,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	machine "github.com/threeport/threeport/pkg/machine/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -145,15 +145,17 @@ func runScript(
 	sshClient, _, err := machine.GetClient(mri, r.EncryptionKey)
 	if err != nil {
 		// ssh failure is user-visible — the machine isn't reachable
-		if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-			RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-			Type:                      util.Ptr("Warning"),
-			Reason:                    util.Ptr("SSHConnectFailed"),
-			Message:                   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance: %s", err)),
-			Timestamp:                 util.Ptr(time.Now()),
-			MachineWorkloadInstanceID: mwi.ID,
-		}); eventErr != nil {
-			log.Error(eventErr, "failed to create workload event for ssh connect error")
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHConnectFailed"),
+				Note:   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance: %s", err)),
+			},
+			*mwi.ID,
+			"v0",
+			util.TypeName(v0.MachineWorkloadInstance{}),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
 		return status.WorkloadInstanceStatusError
 	}
@@ -198,33 +200,35 @@ func runScript(
 	case timedOut:
 		wlStatus = status.WorkloadInstanceStatusDown
 		reason = "ScriptTimedOut"
-		eventType = "Warning"
+		eventType = event.TypeWarning
 		message = fmt.Sprintf("%s script timed out (stderr: %s)", scriptName, truncateMessage(stderr))
 	case runErr != nil:
 		wlStatus = status.WorkloadInstanceStatusError
 		reason = "ScriptFailed"
-		eventType = "Warning"
+		eventType = event.TypeWarning
 		message = fmt.Sprintf("%s script transport error: %s", scriptName, runErr.Error())
 	case exitCode == 0:
 		wlStatus = status.WorkloadInstanceStatusHealthy
 		reason = "ScriptSucceeded"
-		eventType = "Normal"
+		eventType = event.TypeNormal
 		message = fmt.Sprintf("%s script completed successfully (stdout: %s)", scriptName, truncateMessage(stdout))
 	default:
 		wlStatus = status.WorkloadInstanceStatusUnhealthy
 		reason = "ScriptFailed"
-		eventType = "Warning"
+		eventType = event.TypeWarning
 		message = fmt.Sprintf("%s script failed with exit code %d (stderr: %s)", scriptName, exitCode, truncateMessage(stderr))
 	}
-	if _, eventErr := client.CreateWorkloadEvent(r.APIClient, r.APIServer, &v0.WorkloadEvent{
-		RuntimeEventUID:           util.Ptr(r.ControllerID.String()),
-		Type:                      util.Ptr(eventType),
-		Reason:                    util.Ptr(reason),
-		Message:                   util.Ptr(truncateMessage(message)),
-		Timestamp:                 util.Ptr(time.Now()),
-		MachineWorkloadInstanceID: mwi.ID,
-	}); eventErr != nil {
-		log.Error(eventErr, "failed to create workload event")
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(eventType),
+			Reason: util.Ptr(reason),
+			Note:   util.Ptr(truncateMessage(message)),
+		},
+		*mwi.ID,
+		"v0",
+		util.TypeName(v0.MachineWorkloadInstance{}),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event")
 	}
 
 	return wlStatus

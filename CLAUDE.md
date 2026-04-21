@@ -475,6 +475,51 @@ Without this, `tptctl get` for those objects returns raw AES-GCM ciphertext — 
 - [ ] Composite wrapper (if any) threads the key through
 - [ ] `cmd/tptctl/cmd/<type>.go` Get commands have the decrypt block + `-d` flag
 
+# Event Recording in Controllers
+
+Events are user-facing signals about an API object — what `tptctl get events --for <kind>/<name>` returns. Controllers record them via `r.EventsRecorder.RecordEvent`. The generated reconciler already emits success/failure events for each reconcile op (Create/Update/Delete); hand-written reconcile code only needs to record events for things the generated layer can't see.
+
+## API
+
+```go
+r.EventsRecorder.RecordEvent(
+    &v0.Event{
+        Type:   util.Ptr(event.TypeWarning), // or event.TypeNormal
+        Reason: util.Ptr("ScriptTimedOut"),
+        Note:   util.Ptr(fmt.Sprintf("create script timed out after %ds", timeout)),
+    },
+    *obj.ID,
+    "v0",
+    util.TypeName(v0.<ObjectType>{}),
+)
+```
+
+The recorder writes both the `Event` row and the `AttachedObjectReference` that links it to the parent object; dedup-by-`(reason, note, type, objectid)` is handled server-side and increments `Count` on repeat.
+
+## What belongs in an event
+
+Surface things a user watching the object would want to know that **aren't already on the object's Status field**:
+
+- **External-dependency outcomes** — SSH connection succeeded/failed, remote host unreachable, cluster not yet ready. These explain *why* reconciliation is stuck or recovered.
+- **Operation outcomes with specific detail** — `ScriptSucceeded` / `ScriptFailed` with exit code, timeout, or a truncated stdout/stderr snippet. The generated layer only says "reconcile failed"; the event explains what failed.
+- **One-time state transitions** — first successful reach, host key captured on first connect, credentials propagated. Useful milestones the user couldn't infer from a steady-state status.
+- **Retryable errors the user should see** — e.g. "will retry after 30s because X". Helps operators distinguish "stuck but recovering" from "actually broken".
+
+## What does NOT belong in an event
+
+- **Heartbeat / per-tick noise** — "checked status, still healthy". Dedup helps, but don't emit these at all.
+- **Anything derivable from Status** — if `obj.Status == "Healthy"` conveys the same info, the event is redundant.
+- **Debug/trace** — use `log.V(1).Info(...)` for developer-level detail.
+- **Implementation internals** — "acquired lock", "parsed config", "marshaled request". Users don't care.
+- **Free-form prose reasons** — `Reason` is a dedup key. Use short, stable CamelCase identifiers (e.g. `SSHConnectFailed`, `ScriptTimedOut`, `HostKeyCaptured`), not sentences. Put the details in `Note`.
+
+## Conventions
+
+- **Type**: `event.TypeNormal` for success/informational, `event.TypeWarning` for failure/degraded.
+- **Reason**: short, stable CamelCase. Treat it like a machine-readable identifier.
+- **Note**: human-readable detail, free-form. Truncate large content (e.g. script stdout) with a clear marker — rows with multi-KB notes are fine but unbounded sizes are not.
+- **Don't set `Timestamp`, `EventTime`, `LastObservedTime`, `Count`, or `ReportingController`** — the recorder handles those.
+
 # Dependency Version Management
 
 ## CRITICAL: Always Check for Latest Versions

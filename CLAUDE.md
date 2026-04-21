@@ -12,12 +12,17 @@ When building container images with `tptdev build`, use `--parallel=2` to limit 
 tptdev build --names rest-api,workload-controller --push --parallel=2
 ```
 
-## Build Verification
-- **Always use `tptdev build`** to verify controller images compile — do NOT use `go build ./cmd/<controller>/` directly
-  - `tptdev build` produces the actual container image that gets deployed
-  - `go build` on a controller's `main_gen.go` leaves build artifacts (e.g., a `database-migrator` binary in the repo root) that pollute the working tree
-  - The Go build cache makes `tptdev build` fast on subsequent runs — the overhead vs `go build` is negligible
-- **Clean up build artifacts** after testing — if you do run `go build` directly for any reason, delete the resulting binary immediately (they are not gitignored and will show up as untracked files)
+## Local Verification
+Default to these local checks before committing — in order:
+
+1. `go vet ./...` — static check
+2. `mage build:tptctl` — CLI compiles
+3. `tptdev build --names <changed components> --parallel=2` — verify the container images that actually get deployed compile (no `--push` needed locally)
+4. `threeport-sdk gen -c sdk-config.yaml` followed by `git diff --name-only | grep '_gen.go'` — should produce no diff (idempotence). A diff means either you manually edited a `_gen.go` file, or you changed source types in `pkg/api/v0/*.go` / `sdk-config.yaml` without regenerating.
+
+**Do not default to `go test ./...`.** Every test in this repo is integration or e2e and assumes a live control plane, so local runs fail for infrastructure reasons rather than code correctness. Run them only against a real environment (`mage test:integration`, `mage test:e2eLocal`, etc.).
+
+**Do not use `go build ./cmd/<controller>/`.** It leaves untracked binaries in the repo root (e.g. `database-migrator`), and `main_gen.go` is not the actual deployment artifact anyway. `tptdev build` produces the image that gets deployed and is fast on subsequent runs thanks to the Go build cache. If you run `go build` for any reason, delete the binary immediately — they are not gitignored.
 
 ## Using threeport-sdk
 - **Don't stat or which-check for the `threeport-sdk` binary.** Just run `mage install:sdk` when you need it — the build is a no-op when up to date and cheap when not, and it guarantees the binary matches the current source. Running `ls ~/go/bin/threeport-sdk` or `which threeport-sdk` first is wasted motion (and often triggers a permission prompt for no benefit).
@@ -44,21 +49,6 @@ Generated file locations (DO NOT manually edit):
 - `pkg/client/v0/*_gen.go`, `delete_object_gen.go`
 - `magefiles/magefile_gen.go`, `internal/*/..._gen.go`
 - `cmd/*/main_gen.go`
-
-# Post-Commit Verification
-
-After every commit, run `threeport-sdk gen -c sdk-config.yaml` and verify no `_gen.go` files are modified:
-
-```bash
-threeport-sdk gen -c sdk-config.yaml
-git diff --name-only | grep '_gen.go'
-```
-
-If any `_gen.go` files show changes, either:
-- Your commit included manual edits to generated files (revert and fix the generator instead)
-- Your commit changed source types in `pkg/api/v0/*.go` or `sdk-config.yaml` without regenerating (run the full generate workflow)
-
-This check ensures generated code stays in sync with its source of truth.
 
 # Command Readability
 

@@ -434,6 +434,47 @@ const bootstrapGroupNameFormat = "threeport-bootstrap-%s"
 
 **Rule**: If you find yourself typing the same string pattern twice, immediately extract it into a constant.
 
+# Encrypted Field Handling in Config Package
+
+Any API type in `pkg/api/v0/` with one or more `encrypt:"true"` fields requires matching treatment in the config abstraction and the tptctl command — **do not skip this for new types**. `pkg/config/v0/aws_account.go` is the canonical reference.
+
+## The pattern
+
+1. **Config struct `Get` takes an `encryptionKey string` parameter.** Inside the per-object loop, call one of:
+   - Empty key → `encryption.RedactEncryptedValues(&obj)` so `tptctl get` output shows `"[encrypted value redacted]"` instead of ciphertext.
+   - Non-empty key → `encryption.DecryptValues(&obj, encryptionKey)` to return plaintext.
+
+2. **Composite `Config` wrappers thread the key through.** If the type has a composite abstraction (e.g. `MachineRuntimeConfig` wrapping definition + instance), its `Get`/`GetOperations` must accept `encryptionKey` and forward it to the inner `.Get()` calls. Create/Replace/Delete pass `""`.
+
+3. **tptctl `get` command wires a `-d/--decrypt-secrets` flag.** Mirror `cmd/tptctl/cmd/aws.go`:
+   ```go
+   var encryptionKey string
+   if <type>Decrypt {
+       threeportConfig, _, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+       // ...
+       key, err := threeportConfig.GetThreeportEncryptionKey(requestedControlPlane)
+       // ...
+       encryptionKey = key
+   }
+   // ...
+   result, err := config.Get(apiClient, apiEndpoint, encryptionKey)
+   ```
+   Register the flag on every Get command for the type:
+   ```go
+   GetFooCmd.Flags().BoolVarP(&fooDecrypt, "decrypt-secrets", "d", false, "Decrypt any encrypted secrets in output.")
+   ```
+
+## Why
+
+Without this, `tptctl get` for those objects returns raw AES-GCM ciphertext — unusable and potentially confusing. Redacting by default keeps output readable; the `-d` flag opts into plaintext when the user wants to see credentials (e.g. during debugging, or exporting a config for another control plane).
+
+## Checklist when adding an `encrypt:"true"` field
+
+- [ ] API type field tagged `encrypt:"true"` (and, for nullable secrets, also `validate:"optional"`)
+- [ ] `pkg/config/v0/<type>.go` `Get` takes `encryptionKey` + calls Redact/Decrypt
+- [ ] Composite wrapper (if any) threads the key through
+- [ ] `cmd/tptctl/cmd/<type>.go` Get commands have the decrypt block + `-d` flag
+
 # Dependency Version Management
 
 ## CRITICAL: Always Check for Latest Versions

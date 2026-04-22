@@ -384,7 +384,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeDefinition.ID = existingOciOkeKubernetesRuntimeDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingOciOkeKubernetesRuntimeDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -868,7 +868,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeInstance.ID = existingOciOkeKubernetesRuntimeInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingOciOkeKubernetesRuntimeInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1357,7 +1357,7 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 
 	// persist provided data
 	updatedOciProvider.ID = existingOciProvider.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciProvider); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingOciProvider).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedOciProvider); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

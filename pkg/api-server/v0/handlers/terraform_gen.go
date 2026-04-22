@@ -412,7 +412,7 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformDefinition.ID = existingTerraformDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingTerraformDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedTerraformDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -935,7 +935,7 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformInstance.ID = existingTerraformInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingTerraformInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedTerraformInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

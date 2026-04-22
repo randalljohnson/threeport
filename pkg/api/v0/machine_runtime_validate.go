@@ -75,8 +75,8 @@ func (m *MachineRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 		return errors.New("environment variable ENCRYPTION_KEY is not set")
 	}
 
-	updatedObj := tx.Statement.Dest.(MachineRuntimeInstance)
-	objVal := reflect.ValueOf(&updatedObj).Elem()
+	updatedObj := tx.Statement.Dest.(*MachineRuntimeInstance)
+	objVal := reflect.ValueOf(updatedObj).Elem()
 	objType := objVal.Type()
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)

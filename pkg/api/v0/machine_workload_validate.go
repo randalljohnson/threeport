@@ -51,11 +51,11 @@ func (m *MachineWorkloadDefinition) BeforeCreate(tx *gorm.DB) error {
 // BeforeUpdate re-encrypts changed encrypt-tagged fields on a
 // MachineWorkloadDefinition before updating in the database.
 func (m *MachineWorkloadDefinition) BeforeUpdate(tx *gorm.DB) error {
-	updated := tx.Statement.Dest.(MachineWorkloadDefinition)
+	updated := tx.Statement.Dest.(*MachineWorkloadDefinition)
 	if err := validateEnv(updated.Env); err != nil {
 		return err
 	}
-	return encryptTaggedFields(tx, &updated, true)
+	return encryptTaggedFields(tx, updated, true)
 }
 
 // BeforeCreate validates and encrypts fields on a MachineWorkloadInstance
@@ -70,11 +70,11 @@ func (m *MachineWorkloadInstance) BeforeCreate(tx *gorm.DB) error {
 // BeforeUpdate re-encrypts changed encrypt-tagged fields on a
 // MachineWorkloadInstance before updating in the database.
 func (m *MachineWorkloadInstance) BeforeUpdate(tx *gorm.DB) error {
-	updated := tx.Statement.Dest.(MachineWorkloadInstance)
+	updated := tx.Statement.Dest.(*MachineWorkloadInstance)
 	if err := validateEnv(updated.Env); err != nil {
 		return err
 	}
-	return encryptTaggedFields(tx, &updated, true)
+	return encryptTaggedFields(tx, updated, true)
 }
 
 // encryptTaggedFields iterates struct fields looking for `encrypt:"true"` tags

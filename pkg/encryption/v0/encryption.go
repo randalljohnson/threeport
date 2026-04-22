@@ -186,6 +186,10 @@ func RedactEncryptedValues(obj interface{}) interface{} {
 
 // DecryptValues takes and API object and the encryption key, decrypts any
 // encrypted fields and returns the object with encrypted values decrypted.
+// Nil pointer fields are left as-is since there is nothing to decrypt. Slice
+// fields are decrypted element-by-element, preserving the KEY= prefix on
+// each entry (only the value after the first `=` is encrypted on write, so
+// only that portion is decrypted on read).
 func DecryptValues(obj interface{}, encryptionKey string) (interface{}, error) {
 	objVal := reflect.ValueOf(obj).Elem()
 	objType := objVal.Type()

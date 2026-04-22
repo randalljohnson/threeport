@@ -118,3 +118,31 @@ func (m *MachineRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 
 	return nil
 }
+
+// BeforeDelete validates a delete request on a machine runtime instance to
+// ensure deletion is possible — blocks deletion when any MachineWorkloadInstance
+// still references this runtime via its MachineRuntimeInstanceID foreign key.
+// Mirrors the KubernetesRuntimeInstance.BeforeDelete convention so callers can
+// rely on ordered teardown (workloads first, runtime last).
+func (m *MachineRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
+	var machineWorkloadInstances []MachineWorkloadInstance
+	if result := tx.Where(
+		&MachineWorkloadInstance{MachineRuntimeInstanceID: m.ID},
+	).Find(&machineWorkloadInstances); result.Error != nil {
+		return fmt.Errorf(
+			"failed to query machine workload instances for machine runtime instance %s: %w",
+			*m.Name, result.Error,
+		)
+	}
+
+	if len(machineWorkloadInstances) > 0 {
+		return util.NewBadRequestError(
+			fmt.Sprintf(
+				"machine runtime instance %s cannot be deleted until machine workload instances are removed",
+				*m.Name,
+			),
+		)
+	}
+
+	return nil
+}

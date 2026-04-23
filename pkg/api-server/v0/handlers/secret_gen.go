@@ -412,7 +412,9 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedSecretDefinition.ID = existingSecretDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingSecretDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedSecretDefinition); result.Error != nil {
+	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
+	result := updateSession.Model(&existingSecretDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedSecretDefinition)
+	if result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -935,7 +937,9 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedSecretInstance.ID = existingSecretInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingSecretInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedSecretInstance); result.Error != nil {
+	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
+	result := updateSession.Model(&existingSecretInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedSecretInstance)
+	if result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

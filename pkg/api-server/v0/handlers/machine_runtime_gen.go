@@ -431,6 +431,21 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
+	// check for blocking AORs before deletion
+	blockingErr, err := apiserver_lib.BlockingAORsError(
+		h.DB,
+		"machine runtime definition",
+		util_v0.TypeName(machineRuntimeDefinition),
+		machineRuntimeDefinition.ID,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	}
+
 	// delete object
 	if result := h.DB.Delete(&machineRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
@@ -891,6 +906,21 @@ func (h Handler) DeleteMachineRuntimeInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for blocking AORs before deletion
+	blockingErr, err := apiserver_lib.BlockingAORsError(
+		h.DB,
+		"machine runtime instance",
+		util_v0.TypeName(machineRuntimeInstance),
+		machineRuntimeInstance.ID,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
 	}
 
 	// schedule for deletion if not already scheduled

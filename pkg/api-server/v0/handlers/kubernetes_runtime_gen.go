@@ -413,8 +413,7 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 	// persist provided data
 	updatedKubernetesRuntimeDefinition.ID = existingKubernetesRuntimeDefinition.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingKubernetesRuntimeDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedKubernetesRuntimeDefinition)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingKubernetesRuntimeDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -938,8 +937,7 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 	// persist provided data
 	updatedKubernetesRuntimeInstance.ID = existingKubernetesRuntimeInstance.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingKubernetesRuntimeInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedKubernetesRuntimeInstance)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingKubernetesRuntimeInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

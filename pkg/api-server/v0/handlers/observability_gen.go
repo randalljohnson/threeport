@@ -413,8 +413,7 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 	// persist provided data
 	updatedLoggingDefinition.ID = existingLoggingDefinition.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingLoggingDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedLoggingDefinition)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingLoggingDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedLoggingDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -938,8 +937,7 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 	// persist provided data
 	updatedLoggingInstance.ID = existingLoggingInstance.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingLoggingInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedLoggingInstance)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingLoggingInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedLoggingInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1457,8 +1455,7 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 	// persist provided data
 	updatedMetricsDefinition.ID = existingMetricsDefinition.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingMetricsDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMetricsDefinition)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingMetricsDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMetricsDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1982,8 +1979,7 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 	// persist provided data
 	updatedMetricsInstance.ID = existingMetricsInstance.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingMetricsInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMetricsInstance)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingMetricsInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMetricsInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2501,8 +2497,7 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 	// persist provided data
 	updatedObservabilityDashboardDefinition.ID = existingObservabilityDashboardDefinition.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingObservabilityDashboardDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityDashboardDefinition)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingObservabilityDashboardDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityDashboardDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3026,8 +3021,7 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 	// persist provided data
 	updatedObservabilityDashboardInstance.ID = existingObservabilityDashboardInstance.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingObservabilityDashboardInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityDashboardInstance)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingObservabilityDashboardInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityDashboardInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3545,8 +3539,7 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 	// persist provided data
 	updatedObservabilityStackDefinition.ID = existingObservabilityStackDefinition.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingObservabilityStackDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityStackDefinition)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingObservabilityStackDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityStackDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -4070,8 +4063,7 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 	// persist provided data
 	updatedObservabilityStackInstance.ID = existingObservabilityStackInstance.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingObservabilityStackInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityStackInstance)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingObservabilityStackInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedObservabilityStackInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

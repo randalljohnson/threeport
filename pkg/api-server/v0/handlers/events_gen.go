@@ -365,8 +365,7 @@ func (h Handler) ReplaceEvent(c echo.Context) error {
 	// persist provided data
 	updatedEvent.ID = existingEvent.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingEvent).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedEvent)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingEvent).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedEvent); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

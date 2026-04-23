@@ -414,8 +414,7 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 	// persist provided data
 	updatedControlPlaneDefinition.ID = existingControlPlaneDefinition.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingControlPlaneDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedControlPlaneDefinition)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingControlPlaneDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedControlPlaneDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -939,8 +938,7 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 	// persist provided data
 	updatedControlPlaneInstance.ID = existingControlPlaneInstance.ID
 	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	result := updateSession.Model(&existingControlPlaneInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedControlPlaneInstance)
-	if result.Error != nil {
+	if result := updateSession.Model(&existingControlPlaneInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedControlPlaneInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

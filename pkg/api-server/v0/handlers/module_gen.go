@@ -380,8 +380,8 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleApi.ID = existingModuleApi.ID
-	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	if result := updateSession.Model(&existingModuleApi).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleApi); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingModuleApi)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleApi); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -815,8 +815,8 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleApiRoute.ID = existingModuleApiRoute.ID
-	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	if result := updateSession.Model(&existingModuleApiRoute).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleApiRoute); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingModuleApiRoute)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleApiRoute); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1266,8 +1266,8 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleController.ID = existingModuleController.ID
-	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	if result := updateSession.Model(&existingModuleController).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleController); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingModuleController)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleController); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1701,8 +1701,8 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleObject.ID = existingModuleObject.ID
-	updateSession := h.DB.Session(&gorm.Session{FullSaveAssociations: false})
-	if result := updateSession.Model(&existingModuleObject).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleObject); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingModuleObject)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedModuleObject); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

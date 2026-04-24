@@ -375,7 +375,8 @@ func (h Handler) ReplaceAwsAccount(c echo.Context) error {
 
 	// persist provided data
 	updatedAwsAccount.ID = existingAwsAccount.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingAwsAccount).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedAwsAccount); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingAwsAccount)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedAwsAccount); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -809,7 +810,8 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error 
 
 	// persist provided data
 	updatedAwsEksKubernetesRuntimeDefinition.ID = existingAwsEksKubernetesRuntimeDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingAwsEksKubernetesRuntimeDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedAwsEksKubernetesRuntimeDefinition); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingAwsEksKubernetesRuntimeDefinition)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedAwsEksKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -1277,7 +1279,8 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedAwsEksKubernetesRuntimeInstance.ID = existingAwsEksKubernetesRuntimeInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingAwsEksKubernetesRuntimeInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedAwsEksKubernetesRuntimeInstance); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingAwsEksKubernetesRuntimeInstance)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedAwsEksKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}

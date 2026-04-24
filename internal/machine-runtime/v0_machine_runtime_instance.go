@@ -44,9 +44,13 @@ func v0MachineRuntimeInstanceCreated(
 
 	// save captured host key if this is the first connection
 	if capturedHostKey != "" {
+		// Reconciled is set so the api server's update handler recognizes
+		// this as a self-triggered update and skips publishing a notification
+		// that would otherwise fire a spurious SuccessfulUpdate event.
 		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
-			Common:  v0.Common{ID: machineRuntimeInstance.ID},
-			HostKey: &capturedHostKey,
+			Common:         v0.Common{ID: machineRuntimeInstance.ID},
+			Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+			HostKey:        &capturedHostKey,
 		}); err != nil {
 			return 0, fmt.Errorf("failed to save captured host key: %w", err)
 		}

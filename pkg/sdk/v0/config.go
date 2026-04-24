@@ -28,6 +28,11 @@ type SdkConfig struct {
 	// A repository for each module will be created in this namespace.
 	ImageNamespace string `yaml:"ImageNamespace"`
 
+	// The CPU architecture used for release image builds, e.g. `amd64` or
+	// `arm64`. Defaults to `amd64` when unset. Dev image builds always use
+	// the host architecture.
+	ReleaseArch string `yaml:"ReleaseArch"`
+
 	// Details to be displayed with the API swagger docs that are served by the
 	// API server.
 	ApiDocs ApiDocs `yaml:"ApiDocs"`
@@ -182,6 +187,15 @@ func ValidateSdkConfig(sdkConfig *SdkConfig) error {
 
 	if module && sdkConfig.ApiNamespace == "" {
 		return fmt.Errorf("ApiNamespace is a required field")
+	}
+
+	switch sdkConfig.ReleaseArch {
+	case "", "amd64", "arm64":
+	default:
+		return fmt.Errorf(
+			"invalid ReleaseArch %q: supported values are amd64, arm64 (default: amd64)",
+			sdkConfig.ReleaseArch,
+		)
 	}
 
 	// check to make sure that defined instance objects have matching values for

@@ -632,7 +632,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							"github.com/threeport/threeport/pkg/api-server/lib/v0",
 							"FormatBlockingAttachedObjectReferencesError",
 						).Call(
-							Line().Lit(strcase.ToDelimited(apiObject.TypeName, ' ')),
 							Line().Id("attachedObjectReferences"),
 							Line(),
 						),

@@ -475,7 +475,6 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"kubernetes runtime definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -999,7 +998,6 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"kubernetes runtime instance",
 				attachedObjectReferences,
 			),
 			objectType,

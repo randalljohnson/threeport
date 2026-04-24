@@ -475,7 +475,6 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"helm workload definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -999,7 +998,6 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"helm workload instance",
 				attachedObjectReferences,
 			),
 			objectType,

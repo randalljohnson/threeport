@@ -437,7 +437,6 @@ func (h Handler) DeleteModuleApi(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"module api",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -878,7 +877,6 @@ func (h Handler) DeleteModuleApiRoute(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"module api route",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1335,7 +1333,6 @@ func (h Handler) DeleteModuleController(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"module controller",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1776,7 +1773,6 @@ func (h Handler) DeleteModuleObject(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"module object",
 				attachedObjectReferences,
 			),
 			objectType,

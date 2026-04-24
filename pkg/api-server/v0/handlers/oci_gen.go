@@ -447,7 +447,6 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"oci oke kubernetes runtime definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -932,7 +931,6 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"oci oke kubernetes runtime instance",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1428,7 +1426,6 @@ func (h Handler) DeleteOciProvider(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"oci provider",
 				attachedObjectReferences,
 			),
 			objectType,

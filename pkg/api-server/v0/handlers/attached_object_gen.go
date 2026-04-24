@@ -421,7 +421,6 @@ func (h Handler) DeleteAttachedObjectReference(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"attached object reference",
 				attachedObjectReferences,
 			),
 			objectType,

@@ -475,7 +475,6 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"workload definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -955,7 +954,6 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"workload event",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1440,7 +1438,6 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"workload instance",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1920,7 +1917,6 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"workload resource definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2361,7 +2357,6 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"workload resource instance",
 				attachedObjectReferences,
 			),
 			objectType,

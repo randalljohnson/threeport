@@ -476,7 +476,6 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"control plane definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1000,7 +999,6 @@ func (h Handler) DeleteControlPlaneInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"control plane instance",
 				attachedObjectReferences,
 			),
 			objectType,

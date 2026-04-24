@@ -441,7 +441,6 @@ func (h Handler) DeleteAwsAccount(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"aws account",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -904,7 +903,6 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"aws eks kubernetes runtime definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1389,7 +1387,6 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"aws eks kubernetes runtime instance",
 				attachedObjectReferences,
 			),
 			objectType,

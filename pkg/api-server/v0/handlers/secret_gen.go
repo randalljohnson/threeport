@@ -475,7 +475,6 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"secret definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -999,7 +998,6 @@ func (h Handler) DeleteSecretInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"secret instance",
 				attachedObjectReferences,
 			),
 			objectType,

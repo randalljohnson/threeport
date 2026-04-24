@@ -447,7 +447,6 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"domain name definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -932,7 +931,6 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"domain name instance",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1462,7 +1460,6 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"gateway definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1942,7 +1939,6 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"gateway http port",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2427,7 +2423,6 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"gateway instance",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2907,7 +2902,6 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"gateway tcp port",
 				attachedObjectReferences,
 			),
 			objectType,

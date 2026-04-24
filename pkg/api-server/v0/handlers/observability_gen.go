@@ -475,7 +475,6 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"logging definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -999,7 +998,6 @@ func (h Handler) DeleteLoggingInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"logging instance",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1529,7 +1527,6 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"metrics definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2053,7 +2050,6 @@ func (h Handler) DeleteMetricsInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"metrics instance",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2583,7 +2579,6 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"observability dashboard definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -3107,7 +3102,6 @@ func (h Handler) DeleteObservabilityDashboardInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"observability dashboard instance",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -3637,7 +3631,6 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"observability stack definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -4161,7 +4154,6 @@ func (h Handler) DeleteObservabilityStackInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"observability stack instance",
 				attachedObjectReferences,
 			),
 			objectType,

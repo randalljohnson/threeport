@@ -437,7 +437,6 @@ func (h Handler) DeleteProfile(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"profile",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -894,7 +893,6 @@ func (h Handler) DeleteTier(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"tier",
 				attachedObjectReferences,
 			),
 			objectType,

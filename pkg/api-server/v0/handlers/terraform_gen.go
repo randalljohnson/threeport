@@ -475,7 +475,6 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"terraform definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -999,7 +998,6 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"terraform instance",
 				attachedObjectReferences,
 			),
 			objectType,

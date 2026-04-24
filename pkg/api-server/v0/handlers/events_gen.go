@@ -421,7 +421,6 @@ func (h Handler) DeleteEvent(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"event",
 				attachedObjectReferences,
 			),
 			objectType,

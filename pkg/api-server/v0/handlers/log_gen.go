@@ -437,7 +437,6 @@ func (h Handler) DeleteLogBackend(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"log backend",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -900,7 +899,6 @@ func (h Handler) DeleteLogStorageDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"log storage definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1357,7 +1355,6 @@ func (h Handler) DeleteLogStorageInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"log storage instance",
 				attachedObjectReferences,
 			),
 			objectType,

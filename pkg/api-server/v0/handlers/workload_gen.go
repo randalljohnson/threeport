@@ -460,22 +460,25 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 	}
 
 	// check for blocking attached object references before deletion
-	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
 		h.DB,
 		util_v0.TypeName(workloadDefinition),
 		workloadDefinition.ID,
-		10,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
-	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-		"workload definition",
-		attachedObjectReferences,
-		totalBlockingAttachedObjectReferences,
-	); blockingErr != nil {
-		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	if len(attachedObjectReferences) > 0 {
+		return apiserver_lib.ResponseStatus409(
+			c,
+			nil,
+			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+				"workload definition",
+				attachedObjectReferences,
+			),
+			objectType,
+		)
 	}
 
 	// schedule for deletion if not already scheduled
@@ -936,22 +939,25 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 	}
 
 	// check for blocking attached object references before deletion
-	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
 		h.DB,
 		util_v0.TypeName(workloadEvent),
 		workloadEvent.ID,
-		10,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
-	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-		"workload event",
-		attachedObjectReferences,
-		totalBlockingAttachedObjectReferences,
-	); blockingErr != nil {
-		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	if len(attachedObjectReferences) > 0 {
+		return apiserver_lib.ResponseStatus409(
+			c,
+			nil,
+			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+				"workload event",
+				attachedObjectReferences,
+			),
+			objectType,
+		)
 	}
 
 	// delete object
@@ -1417,22 +1423,25 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 	}
 
 	// check for blocking attached object references before deletion
-	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
 		h.DB,
 		util_v0.TypeName(workloadInstance),
 		workloadInstance.ID,
-		10,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
-	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-		"workload instance",
-		attachedObjectReferences,
-		totalBlockingAttachedObjectReferences,
-	); blockingErr != nil {
-		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	if len(attachedObjectReferences) > 0 {
+		return apiserver_lib.ResponseStatus409(
+			c,
+			nil,
+			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+				"workload instance",
+				attachedObjectReferences,
+			),
+			objectType,
+		)
 	}
 
 	// schedule for deletion if not already scheduled
@@ -1893,22 +1902,25 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 	}
 
 	// check for blocking attached object references before deletion
-	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
 		h.DB,
 		util_v0.TypeName(workloadResourceDefinition),
 		workloadResourceDefinition.ID,
-		10,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
-	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-		"workload resource definition",
-		attachedObjectReferences,
-		totalBlockingAttachedObjectReferences,
-	); blockingErr != nil {
-		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	if len(attachedObjectReferences) > 0 {
+		return apiserver_lib.ResponseStatus409(
+			c,
+			nil,
+			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+				"workload resource definition",
+				attachedObjectReferences,
+			),
+			objectType,
+		)
 	}
 
 	// delete object
@@ -2330,22 +2342,25 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 	}
 
 	// check for blocking attached object references before deletion
-	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
 		h.DB,
 		util_v0.TypeName(workloadResourceInstance),
 		workloadResourceInstance.ID,
-		10,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
-	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-		"workload resource instance",
-		attachedObjectReferences,
-		totalBlockingAttachedObjectReferences,
-	); blockingErr != nil {
-		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	if len(attachedObjectReferences) > 0 {
+		return apiserver_lib.ResponseStatus409(
+			c,
+			nil,
+			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+				"workload resource instance",
+				attachedObjectReferences,
+			),
+			objectType,
+		)
 	}
 
 	// delete object

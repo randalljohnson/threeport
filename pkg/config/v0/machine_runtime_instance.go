@@ -6,6 +6,8 @@ import (
 	errors "errors"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
@@ -22,13 +24,17 @@ type MachineRuntimeInstanceConfig struct {
 }
 
 // MachineRuntimeInstanceValues contains all the attributes needed to manage
-// the MachineRuntimeInstance API object.
+// the MachineRuntimeInstance API object. For sensitive values, the *File
+// variants take a path to a file whose contents are loaded into the
+// corresponding inline field at Create time.
 type MachineRuntimeInstanceValues struct {
 	Name                     *string                         `json:"Name,omitempty" yaml:"Name,omitempty"`
 	Hostname                 *string                         `json:"Hostname,omitempty" yaml:"Hostname,omitempty"`
 	SSHUser                  *string                         `json:"SSHUser,omitempty" yaml:"SSHUser,omitempty"`
 	SSHKey                   *string                         `json:"SSHKey,omitempty" yaml:"SSHKey,omitempty"`
+	SSHKeyFile               *string                         `json:"SSHKeyFile,omitempty" yaml:"SSHKeyFile,omitempty"`
 	SSHPassword              *string                         `json:"SSHPassword,omitempty" yaml:"SSHPassword,omitempty"`
+	SSHPasswordFile          *string                         `json:"SSHPasswordFile,omitempty" yaml:"SSHPasswordFile,omitempty"`
 	Port                     *int                            `json:"Port,omitempty" yaml:"Port,omitempty"`
 	HostKey                  *string                         `json:"HostKey,omitempty" yaml:"HostKey,omitempty"`
 	MachineRuntimeDefinition *MachineRuntimeDefinitionValues `json:"MachineRuntimeDefinition,omitempty" yaml:"MachineRuntimeDefinition,omitempty"`
@@ -121,6 +127,24 @@ func (m *MachineRuntimeInstanceConfig) Create(
 	// validate config
 	if err := m.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate values for machine runtime instance with name %s: %w", *machineRuntimeInstanceValues.Name, err)
+	}
+
+	// resolve *File fields into their inline counterparts
+	if machineRuntimeInstanceValues.SSHKey == nil && machineRuntimeInstanceValues.SSHKeyFile != nil {
+		content, err := os.ReadFile(*machineRuntimeInstanceValues.SSHKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read SSHKey file at %s: %w", *machineRuntimeInstanceValues.SSHKeyFile, err)
+		}
+		key := strings.TrimRight(string(content), "\n\r\t ")
+		machineRuntimeInstanceValues.SSHKey = &key
+	}
+	if machineRuntimeInstanceValues.SSHPassword == nil && machineRuntimeInstanceValues.SSHPasswordFile != nil {
+		content, err := os.ReadFile(*machineRuntimeInstanceValues.SSHPasswordFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read SSHPassword file at %s: %w", *machineRuntimeInstanceValues.SSHPasswordFile, err)
+		}
+		pw := strings.TrimRight(string(content), "\n\r\t ")
+		machineRuntimeInstanceValues.SSHPassword = &pw
 	}
 
 	// look up machine runtime definition by name if provided

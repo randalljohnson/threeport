@@ -4,6 +4,8 @@ package machineworkload
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	logr "github.com/go-logr/logr"
 
@@ -25,6 +27,11 @@ const (
 	// megabytes of output.
 	maxEventMessageChars = 32768
 )
+
+// ansiEscape matches ANSI CSI/OSC escape sequences commonly emitted by
+// interactive tools (colors, cursor moves, progress redraws). These are
+// meaningless when the output is captured to a log or event Note.
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07`)
 
 // v0MachineWorkloadInstanceCreated performs reconciliation when a v0
 // MachineWorkloadInstance has been created.  It resolves the related machine
@@ -201,7 +208,7 @@ func runScript(
 		wlStatus = status.WorkloadInstanceStatusDown
 		reason = "ScriptTimedOut"
 		eventType = event.TypeWarning
-		message = fmt.Sprintf("%s script timed out (stderr: %s)", scriptName, truncateMessage(stderr))
+		message = fmt.Sprintf("%s script timed out (stderr: %s)", scriptName, truncateMessage(sanitizeScriptOutput(stderr)))
 	case runErr != nil:
 		wlStatus = status.WorkloadInstanceStatusError
 		reason = "ScriptFailed"
@@ -211,12 +218,12 @@ func runScript(
 		wlStatus = status.WorkloadInstanceStatusHealthy
 		reason = "ScriptSucceeded"
 		eventType = event.TypeNormal
-		message = fmt.Sprintf("%s script completed successfully (stdout: %s)", scriptName, truncateMessage(stdout))
+		message = fmt.Sprintf("%s script completed successfully (stdout: %s)", scriptName, truncateMessage(sanitizeScriptOutput(stdout)))
 	default:
 		wlStatus = status.WorkloadInstanceStatusUnhealthy
 		reason = "ScriptFailed"
 		eventType = event.TypeWarning
-		message = fmt.Sprintf("%s script failed with exit code %d (stderr: %s)", scriptName, exitCode, truncateMessage(stderr))
+		message = fmt.Sprintf("%s script failed with exit code %d (stderr: %s)", scriptName, exitCode, truncateMessage(sanitizeScriptOutput(stderr)))
 	}
 	if eventErr := r.EventsRecorder.RecordEvent(
 		&v0.Event{
@@ -242,4 +249,21 @@ func truncateMessage(msg string) string {
 		return msg
 	}
 	return string(runes[:maxEventMessageChars]) + "\n...[truncated]"
+}
+
+// sanitizeScriptOutput normalizes captured terminal output for storage in an
+// event Note: strips ANSI escape sequences, and collapses carriage-return
+// driven progress redraws so only the final state of each line remains.
+func sanitizeScriptOutput(s string) string {
+	if s == "" {
+		return s
+	}
+	s = ansiEscape.ReplaceAllString(s, "")
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if idx := strings.LastIndex(line, "\r"); idx != -1 {
+			lines[i] = line[idx+1:]
+		}
+	}
+	return strings.Join(lines, "\n")
 }

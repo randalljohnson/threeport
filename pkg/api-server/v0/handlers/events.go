@@ -6,14 +6,18 @@ import (
 
 	echo "github.com/labstack/echo/v4"
 	zap "go.uber.org/zap"
+	"gorm.io/gorm"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
 // @Summary gets all events joined with attached object references.
-// @Description Get all events joined with attached object references
-// from the Threeport database for a given objectId.
+// @Description Get all events joined with attached object references from
+// the Threeport database. When an objectId query parameter is provided,
+// results are filtered to events whose attached object reference points at
+// that object; otherwise all events that have an attached object reference
+// are returned.
 // @ID get-v0-events-join-attached-object-references
 // @Accept json
 // @Produce json
@@ -39,9 +43,6 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	}
 
 	objectId := c.QueryParam("objectid")
-	if objectId == "" {
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("must provide object ID"), objectType)
-	}
 
 	pagination := new(apiserver_lib.Pagination)
 	pagination.Limit = pageParams.Limit
@@ -49,16 +50,23 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	records := &[]v0.Event{}
 	var returnedCount int64
 
+	// apply the objectid filter only when one was supplied
+	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
+		if objectId == "" {
+			return query
+		}
+		return query.Where("v0_attached_object_references.object_id = ?", objectId)
+	}
+
 	switch {
 	case pageParams.QueryId == "":
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&v0.Event{}).Joins(
+		countQuery := h.DB.Model(&v0.Event{}).Joins(
 			"INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id",
-		).Where(
-			"v0_attached_object_references.object_id = ?", objectId,
-		).Where(&filter).Count(&totalCount); result.Error != nil {
+		)
+		if result := applyObjectIdFilter(countQuery).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -69,11 +77,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Joins(
+			findQuery := h.DB.Order("ID asc").Joins(
 				"INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id",
-			).Where(
-				"v0_attached_object_references.object_id = ?", objectId,
-			).Where(&filter).Find(records); result.Error != nil {
+			)
+			if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -82,11 +89,16 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		case true:
 			viewName, queryId := GenerateMaterializedViewName()
 
-			// create the materialized view with custom JOIN query
+			// create the materialized view with custom JOIN query; include
+			// the objectid filter only when one was supplied
+			whereClause := ""
+			if objectId != "" {
+				whereClause = fmt.Sprintf(" WHERE v0_attached_object_references.object_id = '%s'", objectId)
+			}
 			createView := fmt.Sprintf(
-				"CREATE MATERIALIZED VIEW %s AS SELECT v0_events.* FROM v0_events INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id WHERE v0_attached_object_references.object_id = '%s' ORDER BY v0_events.id ASC",
+				"CREATE MATERIALIZED VIEW %s AS SELECT v0_events.* FROM v0_events INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id%s ORDER BY v0_events.id ASC",
 				viewName,
-				objectId,
+				whereClause,
 			)
 			if result := h.DB.Exec(createView); result.Error != nil {
 				h.Logger.Error("handler error: error creating materialized view", zap.Error(result.Error))

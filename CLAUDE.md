@@ -178,21 +178,30 @@ return fmt.Errorf("no active cluster found with name %s", clusterName)
 ## Code Formatting Conventions
 
 ### Inline Error Handling
-- **Use `if err := function(); err != nil` pattern** whenever possible for concise code
-- **Prefer inline assignment and check** over separate variable assignment
+- **Use `if ...; err != nil` whenever possible.** Inline the call in the `if`, check the error in the block, and keep the happy path after the `if` — not nested in an `else` branch. When the call returns a value that needs to survive past the `if`, pre-declare the variable with `var` and use `=` in the `if` statement.
 
 ```go
-// Preferred (concise)
+// error-only check
 if err := b.createOCICompartment(client); err != nil {
     return fmt.Errorf("failed to create compartment: %w", err)
 }
 
-// Avoid when possible (verbose)
-err := b.createOCICompartment(client)
-if err != nil {
-    return fmt.Errorf("failed to create compartment: %w", err)
+// value + error, value needed after the if: pre-declare, then inline with =
+var refs *[]v0.AttachedObjectReference
+if refs, err = client.GetAttachedObjectReferencesByAttachedObjectID(
+    r.APIClient,
+    r.APIServer,
+    id,
+); err != nil {
+    log.Error(err, "failed to get attached object references")
+    continue
+}
+for _, ref := range *refs {
+    // ...
 }
 ```
+
+Avoid the `val, err := f(); if err != nil { ... }` two-line form and avoid wrapping the happy path in an `else` branch — both are less consistent with the rest of the codebase.
 
 ### Function Parameters and Multi-line Formatting
 - **Break parameters into multiple lines** when function calls have >3 parameters or are very long

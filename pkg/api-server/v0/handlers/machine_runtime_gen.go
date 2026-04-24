@@ -447,7 +447,6 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"machine runtime definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -932,7 +931,6 @@ func (h Handler) DeleteMachineRuntimeInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"machine runtime instance",
 				attachedObjectReferences,
 			),
 			objectType,

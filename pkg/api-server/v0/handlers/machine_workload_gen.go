@@ -447,7 +447,6 @@ func (h Handler) DeleteMachineWorkloadDefinition(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"machine workload definition",
 				attachedObjectReferences,
 			),
 			objectType,
@@ -932,7 +931,6 @@ func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
 			c,
 			nil,
 			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
-				"machine workload instance",
 				attachedObjectReferences,
 			),
 			objectType,

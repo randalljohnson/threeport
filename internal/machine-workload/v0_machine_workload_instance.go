@@ -153,7 +153,7 @@ func runScript(
 			},
 			*mwi.ID,
 			"v0",
-			util.TypeName(v0.MachineWorkloadInstance{}),
+			mwi.GetType(),
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
@@ -226,7 +226,7 @@ func runScript(
 		},
 		*mwi.ID,
 		"v0",
-		util.TypeName(v0.MachineWorkloadInstance{}),
+		mwi.GetType(),
 	); eventErr != nil {
 		log.Error(eventErr, "failed to record event")
 	}

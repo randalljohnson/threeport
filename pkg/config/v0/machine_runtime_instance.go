@@ -122,29 +122,29 @@ func (m *MachineRuntimeInstanceConfig) Create(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*MachineRuntimeInstanceConfig, error) {
+	// resolve *File fields into their inline counterparts before validating
+	if m.MachineRuntimeInstance.SSHKey == nil && m.MachineRuntimeInstance.SSHKeyFile != nil {
+		content, err := os.ReadFile(*m.MachineRuntimeInstance.SSHKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read SSHKey file at %s: %w", *m.MachineRuntimeInstance.SSHKeyFile, err)
+		}
+		key := strings.TrimRight(string(content), "\n\r\t ")
+		m.MachineRuntimeInstance.SSHKey = &key
+	}
+	if m.MachineRuntimeInstance.SSHPassword == nil && m.MachineRuntimeInstance.SSHPasswordFile != nil {
+		content, err := os.ReadFile(*m.MachineRuntimeInstance.SSHPasswordFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read SSHPassword file at %s: %w", *m.MachineRuntimeInstance.SSHPasswordFile, err)
+		}
+		pw := strings.TrimRight(string(content), "\n\r\t ")
+		m.MachineRuntimeInstance.SSHPassword = &pw
+	}
+
 	machineRuntimeInstanceValues := m.MachineRuntimeInstance
 
 	// validate config
 	if err := m.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate values for machine runtime instance with name %s: %w", *machineRuntimeInstanceValues.Name, err)
-	}
-
-	// resolve *File fields into their inline counterparts
-	if machineRuntimeInstanceValues.SSHKey == nil && machineRuntimeInstanceValues.SSHKeyFile != nil {
-		content, err := os.ReadFile(*machineRuntimeInstanceValues.SSHKeyFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read SSHKey file at %s: %w", *machineRuntimeInstanceValues.SSHKeyFile, err)
-		}
-		key := strings.TrimRight(string(content), "\n\r\t ")
-		machineRuntimeInstanceValues.SSHKey = &key
-	}
-	if machineRuntimeInstanceValues.SSHPassword == nil && machineRuntimeInstanceValues.SSHPasswordFile != nil {
-		content, err := os.ReadFile(*machineRuntimeInstanceValues.SSHPasswordFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read SSHPassword file at %s: %w", *machineRuntimeInstanceValues.SSHPasswordFile, err)
-		}
-		pw := strings.TrimRight(string(content), "\n\r\t ")
-		machineRuntimeInstanceValues.SSHPassword = &pw
 	}
 
 	// look up machine runtime definition by name if provided

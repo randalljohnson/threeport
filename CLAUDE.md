@@ -308,6 +308,20 @@ event := v0.WorkloadEvent{
 }
 ```
 
+### Variable Naming and Error-Return Shapes
+
+Code should read as if every contributor shares the same naming sense.  The following rules fall out of patterns already in use across the codebase (see `pkg/client/v0/attached_object.go` for a representative example):
+
+- **Loop variables use the singular of the collection's name in full**.  Prefer `for _, attachedObjectReference := range *attachedObjectReferences` over `for _, r := range refs`.  Single letters are only for indices (`i`, `j`), the error var (`err`), or trivially-scoped helpers inside a handful of lines.
+- **Local variables mirror the API type's field/identifier names**, not ad-hoc shorthands.  Prefer `attachedObjectType` / `attachedObjectID` over `t` / `id`.  Short names are for structurally-anonymous values (iterator counters, buffers) — never for named domain concepts.
+- **One-shot struct-literal locals may use short names** like `ref` / `obj` when the value is used exactly once in the next few lines and never referenced elsewhere.  Beyond that, use the full descriptive name.
+- **Return shape**: helpers return a single `error` and, optionally, a value.  Avoid `(error, error)` return signatures — split the concerns into separate functions.  Example: a finder returns `(results, total, error)`; a formatter returns `error`; the caller decides which kind of response to produce.
+- **Un-wrapped errors use `errors.New(msg)`**, not `fmt.Errorf("%s", msg)`.  The format-verb pattern mimics wrapping without doing it and creates confusion during code review.
+
+### File Naming in Library Packages
+
+For shared library packages like `pkg/api-server/lib/v0/`, files are named by **capability** rather than implementation (see the existing `response.go`, `validator.go`, `pagination.go`, `context.go`).  A short noun describing the concern is preferred over a longer acronym-heavy name — e.g. `delete_guard.go` over `attached_object_reference_delete_guard.go`.
+
 ## Inline Comment Conventions
 
 ### Step Comments Within Functions

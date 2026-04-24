@@ -70,10 +70,14 @@ func v0MachineWorkloadInstanceCreated(
 	// run the create script and record results
 	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.CreateScript, "create", log)
 
-	// update the instance with the final status
+	// update the instance with the final status. Reconciled is set so the
+	// api server's update handler recognizes this as a self-triggered
+	// update and skips publishing a notification that would otherwise fire
+	// a spurious SuccessfulUpdate event.
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
-		Common: v0.Common{ID: machineWorkloadInstance.ID},
-		Status: util.Ptr(string(wlStatus)),
+		Common:         v0.Common{ID: machineWorkloadInstance.ID},
+		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+		Status:         util.Ptr(string(wlStatus)),
 	}); err != nil {
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}

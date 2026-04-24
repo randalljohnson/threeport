@@ -314,13 +314,22 @@ Code should read as if every contributor shares the same naming sense.  The foll
 
 - **Loop variables use the singular of the collection's name in full**.  Prefer `for _, attachedObjectReference := range *attachedObjectReferences` over `for _, r := range refs`.  Single letters are only for indices (`i`, `j`), the error var (`err`), or trivially-scoped helpers inside a handful of lines.
 - **Local variables mirror the API type's field/identifier names**, not ad-hoc shorthands.  Prefer `attachedObjectType` / `attachedObjectID` over `t` / `id`.  Short names are for structurally-anonymous values (iterator counters, buffers) — never for named domain concepts.
-- **One-shot struct-literal locals may use short names** like `ref` / `obj` when the value is used exactly once in the next few lines and never referenced elsewhere.  Beyond that, use the full descriptive name.
+- **Inline one-shot struct literals at the call site.** When a struct is constructed and immediately passed into another function, pass the literal directly instead of assigning it to a named local first. A local like `ref := &v0.Foo{...}; Create(..., ref)` adds a line without adding meaning. Use a named local only when the value is referenced more than once or the name clarifies intent the struct type doesn't.
 - **Return shape**: helpers return a single `error` and, optionally, a value.  Avoid `(error, error)` return signatures — split the concerns into separate functions.  Example: a finder returns `(results, total, error)`; a formatter returns `error`; the caller decides which kind of response to produce.
 - **Un-wrapped errors use `errors.New(msg)`**, not `fmt.Errorf("%s", msg)`.  The format-verb pattern mimics wrapping without doing it and creates confusion during code review.
 
 ### File Naming in Library Packages
 
-For shared library packages like `pkg/api-server/lib/v0/`, files are named by **capability** rather than implementation (see the existing `response.go`, `validator.go`, `pagination.go`, `context.go`).  A short noun describing the concern is preferred over a longer acronym-heavy name — e.g. `delete_guard.go` over `attached_object_reference_delete_guard.go`.
+For shared library packages like `pkg/api-server/lib/v0/`, files are named by **capability** rather than implementation (see the existing `response.go`, `validator.go`, `pagination.go`, `context.go`).  A short noun describing the concern is preferred over a longer acronym-heavy name — e.g. `blocking_references.go` over `attached_object_reference_blocking_guard.go`.
+
+### Struct-Field Comments
+
+- **Skip self-evident comments on struct fields.** If the field name and type already say what the value is, don't add a comment. Only annotate when a reader can't infer the contract from the signature: nullability semantics, units, invariants, or a non-obvious default.
+- **Don't reference other code files or consumers inside struct-field comments.** A comment like `// drives emission in reconciler_gen.go` rots as soon as that file moves or another consumer shows up. Field comments describe the field itself, not who reads it.
+
+### Ensure vs Upsert Terminology
+
+Threeport uses declarative `Ensure*` naming for client-side create-or-noop helpers: `EnsureAttachedObjectReferenceExists()`, `EnsureAttachedObjectReferenceRemoved()`, etc. Comments and prose about these operations should match: write "ensure the reference exists" rather than "upsert the reference". "Upsert" is a DB-layer verb; it's fine when specifically describing a SQL operation, but the function-level intent in this codebase is "ensure", and the two terms shouldn't be mixed in the same area of code.
 
 ## Inline Comment Conventions
 

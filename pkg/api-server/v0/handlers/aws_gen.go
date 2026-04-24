@@ -426,6 +426,25 @@ func (h Handler) DeleteAwsAccount(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(awsAccount),
+		awsAccount.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"aws account",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	}
+
 	// delete object
 	if result := h.DB.Delete(&awsAccount); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
@@ -865,6 +884,25 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	if len(awsEksKubernetesRuntimeDefinition.AwsEksKubernetesRuntimeInstances) != 0 {
 		err := errors.New("aws eks kubernetes runtime definition has related aws eks kubernetes runtime instances - cannot be deleted")
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+	}
+
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(awsEksKubernetesRuntimeDefinition),
+		awsEksKubernetesRuntimeDefinition.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"aws eks kubernetes runtime definition",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
 	}
 
 	// delete object
@@ -1328,6 +1366,25 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(awsEksKubernetesRuntimeInstance),
+		awsEksKubernetesRuntimeInstance.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"aws eks kubernetes runtime instance",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
 	}
 
 	// schedule for deletion if not already scheduled

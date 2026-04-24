@@ -432,6 +432,25 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(domainNameDefinition),
+		domainNameDefinition.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"domain name definition",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	}
+
 	// delete object
 	if result := h.DB.Delete(&domainNameDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
@@ -893,6 +912,25 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(domainNameInstance),
+		domainNameInstance.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"domain name instance",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
 	}
 
 	// schedule for deletion if not already scheduled
@@ -1403,6 +1441,25 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(gatewayDefinition),
+		gatewayDefinition.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"gateway definition",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	}
+
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -1859,6 +1916,25 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(gatewayHttpPort),
+		gatewayHttpPort.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"gateway http port",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
 	}
 
 	// delete object
@@ -2324,6 +2400,25 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(gatewayInstance),
+		gatewayInstance.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"gateway instance",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
+	}
+
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -2780,6 +2875,25 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, totalBlockingAttachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(gatewayTcpPort),
+		gatewayTcpPort.ID,
+		10,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if blockingErr := apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+		"gateway tcp port",
+		attachedObjectReferences,
+		totalBlockingAttachedObjectReferences,
+	); blockingErr != nil {
+		return apiserver_lib.ResponseStatus409(c, nil, blockingErr, objectType)
 	}
 
 	// delete object

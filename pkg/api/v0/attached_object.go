@@ -15,4 +15,9 @@ type AttachedObjectReference struct {
 
 	// The object ID of the attached object.
 	AttachedObjectID *uint `json:"AttachedObjectID,omitempty" query:"attachedobjectid" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
+
+	// Whether this reference blocks deletion of the base object. Defaults
+	// to true: any attacher that doesn't explicitly set Blocking acts as
+	// a dependency guard.
+	Blocking *bool `json:"Blocking,omitempty" query:"blocking" gorm:"default:true" validate:"optional"`
 }

@@ -623,6 +623,78 @@ func operationCase(
 			),
 			Continue(),
 		)
+
+		// emit attached object reference upserts for tagged foreign keys
+		// on Created and Updated — "owns" foreign keys are often nil at
+		// Create and populated later.
+		if (op == "create" || op == "update") && len(obj.ForeignKeys) > 0 {
+			var dependencyForeignKeys, ownsForeignKeys []gen.ForeignKeyField
+			for _, foreignKey := range obj.ForeignKeys {
+				switch foreignKey.Relationship {
+				case "dependency":
+					dependencyForeignKeys = append(dependencyForeignKeys, foreignKey)
+				case "owns":
+					ownsForeignKeys = append(ownsForeignKeys, foreignKey)
+				}
+			}
+			if len(dependencyForeignKeys) > 0 || len(ownsForeignKeys) > 0 {
+				emitAttachedObjectReferenceUpserts(h, obj, varObjectName, modulePath, dependencyForeignKeys, ownsForeignKeys)
+			}
+		}
+
+		// on delete, clean up attached object references where this object
+		// is the attacher so the base it pointed at becomes deletable; skip
+		// when no foreign key opted into emission.
+		hasEmittingForeignKey := false
+		for _, foreignKey := range obj.ForeignKeys {
+			switch foreignKey.Relationship {
+			case "dependency", "owns":
+				hasEmittingForeignKey = true
+			}
+		}
+		if op == "delete" && hasEmittingForeignKey {
+			h.If(
+				List(Id("attachedObjectReferences"), Id("err")).Op(":=").Qual(
+					"github.com/threeport/threeport/pkg/client/v0",
+					"GetAttachedObjectReferencesByAttachedObjectID",
+				).Call(
+					Line().Id("r").Dot("APIClient"),
+					Line().Id("r").Dot("APIServer"),
+					Line().Id(varObjectName).Dot("GetId").Call(),
+					Line(),
+				),
+				Id("err").Op("!=").Nil(),
+			).Block(
+				Id("log").Dot("Error").Call(Id("err"), Lit("failed to get attached object references for cleanup")),
+				Id("r").Dot("UnlockAndRequeue").Call(
+					Id(varObjectName),
+					Id("requeueDelay"),
+					Id("lockReleased"),
+					Id("msg"),
+				),
+				Continue(),
+			).Else().BlockFunc(func(g *Group) {
+				g.For(List(Id("_"), Id("attachedObjectReference")).Op(":=").Range().Op("*").Id("attachedObjectReferences")).Block(
+					If(
+						List(Id("_"), Id("err")).Op(":=").Qual(
+							"github.com/threeport/threeport/pkg/client/v0",
+							"DeleteAttachedObjectReference",
+						).Call(
+							Id("r").Dot("APIClient"),
+							Id("r").Dot("APIServer"),
+							Op("*").Id("attachedObjectReference").Dot("ID"),
+						),
+						Id("err").Op("!=").Nil().Op("&&").Op("!").Qual("errors", "Is").Call(
+							Id("err"),
+							Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrObjectNotFound"),
+						),
+					).Block(
+						Id("log").Dot("Error").Call(Id("err"), Lit("failed to delete attached object reference")),
+					),
+				)
+			})
+		}
+
 		if op == "delete" {
 			h.Id("deletionTimestamp").Op(":=").Qual(
 				"github.com/threeport/threeport/pkg/util/v0",
@@ -706,4 +778,118 @@ func operationCase(
 			)
 		}
 	})
+}
+
+// attachedObjectReferenceEntry holds the pre-resolved object and attached
+// positions for one foreign key.  "dependency" foreign keys put the target
+// on the object side; "owns" foreign keys flip it.
+type attachedObjectReferenceEntry struct {
+	objectType   *Statement
+	objectID     *Statement
+	attachedType *Statement
+	attachedID   *Statement
+	fieldName    string
+}
+
+// emitAttachedObjectReferenceUpserts emits a single for-loop that ensures
+// one attached object reference row per dependency/owns foreign key.
+// Idempotent so it can run in both Created and Updated paths.
+func emitAttachedObjectReferenceUpserts(
+	h *jen.Group,
+	obj *gen.ReconciledObject,
+	varObjectName string,
+	modulePath string,
+	dependencyForeignKeys []gen.ForeignKeyField,
+	ownsForeignKeys []gen.ForeignKeyField,
+) {
+	ownerVersion := obj.Versions[0]
+	ownerPkg := fmt.Sprintf("%s/pkg/api/%s", modulePath, ownerVersion)
+	ownerTypeName := Qual(
+		"github.com/threeport/threeport/pkg/util/v0",
+		"TypeName",
+	).Call(Qual(ownerPkg, obj.Name).Values())
+
+	typedVar := fmt.Sprintf("typed%s", obj.Name)
+	h.Id(typedVar).Op(":=").Id(varObjectName).Assert(Op("*").Qual(ownerPkg, obj.Name))
+
+	var entries []attachedObjectReferenceEntry
+	for _, foreignKey := range dependencyForeignKeys {
+		entries = append(entries, attachedObjectReferenceEntry{
+			objectType:   Lit(fmt.Sprintf("%s.%s", ownerVersion, foreignKey.TargetType)),
+			objectID:     Id(typedVar).Dot(foreignKey.FieldName),
+			attachedType: ownerTypeName,
+			attachedID:   Id(typedVar).Dot("ID"),
+			fieldName:    foreignKey.FieldName,
+		})
+	}
+	for _, foreignKey := range ownsForeignKeys {
+		entries = append(entries, attachedObjectReferenceEntry{
+			objectType:   ownerTypeName,
+			objectID:     Id(typedVar).Dot("ID"),
+			attachedType: Lit(fmt.Sprintf("%s.%s", ownerVersion, foreignKey.TargetType)),
+			attachedID:   Id(typedVar).Dot(foreignKey.FieldName),
+			fieldName:    foreignKey.FieldName,
+		})
+	}
+
+	h.Var().Id("attachedObjectReferenceErr").Error()
+	h.For(
+		List(Id("_"), Id("entry")).Op(":=").Range().Index().Struct(
+			Id("objectType").String(),
+			Id("objectID").Op("*").Uint(),
+			Id("attachedType").String(),
+			Id("attachedID").Op("*").Uint(),
+			Id("fieldName").String(),
+		).Values(ListFunc(func(vg *Group) {
+			for _, entry := range entries {
+				vg.Line().Values(
+					Line().Add(entry.objectType.Clone()),
+					Line().Add(entry.objectID.Clone()),
+					Line().Add(entry.attachedType.Clone()),
+					Line().Add(entry.attachedID.Clone()),
+					Line().Lit(entry.fieldName),
+					Line(),
+				)
+			}
+			vg.Line()
+		})),
+	).Block(
+		// check both sides for nil; the object's own ID is always set, so
+		// this effectively gates on the foreign-key pointer being non-nil.
+		If(Id("entry").Dot("objectID").Op("==").Nil().Op("||").Id("entry").Dot("attachedID").Op("==").Nil()).Block(
+			Continue(),
+		),
+		If(Id("attachedObjectReferenceErr").Op("!=").Nil()).Block(Break()),
+		If(
+			Id("err").Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/client/v0",
+				"EnsureAttachedObjectReferenceExists",
+			).Call(
+				Line().Id("r").Dot("APIClient"),
+				Line().Id("r").Dot("APIServer"),
+				Line().Id("entry").Dot("objectType"),
+				Line().Id("entry").Dot("objectID"),
+				Line().Id("entry").Dot("attachedType"),
+				Line().Id("entry").Dot("attachedID"),
+				Line().Lit(true),
+				Line(),
+			),
+			Id("err").Op("!=").Nil(),
+		).Block(
+			Id("log").Dot("Error").Call(Id("err"), Qual("fmt", "Sprintf").Call(
+				Lit("failed to ensure attached object reference for %s"),
+				Id("entry").Dot("fieldName"),
+			)),
+			Id("attachedObjectReferenceErr").Op("=").Id("err"),
+		),
+	)
+	h.If(Id("attachedObjectReferenceErr").Op("!=").Nil()).Block(
+		Id("r").Dot("UnlockAndRequeue").Call(
+			Id(varObjectName),
+			Id("requeueDelay"),
+			Id("lockReleased"),
+			Id("msg"),
+		),
+		Continue(),
+	)
 }

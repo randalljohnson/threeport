@@ -207,6 +207,19 @@ type ApiObject struct {
 	PutMiddlewareFuncName    string
 	DeleteHandlerName        string
 	DeleteMiddlewareFuncName string
+
+	// Foreign-key fields detected during struct parsing; drives attached
+	// object reference emission in reconciler_gen.go.
+	ForeignKeys []ForeignKeyField
+}
+
+// ForeignKeyField describes one *uint <T>ID field that references another
+// API object, along with its `relationship` tag.
+type ForeignKeyField struct {
+	FieldName  string
+	TargetType string
+	// "" (untagged, no emission), "dependency", or "owns".
+	Relationship string
 }
 
 // UnversionedApiObject represents one API object regardless of how many
@@ -251,6 +264,10 @@ type ReconciledObject struct {
 
 	// If true, do not persist notifications in NATS JetStream.
 	DisableNotificationPersistence bool
+
+	// Foreign keys on this object (used by reconciler codegen to emit
+	// attached object reference calls in Created/Updated/Deleted paths).
+	ForeignKeys []ForeignKeyField
 }
 
 // New populates a new Generator in preparation for source code generation.  It
@@ -506,6 +523,9 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			// of struct tags for each object
 			structTags := make(map[string]map[string]map[string]string)
 
+			// object name → detected FK fields
+			fkFields := make(map[string][]ForeignKeyField)
+
 			// inspect the syntax tree for the object models
 			for _, node := range pf.Decls {
 				switch node.(type) {
@@ -586,11 +606,59 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 									}
 									tagMap := util.ParseStructTag(field.Tag.Value)
 									structTags[objectName][fieldName] = tagMap
+
+									// detect FK shape: *uint field named <T>ID
+									isFK := false
+									if strings.HasSuffix(fieldName, "ID") {
+										if star, ok := field.Type.(*ast.StarExpr); ok {
+											if ident, ok := star.X.(*ast.Ident); ok && ident.Name == "uint" {
+												isFK = true
+											}
+										}
+									}
+
+									// `relationship` is opt-in; untagged foreign keys
+									// produce no attached object reference emission.
+									relVal, hasRel := tagMap["relationship"]
+									if hasRel {
+										switch relVal {
+										case "dependency", "owns":
+											// valid
+										default:
+											return fmt.Errorf(
+												"field %s in object %s has invalid relationship tag %q: expected one of dependency, owns",
+												fieldName, objectName, relVal,
+											)
+										}
+										if !isFK {
+											return fmt.Errorf(
+												"field %s in object %s has relationship tag but is not a foreign key (expected *uint field named <T>ID)",
+												fieldName, objectName,
+											)
+										}
+									}
+
+									// record every FK; emission decisions happen at
+									// reconciler-codegen time based on Relationship.
+									if isFK {
+										fkFields[objectName] = append(fkFields[objectName], ForeignKeyField{
+											FieldName:    fieldName,
+											TargetType:   strings.TrimSuffix(fieldName, "ID"),
+											Relationship: relVal,
+										})
+									}
 								}
 							}
 						}
 					}
 				}
+			}
+
+			// attach detected foreign-key fields to each ApiObject so
+			// downstream codegen (reconciler attached object reference
+			// emission) can access them
+			for _, mc := range apiObjects {
+				mc.ForeignKeys = fkFields[mc.TypeName]
 			}
 
 			// populate the ApiObjectGroup
@@ -701,6 +769,13 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			"%sStreamName", strcase.ToCamel(*apiObjectGroup.Name),
 		)
 
+		// build a FK lookup (keyed by TypeName) from the ApiObjects
+		// populated earlier — `fkFields` (inner-loop scope) is out of scope here.
+		fksByType := map[string][]ForeignKeyField{}
+		for _, mc := range genApiObjectGroup.ApiObjects {
+			fksByType[mc.TypeName] = mc.ForeignKeys
+		}
+
 		genApiObjectGroup.ReconciledObjects = make([]ReconciledObject, 0)
 		for _, apiObject := range apiObjectGroup.Objects {
 			var versions []string
@@ -719,6 +794,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 						Name:                           *apiObject.Name,
 						Versions:                       versions,
 						DisableNotificationPersistence: disableNotificationPersistense,
+						ForeignKeys:                    fksByType[*apiObject.Name],
 					},
 				)
 			}

@@ -34,6 +34,13 @@ type Event struct {
 
 	// Name of the controller that emitted this Event.
 	ReportingController *string `json:"ReportingController,omitempty" query:"reportingcontroller" validate:"required"`
+
+	// Projection columns populated by GetEventsJoinAttachedObjectReferences
+	// from the joined AttachedObjectReference. gorm:"-" so these are ignored
+	// during normal CRUD on the events table.
+	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`
+	ObjectID   *uint   `json:"ObjectID,omitempty" gorm:"-"`
+	ObjectName *string `json:"ObjectName,omitempty" gorm:"-"`
 }
 
 //// Event is a record of an event in the system.

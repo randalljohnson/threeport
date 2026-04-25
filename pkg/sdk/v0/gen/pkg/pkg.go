@@ -73,6 +73,14 @@ func GenPkg(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		return fmt.Errorf("failed to generate functions to add API object versions to API server: %w", err)
 	}
 
+	// generate object lookup helpers for threeport/threeport only; modules
+	// resolve their own objects via the existing per-type CRUD endpoints.
+	if !generator.Module {
+		if err := apiserver.GenObjectLookup(generator, sdkConfig); err != nil {
+			return fmt.Errorf("failed to generate object lookup helpers: %w", err)
+		}
+	}
+
 	// the module registration is different for core threeport and extension modules:
 	// * core threeport registers directly with the database
 	// * extension modules register with the Threeport API server as the objects used for

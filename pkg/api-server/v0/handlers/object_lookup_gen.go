@@ -219,6 +219,50 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 			}
 		}
 
+	case "v0.MachineRuntimeDefinition":
+		var rows []v0.MachineRuntimeDefinition
+		if err := db.Model(&v0.MachineRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineRuntimeDefinition names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "v0.MachineRuntimeInstance":
+		var rows []v0.MachineRuntimeInstance
+		if err := db.Model(&v0.MachineRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineRuntimeInstance names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "v0.MachineWorkloadDefinition":
+		var rows []v0.MachineWorkloadDefinition
+		if err := db.Model(&v0.MachineWorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineWorkloadDefinition names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "v0.MachineWorkloadInstance":
+		var rows []v0.MachineWorkloadInstance
+		if err := db.Model(&v0.MachineWorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineWorkloadInstance names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
 	case "v0.MetricsDefinition":
 		var rows []v0.MetricsDefinition
 		if err := db.Model(&v0.MetricsDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
@@ -627,6 +671,46 @@ func GetCoreObjectIDByName(db *gorm.DB, objectType string, name string) (uint, e
 		}
 		if obj.ID == nil {
 			return 0, fmt.Errorf("LoggingInstance %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.MachineRuntimeDefinition":
+		var obj v0.MachineRuntimeDefinition
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up MachineRuntimeDefinition by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("MachineRuntimeDefinition %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.MachineRuntimeInstance":
+		var obj v0.MachineRuntimeInstance
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up MachineRuntimeInstance by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("MachineRuntimeInstance %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.MachineWorkloadDefinition":
+		var obj v0.MachineWorkloadDefinition
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up MachineWorkloadDefinition by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("MachineWorkloadDefinition %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.MachineWorkloadInstance":
+		var obj v0.MachineWorkloadInstance
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up MachineWorkloadInstance by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("MachineWorkloadInstance %q has nil ID", name)
 		}
 		return *obj.ID, nil
 

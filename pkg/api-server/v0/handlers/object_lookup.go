@@ -40,7 +40,7 @@ func LookupObjectNames(db *gorm.DB, objectType string, ids []uint) (map[uint]str
 		return nil, err
 	}
 
-	endpoint, err := FindModuleEndpointForType(db, objectType)
+	endpoint, path, err := FindModuleRouteForType(db, objectType)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func LookupObjectNames(db *gorm.DB, objectType string, ids []uint) (map[uint]str
 		return map[uint]string{}, nil
 	}
 
-	return lookupNamesFromModule(endpoint, objectType, ids)
+	return lookupNamesFromModule(endpoint, path, ids)
 }
 
 // LookupObjectIDByName returns the ID of the named object of the given type.
@@ -64,7 +64,7 @@ func LookupObjectIDByName(db *gorm.DB, objectType, name string) (uint, error) {
 		return 0, err
 	}
 
-	endpoint, err := FindModuleEndpointForType(db, objectType)
+	endpoint, path, err := FindModuleRouteForType(db, objectType)
 	if err != nil {
 		return 0, err
 	}
@@ -72,47 +72,46 @@ func LookupObjectIDByName(db *gorm.DB, objectType, name string) (uint, error) {
 		return 0, fmt.Errorf("object type %q not owned by core or any registered module", objectType)
 	}
 
-	return lookupIDFromModuleByName(endpoint, objectType, name)
+	return lookupIDFromModuleByName(endpoint, path, objectType, name)
 }
 
-// FindModuleEndpointForType returns the upstream endpoint that owns the
-// given ObjectType, or an empty string if no module owns it. The lookup
-// derives the type's REST path prefix from its ObjectType
-// (e.g. "v0.RouterDefinition" -> "/v0/router-definitions") and queries
-// v0_module_api_routes for that path. Path derivation matches what modules
-// register at startup.
-func FindModuleEndpointForType(db *gorm.DB, objectType string) (string, error) {
-	path, err := pathForType(objectType)
+// FindModuleRouteForType returns the upstream endpoint and the registered
+// CRUD path for the given ObjectType, or empty strings if no module owns
+// it. Modules register their routes with arbitrary prefixes (e.g.
+// "/example-com/v0/router-definitions"), so we match the route by suffix
+// "/v0/router-definitions" and use whatever module owns it.
+func FindModuleRouteForType(db *gorm.DB, objectType string) (string, string, error) {
+	suffix, err := pathSuffixForType(objectType)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	var route api_v0.ModuleApiRoute
-	if err := db.Where("path = ?", path).First(&route).Error; err != nil {
+	if err := db.Where("path LIKE ?", "%"+suffix).First(&route).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", nil
+			return "", "", nil
 		}
-		return "", fmt.Errorf("failed to query module_api_routes for %s: %w", path, err)
+		return "", "", fmt.Errorf("failed to query module_api_routes for suffix %s: %w", suffix, err)
 	}
 
 	var modApi api_v0.ModuleApi
 	if err := db.Where("id = ? AND core = ?", route.ModuleApiID, false).First(&modApi).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", nil
+			return "", "", nil
 		}
-		return "", fmt.Errorf("failed to query module_apis for route %s: %w", path, err)
+		return "", "", fmt.Errorf("failed to query module_apis for route %s: %w", *route.Path, err)
 	}
 
-	if modApi.Endpoint == nil {
-		return "", nil
+	if modApi.Endpoint == nil || route.Path == nil {
+		return "", "", nil
 	}
-	return *modApi.Endpoint, nil
+	return *modApi.Endpoint, *route.Path, nil
 }
 
-// pathForType converts a versioned ObjectType like "v0.RouterDefinition" to
-// its REST path prefix "/v0/router-definitions" using the same kebab-plural
-// convention modules use when registering routes.
-func pathForType(objectType string) (string, error) {
+// pathSuffixForType returns the type's CRUD path tail (e.g.
+// "/v0/router-definitions") for matching against routes that may carry a
+// module-specific prefix.
+func pathSuffixForType(objectType string) (string, error) {
 	parts := strings.SplitN(objectType, ".", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", fmt.Errorf("invalid object type %q: expected <version>.<TypeName>", objectType)
@@ -124,12 +123,7 @@ func pathForType(objectType string) (string, error) {
 // lookupNamesFromModule fetches each object by ID from the module API and
 // extracts its Name. Returns a partial map even on per-id errors so a
 // single bad id doesn't fail the whole batch.
-func lookupNamesFromModule(endpoint, objectType string, ids []uint) (map[uint]string, error) {
-	path, err := pathForType(objectType)
-	if err != nil {
-		return nil, err
-	}
-
+func lookupNamesFromModule(endpoint, path string, ids []uint) (map[uint]string, error) {
 	out := make(map[uint]string, len(ids))
 	for _, id := range ids {
 		url := fmt.Sprintf("%s%s/%d", endpoint, path, id)
@@ -153,12 +147,7 @@ func lookupNamesFromModule(endpoint, objectType string, ids []uint) (map[uint]st
 
 // lookupIDFromModuleByName issues a single name-filtered GET to the module
 // API and pulls the ID of the first matching row.
-func lookupIDFromModuleByName(endpoint, objectType, name string) (uint, error) {
-	path, err := pathForType(objectType)
-	if err != nil {
-		return 0, err
-	}
-
+func lookupIDFromModuleByName(endpoint, path, objectType, name string) (uint, error) {
 	url := fmt.Sprintf("%s%s?name=%s", endpoint, path, name)
 	resp, err := client_lib.GetResponse(
 		moduleHTTPClient,

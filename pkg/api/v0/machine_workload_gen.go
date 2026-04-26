@@ -63,7 +63,7 @@ func (mwd *MachineWorkloadDefinition) GetId() uint {
 	return *mwd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mwd *MachineWorkloadDefinition) GetType() string {
 	return "MachineWorkloadDefinition"
 }
@@ -117,7 +117,7 @@ func (mwi *MachineWorkloadInstance) GetId() uint {
 	return *mwi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mwi *MachineWorkloadInstance) GetType() string {
 	return "MachineWorkloadInstance"
 }

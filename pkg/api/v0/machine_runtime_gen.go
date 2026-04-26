@@ -63,7 +63,7 @@ func (mrd *MachineRuntimeDefinition) GetId() uint {
 	return *mrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mrd *MachineRuntimeDefinition) GetType() string {
 	return "MachineRuntimeDefinition"
 }
@@ -117,7 +117,7 @@ func (mri *MachineRuntimeInstance) GetId() uint {
 	return *mri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mri *MachineRuntimeInstance) GetType() string {
 	return "MachineRuntimeInstance"
 }

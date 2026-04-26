@@ -244,7 +244,11 @@ func (h Handler) GetOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeDefinition
 	ociOkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var ociOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
-	if result := h.DB.First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -712,7 +716,11 @@ func (h Handler) GetOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeInstance
 	ociOkeKubernetesRuntimeInstanceID := c.Param("id")
 	var ociOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
-	if result := h.DB.First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1213,7 +1221,11 @@ func (h Handler) GetOciProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciProvider
 	ociProviderID := c.Param("id")
 	var ociProvider api_v0.OciProvider
-	if result := h.DB.First(&ociProvider, ociProviderID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&ociProvider, ociProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

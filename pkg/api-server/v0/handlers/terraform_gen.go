@@ -258,7 +258,11 @@ func (h Handler) GetTerraformDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformDefinition
 	terraformDefinitionID := c.Param("id")
 	var terraformDefinition api_v0.TerraformDefinition
-	if result := h.DB.First(&terraformDefinition, terraformDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&terraformDefinition, terraformDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -779,7 +783,11 @@ func (h Handler) GetTerraformInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformInstance
 	terraformInstanceID := c.Param("id")
 	var terraformInstance api_v0.TerraformInstance
-	if result := h.DB.First(&terraformInstance, terraformInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&terraformInstance, terraformInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

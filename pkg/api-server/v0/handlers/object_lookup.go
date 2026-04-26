@@ -138,7 +138,7 @@ func parseQualifiedType(objectType string) (string, string, bool) {
 func lookupNamesFromModule(endpoint, path string, ids []uint) (map[uint]string, error) {
 	out := make(map[uint]string, len(ids))
 	for _, id := range ids {
-		url := fmt.Sprintf("%s%s/%d", endpoint, path, id)
+		url := fmt.Sprintf("%s%s/%d?includedeleted=true", endpoint, path, id)
 		resp, err := client_lib.GetResponse(
 			moduleHTTPClient,
 			url,

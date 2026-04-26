@@ -65,12 +65,12 @@ func (lb *LogBackend) GetId() uint {
 	return *lb.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (lb *LogBackend) GetType() string {
 	return "LogBackend"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (lb *LogBackend) GetVersion() string {
 	return "v0"
 }
@@ -119,12 +119,12 @@ func (lsd *LogStorageDefinition) GetId() uint {
 	return *lsd.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (lsd *LogStorageDefinition) GetType() string {
 	return "LogStorageDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (lsd *LogStorageDefinition) GetVersion() string {
 	return "v0"
 }
@@ -173,12 +173,12 @@ func (lsi *LogStorageInstance) GetId() uint {
 	return *lsi.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (lsi *LogStorageInstance) GetType() string {
 	return "LogStorageInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (lsi *LogStorageInstance) GetVersion() string {
 	return "v0"
 }

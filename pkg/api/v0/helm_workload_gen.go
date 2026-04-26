@@ -63,12 +63,12 @@ func (hwd *HelmWorkloadDefinition) GetId() uint {
 	return *hwd.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (hwd *HelmWorkloadDefinition) GetType() string {
 	return "HelmWorkloadDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (hwd *HelmWorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -123,12 +123,12 @@ func (hwi *HelmWorkloadInstance) GetId() uint {
 	return *hwi.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (hwi *HelmWorkloadInstance) GetType() string {
 	return "HelmWorkloadInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (hwi *HelmWorkloadInstance) GetVersion() string {
 	return "v0"
 }

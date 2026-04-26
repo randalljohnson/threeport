@@ -72,12 +72,12 @@ func (wd *WorkloadDefinition) GetId() uint {
 	return *wd.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wd *WorkloadDefinition) GetType() string {
 	return "WorkloadDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wd *WorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -132,12 +132,12 @@ func (we *WorkloadEvent) GetId() uint {
 	return *we.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (we *WorkloadEvent) GetType() string {
 	return "WorkloadEvent"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (we *WorkloadEvent) GetVersion() string {
 	return "v0"
 }
@@ -186,12 +186,12 @@ func (wi *WorkloadInstance) GetId() uint {
 	return *wi.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wi *WorkloadInstance) GetType() string {
 	return "WorkloadInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wi *WorkloadInstance) GetVersion() string {
 	return "v0"
 }
@@ -246,12 +246,12 @@ func (wrd *WorkloadResourceDefinition) GetId() uint {
 	return *wrd.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wrd *WorkloadResourceDefinition) GetType() string {
 	return "WorkloadResourceDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
@@ -300,12 +300,12 @@ func (wri *WorkloadResourceInstance) GetId() uint {
 	return *wri.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wri *WorkloadResourceInstance) GetType() string {
 	return "WorkloadResourceInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
 }

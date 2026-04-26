@@ -63,12 +63,12 @@ func (cpd *ControlPlaneDefinition) GetId() uint {
 	return *cpd.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (cpd *ControlPlaneDefinition) GetType() string {
 	return "ControlPlaneDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (cpd *ControlPlaneDefinition) GetVersion() string {
 	return "v0"
 }
@@ -123,12 +123,12 @@ func (cpi *ControlPlaneInstance) GetId() uint {
 	return *cpi.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (cpi *ControlPlaneInstance) GetType() string {
 	return "ControlPlaneInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (cpi *ControlPlaneInstance) GetVersion() string {
 	return "v0"
 }

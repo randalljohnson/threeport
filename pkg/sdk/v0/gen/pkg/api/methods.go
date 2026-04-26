@@ -170,12 +170,26 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				).Id("GetId").Params().Uint().Block(
 					Return(Op("*").Id(util.TypeAbbrev(apiObj.TypeName)).Dot("ID")),
 				)
-				// GetType method
+				// GetType method. For module-defined types it returns the
+				// namespace-qualified ObjectType used in AOR storage
+				// ("<api-namespace>/<version>.<TypeName>"); for core types
+				// it stays as the bare TypeName so the existing recorder
+				// behavior (prepending version) yields the unchanged
+				// "<version>.<TypeName>" form.
+				typeLiteral := apiObj.TypeName
+				if gen.Module {
+					typeLiteral = fmt.Sprintf(
+						"%s/%s.%s",
+						sdkConfig.ApiNamespace,
+						objCollection.Version,
+						apiObj.TypeName,
+					)
+				}
 				f.Comment("GetType returns the object type.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetType").Params().String().Block(
-					Return(Lit(apiObj.TypeName)),
+					Return(Lit(typeLiteral)),
 				)
 				// GetVersion method
 				f.Comment("GetVersion returns the version of the API object.")

@@ -59,12 +59,12 @@ func (aor *AttachedObjectReference) GetId() uint {
 	return *aor.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (aor *AttachedObjectReference) GetType() string {
 	return "AttachedObjectReference"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (aor *AttachedObjectReference) GetVersion() string {
 	return "v0"
 }

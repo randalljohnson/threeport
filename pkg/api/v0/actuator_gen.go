@@ -62,12 +62,12 @@ func (p *Profile) GetId() uint {
 	return *p.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (p *Profile) GetType() string {
 	return "Profile"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (p *Profile) GetVersion() string {
 	return "v0"
 }
@@ -116,12 +116,12 @@ func (t *Tier) GetId() uint {
 	return *t.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (t *Tier) GetType() string {
 	return "Tier"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (t *Tier) GetVersion() string {
 	return "v0"
 }

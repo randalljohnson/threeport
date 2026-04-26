@@ -63,12 +63,12 @@ func (sd *SecretDefinition) GetId() uint {
 	return *sd.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (sd *SecretDefinition) GetType() string {
 	return "SecretDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (sd *SecretDefinition) GetVersion() string {
 	return "v0"
 }
@@ -123,12 +123,12 @@ func (si *SecretInstance) GetId() uint {
 	return *si.ID
 }
 
-// GetType returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (si *SecretInstance) GetType() string {
 	return "SecretInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (si *SecretInstance) GetVersion() string {
 	return "v0"
 }

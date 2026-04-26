@@ -13,11 +13,11 @@ import (
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
 )
 
-// GenObjectLookup emits server-side helpers that resolve names <-> IDs for
-// every core API type with a Name field. Used by the events-join handler to
-// enrich responses without a per-type switch in the CLI. Generated only for
-// threeport/threeport (not for modules); module dispatch is handled at
-// runtime by FindModuleEndpointForType.
+// GenObjectLookup emits server-side helpers that resolve names to IDs and
+// back for every core API type with a Name field. Used by the events-join
+// handler to enrich responses without a per-type switch in the CLI.
+// Generated only for threeport/threeport (not for modules); module dispatch
+// is handled at runtime by FindModuleRouteForType().
 func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	for _, collection := range generator.VersionedApiObjectCollections {
 		// collect types with a Name field for this version

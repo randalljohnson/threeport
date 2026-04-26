@@ -225,7 +225,7 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		return nil
 	}
 
-	// collect distinct AOR IDs from the events
+	// collect distinct attached object reference ids
 	aorIDs := make([]uint, 0, len(events))
 	seen := map[uint]struct{}{}
 	for _, e := range events {
@@ -242,7 +242,6 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		return nil
 	}
 
-	// fetch AOR rows in one query
 	var aors []v0.AttachedObjectReference
 	if err := db.Where("id IN ?", aorIDs).Find(&aors).Error; err != nil {
 		return fmt.Errorf("failed to load attached object references: %w", err)
@@ -254,7 +253,6 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		}
 	}
 
-	// populate ObjectType + ObjectID on each event
 	for i := range events {
 		e := &events[i]
 		if e.AttachedObjectReferenceID == nil {
@@ -268,7 +266,6 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		e.ObjectID = a.ObjectID
 	}
 
-	// group distinct IDs by ObjectType for batched name lookup
 	idsByType := map[string]map[uint]struct{}{}
 	for _, e := range events {
 		if e.ObjectType == nil || e.ObjectID == nil {
@@ -280,7 +277,7 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		idsByType[*e.ObjectType][*e.ObjectID] = struct{}{}
 	}
 
-	// resolve names per type via core dispatch or module HTTP
+	// dispatch each type to core sql or module http and collect resolved names
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
 		ids := make([]uint, 0, len(idSet))
@@ -295,7 +292,6 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		namesByType[typ] = names
 	}
 
-	// populate ObjectName on each event
 	for i := range events {
 		e := &events[i]
 		if e.ObjectType == nil || e.ObjectID == nil {

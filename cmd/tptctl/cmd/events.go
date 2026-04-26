@@ -175,42 +175,34 @@ func outputGetv0EventsCmd(events *[]v0.Event) error {
 	return nil
 }
 
-// formatEventObject builds the OBJECT column from the server-resolved
-// projection columns on the event. Module types render as
-// <namespace>/<kebab-kind>/<name>; core types render as <kebab-kind>/<name>.
-// Falls back to <id> when name resolution wasn't available.
+// formatEventObject builds the OBJECT column as <kebab-kind>/<name>.
+// The qualified ObjectType is parsed to extract just the type name; the
+// namespace is dropped from display to keep the column narrow. Falls back
+// to <id> when name resolution wasn't available.
 func formatEventObject(e *v0.Event) string {
 	rawType := util.DerefString(e.ObjectType)
 	if rawType == "" {
 		return ""
 	}
 
-	// split <namespace>/<version>.<TypeName> into namespace + version+name;
-	// core types arrive as bare <version>.<TypeName> with no namespace.
-	var namespace, versionedName string
+	// strip the optional namespace prefix and isolate just the type name
+	// (qualified module form: "<namespace>/<version>.<TypeName>"; core form:
+	// "<version>.<TypeName>"). The kind column shows the kebab type name only.
+	versionedName := rawType
 	if slashIdx := strings.Index(rawType, "/"); slashIdx >= 0 {
-		namespace = rawType[:slashIdx]
 		versionedName = rawType[slashIdx+1:]
-	} else {
-		versionedName = rawType
 	}
-
 	typeName := versionedName
 	if dotIdx := strings.LastIndex(versionedName, "."); dotIdx >= 0 {
 		typeName = versionedName[dotIdx+1:]
 	}
 	kind := strcase.ToKebab(typeName)
 
-	tail := kind
-	if namespace != "" {
-		tail = fmt.Sprintf("%s/%s", namespace, kind)
-	}
-
 	if name := util.DerefString(e.ObjectName); name != "" {
-		return fmt.Sprintf("%s/%s", tail, name)
+		return fmt.Sprintf("%s/%s", kind, name)
 	}
 	if e.ObjectID != nil {
-		return fmt.Sprintf("%s/%d", tail, *e.ObjectID)
+		return fmt.Sprintf("%s/%d", kind, *e.ObjectID)
 	}
-	return tail
+	return kind
 }

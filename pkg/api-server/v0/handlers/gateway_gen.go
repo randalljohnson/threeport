@@ -244,7 +244,11 @@ func (h Handler) GetDomainNameDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameDefinition
 	domainNameDefinitionID := c.Param("id")
 	var domainNameDefinition api_v0.DomainNameDefinition
-	if result := h.DB.First(&domainNameDefinition, domainNameDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&domainNameDefinition, domainNameDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -698,7 +702,11 @@ func (h Handler) GetDomainNameInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameInstance
 	domainNameInstanceID := c.Param("id")
 	var domainNameInstance api_v0.DomainNameInstance
-	if result := h.DB.First(&domainNameInstance, domainNameInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&domainNameInstance, domainNameInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1199,7 +1207,11 @@ func (h Handler) GetGatewayDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayDefinition
 	gatewayDefinitionID := c.Param("id")
 	var gatewayDefinition api_v0.GatewayDefinition
-	if result := h.DB.First(&gatewayDefinition, gatewayDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&gatewayDefinition, gatewayDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1676,7 +1688,11 @@ func (h Handler) GetGatewayHttpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayHttpPort
 	gatewayHttpPortID := c.Param("id")
 	var gatewayHttpPort api_v0.GatewayHttpPort
-	if result := h.DB.First(&gatewayHttpPort, gatewayHttpPortID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&gatewayHttpPort, gatewayHttpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2124,7 +2140,11 @@ func (h Handler) GetGatewayInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayInstance
 	gatewayInstanceID := c.Param("id")
 	var gatewayInstance api_v0.GatewayInstance
-	if result := h.DB.First(&gatewayInstance, gatewayInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&gatewayInstance, gatewayInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2595,7 +2615,11 @@ func (h Handler) GetGatewayTcpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayTcpPort
 	gatewayTcpPortID := c.Param("id")
 	var gatewayTcpPort api_v0.GatewayTcpPort
-	if result := h.DB.First(&gatewayTcpPort, gatewayTcpPortID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&gatewayTcpPort, gatewayTcpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

@@ -258,7 +258,11 @@ func (h Handler) GetSecretDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretDefinition
 	secretDefinitionID := c.Param("id")
 	var secretDefinition api_v0.SecretDefinition
-	if result := h.DB.First(&secretDefinition, secretDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&secretDefinition, secretDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -765,7 +769,11 @@ func (h Handler) GetSecretInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretInstance
 	secretInstanceID := c.Param("id")
 	var secretInstance api_v0.SecretInstance
-	if result := h.DB.First(&secretInstance, secretInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&secretInstance, secretInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

@@ -244,7 +244,11 @@ func (h Handler) GetAwsAccount(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAwsAccount
 	awsAccountID := c.Param("id")
 	var awsAccount api_v0.AwsAccount
-	if result := h.DB.First(&awsAccount, awsAccountID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&awsAccount, awsAccountID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -678,7 +682,11 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAwsEksKubernetesRuntimeDefinition
 	awsEksKubernetesRuntimeDefinitionID := c.Param("id")
 	var awsEksKubernetesRuntimeDefinition api_v0.AwsEksKubernetesRuntimeDefinition
-	if result := h.DB.First(&awsEksKubernetesRuntimeDefinition, awsEksKubernetesRuntimeDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&awsEksKubernetesRuntimeDefinition, awsEksKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1132,7 +1140,11 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAwsEksKubernetesRuntimeInstance
 	awsEksKubernetesRuntimeInstanceID := c.Param("id")
 	var awsEksKubernetesRuntimeInstance api_v0.AwsEksKubernetesRuntimeInstance
-	if result := h.DB.First(&awsEksKubernetesRuntimeInstance, awsEksKubernetesRuntimeInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&awsEksKubernetesRuntimeInstance, awsEksKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

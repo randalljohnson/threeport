@@ -240,7 +240,11 @@ func (h Handler) GetProfile(c echo.Context) error {
 	objectType := api_v0.ObjectTypeProfile
 	profileID := c.Param("id")
 	var profile api_v0.Profile
-	if result := h.DB.First(&profile, profileID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&profile, profileID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -674,7 +678,11 @@ func (h Handler) GetTier(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTier
 	tierID := c.Param("id")
 	var tier api_v0.Tier
-	if result := h.DB.First(&tier, tierID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&tier, tierID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

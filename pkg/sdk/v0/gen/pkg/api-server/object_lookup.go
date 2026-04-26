@@ -68,6 +68,7 @@ func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Var().Id("rows").Index().Qual(apiPkg, name),
 						If(
 							Id("err").Op(":=").Id("db").
+								Dot("Unscoped").Call().
 								Dot("Model").Call(Op("&").Qual(apiPkg, name).Values()).
 								Dot("Select").Call(Lit("id, name")).
 								Dot("Where").Call(Lit("id IN ?"), Id("ids")).

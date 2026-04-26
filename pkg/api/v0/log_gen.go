@@ -65,7 +65,7 @@ func (lb *LogBackend) GetId() uint {
 	return *lb.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (lb *LogBackend) GetType() string {
 	return "LogBackend"
 }
@@ -119,7 +119,7 @@ func (lsd *LogStorageDefinition) GetId() uint {
 	return *lsd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (lsd *LogStorageDefinition) GetType() string {
 	return "LogStorageDefinition"
 }
@@ -173,7 +173,7 @@ func (lsi *LogStorageInstance) GetId() uint {
 	return *lsi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (lsi *LogStorageInstance) GetType() string {
 	return "LogStorageInstance"
 }

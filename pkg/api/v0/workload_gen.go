@@ -72,7 +72,7 @@ func (wd *WorkloadDefinition) GetId() uint {
 	return *wd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wd *WorkloadDefinition) GetType() string {
 	return "WorkloadDefinition"
 }
@@ -132,7 +132,7 @@ func (we *WorkloadEvent) GetId() uint {
 	return *we.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (we *WorkloadEvent) GetType() string {
 	return "WorkloadEvent"
 }
@@ -186,7 +186,7 @@ func (wi *WorkloadInstance) GetId() uint {
 	return *wi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wi *WorkloadInstance) GetType() string {
 	return "WorkloadInstance"
 }
@@ -246,7 +246,7 @@ func (wrd *WorkloadResourceDefinition) GetId() uint {
 	return *wrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wrd *WorkloadResourceDefinition) GetType() string {
 	return "WorkloadResourceDefinition"
 }
@@ -300,7 +300,7 @@ func (wri *WorkloadResourceInstance) GetId() uint {
 	return *wri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (wri *WorkloadResourceInstance) GetType() string {
 	return "WorkloadResourceInstance"
 }

@@ -170,12 +170,7 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				).Id("GetId").Params().Uint().Block(
 					Return(Op("*").Id(util.TypeAbbrev(apiObj.TypeName)).Dot("ID")),
 				)
-				// GetType method. For module-defined types it returns the
-				// namespace-qualified ObjectType used in AOR storage
-				// ("<api-namespace>/<version>.<TypeName>"); for core types
-				// it stays as the bare TypeName so the existing recorder
-				// behavior (prepending version) yields the unchanged
-				// "<version>.<TypeName>" form.
+				// GetType method
 				typeLiteral := apiObj.TypeName
 				if gen.Module {
 					typeLiteral = fmt.Sprintf(

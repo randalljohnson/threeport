@@ -35,9 +35,9 @@ type Event struct {
 	// Name of the controller that emitted this Event.
 	ReportingController *string `json:"ReportingController,omitempty" query:"reportingcontroller" validate:"required"`
 
-	// Projection columns populated by GetEventsJoinAttachedObjectReferences()
-	// from the joined attached object reference. gorm:"-" so these are
-	// ignored during normal CRUD on the events table.
+	// Projection-only fields populated when an Event is loaded with a join
+	// against attached_object_references. Tagged gorm:"-" so they're ignored
+	// during normal CRUD on the events table.
 	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`
 	ObjectID   *uint   `json:"ObjectID,omitempty" gorm:"-"`
 	ObjectName *string `json:"ObjectName,omitempty" gorm:"-"`

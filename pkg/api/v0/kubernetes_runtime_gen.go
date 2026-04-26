@@ -63,7 +63,7 @@ func (krd *KubernetesRuntimeDefinition) GetId() uint {
 	return *krd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (krd *KubernetesRuntimeDefinition) GetType() string {
 	return "KubernetesRuntimeDefinition"
 }
@@ -123,7 +123,7 @@ func (kri *KubernetesRuntimeInstance) GetId() uint {
 	return *kri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (kri *KubernetesRuntimeInstance) GetType() string {
 	return "KubernetesRuntimeInstance"
 }

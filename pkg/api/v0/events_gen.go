@@ -59,7 +59,7 @@ func (e *Event) GetId() uint {
 	return *e.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (e *Event) GetType() string {
 	return "Event"
 }

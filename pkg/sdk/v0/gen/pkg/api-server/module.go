@@ -87,6 +87,10 @@ func GenCoreModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) err
 				"github.com/threeport/threeport/pkg/util/v0",
 				"Ptr",
 			).Call(Lit(true)),
+			Id("ApiNamespace"): Qual(
+				"github.com/threeport/threeport/pkg/util/v0",
+				"Ptr",
+			).Call(Lit("threeport.io")),
 			Id("Endpoint"): Qual(
 				"github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("apiEndpoint")),
 		}),
@@ -590,6 +594,10 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						"Ptr",
 					).Call(Id("moduleApiEndpoint")),
 					Id("Name"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("moduleName")),
+					Id("ApiNamespace"): Qual(
+						"github.com/threeport/threeport/pkg/util/v0",
+						"Ptr",
+					).Call(Lit(sdkConfig.ApiNamespace)),
 				}),
 				List(Id("createdModApi"), Id("err")).Op(":=").Qual(
 					"github.com/threeport/threeport/pkg/client/v0",

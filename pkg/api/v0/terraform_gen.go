@@ -63,7 +63,7 @@ func (td *TerraformDefinition) GetId() uint {
 	return *td.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (td *TerraformDefinition) GetType() string {
 	return "TerraformDefinition"
 }
@@ -123,7 +123,7 @@ func (ti *TerraformInstance) GetId() uint {
 	return *ti.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (ti *TerraformInstance) GetType() string {
 	return "TerraformInstance"
 }

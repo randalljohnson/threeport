@@ -75,7 +75,7 @@ func (dnd *DomainNameDefinition) GetId() uint {
 	return *dnd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (dnd *DomainNameDefinition) GetType() string {
 	return "DomainNameDefinition"
 }
@@ -129,7 +129,7 @@ func (dni *DomainNameInstance) GetId() uint {
 	return *dni.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (dni *DomainNameInstance) GetType() string {
 	return "DomainNameInstance"
 }
@@ -189,7 +189,7 @@ func (gd *GatewayDefinition) GetId() uint {
 	return *gd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (gd *GatewayDefinition) GetType() string {
 	return "GatewayDefinition"
 }
@@ -249,7 +249,7 @@ func (ghp *GatewayHttpPort) GetId() uint {
 	return *ghp.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (ghp *GatewayHttpPort) GetType() string {
 	return "GatewayHttpPort"
 }
@@ -303,7 +303,7 @@ func (gi *GatewayInstance) GetId() uint {
 	return *gi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (gi *GatewayInstance) GetType() string {
 	return "GatewayInstance"
 }
@@ -363,7 +363,7 @@ func (gtp *GatewayTcpPort) GetId() uint {
 	return *gtp.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (gtp *GatewayTcpPort) GetType() string {
 	return "GatewayTcpPort"
 }

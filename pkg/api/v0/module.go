@@ -15,6 +15,11 @@ type ModuleApi struct {
 	// If true, represents the core Threeport API.
 	Core *bool `json:"Core,omitempty" query:"core" validate:"optional" gorm:"default:false"`
 
+	// The reverse-DNS namespace that scopes objects served by this module API
+	// (e.g. "threeport.io" for core, "example.com" for an extension module).
+	// Used to disambiguate identically-named types across modules.
+	ApiNamespace *string `json:"ApiNamespace,omitempty" query:"apinamespace" validate:"optional"`
+
 	// The module API server's endpoint to proxy requests to for module
 	// objects.
 	Endpoint *string `json:"Endpoint,omitempty" query:"endpoint" validate:"required" gorm:"not null"`

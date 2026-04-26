@@ -64,6 +64,10 @@ Before digging into code to understand the API, refer to the Swagger API spec fi
 
 # Threeport Code Conventions
 
+## Reading Before Writing
+
+Before writing comments, docstrings, or new code in an existing package, grep that package for analogous code and match the local pattern. The rules below state defaults; the package is the authoritative source for the *shape* of code. If the package convention conflicts with a rule below, surface the conflict before changing direction.
+
 ## Function Naming
 - Use PascalCase for exported functions: `ThreeportWorkloadName`, `GetConnection`, `CreateOCIUserAndCredentials`
 - Use camelCase for private/unexported functions: `createOCICompartment`, `validateThreeportState`, `getAvailabilityDomainName`

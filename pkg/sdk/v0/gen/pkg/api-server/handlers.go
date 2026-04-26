@@ -1396,15 +1396,21 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						),
 						apiObject.TypeName,
 					),
+					// opt-in to seeing soft-deleted rows for historical lookups
+					// (events name resolution); default behavior unchanged.
+					Id("db").Op(":=").Do(func(s *Statement) {
+						if gen.Module {
+							s.Id("h").Dot("Handler")
+						} else {
+							s.Id("h")
+						}
+					}).Dot("DB"),
+					If(Id("c").Dot("QueryParam").Call(Lit("includedeleted")).Op("==").Lit("true")).Block(
+						Id("db").Op("=").Id("db").Dot("Unscoped").Call(),
+					),
 					If(
 						// TODO: figure out preload objects
-						Id("result").Op(":=").Do(func(s *Statement) {
-							if gen.Module {
-								s.Id("h").Dot("Handler")
-							} else {
-								s.Id("h")
-							}
-						}).Dot("DB").Add(dbLoadAssociationStatement).
+						Id("result").Op(":=").Id("db").Add(dbLoadAssociationStatement).
 							Dot("First").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {

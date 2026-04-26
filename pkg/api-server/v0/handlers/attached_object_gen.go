@@ -224,7 +224,11 @@ func (h Handler) GetAttachedObjectReference(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAttachedObjectReference
 	attachedObjectReferenceID := c.Param("id")
 	var attachedObjectReference api_v0.AttachedObjectReference
-	if result := h.DB.First(&attachedObjectReference, attachedObjectReferenceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&attachedObjectReference, attachedObjectReferenceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

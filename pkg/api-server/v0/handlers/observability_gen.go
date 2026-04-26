@@ -258,7 +258,11 @@ func (h Handler) GetLoggingDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLoggingDefinition
 	loggingDefinitionID := c.Param("id")
 	var loggingDefinition api_v0.LoggingDefinition
-	if result := h.DB.First(&loggingDefinition, loggingDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&loggingDefinition, loggingDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -787,7 +791,11 @@ func (h Handler) GetLoggingInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLoggingInstance
 	loggingInstanceID := c.Param("id")
 	var loggingInstance api_v0.LoggingInstance
-	if result := h.DB.First(&loggingInstance, loggingInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&loggingInstance, loggingInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1310,7 +1318,11 @@ func (h Handler) GetMetricsDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMetricsDefinition
 	metricsDefinitionID := c.Param("id")
 	var metricsDefinition api_v0.MetricsDefinition
-	if result := h.DB.First(&metricsDefinition, metricsDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&metricsDefinition, metricsDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1839,7 +1851,11 @@ func (h Handler) GetMetricsInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMetricsInstance
 	metricsInstanceID := c.Param("id")
 	var metricsInstance api_v0.MetricsInstance
-	if result := h.DB.First(&metricsInstance, metricsInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&metricsInstance, metricsInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2362,7 +2378,11 @@ func (h Handler) GetObservabilityDashboardDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeObservabilityDashboardDefinition
 	observabilityDashboardDefinitionID := c.Param("id")
 	var observabilityDashboardDefinition api_v0.ObservabilityDashboardDefinition
-	if result := h.DB.First(&observabilityDashboardDefinition, observabilityDashboardDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&observabilityDashboardDefinition, observabilityDashboardDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2891,7 +2911,11 @@ func (h Handler) GetObservabilityDashboardInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeObservabilityDashboardInstance
 	observabilityDashboardInstanceID := c.Param("id")
 	var observabilityDashboardInstance api_v0.ObservabilityDashboardInstance
-	if result := h.DB.First(&observabilityDashboardInstance, observabilityDashboardInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&observabilityDashboardInstance, observabilityDashboardInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -3414,7 +3438,11 @@ func (h Handler) GetObservabilityStackDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeObservabilityStackDefinition
 	observabilityStackDefinitionID := c.Param("id")
 	var observabilityStackDefinition api_v0.ObservabilityStackDefinition
-	if result := h.DB.First(&observabilityStackDefinition, observabilityStackDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&observabilityStackDefinition, observabilityStackDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -3943,7 +3971,11 @@ func (h Handler) GetObservabilityStackInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeObservabilityStackInstance
 	observabilityStackInstanceID := c.Param("id")
 	var observabilityStackInstance api_v0.ObservabilityStackInstance
-	if result := h.DB.First(&observabilityStackInstance, observabilityStackInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&observabilityStackInstance, observabilityStackInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

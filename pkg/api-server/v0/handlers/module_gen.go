@@ -240,7 +240,11 @@ func (h Handler) GetModuleApi(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApi
 	moduleApiID := c.Param("id")
 	var moduleApi api_v0.ModuleApi
-	if result := h.DB.First(&moduleApi, moduleApiID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&moduleApi, moduleApiID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -680,7 +684,11 @@ func (h Handler) GetModuleApiRoute(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApiRoute
 	moduleApiRouteID := c.Param("id")
 	var moduleApiRoute api_v0.ModuleApiRoute
-	if result := h.DB.First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1136,7 +1144,11 @@ func (h Handler) GetModuleController(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleController
 	moduleControllerID := c.Param("id")
 	var moduleController api_v0.ModuleController
-	if result := h.DB.First(&moduleController, moduleControllerID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&moduleController, moduleControllerID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1576,7 +1588,11 @@ func (h Handler) GetModuleObject(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleObject
 	moduleObjectID := c.Param("id")
 	var moduleObject api_v0.ModuleObject
-	if result := h.DB.First(&moduleObject, moduleObjectID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&moduleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

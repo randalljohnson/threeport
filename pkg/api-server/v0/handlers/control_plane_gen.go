@@ -259,7 +259,11 @@ func (h Handler) GetControlPlaneDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneDefinition
 	controlPlaneDefinitionID := c.Param("id")
 	var controlPlaneDefinition api_v0.ControlPlaneDefinition
-	if result := h.DB.First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -788,7 +792,11 @@ func (h Handler) GetControlPlaneInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneInstance
 	controlPlaneInstanceID := c.Param("id")
 	var controlPlaneInstance api_v0.ControlPlaneInstance
-	if result := h.DB.Preload(clause.Associations).First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.Preload(clause.Associations).First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

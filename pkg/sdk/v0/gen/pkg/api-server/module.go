@@ -890,7 +890,7 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								).Call(Lit(apiObj.Description)),
 								Id("ModuleApiID"): Id("existingModApi").Dot("ID"),
 							}),
-							List(Id("_"), Id("err")).Op(":=").Qual(
+							List(Id("objectResult"), Id("err")).Op(":=").Qual(
 								"github.com/threeport/threeport/pkg/client/v0", "CreateModuleObject",
 							).Call(
 								Id("tpApiClient"),
@@ -903,6 +903,7 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									Id("err"),
 								)),
 							),
+							Id(objectVar).Op("=").Op("*").Id("objectResult"),
 						).Else().If(Len(Op("*").Id(objectSliceVar)).Op("==").Lit(1)).Block(
 							Id(objectVar).Op("=").Parens(Op("*").Id(objectSliceVar)).Index(Lit(0)),
 						).Else().Block(
@@ -1028,7 +1029,7 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Lit(apiObj.Description)),
 							Id("ModuleApiID"): Id("existingModApi").Dot("ID"),
 						}),
-						List(Id("_"), Id("err")).Op(":=").Qual(
+						List(Id("objectResult"), Id("err")).Op(":=").Qual(
 							"github.com/threeport/threeport/pkg/client/v0",
 							"CreateModuleObject",
 						).Call(
@@ -1042,6 +1043,7 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Id("err"),
 							)),
 						),
+						Id(objectVar).Op("=").Op("*").Id("objectResult"),
 					).Else().If(Len(Op("*").Id(objectSliceVar)).Op("==").Lit(1)).Block(
 						Id(objectVar).Op("=").Parens(Op("*").Id(objectSliceVar)).Index(Lit(0)),
 					).Else().Block(

@@ -244,7 +244,11 @@ func (h Handler) GetMachineRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineRuntimeDefinition
 	machineRuntimeDefinitionID := c.Param("id")
 	var machineRuntimeDefinition api_v0.MachineRuntimeDefinition
-	if result := h.DB.First(&machineRuntimeDefinition, machineRuntimeDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&machineRuntimeDefinition, machineRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -720,7 +724,11 @@ func (h Handler) GetMachineRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineRuntimeInstance
 	machineRuntimeInstanceID := c.Param("id")
 	var machineRuntimeInstance api_v0.MachineRuntimeInstance
-	if result := h.DB.First(&machineRuntimeInstance, machineRuntimeInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&machineRuntimeInstance, machineRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

@@ -244,7 +244,11 @@ func (h Handler) GetMachineWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
 	machineWorkloadDefinitionID := c.Param("id")
 	var machineWorkloadDefinition api_v0.MachineWorkloadDefinition
-	if result := h.DB.First(&machineWorkloadDefinition, machineWorkloadDefinitionID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&machineWorkloadDefinition, machineWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -720,7 +724,11 @@ func (h Handler) GetMachineWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadInstance
 	machineWorkloadInstanceID := c.Param("id")
 	var machineWorkloadInstance api_v0.MachineWorkloadInstance
-	if result := h.DB.First(&machineWorkloadInstance, machineWorkloadInstanceID); result.Error != nil {
+	db := h.DB
+	if c.QueryParam("includedeleted") == "true" {
+		db = db.Unscoped()
+	}
+	if result := db.First(&machineWorkloadInstance, machineWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

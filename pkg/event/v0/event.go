@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -101,6 +102,15 @@ func (r *EventRecorder) RecordEvent(
 			},
 		})
 
+		// modules pass a qualified ObjectType ("<namespace>/<version>.<TypeName>")
+		// from obj.GetType(); core call sites pass a bare type name and rely on
+		// version+type concatenation. Detect the qualified form to avoid
+		// double-prefixing.
+		storedObjectType := objectType
+		if !strings.Contains(objectType, "/") {
+			storedObjectType = fmt.Sprintf("%s.%s", objectVersion, objectType)
+		}
+
 		operations.AppendOperation(util.Operation{
 			Name: "attached object reference",
 			Create: func() error {
@@ -108,7 +118,7 @@ func (r *EventRecorder) RecordEvent(
 					r.APIClient,
 					r.APIServer,
 					&v0.AttachedObjectReference{
-						ObjectType:         util.Ptr(fmt.Sprintf("%s.%s", objectVersion, objectType)),
+						ObjectType:         util.Ptr(storedObjectType),
 						ObjectID:           util.Ptr(objectId),
 						AttachedObjectType: util.Ptr(util.TypeName(v0.Event{})),
 						AttachedObjectID:   createdEvent.ID,

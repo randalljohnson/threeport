@@ -68,7 +68,7 @@ func (ma *ModuleApi) GetId() uint {
 	return *ma.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (ma *ModuleApi) GetType() string {
 	return "ModuleApi"
 }
@@ -122,7 +122,7 @@ func (mar *ModuleApiRoute) GetId() uint {
 	return *mar.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mar *ModuleApiRoute) GetType() string {
 	return "ModuleApiRoute"
 }
@@ -176,7 +176,7 @@ func (mc *ModuleController) GetId() uint {
 	return *mc.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mc *ModuleController) GetType() string {
 	return "ModuleController"
 }
@@ -230,7 +230,7 @@ func (mo *ModuleObject) GetId() uint {
 	return *mo.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mo *ModuleObject) GetType() string {
 	return "ModuleObject"
 }

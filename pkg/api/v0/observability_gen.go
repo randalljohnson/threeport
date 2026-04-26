@@ -81,7 +81,7 @@ func (ld *LoggingDefinition) GetId() uint {
 	return *ld.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (ld *LoggingDefinition) GetType() string {
 	return "LoggingDefinition"
 }
@@ -141,7 +141,7 @@ func (li *LoggingInstance) GetId() uint {
 	return *li.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (li *LoggingInstance) GetType() string {
 	return "LoggingInstance"
 }
@@ -201,7 +201,7 @@ func (md *MetricsDefinition) GetId() uint {
 	return *md.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (md *MetricsDefinition) GetType() string {
 	return "MetricsDefinition"
 }
@@ -261,7 +261,7 @@ func (mi *MetricsInstance) GetId() uint {
 	return *mi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (mi *MetricsInstance) GetType() string {
 	return "MetricsInstance"
 }
@@ -321,7 +321,7 @@ func (odd *ObservabilityDashboardDefinition) GetId() uint {
 	return *odd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (odd *ObservabilityDashboardDefinition) GetType() string {
 	return "ObservabilityDashboardDefinition"
 }
@@ -381,7 +381,7 @@ func (odi *ObservabilityDashboardInstance) GetId() uint {
 	return *odi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (odi *ObservabilityDashboardInstance) GetType() string {
 	return "ObservabilityDashboardInstance"
 }
@@ -441,7 +441,7 @@ func (osd *ObservabilityStackDefinition) GetId() uint {
 	return *osd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (osd *ObservabilityStackDefinition) GetType() string {
 	return "ObservabilityStackDefinition"
 }
@@ -501,7 +501,7 @@ func (osi *ObservabilityStackInstance) GetId() uint {
 	return *osi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (osi *ObservabilityStackInstance) GetType() string {
 	return "ObservabilityStackInstance"
 }

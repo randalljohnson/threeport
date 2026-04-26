@@ -63,7 +63,7 @@ func (sd *SecretDefinition) GetId() uint {
 	return *sd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (sd *SecretDefinition) GetType() string {
 	return "SecretDefinition"
 }
@@ -123,7 +123,7 @@ func (si *SecretInstance) GetId() uint {
 	return *si.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type for use as the AOR ObjectType identifier.
 func (si *SecretInstance) GetType() string {
 	return "SecretInstance"
 }

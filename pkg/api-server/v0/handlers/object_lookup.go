@@ -76,30 +76,34 @@ func LookupObjectIDByName(db *gorm.DB, objectType, name string) (uint, error) {
 }
 
 // FindModuleRouteForType returns the upstream endpoint and the registered
-// CRUD path for the given ObjectType, or empty strings if no module owns
-// it. Modules register their routes with arbitrary prefixes (e.g.
-// "/example-com/v0/router-definitions"), so we match the route by suffix
-// "/v0/router-definitions" and use whatever module owns it.
+// CRUD path for the given namespace-qualified ObjectType (e.g.
+// "example.com/v0.RouterDefinition"), or empty strings if the type isn't
+// qualified or no module owns it. Looks up the owning module by exact
+// `api_namespace` match, then resolves the CRUD route by kebab-pluralized
+// type name within that module.
 func FindModuleRouteForType(db *gorm.DB, objectType string) (string, string, error) {
-	suffix, err := pathSuffixForType(objectType)
-	if err != nil {
-		return "", "", err
-	}
-
-	var route api_v0.ModuleApiRoute
-	if err := db.Where("path LIKE ?", "%"+suffix).First(&route).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", "", nil
-		}
-		return "", "", fmt.Errorf("failed to query module_api_routes for suffix %s: %w", suffix, err)
+	namespace, kebabPlural, ok := parseQualifiedType(objectType)
+	if !ok {
+		return "", "", nil
 	}
 
 	var modApi api_v0.ModuleApi
-	if err := db.Where("id = ? AND core = ?", route.ModuleApiID, false).First(&modApi).Error; err != nil {
+	if err := db.Where("api_namespace = ? AND core = ?", namespace, false).First(&modApi).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", "", nil
 		}
-		return "", "", fmt.Errorf("failed to query module_apis for route %s: %w", *route.Path, err)
+		return "", "", fmt.Errorf("failed to query module_apis for namespace %s: %w", namespace, err)
+	}
+
+	// match the CRUD route owned by this module - its path ends in
+	// "/v<version>/<kebab-plural>" - ignore /versions and similar siblings.
+	pathSuffix := "/" + kebabPlural
+	var route api_v0.ModuleApiRoute
+	if err := db.Where("module_api_id = ? AND path LIKE ?", modApi.ID, "%"+pathSuffix).First(&route).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", "", nil
+		}
+		return "", "", fmt.Errorf("failed to query module_api_routes for namespace %s: %w", namespace, err)
 	}
 
 	if modApi.Endpoint == nil || route.Path == nil {
@@ -108,16 +112,24 @@ func FindModuleRouteForType(db *gorm.DB, objectType string) (string, string, err
 	return *modApi.Endpoint, *route.Path, nil
 }
 
-// pathSuffixForType returns the type's CRUD path tail (e.g.
-// "/v0/router-definitions") for matching against routes that may carry a
-// module-specific prefix.
-func pathSuffixForType(objectType string) (string, error) {
-	parts := strings.SplitN(objectType, ".", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", fmt.Errorf("invalid object type %q: expected <version>.<TypeName>", objectType)
+// parseQualifiedType splits a namespace-qualified ObjectType
+// ("<namespace>/<version>.<TypeName>") into its namespace and the
+// kebab-pluralized REST tail. Returns ok=false for unqualified strings
+// (core types) which don't go through module dispatch.
+func parseQualifiedType(objectType string) (string, string, bool) {
+	slashIdx := strings.Index(objectType, "/")
+	if slashIdx < 1 || slashIdx == len(objectType)-1 {
+		return "", "", false
 	}
-	plural := pluralize.NewClient().Plural(strcase.ToKebab(parts[1]))
-	return fmt.Sprintf("/%s/%s", parts[0], plural), nil
+	namespace := objectType[:slashIdx]
+	rest := objectType[slashIdx+1:]
+	dotIdx := strings.Index(rest, ".")
+	if dotIdx < 1 || dotIdx == len(rest)-1 {
+		return "", "", false
+	}
+	typeName := rest[dotIdx+1:]
+	plural := pluralize.NewClient().Plural(strcase.ToKebab(typeName))
+	return namespace, plural, true
 }
 
 // lookupNamesFromModule fetches each object by ID from the module API and

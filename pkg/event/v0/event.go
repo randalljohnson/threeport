@@ -164,9 +164,7 @@ func (r *EventRecorder) RecordEvent(
 		event = &(*events)[0]
 		event.Count = util.Ptr(uint((*event.Count + 1)))
 		event.LastObservedTime = util.Ptr(time.Now())
-		// the join endpoint populates ObjectType/ObjectID/ObjectName for
-		// display; clear them before update so they aren't rejected by
-		// UpdateEvent's unsupported-fields check.
+		// clear projection fields; UpdateEvent() rejects them as unsupported
 		event.ObjectType = nil
 		event.ObjectID = nil
 		event.ObjectName = nil

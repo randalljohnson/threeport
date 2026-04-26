@@ -24,13 +24,7 @@ var (
 	eventsOutput string
 )
 
-// GetEventsCmd represents the command 'tptctl get events'.
-//
-// Mirrors `kubectl events` conventions: a flat `events` resource filterable
-// by `--for <kind>/<name>`. The kind→ID lookup is resolved server-side, so
-// any object type registered with the API (core or module) works without
-// CLI changes. Full event details (including any large script output
-// captured in Note) are available via `-o yaml`.
+// GetEventsCmd represents the command 'tptctl get events'
 var GetEventsCmd = &cobra.Command{
 	Aliases: []string{"event"},
 	Example: "  # get all events\n  tptctl get events\n\n  # filter to a specific object\n  tptctl get events --for machine-runtime-instance/oci-test-host\n  tptctl get events --for router-instance/sxalable-router-demo-1",
@@ -46,7 +40,7 @@ var GetEventsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// fetch events joined to attached object references with names already resolved
+		// fetch events
 		events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(apiClient, apiEndpoint, queryString)
 		if err != nil {
 			cli.Error("failed to retrieve events", err)
@@ -61,7 +55,7 @@ var GetEventsCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		// sort oldest → newest
+		// sort oldest first
 		sort.SliceStable(*events, func(i, j int) bool {
 			ti, tj := (*events)[i].EventTime, (*events)[j].EventTime
 			if ti == nil || tj == nil {
@@ -114,10 +108,7 @@ func init() {
 	)
 }
 
-// buildEventsQueryString turns the --for flag into the query string the
-// server uses for filtering. An empty --for returns an empty string (all
-// events). Otherwise, kebab kind is converted to PascalCase and prefixed
-// with "v0." so the server can resolve it via its polymorphic name lookup.
+// buildEventsQueryString turns the --for flag into the events query string.
 func buildEventsQueryString(forFlag string) (string, error) {
 	if forFlag == "" {
 		return "", nil
@@ -135,10 +126,8 @@ func buildEventsQueryString(forFlag string) (string, error) {
 	return q.Encode(), nil
 }
 
-// outputGetv0EventsCmd produces the tabular output for the 'get events'
-// command. NOTE is truncated to eventMessageTableMax chars with newlines
-// collapsed so the column stays one-line per event; use -o yaml to see
-// the full note.
+// outputGetv0EventsCmd produces the tabular output for the
+// 'get events' command.
 func outputGetv0EventsCmd(events *[]v0.Event) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	fmt.Fprintln(writer, "AGE\t TYPE\t REASON\t OBJECT\t NOTE")
@@ -176,9 +165,6 @@ func outputGetv0EventsCmd(events *[]v0.Event) error {
 }
 
 // formatEventObject builds the OBJECT column as <kebab-kind>/<name>.
-// The qualified ObjectType is parsed to extract just the type name; the
-// namespace is dropped from display to keep the column narrow. Falls back
-// to <id> when name resolution wasn't available.
 func formatEventObject(e *v0.Event) string {
 	rawType := util.DerefString(e.ObjectType)
 	if rawType == "" {
@@ -186,8 +172,6 @@ func formatEventObject(e *v0.Event) string {
 	}
 
 	// strip the optional namespace prefix and isolate just the type name
-	// (qualified module form: "<namespace>/<version>.<TypeName>"; core form:
-	// "<version>.<TypeName>"). The kind column shows the kebab type name only.
 	versionedName := rawType
 	if slashIdx := strings.Index(rawType, "/"); slashIdx >= 0 {
 		versionedName = rawType[slashIdx+1:]

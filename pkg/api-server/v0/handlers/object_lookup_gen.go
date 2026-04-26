@@ -23,7 +23,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 	switch objectType {
 	case "v0.AwsAccount":
 		var rows []v0.AwsAccount
-		if err := db.Model(&v0.AwsAccount{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.AwsAccount{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up AwsAccount names: %w", err)
 		}
 		for _, r := range rows {
@@ -34,7 +34,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.AwsEksKubernetesRuntimeDefinition":
 		var rows []v0.AwsEksKubernetesRuntimeDefinition
-		if err := db.Model(&v0.AwsEksKubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.AwsEksKubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up AwsEksKubernetesRuntimeDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -45,7 +45,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.AwsEksKubernetesRuntimeInstance":
 		var rows []v0.AwsEksKubernetesRuntimeInstance
-		if err := db.Model(&v0.AwsEksKubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.AwsEksKubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up AwsEksKubernetesRuntimeInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -56,7 +56,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ControlPlaneDefinition":
 		var rows []v0.ControlPlaneDefinition
-		if err := db.Model(&v0.ControlPlaneDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ControlPlaneDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ControlPlaneDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -67,7 +67,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ControlPlaneInstance":
 		var rows []v0.ControlPlaneInstance
-		if err := db.Model(&v0.ControlPlaneInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ControlPlaneInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ControlPlaneInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -78,7 +78,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.DomainNameDefinition":
 		var rows []v0.DomainNameDefinition
-		if err := db.Model(&v0.DomainNameDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.DomainNameDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up DomainNameDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -89,7 +89,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.DomainNameInstance":
 		var rows []v0.DomainNameInstance
-		if err := db.Model(&v0.DomainNameInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.DomainNameInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up DomainNameInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -100,7 +100,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.GatewayDefinition":
 		var rows []v0.GatewayDefinition
-		if err := db.Model(&v0.GatewayDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.GatewayDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up GatewayDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -111,7 +111,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.GatewayInstance":
 		var rows []v0.GatewayInstance
-		if err := db.Model(&v0.GatewayInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.GatewayInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up GatewayInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -122,7 +122,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.HelmWorkloadDefinition":
 		var rows []v0.HelmWorkloadDefinition
-		if err := db.Model(&v0.HelmWorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.HelmWorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up HelmWorkloadDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -133,7 +133,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.HelmWorkloadInstance":
 		var rows []v0.HelmWorkloadInstance
-		if err := db.Model(&v0.HelmWorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.HelmWorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up HelmWorkloadInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -144,7 +144,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.KubernetesRuntimeDefinition":
 		var rows []v0.KubernetesRuntimeDefinition
-		if err := db.Model(&v0.KubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.KubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up KubernetesRuntimeDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -155,7 +155,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.KubernetesRuntimeInstance":
 		var rows []v0.KubernetesRuntimeInstance
-		if err := db.Model(&v0.KubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.KubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up KubernetesRuntimeInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -166,7 +166,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.LogBackend":
 		var rows []v0.LogBackend
-		if err := db.Model(&v0.LogBackend{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.LogBackend{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up LogBackend names: %w", err)
 		}
 		for _, r := range rows {
@@ -177,7 +177,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.LogStorageDefinition":
 		var rows []v0.LogStorageDefinition
-		if err := db.Model(&v0.LogStorageDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.LogStorageDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up LogStorageDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -188,7 +188,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.LogStorageInstance":
 		var rows []v0.LogStorageInstance
-		if err := db.Model(&v0.LogStorageInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.LogStorageInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up LogStorageInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -199,7 +199,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.LoggingDefinition":
 		var rows []v0.LoggingDefinition
-		if err := db.Model(&v0.LoggingDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.LoggingDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up LoggingDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -210,7 +210,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.LoggingInstance":
 		var rows []v0.LoggingInstance
-		if err := db.Model(&v0.LoggingInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.LoggingInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up LoggingInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -265,7 +265,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.MetricsDefinition":
 		var rows []v0.MetricsDefinition
-		if err := db.Model(&v0.MetricsDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.MetricsDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up MetricsDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -276,7 +276,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.MetricsInstance":
 		var rows []v0.MetricsInstance
-		if err := db.Model(&v0.MetricsInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.MetricsInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up MetricsInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -287,7 +287,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ModuleApi":
 		var rows []v0.ModuleApi
-		if err := db.Model(&v0.ModuleApi{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ModuleApi{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ModuleApi names: %w", err)
 		}
 		for _, r := range rows {
@@ -298,7 +298,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ModuleController":
 		var rows []v0.ModuleController
-		if err := db.Model(&v0.ModuleController{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ModuleController{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ModuleController names: %w", err)
 		}
 		for _, r := range rows {
@@ -309,7 +309,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ModuleObject":
 		var rows []v0.ModuleObject
-		if err := db.Model(&v0.ModuleObject{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ModuleObject{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ModuleObject names: %w", err)
 		}
 		for _, r := range rows {
@@ -320,7 +320,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ObservabilityDashboardDefinition":
 		var rows []v0.ObservabilityDashboardDefinition
-		if err := db.Model(&v0.ObservabilityDashboardDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ObservabilityDashboardDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ObservabilityDashboardDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -331,7 +331,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ObservabilityDashboardInstance":
 		var rows []v0.ObservabilityDashboardInstance
-		if err := db.Model(&v0.ObservabilityDashboardInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ObservabilityDashboardInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ObservabilityDashboardInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -342,7 +342,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ObservabilityStackDefinition":
 		var rows []v0.ObservabilityStackDefinition
-		if err := db.Model(&v0.ObservabilityStackDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ObservabilityStackDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ObservabilityStackDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -353,7 +353,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.ObservabilityStackInstance":
 		var rows []v0.ObservabilityStackInstance
-		if err := db.Model(&v0.ObservabilityStackInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.ObservabilityStackInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up ObservabilityStackInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -364,7 +364,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.OciOkeKubernetesRuntimeDefinition":
 		var rows []v0.OciOkeKubernetesRuntimeDefinition
-		if err := db.Model(&v0.OciOkeKubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.OciOkeKubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up OciOkeKubernetesRuntimeDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -375,7 +375,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.OciOkeKubernetesRuntimeInstance":
 		var rows []v0.OciOkeKubernetesRuntimeInstance
-		if err := db.Model(&v0.OciOkeKubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.OciOkeKubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up OciOkeKubernetesRuntimeInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -386,7 +386,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.OciProvider":
 		var rows []v0.OciProvider
-		if err := db.Model(&v0.OciProvider{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.OciProvider{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up OciProvider names: %w", err)
 		}
 		for _, r := range rows {
@@ -397,7 +397,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.Profile":
 		var rows []v0.Profile
-		if err := db.Model(&v0.Profile{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.Profile{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up Profile names: %w", err)
 		}
 		for _, r := range rows {
@@ -408,7 +408,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.SecretDefinition":
 		var rows []v0.SecretDefinition
-		if err := db.Model(&v0.SecretDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.SecretDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up SecretDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -419,7 +419,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.SecretInstance":
 		var rows []v0.SecretInstance
-		if err := db.Model(&v0.SecretInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.SecretInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up SecretInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -430,7 +430,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.TerraformDefinition":
 		var rows []v0.TerraformDefinition
-		if err := db.Model(&v0.TerraformDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.TerraformDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up TerraformDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -441,7 +441,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.TerraformInstance":
 		var rows []v0.TerraformInstance
-		if err := db.Model(&v0.TerraformInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.TerraformInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up TerraformInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -452,7 +452,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.Tier":
 		var rows []v0.Tier
-		if err := db.Model(&v0.Tier{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.Tier{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up Tier names: %w", err)
 		}
 		for _, r := range rows {
@@ -463,7 +463,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.WorkloadDefinition":
 		var rows []v0.WorkloadDefinition
-		if err := db.Model(&v0.WorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.WorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up WorkloadDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -474,7 +474,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint) (map[ui
 
 	case "v0.WorkloadInstance":
 		var rows []v0.WorkloadInstance
-		if err := db.Model(&v0.WorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Unscoped().Model(&v0.WorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up WorkloadInstance names: %w", err)
 		}
 		for _, r := range rows {

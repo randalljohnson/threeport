@@ -70,7 +70,7 @@ func (dnd *DomainNameDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (dnd *DomainNameDefinition) GetId() uint {
 	return *dnd.ID
 }
@@ -80,7 +80,7 @@ func (dnd *DomainNameDefinition) GetType() string {
 	return "DomainNameDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (dnd *DomainNameDefinition) GetVersion() string {
 	return "v0"
 }
@@ -124,7 +124,7 @@ func (dni *DomainNameInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (dni *DomainNameInstance) GetId() uint {
 	return *dni.ID
 }
@@ -134,7 +134,7 @@ func (dni *DomainNameInstance) GetType() string {
 	return "DomainNameInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (dni *DomainNameInstance) GetVersion() string {
 	return "v0"
 }
@@ -184,7 +184,7 @@ func (gd *GatewayDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (gd *GatewayDefinition) GetId() uint {
 	return *gd.ID
 }
@@ -194,7 +194,7 @@ func (gd *GatewayDefinition) GetType() string {
 	return "GatewayDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (gd *GatewayDefinition) GetVersion() string {
 	return "v0"
 }
@@ -244,7 +244,7 @@ func (ghp *GatewayHttpPort) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (ghp *GatewayHttpPort) GetId() uint {
 	return *ghp.ID
 }
@@ -254,7 +254,7 @@ func (ghp *GatewayHttpPort) GetType() string {
 	return "GatewayHttpPort"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (ghp *GatewayHttpPort) GetVersion() string {
 	return "v0"
 }
@@ -298,7 +298,7 @@ func (gi *GatewayInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (gi *GatewayInstance) GetId() uint {
 	return *gi.ID
 }
@@ -308,7 +308,7 @@ func (gi *GatewayInstance) GetType() string {
 	return "GatewayInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (gi *GatewayInstance) GetVersion() string {
 	return "v0"
 }
@@ -358,7 +358,7 @@ func (gtp *GatewayTcpPort) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (gtp *GatewayTcpPort) GetId() uint {
 	return *gtp.ID
 }
@@ -368,7 +368,7 @@ func (gtp *GatewayTcpPort) GetType() string {
 	return "GatewayTcpPort"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (gtp *GatewayTcpPort) GetVersion() string {
 	return "v0"
 }

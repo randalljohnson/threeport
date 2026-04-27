@@ -60,7 +60,7 @@ func (lb *LogBackend) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (lb *LogBackend) GetId() uint {
 	return *lb.ID
 }
@@ -70,7 +70,7 @@ func (lb *LogBackend) GetType() string {
 	return "LogBackend"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (lb *LogBackend) GetVersion() string {
 	return "v0"
 }
@@ -114,7 +114,7 @@ func (lsd *LogStorageDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (lsd *LogStorageDefinition) GetId() uint {
 	return *lsd.ID
 }
@@ -124,7 +124,7 @@ func (lsd *LogStorageDefinition) GetType() string {
 	return "LogStorageDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (lsd *LogStorageDefinition) GetVersion() string {
 	return "v0"
 }
@@ -168,7 +168,7 @@ func (lsi *LogStorageInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (lsi *LogStorageInstance) GetId() uint {
 	return *lsi.ID
 }
@@ -178,7 +178,7 @@ func (lsi *LogStorageInstance) GetType() string {
 	return "LogStorageInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (lsi *LogStorageInstance) GetVersion() string {
 	return "v0"
 }

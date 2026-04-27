@@ -63,7 +63,7 @@ func (ma *ModuleApi) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (ma *ModuleApi) GetId() uint {
 	return *ma.ID
 }
@@ -73,7 +73,7 @@ func (ma *ModuleApi) GetType() string {
 	return "ModuleApi"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (ma *ModuleApi) GetVersion() string {
 	return "v0"
 }
@@ -117,7 +117,7 @@ func (mar *ModuleApiRoute) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (mar *ModuleApiRoute) GetId() uint {
 	return *mar.ID
 }
@@ -127,7 +127,7 @@ func (mar *ModuleApiRoute) GetType() string {
 	return "ModuleApiRoute"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (mar *ModuleApiRoute) GetVersion() string {
 	return "v0"
 }
@@ -171,7 +171,7 @@ func (mc *ModuleController) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (mc *ModuleController) GetId() uint {
 	return *mc.ID
 }
@@ -181,7 +181,7 @@ func (mc *ModuleController) GetType() string {
 	return "ModuleController"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (mc *ModuleController) GetVersion() string {
 	return "v0"
 }
@@ -225,7 +225,7 @@ func (mo *ModuleObject) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (mo *ModuleObject) GetId() uint {
 	return *mo.ID
 }
@@ -235,7 +235,7 @@ func (mo *ModuleObject) GetType() string {
 	return "ModuleObject"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (mo *ModuleObject) GetVersion() string {
 	return "v0"
 }

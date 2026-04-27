@@ -57,7 +57,7 @@ func (p *Profile) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (p *Profile) GetId() uint {
 	return *p.ID
 }
@@ -67,7 +67,7 @@ func (p *Profile) GetType() string {
 	return "Profile"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (p *Profile) GetVersion() string {
 	return "v0"
 }
@@ -111,7 +111,7 @@ func (t *Tier) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (t *Tier) GetId() uint {
 	return *t.ID
 }
@@ -121,7 +121,7 @@ func (t *Tier) GetType() string {
 	return "Tier"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (t *Tier) GetVersion() string {
 	return "v0"
 }

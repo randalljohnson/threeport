@@ -164,7 +164,7 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Return(Nil()),
 				)
 				// GetId method
-				f.Comment("GetId returns the object ID.")
+				f.Comment("GetId returns the unique ID for the object.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetId").Params().Uint().Block(
@@ -187,7 +187,7 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Return(Lit(typeLiteral)),
 				)
 				// GetVersion method
-				f.Comment("GetVersion returns the object version.")
+				f.Comment("GetVersion returns the version of the API object.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetVersion").Params().String().Block(

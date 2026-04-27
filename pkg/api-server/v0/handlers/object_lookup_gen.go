@@ -225,7 +225,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 
 	case "v0.MachineRuntimeDefinition":
 		var rows []v0.MachineRuntimeDefinition
-		if err := db.Unscoped().Model(&v0.MachineRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Model(&v0.MachineRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up MachineRuntimeDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -236,7 +236,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 
 	case "v0.MachineRuntimeInstance":
 		var rows []v0.MachineRuntimeInstance
-		if err := db.Unscoped().Model(&v0.MachineRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Model(&v0.MachineRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up MachineRuntimeInstance names: %w", err)
 		}
 		for _, r := range rows {
@@ -247,7 +247,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 
 	case "v0.MachineWorkloadDefinition":
 		var rows []v0.MachineWorkloadDefinition
-		if err := db.Unscoped().Model(&v0.MachineWorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Model(&v0.MachineWorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up MachineWorkloadDefinition names: %w", err)
 		}
 		for _, r := range rows {
@@ -258,7 +258,7 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 
 	case "v0.MachineWorkloadInstance":
 		var rows []v0.MachineWorkloadInstance
-		if err := db.Unscoped().Model(&v0.MachineWorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := db.Model(&v0.MachineWorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up MachineWorkloadInstance names: %w", err)
 		}
 		for _, r := range rows {

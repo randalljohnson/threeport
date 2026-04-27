@@ -450,7 +450,8 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -938,7 +939,8 @@ func (h Handler) DeleteMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,

@@ -440,7 +440,8 @@ func (h Handler) DeleteModuleApi(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -884,7 +885,8 @@ func (h Handler) DeleteModuleApiRoute(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1344,7 +1346,8 @@ func (h Handler) DeleteModuleController(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1788,7 +1791,8 @@ func (h Handler) DeleteModuleObject(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,

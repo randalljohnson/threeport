@@ -87,10 +87,6 @@ func GenCoreModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) err
 				"github.com/threeport/threeport/pkg/util/v0",
 				"Ptr",
 			).Call(Lit(true)),
-			Id("ApiNamespace"): Qual(
-				"github.com/threeport/threeport/pkg/util/v0",
-				"Ptr",
-			).Call(Lit("threeport.io")),
 			Id("Endpoint"): Qual(
 				"github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("apiEndpoint")),
 		}),

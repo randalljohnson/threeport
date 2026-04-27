@@ -39,10 +39,9 @@ func upsertModuleApi(db *gorm.DB) (*api_v0.ModuleApi, error) {
 	}
 
 	moduleApi := api_v0.ModuleApi{
-		ApiNamespace: util.Ptr("threeport.io"),
-		Core:         util.Ptr(true),
-		Endpoint:     util.Ptr(apiEndpoint),
-		Name:         util.Ptr(coreModuleName),
+		Core:     util.Ptr(true),
+		Endpoint: util.Ptr(apiEndpoint),
+		Name:     util.Ptr(coreModuleName),
 	}
 
 	if result := db.Where(api_v0.ModuleApi{Name: moduleApi.Name}).FirstOrCreate(&moduleApi); result.Error != nil {

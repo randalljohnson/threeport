@@ -70,17 +70,17 @@ func (dnd *DomainNameDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (dnd *DomainNameDefinition) GetId() uint {
 	return *dnd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (dnd *DomainNameDefinition) GetType() string {
 	return "DomainNameDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (dnd *DomainNameDefinition) GetVersion() string {
 	return "v0"
 }
@@ -124,17 +124,17 @@ func (dni *DomainNameInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (dni *DomainNameInstance) GetId() uint {
 	return *dni.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (dni *DomainNameInstance) GetType() string {
 	return "DomainNameInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (dni *DomainNameInstance) GetVersion() string {
 	return "v0"
 }
@@ -184,17 +184,17 @@ func (gd *GatewayDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (gd *GatewayDefinition) GetId() uint {
 	return *gd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (gd *GatewayDefinition) GetType() string {
 	return "GatewayDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (gd *GatewayDefinition) GetVersion() string {
 	return "v0"
 }
@@ -244,17 +244,17 @@ func (ghp *GatewayHttpPort) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (ghp *GatewayHttpPort) GetId() uint {
 	return *ghp.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (ghp *GatewayHttpPort) GetType() string {
 	return "GatewayHttpPort"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (ghp *GatewayHttpPort) GetVersion() string {
 	return "v0"
 }
@@ -298,17 +298,17 @@ func (gi *GatewayInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (gi *GatewayInstance) GetId() uint {
 	return *gi.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (gi *GatewayInstance) GetType() string {
 	return "GatewayInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (gi *GatewayInstance) GetVersion() string {
 	return "v0"
 }
@@ -358,17 +358,17 @@ func (gtp *GatewayTcpPort) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (gtp *GatewayTcpPort) GetId() uint {
 	return *gtp.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (gtp *GatewayTcpPort) GetType() string {
 	return "GatewayTcpPort"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (gtp *GatewayTcpPort) GetVersion() string {
 	return "v0"
 }

@@ -76,17 +76,17 @@ func (ld *LoggingDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (ld *LoggingDefinition) GetId() uint {
 	return *ld.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (ld *LoggingDefinition) GetType() string {
 	return "LoggingDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (ld *LoggingDefinition) GetVersion() string {
 	return "v0"
 }
@@ -136,17 +136,17 @@ func (li *LoggingInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (li *LoggingInstance) GetId() uint {
 	return *li.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (li *LoggingInstance) GetType() string {
 	return "LoggingInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (li *LoggingInstance) GetVersion() string {
 	return "v0"
 }
@@ -196,17 +196,17 @@ func (md *MetricsDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (md *MetricsDefinition) GetId() uint {
 	return *md.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (md *MetricsDefinition) GetType() string {
 	return "MetricsDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (md *MetricsDefinition) GetVersion() string {
 	return "v0"
 }
@@ -256,17 +256,17 @@ func (mi *MetricsInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mi *MetricsInstance) GetId() uint {
 	return *mi.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mi *MetricsInstance) GetType() string {
 	return "MetricsInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mi *MetricsInstance) GetVersion() string {
 	return "v0"
 }
@@ -316,17 +316,17 @@ func (odd *ObservabilityDashboardDefinition) DecodeNotifObject(object interface{
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (odd *ObservabilityDashboardDefinition) GetId() uint {
 	return *odd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (odd *ObservabilityDashboardDefinition) GetType() string {
 	return "ObservabilityDashboardDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 	return "v0"
 }
@@ -376,17 +376,17 @@ func (odi *ObservabilityDashboardInstance) DecodeNotifObject(object interface{})
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (odi *ObservabilityDashboardInstance) GetId() uint {
 	return *odi.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (odi *ObservabilityDashboardInstance) GetType() string {
 	return "ObservabilityDashboardInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (odi *ObservabilityDashboardInstance) GetVersion() string {
 	return "v0"
 }
@@ -436,17 +436,17 @@ func (osd *ObservabilityStackDefinition) DecodeNotifObject(object interface{}) e
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (osd *ObservabilityStackDefinition) GetId() uint {
 	return *osd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (osd *ObservabilityStackDefinition) GetType() string {
 	return "ObservabilityStackDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (osd *ObservabilityStackDefinition) GetVersion() string {
 	return "v0"
 }
@@ -496,17 +496,17 @@ func (osi *ObservabilityStackInstance) DecodeNotifObject(object interface{}) err
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (osi *ObservabilityStackInstance) GetId() uint {
 	return *osi.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (osi *ObservabilityStackInstance) GetType() string {
 	return "ObservabilityStackInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (osi *ObservabilityStackInstance) GetVersion() string {
 	return "v0"
 }

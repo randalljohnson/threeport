@@ -58,17 +58,17 @@ func (krd *KubernetesRuntimeDefinition) DecodeNotifObject(object interface{}) er
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (krd *KubernetesRuntimeDefinition) GetId() uint {
 	return *krd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (krd *KubernetesRuntimeDefinition) GetType() string {
 	return "KubernetesRuntimeDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (krd *KubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -118,17 +118,17 @@ func (kri *KubernetesRuntimeInstance) DecodeNotifObject(object interface{}) erro
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (kri *KubernetesRuntimeInstance) GetId() uint {
 	return *kri.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (kri *KubernetesRuntimeInstance) GetType() string {
 	return "KubernetesRuntimeInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (kri *KubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }

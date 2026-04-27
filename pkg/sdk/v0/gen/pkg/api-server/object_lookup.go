@@ -50,16 +50,21 @@ func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		// GetCoreObjectNamesByIDs
 		f.Comment("GetCoreObjectNamesByIDs returns id->name for each id of the given")
 		f.Comment("core object type, or ErrUnknownCoreType if the type isn't a core type.")
+		f.Comment("includeDeleted=true bypasses the soft-delete filter to include removed rows.")
 		f.Func().Id("GetCoreObjectNamesByIDs").Params(
 			Id("db").Op("*").Qual("gorm.io/gorm", "DB"),
 			Id("objectType").String(),
 			Id("ids").Index().Uint(),
+			Id("includeDeleted").Bool(),
 		).Params(
 			Map(Uint()).String(),
 			Error(),
 		).Block(
 			If(Len(Id("ids")).Op("==").Lit(0)).Block(
 				Return(Map(Uint()).String().Values(), Nil()),
+			),
+			If(Id("includeDeleted")).Block(
+				Id("db").Op("=").Id("db").Dot("Unscoped").Call(),
 			),
 			Id("out").Op(":=").Make(Map(Uint()).String(), Len(Id("ids"))),
 			Switch(Id("objectType")).BlockFunc(func(g *Group) {
@@ -68,7 +73,6 @@ func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Var().Id("rows").Index().Qual(apiPkg, name),
 						If(
 							Id("err").Op(":=").Id("db").
-								Dot("Unscoped").Call().
 								Dot("Model").Call(Op("&").Qual(apiPkg, name).Values()).
 								Dot("Select").Call(Lit("id, name")).
 								Dot("Where").Call(Lit("id IN ?"), Id("ids")).

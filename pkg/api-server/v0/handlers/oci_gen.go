@@ -311,7 +311,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingOciOkeKubernetesRuntimeDefinition).Updates(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.DB.Model(&existingOciOkeKubernetesRuntimeDefinition).Updates(updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -379,8 +379,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeDefinition.ID = existingOciOkeKubernetesRuntimeDefinition.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingOciOkeKubernetesRuntimeDefinition)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -434,28 +433,6 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	if len(ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeInstances) != 0 {
 		err := errors.New("oci oke kubernetes runtime definition has related oci oke kubernetes runtime instances - cannot be deleted")
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
-	}
-
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(ociOkeKubernetesRuntimeDefinition),
-		ociOkeKubernetesRuntimeDefinition.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
 	}
 
 	// delete object
@@ -792,7 +769,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingOciOkeKubernetesRuntimeInstance).Updates(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.DB.Model(&existingOciOkeKubernetesRuntimeInstance).Updates(updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -874,8 +851,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeInstance.ID = existingOciOkeKubernetesRuntimeInstance.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingOciOkeKubernetesRuntimeInstance)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -925,28 +901,6 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(ociOkeKubernetesRuntimeInstance),
-		ociOkeKubernetesRuntimeInstance.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
-	}
-
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -959,7 +913,7 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&ociOkeKubernetesRuntimeInstance).Updates(&scheduledOciOkeKubernetesRuntimeInstance); result.Error != nil {
+		if result := h.DB.Model(&ociOkeKubernetesRuntimeInstance).Updates(scheduledOciOkeKubernetesRuntimeInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1306,7 +1260,7 @@ func (h Handler) UpdateOciProvider(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingOciProvider).Updates(&updatedOciProvider); result.Error != nil {
+	if result := h.DB.Model(&existingOciProvider).Updates(updatedOciProvider); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -1374,8 +1328,7 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 
 	// persist provided data
 	updatedOciProvider.ID = existingOciProvider.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingOciProvider)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedOciProvider); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciProvider); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -1423,28 +1376,6 @@ func (h Handler) DeleteOciProvider(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(ociProvider),
-		ociProvider.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
 	}
 
 	// delete object

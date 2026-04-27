@@ -311,7 +311,7 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingMachineRuntimeDefinition).Updates(&updatedMachineRuntimeDefinition); result.Error != nil {
+	if result := h.DB.Model(&existingMachineRuntimeDefinition).Updates(updatedMachineRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -379,8 +379,7 @@ func (h Handler) ReplaceMachineRuntimeDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedMachineRuntimeDefinition.ID = existingMachineRuntimeDefinition.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingMachineRuntimeDefinition)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMachineRuntimeDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMachineRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -434,28 +433,6 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 	if len(machineRuntimeDefinition.MachineRuntimeInstances) != 0 {
 		err := errors.New("machine runtime definition has related machine runtime instances - cannot be deleted")
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
-	}
-
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(machineRuntimeDefinition),
-		machineRuntimeDefinition.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
 	}
 
 	// delete object
@@ -792,7 +769,7 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingMachineRuntimeInstance).Updates(&updatedMachineRuntimeInstance); result.Error != nil {
+	if result := h.DB.Model(&existingMachineRuntimeInstance).Updates(updatedMachineRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -874,8 +851,7 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedMachineRuntimeInstance.ID = existingMachineRuntimeInstance.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingMachineRuntimeInstance)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMachineRuntimeInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMachineRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -925,28 +901,6 @@ func (h Handler) DeleteMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(machineRuntimeInstance),
-		machineRuntimeInstance.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
-	}
-
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -959,7 +913,7 @@ func (h Handler) DeleteMachineRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&machineRuntimeInstance).Updates(&scheduledMachineRuntimeInstance); result.Error != nil {
+		if result := h.DB.Model(&machineRuntimeInstance).Updates(scheduledMachineRuntimeInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}

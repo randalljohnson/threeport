@@ -325,7 +325,7 @@ func (h Handler) UpdateWorkloadDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadDefinition).Updates(&updatedWorkloadDefinition); result.Error != nil {
+	if result := h.DB.Model(&existingWorkloadDefinition).Updates(updatedWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -407,8 +407,7 @@ func (h Handler) ReplaceWorkloadDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadDefinition.ID = existingWorkloadDefinition.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingWorkloadDefinition)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedWorkloadDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -464,28 +463,6 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(workloadDefinition),
-		workloadDefinition.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
-	}
-
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -498,7 +475,7 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&workloadDefinition).Updates(&scheduledWorkloadDefinition); result.Error != nil {
+		if result := h.DB.Model(&workloadDefinition).Updates(scheduledWorkloadDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -829,7 +806,7 @@ func (h Handler) UpdateWorkloadEvent(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadEvent).Updates(&updatedWorkloadEvent); result.Error != nil {
+	if result := h.DB.Model(&existingWorkloadEvent).Updates(updatedWorkloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -897,8 +874,7 @@ func (h Handler) ReplaceWorkloadEvent(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadEvent.ID = existingWorkloadEvent.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingWorkloadEvent)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedWorkloadEvent); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -946,28 +922,6 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(workloadEvent),
-		workloadEvent.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
 	}
 
 	// delete object
@@ -1304,7 +1258,7 @@ func (h Handler) UpdateWorkloadInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadInstance).Updates(&updatedWorkloadInstance); result.Error != nil {
+	if result := h.DB.Model(&existingWorkloadInstance).Updates(updatedWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -1386,8 +1340,7 @@ func (h Handler) ReplaceWorkloadInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadInstance.ID = existingWorkloadInstance.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingWorkloadInstance)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedWorkloadInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -1437,28 +1390,6 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(workloadInstance),
-		workloadInstance.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
-	}
-
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -1471,7 +1402,7 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&workloadInstance).Updates(&scheduledWorkloadInstance); result.Error != nil {
+		if result := h.DB.Model(&workloadInstance).Updates(scheduledWorkloadInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1802,7 +1733,7 @@ func (h Handler) UpdateWorkloadResourceDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadResourceDefinition).Updates(&updatedWorkloadResourceDefinition); result.Error != nil {
+	if result := h.DB.Model(&existingWorkloadResourceDefinition).Updates(updatedWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -1870,8 +1801,7 @@ func (h Handler) ReplaceWorkloadResourceDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadResourceDefinition.ID = existingWorkloadResourceDefinition.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingWorkloadResourceDefinition)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedWorkloadResourceDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -1919,28 +1849,6 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(workloadResourceDefinition),
-		workloadResourceDefinition.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
 	}
 
 	// delete object
@@ -2247,7 +2155,7 @@ func (h Handler) UpdateWorkloadResourceInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadResourceInstance).Updates(&updatedWorkloadResourceInstance); result.Error != nil {
+	if result := h.DB.Model(&existingWorkloadResourceInstance).Updates(updatedWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -2315,8 +2223,7 @@ func (h Handler) ReplaceWorkloadResourceInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadResourceInstance.ID = existingWorkloadResourceInstance.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingWorkloadResourceInstance)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedWorkloadResourceInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -2364,28 +2271,6 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(workloadResourceInstance),
-		workloadResourceInstance.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
 	}
 
 	// delete object

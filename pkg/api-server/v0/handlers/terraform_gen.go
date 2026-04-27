@@ -325,7 +325,7 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingTerraformDefinition).Updates(&updatedTerraformDefinition); result.Error != nil {
+	if result := h.DB.Model(&existingTerraformDefinition).Updates(updatedTerraformDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -407,8 +407,7 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformDefinition.ID = existingTerraformDefinition.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingTerraformDefinition)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedTerraformDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -464,28 +463,6 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(terraformDefinition),
-		terraformDefinition.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
-	}
-
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -498,7 +475,7 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&terraformDefinition).Updates(&scheduledTerraformDefinition); result.Error != nil {
+		if result := h.DB.Model(&terraformDefinition).Updates(scheduledTerraformDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -859,7 +836,7 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingTerraformInstance).Updates(&updatedTerraformInstance); result.Error != nil {
+	if result := h.DB.Model(&existingTerraformInstance).Updates(updatedTerraformInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -941,8 +918,7 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformInstance.ID = existingTerraformInstance.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingTerraformInstance)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedTerraformInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -992,28 +968,6 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// check for blocking attached object references before deletion
-	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
-		h.DB,
-		util_v0.TypeName(terraformInstance),
-		terraformInstance.ID,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-	}
-	if len(attachedObjectReferences) > 0 {
-		return apiserver_lib.ResponseStatus409(
-			c,
-			nil,
-			FormatBlockingAttachedObjectReferencesError(
-				h.DB,
-				attachedObjectReferences,
-			),
-			objectType,
-		)
-	}
-
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -1026,7 +980,7 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&terraformInstance).Updates(&scheduledTerraformInstance); result.Error != nil {
+		if result := h.DB.Model(&terraformInstance).Updates(scheduledTerraformInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}

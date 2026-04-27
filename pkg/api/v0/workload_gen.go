@@ -67,7 +67,7 @@ func (wd *WorkloadDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (wd *WorkloadDefinition) GetId() uint {
 	return *wd.ID
 }
@@ -77,7 +77,7 @@ func (wd *WorkloadDefinition) GetType() string {
 	return "WorkloadDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (wd *WorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -127,7 +127,7 @@ func (we *WorkloadEvent) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (we *WorkloadEvent) GetId() uint {
 	return *we.ID
 }
@@ -137,7 +137,7 @@ func (we *WorkloadEvent) GetType() string {
 	return "WorkloadEvent"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (we *WorkloadEvent) GetVersion() string {
 	return "v0"
 }
@@ -181,7 +181,7 @@ func (wi *WorkloadInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (wi *WorkloadInstance) GetId() uint {
 	return *wi.ID
 }
@@ -191,7 +191,7 @@ func (wi *WorkloadInstance) GetType() string {
 	return "WorkloadInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (wi *WorkloadInstance) GetVersion() string {
 	return "v0"
 }
@@ -241,7 +241,7 @@ func (wrd *WorkloadResourceDefinition) DecodeNotifObject(object interface{}) err
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (wrd *WorkloadResourceDefinition) GetId() uint {
 	return *wrd.ID
 }
@@ -251,7 +251,7 @@ func (wrd *WorkloadResourceDefinition) GetType() string {
 	return "WorkloadResourceDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
@@ -295,7 +295,7 @@ func (wri *WorkloadResourceInstance) DecodeNotifObject(object interface{}) error
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (wri *WorkloadResourceInstance) GetId() uint {
 	return *wri.ID
 }
@@ -305,7 +305,7 @@ func (wri *WorkloadResourceInstance) GetType() string {
 	return "WorkloadResourceInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
 }

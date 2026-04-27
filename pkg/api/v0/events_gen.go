@@ -54,7 +54,7 @@ func (e *Event) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (e *Event) GetId() uint {
 	return *e.ID
 }
@@ -64,7 +64,7 @@ func (e *Event) GetType() string {
 	return "Event"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (e *Event) GetVersion() string {
 	return "v0"
 }

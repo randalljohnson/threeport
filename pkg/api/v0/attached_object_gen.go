@@ -54,7 +54,7 @@ func (aor *AttachedObjectReference) DecodeNotifObject(object interface{}) error 
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (aor *AttachedObjectReference) GetId() uint {
 	return *aor.ID
 }
@@ -64,7 +64,7 @@ func (aor *AttachedObjectReference) GetType() string {
 	return "AttachedObjectReference"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (aor *AttachedObjectReference) GetVersion() string {
 	return "v0"
 }

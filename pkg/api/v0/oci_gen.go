@@ -61,7 +61,7 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) DecodeNotifObject(object interfa
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (ookrd *OciOkeKubernetesRuntimeDefinition) GetId() uint {
 	return *ookrd.ID
 }
@@ -71,7 +71,7 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetType() string {
 	return "OciOkeKubernetesRuntimeDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -115,7 +115,7 @@ func (ookri *OciOkeKubernetesRuntimeInstance) DecodeNotifObject(object interface
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (ookri *OciOkeKubernetesRuntimeInstance) GetId() uint {
 	return *ookri.ID
 }
@@ -125,7 +125,7 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetType() string {
 	return "OciOkeKubernetesRuntimeInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
@@ -175,7 +175,7 @@ func (op *OciProvider) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (op *OciProvider) GetId() uint {
 	return *op.ID
 }
@@ -185,7 +185,7 @@ func (op *OciProvider) GetType() string {
 	return "OciProvider"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (op *OciProvider) GetVersion() string {
 	return "v0"
 }

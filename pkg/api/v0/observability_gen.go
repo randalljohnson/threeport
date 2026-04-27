@@ -76,7 +76,7 @@ func (ld *LoggingDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (ld *LoggingDefinition) GetId() uint {
 	return *ld.ID
 }
@@ -86,7 +86,7 @@ func (ld *LoggingDefinition) GetType() string {
 	return "LoggingDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (ld *LoggingDefinition) GetVersion() string {
 	return "v0"
 }
@@ -136,7 +136,7 @@ func (li *LoggingInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (li *LoggingInstance) GetId() uint {
 	return *li.ID
 }
@@ -146,7 +146,7 @@ func (li *LoggingInstance) GetType() string {
 	return "LoggingInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (li *LoggingInstance) GetVersion() string {
 	return "v0"
 }
@@ -196,7 +196,7 @@ func (md *MetricsDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (md *MetricsDefinition) GetId() uint {
 	return *md.ID
 }
@@ -206,7 +206,7 @@ func (md *MetricsDefinition) GetType() string {
 	return "MetricsDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (md *MetricsDefinition) GetVersion() string {
 	return "v0"
 }
@@ -256,7 +256,7 @@ func (mi *MetricsInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (mi *MetricsInstance) GetId() uint {
 	return *mi.ID
 }
@@ -266,7 +266,7 @@ func (mi *MetricsInstance) GetType() string {
 	return "MetricsInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (mi *MetricsInstance) GetVersion() string {
 	return "v0"
 }
@@ -316,7 +316,7 @@ func (odd *ObservabilityDashboardDefinition) DecodeNotifObject(object interface{
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (odd *ObservabilityDashboardDefinition) GetId() uint {
 	return *odd.ID
 }
@@ -326,7 +326,7 @@ func (odd *ObservabilityDashboardDefinition) GetType() string {
 	return "ObservabilityDashboardDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 	return "v0"
 }
@@ -376,7 +376,7 @@ func (odi *ObservabilityDashboardInstance) DecodeNotifObject(object interface{})
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (odi *ObservabilityDashboardInstance) GetId() uint {
 	return *odi.ID
 }
@@ -386,7 +386,7 @@ func (odi *ObservabilityDashboardInstance) GetType() string {
 	return "ObservabilityDashboardInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (odi *ObservabilityDashboardInstance) GetVersion() string {
 	return "v0"
 }
@@ -436,7 +436,7 @@ func (osd *ObservabilityStackDefinition) DecodeNotifObject(object interface{}) e
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (osd *ObservabilityStackDefinition) GetId() uint {
 	return *osd.ID
 }
@@ -446,7 +446,7 @@ func (osd *ObservabilityStackDefinition) GetType() string {
 	return "ObservabilityStackDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (osd *ObservabilityStackDefinition) GetVersion() string {
 	return "v0"
 }
@@ -496,7 +496,7 @@ func (osi *ObservabilityStackInstance) DecodeNotifObject(object interface{}) err
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (osi *ObservabilityStackInstance) GetId() uint {
 	return *osi.ID
 }
@@ -506,7 +506,7 @@ func (osi *ObservabilityStackInstance) GetType() string {
 	return "ObservabilityStackInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (osi *ObservabilityStackInstance) GetVersion() string {
 	return "v0"
 }

@@ -58,7 +58,7 @@ func (cpd *ControlPlaneDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (cpd *ControlPlaneDefinition) GetId() uint {
 	return *cpd.ID
 }
@@ -68,7 +68,7 @@ func (cpd *ControlPlaneDefinition) GetType() string {
 	return "ControlPlaneDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (cpd *ControlPlaneDefinition) GetVersion() string {
 	return "v0"
 }
@@ -118,7 +118,7 @@ func (cpi *ControlPlaneInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (cpi *ControlPlaneInstance) GetId() uint {
 	return *cpi.ID
 }
@@ -128,7 +128,7 @@ func (cpi *ControlPlaneInstance) GetType() string {
 	return "ControlPlaneInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (cpi *ControlPlaneInstance) GetVersion() string {
 	return "v0"
 }

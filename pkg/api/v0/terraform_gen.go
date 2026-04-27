@@ -58,17 +58,17 @@ func (td *TerraformDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (td *TerraformDefinition) GetId() uint {
 	return *td.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (td *TerraformDefinition) GetType() string {
 	return "TerraformDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (td *TerraformDefinition) GetVersion() string {
 	return "v0"
 }
@@ -118,17 +118,17 @@ func (ti *TerraformInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (ti *TerraformInstance) GetId() uint {
 	return *ti.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (ti *TerraformInstance) GetType() string {
 	return "TerraformInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (ti *TerraformInstance) GetVersion() string {
 	return "v0"
 }

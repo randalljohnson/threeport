@@ -284,7 +284,7 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		names, err := LookupObjectNames(db, typ, ids)
+		names, err := LookupObjectNames(db, typ, ids, true)
 		if err != nil {
 			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
 			continue

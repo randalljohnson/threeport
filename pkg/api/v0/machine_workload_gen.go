@@ -58,17 +58,17 @@ func (mwd *MachineWorkloadDefinition) DecodeNotifObject(object interface{}) erro
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mwd *MachineWorkloadDefinition) GetId() uint {
 	return *mwd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mwd *MachineWorkloadDefinition) GetType() string {
 	return "MachineWorkloadDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mwd *MachineWorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -112,17 +112,17 @@ func (mwi *MachineWorkloadInstance) DecodeNotifObject(object interface{}) error 
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mwi *MachineWorkloadInstance) GetId() uint {
 	return *mwi.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mwi *MachineWorkloadInstance) GetType() string {
 	return "MachineWorkloadInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mwi *MachineWorkloadInstance) GetVersion() string {
 	return "v0"
 }

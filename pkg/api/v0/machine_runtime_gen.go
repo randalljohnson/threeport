@@ -58,17 +58,17 @@ func (mrd *MachineRuntimeDefinition) DecodeNotifObject(object interface{}) error
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mrd *MachineRuntimeDefinition) GetId() uint {
 	return *mrd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mrd *MachineRuntimeDefinition) GetType() string {
 	return "MachineRuntimeDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mrd *MachineRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -112,17 +112,17 @@ func (mri *MachineRuntimeInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mri *MachineRuntimeInstance) GetId() uint {
 	return *mri.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mri *MachineRuntimeInstance) GetType() string {
 	return "MachineRuntimeInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mri *MachineRuntimeInstance) GetVersion() string {
 	return "v0"
 }

@@ -27,12 +27,13 @@ var moduleHTTPClient = &http.Client{Timeout: 10 * time.Second}
 // Tries core types first via GetCoreObjectNamesByIDs (generated batched SQL);
 // on ErrUnknownCoreType falls back to per-id HTTP GETs against the owning
 // module API. Returns an empty map if no resolver is found.
-func LookupObjectNames(db *gorm.DB, objectType string, ids []uint) (map[uint]string, error) {
+// includeDeleted=true bypasses the soft-delete filter to include removed rows.
+func LookupObjectNames(db *gorm.DB, objectType string, ids []uint, includeDeleted bool) (map[uint]string, error) {
 	if len(ids) == 0 {
 		return map[uint]string{}, nil
 	}
 
-	names, err := GetCoreObjectNamesByIDs(db, objectType, ids)
+	names, err := GetCoreObjectNamesByIDs(db, objectType, ids, includeDeleted)
 	if err == nil {
 		return names, nil
 	}
@@ -48,7 +49,7 @@ func LookupObjectNames(db *gorm.DB, objectType string, ids []uint) (map[uint]str
 		return map[uint]string{}, nil
 	}
 
-	return lookupNamesFromModule(endpoint, path, ids)
+	return lookupNamesFromModule(endpoint, path, ids, includeDeleted)
 }
 
 // LookupObjectIDByName returns the ID of the named object of the given type.
@@ -132,13 +133,16 @@ func parseQualifiedType(objectType string) (string, string, bool) {
 	return namespace, plural, true
 }
 
-// lookupNamesFromModule fetches each object by ID from the module API and
-// extracts its Name. Returns a partial map even on per-id errors so a
-// single bad id doesn't fail the whole batch.
-func lookupNamesFromModule(endpoint, path string, ids []uint) (map[uint]string, error) {
+// lookupNamesFromModule fetches each id's Name from the module API,
+// skipping ids whose lookups fail.
+func lookupNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) (map[uint]string, error) {
 	out := make(map[uint]string, len(ids))
+	suffix := ""
+	if includeDeleted {
+		suffix = "?includedeleted=true"
+	}
 	for _, id := range ids {
-		url := fmt.Sprintf("%s%s/%d?includedeleted=true", endpoint, path, id)
+		url := fmt.Sprintf("%s%s/%d%s", endpoint, path, id, suffix)
 		resp, err := client_lib.GetResponse(
 			moduleHTTPClient,
 			url,

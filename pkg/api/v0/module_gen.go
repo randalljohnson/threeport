@@ -63,17 +63,17 @@ func (ma *ModuleApi) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (ma *ModuleApi) GetId() uint {
 	return *ma.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (ma *ModuleApi) GetType() string {
 	return "ModuleApi"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (ma *ModuleApi) GetVersion() string {
 	return "v0"
 }
@@ -117,17 +117,17 @@ func (mar *ModuleApiRoute) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mar *ModuleApiRoute) GetId() uint {
 	return *mar.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mar *ModuleApiRoute) GetType() string {
 	return "ModuleApiRoute"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mar *ModuleApiRoute) GetVersion() string {
 	return "v0"
 }
@@ -171,17 +171,17 @@ func (mc *ModuleController) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mc *ModuleController) GetId() uint {
 	return *mc.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mc *ModuleController) GetType() string {
 	return "ModuleController"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mc *ModuleController) GetVersion() string {
 	return "v0"
 }
@@ -225,17 +225,17 @@ func (mo *ModuleObject) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the unique ID for the object.
+// GetId returns the object ID.
 func (mo *ModuleObject) GetId() uint {
 	return *mo.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (mo *ModuleObject) GetType() string {
 	return "ModuleObject"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the object version.
 func (mo *ModuleObject) GetVersion() string {
 	return "v0"
 }

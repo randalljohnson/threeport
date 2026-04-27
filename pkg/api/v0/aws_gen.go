@@ -61,7 +61,7 @@ func (aa *AwsAccount) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (aa *AwsAccount) GetId() uint {
 	return *aa.ID
 }
@@ -71,7 +71,7 @@ func (aa *AwsAccount) GetType() string {
 	return "AwsAccount"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (aa *AwsAccount) GetVersion() string {
 	return "v0"
 }
@@ -115,7 +115,7 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) DecodeNotifObject(object interfa
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetId() uint {
 	return *aekrd.ID
 }
@@ -125,7 +125,7 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetType() string {
 	return "AwsEksKubernetesRuntimeDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -169,7 +169,7 @@ func (aekri *AwsEksKubernetesRuntimeInstance) DecodeNotifObject(object interface
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetId() uint {
 	return *aekri.ID
 }
@@ -179,7 +179,7 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetType() string {
 	return "AwsEksKubernetesRuntimeInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }

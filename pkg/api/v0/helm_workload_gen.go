@@ -58,7 +58,7 @@ func (hwd *HelmWorkloadDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (hwd *HelmWorkloadDefinition) GetId() uint {
 	return *hwd.ID
 }
@@ -68,7 +68,7 @@ func (hwd *HelmWorkloadDefinition) GetType() string {
 	return "HelmWorkloadDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (hwd *HelmWorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -118,7 +118,7 @@ func (hwi *HelmWorkloadInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (hwi *HelmWorkloadInstance) GetId() uint {
 	return *hwi.ID
 }
@@ -128,7 +128,7 @@ func (hwi *HelmWorkloadInstance) GetType() string {
 	return "HelmWorkloadInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (hwi *HelmWorkloadInstance) GetVersion() string {
 	return "v0"
 }

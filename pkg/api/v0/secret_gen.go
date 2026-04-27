@@ -58,7 +58,7 @@ func (sd *SecretDefinition) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (sd *SecretDefinition) GetId() uint {
 	return *sd.ID
 }
@@ -68,7 +68,7 @@ func (sd *SecretDefinition) GetType() string {
 	return "SecretDefinition"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (sd *SecretDefinition) GetVersion() string {
 	return "v0"
 }
@@ -118,7 +118,7 @@ func (si *SecretInstance) DecodeNotifObject(object interface{}) error {
 	return nil
 }
 
-// GetId returns the object ID.
+// GetId returns the unique ID for the object.
 func (si *SecretInstance) GetId() uint {
 	return *si.ID
 }
@@ -128,7 +128,7 @@ func (si *SecretInstance) GetType() string {
 	return "SecretInstance"
 }
 
-// GetVersion returns the object version.
+// GetVersion returns the version of the API object.
 func (si *SecretInstance) GetVersion() string {
 	return "v0"
 }

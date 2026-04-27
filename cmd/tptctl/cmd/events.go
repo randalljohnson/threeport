@@ -22,13 +22,15 @@ const eventMessageTableMax = 80
 var (
 	eventsFor    string
 	eventsOutput string
+	eventsSort   string
+	eventsLimit  int
 )
 
 // GetEventsCmd represents the command 'tptctl get events'
 var GetEventsCmd = &cobra.Command{
 	Aliases: []string{"event"},
 	Example: "  # get all events\n  tptctl get events\n\n  # filter to a specific object\n  tptctl get events --for machine-runtime-instance/oci-test-host\n  tptctl get events --for router-instance/sxalable-router-demo-1",
-	Long:    "Get events from the system.\n\nUse --for <kind>/<name> to filter events to a specific object. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.\n\nFull event notes (including captured script stdout/stderr) can be viewed with -o yaml.",
+	Long:    "Get events from the system.\n\nUse --for <kind>/<name> to filter events to a specific object. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.\n\nUse --sort to control row order: newest (default) puts the most recent activity at the top; oldest is reverse.\n\nUse --limit N to cap the number of rows shown (after sort). 0 means no cap.\n\nFull event notes (including captured script stdout/stderr) can be viewed with -o yaml.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
@@ -55,14 +57,33 @@ var GetEventsCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		// sort oldest first
+		// sort by event time per --sort
+		newestFirst := true
+		switch eventsSort {
+		case "newest":
+			newestFirst = true
+		case "oldest":
+			newestFirst = false
+		default:
+			cli.Error("", fmt.Errorf("unrecognized sort: %s (expected newest or oldest)", eventsSort))
+			os.Exit(1)
+		}
 		sort.SliceStable(*events, func(i, j int) bool {
 			ti, tj := (*events)[i].EventTime, (*events)[j].EventTime
 			if ti == nil || tj == nil {
 				return ti != nil
 			}
+			if newestFirst {
+				return ti.After(*tj)
+			}
 			return ti.Before(*tj)
 		})
+
+		// cap to --limit after sort so the cap respects user's chosen direction
+		if eventsLimit > 0 && len(*events) > eventsLimit {
+			truncated := (*events)[:eventsLimit]
+			events = &truncated
+		}
 
 		// write output
 		switch eventsOutput {
@@ -101,6 +122,14 @@ func init() {
 	GetEventsCmd.Flags().StringVarP(
 		&eventsOutput,
 		"output", "o", "tabular", "Output format for events. One of: [tabular, yaml, json]",
+	)
+	GetEventsCmd.Flags().StringVar(
+		&eventsSort,
+		"sort", "newest", "Sort order. One of: [newest, oldest]",
+	)
+	GetEventsCmd.Flags().IntVar(
+		&eventsLimit,
+		"limit", 0, "Maximum number of events to display after sort. 0 means no cap.",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,

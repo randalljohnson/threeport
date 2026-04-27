@@ -35,15 +35,11 @@ type Event struct {
 	// Name of the controller that emitted this Event.
 	ReportingController *string `json:"ReportingController,omitempty" query:"reportingcontroller" validate:"required"`
 
-	// Projection-only fields populated when an Event is loaded with a join
-	// against attached_object_references. Tagged gorm:"-" so they're ignored
-	// during normal CRUD on the events table.
+	// ObjectType, ObjectID, and ObjectName are not stored on the events
+	// table - they're populated by enrichEventsWithObjectInfo after a join
+	// with v0_attached_object_references and a name lookup. gorm:"-"
+	// excludes them from normal CRUD so GORM neither writes nor reads them.
 	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`
 	ObjectID   *uint   `json:"ObjectID,omitempty" gorm:"-"`
 	ObjectName *string `json:"ObjectName,omitempty" gorm:"-"`
 }
-
-//// Event is a record of an event in the system.
-//type Event struct {
-//	Common `swaggerignore:"true" mapstructure:",squash"`
-//}

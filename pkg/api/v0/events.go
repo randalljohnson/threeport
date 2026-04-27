@@ -35,10 +35,8 @@ type Event struct {
 	// Name of the controller that emitted this Event.
 	ReportingController *string `json:"ReportingController,omitempty" query:"reportingcontroller" validate:"required"`
 
-	// ObjectType, ObjectID, and ObjectName are not stored on the events
-	// table - they're populated by enrichEventsWithObjectInfo after a join
-	// with v0_attached_object_references and a name lookup. gorm:"-"
-	// excludes them from normal CRUD so GORM neither writes nor reads them.
+	// Enrichment fields populated when events are loaded with their
+	// attached object reference. gorm:"-" keeps them out of normal CRUD.
 	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`
 	ObjectID   *uint   `json:"ObjectID,omitempty" gorm:"-"`
 	ObjectName *string `json:"ObjectName,omitempty" gorm:"-"`

@@ -478,7 +478,8 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -961,7 +962,8 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1449,7 +1451,8 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1932,7 +1935,8 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2376,7 +2380,8 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,

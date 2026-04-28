@@ -450,7 +450,8 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -938,7 +939,8 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1471,7 +1473,8 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1954,7 +1957,8 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2442,7 +2446,8 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -2925,7 +2930,8 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,

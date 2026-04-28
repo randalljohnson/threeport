@@ -479,7 +479,8 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,
@@ -1006,7 +1007,8 @@ func (h Handler) DeleteControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(
 			c,
 			nil,
-			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+			FormatBlockingAttachedObjectReferencesError(
+				h.DB,
 				attachedObjectReferences,
 			),
 			objectType,

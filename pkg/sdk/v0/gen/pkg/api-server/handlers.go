@@ -628,10 +628,24 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					).Call(
 						Line().Id("c"),
 						Line().Nil(),
-						Line().Qual(
-							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"FormatBlockingAttachedObjectReferencesError",
-						).Call(
+						Line().Do(func(s *Statement) {
+							// core: emit bare reference (self-package); module: Qual to threeport handlers
+							if gen.Module {
+								s.Qual(
+									"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+									"FormatBlockingAttachedObjectReferencesError",
+								)
+							} else {
+								s.Id("FormatBlockingAttachedObjectReferencesError")
+							}
+						}).Call(
+							Line().Do(func(s *Statement) {
+								if gen.Module {
+									s.Id("h").Dot("Handler")
+								} else {
+									s.Id("h")
+								}
+							}).Dot("DB"),
 							Line().Id("attachedObjectReferences"),
 							Line(),
 						),

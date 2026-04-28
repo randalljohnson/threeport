@@ -61,7 +61,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				objectType,
 			)
 		}
-		id, lookupErr := LookupObjectIDByName(h.DB, targetType, targetName)
+		id, lookupErr := GetObjectIDByName(h.DB, targetType, targetName)
 		if lookupErr != nil {
 			h.Logger.Error("handler error: error resolving --for", zap.Error(lookupErr))
 			return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
@@ -284,7 +284,7 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		names, err := LookupObjectNames(db, typ, ids, true)
+		names, err := GetObjectNames(db, typ, ids, true)
 		if err != nil {
 			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
 			continue

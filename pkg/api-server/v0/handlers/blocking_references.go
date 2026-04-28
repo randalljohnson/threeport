@@ -28,7 +28,7 @@ func FormatBlockingAttachedObjectReferencesError(
 	// resolve the parent's name for the header line
 	parentLabel := "object"
 	if refs[0].ObjectType != nil && refs[0].ObjectID != nil {
-		parentNames, _ := LookupObjectNames(db, *refs[0].ObjectType, []uint{*refs[0].ObjectID}, false)
+		parentNames, _ := GetObjectNames(db, *refs[0].ObjectType, []uint{*refs[0].ObjectID}, false)
 		parentLabel = formatBlockerPath(*refs[0].ObjectType, *refs[0].ObjectID, parentNames)
 	}
 
@@ -51,7 +51,7 @@ func FormatBlockingAttachedObjectReferencesError(
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		names, err := LookupObjectNames(db, typ, ids, false)
+		names, err := GetObjectNames(db, typ, ids, false)
 		if err != nil {
 			continue
 		}

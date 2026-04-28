@@ -16,18 +16,13 @@ import (
 )
 
 // @Summary gets all events joined with attached object references.
-// @Description Get all events joined with attached object references from
-// the Threeport database. When an objectid query parameter is provided,
-// results are filtered to events whose attached object reference points at
-// that object; otherwise all events that have an attached object reference
-// are returned. Alternatively, --for-style filtering accepts objecttype +
-// objectname which are resolved server-side to an objectid.
-// @ID get-v0-events-join-attached-object-references
+// @Description Get all events joined with attached object references from the Threeport database.
+// @ID get-v0-eventsJoinAttachedObjectReferences
 // @Accept json
 // @Produce json
-// @Param objectid query string false "filter to events for this object ID"
-// @Param objecttype query string false "filter to events for this object type (paired with objectname)"
-// @Param objectname query string false "filter to events for this object name (paired with objecttype)"
+// @Param objectid query string false "filter events by object ID"
+// @Param objecttype query string false "filter events by object kind (with objectname)"
+// @Param objectname query string false "filter events by object name (with objecttype)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -220,8 +215,8 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		pagination.HasMore = returnedCount >= pagination.Limit
 	}
 
-	// enrich records with AOR fields and resolved object names; failures are
-	// logged but don't fail the whole query so events still come back when
+	// enrich records with attached object reference fields and resolved
+	// object names; failures are logged so events still come back when
 	// resolution can't fully complete
 	if err := enrichEventsWithObjectInfo(h.DB, *records, h.Logger); err != nil {
 		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
@@ -245,9 +240,8 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 }
 
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName
-// on each event from the joined AttachedObjectReference and a per-type
-// batched name lookup. Mutates events in place via gorm:"-" projection
-// columns on v0.Event.
+// on each event from the joined attached object reference and a per-type
+// batched name lookup.
 func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger) error {
 	if len(events) == 0 {
 		return nil

@@ -66,12 +66,12 @@ func (aa *AwsAccount) GetId() uint {
 	return *aa.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (aa *AwsAccount) GetType() string {
 	return "AwsAccount"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (aa *AwsAccount) GetVersion() string {
 	return "v0"
 }
@@ -120,12 +120,12 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetId() uint {
 	return *aekrd.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetType() string {
 	return "AwsEksKubernetesRuntimeDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -174,12 +174,12 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetId() uint {
 	return *aekri.ID
 }
 
-// GetType returns the object type for use as the AOR ObjectType identifier.
+// GetType returns the object type.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetType() string {
 	return "AwsEksKubernetesRuntimeInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }

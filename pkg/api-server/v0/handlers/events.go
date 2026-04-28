@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	echo "github.com/labstack/echo/v4"
 	zap "go.uber.org/zap"
@@ -46,31 +48,53 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
-	objectId := c.QueryParam("objectid")
+	// collect object IDs to filter on, either from a direct objectid
+	// query param or by resolving objecttype+objectname across every
+	// registered version of the kind
+	var ids []uint
+	if directObjectId := c.QueryParam("objectid"); directObjectId != "" {
+		parsed, err := strconv.ParseUint(directObjectId, 10, 64)
+		if err != nil {
+			return apiserver_lib.ResponseStatus400(c, pageParams,
+				fmt.Errorf("invalid objectid %q: %w", directObjectId, err), objectType)
+		}
+		ids = []uint{uint(parsed)}
+	}
 
-	// resolve objecttype+objectname server-side into an objectid filter
 	targetType := c.QueryParam("objecttype")
 	targetName := c.QueryParam("objectname")
 	switch {
 	case targetType != "" && targetName != "":
-		if objectId != "" {
+		if len(ids) > 0 {
 			return apiserver_lib.ResponseStatus400(
-				c,
-				pageParams,
+				c, pageParams,
 				errors.New("provide either objectid or (objecttype + objectname), not both"),
 				objectType,
 			)
 		}
-		id, lookupErr := GetObjectIDByName(h.DB, targetType, targetName)
-		if lookupErr != nil {
-			h.Logger.Error("handler error: error resolving --for", zap.Error(lookupErr))
-			return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
+		qualifiedTypes, resolveErr := resolveObjectType(h.DB, targetType)
+		if resolveErr != nil {
+			h.Logger.Error("handler error: error resolving kind", zap.Error(resolveErr))
+			return apiserver_lib.ResponseStatus400(c, pageParams, resolveErr, objectType)
 		}
-		objectId = fmt.Sprintf("%d", id)
+		if len(qualifiedTypes) == 0 {
+			return apiserver_lib.ResponseStatus400(c, pageParams,
+				fmt.Errorf("kind %q is not registered", targetType), objectType)
+		}
+		// look up the named object across every registered version
+		for _, qt := range qualifiedTypes {
+			id, lookupErr := GetObjectIDByName(h.DB, qt, targetName)
+			if lookupErr == nil {
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) == 0 {
+			return apiserver_lib.ResponseStatus400(c, pageParams,
+				fmt.Errorf("no object found with name %q for kind %q", targetName, targetType), objectType)
+		}
 	case targetType != "" || targetName != "":
 		return apiserver_lib.ResponseStatus400(
-			c,
-			pageParams,
+			c, pageParams,
 			errors.New("objecttype and objectname must be provided together"),
 			objectType,
 		)
@@ -82,12 +106,12 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	records := &[]v0.Event{}
 	var returnedCount int64
 
-	// apply the objectid filter only when one was supplied
+	// apply the object id filter only when ids were supplied
 	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
-		if objectId == "" {
+		if len(ids) == 0 {
 			return query
 		}
-		return query.Where("v0_attached_object_references.object_id = ?", objectId)
+		return query.Where("v0_attached_object_references.object_id IN ?", ids)
 	}
 
 	switch {
@@ -121,10 +145,14 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		case true:
 			viewName, queryId := GenerateMaterializedViewName()
 
-			// create the materialized view; objectid filter is included only when supplied
+			// create the materialized view; object id filter is included only when ids were supplied
 			whereClause := ""
-			if objectId != "" {
-				whereClause = fmt.Sprintf(" WHERE v0_attached_object_references.object_id = '%s'", objectId)
+			if len(ids) > 0 {
+				idStrs := make([]string, len(ids))
+				for i, id := range ids {
+					idStrs[i] = fmt.Sprintf("'%d'", id)
+				}
+				whereClause = fmt.Sprintf(" WHERE v0_attached_object_references.object_id IN (%s)", strings.Join(idStrs, ", "))
 			}
 			createView := fmt.Sprintf(
 				"CREATE MATERIALIZED VIEW %s AS SELECT v0_events.* FROM v0_events INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id%s ORDER BY v0_events.id ASC",

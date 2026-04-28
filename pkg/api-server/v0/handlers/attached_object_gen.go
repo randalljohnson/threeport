@@ -291,7 +291,7 @@ func (h Handler) UpdateAttachedObjectReference(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingAttachedObjectReference).Updates(updatedAttachedObjectReference); result.Error != nil {
+	if result := h.DB.Model(&existingAttachedObjectReference).Updates(&updatedAttachedObjectReference); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -359,7 +359,8 @@ func (h Handler) ReplaceAttachedObjectReference(c echo.Context) error {
 
 	// persist provided data
 	updatedAttachedObjectReference.ID = existingAttachedObjectReference.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAttachedObjectReference); result.Error != nil {
+	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingAttachedObjectReference)
+	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedAttachedObjectReference); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
@@ -407,6 +408,27 @@ func (h Handler) DeleteAttachedObjectReference(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for blocking attached object references before deletion
+	attachedObjectReferences, err := apiserver_lib.FindBlockingAttachedObjectReferences(
+		h.DB,
+		util_v0.TypeName(attachedObjectReference),
+		attachedObjectReference.ID,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error listing blocking attached object references", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+	if len(attachedObjectReferences) > 0 {
+		return apiserver_lib.ResponseStatus409(
+			c,
+			nil,
+			apiserver_lib.FormatBlockingAttachedObjectReferencesError(
+				attachedObjectReferences,
+			),
+			objectType,
+		)
 	}
 
 	// delete object

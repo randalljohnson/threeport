@@ -88,7 +88,7 @@ var GetEventsCmd = &cobra.Command{
 		// write output
 		switch eventsOutput {
 		case "tabular":
-			if err := outputGetv0EventsCmd(events); err != nil {
+			if err := outputEventsTable(events); err != nil {
 				cli.Error("failed to produce output", err)
 				os.Exit(1)
 			}
@@ -121,7 +121,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&eventsOutput,
-		"output", "o", "tabular", "Output format for events. One of: [tabular, yaml, json]",
+		"output", "o", "tabular", "Output format for events. One of: [yaml, json]",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsSort,
@@ -148,16 +148,14 @@ func buildEventsQueryString(forFlag string) (string, error) {
 		return "", fmt.Errorf("invalid --for value %q: expected <kind>/<name>", forFlag)
 	}
 
-	objectType := fmt.Sprintf("v0.%s", strcase.ToCamel(kind))
 	q := url.Values{}
-	q.Set("objecttype", objectType)
+	q.Set("objecttype", strcase.ToCamel(kind))
 	q.Set("objectname", name)
 	return q.Encode(), nil
 }
 
-// outputGetv0EventsCmd produces the tabular output for the
-// 'get events' command.
-func outputGetv0EventsCmd(events *[]v0.Event) error {
+// outputEventsTable produces the tabular output for the events list.
+func outputEventsTable(events *[]v0.Event) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	fmt.Fprintln(writer, "AGE\t TYPE\t REASON\t OBJECT\t NOTE")
 
@@ -193,7 +191,7 @@ func outputGetv0EventsCmd(events *[]v0.Event) error {
 	return nil
 }
 
-// formatEventObject builds the OBJECT column as <kebab-kind>/<name>.
+// formatEventObject formats an event's target object as <kebab-kind>/<name>.
 func formatEventObject(e *v0.Event) string {
 	rawType := util.DerefString(e.ObjectType)
 	if rawType == "" {

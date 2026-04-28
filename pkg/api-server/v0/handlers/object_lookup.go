@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	strcase "github.com/iancoleman/strcase"
 	gorm "gorm.io/gorm"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
@@ -102,6 +103,63 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 		return "", "", nil
 	}
 	return result.Endpoint, result.Path, nil
+}
+
+// resolveObjectType returns one ObjectType per registered version of
+// the kind, erroring on cross-namespace ambiguity.
+func resolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
+	type row struct {
+		Namespace string
+		Version   string
+	}
+	var rows []row
+	if err := db.
+		Table("v0_module_objects mo").
+		Select("ma.api_namespace AS namespace, mo.version AS version").
+		Joins("JOIN v0_module_apis ma ON ma.id = mo.module_api_id").
+		Where("mo.name = ? AND ma.core = false", bareKind).
+		Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("failed to resolve object type for %q: %w", bareKind, err)
+	}
+
+	// surface ambiguity when a kind is registered in more than one namespace
+	namespaces := map[string]bool{}
+	for _, r := range rows {
+		namespaces[r.Namespace] = true
+	}
+	if len(namespaces) > 1 {
+		kebab := strcase.ToKebab(bareKind)
+		hints := make([]string, 0, len(namespaces))
+		for ns := range namespaces {
+			hints = append(hints, fmt.Sprintf("%s/%s", ns, kebab))
+		}
+		return nil, fmt.Errorf(
+			"kind %q is registered in multiple modules; specify one of: %s",
+			kebab, strings.Join(hints, ", "),
+		)
+	}
+
+	// module match: return every registered version
+	if len(rows) > 0 {
+		out := make([]string, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, fmt.Sprintf("%s/%s.%s", r.Namespace, r.Version, bareKind))
+		}
+		return out, nil
+	}
+
+	// no module match; treat as core and enumerate every version
+	// registered at startup for the kind. empty result means the kind
+	// isn't registered anywhere.
+	obj, ok := apiserver_lib.ObjectVersions[bareKind]
+	if !ok {
+		return nil, nil
+	}
+	out := make([]string, 0, len(obj.Versions))
+	for _, v := range obj.Versions {
+		out = append(out, fmt.Sprintf("%s.%s", v, bareKind))
+	}
+	return out, nil
 }
 
 // parseQualifiedType splits "<namespace>/<version>.<TypeName>" into its

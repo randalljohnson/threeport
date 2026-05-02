@@ -25,17 +25,6 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 	}
 	out := make(map[uint]string, len(ids))
 	switch objectType {
-	case "v0.AwsAccount":
-		var rows []v0.AwsAccount
-		if err := db.Model(&v0.AwsAccount{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
-			return nil, fmt.Errorf("failed to look up AwsAccount names: %w", err)
-		}
-		for _, r := range rows {
-			if r.ID != nil && r.Name != nil {
-				out[*r.ID] = *r.Name
-			}
-		}
-
 	case "v0.AwsEksKubernetesRuntimeDefinition":
 		var rows []v0.AwsEksKubernetesRuntimeDefinition
 		if err := db.Model(&v0.AwsEksKubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
@@ -51,6 +40,17 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 		var rows []v0.AwsEksKubernetesRuntimeInstance
 		if err := db.Model(&v0.AwsEksKubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up AwsEksKubernetesRuntimeInstance names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "v0.AwsProvider":
+		var rows []v0.AwsProvider
+		if err := db.Model(&v0.AwsProvider{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up AwsProvider names: %w", err)
 		}
 		for _, r := range rows {
 			if r.ID != nil && r.Name != nil {
@@ -117,6 +117,39 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 		var rows []v0.GatewayInstance
 		if err := db.Model(&v0.GatewayInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up GatewayInstance names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "v0.GcpGkeKubernetesRuntimeDefinition":
+		var rows []v0.GcpGkeKubernetesRuntimeDefinition
+		if err := db.Model(&v0.GcpGkeKubernetesRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up GcpGkeKubernetesRuntimeDefinition names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "v0.GcpGkeKubernetesRuntimeInstance":
+		var rows []v0.GcpGkeKubernetesRuntimeInstance
+		if err := db.Model(&v0.GcpGkeKubernetesRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up GcpGkeKubernetesRuntimeInstance names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "v0.GcpProvider":
+		var rows []v0.GcpProvider
+		if err := db.Model(&v0.GcpProvider{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up GcpProvider names: %w", err)
 		}
 		for _, r := range rows {
 			if r.ID != nil && r.Name != nil {
@@ -454,16 +487,6 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 // core type.
 func GetCoreObjectIDByName(db *gorm.DB, objectType string, name string) (uint, error) {
 	switch objectType {
-	case "v0.AwsAccount":
-		var obj v0.AwsAccount
-		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
-			return 0, fmt.Errorf("failed to look up AwsAccount by name: %w", err)
-		}
-		if obj.ID == nil {
-			return 0, fmt.Errorf("AwsAccount %q has nil ID", name)
-		}
-		return *obj.ID, nil
-
 	case "v0.AwsEksKubernetesRuntimeDefinition":
 		var obj v0.AwsEksKubernetesRuntimeDefinition
 		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
@@ -481,6 +504,16 @@ func GetCoreObjectIDByName(db *gorm.DB, objectType string, name string) (uint, e
 		}
 		if obj.ID == nil {
 			return 0, fmt.Errorf("AwsEksKubernetesRuntimeInstance %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.AwsProvider":
+		var obj v0.AwsProvider
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up AwsProvider by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("AwsProvider %q has nil ID", name)
 		}
 		return *obj.ID, nil
 
@@ -541,6 +574,36 @@ func GetCoreObjectIDByName(db *gorm.DB, objectType string, name string) (uint, e
 		}
 		if obj.ID == nil {
 			return 0, fmt.Errorf("GatewayInstance %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.GcpGkeKubernetesRuntimeDefinition":
+		var obj v0.GcpGkeKubernetesRuntimeDefinition
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up GcpGkeKubernetesRuntimeDefinition by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("GcpGkeKubernetesRuntimeDefinition %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.GcpGkeKubernetesRuntimeInstance":
+		var obj v0.GcpGkeKubernetesRuntimeInstance
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up GcpGkeKubernetesRuntimeInstance by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("GcpGkeKubernetesRuntimeInstance %q has nil ID", name)
+		}
+		return *obj.ID, nil
+
+	case "v0.GcpProvider":
+		var obj v0.GcpProvider
+		if err := db.Select("id").Where("name = ?", name).First(&obj).Error; err != nil {
+			return 0, fmt.Errorf("failed to look up GcpProvider by name: %w", err)
+		}
+		if obj.ID == nil {
+			return 0, fmt.Errorf("GcpProvider %q has nil ID", name)
 		}
 		return *obj.ID, nil
 

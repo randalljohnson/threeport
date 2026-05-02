@@ -188,7 +188,7 @@ var ThreeportControllerList []*v0.ControlPlaneComponent = []*v0.ControlPlaneComp
 		ImageName:          ThreeportMachineRuntimeControllerImage,
 		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportMachineRuntimeControllerName,
 		Enabled:            &enabled,
 	},
 	{
@@ -197,7 +197,7 @@ var ThreeportControllerList []*v0.ControlPlaneComponent = []*v0.ControlPlaneComp
 		ImageName:          ThreeportMachineWorkloadControllerImage,
 		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportMachineWorkloadControllerName,
 		Enabled:            &enabled,
 	},
 }

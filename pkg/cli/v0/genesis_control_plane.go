@@ -60,6 +60,7 @@ type GenesisControlPlaneCLIArgs struct {
 	Verbose               bool
 	TeardownOnFailure     bool
 	ControlPlaneOnly      bool
+	ClusterName           string
 	InfraOnly             bool
 	KindPortMappings      []string
 	LocalRegistry         bool
@@ -168,6 +169,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.LiveReload = false
 	cpi.Opts.CreateOrUpdateKubeResources = false
 	cpi.Opts.ControlPlaneOnly = a.ControlPlaneOnly
+	cpi.Opts.ClusterName = a.ClusterName
 	cpi.Opts.InfraOnly = a.InfraOnly
 	cpi.Opts.RestApiLoadBalancer = true
 	cpi.Opts.TeardownOnFailure = a.TeardownOnFailure
@@ -297,10 +299,16 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			return fmt.Errorf("failed to deploy oke infrastructure: %w", err)
 		}
 	case v0.KubernetesRuntimeInfraProviderGKE:
-		// Create GKE infrastructure
+		// when installing on an existing cluster, the cluster name comes from
+		// --cluster-name; otherwise the cluster is created with the standard
+		// threeport- prefix
+		gkeRuntimeName := provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName)
+		if cpi.Opts.ControlPlaneOnly {
+			gkeRuntimeName = cpi.Opts.ClusterName
+		}
 		kubernetesRuntimeInfraGKE := provider.KubernetesRuntimeInfraGKE{
 			PulumiWorkspace: provider.PulumiWorkspace{
-				RuntimeInstanceName: provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
+				RuntimeInstanceName: gkeRuntimeName,
 			},
 			Version:                kube.KubernetesDefaultVersion,
 			WorkerNodeInitialCount: int32(2),
@@ -313,7 +321,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		if cpi.Opts.ControlPlaneOnly {
 			kubeConnectionInfo, err = kubernetesRuntimeInfraGKE.GetConnection()
 			if err != nil {
-				return fmt.Errorf("failed to get connection info for OKE kubernetes runtime: %w", err)
+				return fmt.Errorf("failed to get connection info for GKE kubernetes runtime: %w", err)
 			}
 		} else {
 			kubeConnectionInfo, err = kubernetesRuntimeInfra.Create()
@@ -1212,6 +1220,8 @@ func ValidateCreateGenesisControlPlaneFlags(
 	createRootDomain string,
 	authEnabled bool,
 	kindPortMappings []string,
+	controlPlaneOnly bool,
+	clusterName string,
 ) error {
 	// ensure name length doesn't exceed maximum
 	if utf8.RuneCountInString(instanceName) > threeport.InstanceNameMaxLength {
@@ -1237,6 +1247,16 @@ func ValidateCreateGenesisControlPlaneFlags(
 	// return an error if kind port mappings are provided for a non-kind provider
 	if infraProvider != v0.KubernetesRuntimeInfraProviderKind && len(kindPortMappings) > 0 {
 		return errors.New("kind port mappings are only supported for infrastructure provider 'kind'")
+	}
+
+	// --cluster-name is required when installing on an existing cluster and
+	// must not be set otherwise (the cluster name is derived from --name in
+	// the create-cluster path).
+	if controlPlaneOnly && clusterName == "" {
+		return errors.New("--cluster-name is required with --control-plane-only")
+	}
+	if !controlPlaneOnly && clusterName != "" {
+		return errors.New("--cluster-name is only valid with --control-plane-only")
 	}
 
 	return nil

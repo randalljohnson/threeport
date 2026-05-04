@@ -52,9 +52,16 @@ func (m *MachineRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
 				return fmt.Errorf("failed to get string value for %s: %w", field.Name, err)
 			}
 
-			// caller round-tripped without decrypting; preserve existing DB ciphertext
+			// reject the redacted placeholder — it is only emitted by the
+			// server when redacting responses and must never round-trip
+			// back as input
 			if underlyingValue == encryption.RedactedValuePlaceholder {
-				continue
+				return util.NewBadRequestError(
+					fmt.Sprintf(
+						"field %s contains redacted placeholder; provide a real value or omit the field",
+						field.Name,
+					),
+				)
 			}
 
 			encryptedVal, err := encryption.Encrypt(encryptionKey, underlyingValue)
@@ -99,9 +106,15 @@ func (m *MachineRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 				return fmt.Errorf("failed to get string value for %s: %w", field.Name, err)
 			}
 
-			// caller round-tripped without decrypting; preserve existing DB ciphertext
+			// reject the redacted placeholder — clients should send a real
+			// value to change the field, or omit it to leave it unchanged
 			if underlyingValue == encryption.RedactedValuePlaceholder {
-				continue
+				return util.NewBadRequestError(
+					fmt.Sprintf(
+						"field %s contains redacted placeholder; provide a real value or omit the field",
+						field.Name,
+					),
+				)
 			}
 
 			encryptedVal, err := encryption.Encrypt(encryptionKey, underlyingValue)

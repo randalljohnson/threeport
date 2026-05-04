@@ -114,10 +114,15 @@ func encryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error 
 			if err != nil {
 				return fmt.Errorf("failed to read %s: %w", field.Name, err)
 			}
-			// caller round-tripped the object without decrypting; preserve
-			// the existing DB ciphertext rather than encrypting the marker
+			// reject the redacted placeholder — clients should send a real
+			// value or omit the field; the marker is server-emitted only
 			if plain == encryption.RedactedValuePlaceholder {
-				continue
+				return util.NewBadRequestError(
+					fmt.Sprintf(
+						"field %s contains redacted placeholder; provide a real value or omit the field",
+						field.Name,
+					),
+				)
 			}
 			enc, err := encryption.Encrypt(encryptionKey, plain)
 			if err != nil {
@@ -136,30 +141,28 @@ func encryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error 
 			// encrypt only the VALUE portion of each KEY=VALUE entry so keys
 			// remain readable
 			encSlice := make([]string, len(slice))
-			anyEncrypted := false
 			for j, entry := range slice {
 				parts := strings.SplitN(entry, "=", 2)
 				if len(parts) != 2 {
 					return fmt.Errorf("%s[%d] is not in KEY=VALUE format", field.Name, j)
 				}
-				// preserve the existing DB entry when the caller round-tripped
-				// without decrypting
+				// reject the redacted placeholder on any entry — clients
+				// must send real values for the entries they include
 				if parts[1] == encryption.RedactedValuePlaceholder {
-					encSlice[j] = entry
-					continue
+					return util.NewBadRequestError(
+						fmt.Sprintf(
+							"%s[%d] contains redacted placeholder; provide a real value or omit the entry",
+							field.Name, j,
+						),
+					)
 				}
 				encValue, err := encryption.Encrypt(encryptionKey, parts[1])
 				if err != nil {
 					return fmt.Errorf("failed to encrypt %s[%d]: %w", field.Name, j, err)
 				}
 				encSlice[j] = parts[0] + "=" + encValue
-				anyEncrypted = true
 			}
-			// only overwrite the column when we actually encrypted something;
-			// otherwise let the DB keep its existing ciphertext untouched
-			if anyEncrypted {
-				tx.Statement.SetColumn(columnName, encSlice)
-			}
+			tx.Statement.SetColumn(columnName, encSlice)
 		}
 	}
 	return nil

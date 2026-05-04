@@ -212,13 +212,15 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	var threeportControlPlaneConfig *ControlPlane
 	genesis := true
 
-	if cpi.Opts.ControlPlaneOnly && !threeportInstanceConfigEmpty {
-		// for control-plane-only runs, load existing config instead of creating fresh
-		existingConfig, err := threeportConfig.GetControlPlaneConfig(cpi.Opts.ControlPlaneName)
-		if err != nil {
-			return fmt.Errorf("control plane config '%s' not found for --control-plane-only run: %w", cpi.Opts.ControlPlaneName, err)
+	if cpi.Opts.ControlPlaneOnly {
+		// load the matching entry if one exists from a prior run; otherwise
+		// fall through to a new entry. existing entries for other control
+		// planes are preserved either way.
+		if existingConfig, err := threeportConfig.GetControlPlaneConfig(cpi.Opts.ControlPlaneName); err == nil {
+			threeportControlPlaneConfig = existingConfig
+		} else {
+			threeportControlPlaneConfig = &ControlPlane{}
 		}
-		threeportControlPlaneConfig = existingConfig
 	} else {
 		// for fresh installs, check if config already exists
 		if !threeportInstanceConfigEmpty && !cpi.Opts.ForceOverwriteConfig {
@@ -748,46 +750,51 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	}
 
 	// configure control plane with provider-specific details by adding the
-	// infra provider-specific objects to the Threeport API
-	switch controlPlane.InfraProvider {
-	case v0.KubernetesRuntimeInfraProviderEKS:
-		if err := ConfigureControlPlaneWithEksConfig(
-			cpi,
-			uninstaller,
-			&awsConfigUser,
-			callerIdentity,
-			awsConfigResourceManager,
-			apiClient,
-			threeportAPIEndpoint,
-			&kubernetesRuntimeInfra,
-			kubernetesRuntimeDefResult,
-			kubernetesRuntimeInstResult,
-		); err != nil {
-			return uninstaller.cleanOnCreateError("failed to add AWS objects to Threeport API", err)
-		}
-	case v0.KubernetesRuntimeInfraProviderOKE:
-		if err := ConfigureControlPlaneWithOkeConfig(
-			cpi,
-			uninstaller,
-			apiClient,
-			threeportAPIEndpoint,
-			kubernetesRuntimeDefResult,
-			kubernetesRuntimeInstResult,
-			&kubernetesRuntimeInfra,
-		); err != nil {
-			return uninstaller.cleanOnCreateError("failed to add OCI objects to Threeport API", err)
-		}
-	case v0.KubernetesRuntimeInfraProviderGKE:
-		if err := ConfigureControlPlaneWithGkeConfig(
-			cpi,
-			uninstaller,
-			apiClient,
-			threeportAPIEndpoint,
-			kubernetesRuntimeDefResult,
-			kubernetesRuntimeInstResult,
-			&kubernetesRuntimeInfra,
-		); err != nil {
-			return uninstaller.cleanOnCreateError("failed to add GCP objects to Threeport API", err)
+	// infra provider-specific objects to the Threeport API. skipped when
+	// running as a guest on an existing cluster (--control-plane-only) so the
+	// control plane has no awareness of, or influence over, the cluster's
+	// lifecycle
+	if !cpi.Opts.ControlPlaneOnly {
+		switch controlPlane.InfraProvider {
+		case v0.KubernetesRuntimeInfraProviderEKS:
+			if err := ConfigureControlPlaneWithEksConfig(
+				cpi,
+				uninstaller,
+				&awsConfigUser,
+				callerIdentity,
+				awsConfigResourceManager,
+				apiClient,
+				threeportAPIEndpoint,
+				&kubernetesRuntimeInfra,
+				kubernetesRuntimeDefResult,
+				kubernetesRuntimeInstResult,
+			); err != nil {
+				return uninstaller.cleanOnCreateError("failed to add AWS objects to Threeport API", err)
+			}
+		case v0.KubernetesRuntimeInfraProviderOKE:
+			if err := ConfigureControlPlaneWithOkeConfig(
+				cpi,
+				uninstaller,
+				apiClient,
+				threeportAPIEndpoint,
+				kubernetesRuntimeDefResult,
+				kubernetesRuntimeInstResult,
+				&kubernetesRuntimeInfra,
+			); err != nil {
+				return uninstaller.cleanOnCreateError("failed to add OCI objects to Threeport API", err)
+			}
+		case v0.KubernetesRuntimeInfraProviderGKE:
+			if err := ConfigureControlPlaneWithGkeConfig(
+				cpi,
+				uninstaller,
+				apiClient,
+				threeportAPIEndpoint,
+				kubernetesRuntimeDefResult,
+				kubernetesRuntimeInstResult,
+				&kubernetesRuntimeInfra,
+			); err != nil {
+				return uninstaller.cleanOnCreateError("failed to add GCP objects to Threeport API", err)
+			}
 		}
 	}
 
@@ -1225,11 +1232,6 @@ func ValidateCreateGenesisControlPlaneFlags(
 	controlPlaneOnly bool,
 	clusterName string,
 ) error {
-	// ensure name is provided
-	if instanceName == "" {
-		return errors.New("--name is required (or --cluster-name with --control-plane-only)")
-	}
-
 	// ensure name length doesn't exceed maximum
 	if utf8.RuneCountInString(instanceName) > threeport.InstanceNameMaxLength {
 		return fmt.Errorf(

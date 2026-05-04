@@ -115,7 +115,7 @@ func encryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error 
 				return fmt.Errorf("failed to read %s: %w", field.Name, err)
 			}
 			// reject the redacted placeholder — clients should send a real
-			// value or omit the field; the marker is server-emitted only
+			// value to change the field, or omit it to leave it unchanged
 			if plain == encryption.RedactedValuePlaceholder {
 				return util.NewBadRequestError(
 					fmt.Sprintf(
@@ -146,8 +146,8 @@ func encryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error 
 				if len(parts) != 2 {
 					return fmt.Errorf("%s[%d] is not in KEY=VALUE format", field.Name, j)
 				}
-				// reject the redacted placeholder on any entry — clients
-				// must send real values for the entries they include
+				// reject the redacted placeholder — clients should send a real
+				// value to change the field, or omit it to leave it unchanged
 				if parts[1] == encryption.RedactedValuePlaceholder {
 					return util.NewBadRequestError(
 						fmt.Sprintf(

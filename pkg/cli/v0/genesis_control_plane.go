@@ -1225,6 +1225,11 @@ func ValidateCreateGenesisControlPlaneFlags(
 	controlPlaneOnly bool,
 	clusterName string,
 ) error {
+	// ensure name is provided
+	if instanceName == "" {
+		return errors.New("--name is required (or --cluster-name with --control-plane-only)")
+	}
+
 	// ensure name length doesn't exceed maximum
 	if utf8.RuneCountInString(instanceName) > threeport.InstanceNameMaxLength {
 		return fmt.Errorf(

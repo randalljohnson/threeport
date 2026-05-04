@@ -75,6 +75,12 @@ control planes if they are used to create or are created by another control plan
 			os.Exit(1)
 		}
 
+		// default --name to --cluster-name when only the latter is given in
+		// control-plane-only mode
+		if cliArgs.ControlPlaneOnly && cliArgs.ControlPlaneName == "" && cliArgs.ClusterName != "" {
+			cliArgs.ControlPlaneName = cliArgs.ClusterName
+		}
+
 		// flag validation
 		if err := cli.ValidateCreateGenesisControlPlaneFlags(
 			cliArgs.ControlPlaneName,
@@ -112,9 +118,8 @@ func init() {
 
 	UpCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
-		"name", "n", "", "Required. Name of genesis control plane.",
+		"name", "n", "", "Name of genesis control plane. Required unless --control-plane-only is set, in which case it defaults to --cluster-name.",
 	)
-	UpCmd.MarkFlagRequired("name")
 	UpCmd.Flags().StringVarP(
 		&cliArgs.InfraProvider,
 		"provider", "p", "kind", fmt.Sprintf("The infrasture provider to install upon. Supported infra providers: %s", v0.SupportedInfraProviders()),

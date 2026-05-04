@@ -380,8 +380,7 @@ func (h Handler) ReplaceProfile(c echo.Context) error {
 
 	// persist provided data
 	updatedProfile.ID = existingProfile.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingProfile)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedProfile); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedProfile); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -831,8 +830,7 @@ func (h Handler) ReplaceTier(c echo.Context) error {
 
 	// persist provided data
 	updatedTier.ID = existingTier.ID
-	updateModel := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingTier)
-	if result := updateModel.Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedTier); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTier); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

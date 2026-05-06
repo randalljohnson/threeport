@@ -23,8 +23,10 @@ func ProcessCoreTaggedFieldsBeforeCreate(tx *gorm.DB, obj interface{}) error {
 // ProcessCoreTaggedFieldsBeforeUpdate runs core tag-triggered behavior on
 // an API object before update.
 func ProcessCoreTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
+	if err := processRelationshipTaggedFieldsBeforeUpdate(tx, obj); err != nil {
+		return err
+	}
 	return processEncryptTaggedFields(tx, obj, true)
-	// TODO: enforce tag-driven update blocks (e.g. immutable fields)
 }
 
 // ProcessCoreTaggedFieldsBeforeDelete runs core tag-triggered behavior on

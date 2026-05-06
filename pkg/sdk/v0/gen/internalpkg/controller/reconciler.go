@@ -537,7 +537,6 @@ func operationCase(
 		}
 		h.Var().Id("operationErr").Error()
 		h.Var().Id("customRequeueDelay").Int64()
-
 		h.Switch(Id(varObjectName).Dot("GetVersion").Call()).BlockFunc(func(j *Group) {
 			for _, version := range obj.Versions {
 				j.Case(Lit(version)).Block(

@@ -10,25 +10,26 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// Relationship tag values.
+// Relationship tag and column values.
 const (
-	RelationshipOwns     = "owns"
-	RelationshipRequires = "requires"
+	RelationshipDescribes = "describes"
+	RelationshipRequires  = "requires"
+	RelationshipOwns      = "owns"
 )
 
-// relationshipFK describes one *uint <Target>ID field on an API object that
-// is tagged `relationship:"owns"` or `relationship:"requires"`.
-type relationshipFK struct {
+// relationshipForeignKey describes one *uint <Target>ID field on an API
+// object that is tagged `relationship:"owns"` or `relationship:"requires"`.
+type relationshipForeignKey struct {
 	fieldName    string
 	targetType   string // e.g. "WorkloadInstance"
 	relationship string // "owns" or "requires"
 	value        *uint
 }
 
-// findRelationshipFKs walks the struct fields of obj and returns each *uint
-// field tagged `relationship:`. Returns an error if a tag value is invalid
-// or the field shape does not match the FK convention.
-func findRelationshipFKs(obj interface{}) ([]relationshipFK, error) {
+// findRelationshipForeignKeys walks the struct fields of obj and returns each
+// *uint field tagged `relationship:`. Returns an error if a tag value is
+// invalid or the field shape does not match the foreign-key convention.
+func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, error) {
 	objVal := reflect.ValueOf(obj)
 	if objVal.Kind() == reflect.Ptr {
 		objVal = objVal.Elem()
@@ -38,7 +39,7 @@ func findRelationshipFKs(obj interface{}) ([]relationshipFK, error) {
 	}
 	objType := objVal.Type()
 
-	var fks []relationshipFK
+	var fks []relationshipForeignKey
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
 		rel := field.Tag.Get("relationship")
@@ -68,7 +69,7 @@ func findRelationshipFKs(obj interface{}) ([]relationshipFK, error) {
 		if !fieldVal.IsNil() {
 			v = fieldVal.Interface().(*uint)
 		}
-		fks = append(fks, relationshipFK{
+		fks = append(fks, relationshipForeignKey{
 			fieldName:    field.Name,
 			targetType:   strings.TrimSuffix(field.Name, "ID"),
 			relationship: rel,
@@ -101,7 +102,7 @@ func objectTypeName(obj interface{}) string {
 	return t.String()
 }
 
-// targetTypeName converts an FK target like "WorkloadInstance" into a
+// targetTypeName converts a foreign-key target like "WorkloadInstance" into a
 // package-qualified type name by reusing the receiver's package prefix.
 func targetTypeName(receiverType, fkTarget string) string {
 	if i := strings.LastIndex(receiverType, "."); i >= 0 {
@@ -110,21 +111,19 @@ func targetTypeName(receiverType, fkTarget string) string {
 	return fkTarget
 }
 
-// insertBlockingAOR creates a blocking attached object reference for the
-// given relationship FK. Both `owns` and `requires` are immutable once set,
-// so this only ever runs for fresh edges — no lookup-and-update is needed.
-// `owns` AORs additionally lock the target against external updates.
-func insertBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attachedType string) error {
+// insertAttachedObjectReference creates an attached object reference for the
+// given relationship foreign key. Both `owns` and `requires` are immutable
+// once set, so this only ever runs for fresh edges — no lookup-and-update is
+// needed.
+func insertAttachedObjectReference(tx *gorm.DB, fk relationshipForeignKey, attachedID *uint, attachedType string) error {
 	targetType := targetTypeName(attachedType, fk.targetType)
-	blocking := true
-	ownsTarget := fk.relationship == RelationshipOwns
+	relationship := fk.relationship
 	if err := tx.Create(&AttachedObjectReference{
 		ObjectID:           fk.value,
 		ObjectType:         &targetType,
 		AttachedObjectID:   attachedID,
 		AttachedObjectType: &attachedType,
-		Blocking:           &blocking,
-		OwnsTarget:         &ownsTarget,
+		Relationship:       &relationship,
 	}).Error; err != nil {
 		return fmt.Errorf(
 			"failed to create attached object reference for %s.%s: %w",
@@ -134,10 +133,10 @@ func insertBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attache
 	return nil
 }
 
-// processRelationshipTaggedFieldsAfterCreate inserts blocking AORs for each
-// relationship-tagged FK with a non-nil value.
+// processRelationshipTaggedFieldsAfterCreate inserts attached object
+// references for each relationship-tagged foreign key with a non-nil value.
 func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) error {
-	fks, err := findRelationshipFKs(obj)
+	fks, err := findRelationshipForeignKeys(obj)
 	if err != nil {
 		return err
 	}
@@ -156,7 +155,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 		if fk.value == nil {
 			continue
 		}
-		if err := insertBlockingAOR(tx, fk, objID, objType); err != nil {
+		if err := insertAttachedObjectReference(tx, fk, objID, objType); err != nil {
 			return err
 		}
 	}
@@ -166,17 +165,16 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 // processRelationshipTaggedFieldsBeforeUpdate runs two checks before any
 // update:
 //
-//  1. Holder side: any non-nil relationship-tagged FK on the row being
-//     updated is immutable. The only allowed transition is the initial
+//  1. Holder side: any non-nil relationship-tagged foreign key on the row
+//     being updated is immutable. The only allowed transition is the initial
 //     nil → non-nil first set; everything else is rejected. To "undo" a
 //     relationship the holder must be deleted.
-//  2. Target side: if any incoming AOR has OwnsTarget=true, the row is
-//     owned by another object and external updates are rejected outright.
-//     The only way to mutate an owned object is to tear down the owner
-//     (which cascades the AOR removal) and then update.
+//  2. Target side: if any incoming attached object reference has
+//     Relationship="owns", the row is owned by another object and external
+//     updates are rejected. The only way to mutate an owned object is to
+//     tear down the owner first.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
-	// holder-side immutability
-	oldFKs, err := findRelationshipFKs(obj)
+	oldFKs, err := findRelationshipForeignKeys(obj)
 	if err != nil {
 		return err
 	}
@@ -193,7 +191,6 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		))
 	}
 
-	// target-side: owned objects cannot be updated externally
 	objType := objectTypeName(obj)
 	objID := objectID(obj)
 	if objID == nil {
@@ -201,7 +198,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	}
 	var ownedRefs []AttachedObjectReference
 	if err := tx.
-		Where("object_type = ? AND object_id = ? AND owns_target = true", objType, objID).
+		Where("object_type = ? AND object_id = ? AND relationship = ?", objType, objID, RelationshipOwns).
 		Find(&ownedRefs).Error; err != nil {
 		return fmt.Errorf(
 			"failed to look up owning attached object references for %s/%d: %w",
@@ -221,11 +218,11 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	return nil
 }
 
-// processRelationshipTaggedFieldsAfterUpdate inserts blocking AORs for each
-// relationship-tagged FK that just transitioned from nil to a value. Other
-// transitions are blocked by BeforeUpdate.
+// processRelationshipTaggedFieldsAfterUpdate inserts attached object
+// references for each relationship-tagged foreign key that just transitioned
+// from nil to a value. Other transitions are blocked by BeforeUpdate.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
-	fks, err := findRelationshipFKs(obj)
+	fks, err := findRelationshipForeignKeys(obj)
 	if err != nil {
 		return err
 	}
@@ -244,16 +241,16 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		if !tx.Statement.Changed(fk.fieldName) {
 			continue
 		}
-		if err := insertBlockingAOR(tx, fk, objID, objType); err != nil {
+		if err := insertAttachedObjectReference(tx, fk, objID, objType); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeDelete blocks deletion when any blocking AORs
-// reference this object, then cascade-deletes outgoing AORs where this row
-// is the attached object.
+// processRelationshipTaggedFieldsBeforeDelete blocks deletion when any
+// blocking attached object reference targets this row, then cascade-deletes
+// outgoing references where this row is the attached object.
 func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
 	objType := objectTypeName(obj)
 	objID := objectID(obj)
@@ -261,7 +258,6 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	// block delete if any blocking AOR points at this row as its target
 	blockingRefs, err := FindBlockingAttachedObjectReferences(tx, objType, objID)
 	if err != nil {
 		return err
@@ -272,7 +268,6 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 		)
 	}
 
-	// cascade-delete outgoing AORs (this row is the attached object)
 	if err := tx.
 		Where("attached_object_type = ? AND attached_object_id = ?", objType, objID).
 		Delete(&AttachedObjectReference{}).Error; err != nil {

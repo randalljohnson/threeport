@@ -100,14 +100,6 @@ func GenPkg(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		return fmt.Errorf("failed to generate API client library: %w", err)
 	}
 
-	// generate custom function to delete by object type and ID for
-	// threeport/threeport only
-	if !generator.Module {
-		if err := client.GenDeleteObjByTypeAndId(generator, sdkConfig); err != nil {
-			return fmt.Errorf("failed to generate custom delete function: %w", err)
-		}
-	}
-
 	////////////////////////////// pkg/config //////////////////////////////////
 	// generate config abstractions
 	if err := config.GenConfig(generator, sdkConfig); err != nil {

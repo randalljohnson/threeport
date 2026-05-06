@@ -72,6 +72,12 @@ Before writing comments, docstrings, or new code in an existing package, grep th
 
 When asked to "move" or "extract" logic, relocate it verbatim. Preserve inline comments, local variable names, loop structure, and multi-line forms — even if the result feels awkward in its new home or you'd write it differently from scratch. Refactoring during a move conflates two changes and makes review much harder. If the moved code obviously needs cleanup, surface it as a follow-up; don't bundle it with the move.
 
+## Return Validation Errors Early
+
+In validation functions, reject and return as soon as a precondition fails. Each check should be a flat top-level guard: validate, return on failure, fall through to the next. Code below the check can then assume the error case has been handled, which makes the function easy to extend — append a new check at the bottom and trust everything above ran cleanly.
+
+The inverted shape — wrapping the happy path inside nested `if`/`else` branches that depend on prior conditions — makes the function fragile. Logic added later can land in a branch that's never reached, with no compile-time signal that anything is wrong.
+
 ## Function Naming
 - Use PascalCase for exported functions: `ThreeportWorkloadName`, `GetConnection`, `CreateOCIUserAndCredentials`
 - Use camelCase for private/unexported functions: `createOCICompartment`, `validateThreeportState`, `getAvailabilityDomainName`

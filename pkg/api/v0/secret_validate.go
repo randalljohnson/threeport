@@ -9,81 +9,45 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-// beforeCreate validates a secret definition before
-// persisting to the database.
-func (s *SecretDefinition) beforeCreate(tx *gorm.DB) error {
-	createdObj := *s
-	objVal := reflect.ValueOf(&createdObj).Elem()
+// validateBeforeCreate validates the SecretDefinition before create.
+//
+// Why: the Data field carries plaintext that the controller resolves into a
+// secret store; it must NOT be persisted to the threeport DB. The persist:"false"
+// struct tag is honored here by clearing the column at create time.
+func (s *SecretDefinition) validateBeforeCreate(tx *gorm.DB) error {
+	objVal := reflect.ValueOf(s).Elem()
 	objType := objVal.Type()
 	ns := schema.NamingStrategy{}
-
-	// ensure Data is not persisted
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
-
-		if field.Name == "Data" {
-			persist := field.Tag.Get("persist")
-			if persist == "false" {
-				columnName := ns.ColumnName("", field.Name)
-				tx.Statement.SetColumn(columnName, nil)
-			}
+		if field.Name == "Data" && field.Tag.Get("persist") == "false" {
+			tx.Statement.SetColumn(ns.ColumnName("", field.Name), nil)
 		}
 	}
-
 	return nil
 }
 
-// beforeUpdate validates the SecretDefinition before update.
-func (s *SecretDefinition) beforeUpdate(tx *gorm.DB) error {
+// validateBeforeUpdate validates the SecretDefinition before update.
+func (s *SecretDefinition) validateBeforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the SecretDefinition before delete.
-func (s *SecretDefinition) beforeDelete(tx *gorm.DB) error {
+// validateBeforeDelete validates the SecretDefinition before delete.
+func (s *SecretDefinition) validateBeforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeCreate validates the SecretInstance before create.
-func (s *SecretInstance) beforeCreate(tx *gorm.DB) error {
+// validateBeforeCreate validates the SecretInstance before create.
+func (s *SecretInstance) validateBeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the SecretInstance before update.
-func (s *SecretInstance) beforeUpdate(tx *gorm.DB) error {
+// validateBeforeUpdate validates the SecretInstance before update.
+func (s *SecretInstance) validateBeforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the SecretInstance before delete.
-func (s *SecretInstance) beforeDelete(tx *gorm.DB) error {
-	return nil
-}
-
-// afterCreate runs after the SecretDefinition is created.
-func (s *SecretDefinition) afterCreate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterUpdate runs after the SecretDefinition is updated.
-func (s *SecretDefinition) afterUpdate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterDelete runs after the SecretDefinition is deleted.
-func (s *SecretDefinition) afterDelete(tx *gorm.DB) error {
-	return nil
-}
-
-// afterCreate runs after the SecretInstance is created.
-func (s *SecretInstance) afterCreate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterUpdate runs after the SecretInstance is updated.
-func (s *SecretInstance) afterUpdate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterDelete runs after the SecretInstance is deleted.
-func (s *SecretInstance) afterDelete(tx *gorm.DB) error {
+// validateBeforeDelete validates the SecretInstance before delete.
+func (s *SecretInstance) validateBeforeDelete(tx *gorm.DB) error {
 	return nil
 }

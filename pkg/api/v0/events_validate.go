@@ -4,32 +4,17 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// beforeCreate runs before the Event is created.
-func (e *Event) beforeCreate(tx *gorm.DB) error {
+// validateBeforeCreate validates the Event before create.
+func (e *Event) validateBeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate runs before the Event is updated.
-func (e *Event) beforeUpdate(tx *gorm.DB) error {
+// validateBeforeUpdate validates the Event before update.
+func (e *Event) validateBeforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete runs before the Event is deleted.
-func (e *Event) beforeDelete(tx *gorm.DB) error {
-	return nil
-}
-
-// afterCreate runs after the Event is created.
-func (e *Event) afterCreate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterUpdate runs after the Event is updated.
-func (e *Event) afterUpdate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterDelete runs after the Event is deleted.
-func (e *Event) afterDelete(tx *gorm.DB) error {
+// validateBeforeDelete validates the Event before delete.
+func (e *Event) validateBeforeDelete(tx *gorm.DB) error {
 	return nil
 }

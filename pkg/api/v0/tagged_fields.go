@@ -30,12 +30,30 @@ func ProcessCoreTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 // ProcessCoreTaggedFieldsBeforeDelete runs core tag-triggered behavior on
 // an API object before delete.
 func ProcessCoreTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
-	// TODO: enforce tag-driven delete blocks (e.g. blocking AOR refs)
+	return processRelationshipTaggedFieldsBeforeDelete(tx, obj)
+}
+
+// ProcessCoreTaggedFieldsAfterCreate runs core tag-triggered behavior on
+// an API object after create.
+func ProcessCoreTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) error {
+	return processRelationshipTaggedFieldsAfterCreate(tx, obj)
+}
+
+// ProcessCoreTaggedFieldsAfterUpdate runs core tag-triggered behavior on
+// an API object after update.
+func ProcessCoreTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
+	return processRelationshipTaggedFieldsAfterUpdate(tx, obj)
+}
+
+// ProcessCoreTaggedFieldsAfterDelete runs core tag-triggered behavior on
+// an API object after delete.
+func ProcessCoreTaggedFieldsAfterDelete(tx *gorm.DB, obj interface{}) error {
 	return nil
 }
 
 // processEncryptTaggedFields encrypts struct fields tagged `encrypt:"true"`
-// and rejects the redacted placeholder.
+// and rejects the redacted placeholder. encrypts tagged fields, provided they are not
+// already encrypted.
 func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error {
 	// shared symmetric key for AES-GCM, sourced from the API server's env
 	encryptionKey := os.Getenv("ENCRYPTION_KEY")
@@ -85,6 +103,12 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 					),
 				)
 			}
+			// skip if the input is already encrypted — controllers are
+			// responsible for decrypting before submitting, but a forgotten
+			// decrypt round-trips ciphertext; skipping prevents double-encryption.
+			if encryption.IsEncrypted(encryptionKey, plain) {
+				continue
+			}
 			enc, err := encryption.Encrypt(encryptionKey, plain)
 			if err != nil {
 				return fmt.Errorf("failed to encrypt %s: %w", field.Name, err)
@@ -117,6 +141,12 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 							field.Name, j,
 						),
 					)
+				}
+				// skip if already encrypted — preserves the original entry to
+				// avoid double-encryption when a controller round-trips it.
+				if encryption.IsEncrypted(encryptionKey, parts[1]) {
+					encSlice[j] = entry
+					continue
 				}
 				encValue, err := encryption.Encrypt(encryptionKey, parts[1])
 				if err != nil {

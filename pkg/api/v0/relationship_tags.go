@@ -113,15 +113,18 @@ func targetTypeName(receiverType, fkTarget string) string {
 // insertBlockingAOR creates a blocking attached object reference for the
 // given relationship FK. Both `owns` and `requires` are immutable once set,
 // so this only ever runs for fresh edges — no lookup-and-update is needed.
+// `owns` AORs additionally lock the target against external updates.
 func insertBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attachedType string) error {
 	targetType := targetTypeName(attachedType, fk.targetType)
 	blocking := true
+	ownsTarget := fk.relationship == RelationshipOwns
 	if err := tx.Create(&AttachedObjectReference{
 		ObjectID:           fk.value,
 		ObjectType:         &targetType,
 		AttachedObjectID:   attachedID,
 		AttachedObjectType: &attachedType,
 		Blocking:           &blocking,
+		OwnsTarget:         &ownsTarget,
 	}).Error; err != nil {
 		return fmt.Errorf(
 			"failed to create attached object reference for %s.%s: %w",
@@ -160,12 +163,19 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change any
-// non-nil relationship-tagged FK. Both `owns` and `requires` are immutable
-// once set; the only allowed transition is the initial nil → non-nil first
-// set (handled in AfterUpdate). To "undo" a relationship, the holder object
-// must be deleted.
+// processRelationshipTaggedFieldsBeforeUpdate runs two checks before any
+// update:
+//
+//  1. Holder side: any non-nil relationship-tagged FK on the row being
+//     updated is immutable. The only allowed transition is the initial
+//     nil → non-nil first set; everything else is rejected. To "undo" a
+//     relationship the holder must be deleted.
+//  2. Target side: if any incoming AOR has OwnsTarget=true, the row is
+//     owned by another object and external updates are rejected outright.
+//     The only way to mutate an owned object is to tear down the owner
+//     (which cascades the AOR removal) and then update.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
+	// holder-side immutability
 	oldFKs, err := findRelationshipFKs(obj)
 	if err != nil {
 		return err
@@ -180,6 +190,32 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		return util.NewBadRequestError(fmt.Sprintf(
 			"%s is immutable; tear down and recreate the holder to undo this relationship",
 			fk.fieldName,
+		))
+	}
+
+	// target-side: owned objects cannot be updated externally
+	objType := objectTypeName(obj)
+	objID := objectID(obj)
+	if objID == nil {
+		return nil
+	}
+	var ownedRefs []AttachedObjectReference
+	if err := tx.
+		Where("object_type = ? AND object_id = ? AND owns_target = true", objType, objID).
+		Find(&ownedRefs).Error; err != nil {
+		return fmt.Errorf(
+			"failed to look up owning attached object references for %s/%d: %w",
+			objType, *objID, err,
+		)
+	}
+	if len(ownedRefs) > 0 {
+		owner := "another object"
+		if ownedRefs[0].AttachedObjectType != nil && ownedRefs[0].AttachedObjectID != nil {
+			owner = fmt.Sprintf("%s/%d", *ownedRefs[0].AttachedObjectType, *ownedRefs[0].AttachedObjectID)
+		}
+		return util.NewBadRequestError(fmt.Sprintf(
+			"object is owned by %s and cannot be updated externally; tear down the owner first",
+			owner,
 		))
 	}
 	return nil

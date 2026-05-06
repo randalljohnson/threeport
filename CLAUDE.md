@@ -68,6 +68,10 @@ Before digging into code to understand the API, refer to the Swagger API spec fi
 
 Before writing comments, docstrings, or new code in an existing package, grep that package for analogous code and match the local pattern. The rules below state defaults; the package is the authoritative source for the *shape* of code. If the package convention conflicts with a rule below, surface the conflict before changing direction.
 
+## Moving Logic Means Moving It
+
+When asked to "move" or "extract" logic, relocate it verbatim. Preserve inline comments, local variable names, loop structure, and multi-line forms — even if the result feels awkward in its new home or you'd write it differently from scratch. Refactoring during a move conflates two changes and makes review much harder. If the moved code obviously needs cleanup, surface it as a follow-up; don't bundle it with the move.
+
 ## Function Naming
 - Use PascalCase for exported functions: `ThreeportWorkloadName`, `GetConnection`, `CreateOCIUserAndCredentials`
 - Use camelCase for private/unexported functions: `createOCICompartment`, `validateThreeportState`, `getAvailabilityDomainName`

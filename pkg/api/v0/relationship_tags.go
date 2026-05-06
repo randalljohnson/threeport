@@ -1,7 +1,6 @@
 package v0
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -111,38 +110,11 @@ func targetTypeName(receiverType, fkTarget string) string {
 	return fkTarget
 }
 
-// ensureBlockingAOR ensures a blocking attached object reference exists for
-// the given relationship FK. If an AOR for this (holder, target type) edge
-// already exists pointing at a different ObjectID, the old AOR is deleted and
-// a new one is inserted — each AOR row's lifetime corresponds to one
-// concrete edge between two objects.
-func ensureBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attachedType string) error {
+// insertBlockingAOR creates a blocking attached object reference for the
+// given relationship FK. Both `owns` and `requires` are immutable once set,
+// so this only ever runs for fresh edges — no lookup-and-update is needed.
+func insertBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attachedType string) error {
 	targetType := targetTypeName(attachedType, fk.targetType)
-	var existing AttachedObjectReference
-	err := tx.Where(&AttachedObjectReference{
-		ObjectType:         &targetType,
-		AttachedObjectID:   attachedID,
-		AttachedObjectType: &attachedType,
-	}).First(&existing).Error
-	switch {
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		// fall through to create
-	case err != nil:
-		return fmt.Errorf(
-			"failed to look up attached object reference for %s.%s: %w",
-			attachedType, fk.fieldName, err,
-		)
-	default:
-		if existing.ObjectID != nil && fk.value != nil && *existing.ObjectID == *fk.value {
-			return nil
-		}
-		if err := tx.Delete(&existing).Error; err != nil {
-			return fmt.Errorf(
-				"failed to delete stale attached object reference for %s.%s: %w",
-				attachedType, fk.fieldName, err,
-			)
-		}
-	}
 	blocking := true
 	if err := tx.Create(&AttachedObjectReference{
 		ObjectID:           fk.value,
@@ -181,69 +153,41 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 		if fk.value == nil {
 			continue
 		}
-		if err := ensureBlockingAOR(tx, fk, objID, objType); err != nil {
+		if err := insertBlockingAOR(tx, fk, objID, objType); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change a
-// `relationship:"owns"` FK from one non-nil value to another, or unset it.
-// `requires` FKs are mutable, so they pass through untouched.
+// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change any
+// non-nil relationship-tagged FK. Both `owns` and `requires` are immutable
+// once set; the only allowed transition is the initial nil → non-nil first
+// set (handled in AfterUpdate). To "undo" a relationship, the holder object
+// must be deleted.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	oldFKs, err := findRelationshipFKs(obj)
 	if err != nil {
 		return err
 	}
-	if len(oldFKs) == 0 {
-		return nil
-	}
-
-	dest := tx.Statement.Dest
-	if dest == nil {
-		return nil
-	}
-	newFKs, err := findRelationshipFKs(dest)
-	if err != nil {
-		return err
-	}
-	newByName := make(map[string]*uint, len(newFKs))
-	for _, fk := range newFKs {
-		newByName[fk.fieldName] = fk.value
-	}
-
 	for _, fk := range oldFKs {
-		if fk.relationship != RelationshipOwns {
-			continue
-		}
 		if fk.value == nil {
 			continue
 		}
 		if !tx.Statement.Changed(fk.fieldName) {
 			continue
 		}
-		newVal := newByName[fk.fieldName]
-		if newVal == nil {
-			return util.NewBadRequestError(fmt.Sprintf(
-				"%s is immutable and cannot be unset",
-				fk.fieldName,
-			))
-		}
-		if *newVal != *fk.value {
-			return util.NewBadRequestError(fmt.Sprintf(
-				"%s is immutable and cannot be reassigned",
-				fk.fieldName,
-			))
-		}
+		return util.NewBadRequestError(fmt.Sprintf(
+			"%s is immutable; tear down and recreate the holder to undo this relationship",
+			fk.fieldName,
+		))
 	}
 	return nil
 }
 
 // processRelationshipTaggedFieldsAfterUpdate inserts blocking AORs for each
-// relationship-tagged FK that just transitioned from nil to a value.
-// Unchanged FKs are skipped via tx.Statement.Changed; same-value re-emits are
-// skipped via FirstOrCreate semantics.
+// relationship-tagged FK that just transitioned from nil to a value. Other
+// transitions are blocked by BeforeUpdate.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
 	fks, err := findRelationshipFKs(obj)
 	if err != nil {
@@ -264,7 +208,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		if !tx.Statement.Changed(fk.fieldName) {
 			continue
 		}
-		if err := ensureBlockingAOR(tx, fk, objID, objType); err != nil {
+		if err := insertBlockingAOR(tx, fk, objID, objType); err != nil {
 			return err
 		}
 	}

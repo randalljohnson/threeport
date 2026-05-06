@@ -4,7 +4,7 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// BeforeCreate is the GORM create hook for HelmWorkloadDefinition.
+// BeforeCreate is the GORM before-create hook for HelmWorkloadDefinition.
 func (h *HelmWorkloadDefinition) BeforeCreate(tx *gorm.DB) error {
 	if err := h.beforeCreate(tx); err != nil {
 		return err
@@ -12,7 +12,7 @@ func (h *HelmWorkloadDefinition) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, h)
 }
 
-// BeforeUpdate is the GORM update hook for HelmWorkloadDefinition.
+// BeforeUpdate is the GORM before-update hook for HelmWorkloadDefinition.
 func (h *HelmWorkloadDefinition) BeforeUpdate(tx *gorm.DB) error {
 	if err := h.beforeUpdate(tx); err != nil {
 		return err
@@ -20,7 +20,7 @@ func (h *HelmWorkloadDefinition) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, h)
 }
 
-// BeforeDelete is the GORM delete hook for HelmWorkloadDefinition.
+// BeforeDelete is the GORM before-delete hook for HelmWorkloadDefinition.
 func (h *HelmWorkloadDefinition) BeforeDelete(tx *gorm.DB) error {
 	if err := h.beforeDelete(tx); err != nil {
 		return err
@@ -28,7 +28,31 @@ func (h *HelmWorkloadDefinition) BeforeDelete(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, h)
 }
 
-// BeforeCreate is the GORM create hook for HelmWorkloadInstance.
+// AfterCreate is the GORM after-create hook for HelmWorkloadDefinition.
+func (h *HelmWorkloadDefinition) AfterCreate(tx *gorm.DB) error {
+	if err := h.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, h)
+}
+
+// AfterUpdate is the GORM after-update hook for HelmWorkloadDefinition.
+func (h *HelmWorkloadDefinition) AfterUpdate(tx *gorm.DB) error {
+	if err := h.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, h)
+}
+
+// AfterDelete is the GORM after-delete hook for HelmWorkloadDefinition.
+func (h *HelmWorkloadDefinition) AfterDelete(tx *gorm.DB) error {
+	if err := h.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, h)
+}
+
+// BeforeCreate is the GORM before-create hook for HelmWorkloadInstance.
 func (h *HelmWorkloadInstance) BeforeCreate(tx *gorm.DB) error {
 	if err := h.beforeCreate(tx); err != nil {
 		return err
@@ -36,7 +60,7 @@ func (h *HelmWorkloadInstance) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, h)
 }
 
-// BeforeUpdate is the GORM update hook for HelmWorkloadInstance.
+// BeforeUpdate is the GORM before-update hook for HelmWorkloadInstance.
 func (h *HelmWorkloadInstance) BeforeUpdate(tx *gorm.DB) error {
 	if err := h.beforeUpdate(tx); err != nil {
 		return err
@@ -44,10 +68,34 @@ func (h *HelmWorkloadInstance) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, h)
 }
 
-// BeforeDelete is the GORM delete hook for HelmWorkloadInstance.
+// BeforeDelete is the GORM before-delete hook for HelmWorkloadInstance.
 func (h *HelmWorkloadInstance) BeforeDelete(tx *gorm.DB) error {
 	if err := h.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, h)
+}
+
+// AfterCreate is the GORM after-create hook for HelmWorkloadInstance.
+func (h *HelmWorkloadInstance) AfterCreate(tx *gorm.DB) error {
+	if err := h.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, h)
+}
+
+// AfterUpdate is the GORM after-update hook for HelmWorkloadInstance.
+func (h *HelmWorkloadInstance) AfterUpdate(tx *gorm.DB) error {
+	if err := h.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, h)
+}
+
+// AfterDelete is the GORM after-delete hook for HelmWorkloadInstance.
+func (h *HelmWorkloadInstance) AfterDelete(tx *gorm.DB) error {
+	if err := h.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, h)
 }

@@ -4,7 +4,7 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// BeforeCreate is the GORM create hook for ModuleApi.
+// BeforeCreate is the GORM before-create hook for ModuleApi.
 func (m *ModuleApi) BeforeCreate(tx *gorm.DB) error {
 	if err := m.beforeCreate(tx); err != nil {
 		return err
@@ -12,7 +12,7 @@ func (m *ModuleApi) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
 }
 
-// BeforeUpdate is the GORM update hook for ModuleApi.
+// BeforeUpdate is the GORM before-update hook for ModuleApi.
 func (m *ModuleApi) BeforeUpdate(tx *gorm.DB) error {
 	if err := m.beforeUpdate(tx); err != nil {
 		return err
@@ -20,7 +20,7 @@ func (m *ModuleApi) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
 }
 
-// BeforeDelete is the GORM delete hook for ModuleApi.
+// BeforeDelete is the GORM before-delete hook for ModuleApi.
 func (m *ModuleApi) BeforeDelete(tx *gorm.DB) error {
 	if err := m.beforeDelete(tx); err != nil {
 		return err
@@ -28,7 +28,31 @@ func (m *ModuleApi) BeforeDelete(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
 }
 
-// BeforeCreate is the GORM create hook for ModuleApiRoute.
+// AfterCreate is the GORM after-create hook for ModuleApi.
+func (m *ModuleApi) AfterCreate(tx *gorm.DB) error {
+	if err := m.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, m)
+}
+
+// AfterUpdate is the GORM after-update hook for ModuleApi.
+func (m *ModuleApi) AfterUpdate(tx *gorm.DB) error {
+	if err := m.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, m)
+}
+
+// AfterDelete is the GORM after-delete hook for ModuleApi.
+func (m *ModuleApi) AfterDelete(tx *gorm.DB) error {
+	if err := m.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, m)
+}
+
+// BeforeCreate is the GORM before-create hook for ModuleApiRoute.
 func (m *ModuleApiRoute) BeforeCreate(tx *gorm.DB) error {
 	if err := m.beforeCreate(tx); err != nil {
 		return err
@@ -36,7 +60,7 @@ func (m *ModuleApiRoute) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
 }
 
-// BeforeUpdate is the GORM update hook for ModuleApiRoute.
+// BeforeUpdate is the GORM before-update hook for ModuleApiRoute.
 func (m *ModuleApiRoute) BeforeUpdate(tx *gorm.DB) error {
 	if err := m.beforeUpdate(tx); err != nil {
 		return err
@@ -44,7 +68,7 @@ func (m *ModuleApiRoute) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
 }
 
-// BeforeDelete is the GORM delete hook for ModuleApiRoute.
+// BeforeDelete is the GORM before-delete hook for ModuleApiRoute.
 func (m *ModuleApiRoute) BeforeDelete(tx *gorm.DB) error {
 	if err := m.beforeDelete(tx); err != nil {
 		return err
@@ -52,7 +76,31 @@ func (m *ModuleApiRoute) BeforeDelete(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
 }
 
-// BeforeCreate is the GORM create hook for ModuleController.
+// AfterCreate is the GORM after-create hook for ModuleApiRoute.
+func (m *ModuleApiRoute) AfterCreate(tx *gorm.DB) error {
+	if err := m.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, m)
+}
+
+// AfterUpdate is the GORM after-update hook for ModuleApiRoute.
+func (m *ModuleApiRoute) AfterUpdate(tx *gorm.DB) error {
+	if err := m.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, m)
+}
+
+// AfterDelete is the GORM after-delete hook for ModuleApiRoute.
+func (m *ModuleApiRoute) AfterDelete(tx *gorm.DB) error {
+	if err := m.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, m)
+}
+
+// BeforeCreate is the GORM before-create hook for ModuleController.
 func (m *ModuleController) BeforeCreate(tx *gorm.DB) error {
 	if err := m.beforeCreate(tx); err != nil {
 		return err
@@ -60,7 +108,7 @@ func (m *ModuleController) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
 }
 
-// BeforeUpdate is the GORM update hook for ModuleController.
+// BeforeUpdate is the GORM before-update hook for ModuleController.
 func (m *ModuleController) BeforeUpdate(tx *gorm.DB) error {
 	if err := m.beforeUpdate(tx); err != nil {
 		return err
@@ -68,7 +116,7 @@ func (m *ModuleController) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
 }
 
-// BeforeDelete is the GORM delete hook for ModuleController.
+// BeforeDelete is the GORM before-delete hook for ModuleController.
 func (m *ModuleController) BeforeDelete(tx *gorm.DB) error {
 	if err := m.beforeDelete(tx); err != nil {
 		return err
@@ -76,7 +124,31 @@ func (m *ModuleController) BeforeDelete(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
 }
 
-// BeforeCreate is the GORM create hook for ModuleObject.
+// AfterCreate is the GORM after-create hook for ModuleController.
+func (m *ModuleController) AfterCreate(tx *gorm.DB) error {
+	if err := m.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, m)
+}
+
+// AfterUpdate is the GORM after-update hook for ModuleController.
+func (m *ModuleController) AfterUpdate(tx *gorm.DB) error {
+	if err := m.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, m)
+}
+
+// AfterDelete is the GORM after-delete hook for ModuleController.
+func (m *ModuleController) AfterDelete(tx *gorm.DB) error {
+	if err := m.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, m)
+}
+
+// BeforeCreate is the GORM before-create hook for ModuleObject.
 func (m *ModuleObject) BeforeCreate(tx *gorm.DB) error {
 	if err := m.beforeCreate(tx); err != nil {
 		return err
@@ -84,7 +156,7 @@ func (m *ModuleObject) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
 }
 
-// BeforeUpdate is the GORM update hook for ModuleObject.
+// BeforeUpdate is the GORM before-update hook for ModuleObject.
 func (m *ModuleObject) BeforeUpdate(tx *gorm.DB) error {
 	if err := m.beforeUpdate(tx); err != nil {
 		return err
@@ -92,10 +164,34 @@ func (m *ModuleObject) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
 }
 
-// BeforeDelete is the GORM delete hook for ModuleObject.
+// BeforeDelete is the GORM before-delete hook for ModuleObject.
 func (m *ModuleObject) BeforeDelete(tx *gorm.DB) error {
 	if err := m.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
+}
+
+// AfterCreate is the GORM after-create hook for ModuleObject.
+func (m *ModuleObject) AfterCreate(tx *gorm.DB) error {
+	if err := m.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, m)
+}
+
+// AfterUpdate is the GORM after-update hook for ModuleObject.
+func (m *ModuleObject) AfterUpdate(tx *gorm.DB) error {
+	if err := m.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, m)
+}
+
+// AfterDelete is the GORM after-delete hook for ModuleObject.
+func (m *ModuleObject) AfterDelete(tx *gorm.DB) error {
+	if err := m.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, m)
 }

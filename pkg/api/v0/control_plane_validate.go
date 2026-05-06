@@ -4,32 +4,62 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// beforeCreate validates the ControlPlaneDefinition before create.
+// beforeCreate runs before the ControlPlaneDefinition is created.
 func (c *ControlPlaneDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the ControlPlaneDefinition before update.
+// beforeUpdate runs before the ControlPlaneDefinition is updated.
 func (c *ControlPlaneDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the ControlPlaneDefinition before delete.
+// beforeDelete runs before the ControlPlaneDefinition is deleted.
 func (c *ControlPlaneDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeCreate validates the ControlPlaneInstance before create.
+// afterCreate runs after the ControlPlaneDefinition is created.
+func (c *ControlPlaneDefinition) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the ControlPlaneDefinition is updated.
+func (c *ControlPlaneDefinition) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the ControlPlaneDefinition is deleted.
+func (c *ControlPlaneDefinition) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeCreate runs before the ControlPlaneInstance is created.
 func (c *ControlPlaneInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the ControlPlaneInstance before update.
+// beforeUpdate runs before the ControlPlaneInstance is updated.
 func (c *ControlPlaneInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the ControlPlaneInstance before delete.
+// beforeDelete runs before the ControlPlaneInstance is deleted.
 func (c *ControlPlaneInstance) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the ControlPlaneInstance is created.
+func (c *ControlPlaneInstance) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the ControlPlaneInstance is updated.
+func (c *ControlPlaneInstance) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the ControlPlaneInstance is deleted.
+func (c *ControlPlaneInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }

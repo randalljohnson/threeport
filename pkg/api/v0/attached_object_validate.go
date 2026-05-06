@@ -4,17 +4,32 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// beforeCreate validates the AttachedObjectReference before create.
+// beforeCreate runs before the AttachedObjectReference is created.
 func (a *AttachedObjectReference) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the AttachedObjectReference before update.
+// beforeUpdate runs before the AttachedObjectReference is updated.
 func (a *AttachedObjectReference) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the AttachedObjectReference before delete.
+// beforeDelete runs before the AttachedObjectReference is deleted.
 func (a *AttachedObjectReference) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the AttachedObjectReference is created.
+func (a *AttachedObjectReference) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the AttachedObjectReference is updated.
+func (a *AttachedObjectReference) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the AttachedObjectReference is deleted.
+func (a *AttachedObjectReference) afterDelete(tx *gorm.DB) error {
 	return nil
 }

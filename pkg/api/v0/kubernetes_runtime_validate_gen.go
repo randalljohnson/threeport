@@ -4,7 +4,7 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// BeforeCreate is the GORM create hook for KubernetesRuntimeDefinition.
+// BeforeCreate is the GORM before-create hook for KubernetesRuntimeDefinition.
 func (k *KubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
 	if err := k.beforeCreate(tx); err != nil {
 		return err
@@ -12,7 +12,7 @@ func (k *KubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, k)
 }
 
-// BeforeUpdate is the GORM update hook for KubernetesRuntimeDefinition.
+// BeforeUpdate is the GORM before-update hook for KubernetesRuntimeDefinition.
 func (k *KubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
 	if err := k.beforeUpdate(tx); err != nil {
 		return err
@@ -20,7 +20,7 @@ func (k *KubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, k)
 }
 
-// BeforeDelete is the GORM delete hook for KubernetesRuntimeDefinition.
+// BeforeDelete is the GORM before-delete hook for KubernetesRuntimeDefinition.
 func (k *KubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
 	if err := k.beforeDelete(tx); err != nil {
 		return err
@@ -28,7 +28,31 @@ func (k *KubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, k)
 }
 
-// BeforeCreate is the GORM create hook for KubernetesRuntimeInstance.
+// AfterCreate is the GORM after-create hook for KubernetesRuntimeDefinition.
+func (k *KubernetesRuntimeDefinition) AfterCreate(tx *gorm.DB) error {
+	if err := k.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, k)
+}
+
+// AfterUpdate is the GORM after-update hook for KubernetesRuntimeDefinition.
+func (k *KubernetesRuntimeDefinition) AfterUpdate(tx *gorm.DB) error {
+	if err := k.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, k)
+}
+
+// AfterDelete is the GORM after-delete hook for KubernetesRuntimeDefinition.
+func (k *KubernetesRuntimeDefinition) AfterDelete(tx *gorm.DB) error {
+	if err := k.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, k)
+}
+
+// BeforeCreate is the GORM before-create hook for KubernetesRuntimeInstance.
 func (k *KubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
 	if err := k.beforeCreate(tx); err != nil {
 		return err
@@ -36,7 +60,7 @@ func (k *KubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, k)
 }
 
-// BeforeUpdate is the GORM update hook for KubernetesRuntimeInstance.
+// BeforeUpdate is the GORM before-update hook for KubernetesRuntimeInstance.
 func (k *KubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 	if err := k.beforeUpdate(tx); err != nil {
 		return err
@@ -44,10 +68,34 @@ func (k *KubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, k)
 }
 
-// BeforeDelete is the GORM delete hook for KubernetesRuntimeInstance.
+// BeforeDelete is the GORM before-delete hook for KubernetesRuntimeInstance.
 func (k *KubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
 	if err := k.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, k)
+}
+
+// AfterCreate is the GORM after-create hook for KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) AfterCreate(tx *gorm.DB) error {
+	if err := k.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, k)
+}
+
+// AfterUpdate is the GORM after-update hook for KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) AfterUpdate(tx *gorm.DB) error {
+	if err := k.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, k)
+}
+
+// AfterDelete is the GORM after-delete hook for KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) AfterDelete(tx *gorm.DB) error {
+	if err := k.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, k)
 }

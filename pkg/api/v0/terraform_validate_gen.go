@@ -4,7 +4,7 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// BeforeCreate is the GORM create hook for TerraformDefinition.
+// BeforeCreate is the GORM before-create hook for TerraformDefinition.
 func (t *TerraformDefinition) BeforeCreate(tx *gorm.DB) error {
 	if err := t.beforeCreate(tx); err != nil {
 		return err
@@ -12,7 +12,7 @@ func (t *TerraformDefinition) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, t)
 }
 
-// BeforeUpdate is the GORM update hook for TerraformDefinition.
+// BeforeUpdate is the GORM before-update hook for TerraformDefinition.
 func (t *TerraformDefinition) BeforeUpdate(tx *gorm.DB) error {
 	if err := t.beforeUpdate(tx); err != nil {
 		return err
@@ -20,7 +20,7 @@ func (t *TerraformDefinition) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, t)
 }
 
-// BeforeDelete is the GORM delete hook for TerraformDefinition.
+// BeforeDelete is the GORM before-delete hook for TerraformDefinition.
 func (t *TerraformDefinition) BeforeDelete(tx *gorm.DB) error {
 	if err := t.beforeDelete(tx); err != nil {
 		return err
@@ -28,7 +28,31 @@ func (t *TerraformDefinition) BeforeDelete(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, t)
 }
 
-// BeforeCreate is the GORM create hook for TerraformInstance.
+// AfterCreate is the GORM after-create hook for TerraformDefinition.
+func (t *TerraformDefinition) AfterCreate(tx *gorm.DB) error {
+	if err := t.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, t)
+}
+
+// AfterUpdate is the GORM after-update hook for TerraformDefinition.
+func (t *TerraformDefinition) AfterUpdate(tx *gorm.DB) error {
+	if err := t.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, t)
+}
+
+// AfterDelete is the GORM after-delete hook for TerraformDefinition.
+func (t *TerraformDefinition) AfterDelete(tx *gorm.DB) error {
+	if err := t.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, t)
+}
+
+// BeforeCreate is the GORM before-create hook for TerraformInstance.
 func (t *TerraformInstance) BeforeCreate(tx *gorm.DB) error {
 	if err := t.beforeCreate(tx); err != nil {
 		return err
@@ -36,7 +60,7 @@ func (t *TerraformInstance) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, t)
 }
 
-// BeforeUpdate is the GORM update hook for TerraformInstance.
+// BeforeUpdate is the GORM before-update hook for TerraformInstance.
 func (t *TerraformInstance) BeforeUpdate(tx *gorm.DB) error {
 	if err := t.beforeUpdate(tx); err != nil {
 		return err
@@ -44,10 +68,34 @@ func (t *TerraformInstance) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, t)
 }
 
-// BeforeDelete is the GORM delete hook for TerraformInstance.
+// BeforeDelete is the GORM before-delete hook for TerraformInstance.
 func (t *TerraformInstance) BeforeDelete(tx *gorm.DB) error {
 	if err := t.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, t)
+}
+
+// AfterCreate is the GORM after-create hook for TerraformInstance.
+func (t *TerraformInstance) AfterCreate(tx *gorm.DB) error {
+	if err := t.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, t)
+}
+
+// AfterUpdate is the GORM after-update hook for TerraformInstance.
+func (t *TerraformInstance) AfterUpdate(tx *gorm.DB) error {
+	if err := t.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, t)
+}
+
+// AfterDelete is the GORM after-delete hook for TerraformInstance.
+func (t *TerraformInstance) AfterDelete(tx *gorm.DB) error {
+	if err := t.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, t)
 }

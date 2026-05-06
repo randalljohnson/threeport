@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for DomainNameDefinition.
 func (d *DomainNameDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := d.validateBeforeCreate(tx); err != nil {
+	if err := d.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, d)
@@ -14,7 +14,7 @@ func (d *DomainNameDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for DomainNameDefinition.
 func (d *DomainNameDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := d.validateBeforeUpdate(tx); err != nil {
+	if err := d.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, d)
@@ -22,7 +22,7 @@ func (d *DomainNameDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for DomainNameDefinition.
 func (d *DomainNameDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := d.validateBeforeDelete(tx); err != nil {
+	if err := d.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, d)
@@ -30,7 +30,7 @@ func (d *DomainNameDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for DomainNameInstance.
 func (d *DomainNameInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := d.validateBeforeCreate(tx); err != nil {
+	if err := d.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, d)
@@ -38,7 +38,7 @@ func (d *DomainNameInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for DomainNameInstance.
 func (d *DomainNameInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := d.validateBeforeUpdate(tx); err != nil {
+	if err := d.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, d)
@@ -46,7 +46,7 @@ func (d *DomainNameInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for DomainNameInstance.
 func (d *DomainNameInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := d.validateBeforeDelete(tx); err != nil {
+	if err := d.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, d)
@@ -54,7 +54,7 @@ func (d *DomainNameInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for GatewayDefinition.
 func (g *GatewayDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := g.validateBeforeCreate(tx); err != nil {
+	if err := g.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
@@ -62,7 +62,7 @@ func (g *GatewayDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for GatewayDefinition.
 func (g *GatewayDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := g.validateBeforeUpdate(tx); err != nil {
+	if err := g.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
@@ -70,7 +70,7 @@ func (g *GatewayDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for GatewayDefinition.
 func (g *GatewayDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := g.validateBeforeDelete(tx); err != nil {
+	if err := g.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
@@ -78,7 +78,7 @@ func (g *GatewayDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for GatewayHttpPort.
 func (g *GatewayHttpPort) BeforeCreate(tx *gorm.DB) error {
-	if err := g.validateBeforeCreate(tx); err != nil {
+	if err := g.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
@@ -86,7 +86,7 @@ func (g *GatewayHttpPort) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for GatewayHttpPort.
 func (g *GatewayHttpPort) BeforeUpdate(tx *gorm.DB) error {
-	if err := g.validateBeforeUpdate(tx); err != nil {
+	if err := g.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
@@ -94,7 +94,7 @@ func (g *GatewayHttpPort) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for GatewayHttpPort.
 func (g *GatewayHttpPort) BeforeDelete(tx *gorm.DB) error {
-	if err := g.validateBeforeDelete(tx); err != nil {
+	if err := g.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
@@ -102,7 +102,7 @@ func (g *GatewayHttpPort) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for GatewayInstance.
 func (g *GatewayInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := g.validateBeforeCreate(tx); err != nil {
+	if err := g.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
@@ -110,7 +110,7 @@ func (g *GatewayInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for GatewayInstance.
 func (g *GatewayInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := g.validateBeforeUpdate(tx); err != nil {
+	if err := g.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
@@ -118,7 +118,7 @@ func (g *GatewayInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for GatewayInstance.
 func (g *GatewayInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := g.validateBeforeDelete(tx); err != nil {
+	if err := g.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
@@ -126,7 +126,7 @@ func (g *GatewayInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for GatewayTcpPort.
 func (g *GatewayTcpPort) BeforeCreate(tx *gorm.DB) error {
-	if err := g.validateBeforeCreate(tx); err != nil {
+	if err := g.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
@@ -134,7 +134,7 @@ func (g *GatewayTcpPort) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for GatewayTcpPort.
 func (g *GatewayTcpPort) BeforeUpdate(tx *gorm.DB) error {
-	if err := g.validateBeforeUpdate(tx); err != nil {
+	if err := g.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
@@ -142,7 +142,7 @@ func (g *GatewayTcpPort) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for GatewayTcpPort.
 func (g *GatewayTcpPort) BeforeDelete(tx *gorm.DB) error {
-	if err := g.validateBeforeDelete(tx); err != nil {
+	if err := g.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)

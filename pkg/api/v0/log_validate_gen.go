@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for LogBackend.
 func (l *LogBackend) BeforeCreate(tx *gorm.DB) error {
-	if err := l.validateBeforeCreate(tx); err != nil {
+	if err := l.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, l)
@@ -14,7 +14,7 @@ func (l *LogBackend) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for LogBackend.
 func (l *LogBackend) BeforeUpdate(tx *gorm.DB) error {
-	if err := l.validateBeforeUpdate(tx); err != nil {
+	if err := l.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, l)
@@ -22,7 +22,7 @@ func (l *LogBackend) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for LogBackend.
 func (l *LogBackend) BeforeDelete(tx *gorm.DB) error {
-	if err := l.validateBeforeDelete(tx); err != nil {
+	if err := l.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, l)
@@ -30,7 +30,7 @@ func (l *LogBackend) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for LogStorageDefinition.
 func (l *LogStorageDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := l.validateBeforeCreate(tx); err != nil {
+	if err := l.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, l)
@@ -38,7 +38,7 @@ func (l *LogStorageDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for LogStorageDefinition.
 func (l *LogStorageDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := l.validateBeforeUpdate(tx); err != nil {
+	if err := l.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, l)
@@ -46,7 +46,7 @@ func (l *LogStorageDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for LogStorageDefinition.
 func (l *LogStorageDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := l.validateBeforeDelete(tx); err != nil {
+	if err := l.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, l)
@@ -54,7 +54,7 @@ func (l *LogStorageDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for LogStorageInstance.
 func (l *LogStorageInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := l.validateBeforeCreate(tx); err != nil {
+	if err := l.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, l)
@@ -62,7 +62,7 @@ func (l *LogStorageInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for LogStorageInstance.
 func (l *LogStorageInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := l.validateBeforeUpdate(tx); err != nil {
+	if err := l.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, l)
@@ -70,7 +70,7 @@ func (l *LogStorageInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for LogStorageInstance.
 func (l *LogStorageInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := l.validateBeforeDelete(tx); err != nil {
+	if err := l.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, l)

@@ -10,21 +10,21 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// validateBeforeCreate validates the GcpProvider before create.
-func (g *GcpProvider) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the GcpProvider before create.
+func (g *GcpProvider) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the GcpProvider before update.
-func (g *GcpProvider) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the GcpProvider before update.
+func (g *GcpProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the GcpProvider before delete.
+// beforeDelete validates the GcpProvider before delete.
 //
 // Why: a GcpProvider may not be removed while any GKE runtime instance
 // still references it. Returns 400 with the count of dependents.
-func (g *GcpProvider) validateBeforeDelete(tx *gorm.DB) error {
+func (g *GcpProvider) beforeDelete(tx *gorm.DB) error {
 	var gcpGkeKubernetesRuntimeInstances []GcpGkeKubernetesRuntimeInstance
 	if result := tx.Where(
 		&GcpGkeKubernetesRuntimeInstance{GcpProviderID: g.ID},
@@ -46,32 +46,32 @@ func (g *GcpProvider) validateBeforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the GcpGkeKubernetesRuntimeDefinition before create.
-func (g *GcpGkeKubernetesRuntimeDefinition) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the GcpGkeKubernetesRuntimeDefinition before create.
+func (g *GcpGkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the GcpGkeKubernetesRuntimeDefinition before update.
-func (g *GcpGkeKubernetesRuntimeDefinition) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the GcpGkeKubernetesRuntimeDefinition before update.
+func (g *GcpGkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the GcpGkeKubernetesRuntimeDefinition before delete.
-func (g *GcpGkeKubernetesRuntimeDefinition) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the GcpGkeKubernetesRuntimeDefinition before delete.
+func (g *GcpGkeKubernetesRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the GcpGkeKubernetesRuntimeInstance before create.
-func (g *GcpGkeKubernetesRuntimeInstance) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the GcpGkeKubernetesRuntimeInstance before create.
+func (g *GcpGkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the GcpGkeKubernetesRuntimeInstance before update.
-func (g *GcpGkeKubernetesRuntimeInstance) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the GcpGkeKubernetesRuntimeInstance before update.
+func (g *GcpGkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the GcpGkeKubernetesRuntimeInstance before delete.
-func (g *GcpGkeKubernetesRuntimeInstance) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the GcpGkeKubernetesRuntimeInstance before delete.
+func (g *GcpGkeKubernetesRuntimeInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

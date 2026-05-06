@@ -4,32 +4,32 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// validateBeforeCreate validates the ControlPlaneDefinition before create.
-func (c *ControlPlaneDefinition) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the ControlPlaneDefinition before create.
+func (c *ControlPlaneDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the ControlPlaneDefinition before update.
-func (c *ControlPlaneDefinition) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the ControlPlaneDefinition before update.
+func (c *ControlPlaneDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the ControlPlaneDefinition before delete.
-func (c *ControlPlaneDefinition) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the ControlPlaneDefinition before delete.
+func (c *ControlPlaneDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the ControlPlaneInstance before create.
-func (c *ControlPlaneInstance) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the ControlPlaneInstance before create.
+func (c *ControlPlaneInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the ControlPlaneInstance before update.
-func (c *ControlPlaneInstance) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the ControlPlaneInstance before update.
+func (c *ControlPlaneInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the ControlPlaneInstance before delete.
-func (c *ControlPlaneInstance) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the ControlPlaneInstance before delete.
+func (c *ControlPlaneInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

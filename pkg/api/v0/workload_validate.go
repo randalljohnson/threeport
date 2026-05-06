@@ -4,77 +4,77 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// validateBeforeCreate validates the WorkloadDefinition before create.
-func (w *WorkloadDefinition) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the WorkloadDefinition before create.
+func (w *WorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the WorkloadDefinition before update.
-func (w *WorkloadDefinition) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the WorkloadDefinition before update.
+func (w *WorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the WorkloadDefinition before delete.
-func (w *WorkloadDefinition) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the WorkloadDefinition before delete.
+func (w *WorkloadDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the WorkloadEvent before create.
-func (w *WorkloadEvent) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the WorkloadEvent before create.
+func (w *WorkloadEvent) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the WorkloadEvent before update.
-func (w *WorkloadEvent) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the WorkloadEvent before update.
+func (w *WorkloadEvent) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the WorkloadEvent before delete.
-func (w *WorkloadEvent) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the WorkloadEvent before delete.
+func (w *WorkloadEvent) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the WorkloadInstance before create.
-func (w *WorkloadInstance) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the WorkloadInstance before create.
+func (w *WorkloadInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the WorkloadInstance before update.
-func (w *WorkloadInstance) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the WorkloadInstance before update.
+func (w *WorkloadInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the WorkloadInstance before delete.
-func (w *WorkloadInstance) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the WorkloadInstance before delete.
+func (w *WorkloadInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the WorkloadResourceDefinition before create.
-func (w *WorkloadResourceDefinition) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the WorkloadResourceDefinition before create.
+func (w *WorkloadResourceDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the WorkloadResourceDefinition before update.
-func (w *WorkloadResourceDefinition) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the WorkloadResourceDefinition before update.
+func (w *WorkloadResourceDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the WorkloadResourceDefinition before delete.
-func (w *WorkloadResourceDefinition) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the WorkloadResourceDefinition before delete.
+func (w *WorkloadResourceDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the WorkloadResourceInstance before create.
-func (w *WorkloadResourceInstance) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the WorkloadResourceInstance before create.
+func (w *WorkloadResourceInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the WorkloadResourceInstance before update.
-func (w *WorkloadResourceInstance) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the WorkloadResourceInstance before update.
+func (w *WorkloadResourceInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the WorkloadResourceInstance before delete.
-func (w *WorkloadResourceInstance) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the WorkloadResourceInstance before delete.
+func (w *WorkloadResourceInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

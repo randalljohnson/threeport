@@ -4,32 +4,32 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// validateBeforeCreate validates the Profile before create.
-func (p *Profile) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the Profile before create.
+func (p *Profile) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the Profile before update.
-func (p *Profile) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the Profile before update.
+func (p *Profile) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the Profile before delete.
-func (p *Profile) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the Profile before delete.
+func (p *Profile) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the Tier before create.
-func (t *Tier) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the Tier before create.
+func (t *Tier) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the Tier before update.
-func (t *Tier) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the Tier before update.
+func (t *Tier) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the Tier before delete.
-func (t *Tier) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the Tier before delete.
+func (t *Tier) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

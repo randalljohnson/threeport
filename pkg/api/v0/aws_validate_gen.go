@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for AwsEksKubernetesRuntimeDefinition.
 func (a *AwsEksKubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := a.validateBeforeCreate(tx); err != nil {
+	if err := a.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, a)
@@ -14,7 +14,7 @@ func (a *AwsEksKubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for AwsEksKubernetesRuntimeDefinition.
 func (a *AwsEksKubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := a.validateBeforeUpdate(tx); err != nil {
+	if err := a.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, a)
@@ -22,7 +22,7 @@ func (a *AwsEksKubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for AwsEksKubernetesRuntimeDefinition.
 func (a *AwsEksKubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := a.validateBeforeDelete(tx); err != nil {
+	if err := a.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, a)
@@ -30,7 +30,7 @@ func (a *AwsEksKubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for AwsEksKubernetesRuntimeInstance.
 func (a *AwsEksKubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := a.validateBeforeCreate(tx); err != nil {
+	if err := a.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, a)
@@ -38,7 +38,7 @@ func (a *AwsEksKubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for AwsEksKubernetesRuntimeInstance.
 func (a *AwsEksKubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := a.validateBeforeUpdate(tx); err != nil {
+	if err := a.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, a)
@@ -46,7 +46,7 @@ func (a *AwsEksKubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for AwsEksKubernetesRuntimeInstance.
 func (a *AwsEksKubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := a.validateBeforeDelete(tx); err != nil {
+	if err := a.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, a)
@@ -54,7 +54,7 @@ func (a *AwsEksKubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for AwsProvider.
 func (a *AwsProvider) BeforeCreate(tx *gorm.DB) error {
-	if err := a.validateBeforeCreate(tx); err != nil {
+	if err := a.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, a)
@@ -62,7 +62,7 @@ func (a *AwsProvider) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for AwsProvider.
 func (a *AwsProvider) BeforeUpdate(tx *gorm.DB) error {
-	if err := a.validateBeforeUpdate(tx); err != nil {
+	if err := a.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, a)
@@ -70,7 +70,7 @@ func (a *AwsProvider) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for AwsProvider.
 func (a *AwsProvider) BeforeDelete(tx *gorm.DB) error {
-	if err := a.validateBeforeDelete(tx); err != nil {
+	if err := a.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, a)

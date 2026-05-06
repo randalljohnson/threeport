@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for Event.
 func (e *Event) BeforeCreate(tx *gorm.DB) error {
-	if err := e.validateBeforeCreate(tx); err != nil {
+	if err := e.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, e)
@@ -14,7 +14,7 @@ func (e *Event) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for Event.
 func (e *Event) BeforeUpdate(tx *gorm.DB) error {
-	if err := e.validateBeforeUpdate(tx); err != nil {
+	if err := e.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, e)
@@ -22,7 +22,7 @@ func (e *Event) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for Event.
 func (e *Event) BeforeDelete(tx *gorm.DB) error {
-	if err := e.validateBeforeDelete(tx); err != nil {
+	if err := e.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, e)

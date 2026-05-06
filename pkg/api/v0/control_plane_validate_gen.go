@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for ControlPlaneDefinition.
 func (c *ControlPlaneDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := c.validateBeforeCreate(tx); err != nil {
+	if err := c.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, c)
@@ -14,7 +14,7 @@ func (c *ControlPlaneDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ControlPlaneDefinition.
 func (c *ControlPlaneDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := c.validateBeforeUpdate(tx); err != nil {
+	if err := c.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, c)
@@ -22,7 +22,7 @@ func (c *ControlPlaneDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ControlPlaneDefinition.
 func (c *ControlPlaneDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := c.validateBeforeDelete(tx); err != nil {
+	if err := c.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, c)
@@ -30,7 +30,7 @@ func (c *ControlPlaneDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ControlPlaneInstance.
 func (c *ControlPlaneInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := c.validateBeforeCreate(tx); err != nil {
+	if err := c.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, c)
@@ -38,7 +38,7 @@ func (c *ControlPlaneInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ControlPlaneInstance.
 func (c *ControlPlaneInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := c.validateBeforeUpdate(tx); err != nil {
+	if err := c.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, c)
@@ -46,7 +46,7 @@ func (c *ControlPlaneInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ControlPlaneInstance.
 func (c *ControlPlaneInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := c.validateBeforeDelete(tx); err != nil {
+	if err := c.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, c)

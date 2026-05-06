@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for GcpGkeKubernetesRuntimeDefinition.
 func (g *GcpGkeKubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := g.validateBeforeCreate(tx); err != nil {
+	if err := g.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
@@ -14,7 +14,7 @@ func (g *GcpGkeKubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for GcpGkeKubernetesRuntimeDefinition.
 func (g *GcpGkeKubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := g.validateBeforeUpdate(tx); err != nil {
+	if err := g.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
@@ -22,7 +22,7 @@ func (g *GcpGkeKubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for GcpGkeKubernetesRuntimeDefinition.
 func (g *GcpGkeKubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := g.validateBeforeDelete(tx); err != nil {
+	if err := g.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
@@ -30,7 +30,7 @@ func (g *GcpGkeKubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for GcpGkeKubernetesRuntimeInstance.
 func (g *GcpGkeKubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := g.validateBeforeCreate(tx); err != nil {
+	if err := g.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
@@ -38,7 +38,7 @@ func (g *GcpGkeKubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for GcpGkeKubernetesRuntimeInstance.
 func (g *GcpGkeKubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := g.validateBeforeUpdate(tx); err != nil {
+	if err := g.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
@@ -46,7 +46,7 @@ func (g *GcpGkeKubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for GcpGkeKubernetesRuntimeInstance.
 func (g *GcpGkeKubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := g.validateBeforeDelete(tx); err != nil {
+	if err := g.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
@@ -54,7 +54,7 @@ func (g *GcpGkeKubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for GcpProvider.
 func (g *GcpProvider) BeforeCreate(tx *gorm.DB) error {
-	if err := g.validateBeforeCreate(tx); err != nil {
+	if err := g.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
@@ -62,7 +62,7 @@ func (g *GcpProvider) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for GcpProvider.
 func (g *GcpProvider) BeforeUpdate(tx *gorm.DB) error {
-	if err := g.validateBeforeUpdate(tx); err != nil {
+	if err := g.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
@@ -70,7 +70,7 @@ func (g *GcpProvider) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for GcpProvider.
 func (g *GcpProvider) BeforeDelete(tx *gorm.DB) error {
-	if err := g.validateBeforeDelete(tx); err != nil {
+	if err := g.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)

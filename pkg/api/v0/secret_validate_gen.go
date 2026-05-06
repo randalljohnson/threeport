@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for SecretDefinition.
 func (s *SecretDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := s.validateBeforeCreate(tx); err != nil {
+	if err := s.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, s)
@@ -14,7 +14,7 @@ func (s *SecretDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for SecretDefinition.
 func (s *SecretDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := s.validateBeforeUpdate(tx); err != nil {
+	if err := s.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, s)
@@ -22,7 +22,7 @@ func (s *SecretDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for SecretDefinition.
 func (s *SecretDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := s.validateBeforeDelete(tx); err != nil {
+	if err := s.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, s)
@@ -30,7 +30,7 @@ func (s *SecretDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for SecretInstance.
 func (s *SecretInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := s.validateBeforeCreate(tx); err != nil {
+	if err := s.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, s)
@@ -38,7 +38,7 @@ func (s *SecretInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for SecretInstance.
 func (s *SecretInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := s.validateBeforeUpdate(tx); err != nil {
+	if err := s.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, s)
@@ -46,7 +46,7 @@ func (s *SecretInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for SecretInstance.
 func (s *SecretInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := s.validateBeforeDelete(tx); err != nil {
+	if err := s.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, s)

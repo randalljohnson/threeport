@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for LoggingDefinition.
 func (l *LoggingDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := l.validateBeforeCreate(tx); err != nil {
+	if err := l.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, l)
@@ -14,7 +14,7 @@ func (l *LoggingDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for LoggingDefinition.
 func (l *LoggingDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := l.validateBeforeUpdate(tx); err != nil {
+	if err := l.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, l)
@@ -22,7 +22,7 @@ func (l *LoggingDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for LoggingDefinition.
 func (l *LoggingDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := l.validateBeforeDelete(tx); err != nil {
+	if err := l.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, l)
@@ -30,7 +30,7 @@ func (l *LoggingDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for LoggingInstance.
 func (l *LoggingInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := l.validateBeforeCreate(tx); err != nil {
+	if err := l.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, l)
@@ -38,7 +38,7 @@ func (l *LoggingInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for LoggingInstance.
 func (l *LoggingInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := l.validateBeforeUpdate(tx); err != nil {
+	if err := l.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, l)
@@ -46,7 +46,7 @@ func (l *LoggingInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for LoggingInstance.
 func (l *LoggingInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := l.validateBeforeDelete(tx); err != nil {
+	if err := l.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, l)
@@ -54,7 +54,7 @@ func (l *LoggingInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for MetricsDefinition.
 func (m *MetricsDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := m.validateBeforeCreate(tx); err != nil {
+	if err := m.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
@@ -62,7 +62,7 @@ func (m *MetricsDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for MetricsDefinition.
 func (m *MetricsDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := m.validateBeforeUpdate(tx); err != nil {
+	if err := m.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
@@ -70,7 +70,7 @@ func (m *MetricsDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for MetricsDefinition.
 func (m *MetricsDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := m.validateBeforeDelete(tx); err != nil {
+	if err := m.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
@@ -78,7 +78,7 @@ func (m *MetricsDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for MetricsInstance.
 func (m *MetricsInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := m.validateBeforeCreate(tx); err != nil {
+	if err := m.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
@@ -86,7 +86,7 @@ func (m *MetricsInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for MetricsInstance.
 func (m *MetricsInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := m.validateBeforeUpdate(tx); err != nil {
+	if err := m.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
@@ -94,7 +94,7 @@ func (m *MetricsInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for MetricsInstance.
 func (m *MetricsInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := m.validateBeforeDelete(tx); err != nil {
+	if err := m.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
@@ -102,7 +102,7 @@ func (m *MetricsInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ObservabilityDashboardDefinition.
 func (o *ObservabilityDashboardDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := o.validateBeforeCreate(tx); err != nil {
+	if err := o.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, o)
@@ -110,7 +110,7 @@ func (o *ObservabilityDashboardDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ObservabilityDashboardDefinition.
 func (o *ObservabilityDashboardDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := o.validateBeforeUpdate(tx); err != nil {
+	if err := o.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, o)
@@ -118,7 +118,7 @@ func (o *ObservabilityDashboardDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ObservabilityDashboardDefinition.
 func (o *ObservabilityDashboardDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := o.validateBeforeDelete(tx); err != nil {
+	if err := o.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, o)
@@ -126,7 +126,7 @@ func (o *ObservabilityDashboardDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ObservabilityDashboardInstance.
 func (o *ObservabilityDashboardInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := o.validateBeforeCreate(tx); err != nil {
+	if err := o.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, o)
@@ -134,7 +134,7 @@ func (o *ObservabilityDashboardInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ObservabilityDashboardInstance.
 func (o *ObservabilityDashboardInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := o.validateBeforeUpdate(tx); err != nil {
+	if err := o.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, o)
@@ -142,7 +142,7 @@ func (o *ObservabilityDashboardInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ObservabilityDashboardInstance.
 func (o *ObservabilityDashboardInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := o.validateBeforeDelete(tx); err != nil {
+	if err := o.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, o)
@@ -150,7 +150,7 @@ func (o *ObservabilityDashboardInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ObservabilityStackDefinition.
 func (o *ObservabilityStackDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := o.validateBeforeCreate(tx); err != nil {
+	if err := o.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, o)
@@ -158,7 +158,7 @@ func (o *ObservabilityStackDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ObservabilityStackDefinition.
 func (o *ObservabilityStackDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := o.validateBeforeUpdate(tx); err != nil {
+	if err := o.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, o)
@@ -166,7 +166,7 @@ func (o *ObservabilityStackDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ObservabilityStackDefinition.
 func (o *ObservabilityStackDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := o.validateBeforeDelete(tx); err != nil {
+	if err := o.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, o)
@@ -174,7 +174,7 @@ func (o *ObservabilityStackDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ObservabilityStackInstance.
 func (o *ObservabilityStackInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := o.validateBeforeCreate(tx); err != nil {
+	if err := o.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, o)
@@ -182,7 +182,7 @@ func (o *ObservabilityStackInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ObservabilityStackInstance.
 func (o *ObservabilityStackInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := o.validateBeforeUpdate(tx); err != nil {
+	if err := o.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, o)
@@ -190,7 +190,7 @@ func (o *ObservabilityStackInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ObservabilityStackInstance.
 func (o *ObservabilityStackInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := o.validateBeforeDelete(tx); err != nil {
+	if err := o.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, o)

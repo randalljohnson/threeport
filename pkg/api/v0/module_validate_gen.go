@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for ModuleApi.
 func (m *ModuleApi) BeforeCreate(tx *gorm.DB) error {
-	if err := m.validateBeforeCreate(tx); err != nil {
+	if err := m.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
@@ -14,7 +14,7 @@ func (m *ModuleApi) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ModuleApi.
 func (m *ModuleApi) BeforeUpdate(tx *gorm.DB) error {
-	if err := m.validateBeforeUpdate(tx); err != nil {
+	if err := m.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
@@ -22,7 +22,7 @@ func (m *ModuleApi) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ModuleApi.
 func (m *ModuleApi) BeforeDelete(tx *gorm.DB) error {
-	if err := m.validateBeforeDelete(tx); err != nil {
+	if err := m.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
@@ -30,7 +30,7 @@ func (m *ModuleApi) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ModuleApiRoute.
 func (m *ModuleApiRoute) BeforeCreate(tx *gorm.DB) error {
-	if err := m.validateBeforeCreate(tx); err != nil {
+	if err := m.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
@@ -38,7 +38,7 @@ func (m *ModuleApiRoute) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ModuleApiRoute.
 func (m *ModuleApiRoute) BeforeUpdate(tx *gorm.DB) error {
-	if err := m.validateBeforeUpdate(tx); err != nil {
+	if err := m.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
@@ -46,7 +46,7 @@ func (m *ModuleApiRoute) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ModuleApiRoute.
 func (m *ModuleApiRoute) BeforeDelete(tx *gorm.DB) error {
-	if err := m.validateBeforeDelete(tx); err != nil {
+	if err := m.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
@@ -54,7 +54,7 @@ func (m *ModuleApiRoute) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ModuleController.
 func (m *ModuleController) BeforeCreate(tx *gorm.DB) error {
-	if err := m.validateBeforeCreate(tx); err != nil {
+	if err := m.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
@@ -62,7 +62,7 @@ func (m *ModuleController) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ModuleController.
 func (m *ModuleController) BeforeUpdate(tx *gorm.DB) error {
-	if err := m.validateBeforeUpdate(tx); err != nil {
+	if err := m.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
@@ -70,7 +70,7 @@ func (m *ModuleController) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ModuleController.
 func (m *ModuleController) BeforeDelete(tx *gorm.DB) error {
-	if err := m.validateBeforeDelete(tx); err != nil {
+	if err := m.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)
@@ -78,7 +78,7 @@ func (m *ModuleController) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for ModuleObject.
 func (m *ModuleObject) BeforeCreate(tx *gorm.DB) error {
-	if err := m.validateBeforeCreate(tx); err != nil {
+	if err := m.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, m)
@@ -86,7 +86,7 @@ func (m *ModuleObject) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for ModuleObject.
 func (m *ModuleObject) BeforeUpdate(tx *gorm.DB) error {
-	if err := m.validateBeforeUpdate(tx); err != nil {
+	if err := m.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, m)
@@ -94,7 +94,7 @@ func (m *ModuleObject) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for ModuleObject.
 func (m *ModuleObject) BeforeDelete(tx *gorm.DB) error {
-	if err := m.validateBeforeDelete(tx); err != nil {
+	if err := m.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, m)

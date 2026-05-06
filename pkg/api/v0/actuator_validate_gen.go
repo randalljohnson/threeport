@@ -4,7 +4,7 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// BeforeCreate is the GORM create hook for Profile.
+// BeforeCreate is the GORM before-create hook for Profile.
 func (p *Profile) BeforeCreate(tx *gorm.DB) error {
 	if err := p.beforeCreate(tx); err != nil {
 		return err
@@ -12,7 +12,7 @@ func (p *Profile) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, p)
 }
 
-// BeforeUpdate is the GORM update hook for Profile.
+// BeforeUpdate is the GORM before-update hook for Profile.
 func (p *Profile) BeforeUpdate(tx *gorm.DB) error {
 	if err := p.beforeUpdate(tx); err != nil {
 		return err
@@ -20,7 +20,7 @@ func (p *Profile) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, p)
 }
 
-// BeforeDelete is the GORM delete hook for Profile.
+// BeforeDelete is the GORM before-delete hook for Profile.
 func (p *Profile) BeforeDelete(tx *gorm.DB) error {
 	if err := p.beforeDelete(tx); err != nil {
 		return err
@@ -28,7 +28,31 @@ func (p *Profile) BeforeDelete(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, p)
 }
 
-// BeforeCreate is the GORM create hook for Tier.
+// AfterCreate is the GORM after-create hook for Profile.
+func (p *Profile) AfterCreate(tx *gorm.DB) error {
+	if err := p.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, p)
+}
+
+// AfterUpdate is the GORM after-update hook for Profile.
+func (p *Profile) AfterUpdate(tx *gorm.DB) error {
+	if err := p.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, p)
+}
+
+// AfterDelete is the GORM after-delete hook for Profile.
+func (p *Profile) AfterDelete(tx *gorm.DB) error {
+	if err := p.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, p)
+}
+
+// BeforeCreate is the GORM before-create hook for Tier.
 func (t *Tier) BeforeCreate(tx *gorm.DB) error {
 	if err := t.beforeCreate(tx); err != nil {
 		return err
@@ -36,7 +60,7 @@ func (t *Tier) BeforeCreate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, t)
 }
 
-// BeforeUpdate is the GORM update hook for Tier.
+// BeforeUpdate is the GORM before-update hook for Tier.
 func (t *Tier) BeforeUpdate(tx *gorm.DB) error {
 	if err := t.beforeUpdate(tx); err != nil {
 		return err
@@ -44,10 +68,34 @@ func (t *Tier) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, t)
 }
 
-// BeforeDelete is the GORM delete hook for Tier.
+// BeforeDelete is the GORM before-delete hook for Tier.
 func (t *Tier) BeforeDelete(tx *gorm.DB) error {
 	if err := t.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, t)
+}
+
+// AfterCreate is the GORM after-create hook for Tier.
+func (t *Tier) AfterCreate(tx *gorm.DB) error {
+	if err := t.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, t)
+}
+
+// AfterUpdate is the GORM after-update hook for Tier.
+func (t *Tier) AfterUpdate(tx *gorm.DB) error {
+	if err := t.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, t)
+}
+
+// AfterDelete is the GORM after-delete hook for Tier.
+func (t *Tier) AfterDelete(tx *gorm.DB) error {
+	if err := t.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, t)
 }

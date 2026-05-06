@@ -4,32 +4,62 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// beforeCreate validates the HelmWorkloadDefinition before create.
+// beforeCreate runs before the HelmWorkloadDefinition is created.
 func (h *HelmWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the HelmWorkloadDefinition before update.
+// beforeUpdate runs before the HelmWorkloadDefinition is updated.
 func (h *HelmWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the HelmWorkloadDefinition before delete.
+// beforeDelete runs before the HelmWorkloadDefinition is deleted.
 func (h *HelmWorkloadDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeCreate validates the HelmWorkloadInstance before create.
+// afterCreate runs after the HelmWorkloadDefinition is created.
+func (h *HelmWorkloadDefinition) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the HelmWorkloadDefinition is updated.
+func (h *HelmWorkloadDefinition) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the HelmWorkloadDefinition is deleted.
+func (h *HelmWorkloadDefinition) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeCreate runs before the HelmWorkloadInstance is created.
 func (h *HelmWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the HelmWorkloadInstance before update.
+// beforeUpdate runs before the HelmWorkloadInstance is updated.
 func (h *HelmWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the HelmWorkloadInstance before delete.
+// beforeDelete runs before the HelmWorkloadInstance is deleted.
 func (h *HelmWorkloadInstance) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the HelmWorkloadInstance is created.
+func (h *HelmWorkloadInstance) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the HelmWorkloadInstance is updated.
+func (h *HelmWorkloadInstance) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the HelmWorkloadInstance is deleted.
+func (h *HelmWorkloadInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }

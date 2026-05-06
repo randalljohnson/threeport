@@ -75,3 +75,48 @@ func (g *GcpGkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 func (g *GcpGkeKubernetesRuntimeInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
+
+// afterCreate runs after the GcpProvider is created.
+func (g *GcpProvider) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the GcpProvider is updated.
+func (g *GcpProvider) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the GcpProvider is deleted.
+func (g *GcpProvider) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the GcpGkeKubernetesRuntimeDefinition is created.
+func (g *GcpGkeKubernetesRuntimeDefinition) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the GcpGkeKubernetesRuntimeDefinition is updated.
+func (g *GcpGkeKubernetesRuntimeDefinition) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the GcpGkeKubernetesRuntimeDefinition is deleted.
+func (g *GcpGkeKubernetesRuntimeDefinition) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the GcpGkeKubernetesRuntimeInstance is created.
+func (g *GcpGkeKubernetesRuntimeInstance) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the GcpGkeKubernetesRuntimeInstance is updated.
+func (g *GcpGkeKubernetesRuntimeInstance) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the GcpGkeKubernetesRuntimeInstance is deleted.
+func (g *GcpGkeKubernetesRuntimeInstance) afterDelete(tx *gorm.DB) error {
+	return nil
+}

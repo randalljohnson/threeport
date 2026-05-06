@@ -20,11 +20,9 @@ func (o *OciProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the OciProvider before delete.
-//
-// Why: an OciProvider may not be removed while any OKE runtime instance
-// still references it. Returns 409 with the count of dependents.
+// beforeDelete prevents deletion of an OCI provider that has active runtime instances.
 func (o *OciProvider) beforeDelete(tx *gorm.DB) error {
+	// check for active OKE runtime instances using this provider
 	var instances []OciOkeKubernetesRuntimeInstance
 	if result := tx.Where(
 		"oci_provider_id = ?", *o.ID,
@@ -72,5 +70,50 @@ func (o *OciOkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 
 // beforeDelete validates the OciOkeKubernetesRuntimeInstance before delete.
 func (o *OciOkeKubernetesRuntimeInstance) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the OciProvider is created.
+func (o *OciProvider) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the OciProvider is updated.
+func (o *OciProvider) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the OciProvider is deleted.
+func (o *OciProvider) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the OciOkeKubernetesRuntimeDefinition is created.
+func (o *OciOkeKubernetesRuntimeDefinition) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the OciOkeKubernetesRuntimeDefinition is updated.
+func (o *OciOkeKubernetesRuntimeDefinition) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the OciOkeKubernetesRuntimeDefinition is deleted.
+func (o *OciOkeKubernetesRuntimeDefinition) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the OciOkeKubernetesRuntimeInstance is created.
+func (o *OciOkeKubernetesRuntimeInstance) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the OciOkeKubernetesRuntimeInstance is updated.
+func (o *OciOkeKubernetesRuntimeInstance) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the OciOkeKubernetesRuntimeInstance is deleted.
+func (o *OciOkeKubernetesRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }

@@ -24,34 +24,29 @@ func ProcessCoreTaggedFieldsBeforeCreate(tx *gorm.DB, obj interface{}) error {
 // an API object before update.
 func ProcessCoreTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	return processEncryptTaggedFields(tx, obj, true)
-	// TODO: enforce tag-driven update blocks (e.g. immutable fields)
 }
 
 // ProcessCoreTaggedFieldsBeforeDelete runs core tag-triggered behavior on
 // an API object before delete.
 func ProcessCoreTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
-	// TODO: enforce tag-driven delete blocks (e.g. blocking AOR refs)
 	return nil
 }
 
 // ProcessCoreTaggedFieldsAfterCreate runs core tag-triggered behavior on
 // an API object after create.
 func ProcessCoreTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) error {
-	// TODO: tag-driven AOR creation lands here
 	return nil
 }
 
 // ProcessCoreTaggedFieldsAfterUpdate runs core tag-triggered behavior on
 // an API object after update.
 func ProcessCoreTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
-	// TODO: tag-driven AOR diff/sync lands here
 	return nil
 }
 
 // ProcessCoreTaggedFieldsAfterDelete runs core tag-triggered behavior on
 // an API object after delete.
 func ProcessCoreTaggedFieldsAfterDelete(tx *gorm.DB, obj interface{}) error {
-	// TODO: tag-driven AOR cascade-cleanup lands here
 	return nil
 }
 

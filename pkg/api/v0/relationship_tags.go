@@ -111,11 +111,12 @@ func targetTypeName(receiverType, fkTarget string) string {
 	return fkTarget
 }
 
-// upsertBlockingAOR ensures a blocking attached object reference exists for
-// the given relationship FK. If an AOR for this (AttachedObject, target type)
-// edge already exists with a different ObjectID, its ObjectID is updated
-// in place — preserves the AOR row identity across FK reassignments.
-func upsertBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attachedType string) error {
+// ensureBlockingAOR ensures a blocking attached object reference exists for
+// the given relationship FK. If an AOR for this (holder, target type) edge
+// already exists pointing at a different ObjectID, the old AOR is deleted and
+// a new one is inserted — each AOR row's lifetime corresponds to one
+// concrete edge between two objects.
+func ensureBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attachedType string) error {
 	targetType := targetTypeName(attachedType, fk.targetType)
 	var existing AttachedObjectReference
 	err := tx.Where(&AttachedObjectReference{
@@ -125,32 +126,33 @@ func upsertBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attache
 	}).First(&existing).Error
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		blocking := true
-		if err := tx.Create(&AttachedObjectReference{
-			ObjectID:           fk.value,
-			ObjectType:         &targetType,
-			AttachedObjectID:   attachedID,
-			AttachedObjectType: &attachedType,
-			Blocking:           &blocking,
-		}).Error; err != nil {
-			return fmt.Errorf(
-				"failed to create attached object reference for %s.%s: %w",
-				attachedType, fk.fieldName, err,
-			)
-		}
-		return nil
+		// fall through to create
 	case err != nil:
 		return fmt.Errorf(
 			"failed to look up attached object reference for %s.%s: %w",
 			attachedType, fk.fieldName, err,
 		)
+	default:
+		if existing.ObjectID != nil && fk.value != nil && *existing.ObjectID == *fk.value {
+			return nil
+		}
+		if err := tx.Delete(&existing).Error; err != nil {
+			return fmt.Errorf(
+				"failed to delete stale attached object reference for %s.%s: %w",
+				attachedType, fk.fieldName, err,
+			)
+		}
 	}
-	if existing.ObjectID != nil && fk.value != nil && *existing.ObjectID == *fk.value {
-		return nil
-	}
-	if err := tx.Model(&existing).Update("object_id", *fk.value).Error; err != nil {
+	blocking := true
+	if err := tx.Create(&AttachedObjectReference{
+		ObjectID:           fk.value,
+		ObjectType:         &targetType,
+		AttachedObjectID:   attachedID,
+		AttachedObjectType: &attachedType,
+		Blocking:           &blocking,
+	}).Error; err != nil {
 		return fmt.Errorf(
-			"failed to update attached object reference for %s.%s: %w",
+			"failed to create attached object reference for %s.%s: %w",
 			attachedType, fk.fieldName, err,
 		)
 	}
@@ -179,7 +181,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 		if fk.value == nil {
 			continue
 		}
-		if err := upsertBlockingAOR(tx, fk, objID, objType); err != nil {
+		if err := ensureBlockingAOR(tx, fk, objID, objType); err != nil {
 			return err
 		}
 	}
@@ -262,7 +264,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		if !tx.Statement.Changed(fk.fieldName) {
 			continue
 		}
-		if err := upsertBlockingAOR(tx, fk, objID, objType); err != nil {
+		if err := ensureBlockingAOR(tx, fk, objID, objType); err != nil {
 			return err
 		}
 	}

@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -111,23 +112,46 @@ func targetTypeName(receiverType, fkTarget string) string {
 }
 
 // upsertBlockingAOR ensures a blocking attached object reference exists for
-// the given relationship FK. Idempotent: a matching AOR is left alone.
+// the given relationship FK. If an AOR for this (AttachedObject, target type)
+// edge already exists with a different ObjectID, its ObjectID is updated
+// in place — preserves the AOR row identity across FK reassignments.
 func upsertBlockingAOR(tx *gorm.DB, fk relationshipFK, attachedID *uint, attachedType string) error {
 	targetType := targetTypeName(attachedType, fk.targetType)
-	blocking := true
 	var existing AttachedObjectReference
-	res := tx.Where(AttachedObjectReference{
-		ObjectID:           fk.value,
+	err := tx.Where(&AttachedObjectReference{
 		ObjectType:         &targetType,
 		AttachedObjectID:   attachedID,
 		AttachedObjectType: &attachedType,
-	}).Attrs(AttachedObjectReference{
-		Blocking: &blocking,
-	}).FirstOrCreate(&existing)
-	if res.Error != nil {
+	}).First(&existing).Error
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		blocking := true
+		if err := tx.Create(&AttachedObjectReference{
+			ObjectID:           fk.value,
+			ObjectType:         &targetType,
+			AttachedObjectID:   attachedID,
+			AttachedObjectType: &attachedType,
+			Blocking:           &blocking,
+		}).Error; err != nil {
+			return fmt.Errorf(
+				"failed to create attached object reference for %s.%s: %w",
+				attachedType, fk.fieldName, err,
+			)
+		}
+		return nil
+	case err != nil:
 		return fmt.Errorf(
-			"failed to ensure attached object reference for %s.%s: %w",
-			attachedType, fk.fieldName, res.Error,
+			"failed to look up attached object reference for %s.%s: %w",
+			attachedType, fk.fieldName, err,
+		)
+	}
+	if existing.ObjectID != nil && fk.value != nil && *existing.ObjectID == *fk.value {
+		return nil
+	}
+	if err := tx.Model(&existing).Update("object_id", *fk.value).Error; err != nil {
+		return fmt.Errorf(
+			"failed to update attached object reference for %s.%s: %w",
+			attachedType, fk.fieldName, err,
 		)
 	}
 	return nil
@@ -157,6 +181,58 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 		}
 		if err := upsertBlockingAOR(tx, fk, objID, objType); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change a
+// `relationship:"owns"` FK from one non-nil value to another, or unset it.
+// `requires` FKs are mutable, so they pass through untouched.
+func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
+	oldFKs, err := findRelationshipFKs(obj)
+	if err != nil {
+		return err
+	}
+	if len(oldFKs) == 0 {
+		return nil
+	}
+
+	dest := tx.Statement.Dest
+	if dest == nil {
+		return nil
+	}
+	newFKs, err := findRelationshipFKs(dest)
+	if err != nil {
+		return err
+	}
+	newByName := make(map[string]*uint, len(newFKs))
+	for _, fk := range newFKs {
+		newByName[fk.fieldName] = fk.value
+	}
+
+	for _, fk := range oldFKs {
+		if fk.relationship != RelationshipOwns {
+			continue
+		}
+		if fk.value == nil {
+			continue
+		}
+		if !tx.Statement.Changed(fk.fieldName) {
+			continue
+		}
+		newVal := newByName[fk.fieldName]
+		if newVal == nil {
+			return util.NewBadRequestError(fmt.Sprintf(
+				"%s is immutable and cannot be unset",
+				fk.fieldName,
+			))
+		}
+		if *newVal != *fk.value {
+			return util.NewBadRequestError(fmt.Sprintf(
+				"%s is immutable and cannot be reassigned",
+				fk.fieldName,
+			))
 		}
 	}
 	return nil
@@ -203,7 +279,7 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	// block on incoming blocking AORs (this row is the parent)
+	// block delete if any blocking AOR points at this row as its target
 	blockingRefs, err := FindBlockingAttachedObjectReferences(tx, objType, objID)
 	if err != nil {
 		return err

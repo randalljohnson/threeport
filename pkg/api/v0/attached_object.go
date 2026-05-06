@@ -16,13 +16,14 @@ type AttachedObjectReference struct {
 	// The object ID of the attached object.
 	AttachedObjectID *uint `json:"AttachedObjectID,omitempty" query:"attachedobjectid" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
 
-	// Whether this reference blocks deletion of the base object. Defaults
-	// to true: any attacher that doesn't explicitly set Blocking acts as
-	// a dependency guard.
-	Blocking *bool `json:"Blocking,omitempty" query:"blocking" gorm:"default:true" validate:"optional"`
-
-	// Whether this reference also makes the base object immutable from
-	// external callers. Set to true when the attacher carries a
-	// `relationship:"owns"` tag. Defaults to false.
-	OwnsTarget *bool `json:"OwnsTarget,omitempty" query:"ownstarget" gorm:"default:false" validate:"optional"`
+	// Relationship classifies this reference and drives lifecycle behavior:
+	//   - "describes": informational link; does not block deletion or
+	//     restrict updates of the base object.
+	//   - "requires": the attached object depends on the base object;
+	//     deletion of the base object is blocked while this reference
+	//     exists. The base object is otherwise externally mutable.
+	//   - "owns": same blocking-on-delete behavior as "requires" plus the
+	//     base object is locked against external updates and may only be
+	//     mutated by tearing down the attached object first.
+	Relationship *string `json:"Relationship,omitempty" query:"relationship" gorm:"default:'describes'" validate:"optional"`
 }

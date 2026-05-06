@@ -10,8 +10,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// FindBlockingAttachedObjectReferences returns attached object references that
-// point at the given object and are marked blocking.
+// FindBlockingAttachedObjectReferences returns attached object references
+// that target the given object with a relationship that blocks deletion
+// ("requires" or "owns"). "describes" references are excluded.
 func FindBlockingAttachedObjectReferences(
 	db *gorm.DB,
 	objectType string,
@@ -19,7 +20,10 @@ func FindBlockingAttachedObjectReferences(
 ) ([]AttachedObjectReference, error) {
 	var attachedObjectReferences []AttachedObjectReference
 	if err := db.
-		Where("object_type = ? AND object_id = ? AND blocking = true", objectType, objectID).
+		Where(
+			"object_type = ? AND object_id = ? AND relationship IN ?",
+			objectType, objectID, []string{RelationshipRequires, RelationshipOwns},
+		).
 		Find(&attachedObjectReferences).Error; err != nil {
 		return nil, fmt.Errorf("failed to list blocking attached object references: %w", err)
 	}

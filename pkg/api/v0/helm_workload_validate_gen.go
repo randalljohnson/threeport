@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for HelmWorkloadDefinition.
 func (h *HelmWorkloadDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := h.validateBeforeCreate(tx); err != nil {
+	if err := h.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, h)
@@ -14,7 +14,7 @@ func (h *HelmWorkloadDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for HelmWorkloadDefinition.
 func (h *HelmWorkloadDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := h.validateBeforeUpdate(tx); err != nil {
+	if err := h.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, h)
@@ -22,7 +22,7 @@ func (h *HelmWorkloadDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for HelmWorkloadDefinition.
 func (h *HelmWorkloadDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := h.validateBeforeDelete(tx); err != nil {
+	if err := h.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, h)
@@ -30,7 +30,7 @@ func (h *HelmWorkloadDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for HelmWorkloadInstance.
 func (h *HelmWorkloadInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := h.validateBeforeCreate(tx); err != nil {
+	if err := h.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, h)
@@ -38,7 +38,7 @@ func (h *HelmWorkloadInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for HelmWorkloadInstance.
 func (h *HelmWorkloadInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := h.validateBeforeUpdate(tx); err != nil {
+	if err := h.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, h)
@@ -46,7 +46,7 @@ func (h *HelmWorkloadInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for HelmWorkloadInstance.
 func (h *HelmWorkloadInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := h.validateBeforeDelete(tx); err != nil {
+	if err := h.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, h)

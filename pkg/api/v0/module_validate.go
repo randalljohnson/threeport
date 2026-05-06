@@ -14,20 +14,20 @@ import (
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// validateBeforeCreate validates the ModuleApi before create.
-func (m *ModuleApi) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the ModuleApi before create.
+func (m *ModuleApi) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the ModuleApi before update.
-func (m *ModuleApi) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the ModuleApi before update.
+func (m *ModuleApi) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the ModuleApi before delete.
+// beforeDelete validates the ModuleApi before delete.
 //
 // Why: a module API may not be removed while any of its routes still exist.
-func (m *ModuleApi) validateBeforeDelete(tx *gorm.DB) error {
+func (m *ModuleApi) beforeDelete(tx *gorm.DB) error {
 	var moduleRoutes []ModuleApiRoute
 	if result := tx.Where("module_api_id = ?", *m.ID).Find(&moduleRoutes); result.Error != nil {
 		return fmt.Errorf("failed to retrieve routes for module API with ID %d: %w", *m.ID, result.Error)
@@ -38,10 +38,10 @@ func (m *ModuleApi) validateBeforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the ModuleApiRoute before create.
+// beforeCreate validates the ModuleApiRoute before create.
 //
 // Why: prevent two routes from registering the same path.
-func (m *ModuleApiRoute) validateBeforeCreate(tx *gorm.DB) error {
+func (m *ModuleApiRoute) beforeCreate(tx *gorm.DB) error {
 	var existingRoute ModuleApiRoute
 	if result := tx.Where("path = ?", *m.Path).First(&existingRoute); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -58,13 +58,13 @@ func (m *ModuleApiRoute) validateBeforeCreate(tx *gorm.DB) error {
 	)
 }
 
-// validateBeforeUpdate validates the ModuleApiRoute before update.
-func (m *ModuleApiRoute) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the ModuleApiRoute before update.
+func (m *ModuleApiRoute) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the ModuleApiRoute before delete.
-func (m *ModuleApiRoute) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the ModuleApiRoute before delete.
+func (m *ModuleApiRoute) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
@@ -98,25 +98,25 @@ func (m *ModuleApiRoute) AfterDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the ModuleController before create.
-func (m *ModuleController) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the ModuleController before create.
+func (m *ModuleController) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the ModuleController before update.
-func (m *ModuleController) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the ModuleController before update.
+func (m *ModuleController) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the ModuleController before delete.
-func (m *ModuleController) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the ModuleController before delete.
+func (m *ModuleController) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the ModuleObject before create.
+// beforeCreate validates the ModuleObject before create.
 //
 // Why: prevent two objects with the same name within a module API.
-func (m *ModuleObject) validateBeforeCreate(tx *gorm.DB) error {
+func (m *ModuleObject) beforeCreate(tx *gorm.DB) error {
 	var existingObject ModuleObject
 	if result := tx.Where("name = ? AND module_api_id = ?", *m.Name, *m.ModuleApiID).First(&existingObject); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -133,12 +133,12 @@ func (m *ModuleObject) validateBeforeCreate(tx *gorm.DB) error {
 	)
 }
 
-// validateBeforeUpdate validates the ModuleObject before update.
-func (m *ModuleObject) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the ModuleObject before update.
+func (m *ModuleObject) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the ModuleObject before delete.
-func (m *ModuleObject) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the ModuleObject before delete.
+func (m *ModuleObject) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

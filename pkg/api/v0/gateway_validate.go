@@ -4,92 +4,92 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// validateBeforeCreate validates the DomainNameDefinition before create.
-func (d *DomainNameDefinition) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the DomainNameDefinition before create.
+func (d *DomainNameDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the DomainNameDefinition before update.
-func (d *DomainNameDefinition) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the DomainNameDefinition before update.
+func (d *DomainNameDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the DomainNameDefinition before delete.
-func (d *DomainNameDefinition) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the DomainNameDefinition before delete.
+func (d *DomainNameDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the DomainNameInstance before create.
-func (d *DomainNameInstance) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the DomainNameInstance before create.
+func (d *DomainNameInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the DomainNameInstance before update.
-func (d *DomainNameInstance) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the DomainNameInstance before update.
+func (d *DomainNameInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the DomainNameInstance before delete.
-func (d *DomainNameInstance) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the DomainNameInstance before delete.
+func (d *DomainNameInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the GatewayDefinition before create.
-func (g *GatewayDefinition) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the GatewayDefinition before create.
+func (g *GatewayDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the GatewayDefinition before update.
-func (g *GatewayDefinition) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the GatewayDefinition before update.
+func (g *GatewayDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the GatewayDefinition before delete.
-func (g *GatewayDefinition) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the GatewayDefinition before delete.
+func (g *GatewayDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the GatewayHttpPort before create.
-func (g *GatewayHttpPort) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the GatewayHttpPort before create.
+func (g *GatewayHttpPort) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the GatewayHttpPort before update.
-func (g *GatewayHttpPort) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the GatewayHttpPort before update.
+func (g *GatewayHttpPort) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the GatewayHttpPort before delete.
-func (g *GatewayHttpPort) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the GatewayHttpPort before delete.
+func (g *GatewayHttpPort) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the GatewayInstance before create.
-func (g *GatewayInstance) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the GatewayInstance before create.
+func (g *GatewayInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the GatewayInstance before update.
-func (g *GatewayInstance) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the GatewayInstance before update.
+func (g *GatewayInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the GatewayInstance before delete.
-func (g *GatewayInstance) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the GatewayInstance before delete.
+func (g *GatewayInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the GatewayTcpPort before create.
-func (g *GatewayTcpPort) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the GatewayTcpPort before create.
+func (g *GatewayTcpPort) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the GatewayTcpPort before update.
-func (g *GatewayTcpPort) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the GatewayTcpPort before update.
+func (g *GatewayTcpPort) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the GatewayTcpPort before delete.
-func (g *GatewayTcpPort) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the GatewayTcpPort before delete.
+func (g *GatewayTcpPort) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for AttachedObjectReference.
 func (a *AttachedObjectReference) BeforeCreate(tx *gorm.DB) error {
-	if err := a.validateBeforeCreate(tx); err != nil {
+	if err := a.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, a)
@@ -14,7 +14,7 @@ func (a *AttachedObjectReference) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for AttachedObjectReference.
 func (a *AttachedObjectReference) BeforeUpdate(tx *gorm.DB) error {
-	if err := a.validateBeforeUpdate(tx); err != nil {
+	if err := a.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, a)
@@ -22,7 +22,7 @@ func (a *AttachedObjectReference) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for AttachedObjectReference.
 func (a *AttachedObjectReference) BeforeDelete(tx *gorm.DB) error {
-	if err := a.validateBeforeDelete(tx); err != nil {
+	if err := a.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, a)

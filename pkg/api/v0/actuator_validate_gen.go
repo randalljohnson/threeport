@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for Profile.
 func (p *Profile) BeforeCreate(tx *gorm.DB) error {
-	if err := p.validateBeforeCreate(tx); err != nil {
+	if err := p.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, p)
@@ -14,7 +14,7 @@ func (p *Profile) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for Profile.
 func (p *Profile) BeforeUpdate(tx *gorm.DB) error {
-	if err := p.validateBeforeUpdate(tx); err != nil {
+	if err := p.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, p)
@@ -22,7 +22,7 @@ func (p *Profile) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for Profile.
 func (p *Profile) BeforeDelete(tx *gorm.DB) error {
-	if err := p.validateBeforeDelete(tx); err != nil {
+	if err := p.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, p)
@@ -30,7 +30,7 @@ func (p *Profile) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for Tier.
 func (t *Tier) BeforeCreate(tx *gorm.DB) error {
-	if err := t.validateBeforeCreate(tx); err != nil {
+	if err := t.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, t)
@@ -38,7 +38,7 @@ func (t *Tier) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for Tier.
 func (t *Tier) BeforeUpdate(tx *gorm.DB) error {
-	if err := t.validateBeforeUpdate(tx); err != nil {
+	if err := t.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, t)
@@ -46,7 +46,7 @@ func (t *Tier) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for Tier.
 func (t *Tier) BeforeDelete(tx *gorm.DB) error {
-	if err := t.validateBeforeDelete(tx); err != nil {
+	if err := t.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, t)

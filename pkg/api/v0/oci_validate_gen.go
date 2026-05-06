@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for OciOkeKubernetesRuntimeDefinition.
 func (o *OciOkeKubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := o.validateBeforeCreate(tx); err != nil {
+	if err := o.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, o)
@@ -14,7 +14,7 @@ func (o *OciOkeKubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for OciOkeKubernetesRuntimeDefinition.
 func (o *OciOkeKubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := o.validateBeforeUpdate(tx); err != nil {
+	if err := o.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, o)
@@ -22,7 +22,7 @@ func (o *OciOkeKubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for OciOkeKubernetesRuntimeDefinition.
 func (o *OciOkeKubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := o.validateBeforeDelete(tx); err != nil {
+	if err := o.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, o)
@@ -30,7 +30,7 @@ func (o *OciOkeKubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for OciOkeKubernetesRuntimeInstance.
 func (o *OciOkeKubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := o.validateBeforeCreate(tx); err != nil {
+	if err := o.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, o)
@@ -38,7 +38,7 @@ func (o *OciOkeKubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for OciOkeKubernetesRuntimeInstance.
 func (o *OciOkeKubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := o.validateBeforeUpdate(tx); err != nil {
+	if err := o.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, o)
@@ -46,7 +46,7 @@ func (o *OciOkeKubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for OciOkeKubernetesRuntimeInstance.
 func (o *OciOkeKubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := o.validateBeforeDelete(tx); err != nil {
+	if err := o.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, o)
@@ -54,7 +54,7 @@ func (o *OciOkeKubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for OciProvider.
 func (o *OciProvider) BeforeCreate(tx *gorm.DB) error {
-	if err := o.validateBeforeCreate(tx); err != nil {
+	if err := o.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, o)
@@ -62,7 +62,7 @@ func (o *OciProvider) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for OciProvider.
 func (o *OciProvider) BeforeUpdate(tx *gorm.DB) error {
-	if err := o.validateBeforeUpdate(tx); err != nil {
+	if err := o.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, o)
@@ -70,7 +70,7 @@ func (o *OciProvider) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for OciProvider.
 func (o *OciProvider) BeforeDelete(tx *gorm.DB) error {
-	if err := o.validateBeforeDelete(tx); err != nil {
+	if err := o.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, o)

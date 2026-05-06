@@ -6,7 +6,7 @@ import gorm "gorm.io/gorm"
 
 // BeforeCreate is the GORM create hook for KubernetesRuntimeDefinition.
 func (k *KubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
-	if err := k.validateBeforeCreate(tx); err != nil {
+	if err := k.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, k)
@@ -14,7 +14,7 @@ func (k *KubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for KubernetesRuntimeDefinition.
 func (k *KubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
-	if err := k.validateBeforeUpdate(tx); err != nil {
+	if err := k.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, k)
@@ -22,7 +22,7 @@ func (k *KubernetesRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for KubernetesRuntimeDefinition.
 func (k *KubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
-	if err := k.validateBeforeDelete(tx); err != nil {
+	if err := k.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, k)
@@ -30,7 +30,7 @@ func (k *KubernetesRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
 
 // BeforeCreate is the GORM create hook for KubernetesRuntimeInstance.
 func (k *KubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
-	if err := k.validateBeforeCreate(tx); err != nil {
+	if err := k.beforeCreate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeCreate(tx, k)
@@ -38,7 +38,7 @@ func (k *KubernetesRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeUpdate is the GORM update hook for KubernetesRuntimeInstance.
 func (k *KubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
-	if err := k.validateBeforeUpdate(tx); err != nil {
+	if err := k.beforeUpdate(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeUpdate(tx, k)
@@ -46,7 +46,7 @@ func (k *KubernetesRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
 
 // BeforeDelete is the GORM delete hook for KubernetesRuntimeInstance.
 func (k *KubernetesRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
-	if err := k.validateBeforeDelete(tx); err != nil {
+	if err := k.beforeDelete(tx); err != nil {
 		return err
 	}
 	return ProcessCoreTaggedFieldsBeforeDelete(tx, k)

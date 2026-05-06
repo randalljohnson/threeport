@@ -4,47 +4,47 @@ package v0
 
 import gorm "gorm.io/gorm"
 
-// validateBeforeCreate validates the LogBackend before create.
-func (l *LogBackend) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the LogBackend before create.
+func (l *LogBackend) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the LogBackend before update.
-func (l *LogBackend) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the LogBackend before update.
+func (l *LogBackend) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the LogBackend before delete.
-func (l *LogBackend) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the LogBackend before delete.
+func (l *LogBackend) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the LogStorageDefinition before create.
-func (l *LogStorageDefinition) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the LogStorageDefinition before create.
+func (l *LogStorageDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the LogStorageDefinition before update.
-func (l *LogStorageDefinition) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the LogStorageDefinition before update.
+func (l *LogStorageDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the LogStorageDefinition before delete.
-func (l *LogStorageDefinition) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the LogStorageDefinition before delete.
+func (l *LogStorageDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeCreate validates the LogStorageInstance before create.
-func (l *LogStorageInstance) validateBeforeCreate(tx *gorm.DB) error {
+// beforeCreate validates the LogStorageInstance before create.
+func (l *LogStorageInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeUpdate validates the LogStorageInstance before update.
-func (l *LogStorageInstance) validateBeforeUpdate(tx *gorm.DB) error {
+// beforeUpdate validates the LogStorageInstance before update.
+func (l *LogStorageInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// validateBeforeDelete validates the LogStorageInstance before delete.
-func (l *LogStorageInstance) validateBeforeDelete(tx *gorm.DB) error {
+// beforeDelete validates the LogStorageInstance before delete.
+func (l *LogStorageInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

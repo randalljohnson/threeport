@@ -20,4 +20,9 @@ type AttachedObjectReference struct {
 	// to true: any attacher that doesn't explicitly set Blocking acts as
 	// a dependency guard.
 	Blocking *bool `json:"Blocking,omitempty" query:"blocking" gorm:"default:true" validate:"optional"`
+
+	// Whether this reference also makes the base object immutable from
+	// external callers. Set to true when the attacher carries a
+	// `relationship:"owns"` tag. Defaults to false.
+	OwnsTarget *bool `json:"OwnsTarget,omitempty" query:"ownstarget" gorm:"default:false" validate:"optional"`
 }

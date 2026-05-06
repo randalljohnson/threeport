@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -17,7 +16,6 @@ import (
 	"github.com/threeport/threeport/internal/agent"
 	agentapi "github.com/threeport/threeport/pkg/agent/api/v1alpha1"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
-	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
@@ -436,44 +434,6 @@ func v0WorkloadInstanceDeleted(
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create kube API client object: %w", err)
-	}
-
-	// We need to query the Threeport API for the attached object references
-	// even though the WorkloadInstance table has a relation to AttachedObjectReferences.
-	// This is because the AttachedObjectReferences relation is deleted when the
-	// WorkloadInstance is deleted, so we can't use those references anymore in
-	// the deletion handler.
-	attachedObjectReferences, err := client.GetAttachedObjectReferencesByObjectID(r.APIClient, r.APIServer, *workloadInstance.ID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get attached object references by workload instance ID: %w", err)
-	}
-	for _, object := range *attachedObjectReferences {
-
-		// skip deletion of event objects
-		objectType := strings.Split(*object.AttachedObjectType, ".")[1]
-		if objectType == "Event" {
-			continue
-		}
-
-		if err := client.DeleteObjectByTypeAndID(
-			r.APIClient,
-			r.APIServer,
-			*object.AttachedObjectType,
-			*object.AttachedObjectID,
-		); err != nil {
-			switch {
-			case errors.Is(err, client_lib.ErrObjectNotFound):
-				log.Info("attached object has already been deleted", "objectID", *object.AttachedObjectID)
-			case errors.Is(err, client_lib.ErrConflict):
-				log.Info("attached object is already being deleted", "objectID", *object.AttachedObjectID)
-			default:
-				return 0, fmt.Errorf("failed to delete object by type %s and ID %d: %w", *object.AttachedObjectType, *object.ID, err)
-			}
-		}
-		_, err = client.DeleteAttachedObjectReference(r.APIClient, r.APIServer, *object.ID)
-		if err != nil {
-			return 0, fmt.Errorf("failed to delete attached object reference with ID %d: %w", *object.ID, err)
-		}
 	}
 
 	// delete each workload resource instance and resource in the target kubernetes runtime instance

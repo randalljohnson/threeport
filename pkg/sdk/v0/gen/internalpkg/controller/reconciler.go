@@ -623,7 +623,6 @@ func operationCase(
 			),
 			Continue(),
 		)
-
 		if op == "delete" {
 			h.Id("deletionTimestamp").Op(":=").Qual(
 				"github.com/threeport/threeport/pkg/util/v0",
@@ -708,4 +707,3 @@ func operationCase(
 		}
 	})
 }
-

@@ -29,6 +29,16 @@ type relationshipForeignKey struct {
 // findRelationshipForeignKeys walks the struct fields of obj and returns each
 // *uint field tagged `relationship:`. Returns an error if a tag value is
 // invalid or the field shape does not match the foreign-key convention.
+//
+// Tag syntax (GORM-style): the first value is the kind ("requires" or
+// "owns"); optional `;`-separated `key:value` pairs follow. Currently
+// supported keys:
+//   - type: <TypeName>  override the default <FieldName minus "ID"> target type
+//
+// Examples:
+//
+//	relationship:"requires"
+//	relationship:"owns;type:WorkloadInstance"
 func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, error) {
 	objVal := reflect.ValueOf(obj)
 	if objVal.Kind() == reflect.Ptr {
@@ -46,12 +56,6 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 		if rel == "" {
 			continue
 		}
-		if rel != RelationshipOwns && rel != RelationshipRequires {
-			return nil, fmt.Errorf(
-				"field %s has invalid relationship tag %q: expected %q or %q",
-				field.Name, rel, RelationshipOwns, RelationshipRequires,
-			)
-		}
 		if !strings.HasSuffix(field.Name, "ID") {
 			return nil, fmt.Errorf(
 				"field %s has relationship tag but does not end in 'ID'",
@@ -64,6 +68,36 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 				field.Name,
 			)
 		}
+
+		// parse the tag: first value is the kind, subsequent `;`-separated
+		// parts are key:value modifiers.
+		parts := strings.Split(rel, ";")
+		kind := parts[0]
+		if kind != RelationshipOwns && kind != RelationshipRequires {
+			return nil, fmt.Errorf(
+				"field %s has invalid relationship tag %q: expected %q or %q",
+				field.Name, kind, RelationshipOwns, RelationshipRequires,
+			)
+		}
+		targetType := strings.TrimSuffix(field.Name, "ID")
+		for _, p := range parts[1:] {
+			k, v, ok := strings.Cut(p, ":")
+			if !ok {
+				return nil, fmt.Errorf(
+					"field %s has malformed relationship modifier %q: expected key:value",
+					field.Name, p,
+				)
+			}
+			switch k {
+			case "type":
+				targetType = v
+			default:
+				return nil, fmt.Errorf(
+					"field %s has unknown relationship modifier %q", field.Name, k,
+				)
+			}
+		}
+
 		var v *uint
 		fieldVal := objVal.Field(i)
 		if !fieldVal.IsNil() {
@@ -71,8 +105,8 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 		}
 		fks = append(fks, relationshipForeignKey{
 			fieldName:    field.Name,
-			targetType:   strings.TrimSuffix(field.Name, "ID"),
-			relationship: rel,
+			targetType:   targetType,
+			relationship: kind,
 			value:        v,
 		})
 	}

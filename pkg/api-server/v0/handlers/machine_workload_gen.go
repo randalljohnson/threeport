@@ -309,6 +309,13 @@ func (h Handler) UpdateMachineWorkloadDefinition(c echo.Context) error {
 	// update object in database
 	if result := h.DB.Model(&existingMachineWorkloadDefinition).Updates(&updatedMachineWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -375,8 +382,15 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedMachineWorkloadDefinition.ID = existingMachineWorkloadDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingMachineWorkloadDefinition).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMachineWorkloadDefinition); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMachineWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -763,6 +777,13 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	// update object in database
 	if result := h.DB.Model(&existingMachineWorkloadInstance).Updates(&updatedMachineWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -843,8 +864,15 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedMachineWorkloadInstance.ID = existingMachineWorkloadInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Model(&existingMachineWorkloadInstance).Select("*").Omit("CreatedAt", "DeletedAt").Updates(&updatedMachineWorkloadInstance); result.Error != nil {
+	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMachineWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 

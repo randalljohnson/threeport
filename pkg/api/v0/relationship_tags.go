@@ -15,7 +15,7 @@ type relationshipForeignKey struct {
 	fieldName    string
 	objectType   string // e.g. "WorkloadInstance"
 	relationship string // sdk.RelationshipOwns or sdk.RelationshipRequires
-	objectID        *uint
+	objectID     *uint
 }
 
 // relationshipForeignKeyProvider is implemented by every API type with at least one

@@ -842,6 +842,54 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 	return false
 }
 
+// ValidateRelationshipTags walks every API object's struct tags and returns
+// a non-nil error if any `relationship:"<kind>;type:<TypeName>"` modifier
+// references a type name that is not registered as an API object in the SDK
+// config. Catches typos in the type modifier at gen time, before they
+// manifest as broken AOR lookups at runtime.
+func (g *Generator) ValidateRelationshipTags() error {
+	knownTypes := map[string]bool{}
+	for _, group := range g.ApiObjectGroups {
+		for _, obj := range group.ApiObjects {
+			knownTypes[obj.TypeName] = true
+		}
+	}
+
+	var problems []string
+	for _, group := range g.ApiObjectGroups {
+		for objectName, fieldMap := range group.StructTags {
+			for fieldName, tagMap := range fieldMap {
+				rel := tagMap["relationship"]
+				if rel == "" {
+					continue
+				}
+				for _, p := range strings.Split(rel, ";")[1:] {
+					k, v, ok := strings.Cut(p, ":")
+					if !ok || k != "type" {
+						continue
+					}
+					if knownTypes[v] {
+						continue
+					}
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: relationship type:%q does not match any API object",
+						objectName, fieldName, v,
+					))
+				}
+			}
+		}
+	}
+
+	if len(problems) > 0 {
+		sort.Strings(problems)
+		return fmt.Errorf(
+			"%d invalid relationship type reference(s):\n  %s",
+			len(problems), strings.Join(problems, "\n  "),
+		)
+	}
+	return nil
+}
+
 // nameFields returns a list of struct type fields that indicate a struct
 // requires a unique name for the object.
 func nameFields() []string {

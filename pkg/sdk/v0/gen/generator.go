@@ -520,7 +520,10 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 					genDecl := node.(*ast.GenDecl)
 					for _, spec := range genDecl.Specs {
 						switch spec.(type) {
+						// in the case we're looking at a struct type definition, inspect
 						case *ast.TypeSpec:
+							// if the spec is a type spec, get the type spec and
+							// its name
 							typeSpec := spec.(*ast.TypeSpec)
 							objectName = typeSpec.Name.Name
 
@@ -539,6 +542,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 								// human-written description without duplication
 								if mc != nil {
 									if commentGroups, exists := commentMap[genDecl]; exists && len(commentGroups) > 0 {
+										// extract the comment text from the first comment group and clean it up
 										commentText := commentGroups[0].Text()
 										commentText = strings.TrimSpace(commentText)
 										// godoc preserves the source's line breaks;
@@ -546,6 +550,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 										// formats cleanly on one row
 										commentText = strings.ReplaceAll(commentText, "\n", " ")
 										commentText = strings.ReplaceAll(commentText, "\r", " ")
+										// replace multiple consecutive spaces with single space
 										for strings.Contains(commentText, "  ") {
 											commentText = strings.ReplaceAll(commentText, "  ", " ")
 										}
@@ -556,6 +561,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 
 								structTags[objectName] = make(map[string]map[string]string)
 
+								// if so, iterate over the fields
 								for _, field := range structType.Fields.List {
 									// embedded type from the same package
 									// (e.g. `Definition`) appears as *ast.Ident

@@ -40,5 +40,5 @@ type TerraformInstance struct {
 	Outputs *string `json:"Outputs,omitempty" validate:"optional" encrypt:"true"`
 
 	// The definition used to configure the terraform resources.
-	TerraformDefinitionID *uint `json:"TerraformDefinitionID,omitempty" query:"workloaddefinitionid" gorm:"not null" validate:"required"`
+	TerraformDefinitionID *uint `json:"TerraformDefinitionID,omitempty" query:"terraformdefinitionid" gorm:"not null" validate:"required"`
 }

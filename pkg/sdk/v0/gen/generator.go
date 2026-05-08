@@ -848,8 +848,16 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)
 
 // ValidateTags walks every API object's struct tags and returns a non-nil
-// error describing any threeport-specific tag that has an invalid value.
-// Covers the relationship, encrypt, validate, persist, and query tags.
+// error if any threeport-specific tag has an invalid value.
+//
+// Validates:
+//   - relationship: kind is RelationshipRequires or RelationshipOwns;
+//     modifier keys are recognized; the `type:<TypeName>` modifier value
+//     names a registered API object
+//   - encrypt: value matches EncryptTrue
+//   - validate: value matches a recognized validator value
+//   - persist: value matches PersistFalse (true is the default; omit the tag)
+//   - query: value matches queryNamePattern
 func (g *Generator) ValidateTags() error {
 	knownTypes := map[string]bool{}
 	for _, group := range g.ApiObjectGroups {

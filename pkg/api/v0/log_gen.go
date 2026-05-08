@@ -186,8 +186,8 @@ func (lsi *LogStorageInstance) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on LogStorageInstance.
-func (l *LogStorageInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (l *LogStorageInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "ClusterID",
 		objectID:     l.ClusterID,
 		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),

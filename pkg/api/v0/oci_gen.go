@@ -79,8 +79,8 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
-func (o *OciOkeKubernetesRuntimeDefinition) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (o *OciOkeKubernetesRuntimeDefinition) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
 		objectID:     o.KubernetesRuntimeDefinitionID,
 		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
@@ -149,8 +149,8 @@ func (ookri *OciOkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeInstance.
-func (o *OciOkeKubernetesRuntimeInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (o *OciOkeKubernetesRuntimeInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
 		objectID:     o.KubernetesRuntimeInstanceID,
 		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),

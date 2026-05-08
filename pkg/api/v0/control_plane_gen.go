@@ -142,8 +142,8 @@ func (cpi *ControlPlaneInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ControlPlaneInstance.
-func (c *ControlPlaneInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (c *ControlPlaneInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "ControlPlaneDefinitionID",
 		objectID:     c.ControlPlaneDefinitionID,
 		objectType:   util.ObjectTypeName(ControlPlaneDefinition{}),

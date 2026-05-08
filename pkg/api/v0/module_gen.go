@@ -135,8 +135,8 @@ func (mar *ModuleApiRoute) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleApiRoute.
-func (m *ModuleApiRoute) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (m *ModuleApiRoute) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "ModuleApiID",
 		objectID:     m.ModuleApiID,
 		objectType:   util.ObjectTypeName(ModuleApi{}),
@@ -199,8 +199,8 @@ func (mc *ModuleController) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleController.
-func (m *ModuleController) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (m *ModuleController) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "ModuleApiID",
 		objectID:     m.ModuleApiID,
 		objectType:   util.ObjectTypeName(ModuleApi{}),
@@ -263,8 +263,8 @@ func (mo *ModuleObject) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleObject.
-func (m *ModuleObject) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (m *ModuleObject) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "ModuleApiID",
 		objectID:     m.ModuleApiID,
 		objectType:   util.ObjectTypeName(ModuleApi{}),

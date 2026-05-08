@@ -81,8 +81,8 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 	))
 	f.Func().Params(
 		Id(receiver).Op("*").Id(typeName),
-	).Id("ForeignKeys").Params().Index().Id("relationshipForeignKey").BlockFunc(func(g *Group) {
-		g.Return().Index().Id("relationshipForeignKey").ValuesFunc(func(vg *Group) {
+	).Id("ForeignKeys").Params().Index().Id("foreignKey").BlockFunc(func(g *Group) {
+		g.Return().Index().Id("foreignKey").ValuesFunc(func(vg *Group) {
 			for _, foreignKey := range fields {
 				vg.Values(Dict{
 					Id("fieldName"):    Lit(foreignKey.fieldName),

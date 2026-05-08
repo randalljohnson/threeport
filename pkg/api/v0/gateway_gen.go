@@ -148,8 +148,8 @@ func (dni *DomainNameInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on DomainNameInstance.
-func (d *DomainNameInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (d *DomainNameInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "DomainNameDefinitionID",
 		objectID:     d.DomainNameDefinitionID,
 		objectType:   util.ObjectTypeName(DomainNameDefinition{}),
@@ -342,8 +342,8 @@ func (gi *GatewayInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on GatewayInstance.
-func (g *GatewayInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (g *GatewayInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "GatewayDefinitionID",
 		objectID:     g.GatewayDefinitionID,
 		objectType:   util.ObjectTypeName(GatewayDefinition{}),

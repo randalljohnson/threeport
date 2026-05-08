@@ -142,8 +142,8 @@ func (hwi *HelmWorkloadInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on HelmWorkloadInstance.
-func (h *HelmWorkloadInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (h *HelmWorkloadInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "HelmWorkloadDefinitionID",
 		objectID:     h.HelmWorkloadDefinitionID,
 		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),

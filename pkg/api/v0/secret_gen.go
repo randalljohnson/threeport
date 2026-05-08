@@ -82,8 +82,8 @@ func (sd *SecretDefinition) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on SecretDefinition.
-func (s *SecretDefinition) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (s *SecretDefinition) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "AwsProviderID",
 		objectID:     s.AwsProviderID,
 		objectType:   util.ObjectTypeName(AwsProvider{}),
@@ -152,8 +152,8 @@ func (si *SecretInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on SecretInstance.
-func (s *SecretInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (s *SecretInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "HelmWorkloadInstanceID",
 		objectID:     s.HelmWorkloadInstanceID,
 		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),

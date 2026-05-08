@@ -100,8 +100,8 @@ func (ld *LoggingDefinition) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on LoggingDefinition.
-func (l *LoggingDefinition) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (l *LoggingDefinition) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "LokiHelmWorkloadDefinitionID",
 		objectID:     l.LokiHelmWorkloadDefinitionID,
 		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
@@ -175,8 +175,8 @@ func (li *LoggingInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on LoggingInstance.
-func (l *LoggingInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (l *LoggingInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
 		objectID:     l.KubernetesRuntimeInstanceID,
 		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
@@ -260,8 +260,8 @@ func (md *MetricsDefinition) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on MetricsDefinition.
-func (m *MetricsDefinition) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (m *MetricsDefinition) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "KubePrometheusStackHelmWorkloadDefinitionID",
 		objectID:     m.KubePrometheusStackHelmWorkloadDefinitionID,
 		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
@@ -330,8 +330,8 @@ func (mi *MetricsInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on MetricsInstance.
-func (m *MetricsInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (m *MetricsInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "KubePrometheusStackHelmWorkloadInstanceID",
 		objectID:     m.KubePrometheusStackHelmWorkloadInstanceID,
 		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
@@ -410,8 +410,8 @@ func (odd *ObservabilityDashboardDefinition) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ObservabilityDashboardDefinition.
-func (o *ObservabilityDashboardDefinition) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (o *ObservabilityDashboardDefinition) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "GrafanaHelmWorkloadDefinitionID",
 		objectID:     o.GrafanaHelmWorkloadDefinitionID,
 		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
@@ -480,8 +480,8 @@ func (odi *ObservabilityDashboardInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ObservabilityDashboardInstance.
-func (o *ObservabilityDashboardInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (o *ObservabilityDashboardInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "GrafanaHelmWorkloadInstanceID",
 		objectID:     o.GrafanaHelmWorkloadInstanceID,
 		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
@@ -560,8 +560,8 @@ func (osd *ObservabilityStackDefinition) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ObservabilityStackDefinition.
-func (o *ObservabilityStackDefinition) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (o *ObservabilityStackDefinition) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "LoggingDefinitionID",
 		objectID:     o.LoggingDefinitionID,
 		objectType:   util.ObjectTypeName(LoggingDefinition{}),
@@ -640,8 +640,8 @@ func (osi *ObservabilityStackInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ObservabilityStackInstance.
-func (o *ObservabilityStackInstance) ForeignKeys() []relationshipForeignKey {
-	return []relationshipForeignKey{{
+func (o *ObservabilityStackInstance) ForeignKeys() []foreignKey {
+	return []foreignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
 		objectID:     o.KubernetesRuntimeInstanceID,
 		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),

@@ -9,9 +9,9 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// relationshipForeignKey describes a *uint ID field on an API type tagged
+// foreignKey describes a *uint ID field on an API type tagged
 // `relationship:"owns"` or `relationship:"requires"`.
-type relationshipForeignKey struct {
+type foreignKey struct {
 	fieldName    string
 	objectType   string // e.g. "WorkloadInstance"
 	relationship string // sdk.RelationshipOwns or sdk.RelationshipRequires
@@ -22,11 +22,11 @@ type relationshipForeignKey struct {
 // least one tagged foreign key. The SDK generates the method so runtime
 // hooks read it directly instead of reflecting over struct tags.
 type foreignKeyProvider interface {
-	ForeignKeys() []relationshipForeignKey
+	ForeignKeys() []foreignKey
 }
 
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
-func foreignKeysFor(obj interface{}) []relationshipForeignKey {
+func foreignKeysFor(obj interface{}) []foreignKey {
 	p, ok := obj.(foreignKeyProvider)
 	if !ok {
 		return nil
@@ -39,7 +39,7 @@ func foreignKeysFor(obj interface{}) []relationshipForeignKey {
 // on first set.
 func insertAttachedObjectReference(
 	tx *gorm.DB,
-	foreignKey relationshipForeignKey,
+	foreignKey foreignKey,
 	attachedObjectType string,
 	attachedObjectID uint,
 ) error {

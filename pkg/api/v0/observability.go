@@ -129,7 +129,7 @@ type ObservabilityDashboardInstance struct {
 	// The kubernetes runtime where the observability dashboard is installed.
 	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
 
-	// The Grafana Helm workload definition that belongs to this resource.
+	// The Grafana Helm workload instance that belongs to this resource.
 	GrafanaHelmWorkloadInstanceID *uint `json:"GrafanaHelmWorkloadInstanceID,omitempty" query:"grafanahelmworkloadinstanceid" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the

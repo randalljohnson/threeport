@@ -49,7 +49,7 @@ type GatewayInstance struct {
 	// The domain name instance to serve requests for.
 	// DomainNameInstanceID *uint `json:"DomainNameInstanceID,omitempty" query:"domainnameinstanceid" validate:"optional"`
 
-	// GatewayDefinitionID is the definition used to configure the workload instance.
+	// GatewayDefinitionID is the definition used to configure the gateway instance.
 	GatewayDefinitionID *uint `json:"GatewayDefinitionID,omitempty" query:"gatewaydefinitionid" gorm:"not null" validate:"required"`
 
 	// TODO: implement this in the future so we don't need to
@@ -138,7 +138,7 @@ type DomainNameInstance struct {
 	// The definition used to define the instance.
 	DomainNameDefinitionID *uint `json:"DomainNameDefinitionID,omitempty" query:"domainnamedefinitionid" gorm:"not null" validate:"required"`
 
-	// The workload instance this gateway belongs to.
+	// The workload instance this domain name belongs to.
 	WorkloadInstanceID *uint `json:"WorkloadInstanceID,omitempty" query:"workloadresourceinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The cluster where the workload that is using the domain name is running.

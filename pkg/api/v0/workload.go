@@ -71,7 +71,7 @@ type WorkloadResourceInstance struct {
 	// management - added.
 	JSONDefinition *datatypes.JSON `json:"JSONDefinition,omitempty" gorm:"not null" validate:"required"`
 
-	// The workload definition this resource belongs to.
+	// The workload instance this resource belongs to.
 	WorkloadInstanceID *uint `json:"WorkloadInstanceID,omitempty" query:"workloadinstanceid" gorm:"not null" validate:"required"`
 
 	// The most recent operation performed on a Kubernete resource in the

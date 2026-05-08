@@ -24,7 +24,7 @@ type SecretInstance struct {
 	Instance       `mapstructure:",squash"`
 	Reconciliation `mapstructure:",squash"`
 
-	// The kubernetes runtime to which the helm workload is deployed.
+	// The kubernetes runtime to which the secret is deployed.
 	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
 
 	// The SecretDefinition that the secret instance is derived from.

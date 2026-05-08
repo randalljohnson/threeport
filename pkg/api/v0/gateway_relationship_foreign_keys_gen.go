@@ -3,26 +3,26 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on DomainNameInstance.
 func (d *DomainNameInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "DomainNameDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(DomainNameDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(DomainNameDefinition{}),
 		value:        d.DomainNameDefinitionID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		value:        d.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "WorkloadInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(WorkloadInstance{}),
 		value:        d.WorkloadInstanceID,
 	}}
 }
@@ -31,18 +31,18 @@ func (d *DomainNameInstance) RelationshipForeignKeys() []relationshipForeignKey 
 func (g *GatewayInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "GatewayDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(GatewayDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(GatewayDefinition{}),
 		value:        g.GatewayDefinitionID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		value:        g.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "WorkloadInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(WorkloadInstance{}),
 		value:        g.WorkloadInstanceID,
 	}}
 }

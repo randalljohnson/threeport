@@ -3,16 +3,16 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
 func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		value:        g.KubernetesRuntimeDefinitionID,
 	}}
 }
@@ -21,18 +21,18 @@ func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relation
 func (g *GcpGkeKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
 		value:        g.GcpGkeKubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "GcpProviderID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(GcpProvider{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(GcpProvider{}),
 		value:        g.GcpProviderID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		value:        g.KubernetesRuntimeInstanceID,
 	}}
 }

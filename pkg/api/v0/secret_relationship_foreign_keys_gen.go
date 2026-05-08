@@ -3,16 +3,16 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on SecretDefinition.
 func (s *SecretDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "AwsProviderID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(AwsProvider{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(AwsProvider{}),
 		value:        s.AwsProviderID,
 	}}
 }
@@ -21,23 +21,23 @@ func (s *SecretDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 func (s *SecretInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "HelmWorkloadInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(HelmWorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(HelmWorkloadInstance{}),
 		value:        s.HelmWorkloadInstanceID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		value:        s.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "SecretDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(SecretDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(SecretDefinition{}),
 		value:        s.SecretDefinitionID,
 	}, {
 		fieldName:    "WorkloadInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(WorkloadInstance{}),
 		value:        s.WorkloadInstanceID,
 	}}
 }

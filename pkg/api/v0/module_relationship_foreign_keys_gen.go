@@ -3,16 +3,16 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on ModuleApiRoute.
 func (m *ModuleApiRoute) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ModuleApiID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(ModuleApi{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(ModuleApi{}),
 		value:        m.ModuleApiID,
 	}}
 }
@@ -21,8 +21,8 @@ func (m *ModuleApiRoute) RelationshipForeignKeys() []relationshipForeignKey {
 func (m *ModuleController) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ModuleApiID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(ModuleApi{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(ModuleApi{}),
 		value:        m.ModuleApiID,
 	}}
 }
@@ -31,13 +31,13 @@ func (m *ModuleController) RelationshipForeignKeys() []relationshipForeignKey {
 func (m *ModuleObject) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ModuleApiID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(ModuleApi{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(ModuleApi{}),
 		value:        m.ModuleApiID,
 	}, {
 		fieldName:    "ModuleControllerID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(ModuleController{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(ModuleController{}),
 		value:        m.ModuleControllerID,
 	}}
 }

@@ -3,21 +3,21 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on TerraformInstance.
 func (t *TerraformInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "AwsProviderID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(AwsProvider{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(AwsProvider{}),
 		value:        t.AwsProviderID,
 	}, {
 		fieldName:    "TerraformDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(TerraformDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(TerraformDefinition{}),
 		value:        t.TerraformDefinitionID,
 	}}
 }

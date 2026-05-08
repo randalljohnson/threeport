@@ -3,16 +3,16 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
 func (o *OciOkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		value:        o.KubernetesRuntimeDefinitionID,
 	}}
 }
@@ -21,18 +21,18 @@ func (o *OciOkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relation
 func (o *OciOkeKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		value:        o.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "OciOkeKubernetesRuntimeDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
 		value:        o.OciOkeKubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "OciProviderID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(OciProvider{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(OciProvider{}),
 		value:        o.OciProviderID,
 	}}
 }

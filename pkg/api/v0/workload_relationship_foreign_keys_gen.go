@@ -3,21 +3,21 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on WorkloadInstance.
 func (w *WorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		value:        w.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "WorkloadDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(WorkloadDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(WorkloadDefinition{}),
 		value:        w.WorkloadDefinitionID,
 	}}
 }
@@ -26,8 +26,8 @@ func (w *WorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
 func (w *WorkloadResourceDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "WorkloadDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(WorkloadDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(WorkloadDefinition{}),
 		value:        w.WorkloadDefinitionID,
 	}}
 }
@@ -36,8 +36,8 @@ func (w *WorkloadResourceDefinition) RelationshipForeignKeys() []relationshipFor
 func (w *WorkloadResourceInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "WorkloadInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(WorkloadInstance{}),
 		value:        w.WorkloadInstanceID,
 	}}
 }

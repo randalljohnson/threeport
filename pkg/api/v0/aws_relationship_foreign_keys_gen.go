@@ -3,16 +3,16 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
 func (a *AwsEksKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		value:        a.KubernetesRuntimeDefinitionID,
 	}}
 }
@@ -21,18 +21,18 @@ func (a *AwsEksKubernetesRuntimeDefinition) RelationshipForeignKeys() []relation
 func (a *AwsEksKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "AwsEksKubernetesRuntimeDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
 		value:        a.AwsEksKubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "AwsProviderID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(AwsProvider{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(AwsProvider{}),
 		value:        a.AwsProviderID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		value:        a.KubernetesRuntimeInstanceID,
 	}}
 }

@@ -3,31 +3,31 @@
 package v0
 
 import (
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
-	v01 "github.com/threeport/threeport/pkg/util/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // RelationshipForeignKeys returns the relationship-tagged foreign keys on KubernetesRuntimeInstance.
 func (k *KubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "DnsControllerInstanceID",
-		relationship: v0.RelationshipOwns,
-		targetType:   v01.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+		targetType:   util.ObjectTypeName(WorkloadInstance{}),
 		value:        k.DnsControllerInstanceID,
 	}, {
 		fieldName:    "GatewayControllerInstanceID",
-		relationship: v0.RelationshipOwns,
-		targetType:   v01.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+		targetType:   util.ObjectTypeName(WorkloadInstance{}),
 		value:        k.GatewayControllerInstanceID,
 	}, {
 		fieldName:    "KubernetesRuntimeDefinitionID",
-		relationship: v0.RelationshipRequires,
-		targetType:   v01.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		value:        k.KubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "SecretsControllerInstanceID",
-		relationship: v0.RelationshipOwns,
-		targetType:   v01.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+		targetType:   util.ObjectTypeName(WorkloadInstance{}),
 		value:        k.SecretsControllerInstanceID,
 	}}
 }

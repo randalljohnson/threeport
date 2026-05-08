@@ -114,11 +114,7 @@ func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete runs before the KubernetesRuntimeInstance is deleted.
-//
-// The delete is gated by the AOR delete-guard via WorkloadInstance's
-// `KubernetesRuntimeInstanceID` `relationship:"requires"` tag, so no
-// custom check is needed here.
+// beforeDelete validates the KubernetesRuntimeInstance before delete.
 func (k *KubernetesRuntimeInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

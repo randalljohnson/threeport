@@ -9,7 +9,7 @@ type SecretDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The AWS account ID, if the provider is AWS.
-	AwsProviderID *uint `json:"AwsProviderID,omitempty" query:"awsproviderid" validate:"optional"`
+	AwsProviderID *uint `json:"AwsProviderID,omitempty" query:"awsproviderid" validate:"optional" relationship:"requires"`
 
 	// The secret value to be stored in the provider.
 	Data *datatypes.JSON `json:"Data,omitempty" query:"data" validate:"required" persist:"false"`
@@ -25,14 +25,14 @@ type SecretInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The kubernetes runtime to which the secret is deployed.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The SecretDefinition that the secret instance is derived from.
-	SecretDefinitionID *uint `json:"SecretDefinitionID,omitempty" query:"secretdefinitionid" gorm:"not null" validate:"required"`
+	SecretDefinitionID *uint `json:"SecretDefinitionID,omitempty" query:"secretdefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The workload instance that the secret is associated with.
 	WorkloadInstanceID *uint `json:"WorkloadInstanceID,omitempty" query:"workloadinstanceid" validate:"optional" relationship:"requires"`
 
 	// The helm workload instance that the secret is associated with.
-	HelmWorkloadInstanceID *uint `json:"HelmWorkloadInstanceID,omitempty" query:"helmworkloadinstanceid" validate:"optional"`
+	HelmWorkloadInstanceID *uint `json:"HelmWorkloadInstanceID,omitempty" query:"helmworkloadinstanceid" validate:"optional" relationship:"requires"`
 }

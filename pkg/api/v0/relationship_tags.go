@@ -10,8 +10,11 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// Relationship tag and column values.
+// Relationship struct tag name and the values that classify a foreign-key
+// relationship. The same values are persisted in the AttachedObjectReference
+// `Relationship` column.
 const (
+	RelationshipTag       = "relationship"
 	RelationshipDescribes = "describes"
 	RelationshipRequires  = "requires"
 	RelationshipOwns      = "owns"
@@ -52,7 +55,7 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 	var fks []relationshipForeignKey
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
-		rel := field.Tag.Get("relationship")
+		rel := field.Tag.Get(RelationshipTag)
 		if rel == "" {
 			continue
 		}

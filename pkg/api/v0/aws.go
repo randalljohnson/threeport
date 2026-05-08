@@ -68,7 +68,7 @@ type AwsEksKubernetesRuntimeDefinition struct {
 	AwsEksKubernetesRuntimeInstances []*AwsEksKubernetesRuntimeInstance `json:"AwsEksKubernetesRuntimeInstances,omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for an EKS cluster in AWS.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 }
 
 // AwsEksKubernetesRuntimeInstance is a deployed instance of an EKS cluster.
@@ -78,17 +78,17 @@ type AwsEksKubernetesRuntimeInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The AWS provider in which the EKS cluster is provisioned.
-	AwsProviderID *uint `json:"AwsProviderID,omitempty" query:"awsproviderid" gorm:"not null" validate:"required"`
+	AwsProviderID *uint `json:"AwsProviderID,omitempty" query:"awsproviderid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The AWS region in which the cluster is provisioned.
 	Region *string `json:"Region,omitempty" query:"region" validate:"optional"`
 
 	// The definition that configures this instance.
-	AwsEksKubernetesRuntimeDefinitionID *uint `json:"AwsEksKubernetesRuntimeDefinitionID,omitempty" query:"awsekskubernetesruntimedefinitionid" gorm:"not null" validate:"required"`
+	AwsEksKubernetesRuntimeDefinitionID *uint `json:"AwsEksKubernetesRuntimeDefinitionID,omitempty" query:"awsekskubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// An inventory of all AWS resources for the EKS cluster.
 	ResourceInventory *datatypes.JSON `json:"ResourceInventory,omitempty" validate:"optional"`
 
 	// The kubernetes runtime instance associated with the AWS EKS cluster.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 }

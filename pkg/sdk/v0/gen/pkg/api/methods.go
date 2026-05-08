@@ -21,7 +21,7 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	pluralize := pluralize.NewClient()
 
 	// flatten StructTags so we can look up an API type's relationship-tagged
-	// fields by TypeName when emitting RelationshipForeignKeys methods
+	// fields by TypeName when emitting ForeignKeys methods
 	typeToTags := make(map[string]map[string]map[string]string)
 	for _, group := range g.ApiObjectGroups {
 		for typeName, tagMap := range group.StructTags {

@@ -78,8 +78,8 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
-// RelationshipForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
-func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+// ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
+func (g *GcpGkeKubernetesRuntimeDefinition) ForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
 		objectID:     g.KubernetesRuntimeDefinitionID,
@@ -148,8 +148,8 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 	return ggkri.DeletionScheduled
 }
 
-// RelationshipForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeInstance.
-func (g *GcpGkeKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
+// ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeInstance.
+func (g *GcpGkeKubernetesRuntimeInstance) ForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
 		objectID:     g.GcpGkeKubernetesRuntimeDefinitionID,

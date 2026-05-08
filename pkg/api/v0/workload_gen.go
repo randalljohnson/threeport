@@ -204,8 +204,8 @@ func (wi *WorkloadInstance) ScheduledForDeletion() *time.Time {
 	return wi.DeletionScheduled
 }
 
-// RelationshipForeignKeys returns the relationship-tagged foreign keys on WorkloadInstance.
-func (w *WorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
+// ForeignKeys returns the relationship-tagged foreign keys on WorkloadInstance.
+func (w *WorkloadInstance) ForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
 		objectID:     w.KubernetesRuntimeInstanceID,
@@ -273,8 +273,8 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
 
-// RelationshipForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceDefinition.
-func (w *WorkloadResourceDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+// ForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceDefinition.
+func (w *WorkloadResourceDefinition) ForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "WorkloadDefinitionID",
 		objectID:     w.WorkloadDefinitionID,
@@ -337,8 +337,8 @@ func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
 }
 
-// RelationshipForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceInstance.
-func (w *WorkloadResourceInstance) RelationshipForeignKeys() []relationshipForeignKey {
+// ForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceInstance.
+func (w *WorkloadResourceInstance) ForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "WorkloadInstanceID",
 		objectID:     w.WorkloadInstanceID,

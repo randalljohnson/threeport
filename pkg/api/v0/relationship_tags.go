@@ -18,20 +18,20 @@ type relationshipForeignKey struct {
 	objectID     *uint
 }
 
-// relationshipForeignKeyProvider is implemented by every API type with at
+// foreignKeyProvider is implemented by every API type with at
 // least one tagged foreign key. The SDK generates the method so runtime
 // hooks read it directly instead of reflecting over struct tags.
-type relationshipForeignKeyProvider interface {
-	RelationshipForeignKeys() []relationshipForeignKey
+type foreignKeyProvider interface {
+	ForeignKeys() []relationshipForeignKey
 }
 
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
 func foreignKeysFor(obj interface{}) []relationshipForeignKey {
-	p, ok := obj.(relationshipForeignKeyProvider)
+	p, ok := obj.(foreignKeyProvider)
 	if !ok {
 		return nil
 	}
-	return p.RelationshipForeignKeys()
+	return p.ForeignKeys()
 }
 
 // insertAttachedObjectReference creates an attached object reference for

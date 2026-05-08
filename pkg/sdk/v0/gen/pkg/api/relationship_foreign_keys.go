@@ -52,8 +52,8 @@ func relationshipForeignKeyFields(
 	return fields
 }
 
-// emitRelationshipForeignKeyMethod adds the RelationshipForeignKeys()
-// method for typeName to f.
+// emitRelationshipForeignKeyMethod adds the ForeignKeys() method for
+// typeName to f.
 func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relationshipForeignKeyField) {
 	receiver := strings.ToLower(string(typeName[0]))
 
@@ -76,12 +76,12 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 	}
 
 	f.Comment(fmt.Sprintf(
-		"RelationshipForeignKeys returns the relationship-tagged foreign keys on %s.",
+		"ForeignKeys returns the relationship-tagged foreign keys on %s.",
 		typeName,
 	))
 	f.Func().Params(
 		Id(receiver).Op("*").Id(typeName),
-	).Id("RelationshipForeignKeys").Params().Index().Id("relationshipForeignKey").BlockFunc(func(g *Group) {
+	).Id("ForeignKeys").Params().Index().Id("relationshipForeignKey").BlockFunc(func(g *Group) {
 		g.Return().Index().Id("relationshipForeignKey").ValuesFunc(func(vg *Group) {
 			for _, foreignKey := range fields {
 				vg.Values(Dict{

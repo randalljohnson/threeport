@@ -141,8 +141,8 @@ func (kri *KubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return kri.DeletionScheduled
 }
 
-// RelationshipForeignKeys returns the relationship-tagged foreign keys on KubernetesRuntimeInstance.
-func (k *KubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
+// ForeignKeys returns the relationship-tagged foreign keys on KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) ForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "DnsControllerInstanceID",
 		objectID:     k.DnsControllerInstanceID,

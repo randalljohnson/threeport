@@ -11,14 +11,14 @@ import (
 func (w *WorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     w.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        w.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "WorkloadDefinitionID",
+		objectID:     w.WorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(WorkloadDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(WorkloadDefinition{}),
-		value:        w.WorkloadDefinitionID,
 	}}
 }
 
@@ -26,9 +26,9 @@ func (w *WorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
 func (w *WorkloadResourceDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "WorkloadDefinitionID",
+		objectID:     w.WorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(WorkloadDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(WorkloadDefinition{}),
-		value:        w.WorkloadDefinitionID,
 	}}
 }
 
@@ -36,8 +36,8 @@ func (w *WorkloadResourceDefinition) RelationshipForeignKeys() []relationshipFor
 func (w *WorkloadResourceInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "WorkloadInstanceID",
+		objectID:     w.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(WorkloadInstance{}),
-		value:        w.WorkloadInstanceID,
 	}}
 }

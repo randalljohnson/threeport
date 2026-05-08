@@ -11,9 +11,9 @@ import (
 func (o *OciOkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
+		objectID:     o.KubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		value:        o.KubernetesRuntimeDefinitionID,
 	}}
 }
 
@@ -21,18 +21,18 @@ func (o *OciOkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relation
 func (o *OciOkeKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     o.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        o.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "OciOkeKubernetesRuntimeDefinitionID",
+		objectID:     o.OciOkeKubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
-		value:        o.OciOkeKubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "OciProviderID",
+		objectID:     o.OciProviderID,
+		objectType:   util.ObjectTypeName(OciProvider{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(OciProvider{}),
-		value:        o.OciProviderID,
 	}}
 }

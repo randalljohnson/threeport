@@ -11,14 +11,14 @@ import (
 func (l *LoggingDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "LokiHelmWorkloadDefinitionID",
+		objectID:     l.LokiHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
-		value:        l.LokiHelmWorkloadDefinitionID,
 	}, {
 		fieldName:    "PromtailHelmWorkloadDefinitionID",
+		objectID:     l.PromtailHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
-		value:        l.PromtailHelmWorkloadDefinitionID,
 	}}
 }
 
@@ -26,24 +26,24 @@ func (l *LoggingDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 func (l *LoggingInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     l.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        l.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "LoggingDefinitionID",
+		objectID:     l.LoggingDefinitionID,
+		objectType:   util.ObjectTypeName(LoggingDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(LoggingDefinition{}),
-		value:        l.LoggingDefinitionID,
 	}, {
 		fieldName:    "LokiHelmWorkloadInstanceID",
+		objectID:     l.LokiHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadInstance{}),
-		value:        l.LokiHelmWorkloadInstanceID,
 	}, {
 		fieldName:    "PromtailHelmWorkloadInstanceID",
+		objectID:     l.PromtailHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadInstance{}),
-		value:        l.PromtailHelmWorkloadInstanceID,
 	}}
 }
 
@@ -51,9 +51,9 @@ func (l *LoggingInstance) RelationshipForeignKeys() []relationshipForeignKey {
 func (m *MetricsDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubePrometheusStackHelmWorkloadDefinitionID",
+		objectID:     m.KubePrometheusStackHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
-		value:        m.KubePrometheusStackHelmWorkloadDefinitionID,
 	}}
 }
 
@@ -61,19 +61,19 @@ func (m *MetricsDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 func (m *MetricsInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubePrometheusStackHelmWorkloadInstanceID",
+		objectID:     m.KubePrometheusStackHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadInstance{}),
-		value:        m.KubePrometheusStackHelmWorkloadInstanceID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     m.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        m.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "MetricsDefinitionID",
+		objectID:     m.MetricsDefinitionID,
+		objectType:   util.ObjectTypeName(MetricsDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(MetricsDefinition{}),
-		value:        m.MetricsDefinitionID,
 	}}
 }
 
@@ -81,9 +81,9 @@ func (m *MetricsInstance) RelationshipForeignKeys() []relationshipForeignKey {
 func (o *ObservabilityDashboardDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "GrafanaHelmWorkloadDefinitionID",
+		objectID:     o.GrafanaHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
-		value:        o.GrafanaHelmWorkloadDefinitionID,
 	}}
 }
 
@@ -91,19 +91,19 @@ func (o *ObservabilityDashboardDefinition) RelationshipForeignKeys() []relations
 func (o *ObservabilityDashboardInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "GrafanaHelmWorkloadInstanceID",
+		objectID:     o.GrafanaHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(HelmWorkloadInstance{}),
-		value:        o.GrafanaHelmWorkloadInstanceID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     o.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        o.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "ObservabilityDashboardDefinitionID",
+		objectID:     o.ObservabilityDashboardDefinitionID,
+		objectType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
-		value:        o.ObservabilityDashboardDefinitionID,
 	}}
 }
 
@@ -111,19 +111,19 @@ func (o *ObservabilityDashboardInstance) RelationshipForeignKeys() []relationshi
 func (o *ObservabilityStackDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "LoggingDefinitionID",
+		objectID:     o.LoggingDefinitionID,
+		objectType:   util.ObjectTypeName(LoggingDefinition{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(LoggingDefinition{}),
-		value:        o.LoggingDefinitionID,
 	}, {
 		fieldName:    "MetricsDefinitionID",
+		objectID:     o.MetricsDefinitionID,
+		objectType:   util.ObjectTypeName(MetricsDefinition{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(MetricsDefinition{}),
-		value:        o.MetricsDefinitionID,
 	}, {
 		fieldName:    "ObservabilityDashboardDefinitionID",
+		objectID:     o.ObservabilityDashboardDefinitionID,
+		objectType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
-		value:        o.ObservabilityDashboardDefinitionID,
 	}}
 }
 
@@ -131,28 +131,28 @@ func (o *ObservabilityStackDefinition) RelationshipForeignKeys() []relationshipF
 func (o *ObservabilityStackInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     o.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        o.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "LoggingInstanceID",
+		objectID:     o.LoggingInstanceID,
+		objectType:   util.ObjectTypeName(LoggingInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(LoggingInstance{}),
-		value:        o.LoggingInstanceID,
 	}, {
 		fieldName:    "MetricsInstanceID",
+		objectID:     o.MetricsInstanceID,
+		objectType:   util.ObjectTypeName(MetricsInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(MetricsInstance{}),
-		value:        o.MetricsInstanceID,
 	}, {
 		fieldName:    "ObservabilityDashboardInstanceID",
+		objectID:     o.ObservabilityDashboardInstanceID,
+		objectType:   util.ObjectTypeName(ObservabilityDashboardInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(ObservabilityDashboardInstance{}),
-		value:        o.ObservabilityDashboardInstanceID,
 	}, {
 		fieldName:    "ObservabilityStackDefinitionID",
+		objectID:     o.ObservabilityStackDefinitionID,
+		objectType:   util.ObjectTypeName(ObservabilityStackDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ObservabilityStackDefinition{}),
-		value:        o.ObservabilityStackDefinitionID,
 	}}
 }

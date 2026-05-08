@@ -11,8 +11,8 @@ import (
 func (l *LogStorageInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ClusterID",
+		objectID:     l.ClusterID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        l.ClusterID,
 	}}
 }

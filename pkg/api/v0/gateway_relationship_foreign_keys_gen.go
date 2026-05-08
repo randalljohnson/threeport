@@ -11,19 +11,19 @@ import (
 func (d *DomainNameInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "DomainNameDefinitionID",
+		objectID:     d.DomainNameDefinitionID,
+		objectType:   util.ObjectTypeName(DomainNameDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(DomainNameDefinition{}),
-		value:        d.DomainNameDefinitionID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     d.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        d.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "WorkloadInstanceID",
+		objectID:     d.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(WorkloadInstance{}),
-		value:        d.WorkloadInstanceID,
 	}}
 }
 
@@ -31,18 +31,18 @@ func (d *DomainNameInstance) RelationshipForeignKeys() []relationshipForeignKey 
 func (g *GatewayInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "GatewayDefinitionID",
+		objectID:     g.GatewayDefinitionID,
+		objectType:   util.ObjectTypeName(GatewayDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(GatewayDefinition{}),
-		value:        g.GatewayDefinitionID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     g.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        g.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "WorkloadInstanceID",
+		objectID:     g.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(WorkloadInstance{}),
-		value:        g.WorkloadInstanceID,
 	}}
 }

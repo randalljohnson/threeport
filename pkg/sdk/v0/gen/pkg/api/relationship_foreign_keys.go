@@ -93,7 +93,7 @@ func emitRelationshipForeignKeysGen(
 // relationship-tagged field, used during emission.
 type relationshipForeignKeyField struct {
 	fieldName    string
-	targetType   string
+	objectType   string
 	relationship string // sdk.RelationshipRequires or sdk.RelationshipOwns
 }
 
@@ -115,16 +115,16 @@ func relationshipForeignKeyFields(
 		}
 		parts := strings.Split(rel, ";")
 		kind := parts[0]
-		targetType := strings.TrimSuffix(fieldName, "ID")
+		objectType := strings.TrimSuffix(fieldName, "ID")
 		for _, p := range parts[1:] {
 			k, v, ok := strings.Cut(p, ":")
 			if ok && k == sdk.RelationshipTypeKey {
-				targetType = v
+				objectType = v
 			}
 		}
 		fields = append(fields, relationshipForeignKeyField{
 			fieldName:    fieldName,
-			targetType:   targetType,
+			objectType:   objectType,
 			relationship: kind,
 		})
 	}
@@ -150,11 +150,11 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 
 	// targetTypeRef emits util.ObjectTypeName(<type>{}) so the type name is
 	// compile-checked instead of being a free-floating string literal
-	targetTypeRef := func(targetType string) *Statement {
+	targetTypeRef := func(objectType string) *Statement {
 		return Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"ObjectTypeName",
-		).Call(Id(targetType).Values())
+		).Call(Id(objectType).Values())
 	}
 
 	f.Comment(fmt.Sprintf(
@@ -168,9 +168,9 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 			for _, foreignKey := range fields {
 				vg.Values(Dict{
 					Id("fieldName"):    Lit(foreignKey.fieldName),
-					Id("targetType"):   targetTypeRef(foreignKey.targetType),
+					Id("objectType"):   targetTypeRef(foreignKey.objectType),
 					Id("relationship"): kindLit(foreignKey.relationship),
-					Id("value"):        Id(receiver).Dot(foreignKey.fieldName),
+					Id("objectID"):        Id(receiver).Dot(foreignKey.fieldName),
 				})
 			}
 		})

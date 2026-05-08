@@ -11,9 +11,9 @@ import (
 func (a *AwsEksKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
+		objectID:     a.KubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		value:        a.KubernetesRuntimeDefinitionID,
 	}}
 }
 
@@ -21,18 +21,18 @@ func (a *AwsEksKubernetesRuntimeDefinition) RelationshipForeignKeys() []relation
 func (a *AwsEksKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "AwsEksKubernetesRuntimeDefinitionID",
+		objectID:     a.AwsEksKubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
-		value:        a.AwsEksKubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "AwsProviderID",
+		objectID:     a.AwsProviderID,
+		objectType:   util.ObjectTypeName(AwsProvider{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(AwsProvider{}),
-		value:        a.AwsProviderID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     a.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        a.KubernetesRuntimeInstanceID,
 	}}
 }

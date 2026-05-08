@@ -11,13 +11,13 @@ import (
 func (h *HelmWorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "HelmWorkloadDefinitionID",
+		objectID:     h.HelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
-		value:        h.HelmWorkloadDefinitionID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     h.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        h.KubernetesRuntimeInstanceID,
 	}}
 }

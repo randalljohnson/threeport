@@ -11,9 +11,9 @@ import (
 func (m *ModuleApiRoute) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ModuleApiID",
+		objectID:     m.ModuleApiID,
+		objectType:   util.ObjectTypeName(ModuleApi{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ModuleApi{}),
-		value:        m.ModuleApiID,
 	}}
 }
 
@@ -21,9 +21,9 @@ func (m *ModuleApiRoute) RelationshipForeignKeys() []relationshipForeignKey {
 func (m *ModuleController) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ModuleApiID",
+		objectID:     m.ModuleApiID,
+		objectType:   util.ObjectTypeName(ModuleApi{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ModuleApi{}),
-		value:        m.ModuleApiID,
 	}}
 }
 
@@ -31,13 +31,13 @@ func (m *ModuleController) RelationshipForeignKeys() []relationshipForeignKey {
 func (m *ModuleObject) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ModuleApiID",
+		objectID:     m.ModuleApiID,
+		objectType:   util.ObjectTypeName(ModuleApi{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ModuleApi{}),
-		value:        m.ModuleApiID,
 	}, {
 		fieldName:    "ModuleControllerID",
+		objectID:     m.ModuleControllerID,
+		objectType:   util.ObjectTypeName(ModuleController{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ModuleController{}),
-		value:        m.ModuleControllerID,
 	}}
 }

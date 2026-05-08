@@ -11,23 +11,23 @@ import (
 func (k *KubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "DnsControllerInstanceID",
+		objectID:     k.DnsControllerInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(WorkloadInstance{}),
-		value:        k.DnsControllerInstanceID,
 	}, {
 		fieldName:    "GatewayControllerInstanceID",
+		objectID:     k.GatewayControllerInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(WorkloadInstance{}),
-		value:        k.GatewayControllerInstanceID,
 	}, {
 		fieldName:    "KubernetesRuntimeDefinitionID",
+		objectID:     k.KubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		value:        k.KubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "SecretsControllerInstanceID",
+		objectID:     k.SecretsControllerInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
 		relationship: sdk.RelationshipOwns,
-		targetType:   util.ObjectTypeName(WorkloadInstance{}),
-		value:        k.SecretsControllerInstanceID,
 	}}
 }

@@ -13,9 +13,9 @@ import (
 // object that is tagged `relationship:"owns"` or `relationship:"requires"`.
 type relationshipForeignKey struct {
 	fieldName    string
-	targetType   string // e.g. "WorkloadInstance"
+	objectType   string // e.g. "WorkloadInstance"
 	relationship string // sdk.RelationshipOwns or sdk.RelationshipRequires
-	value        *uint
+	objectID        *uint
 }
 
 // relationshipForeignKeyProvider is implemented by every API type with at least one
@@ -38,11 +38,11 @@ func foreignKeysFor(obj interface{}) []relationshipForeignKey {
 // Both `owns` and `requires` edges are immutable once set, so this only ever
 // runs on fresh edges.
 func insertAttachedObjectReference(tx *gorm.DB, foreignKey relationshipForeignKey, attachedID *uint, attachedType string) error {
-	targetType := util.TargetTypeName(attachedType, foreignKey.targetType)
+	objectType := util.TargetTypeName(attachedType, foreignKey.objectType)
 	relationship := foreignKey.relationship
 	if err := tx.Create(&AttachedObjectReference{
-		ObjectID:           foreignKey.value,
-		ObjectType:         &targetType,
+		ObjectID:           foreignKey.objectID,
+		ObjectType:         &objectType,
 		AttachedObjectID:   attachedID,
 		AttachedObjectType: &attachedType,
 		Relationship:       &relationship,
@@ -71,7 +71,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 		)
 	}
 	for _, foreignKey := range foreignKeys {
-		if foreignKey.value == nil {
+		if foreignKey.objectID == nil {
 			continue
 		}
 		if err := insertAttachedObjectReference(tx, foreignKey, objID, objType); err != nil {
@@ -86,7 +86,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 // any row that is owned by another object via an incoming `owns` reference.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	for _, foreignKey := range foreignKeysFor(obj) {
-		if foreignKey.value == nil {
+		if foreignKey.objectID == nil {
 			continue
 		}
 		if !tx.Statement.Changed(foreignKey.fieldName) {
@@ -139,7 +139,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		return nil
 	}
 	for _, foreignKey := range foreignKeys {
-		if foreignKey.value == nil {
+		if foreignKey.objectID == nil {
 			continue
 		}
 		if !tx.Statement.Changed(foreignKey.fieldName) {

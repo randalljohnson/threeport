@@ -11,9 +11,9 @@ import (
 func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "KubernetesRuntimeDefinitionID",
+		objectID:     g.KubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		value:        g.KubernetesRuntimeDefinitionID,
 	}}
 }
 
@@ -21,18 +21,18 @@ func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relation
 func (g *GcpGkeKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
+		objectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
-		value:        g.GcpGkeKubernetesRuntimeDefinitionID,
 	}, {
 		fieldName:    "GcpProviderID",
+		objectID:     g.GcpProviderID,
+		objectType:   util.ObjectTypeName(GcpProvider{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(GcpProvider{}),
-		value:        g.GcpProviderID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     g.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        g.KubernetesRuntimeInstanceID,
 	}}
 }

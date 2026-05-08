@@ -11,18 +11,18 @@ import (
 func (c *ControlPlaneInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "ControlPlaneDefinitionID",
+		objectID:     c.ControlPlaneDefinitionID,
+		objectType:   util.ObjectTypeName(ControlPlaneDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ControlPlaneDefinition{}),
-		value:        c.ControlPlaneDefinitionID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     c.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        c.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "ParentControlPlaneInstanceID",
+		objectID:     c.ParentControlPlaneInstanceID,
+		objectType:   util.ObjectTypeName(ControlPlaneInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(ControlPlaneInstance{}),
-		value:        c.ParentControlPlaneInstanceID,
 	}}
 }

@@ -11,13 +11,13 @@ import (
 func (t *TerraformInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "AwsProviderID",
+		objectID:     t.AwsProviderID,
+		objectType:   util.ObjectTypeName(AwsProvider{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(AwsProvider{}),
-		value:        t.AwsProviderID,
 	}, {
 		fieldName:    "TerraformDefinitionID",
+		objectID:     t.TerraformDefinitionID,
+		objectType:   util.ObjectTypeName(TerraformDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(TerraformDefinition{}),
-		value:        t.TerraformDefinitionID,
 	}}
 }

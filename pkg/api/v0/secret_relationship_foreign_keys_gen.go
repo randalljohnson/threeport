@@ -11,9 +11,9 @@ import (
 func (s *SecretDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "AwsProviderID",
+		objectID:     s.AwsProviderID,
+		objectType:   util.ObjectTypeName(AwsProvider{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(AwsProvider{}),
-		value:        s.AwsProviderID,
 	}}
 }
 
@@ -21,23 +21,23 @@ func (s *SecretDefinition) RelationshipForeignKeys() []relationshipForeignKey {
 func (s *SecretInstance) RelationshipForeignKeys() []relationshipForeignKey {
 	return []relationshipForeignKey{{
 		fieldName:    "HelmWorkloadInstanceID",
+		objectID:     s.HelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(HelmWorkloadInstance{}),
-		value:        s.HelmWorkloadInstanceID,
 	}, {
 		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     s.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		value:        s.KubernetesRuntimeInstanceID,
 	}, {
 		fieldName:    "SecretDefinitionID",
+		objectID:     s.SecretDefinitionID,
+		objectType:   util.ObjectTypeName(SecretDefinition{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(SecretDefinition{}),
-		value:        s.SecretDefinitionID,
 	}, {
 		fieldName:    "WorkloadInstanceID",
+		objectID:     s.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
 		relationship: sdk.RelationshipRequires,
-		targetType:   util.ObjectTypeName(WorkloadInstance{}),
-		value:        s.WorkloadInstanceID,
 	}}
 }

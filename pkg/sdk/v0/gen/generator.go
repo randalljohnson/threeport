@@ -859,6 +859,9 @@ var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)
 //   - persist: value matches PersistFalse (true is the default; omit the tag)
 //   - query: value matches queryNamePattern
 func (g *Generator) ValidateTags() error {
+	// build the set of registered API type names so the relationship
+	// validator can verify that any `type:<TypeName>` modifier names a
+	// real type
 	knownTypes := map[string]bool{}
 	for _, group := range g.ApiObjectGroups {
 		for _, obj := range group.ApiObjects {
@@ -866,14 +869,19 @@ func (g *Generator) ValidateTags() error {
 		}
 	}
 
+	// accumulate one human-readable problem string per invalid tag so a
+	// single run reports every issue rather than failing on the first
 	var problems []string
 	for _, group := range g.ApiObjectGroups {
 		for objectName, fieldMap := range group.StructTags {
 			for fieldName, tagMap := range fieldMap {
+				// relationship tags carry sub-structure; delegate to a
+				// helper that splits and validates kind + modifiers
 				if rel, ok := tagMap[sdk.RelationshipTag]; ok && rel != "" {
 					problems = append(problems,
 						validateRelationshipTag(objectName, fieldName, rel, knownTypes)...)
 				}
+				// encrypt is a single-value flag; only EncryptTrue is meaningful
 				if enc, ok := tagMap[sdk.EncryptTag]; ok && enc != sdk.EncryptTrue {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (only %q allowed)",
@@ -881,6 +889,8 @@ func (g *Generator) ValidateTags() error {
 						sdk.EncryptTag, enc, sdk.EncryptTrue,
 					))
 				}
+				// validate accepts one of three known values; anything else
+				// is a typo or a stale value and must be flagged
 				if val, ok := tagMap[sdk.ValidateTag]; ok &&
 					val != sdk.ValidateRequired &&
 					val != sdk.ValidateOptional &&
@@ -892,6 +902,9 @@ func (g *Generator) ValidateTags() error {
 						sdk.ValidateRequired, sdk.ValidateOptional, sdk.ValidateOptionalAssociation,
 					))
 				}
+				// persist defaults to true — only PersistFalse opts out;
+				// any other value (including an explicit "true") is noise
+				// and likely indicates a misunderstanding
 				if per, ok := tagMap[sdk.PersistTag]; ok && per != sdk.PersistFalse {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (only %q is meaningful; omit the tag for the default)",
@@ -899,6 +912,8 @@ func (g *Generator) ValidateTags() error {
 						sdk.PersistTag, per, sdk.PersistFalse,
 					))
 				}
+				// query feeds URL parameter parsing; restrict to lowercase
+				// alphanumerics so codegen and route matching stay simple
 				if q, ok := tagMap[sdk.QueryTag]; ok && !queryNamePattern.MatchString(q) {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (must match %s)",
@@ -911,6 +926,8 @@ func (g *Generator) ValidateTags() error {
 	}
 
 	if len(problems) > 0 {
+		// sort so the error output is stable across runs — map iteration
+		// order is otherwise random and would make the message jitter
 		sort.Strings(problems)
 		return fmt.Errorf(
 			"%d invalid tag(s):\n  %s",
@@ -924,10 +941,16 @@ func (g *Generator) ValidateTags() error {
 // `<kind>[;<key>:<value>...]` into its kind and modifier key/value pairs,
 // returning any malformed modifier entries separately.
 func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]string, malformed []string) {
+	// the kind is the first `;`-separated segment; everything after it is
+	// a modifier list. Split on `;` rather than parsing greedily so a
+	// missing modifier list (just `<kind>`) still parses cleanly with an
+	// empty modifier slice
 	parts := strings.Split(rel, ";")
 	kind = parts[0]
 	modifiers = make(map[string]string)
 	for _, p := range parts[1:] {
+		// each modifier is `key:value`; preserve malformed entries so the
+		// caller can report them rather than silently dropping garbage
 		k, v, ok := strings.Cut(p, ":")
 		if !ok {
 			malformed = append(malformed, p)
@@ -944,6 +967,9 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 	var problems []string
 	kind, modifiers, malformed := ParseRelationshipTagValue(rel)
 
+	// kind anchors the whole tag — flag anything that isn't one of the
+	// two recognized values up front so downstream emission can rely on
+	// the value being safe
 	if kind != sdk.RelationshipRequires && kind != sdk.RelationshipOwns {
 		problems = append(problems, fmt.Sprintf(
 			"%s.%s: invalid relationship kind %q (expected %q or %q)",
@@ -951,15 +977,22 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 			sdk.RelationshipRequires, sdk.RelationshipOwns,
 		))
 	}
+	// surface malformed modifier entries (no colon) verbatim; they were
+	// preserved by the parser specifically so the caller can report them
 	for _, m := range malformed {
 		problems = append(problems, fmt.Sprintf(
 			"%s.%s: malformed relationship modifier %q (expected key:value)",
 			object, field, m,
 		))
 	}
+	// only the type modifier is currently meaningful; reject any other key
+	// to catch typos early. When new modifiers are added, extend this
+	// switch rather than letting unknown keys through silently
 	for k, v := range modifiers {
 		switch k {
 		case sdk.RelationshipTypeKey:
+			// the value must name a registered API type — otherwise the
+			// generated code would reference a type that doesn't exist
 			if !knownTypes[v] {
 				problems = append(problems, fmt.Sprintf(
 					"%s.%s: relationship references unknown API type %q",

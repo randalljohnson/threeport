@@ -87,6 +87,15 @@ The inverted shape — wrapping the happy path inside nested `if`/`else` branche
   - NOT: `ClusterOCID`, `OCIUser`, `UserPropagation`
   - Start with action verbs: `Get`, `Create`, `Validate`, `Deploy`, `Delete`, `Generate`, `Write`, etc.
 
+## Spell Out Identifiers
+- **Default to spelling words out fully** in identifiers (types, fields, vars, params, function names, constants). Short ad-hoc abbreviations like `fk`, `fks`, `cfg`, `req` are hard to read at a glance and inconsistent across files.
+  - Use `foreignKey` not `fk`; `foreignKeys` not `fks`; `RelationshipForeignKey` not `RelationshipFK`.
+  - Use `config` not `cfg`; `request` not `req`; `response` not `res`/`resp`.
+- **Same rule for filenames.** Prefer `relationship_foreign_keys.go` over `relationship_fks.go`.
+- **In comments and prose**, write "foreign key" rather than "FK".
+- Established domain abbreviations are fine (`ID`, `URL`, `OCI`, `AWS`, `GCP`, `OCID`, `JSON`, `YAML`, `HTTP`, `TLS`, `DNS`, `K8s`/`Kubernetes`). When in doubt, spell it out.
+- Loop and very-short-scope variables (`i`, `j`, `err`, `ok`) are fine as-is — the rule is about *abbreviations of domain words*, not standard Go idioms.
+
 ## Function Documentation (Docstrings)
 - ALL functions (both exported and unexported) require documentation comments
 - Comments must begin with the function name followed by a verb describing what it does

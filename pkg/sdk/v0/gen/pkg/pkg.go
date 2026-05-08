@@ -32,8 +32,8 @@ func GenPkg(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	// generate per-type relationship foreign key methods so GORM hooks
 	// don't reflect over struct tags on every write
-	if err := api.GenRelationshipFKMethods(generator, sdkConfig); err != nil {
-		return fmt.Errorf("failed to generate relationship FK methods: %w", err)
+	if err := api.GenRelationshipForeignKeyMethods(generator, sdkConfig); err != nil {
+		return fmt.Errorf("failed to generate relationship foreign key methods: %w", err)
 	}
 
 	//////////////////////////// pkg/api-server ////////////////////////////////

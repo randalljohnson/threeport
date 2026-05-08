@@ -15,7 +15,7 @@ import (
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
 )
 
-// GenRelationshipFKMethods emits a per-type
+// GenRelationshipForeignKeyMethods emits a per-type
 // `RelationshipForeignKeys() []relationshipForeignKey` method that returns
 // a pre-computed slice for each API object's relationship-tagged fields.
 // The runtime GORM hooks call this method instead of walking struct tags
@@ -24,7 +24,7 @@ import (
 // The relationshipForeignKey struct is unexported, so this only emits for
 // core threeport. Module support requires exporting the type and is left
 // as a follow-up.
-func GenRelationshipFKMethods(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+func GenRelationshipForeignKeyMethods(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	if generator.Module {
 		return nil
 	}
@@ -40,7 +40,7 @@ func GenRelationshipFKMethods(generator *gen.Generator, sdkConfig *sdk.SdkConfig
 
 	for _, objCollection := range generator.VersionedApiObjectCollections {
 		for _, objGroup := range objCollection.VersionedApiObjectGroups {
-			if err := emitRelationshipFKsGen(generator, objCollection.Version, objGroup, typeToTags); err != nil {
+			if err := emitRelationshipForeignKeysGen(objCollection.Version, objGroup, typeToTags); err != nil {
 				return fmt.Errorf(
 					"failed to emit %s_relationship_foreign_keys_gen.go: %w",
 					objGroup.Name, err,
@@ -51,26 +51,28 @@ func GenRelationshipFKMethods(generator *gen.Generator, sdkConfig *sdk.SdkConfig
 	return nil
 }
 
-// emitRelationshipFKsGen writes <group>_relationship_fks_gen.go containing
-// one method per API object. Skips writing if no object in the group has
-// any relationship-tagged fields.
-func emitRelationshipFKsGen(
-	generator *gen.Generator,
+// emitRelationshipForeignKeysGen writes
+// <group>_relationship_foreign_keys_gen.go containing one method per API
+// object. Skips writing if no object in the group has any
+// relationship-tagged fields.
+func emitRelationshipForeignKeysGen(
 	version string,
 	objGroup gen.VersionedApiObjectGroup,
 	typeToTags map[string]map[string]map[string]string,
 ) error {
 	f := NewFile(version)
 	f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+	f.ImportAlias("github.com/threeport/threeport/pkg/sdk/v0", "sdk")
+	f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 
 	emittedAny := false
 	for _, apiObj := range objGroup.ApiObjects {
-		fields := relationshipFields(apiObj.TypeName, typeToTags)
+		fields := relationshipForeignKeyFields(apiObj.TypeName, typeToTags)
 		if len(fields) == 0 {
 			continue
 		}
 		emittedAny = true
-		emitRelationshipFKMethod(f, apiObj.TypeName, fields, generator.Module)
+		emitRelationshipForeignKeyMethod(f, apiObj.TypeName, fields)
 	}
 	if !emittedAny {
 		return nil
@@ -83,29 +85,29 @@ func emitRelationshipFKsGen(
 	if _, err := util.WriteCodeToFile(f, outputPath, true); err != nil {
 		return err
 	}
-	cli.Info(fmt.Sprintf("source code for relationship FK methods written to %s", outputPath))
+	cli.Info(fmt.Sprintf("source code for relationship foreign key methods written to %s", outputPath))
 	return nil
 }
 
-// relationshipFKField holds the parsed shape of a single relationship-tagged
-// field, used during emission.
-type relationshipFKField struct {
+// relationshipForeignKeyField holds the parsed shape of a single
+// relationship-tagged field, used during emission.
+type relationshipForeignKeyField struct {
 	fieldName    string
 	targetType   string
 	relationship string // sdk.RelationshipRequires or sdk.RelationshipOwns
 }
 
-// relationshipFields returns the relationship-tagged fields of typeName in
-// declaration order (sorted for deterministic emission).
-func relationshipFields(
+// relationshipForeignKeyFields returns the relationship-tagged fields of
+// typeName in deterministic (sorted) order for stable emission.
+func relationshipForeignKeyFields(
 	typeName string,
 	typeToTags map[string]map[string]map[string]string,
-) []relationshipFKField {
+) []relationshipForeignKeyField {
 	tagsForType, ok := typeToTags[typeName]
 	if !ok {
 		return nil
 	}
-	var fields []relationshipFKField
+	var fields []relationshipForeignKeyField
 	for fieldName, tagMap := range tagsForType {
 		rel, ok := tagMap[sdk.RelationshipTag]
 		if !ok || rel == "" {
@@ -120,7 +122,7 @@ func relationshipFields(
 				targetType = v
 			}
 		}
-		fields = append(fields, relationshipFKField{
+		fields = append(fields, relationshipForeignKeyField{
 			fieldName:    fieldName,
 			targetType:   targetType,
 			relationship: kind,
@@ -132,9 +134,9 @@ func relationshipFields(
 	return fields
 }
 
-// emitRelationshipFKMethod adds the RelationshipForeignKeys() method for
-// typeName to f.
-func emitRelationshipFKMethod(f *File, typeName string, fields []relationshipFKField, module bool) {
+// emitRelationshipForeignKeyMethod adds the RelationshipForeignKeys()
+// method for typeName to f.
+func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relationshipForeignKeyField) {
 	receiver := strings.ToLower(string(typeName[0]))
 
 	kindLit := func(kind string) *Statement {
@@ -146,10 +148,6 @@ func emitRelationshipFKMethod(f *File, typeName string, fields []relationshipFKF
 		}
 	}
 
-	f.Comment(fmt.Sprintf(
-		"RelationshipForeignKeys returns the relationship-tagged foreign keys on %s.",
-		typeName,
-	))
 	// targetTypeRef emits util.ObjectTypeName(<type>{}) so the type name is
 	// compile-checked instead of being a free-floating string literal
 	targetTypeRef := func(targetType string) *Statement {
@@ -159,16 +157,20 @@ func emitRelationshipFKMethod(f *File, typeName string, fields []relationshipFKF
 		).Call(Id(targetType).Values())
 	}
 
+	f.Comment(fmt.Sprintf(
+		"RelationshipForeignKeys returns the relationship-tagged foreign keys on %s.",
+		typeName,
+	))
 	f.Func().Params(
 		Id(receiver).Op("*").Id(typeName),
 	).Id("RelationshipForeignKeys").Params().Index().Id("relationshipForeignKey").BlockFunc(func(g *Group) {
 		g.Return().Index().Id("relationshipForeignKey").ValuesFunc(func(vg *Group) {
-			for _, fk := range fields {
+			for _, foreignKey := range fields {
 				vg.Values(Dict{
-					Id("fieldName"):    Lit(fk.fieldName),
-					Id("targetType"):   targetTypeRef(fk.targetType),
-					Id("relationship"): kindLit(fk.relationship),
-					Id("value"):        Id(receiver).Dot(fk.fieldName),
+					Id("fieldName"):    Lit(foreignKey.fieldName),
+					Id("targetType"):   targetTypeRef(foreignKey.targetType),
+					Id("relationship"): kindLit(foreignKey.relationship),
+					Id("value"):        Id(receiver).Dot(foreignKey.fieldName),
 				})
 			}
 		})

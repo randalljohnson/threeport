@@ -929,12 +929,31 @@ func (g *Generator) ValidateTags() error {
 	return nil
 }
 
+// ParseRelationshipTagValue splits a relationship tag value of the form
+// `<kind>[;<key>:<value>...]` into its kind and modifier key/value pairs.
+// Modifier entries that aren't `key:value` are returned in malformed for
+// callers that want to surface them.
+func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]string, malformed []string) {
+	parts := strings.Split(rel, ";")
+	kind = parts[0]
+	modifiers = make(map[string]string)
+	for _, p := range parts[1:] {
+		k, v, ok := strings.Cut(p, ":")
+		if !ok {
+			malformed = append(malformed, p)
+			continue
+		}
+		modifiers[k] = v
+	}
+	return
+}
+
 // validateRelationshipTag returns one error string per problem found in a
-// single relationship tag value of the form `<kind>[;<key>:<value>...]`.
+// single relationship tag value.
 func validateRelationshipTag(object, field, rel string, knownTypes map[string]bool) []string {
 	var problems []string
-	parts := strings.Split(rel, ";")
-	kind := parts[0]
+	kind, modifiers, malformed := ParseRelationshipTagValue(rel)
+
 	if kind != sdk.RelationshipRequires && kind != sdk.RelationshipOwns {
 		problems = append(problems, fmt.Sprintf(
 			"%s.%s: invalid relationship kind %q (expected %q or %q)",
@@ -942,15 +961,13 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 			sdk.RelationshipRequires, sdk.RelationshipOwns,
 		))
 	}
-	for _, p := range parts[1:] {
-		k, v, ok := strings.Cut(p, ":")
-		if !ok {
-			problems = append(problems, fmt.Sprintf(
-				"%s.%s: malformed relationship modifier %q (expected key:value)",
-				object, field, p,
-			))
-			continue
-		}
+	for _, m := range malformed {
+		problems = append(problems, fmt.Sprintf(
+			"%s.%s: malformed relationship modifier %q (expected key:value)",
+			object, field, m,
+		))
+	}
+	for k, v := range modifiers {
 		switch k {
 		case sdk.RelationshipTypeKey:
 			if !knownTypes[v] {

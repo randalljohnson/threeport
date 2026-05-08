@@ -113,14 +113,10 @@ func relationshipForeignKeyFields(
 		if !ok || rel == "" {
 			continue
 		}
-		parts := strings.Split(rel, ";")
-		kind := parts[0]
+		kind, modifiers, _ := gen.ParseRelationshipTagValue(rel)
 		objectType := strings.TrimSuffix(fieldName, "ID")
-		for _, p := range parts[1:] {
-			k, v, ok := strings.Cut(p, ":")
-			if ok && k == sdk.RelationshipTypeKey {
-				objectType = v
-			}
+		if v, ok := modifiers[sdk.RelationshipTypeKey]; ok {
+			objectType = v
 		}
 		fields = append(fields, relationshipForeignKeyField{
 			fieldName:    fieldName,

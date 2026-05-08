@@ -30,6 +30,12 @@ func GenPkg(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		return fmt.Errorf("failed to generate API object validation hooks: %w", err)
 	}
 
+	// generate per-type relationship foreign key methods so GORM hooks
+	// don't reflect over struct tags on every write
+	if err := api.GenRelationshipFKMethods(generator, sdkConfig); err != nil {
+		return fmt.Errorf("failed to generate relationship FK methods: %w", err)
+	}
+
 	//////////////////////////// pkg/api-server ////////////////////////////////
 	// generate API server routes
 	if err := apiserver.GenRoutes(generator, sdkConfig); err != nil {

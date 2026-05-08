@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -97,6 +99,21 @@ func (ld *LoggingDefinition) ScheduledForDeletion() *time.Time {
 	return ld.DeletionScheduled
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on LoggingDefinition.
+func (l *LoggingDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "LokiHelmWorkloadDefinitionID",
+		objectID:     l.LokiHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "PromtailHelmWorkloadDefinitionID",
+		objectID:     l.PromtailHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		relationship: sdk.RelationshipOwns,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -155,6 +172,31 @@ func (li *LoggingInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (li *LoggingInstance) ScheduledForDeletion() *time.Time {
 	return li.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on LoggingInstance.
+func (l *LoggingInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     l.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "LoggingDefinitionID",
+		objectID:     l.LoggingDefinitionID,
+		objectType:   util.ObjectTypeName(LoggingDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "LokiHelmWorkloadInstanceID",
+		objectID:     l.LokiHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "PromtailHelmWorkloadInstanceID",
+		objectID:     l.PromtailHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -217,6 +259,16 @@ func (md *MetricsDefinition) ScheduledForDeletion() *time.Time {
 	return md.DeletionScheduled
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on MetricsDefinition.
+func (m *MetricsDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubePrometheusStackHelmWorkloadDefinitionID",
+		objectID:     m.KubePrometheusStackHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		relationship: sdk.RelationshipOwns,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -275,6 +327,26 @@ func (mi *MetricsInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (mi *MetricsInstance) ScheduledForDeletion() *time.Time {
 	return mi.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on MetricsInstance.
+func (m *MetricsInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubePrometheusStackHelmWorkloadInstanceID",
+		objectID:     m.KubePrometheusStackHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     m.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "MetricsDefinitionID",
+		objectID:     m.MetricsDefinitionID,
+		objectType:   util.ObjectTypeName(MetricsDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -337,6 +409,16 @@ func (odd *ObservabilityDashboardDefinition) ScheduledForDeletion() *time.Time {
 	return odd.DeletionScheduled
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ObservabilityDashboardDefinition.
+func (o *ObservabilityDashboardDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "GrafanaHelmWorkloadDefinitionID",
+		objectID:     o.GrafanaHelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		relationship: sdk.RelationshipOwns,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -395,6 +477,26 @@ func (odi *ObservabilityDashboardInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (odi *ObservabilityDashboardInstance) ScheduledForDeletion() *time.Time {
 	return odi.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ObservabilityDashboardInstance.
+func (o *ObservabilityDashboardInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "GrafanaHelmWorkloadInstanceID",
+		objectID:     o.GrafanaHelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     o.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "ObservabilityDashboardDefinitionID",
+		objectID:     o.ObservabilityDashboardDefinitionID,
+		objectType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -457,6 +559,26 @@ func (osd *ObservabilityStackDefinition) ScheduledForDeletion() *time.Time {
 	return osd.DeletionScheduled
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ObservabilityStackDefinition.
+func (o *ObservabilityStackDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "LoggingDefinitionID",
+		objectID:     o.LoggingDefinitionID,
+		objectType:   util.ObjectTypeName(LoggingDefinition{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "MetricsDefinitionID",
+		objectID:     o.MetricsDefinitionID,
+		objectType:   util.ObjectTypeName(MetricsDefinition{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "ObservabilityDashboardDefinitionID",
+		objectID:     o.ObservabilityDashboardDefinitionID,
+		objectType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
+		relationship: sdk.RelationshipOwns,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -515,4 +637,34 @@ func (osi *ObservabilityStackInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (osi *ObservabilityStackInstance) ScheduledForDeletion() *time.Time {
 	return osi.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ObservabilityStackInstance.
+func (o *ObservabilityStackInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     o.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "LoggingInstanceID",
+		objectID:     o.LoggingInstanceID,
+		objectType:   util.ObjectTypeName(LoggingInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "MetricsInstanceID",
+		objectID:     o.MetricsInstanceID,
+		objectType:   util.ObjectTypeName(MetricsInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "ObservabilityDashboardInstanceID",
+		objectID:     o.ObservabilityDashboardInstanceID,
+		objectType:   util.ObjectTypeName(ObservabilityDashboardInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "ObservabilityStackDefinitionID",
+		objectID:     o.ObservabilityStackDefinitionID,
+		objectType:   util.ObjectTypeName(ObservabilityStackDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }

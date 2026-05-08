@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -76,6 +78,16 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
+func (a *AwsEksKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubernetesRuntimeDefinitionID",
+		objectID:     a.KubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -134,6 +146,26 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (aekri *AwsEksKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return aekri.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeInstance.
+func (a *AwsEksKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "AwsEksKubernetesRuntimeDefinitionID",
+		objectID:     a.AwsEksKubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "AwsProviderID",
+		objectID:     a.AwsProviderID,
+		objectType:   util.ObjectTypeName(AwsProvider{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     a.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the

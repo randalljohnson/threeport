@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -137,4 +139,19 @@ func (hwi *HelmWorkloadInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (hwi *HelmWorkloadInstance) ScheduledForDeletion() *time.Time {
 	return hwi.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on HelmWorkloadInstance.
+func (h *HelmWorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "HelmWorkloadDefinitionID",
+		objectID:     h.HelmWorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     h.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }

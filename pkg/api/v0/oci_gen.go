@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -76,6 +78,16 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
+func (o *OciOkeKubernetesRuntimeDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubernetesRuntimeDefinitionID",
+		objectID:     o.KubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -134,6 +146,26 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ookri *OciOkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return ookri.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeInstance.
+func (o *OciOkeKubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     o.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "OciOkeKubernetesRuntimeDefinitionID",
+		objectID:     o.OciOkeKubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "OciProviderID",
+		objectID:     o.OciProviderID,
+		objectType:   util.ObjectTypeName(OciProvider{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the

@@ -17,15 +17,27 @@ import (
 
 // GenApiObjectMethods generates the source code for the API objects constants
 // and methods.
-func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	pluralize := pluralize.NewClient()
-	for _, objCollection := range gen.VersionedApiObjectCollections {
+
+	// flatten StructTags so we can look up an API type's relationship-tagged
+	// fields by TypeName when emitting RelationshipForeignKeys methods
+	typeToTags := make(map[string]map[string]map[string]string)
+	for _, group := range g.ApiObjectGroups {
+		for typeName, tagMap := range group.StructTags {
+			typeToTags[typeName] = tagMap
+		}
+	}
+
+	for _, objCollection := range g.VersionedApiObjectCollections {
 		for _, objGroup := range objCollection.VersionedApiObjectGroups {
 			f := NewFile(objCollection.Version)
 			f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 			f.ImportAlias("github.com/threeport/threeport/pkg/notifications/v0", "notifications")
 			f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "tpv0")
+			f.ImportAlias("github.com/threeport/threeport/pkg/sdk/v0", "sdk")
+			f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 
 			// object type constants
 			objectTypes := &Statement{}
@@ -39,7 +51,7 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			// object REST path constants
 			paths := &Statement{}
 			for _, apiObj := range objGroup.ApiObjects {
-				if gen.Module {
+				if g.Module {
 					paths.Id(fmt.Sprintf(
 						"Path%sVersions",
 						apiObj.TypeName,
@@ -172,7 +184,7 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				)
 				// GetType method
 				typeLiteral := apiObj.TypeName
-				if gen.Module {
+				if g.Module {
 					typeLiteral = fmt.Sprintf(
 						"%s/%s.%s",
 						sdkConfig.ApiNamespace,
@@ -202,6 +214,15 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					).Id("ScheduledForDeletion").Params().Op("*").Qual("time", "Time").Block(
 						Return(Id(util.TypeAbbrev(apiObj.TypeName)).Dot("DeletionScheduled")),
 					)
+				}
+
+				// RelationshipForeignKeys method (only emitted when the type
+				// has at least one relationship-tagged FK; module support is
+				// pending so this only emits for core threeport)
+				if !g.Module {
+					if foreignKeys := relationshipForeignKeyFields(apiObj.TypeName, typeToTags); len(foreignKeys) > 0 {
+						emitRelationshipForeignKeyMethod(f, apiObj.TypeName, foreignKeys)
+					}
 				}
 			}
 

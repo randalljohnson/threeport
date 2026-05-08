@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 const (
@@ -132,6 +134,16 @@ func (mar *ModuleApiRoute) GetVersion() string {
 	return "v0"
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ModuleApiRoute.
+func (m *ModuleApiRoute) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "ModuleApiID",
+		objectID:     m.ModuleApiID,
+		objectType:   util.ObjectTypeName(ModuleApi{}),
+		relationship: sdk.RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -186,6 +198,16 @@ func (mc *ModuleController) GetVersion() string {
 	return "v0"
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ModuleController.
+func (m *ModuleController) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "ModuleApiID",
+		objectID:     m.ModuleApiID,
+		objectType:   util.ObjectTypeName(ModuleApi{}),
+		relationship: sdk.RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -238,4 +260,19 @@ func (mo *ModuleObject) GetType() string {
 // GetVersion returns the version of the API object.
 func (mo *ModuleObject) GetVersion() string {
 	return "v0"
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ModuleObject.
+func (m *ModuleObject) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "ModuleApiID",
+		objectID:     m.ModuleApiID,
+		objectType:   util.ObjectTypeName(ModuleApi{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "ModuleControllerID",
+		objectID:     m.ModuleControllerID,
+		objectType:   util.ObjectTypeName(ModuleController{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }

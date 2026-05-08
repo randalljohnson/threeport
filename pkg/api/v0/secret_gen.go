@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -79,6 +81,16 @@ func (sd *SecretDefinition) ScheduledForDeletion() *time.Time {
 	return sd.DeletionScheduled
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on SecretDefinition.
+func (s *SecretDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "AwsProviderID",
+		objectID:     s.AwsProviderID,
+		objectType:   util.ObjectTypeName(AwsProvider{}),
+		relationship: sdk.RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -137,4 +149,29 @@ func (si *SecretInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (si *SecretInstance) ScheduledForDeletion() *time.Time {
 	return si.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on SecretInstance.
+func (s *SecretInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "HelmWorkloadInstanceID",
+		objectID:     s.HelmWorkloadInstanceID,
+		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     s.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "SecretDefinitionID",
+		objectID:     s.SecretDefinitionID,
+		objectType:   util.ObjectTypeName(SecretDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "WorkloadInstanceID",
+		objectID:     s.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }

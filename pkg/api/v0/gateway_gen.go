@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -143,6 +145,26 @@ func (dni *DomainNameInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (dni *DomainNameInstance) ScheduledForDeletion() *time.Time {
 	return dni.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on DomainNameInstance.
+func (d *DomainNameInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "DomainNameDefinitionID",
+		objectID:     d.DomainNameDefinitionID,
+		objectType:   util.ObjectTypeName(DomainNameDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     d.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "WorkloadInstanceID",
+		objectID:     d.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -317,6 +339,26 @@ func (gi *GatewayInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (gi *GatewayInstance) ScheduledForDeletion() *time.Time {
 	return gi.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on GatewayInstance.
+func (g *GatewayInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "GatewayDefinitionID",
+		objectID:     g.GatewayDefinitionID,
+		objectType:   util.ObjectTypeName(GatewayDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     g.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "WorkloadInstanceID",
+		objectID:     g.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the

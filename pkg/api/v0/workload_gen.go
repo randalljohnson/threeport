@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -202,6 +204,21 @@ func (wi *WorkloadInstance) ScheduledForDeletion() *time.Time {
 	return wi.DeletionScheduled
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on WorkloadInstance.
+func (w *WorkloadInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     w.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "WorkloadDefinitionID",
+		objectID:     w.WorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(WorkloadDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -256,6 +273,16 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
 
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceDefinition.
+func (w *WorkloadResourceDefinition) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "WorkloadDefinitionID",
+		objectID:     w.WorkloadDefinitionID,
+		objectType:   util.ObjectTypeName(WorkloadDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -308,4 +335,14 @@ func (wri *WorkloadResourceInstance) GetType() string {
 // GetVersion returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceInstance.
+func (w *WorkloadResourceInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "WorkloadInstanceID",
+		objectID:     w.WorkloadInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }

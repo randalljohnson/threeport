@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -137,4 +139,19 @@ func (ti *TerraformInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ti *TerraformInstance) ScheduledForDeletion() *time.Time {
 	return ti.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on TerraformInstance.
+func (t *TerraformInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "AwsProviderID",
+		objectID:     t.AwsProviderID,
+		objectType:   util.ObjectTypeName(AwsProvider{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "TerraformDefinitionID",
+		objectID:     t.TerraformDefinitionID,
+		objectType:   util.ObjectTypeName(TerraformDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }

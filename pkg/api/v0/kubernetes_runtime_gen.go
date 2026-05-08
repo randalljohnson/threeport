@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -137,4 +139,29 @@ func (kri *KubernetesRuntimeInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (kri *KubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return kri.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "DnsControllerInstanceID",
+		objectID:     k.DnsControllerInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "GatewayControllerInstanceID",
+		objectID:     k.GatewayControllerInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}, {
+		fieldName:    "KubernetesRuntimeDefinitionID",
+		objectID:     k.KubernetesRuntimeDefinitionID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "SecretsControllerInstanceID",
+		objectID:     k.SecretsControllerInstanceID,
+		objectType:   util.ObjectTypeName(WorkloadInstance{}),
+		relationship: sdk.RelationshipOwns,
+	}}
 }

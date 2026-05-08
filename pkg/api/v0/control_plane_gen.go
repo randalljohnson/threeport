@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -137,4 +139,24 @@ func (cpi *ControlPlaneInstance) GetVersion() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (cpi *ControlPlaneInstance) ScheduledForDeletion() *time.Time {
 	return cpi.DeletionScheduled
+}
+
+// RelationshipForeignKeys returns the relationship-tagged foreign keys on ControlPlaneInstance.
+func (c *ControlPlaneInstance) RelationshipForeignKeys() []relationshipForeignKey {
+	return []relationshipForeignKey{{
+		fieldName:    "ControlPlaneDefinitionID",
+		objectID:     c.ControlPlaneDefinitionID,
+		objectType:   util.ObjectTypeName(ControlPlaneDefinition{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "KubernetesRuntimeInstanceID",
+		objectID:     c.KubernetesRuntimeInstanceID,
+		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}, {
+		fieldName:    "ParentControlPlaneInstanceID",
+		objectID:     c.ParentControlPlaneInstanceID,
+		objectType:   util.ObjectTypeName(ControlPlaneInstance{}),
+		relationship: sdk.RelationshipRequires,
+	}}
 }

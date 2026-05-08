@@ -507,12 +507,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			// of struct tags for each object
 			structTags := make(map[string]map[string]map[string]string)
 
-			// walk the file's top-level declarations. The AST hierarchy is:
-			//   File → Decls → *ast.GenDecl (groups `type`/`var`/`const`)
-			//                  → Specs → *ast.TypeSpec (one type definition)
-			//                            → Type → *ast.StructType (the struct body)
-			// only struct type declarations are model candidates; aliases,
-			// interfaces, var/const blocks fall through.
+			// inspect the syntax tree for the object models
 			for _, node := range pf.Decls {
 				switch node.(type) {
 				case *ast.GenDecl:
@@ -527,8 +522,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 							typeSpec := spec.(*ast.TypeSpec)
 							objectName = typeSpec.Name.Name
 
-							// skip non-struct types (e.g. type aliases) —
-							// the API type model only describes structs
+							// check if this is a struct type
 							if structType, ok := typeSpec.Type.(*ast.StructType); ok {
 								var mc *ApiObject
 								for _, c := range apiObjects {
@@ -537,17 +531,13 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 									}
 								}
 
-								// pull the godoc above the type into Description
-								// so generated CLI help and swagger reflect the
-								// human-written description without duplication
+								// extract comment description for the struct type
 								if mc != nil {
 									if commentGroups, exists := commentMap[genDecl]; exists && len(commentGroups) > 0 {
 										// extract the comment text from the first comment group and clean it up
 										commentText := commentGroups[0].Text()
 										commentText = strings.TrimSpace(commentText)
-										// godoc preserves the source's line breaks;
-										// flatten to a single line so emitted code
-										// formats cleanly on one row
+										// normalize whitespace and remove unnecessary line breaks
 										commentText = strings.ReplaceAll(commentText, "\n", " ")
 										commentText = strings.ReplaceAll(commentText, "\r", " ")
 										// replace multiple consecutive spaces with single space
@@ -563,33 +553,28 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 
 								// if so, iterate over the fields
 								for _, field := range structType.Fields.List {
-									// embedded type from the same package
-									// (e.g. `Definition`) appears as *ast.Ident
+									// fields will be of type *ast.Ident
 									if identType, ok := field.Type.(*ast.Ident); ok {
 										if util.StringSliceContains(nameFields(), identType.Name, true) {
 											mc.NameField = true
 										}
 									}
-									// embedded type from another package (e.g.
-									// `pkgName.Definition`) appears as
-									// *ast.SelectorExpr; the Sel field is the
-									// trailing identifier we want to match
+									// structs will be of type *ast.SelectorExpr
 									if identType, ok := field.Type.(*ast.SelectorExpr); ok {
 										if util.StringSliceContains(nameFields(), identType.Sel.Name, true) {
 											mc.NameField = true
 										}
 									}
-									// named fields like `Name string` —
-									// field.Names is len > 0 only for these,
-									// so it differentiates them from embeds
+									// each field is an *ast.Field, which has a Names field that
+									// is a []*ast.Ident - iterate over those names to find the
+									// one we're looking for
 									for _, name := range field.Names {
 										if util.StringSliceContains(nameFields(), name.Name, true) {
 											mc.NameField = true
 										}
 									}
 
-									// embedded fields have no Names; only
-									// named fields contribute tag entries
+									// populate the struct tags map
 									if len(field.Names) == 0 {
 										continue
 									}
@@ -858,21 +843,13 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 	return false
 }
 
-// queryNamePattern matches lowercase ASCII letters and digits, the
-// established convention for query tag values.
+// queryNamePattern matches the lowercase ASCII letters and digits allowed
+// in query tag values.
 var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)
 
 // ValidateTags walks every API object's struct tags and returns a non-nil
-// error if any threeport-specific tag has an invalid value.
-//
-// Validates:
-//   - relationship: kind is RelationshipRequires or RelationshipOwns;
-//     modifier keys are recognized; the `type:<TypeName>` modifier value
-//     names a registered API object
-//   - encrypt: value matches EncryptTrue
-//   - validate: value matches a recognized validator value
-//   - persist: value matches PersistFalse (true is the default; omit the tag)
-//   - query: value matches queryNamePattern
+// error describing any threeport-specific tag that has an invalid value.
+// Covers the relationship, encrypt, validate, persist, and query tags.
 func (g *Generator) ValidateTags() error {
 	knownTypes := map[string]bool{}
 	for _, group := range g.ApiObjectGroups {
@@ -936,9 +913,8 @@ func (g *Generator) ValidateTags() error {
 }
 
 // ParseRelationshipTagValue splits a relationship tag value of the form
-// `<kind>[;<key>:<value>...]` into its kind and modifier key/value pairs.
-// Modifier entries that aren't `key:value` are returned in malformed for
-// callers that want to surface them.
+// `<kind>[;<key>:<value>...]` into its kind and modifier key/value pairs,
+// returning any malformed modifier entries separately.
 func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]string, malformed []string) {
 	parts := strings.Split(rel, ";")
 	kind = parts[0]

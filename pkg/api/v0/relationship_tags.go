@@ -20,19 +20,8 @@ type relationshipForeignKey struct {
 	value        *uint
 }
 
-// findRelationshipForeignKeys walks the struct fields of obj and returns each
-// *uint field tagged `relationship:`. Returns an error if a tag value is
-// invalid or the field shape does not match the foreign-key convention.
-//
-// Tag syntax (GORM-style): the first value is the kind ("requires" or
-// "owns"); optional `;`-separated `key:value` pairs follow. Currently
-// supported keys:
-//   - type: <TypeName>  override the default <FieldName minus "ID"> target type
-//
-// Examples:
-//
-//	relationship:"requires"
-//	relationship:"owns;type:WorkloadInstance"
+// findRelationshipForeignKeys returns each *uint <Target>ID field on obj
+// tagged with `relationship:"<kind>[;type:<TypeName>]"`.
 func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, error) {
 	objVal := reflect.ValueOf(obj)
 	if objVal.Kind() == reflect.Ptr {
@@ -50,6 +39,9 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 		if rel == "" {
 			continue
 		}
+		// the FK convention is <TargetType>ID *uint; reject anything else so
+		// a typo in the field name fails loudly instead of producing a wrong
+		// target type
 		if !strings.HasSuffix(field.Name, "ID") {
 			return nil, fmt.Errorf(
 				"field %s has relationship tag but does not end in 'ID'",
@@ -63,8 +55,8 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 			)
 		}
 
-		// parse the tag: first value is the kind, subsequent `;`-separated
-		// parts are key:value modifiers.
+		// grammar: <kind>[;<key>:<value>...] — first part is the kind, rest
+		// are modifiers
 		parts := strings.Split(rel, ";")
 		kind := parts[0]
 		if kind != sdk.RelationshipOwns && kind != sdk.RelationshipRequires {
@@ -73,6 +65,8 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 				field.Name, kind, sdk.RelationshipOwns, sdk.RelationshipRequires,
 			)
 		}
+		// default target = field name minus "ID"; the type modifier
+		// overrides for fields whose name doesn't match the target struct
 		targetType := strings.TrimSuffix(field.Name, "ID")
 		for _, p := range parts[1:] {
 			k, v, ok := strings.Cut(p, ":")
@@ -107,44 +101,11 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 	return fks, nil
 }
 
-// objectID extracts the ID field of an API object via reflection.
-func objectID(obj interface{}) *uint {
-	objVal := reflect.ValueOf(obj)
-	if objVal.Kind() == reflect.Ptr {
-		objVal = objVal.Elem()
-	}
-	idField := objVal.FieldByName("ID")
-	if !idField.IsValid() || idField.Kind() != reflect.Ptr || idField.IsNil() {
-		return nil
-	}
-	return idField.Interface().(*uint)
-}
-
-// objectTypeName returns the package-qualified type name of the dereferenced
-// API object (e.g. "v0.SecretInstance").
-func objectTypeName(obj interface{}) string {
-	t := reflect.TypeOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return t.String()
-}
-
-// targetTypeName converts a foreign-key target like "WorkloadInstance" into a
-// package-qualified type name by reusing the receiver's package prefix.
-func targetTypeName(receiverType, fkTarget string) string {
-	if i := strings.LastIndex(receiverType, "."); i >= 0 {
-		return receiverType[:i+1] + fkTarget
-	}
-	return fkTarget
-}
-
-// insertAttachedObjectReference creates an attached object reference for the
-// given relationship foreign key. Both `owns` and `requires` are immutable
-// once set, so this only ever runs for fresh edges — no lookup-and-update is
-// needed.
+// insertAttachedObjectReference creates an attached object reference for fk.
+// Both `owns` and `requires` edges are immutable once set, so this only ever
+// runs on fresh edges.
 func insertAttachedObjectReference(tx *gorm.DB, fk relationshipForeignKey, attachedID *uint, attachedType string) error {
-	targetType := targetTypeName(attachedType, fk.targetType)
+	targetType := util.TargetTypeName(attachedType, fk.targetType)
 	relationship := fk.relationship
 	if err := tx.Create(&AttachedObjectReference{
 		ObjectID:           fk.value,
@@ -171,8 +132,8 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 	if len(fks) == 0 {
 		return nil
 	}
-	objType := objectTypeName(obj)
-	objID := objectID(obj)
+	objType := util.ObjectTypeName(obj)
+	objID := util.ObjectID(obj)
 	if objID == nil {
 		return fmt.Errorf(
 			"cannot create attached object reference for %s: ID is nil after create",
@@ -190,17 +151,9 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeUpdate runs two checks before any
-// update:
-//
-//  1. Holder side: any non-nil relationship-tagged foreign key on the row
-//     being updated is immutable. The only allowed transition is the initial
-//     nil → non-nil first set; everything else is rejected. To "undo" a
-//     relationship the holder must be deleted.
-//  2. Target side: if any incoming attached object reference has
-//     Relationship="owns", the row is owned by another object and external
-//     updates are rejected. The only way to mutate an owned object is to
-//     tear down the owner first.
+// processRelationshipTaggedFieldsBeforeUpdate rejects updates that would
+// mutate a non-nil relationship-tagged FK on the row, and rejects updates to
+// any row that is owned by another object via an incoming `owns` reference.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	oldFKs, err := findRelationshipForeignKeys(obj)
 	if err != nil {
@@ -219,8 +172,8 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		))
 	}
 
-	objType := objectTypeName(obj)
-	objID := objectID(obj)
+	objType := util.ObjectTypeName(obj)
+	objID := util.ObjectID(obj)
 	if objID == nil {
 		return nil
 	}
@@ -257,8 +210,8 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	if len(fks) == 0 {
 		return nil
 	}
-	objType := objectTypeName(obj)
-	objID := objectID(obj)
+	objType := util.ObjectTypeName(obj)
+	objID := util.ObjectID(obj)
 	if objID == nil {
 		return nil
 	}
@@ -280,8 +233,8 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 // blocking attached object reference targets this row, then cascade-deletes
 // outgoing references where this row is the attached object.
 func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
-	objType := objectTypeName(obj)
-	objID := objectID(obj)
+	objType := util.ObjectTypeName(obj)
+	objID := util.ObjectID(obj)
 	if objID == nil {
 		return nil
 	}

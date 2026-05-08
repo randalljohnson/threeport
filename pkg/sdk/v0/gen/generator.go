@@ -507,7 +507,12 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			// of struct tags for each object
 			structTags := make(map[string]map[string]map[string]string)
 
-			// inspect the syntax tree for the object models
+			// walk the file's top-level declarations. The AST hierarchy is:
+			//   File → Decls → *ast.GenDecl (groups `type`/`var`/`const`)
+			//                  → Specs → *ast.TypeSpec (one type definition)
+			//                            → Type → *ast.StructType (the struct body)
+			// only struct type declarations are model candidates; aliases,
+			// interfaces, var/const blocks fall through.
 			for _, node := range pf.Decls {
 				switch node.(type) {
 				case *ast.GenDecl:
@@ -515,14 +520,12 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 					genDecl := node.(*ast.GenDecl)
 					for _, spec := range genDecl.Specs {
 						switch spec.(type) {
-						// in the case we're looking at a struct type definition, inspect
 						case *ast.TypeSpec:
-							// if the spec is a type spec, get the type spec and
-							// its name
 							typeSpec := spec.(*ast.TypeSpec)
 							objectName = typeSpec.Name.Name
 
-							// check if this is a struct type
+							// skip non-struct types (e.g. type aliases) —
+							// the API type model only describes structs
 							if structType, ok := typeSpec.Type.(*ast.StructType); ok {
 								var mc *ApiObject
 								for _, c := range apiObjects {
@@ -531,16 +534,18 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 									}
 								}
 
-								// extract comment description for the struct type
+								// pull the godoc above the type into Description
+								// so generated CLI help and swagger reflect the
+								// human-written description without duplication
 								if mc != nil {
 									if commentGroups, exists := commentMap[genDecl]; exists && len(commentGroups) > 0 {
-										// extract the comment text from the first comment group and clean it up
 										commentText := commentGroups[0].Text()
 										commentText = strings.TrimSpace(commentText)
-										// normalize whitespace and remove unnecessary line breaks
+										// godoc preserves the source's line breaks;
+										// flatten to a single line so emitted code
+										// formats cleanly on one row
 										commentText = strings.ReplaceAll(commentText, "\n", " ")
 										commentText = strings.ReplaceAll(commentText, "\r", " ")
-										// replace multiple consecutive spaces with single space
 										for strings.Contains(commentText, "  ") {
 											commentText = strings.ReplaceAll(commentText, "  ", " ")
 										}
@@ -551,30 +556,34 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 
 								structTags[objectName] = make(map[string]map[string]string)
 
-								// if so, iterate over the fields
 								for _, field := range structType.Fields.List {
-									// fields will be of type *ast.Ident
+									// embedded type from the same package
+									// (e.g. `Definition`) appears as *ast.Ident
 									if identType, ok := field.Type.(*ast.Ident); ok {
 										if util.StringSliceContains(nameFields(), identType.Name, true) {
 											mc.NameField = true
 										}
 									}
-									// structs will be of type *ast.SelectorExpr
+									// embedded type from another package (e.g.
+									// `pkgName.Definition`) appears as
+									// *ast.SelectorExpr; the Sel field is the
+									// trailing identifier we want to match
 									if identType, ok := field.Type.(*ast.SelectorExpr); ok {
 										if util.StringSliceContains(nameFields(), identType.Sel.Name, true) {
 											mc.NameField = true
 										}
 									}
-									// each field is an *ast.Field, which has a Names field that
-									// is a []*ast.Ident - iterate over those names to find the
-									// one we're looking for
+									// named fields like `Name string` —
+									// field.Names is len > 0 only for these,
+									// so it differentiates them from embeds
 									for _, name := range field.Names {
 										if util.StringSliceContains(nameFields(), name.Name, true) {
 											mc.NameField = true
 										}
 									}
 
-									// populate the struct tags map
+									// embedded fields have no Names; only
+									// named fields contribute tag entries
 									if len(field.Names) == 0 {
 										continue
 									}

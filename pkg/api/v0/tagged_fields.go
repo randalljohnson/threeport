@@ -72,7 +72,7 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
 		// only fields explicitly tagged for encryption participate
-		if field.Tag.Get("encrypt") != "true" {
+		if field.Tag.Get(encryption.EncryptTag) != encryption.EncryptTagTrue {
 			continue
 		}
 		// in BeforeUpdate, leave fields the client didn't modify alone — the

@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/schema"
 
 	"github.com/threeport/threeport/pkg/encryption/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -72,7 +73,7 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
 		// only fields explicitly tagged for encryption participate
-		if field.Tag.Get(encryption.EncryptTag) != encryption.EncryptTagTrue {
+		if field.Tag.Get(sdk.EncryptTag) != sdk.EncryptTrue {
 			continue
 		}
 		// in BeforeUpdate, leave fields the client didn't modify alone — the

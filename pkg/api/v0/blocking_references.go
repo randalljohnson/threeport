@@ -8,6 +8,8 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"gorm.io/gorm"
+
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 )
 
 // FindBlockingAttachedObjectReferences returns attached object references
@@ -22,7 +24,7 @@ func FindBlockingAttachedObjectReferences(
 	if err := db.
 		Where(
 			"object_type = ? AND object_id = ? AND relationship IN ?",
-			objectType, objectID, []string{RelationshipRequires, RelationshipOwns},
+			objectType, objectID, []string{sdk.RelationshipRequires, sdk.RelationshipOwns},
 		).
 		Find(&attachedObjectReferences).Error; err != nil {
 		return nil, fmt.Errorf("failed to list blocking attached object references: %w", err)

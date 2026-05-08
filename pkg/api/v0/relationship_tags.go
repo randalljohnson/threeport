@@ -7,17 +7,8 @@ import (
 
 	"gorm.io/gorm"
 
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
-)
-
-// Relationship struct tag name and the values that classify a foreign-key
-// relationship. The same values are persisted in the AttachedObjectReference
-// `Relationship` column.
-const (
-	RelationshipTag       = "relationship"
-	RelationshipDescribes = "describes"
-	RelationshipRequires  = "requires"
-	RelationshipOwns      = "owns"
 )
 
 // relationshipForeignKey describes one *uint <Target>ID field on an API
@@ -55,7 +46,7 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 	var fks []relationshipForeignKey
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
-		rel := field.Tag.Get(RelationshipTag)
+		rel := field.Tag.Get(sdk.RelationshipTag)
 		if rel == "" {
 			continue
 		}
@@ -76,10 +67,10 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 		// parts are key:value modifiers.
 		parts := strings.Split(rel, ";")
 		kind := parts[0]
-		if kind != RelationshipOwns && kind != RelationshipRequires {
+		if kind != sdk.RelationshipOwns && kind != sdk.RelationshipRequires {
 			return nil, fmt.Errorf(
 				"field %s has invalid relationship tag %q: expected %q or %q",
-				field.Name, kind, RelationshipOwns, RelationshipRequires,
+				field.Name, kind, sdk.RelationshipOwns, sdk.RelationshipRequires,
 			)
 		}
 		targetType := strings.TrimSuffix(field.Name, "ID")
@@ -92,7 +83,7 @@ func findRelationshipForeignKeys(obj interface{}) ([]relationshipForeignKey, err
 				)
 			}
 			switch k {
-			case "type":
+			case sdk.RelationshipTypeKey:
 				targetType = v
 			default:
 				return nil, fmt.Errorf(
@@ -235,7 +226,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	}
 	var ownedRefs []AttachedObjectReference
 	if err := tx.
-		Where("object_type = ? AND object_id = ? AND relationship = ?", objType, objID, RelationshipOwns).
+		Where("object_type = ? AND object_id = ? AND relationship = ?", objType, objID, sdk.RelationshipOwns).
 		Find(&ownedRefs).Error; err != nil {
 		return fmt.Errorf(
 			"failed to look up owning attached object references for %s/%d: %w",

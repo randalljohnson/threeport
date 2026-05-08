@@ -10,13 +10,8 @@ import (
 	"reflect"
 	"strings"
 
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
-)
-
-// Struct tag name and opt-in value used to mark a field for encryption.
-const (
-	EncryptTag     = "encrypt"
-	EncryptTagTrue = "true"
 )
 
 // GenerateKey generates a random 32-byte key for use in encryption
@@ -147,8 +142,8 @@ func IsEncryptedField(obj interface{}, fieldName string) (bool, error) {
 		if !ok {
 			return false, fmt.Errorf("field %s does not exist", fieldName)
 		}
-		tagValue := fieldVal.Tag.Get(EncryptTag)
-		return tagValue == EncryptTagTrue, nil
+		tagValue := fieldVal.Tag.Get(sdk.EncryptTag)
+		return tagValue == sdk.EncryptTrue, nil
 	}
 
 	return false, nil
@@ -171,7 +166,7 @@ func RedactEncryptedValues(obj interface{}) interface{} {
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
 		fieldVal := objVal.Field(i)
-		if field.Tag.Get(EncryptTag) != EncryptTagTrue {
+		if field.Tag.Get(sdk.EncryptTag) != sdk.EncryptTrue {
 			continue
 		}
 		switch fieldVal.Kind() {
@@ -198,7 +193,7 @@ func DecryptValues(obj interface{}, encryptionKey string) (interface{}, error) {
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
 		fieldVal := objVal.Field(i)
-		if field.Tag.Get(EncryptTag) != EncryptTagTrue {
+		if field.Tag.Get(sdk.EncryptTag) != sdk.EncryptTrue {
 			continue
 		}
 		switch fieldVal.Kind() {

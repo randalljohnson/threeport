@@ -64,15 +64,15 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 						fmt.Sprintf("%s/pkg/api-server/%s", gen.ModulePath, objCollection.Version),
 						taggedFieldsMapName,
 					).Index(Qual(
-						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"TagNameValidate",
+						"github.com/threeport/threeport/pkg/sdk/v0",
+						"ValidateTag",
 					)).Op("=").Op("&").Qual(
 						"github.com/threeport/threeport/pkg/api-server/lib/v0",
 						"FieldsByTag",
 					).Values(Dict{
 						Id("TagName"): Qual(
-							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"TagNameValidate",
+							"github.com/threeport/threeport/pkg/sdk/v0",
+							"ValidateTag",
 						),
 						Id("Required"):             Index().String().Values(),
 						Id("Optional"):             Index().String().Values(),
@@ -84,8 +84,8 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 						"github.com/threeport/threeport/pkg/api-server/lib/v0",
 						"ParseStruct",
 					).Call(Line().Qual(
-						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"TagNameValidate",
+						"github.com/threeport/threeport/pkg/sdk/v0",
+						"ValidateTag",
 					).Op(",").Line().Qual(
 						"reflect",
 						"ValueOf",
@@ -121,8 +121,8 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 						fmt.Sprintf("%s/pkg/api-server/%s", gen.ModulePath, objCollection.Version),
 						taggedFieldsMapName,
 					).Index(Qual(
-						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"TagNameValidate",
+						"github.com/threeport/threeport/pkg/sdk/v0",
+						"ValidateTag",
 					)),
 					Line(),
 					Comment("add the object tagged fields to the rest API version"),

@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -842,12 +843,22 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 	return false
 }
 
-// ValidateRelationshipTags walks every API object's struct tags and returns
-// a non-nil error if any `relationship:"<kind>;type:<TypeName>"` modifier
-// references a type name that is not registered as an API object in the SDK
-// config. Catches typos in the type modifier at gen time, before they
-// manifest as broken AOR lookups at runtime.
-func (g *Generator) ValidateRelationshipTags() error {
+// queryNamePattern matches lowercase ASCII letters and digits, the
+// established convention for query tag values.
+var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)
+
+// ValidateTags walks every API object's struct tags and returns a non-nil
+// error if any threeport-specific tag has an invalid value.
+//
+// Validates:
+//   - relationship: kind is RelationshipRequires or RelationshipOwns;
+//     modifier keys are recognized; the `type:<TypeName>` modifier value
+//     names a registered API object
+//   - encrypt: value matches EncryptTrue
+//   - validate: value matches a recognized validator value
+//   - persist: value matches PersistFalse (true is the default; omit the tag)
+//   - query: value matches queryNamePattern
+func (g *Generator) ValidateTags() error {
 	knownTypes := map[string]bool{}
 	for _, group := range g.ApiObjectGroups {
 		for _, obj := range group.ApiObjects {
@@ -859,21 +870,40 @@ func (g *Generator) ValidateRelationshipTags() error {
 	for _, group := range g.ApiObjectGroups {
 		for objectName, fieldMap := range group.StructTags {
 			for fieldName, tagMap := range fieldMap {
-				rel := tagMap["relationship"]
-				if rel == "" {
-					continue
+				if rel, ok := tagMap[sdk.RelationshipTag]; ok && rel != "" {
+					problems = append(problems,
+						validateRelationshipTag(objectName, fieldName, rel, knownTypes)...)
 				}
-				for _, p := range strings.Split(rel, ";")[1:] {
-					k, v, ok := strings.Cut(p, ":")
-					if !ok || k != "type" {
-						continue
-					}
-					if knownTypes[v] {
-						continue
-					}
+				if enc, ok := tagMap[sdk.EncryptTag]; ok && enc != sdk.EncryptTrue {
 					problems = append(problems, fmt.Sprintf(
-						"%s.%s: relationship type:%q does not match any API object",
-						objectName, fieldName, v,
+						"%s.%s: %s:%q invalid (only %q allowed)",
+						objectName, fieldName,
+						sdk.EncryptTag, enc, sdk.EncryptTrue,
+					))
+				}
+				if val, ok := tagMap[sdk.ValidateTag]; ok &&
+					val != sdk.ValidateRequired &&
+					val != sdk.ValidateOptional &&
+					val != sdk.ValidateOptionalAssociation {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s:%q invalid (allowed: %q, %q, %q)",
+						objectName, fieldName,
+						sdk.ValidateTag, val,
+						sdk.ValidateRequired, sdk.ValidateOptional, sdk.ValidateOptionalAssociation,
+					))
+				}
+				if per, ok := tagMap[sdk.PersistTag]; ok && per != sdk.PersistFalse {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s:%q invalid (only %q is meaningful; omit the tag for the default)",
+						objectName, fieldName,
+						sdk.PersistTag, per, sdk.PersistFalse,
+					))
+				}
+				if q, ok := tagMap[sdk.QueryTag]; ok && !queryNamePattern.MatchString(q) {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s:%q invalid (must match %s)",
+						objectName, fieldName,
+						sdk.QueryTag, q, queryNamePattern.String(),
 					))
 				}
 			}
@@ -883,11 +913,51 @@ func (g *Generator) ValidateRelationshipTags() error {
 	if len(problems) > 0 {
 		sort.Strings(problems)
 		return fmt.Errorf(
-			"%d invalid relationship type reference(s):\n  %s",
+			"%d invalid tag(s):\n  %s",
 			len(problems), strings.Join(problems, "\n  "),
 		)
 	}
 	return nil
+}
+
+// validateRelationshipTag returns one error string per problem found in a
+// single relationship tag value of the form `<kind>[;<key>:<value>...]`.
+func validateRelationshipTag(object, field, rel string, knownTypes map[string]bool) []string {
+	var problems []string
+	parts := strings.Split(rel, ";")
+	kind := parts[0]
+	if kind != sdk.RelationshipRequires && kind != sdk.RelationshipOwns {
+		problems = append(problems, fmt.Sprintf(
+			"%s.%s: invalid relationship kind %q (expected %q or %q)",
+			object, field, kind,
+			sdk.RelationshipRequires, sdk.RelationshipOwns,
+		))
+	}
+	for _, p := range parts[1:] {
+		k, v, ok := strings.Cut(p, ":")
+		if !ok {
+			problems = append(problems, fmt.Sprintf(
+				"%s.%s: malformed relationship modifier %q (expected key:value)",
+				object, field, p,
+			))
+			continue
+		}
+		switch k {
+		case sdk.RelationshipTypeKey:
+			if !knownTypes[v] {
+				problems = append(problems, fmt.Sprintf(
+					"%s.%s: relationship references unknown API type %q",
+					object, field, v,
+				))
+			}
+		default:
+			problems = append(problems, fmt.Sprintf(
+				"%s.%s: unknown relationship modifier key %q (only %q is supported)",
+				object, field, k, sdk.RelationshipTypeKey,
+			))
+		}
+	}
+	return problems
 }
 
 // nameFields returns a list of struct type fields that indicate a struct

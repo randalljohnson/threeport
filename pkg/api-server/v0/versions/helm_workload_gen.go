@@ -6,22 +6,23 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	v0 "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddHelmWorkloadDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddHelmWorkloadDefinitionVersions() {
-	apiserver_v0.HelmWorkloadDefinitionTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.HelmWorkloadDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.HelmWorkloadDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -35,7 +36,7 @@ func AddHelmWorkloadDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.HelmWorkloadDefinitionTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.HelmWorkloadDefinitionTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -44,16 +45,16 @@ func AddHelmWorkloadDefinitionVersions() {
 // AddHelmWorkloadInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddHelmWorkloadInstanceVersions() {
-	apiserver_v0.HelmWorkloadInstanceTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.HelmWorkloadInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.HelmWorkloadInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -67,7 +68,7 @@ func AddHelmWorkloadInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.HelmWorkloadInstanceTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.HelmWorkloadInstanceTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

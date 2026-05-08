@@ -13,6 +13,7 @@ import (
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -122,7 +123,7 @@ func (r *EventRecorder) RecordEvent(
 						ObjectID:           util.Ptr(objectId),
 						AttachedObjectType: util.Ptr(util.TypeName(v0.Event{})),
 						AttachedObjectID:   createdEvent.ID,
-						Relationship:       util.Ptr(v0.RelationshipDescribes),
+						Relationship:       util.Ptr(sdk.RelationshipDescribes),
 					},
 				)
 				if err != nil {

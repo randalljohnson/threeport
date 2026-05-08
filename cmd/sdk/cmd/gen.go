@@ -52,10 +52,9 @@ See the Threeport SDK docs for more information: https://threeport.io/sdk/sdk-in
 			os.Exit(1)
 		}
 
-		// fail fast on invalid relationship tag type modifiers before any
-		// code is emitted
-		if err := generator.ValidateRelationshipTags(); err != nil {
-			cli.Error("invalid relationship tags in API source", err)
+		// fail fast on invalid threeport-specific struct tags
+		if err := generator.ValidateTags(); err != nil {
+			cli.Error("invalid tags in API source", err)
 			os.Exit(1)
 		}
 

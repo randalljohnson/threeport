@@ -6,22 +6,23 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	v0 "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddLoggingDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddLoggingDefinitionVersions() {
-	apiserver_v0.LoggingDefinitionTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.LoggingDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.LoggingDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -35,7 +36,7 @@ func AddLoggingDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LoggingDefinitionTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LoggingDefinitionTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -44,16 +45,16 @@ func AddLoggingDefinitionVersions() {
 // AddLoggingInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddLoggingInstanceVersions() {
-	apiserver_v0.LoggingInstanceTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.LoggingInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.LoggingInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -67,7 +68,7 @@ func AddLoggingInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LoggingInstanceTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LoggingInstanceTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -76,16 +77,16 @@ func AddLoggingInstanceVersions() {
 // AddMetricsDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddMetricsDefinitionVersions() {
-	apiserver_v0.MetricsDefinitionTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.MetricsDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.MetricsDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -99,7 +100,7 @@ func AddMetricsDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.MetricsDefinitionTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.MetricsDefinitionTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -108,16 +109,16 @@ func AddMetricsDefinitionVersions() {
 // AddMetricsInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddMetricsInstanceVersions() {
-	apiserver_v0.MetricsInstanceTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.MetricsInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.MetricsInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -131,7 +132,7 @@ func AddMetricsInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.MetricsInstanceTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.MetricsInstanceTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -140,16 +141,16 @@ func AddMetricsInstanceVersions() {
 // AddObservabilityDashboardDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddObservabilityDashboardDefinitionVersions() {
-	apiserver_v0.ObservabilityDashboardDefinitionTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ObservabilityDashboardDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.ObservabilityDashboardDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -163,7 +164,7 @@ func AddObservabilityDashboardDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityDashboardDefinitionTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityDashboardDefinitionTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -172,16 +173,16 @@ func AddObservabilityDashboardDefinitionVersions() {
 // AddObservabilityDashboardInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddObservabilityDashboardInstanceVersions() {
-	apiserver_v0.ObservabilityDashboardInstanceTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ObservabilityDashboardInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.ObservabilityDashboardInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -195,7 +196,7 @@ func AddObservabilityDashboardInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityDashboardInstanceTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityDashboardInstanceTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -204,16 +205,16 @@ func AddObservabilityDashboardInstanceVersions() {
 // AddObservabilityStackDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddObservabilityStackDefinitionVersions() {
-	apiserver_v0.ObservabilityStackDefinitionTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ObservabilityStackDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.ObservabilityStackDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -227,7 +228,7 @@ func AddObservabilityStackDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityStackDefinitionTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityStackDefinitionTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -236,16 +237,16 @@ func AddObservabilityStackDefinitionVersions() {
 // AddObservabilityStackInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddObservabilityStackInstanceVersions() {
-	apiserver_v0.ObservabilityStackInstanceTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ObservabilityStackInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              v0.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		v0.ValidateTag,
 		reflect.ValueOf(new(api_v0.ObservabilityStackInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -259,7 +260,7 @@ func AddObservabilityStackInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityStackInstanceTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ObservabilityStackInstanceTaggedFields[v0.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

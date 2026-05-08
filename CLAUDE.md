@@ -132,6 +132,11 @@ func (b *OCIBootstrapSDK) ValidateOCIUserPropagation() error
 - End with period
 - For functions that span multiple lines in description, maintain consistent formatting
 
+## Docstring Scope (What NOT to Include)
+- Docstrings describe what the function does, not what it *used* to do, what it *replaces*, or what other system now handles its former job. Refactor narrative belongs in the commit message.
+- Never name other functions, tables, fields, files, or systems by identifier in a docstring. Identifiers rename and move; the docstring rots silently.
+- For stub/no-op functions (`return nil` placeholders, hooks reserved for later), the one-line docstring per the conventions above is sufficient. Do not add a paragraph explaining the absence.
+
 ## Logging Conventions
 
 ### Structured Logging (Controllers/Reconcilers)

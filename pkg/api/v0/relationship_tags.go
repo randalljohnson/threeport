@@ -38,14 +38,12 @@ func foreignKeysFor(obj interface{}) []relationshipForeignKey {
 // Both `owns` and `requires` edges are immutable once set, so this only ever
 // runs on fresh edges.
 func insertAttachedObjectReference(tx *gorm.DB, foreignKey relationshipForeignKey, attachedID *uint, attachedType string) error {
-	objectType := util.TargetTypeName(attachedType, foreignKey.objectType)
-	relationship := foreignKey.relationship
 	if err := tx.Create(&AttachedObjectReference{
 		ObjectID:           foreignKey.objectID,
-		ObjectType:         &objectType,
+		ObjectType:         &foreignKey.objectType,
 		AttachedObjectID:   attachedID,
 		AttachedObjectType: &attachedType,
-		Relationship:       &relationship,
+		Relationship:       &foreignKey.relationship,
 	}).Error; err != nil {
 		return fmt.Errorf(
 			"failed to create attached object reference for %s.%s: %w",

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 // ObjectID returns the *uint ID field of an API object, or nil if missing
@@ -29,14 +28,6 @@ func ObjectTypeName(obj interface{}) string {
 		t = t.Elem()
 	}
 	return t.String()
-}
-
-// TargetTypeName joins unqualifiedType to the package prefix of receiverType.
-func TargetTypeName(receiverType, unqualifiedType string) string {
-	if i := strings.LastIndex(receiverType, "."); i >= 0 {
-		return receiverType[:i+1] + unqualifiedType
-	}
-	return unqualifiedType
 }
 
 // GetPtrValue returns the string value of a pointer field.

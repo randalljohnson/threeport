@@ -37,17 +37,22 @@ func foreignKeysFor(obj interface{}) []relationshipForeignKey {
 // insertAttachedObjectReference creates an attached object reference for foreignKey.
 // Both `owns` and `requires` edges are immutable once set, so this only ever
 // runs on fresh edges.
-func insertAttachedObjectReference(tx *gorm.DB, foreignKey relationshipForeignKey, attachedID *uint, attachedType string) error {
+func insertAttachedObjectReference(
+	tx *gorm.DB,
+	foreignKey relationshipForeignKey,
+	attachedObjectType string,
+	attachedObjectID uint,
+) error {
 	if err := tx.Create(&AttachedObjectReference{
 		ObjectID:           foreignKey.objectID,
 		ObjectType:         &foreignKey.objectType,
-		AttachedObjectID:   attachedID,
-		AttachedObjectType: &attachedType,
+		AttachedObjectID:   &attachedObjectID,
+		AttachedObjectType: &attachedObjectType,
 		Relationship:       &foreignKey.relationship,
 	}).Error; err != nil {
 		return fmt.Errorf(
 			"failed to create attached object reference for %s.%s: %w",
-			attachedType, foreignKey.fieldName, err,
+			attachedObjectType, foreignKey.fieldName, err,
 		)
 	}
 	return nil
@@ -72,7 +77,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 		if foreignKey.objectID == nil {
 			continue
 		}
-		if err := insertAttachedObjectReference(tx, foreignKey, objID, objType); err != nil {
+		if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {
 			return err
 		}
 	}
@@ -143,7 +148,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		if !tx.Statement.Changed(foreignKey.fieldName) {
 			continue
 		}
-		if err := insertAttachedObjectReference(tx, foreignKey, objID, objType); err != nil {
+		if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {
 			return err
 		}
 	}

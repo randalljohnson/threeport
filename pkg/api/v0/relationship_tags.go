@@ -59,7 +59,7 @@ func insertAttachedObjectReference(
 }
 
 // processRelationshipTaggedFieldsAfterCreate inserts an attached object
-// reference for each set tagged foreign key.
+// reference for each foreign key that has a value.
 func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) error {
 	foreignKeys := foreignKeysFor(obj)
 	if len(foreignKeys) == 0 {
@@ -84,12 +84,12 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeUpdate rejects updates that mutate a
-// set tagged foreign key, and rejects updates to a row owned by another
-// object.
+// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change a
+// foreign key once it has a value, and rejects updates to a row owned by
+// another object.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
-	// reject any update that mutates a set tagged foreign key; fall through
-	// when no foreign key on the row is being changed
+	// reject any update that changes a foreign key with a value already set;
+	// fall through when no foreign key on the row is being changed
 	for _, foreignKey := range foreignKeysFor(obj) {
 		if foreignKey.objectID != nil && tx.Statement.Changed(foreignKey.fieldName) {
 			return util.NewBadRequestError(fmt.Sprintf(
@@ -127,8 +127,8 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 }
 
 // processRelationshipTaggedFieldsAfterUpdate inserts an attached object
-// reference for each tagged foreign key that just transitioned from nil to
-// a value. Other transitions are rejected by BeforeUpdate.
+// reference for each foreign key that just transitioned from nil to a value.
+// Other transitions are rejected by BeforeUpdate.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
 	foreignKeys := foreignKeysFor(obj)
 	if len(foreignKeys) == 0 {

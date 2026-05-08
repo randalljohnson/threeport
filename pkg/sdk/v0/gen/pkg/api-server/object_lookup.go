@@ -35,7 +35,7 @@ func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		slices.Sort(namedTypes)
 
 		f := NewFile("handlers")
-		f.HeaderComment(util.HeaderCommentGenNoEdit)
+		f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 		apiPkg := fmt.Sprintf("github.com/threeport/threeport/pkg/api/%s", collection.Version)
 

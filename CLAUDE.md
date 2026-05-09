@@ -62,6 +62,10 @@ Always be mindful of cloud resource state being managed. Threeport is, at its co
 
 Before digging into code to understand the API, refer to the Swagger API spec first to get a full picture of available endpoints, request/response shapes, and object relationships. The spec is the authoritative reference for API behavior.
 
+# PR Description Style
+
+Flat prose, no headers, no checkboxes. For comment-only or docs-only PRs, one or two sentences is enough. Lead with what changed and why; skip the test-plan boilerplate unless the PR genuinely needs verification steps. Match the style the user already writes in: terse, no marketing tone, no AI flourishes.
+
 # Threeport Code Conventions
 
 ## Reading Before Writing

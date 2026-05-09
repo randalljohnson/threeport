@@ -9,6 +9,7 @@ import (
 
 	"github.com/threeport/threeport/pkg/api-server/v0/database"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
+	"github.com/threeport/threeport/pkg/encryption/v0"
 )
 
 const (
@@ -60,7 +61,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 				"namespace": cpi.Opts.Namespace,
 			},
 			"stringData": map[string]interface{}{
-				"ENCRYPTION_KEY": encryptionKey,
+				encryption.KeyEnvVar: encryptionKey,
 			},
 		},
 	}

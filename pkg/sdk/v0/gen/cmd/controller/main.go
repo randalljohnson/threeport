@@ -28,6 +28,8 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			f.ImportAlias("github.com/threeport/threeport/pkg/controller/v0", "controller")
 			f.ImportAlias("github.com/threeport/threeport/pkg/runtime/v0", "runtime")
 			f.ImportAlias("github.com/threeport/threeport/pkg/event/v0", "event")
+			f.ImportAlias("github.com/threeport/threeport/pkg/encryption/v0", "encryption")
+			f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 
 			concurrencyFlags := &Statement{}
 			for _, obj := range objGroup.ReconciledObjects {
@@ -145,10 +147,16 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 				Line(),
 				Var().Id("log").Qual("github.com/go-logr/logr", "Logger"),
-				Var().Id("encryptionKey").Op("=").Qual("os", "Getenv").Call(Lit("ENCRYPTION_KEY")),
+				Var().Id("encryptionKey").Op("=").Qual("os", "Getenv").Call(
+					Qual("github.com/threeport/threeport/pkg/encryption/v0", "KeyEnvVar"),
+				),
 				If(Id("encryptionKey").Op("==").Lit("")).Block(
 					Id("log").Dot("Error").Call(
-						Qual("errors", "New").Call(Lit("environment variable ENCRYPTION_KEY is not set")), Lit("encryption key not found"),
+						Qual("fmt", "Errorf").Call(
+							Lit("environment variable %s is not set"),
+							Qual("github.com/threeport/threeport/pkg/encryption/v0", "KeyEnvVar"),
+						),
+						Lit("encryption key not found"),
 					),
 				),
 

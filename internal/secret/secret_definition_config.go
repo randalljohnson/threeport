@@ -3,9 +3,7 @@ package secret
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
@@ -89,9 +87,9 @@ func (c *SecretDefinitionConfig) PushSecretToAwsSecretsManager() error {
 	}
 
 	// encrypt sensitive values
-	var encryptionKey = os.Getenv("ENCRYPTION_KEY")
-	if encryptionKey == "" {
-		return errors.New("environment variable ENCRYPTION_KEY is not set")
+	encryptionKey, err := encryption.KeyFromEnv()
+	if err != nil {
+		return err
 	}
 
 	// decrypt sensitive values

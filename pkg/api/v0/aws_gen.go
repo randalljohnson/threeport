@@ -221,3 +221,16 @@ func (ap *AwsProvider) GetType() string {
 func (ap *AwsProvider) GetVersion() string {
 	return "v0"
 }
+
+// EncryptedFields returns the encrypt-tagged fields on AwsProvider.
+func (a *AwsProvider) EncryptedFields() []encryptedField {
+	return []encryptedField{{
+		columnName: "access_key_id",
+		fieldName:  "AccessKeyID",
+		value:      a.AccessKeyID,
+	}, {
+		columnName: "secret_access_key",
+		fieldName:  "SecretAccessKey",
+		value:      a.SecretAccessKey,
+	}}
+}

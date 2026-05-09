@@ -224,6 +224,15 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						emitRelationshipForeignKeyMethod(f, apiObj.TypeName, foreignKeys)
 					}
 				}
+
+				// EncryptedFields method (only emitted when the type has at
+				// least one encrypt-tagged field; module support is pending
+				// so this only emits for core threeport)
+				if !g.Module {
+					if encryptedFields := encryptedFieldEntries(apiObj.TypeName, typeToTags); len(encryptedFields) > 0 {
+						emitEncryptedFieldsMethod(f, apiObj.TypeName, encryptedFields)
+					}
+				}
 			}
 
 			// write code to file if not excluded by SDK config

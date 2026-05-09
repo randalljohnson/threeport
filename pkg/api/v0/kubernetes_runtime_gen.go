@@ -165,3 +165,16 @@ func (k *KubernetesRuntimeInstance) ForeignKeys() []foreignKey {
 		relationship: sdk.RelationshipOwns,
 	}}
 }
+
+// EncryptedFields returns the encrypt-tagged fields on KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) EncryptedFields() []encryptedField {
+	return []encryptedField{{
+		columnName: "certificate_key",
+		fieldName:  "CertificateKey",
+		value:      k.CertificateKey,
+	}, {
+		columnName: "connection_token",
+		fieldName:  "ConnectionToken",
+		value:      k.ConnectionToken,
+	}}
+}

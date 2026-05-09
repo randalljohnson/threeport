@@ -155,3 +155,20 @@ func (t *TerraformInstance) ForeignKeys() []foreignKey {
 		relationship: sdk.RelationshipRequires,
 	}}
 }
+
+// EncryptedFields returns the encrypt-tagged fields on TerraformInstance.
+func (t *TerraformInstance) EncryptedFields() []encryptedField {
+	return []encryptedField{{
+		columnName: "outputs",
+		fieldName:  "Outputs",
+		value:      t.Outputs,
+	}, {
+		columnName: "state_document",
+		fieldName:  "StateDocument",
+		value:      t.StateDocument,
+	}, {
+		columnName: "vars_document",
+		fieldName:  "VarsDocument",
+		value:      t.VarsDocument,
+	}}
+}

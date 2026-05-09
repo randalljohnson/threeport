@@ -221,3 +221,12 @@ func (op *OciProvider) GetType() string {
 func (op *OciProvider) GetVersion() string {
 	return "v0"
 }
+
+// EncryptedFields returns the encrypt-tagged fields on OciProvider.
+func (o *OciProvider) EncryptedFields() []encryptedField {
+	return []encryptedField{{
+		columnName: "private_key",
+		fieldName:  "PrivateKey",
+		value:      o.PrivateKey,
+	}}
+}

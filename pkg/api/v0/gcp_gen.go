@@ -221,3 +221,12 @@ func (gp *GcpProvider) GetType() string {
 func (gp *GcpProvider) GetVersion() string {
 	return "v0"
 }
+
+// EncryptedFields returns the encrypt-tagged fields on GcpProvider.
+func (g *GcpProvider) EncryptedFields() []encryptedField {
+	return []encryptedField{{
+		columnName: "service_account_credentials",
+		fieldName:  "ServiceAccountCredentials",
+		value:      g.ServiceAccountCredentials,
+	}}
+}

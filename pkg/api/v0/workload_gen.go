@@ -79,7 +79,7 @@ func (wd *WorkloadDefinition) GetType() string {
 	return "WorkloadDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wd *WorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -139,7 +139,7 @@ func (we *WorkloadEvent) GetType() string {
 	return "WorkloadEvent"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (we *WorkloadEvent) GetVersion() string {
 	return "v0"
 }
@@ -193,7 +193,7 @@ func (wi *WorkloadInstance) GetType() string {
 	return "WorkloadInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wi *WorkloadInstance) GetVersion() string {
 	return "v0"
 }
@@ -268,7 +268,7 @@ func (wrd *WorkloadResourceDefinition) GetType() string {
 	return "WorkloadResourceDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
@@ -332,7 +332,7 @@ func (wri *WorkloadResourceInstance) GetType() string {
 	return "WorkloadResourceInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
 }

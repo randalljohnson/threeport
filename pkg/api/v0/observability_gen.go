@@ -88,7 +88,7 @@ func (ld *LoggingDefinition) GetType() string {
 	return "LoggingDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ld *LoggingDefinition) GetVersion() string {
 	return "v0"
 }
@@ -163,7 +163,7 @@ func (li *LoggingInstance) GetType() string {
 	return "LoggingInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (li *LoggingInstance) GetVersion() string {
 	return "v0"
 }
@@ -248,7 +248,7 @@ func (md *MetricsDefinition) GetType() string {
 	return "MetricsDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (md *MetricsDefinition) GetVersion() string {
 	return "v0"
 }
@@ -318,7 +318,7 @@ func (mi *MetricsInstance) GetType() string {
 	return "MetricsInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (mi *MetricsInstance) GetVersion() string {
 	return "v0"
 }
@@ -398,7 +398,7 @@ func (odd *ObservabilityDashboardDefinition) GetType() string {
 	return "ObservabilityDashboardDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 	return "v0"
 }
@@ -468,7 +468,7 @@ func (odi *ObservabilityDashboardInstance) GetType() string {
 	return "ObservabilityDashboardInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (odi *ObservabilityDashboardInstance) GetVersion() string {
 	return "v0"
 }
@@ -548,7 +548,7 @@ func (osd *ObservabilityStackDefinition) GetType() string {
 	return "ObservabilityStackDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (osd *ObservabilityStackDefinition) GetVersion() string {
 	return "v0"
 }
@@ -628,7 +628,7 @@ func (osi *ObservabilityStackInstance) GetType() string {
 	return "ObservabilityStackInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (osi *ObservabilityStackInstance) GetVersion() string {
 	return "v0"
 }

@@ -73,7 +73,7 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetType() string {
 	return "OciOkeKubernetesRuntimeDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -137,7 +137,7 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetType() string {
 	return "OciOkeKubernetesRuntimeInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
@@ -217,7 +217,7 @@ func (op *OciProvider) GetType() string {
 	return "OciProvider"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (op *OciProvider) GetVersion() string {
 	return "v0"
 }

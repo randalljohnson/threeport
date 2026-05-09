@@ -82,7 +82,7 @@ func (dnd *DomainNameDefinition) GetType() string {
 	return "DomainNameDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (dnd *DomainNameDefinition) GetVersion() string {
 	return "v0"
 }
@@ -136,7 +136,7 @@ func (dni *DomainNameInstance) GetType() string {
 	return "DomainNameInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (dni *DomainNameInstance) GetVersion() string {
 	return "v0"
 }
@@ -216,7 +216,7 @@ func (gd *GatewayDefinition) GetType() string {
 	return "GatewayDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (gd *GatewayDefinition) GetVersion() string {
 	return "v0"
 }
@@ -276,7 +276,7 @@ func (ghp *GatewayHttpPort) GetType() string {
 	return "GatewayHttpPort"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ghp *GatewayHttpPort) GetVersion() string {
 	return "v0"
 }
@@ -330,7 +330,7 @@ func (gi *GatewayInstance) GetType() string {
 	return "GatewayInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (gi *GatewayInstance) GetVersion() string {
 	return "v0"
 }
@@ -410,7 +410,7 @@ func (gtp *GatewayTcpPort) GetType() string {
 	return "GatewayTcpPort"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (gtp *GatewayTcpPort) GetVersion() string {
 	return "v0"
 }

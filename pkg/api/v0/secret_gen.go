@@ -70,7 +70,7 @@ func (sd *SecretDefinition) GetType() string {
 	return "SecretDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (sd *SecretDefinition) GetVersion() string {
 	return "v0"
 }
@@ -140,7 +140,7 @@ func (si *SecretInstance) GetType() string {
 	return "SecretInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (si *SecretInstance) GetVersion() string {
 	return "v0"
 }

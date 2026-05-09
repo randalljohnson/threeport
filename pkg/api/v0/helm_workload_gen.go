@@ -70,7 +70,7 @@ func (hwd *HelmWorkloadDefinition) GetType() string {
 	return "HelmWorkloadDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (hwd *HelmWorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -130,7 +130,7 @@ func (hwi *HelmWorkloadInstance) GetType() string {
 	return "HelmWorkloadInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (hwi *HelmWorkloadInstance) GetVersion() string {
 	return "v0"
 }

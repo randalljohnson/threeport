@@ -73,7 +73,7 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetType() string {
 	return "AwsEksKubernetesRuntimeDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -137,7 +137,7 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetType() string {
 	return "AwsEksKubernetesRuntimeInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
@@ -217,7 +217,7 @@ func (ap *AwsProvider) GetType() string {
 	return "AwsProvider"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ap *AwsProvider) GetVersion() string {
 	return "v0"
 }

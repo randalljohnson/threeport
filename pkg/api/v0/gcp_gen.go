@@ -73,7 +73,7 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetType() string {
 	return "GcpGkeKubernetesRuntimeDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -137,7 +137,7 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) GetType() string {
 	return "GcpGkeKubernetesRuntimeInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ggkri *GcpGkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
@@ -217,7 +217,7 @@ func (gp *GcpProvider) GetType() string {
 	return "GcpProvider"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (gp *GcpProvider) GetVersion() string {
 	return "v0"
 }

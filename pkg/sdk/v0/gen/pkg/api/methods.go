@@ -198,8 +198,8 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				).Id("GetType").Params().String().Block(
 					Return(Lit(typeLiteral)),
 				)
-				// GetVersion method
-				f.Comment("GetVersion returns the version of the API object.")
+				// Version method
+				f.Comment("Version returns the version of the API object.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetVersion").Params().String().Block(

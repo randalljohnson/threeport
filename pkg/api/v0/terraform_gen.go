@@ -70,7 +70,7 @@ func (td *TerraformDefinition) GetType() string {
 	return "TerraformDefinition"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (td *TerraformDefinition) GetVersion() string {
 	return "v0"
 }
@@ -130,7 +130,7 @@ func (ti *TerraformInstance) GetType() string {
 	return "TerraformInstance"
 }
 
-// GetVersion returns the version of the API object.
+// Version returns the version of the API object.
 func (ti *TerraformInstance) GetVersion() string {
 	return "v0"
 }

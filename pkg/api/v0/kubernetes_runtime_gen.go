@@ -142,39 +142,37 @@ func (kri *KubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on KubernetesRuntimeInstance.
-func (k *KubernetesRuntimeInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "DnsControllerInstanceID",
-		objectID:     k.DnsControllerInstanceID,
-		objectType:   util.ObjectTypeName(WorkloadInstance{}),
-		relationship: sdk.RelationshipOwns,
+func (k *KubernetesRuntimeInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "DnsControllerInstanceID",
+		ObjectID:     k.DnsControllerInstanceID,
+		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		Relationship: sdk.RelationshipOwns,
 	}, {
-		fieldName:    "GatewayControllerInstanceID",
-		objectID:     k.GatewayControllerInstanceID,
-		objectType:   util.ObjectTypeName(WorkloadInstance{}),
-		relationship: sdk.RelationshipOwns,
+		FieldName:    "GatewayControllerInstanceID",
+		ObjectID:     k.GatewayControllerInstanceID,
+		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		Relationship: sdk.RelationshipOwns,
 	}, {
-		fieldName:    "KubernetesRuntimeDefinitionID",
-		objectID:     k.KubernetesRuntimeDefinitionID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     k.KubernetesRuntimeDefinitionID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "SecretsControllerInstanceID",
-		objectID:     k.SecretsControllerInstanceID,
-		objectType:   util.ObjectTypeName(WorkloadInstance{}),
-		relationship: sdk.RelationshipOwns,
+		FieldName:    "SecretsControllerInstanceID",
+		ObjectID:     k.SecretsControllerInstanceID,
+		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		Relationship: sdk.RelationshipOwns,
 	}}
 }
 
 // EncryptedFields returns the encrypt-tagged fields on KubernetesRuntimeInstance.
-func (k *KubernetesRuntimeInstance) EncryptedFields() []encryptedField {
-	return []encryptedField{{
-		columnName: "certificate_key",
-		fieldName:  "CertificateKey",
-		value:      k.CertificateKey,
+func (k *KubernetesRuntimeInstance) EncryptedFields() []sdk.EncryptedField {
+	return []sdk.EncryptedField{{
+		Name:  "CertificateKey",
+		Value: k.CertificateKey,
 	}, {
-		columnName: "connection_token",
-		fieldName:  "ConnectionToken",
-		value:      k.ConnectionToken,
+		Name:  "ConnectionToken",
+		Value: k.ConnectionToken,
 	}}
 }

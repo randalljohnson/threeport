@@ -82,12 +82,12 @@ func (sd *SecretDefinition) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on SecretDefinition.
-func (s *SecretDefinition) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "AwsProviderID",
-		objectID:     s.AwsProviderID,
-		objectType:   util.ObjectTypeName(AwsProvider{}),
-		relationship: sdk.RelationshipRequires,
+func (s *SecretDefinition) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "AwsProviderID",
+		ObjectID:     s.AwsProviderID,
+		ObjectType:   util.ObjectTypeName(AwsProvider{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -152,26 +152,26 @@ func (si *SecretInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on SecretInstance.
-func (s *SecretInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "HelmWorkloadInstanceID",
-		objectID:     s.HelmWorkloadInstanceID,
-		objectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
-		relationship: sdk.RelationshipRequires,
+func (s *SecretInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "HelmWorkloadInstanceID",
+		ObjectID:     s.HelmWorkloadInstanceID,
+		ObjectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     s.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     s.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "SecretDefinitionID",
-		objectID:     s.SecretDefinitionID,
-		objectType:   util.ObjectTypeName(SecretDefinition{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "SecretDefinitionID",
+		ObjectID:     s.SecretDefinitionID,
+		ObjectType:   util.ObjectTypeName(SecretDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "WorkloadInstanceID",
-		objectID:     s.WorkloadInstanceID,
-		objectType:   util.ObjectTypeName(WorkloadInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "WorkloadInstanceID",
+		ObjectID:     s.WorkloadInstanceID,
+		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }

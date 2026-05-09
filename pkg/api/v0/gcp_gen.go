@@ -79,12 +79,12 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
-func (g *GcpGkeKubernetesRuntimeDefinition) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "KubernetesRuntimeDefinitionID",
-		objectID:     g.KubernetesRuntimeDefinitionID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (g *GcpGkeKubernetesRuntimeDefinition) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     g.KubernetesRuntimeDefinitionID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -149,22 +149,22 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeInstance.
-func (g *GcpGkeKubernetesRuntimeInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
-		objectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
-		objectType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (g *GcpGkeKubernetesRuntimeInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
+		ObjectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
+		ObjectType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "GcpProviderID",
-		objectID:     g.GcpProviderID,
-		objectType:   util.ObjectTypeName(GcpProvider{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "GcpProviderID",
+		ObjectID:     g.GcpProviderID,
+		ObjectType:   util.ObjectTypeName(GcpProvider{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     g.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     g.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -223,10 +223,9 @@ func (gp *GcpProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on GcpProvider.
-func (g *GcpProvider) EncryptedFields() []encryptedField {
-	return []encryptedField{{
-		columnName: "service_account_credentials",
-		fieldName:  "ServiceAccountCredentials",
-		value:      g.ServiceAccountCredentials,
+func (g *GcpProvider) EncryptedFields() []sdk.EncryptedField {
+	return []sdk.EncryptedField{{
+		Name:  "ServiceAccountCredentials",
+		Value: g.ServiceAccountCredentials,
 	}}
 }

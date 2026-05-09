@@ -75,20 +75,22 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 		).Call(Id(objectType).Values())
 	}
 
+	foreignKeyType := Qual("github.com/threeport/threeport/pkg/sdk/v0", "ForeignKey")
+
 	f.Comment(fmt.Sprintf(
 		"ForeignKeys returns the relationship-tagged foreign keys on %s.",
 		typeName,
 	))
 	f.Func().Params(
 		Id(receiver).Op("*").Id(typeName),
-	).Id("ForeignKeys").Params().Index().Id("foreignKey").BlockFunc(func(g *Group) {
-		g.Return().Index().Id("foreignKey").ValuesFunc(func(vg *Group) {
+	).Id("ForeignKeys").Params().Index().Add(foreignKeyType).BlockFunc(func(g *Group) {
+		g.Return().Index().Add(foreignKeyType).ValuesFunc(func(vg *Group) {
 			for _, foreignKey := range fields {
 				vg.Values(Dict{
-					Id("fieldName"):    Lit(foreignKey.fieldName),
-					Id("objectType"):   objectTypeRef(foreignKey.objectType),
-					Id("relationship"): kindLit(foreignKey.relationship),
-					Id("objectID"):     Id(receiver).Dot(foreignKey.fieldName),
+					Id("FieldName"):    Lit(foreignKey.fieldName),
+					Id("ObjectType"):   objectTypeRef(foreignKey.objectType),
+					Id("Relationship"): kindLit(foreignKey.relationship),
+					Id("ObjectID"):     Id(receiver).Dot(foreignKey.fieldName),
 				})
 			}
 		})

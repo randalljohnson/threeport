@@ -142,33 +142,30 @@ func (ti *TerraformInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on TerraformInstance.
-func (t *TerraformInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "AwsProviderID",
-		objectID:     t.AwsProviderID,
-		objectType:   util.ObjectTypeName(AwsProvider{}),
-		relationship: sdk.RelationshipRequires,
+func (t *TerraformInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "AwsProviderID",
+		ObjectID:     t.AwsProviderID,
+		ObjectType:   util.ObjectTypeName(AwsProvider{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "TerraformDefinitionID",
-		objectID:     t.TerraformDefinitionID,
-		objectType:   util.ObjectTypeName(TerraformDefinition{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "TerraformDefinitionID",
+		ObjectID:     t.TerraformDefinitionID,
+		ObjectType:   util.ObjectTypeName(TerraformDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
 // EncryptedFields returns the encrypt-tagged fields on TerraformInstance.
-func (t *TerraformInstance) EncryptedFields() []encryptedField {
-	return []encryptedField{{
-		columnName: "outputs",
-		fieldName:  "Outputs",
-		value:      t.Outputs,
+func (t *TerraformInstance) EncryptedFields() []sdk.EncryptedField {
+	return []sdk.EncryptedField{{
+		Name:  "Outputs",
+		Value: t.Outputs,
 	}, {
-		columnName: "state_document",
-		fieldName:  "StateDocument",
-		value:      t.StateDocument,
+		Name:  "StateDocument",
+		Value: t.StateDocument,
 	}, {
-		columnName: "vars_document",
-		fieldName:  "VarsDocument",
-		value:      t.VarsDocument,
+		Name:  "VarsDocument",
+		Value: t.VarsDocument,
 	}}
 }

@@ -148,22 +148,22 @@ func (dni *DomainNameInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on DomainNameInstance.
-func (d *DomainNameInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "DomainNameDefinitionID",
-		objectID:     d.DomainNameDefinitionID,
-		objectType:   util.ObjectTypeName(DomainNameDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (d *DomainNameInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "DomainNameDefinitionID",
+		ObjectID:     d.DomainNameDefinitionID,
+		ObjectType:   util.ObjectTypeName(DomainNameDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     d.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     d.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "WorkloadInstanceID",
-		objectID:     d.WorkloadInstanceID,
-		objectType:   util.ObjectTypeName(WorkloadInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "WorkloadInstanceID",
+		ObjectID:     d.WorkloadInstanceID,
+		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -342,22 +342,22 @@ func (gi *GatewayInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on GatewayInstance.
-func (g *GatewayInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "GatewayDefinitionID",
-		objectID:     g.GatewayDefinitionID,
-		objectType:   util.ObjectTypeName(GatewayDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (g *GatewayInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "GatewayDefinitionID",
+		ObjectID:     g.GatewayDefinitionID,
+		ObjectType:   util.ObjectTypeName(GatewayDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     g.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     g.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "WorkloadInstanceID",
-		objectID:     g.WorkloadInstanceID,
-		objectType:   util.ObjectTypeName(WorkloadInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "WorkloadInstanceID",
+		ObjectID:     g.WorkloadInstanceID,
+		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 

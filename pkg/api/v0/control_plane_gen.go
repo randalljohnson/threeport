@@ -142,21 +142,21 @@ func (cpi *ControlPlaneInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ControlPlaneInstance.
-func (c *ControlPlaneInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "ControlPlaneDefinitionID",
-		objectID:     c.ControlPlaneDefinitionID,
-		objectType:   util.ObjectTypeName(ControlPlaneDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (c *ControlPlaneInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "ControlPlaneDefinitionID",
+		ObjectID:     c.ControlPlaneDefinitionID,
+		ObjectType:   util.ObjectTypeName(ControlPlaneDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     c.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     c.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "ParentControlPlaneInstanceID",
-		objectID:     c.ParentControlPlaneInstanceID,
-		objectType:   util.ObjectTypeName(ControlPlaneInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "ParentControlPlaneInstanceID",
+		ObjectID:     c.ParentControlPlaneInstanceID,
+		ObjectType:   util.ObjectTypeName(ControlPlaneInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }

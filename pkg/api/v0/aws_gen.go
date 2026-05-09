@@ -79,12 +79,12 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
-func (a *AwsEksKubernetesRuntimeDefinition) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "KubernetesRuntimeDefinitionID",
-		objectID:     a.KubernetesRuntimeDefinitionID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (a *AwsEksKubernetesRuntimeDefinition) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     a.KubernetesRuntimeDefinitionID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -149,22 +149,22 @@ func (aekri *AwsEksKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeInstance.
-func (a *AwsEksKubernetesRuntimeInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "AwsEksKubernetesRuntimeDefinitionID",
-		objectID:     a.AwsEksKubernetesRuntimeDefinitionID,
-		objectType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (a *AwsEksKubernetesRuntimeInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "AwsEksKubernetesRuntimeDefinitionID",
+		ObjectID:     a.AwsEksKubernetesRuntimeDefinitionID,
+		ObjectType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "AwsProviderID",
-		objectID:     a.AwsProviderID,
-		objectType:   util.ObjectTypeName(AwsProvider{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "AwsProviderID",
+		ObjectID:     a.AwsProviderID,
+		ObjectType:   util.ObjectTypeName(AwsProvider{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     a.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     a.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -223,14 +223,12 @@ func (ap *AwsProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on AwsProvider.
-func (a *AwsProvider) EncryptedFields() []encryptedField {
-	return []encryptedField{{
-		columnName: "access_key_id",
-		fieldName:  "AccessKeyID",
-		value:      a.AccessKeyID,
+func (a *AwsProvider) EncryptedFields() []sdk.EncryptedField {
+	return []sdk.EncryptedField{{
+		Name:  "AccessKeyID",
+		Value: a.AccessKeyID,
 	}, {
-		columnName: "secret_access_key",
-		fieldName:  "SecretAccessKey",
-		value:      a.SecretAccessKey,
+		Name:  "SecretAccessKey",
+		Value: a.SecretAccessKey,
 	}}
 }

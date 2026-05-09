@@ -205,17 +205,17 @@ func (wi *WorkloadInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on WorkloadInstance.
-func (w *WorkloadInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     w.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+func (w *WorkloadInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     w.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "WorkloadDefinitionID",
-		objectID:     w.WorkloadDefinitionID,
-		objectType:   util.ObjectTypeName(WorkloadDefinition{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "WorkloadDefinitionID",
+		ObjectID:     w.WorkloadDefinitionID,
+		ObjectType:   util.ObjectTypeName(WorkloadDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -274,12 +274,12 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceDefinition.
-func (w *WorkloadResourceDefinition) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "WorkloadDefinitionID",
-		objectID:     w.WorkloadDefinitionID,
-		objectType:   util.ObjectTypeName(WorkloadDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (w *WorkloadResourceDefinition) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "WorkloadDefinitionID",
+		ObjectID:     w.WorkloadDefinitionID,
+		ObjectType:   util.ObjectTypeName(WorkloadDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -338,11 +338,11 @@ func (wri *WorkloadResourceInstance) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceInstance.
-func (w *WorkloadResourceInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "WorkloadInstanceID",
-		objectID:     w.WorkloadInstanceID,
-		objectType:   util.ObjectTypeName(WorkloadInstance{}),
-		relationship: sdk.RelationshipRequires,
+func (w *WorkloadResourceInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "WorkloadInstanceID",
+		ObjectID:     w.WorkloadInstanceID,
+		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }

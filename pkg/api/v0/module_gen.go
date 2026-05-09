@@ -135,12 +135,12 @@ func (mar *ModuleApiRoute) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleApiRoute.
-func (m *ModuleApiRoute) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "ModuleApiID",
-		objectID:     m.ModuleApiID,
-		objectType:   util.ObjectTypeName(ModuleApi{}),
-		relationship: sdk.RelationshipRequires,
+func (m *ModuleApiRoute) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "ModuleApiID",
+		ObjectID:     m.ModuleApiID,
+		ObjectType:   util.ObjectTypeName(ModuleApi{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -199,12 +199,12 @@ func (mc *ModuleController) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleController.
-func (m *ModuleController) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "ModuleApiID",
-		objectID:     m.ModuleApiID,
-		objectType:   util.ObjectTypeName(ModuleApi{}),
-		relationship: sdk.RelationshipRequires,
+func (m *ModuleController) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "ModuleApiID",
+		ObjectID:     m.ModuleApiID,
+		ObjectType:   util.ObjectTypeName(ModuleApi{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -263,16 +263,16 @@ func (mo *ModuleObject) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleObject.
-func (m *ModuleObject) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "ModuleApiID",
-		objectID:     m.ModuleApiID,
-		objectType:   util.ObjectTypeName(ModuleApi{}),
-		relationship: sdk.RelationshipRequires,
+func (m *ModuleObject) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "ModuleApiID",
+		ObjectID:     m.ModuleApiID,
+		ObjectType:   util.ObjectTypeName(ModuleApi{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "ModuleControllerID",
-		objectID:     m.ModuleControllerID,
-		objectType:   util.ObjectTypeName(ModuleController{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "ModuleControllerID",
+		ObjectID:     m.ModuleControllerID,
+		ObjectType:   util.ObjectTypeName(ModuleController{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }

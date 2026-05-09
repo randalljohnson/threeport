@@ -79,12 +79,12 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
-func (o *OciOkeKubernetesRuntimeDefinition) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "KubernetesRuntimeDefinitionID",
-		objectID:     o.KubernetesRuntimeDefinitionID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (o *OciOkeKubernetesRuntimeDefinition) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     o.KubernetesRuntimeDefinitionID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -149,22 +149,22 @@ func (ookri *OciOkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeInstance.
-func (o *OciOkeKubernetesRuntimeInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     o.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+func (o *OciOkeKubernetesRuntimeInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     o.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "OciOkeKubernetesRuntimeDefinitionID",
-		objectID:     o.OciOkeKubernetesRuntimeDefinitionID,
-		objectType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "OciOkeKubernetesRuntimeDefinitionID",
+		ObjectID:     o.OciOkeKubernetesRuntimeDefinitionID,
+		ObjectType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "OciProviderID",
-		objectID:     o.OciProviderID,
-		objectType:   util.ObjectTypeName(OciProvider{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "OciProviderID",
+		ObjectID:     o.OciProviderID,
+		ObjectType:   util.ObjectTypeName(OciProvider{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }
 
@@ -223,10 +223,9 @@ func (op *OciProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on OciProvider.
-func (o *OciProvider) EncryptedFields() []encryptedField {
-	return []encryptedField{{
-		columnName: "private_key",
-		fieldName:  "PrivateKey",
-		value:      o.PrivateKey,
+func (o *OciProvider) EncryptedFields() []sdk.EncryptedField {
+	return []sdk.EncryptedField{{
+		Name:  "PrivateKey",
+		Value: o.PrivateKey,
 	}}
 }

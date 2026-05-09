@@ -142,16 +142,16 @@ func (hwi *HelmWorkloadInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on HelmWorkloadInstance.
-func (h *HelmWorkloadInstance) ForeignKeys() []foreignKey {
-	return []foreignKey{{
-		fieldName:    "HelmWorkloadDefinitionID",
-		objectID:     h.HelmWorkloadDefinitionID,
-		objectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
-		relationship: sdk.RelationshipRequires,
+func (h *HelmWorkloadInstance) ForeignKeys() []sdk.ForeignKey {
+	return []sdk.ForeignKey{{
+		FieldName:    "HelmWorkloadDefinitionID",
+		ObjectID:     h.HelmWorkloadDefinitionID,
+		ObjectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		Relationship: sdk.RelationshipRequires,
 	}, {
-		fieldName:    "KubernetesRuntimeInstanceID",
-		objectID:     h.KubernetesRuntimeInstanceID,
-		objectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		relationship: sdk.RelationshipRequires,
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     h.KubernetesRuntimeInstanceID,
+		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		Relationship: sdk.RelationshipRequires,
 	}}
 }

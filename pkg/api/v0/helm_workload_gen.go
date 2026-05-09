@@ -65,7 +65,7 @@ func (hwd *HelmWorkloadDefinition) GetId() uint {
 	return *hwd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (hwd *HelmWorkloadDefinition) GetType() string {
 	return "HelmWorkloadDefinition"
 }
@@ -125,7 +125,7 @@ func (hwi *HelmWorkloadInstance) GetId() uint {
 	return *hwi.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (hwi *HelmWorkloadInstance) GetType() string {
 	return "HelmWorkloadInstance"
 }

@@ -65,7 +65,7 @@ func (td *TerraformDefinition) GetId() uint {
 	return *td.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (td *TerraformDefinition) GetType() string {
 	return "TerraformDefinition"
 }
@@ -125,7 +125,7 @@ func (ti *TerraformInstance) GetId() uint {
 	return *ti.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ti *TerraformInstance) GetType() string {
 	return "TerraformInstance"
 }

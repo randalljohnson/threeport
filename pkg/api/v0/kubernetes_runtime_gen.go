@@ -65,7 +65,7 @@ func (krd *KubernetesRuntimeDefinition) GetId() uint {
 	return *krd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (krd *KubernetesRuntimeDefinition) GetType() string {
 	return "KubernetesRuntimeDefinition"
 }
@@ -125,7 +125,7 @@ func (kri *KubernetesRuntimeInstance) GetId() uint {
 	return *kri.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (kri *KubernetesRuntimeInstance) GetType() string {
 	return "KubernetesRuntimeInstance"
 }

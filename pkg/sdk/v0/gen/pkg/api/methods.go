@@ -182,7 +182,7 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				).Id("GetId").Params().Uint().Block(
 					Return(Op("*").Id(util.TypeAbbrev(apiObj.TypeName)).Dot("ID")),
 				)
-				// GetType method
+				// Type method
 				typeLiteral := apiObj.TypeName
 				if g.Module {
 					typeLiteral = fmt.Sprintf(
@@ -192,7 +192,7 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						apiObj.TypeName,
 					)
 				}
-				f.Comment("GetType returns the object type.")
+				f.Comment("Type returns the object type.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetType").Params().String().Block(

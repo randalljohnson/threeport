@@ -68,7 +68,7 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetId() uint {
 	return *ggkrd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetType() string {
 	return "GcpGkeKubernetesRuntimeDefinition"
 }
@@ -132,7 +132,7 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) GetId() uint {
 	return *ggkri.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ggkri *GcpGkeKubernetesRuntimeInstance) GetType() string {
 	return "GcpGkeKubernetesRuntimeInstance"
 }
@@ -212,7 +212,7 @@ func (gp *GcpProvider) GetId() uint {
 	return *gp.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (gp *GcpProvider) GetType() string {
 	return "GcpProvider"
 }

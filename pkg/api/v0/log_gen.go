@@ -67,7 +67,7 @@ func (lb *LogBackend) GetId() uint {
 	return *lb.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (lb *LogBackend) GetType() string {
 	return "LogBackend"
 }
@@ -121,7 +121,7 @@ func (lsd *LogStorageDefinition) GetId() uint {
 	return *lsd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (lsd *LogStorageDefinition) GetType() string {
 	return "LogStorageDefinition"
 }
@@ -175,7 +175,7 @@ func (lsi *LogStorageInstance) GetId() uint {
 	return *lsi.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (lsi *LogStorageInstance) GetType() string {
 	return "LogStorageInstance"
 }

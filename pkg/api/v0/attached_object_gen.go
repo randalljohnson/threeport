@@ -59,7 +59,7 @@ func (aor *AttachedObjectReference) GetId() uint {
 	return *aor.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (aor *AttachedObjectReference) GetType() string {
 	return "AttachedObjectReference"
 }

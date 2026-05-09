@@ -70,7 +70,7 @@ func (ma *ModuleApi) GetId() uint {
 	return *ma.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ma *ModuleApi) GetType() string {
 	return "ModuleApi"
 }
@@ -124,7 +124,7 @@ func (mar *ModuleApiRoute) GetId() uint {
 	return *mar.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (mar *ModuleApiRoute) GetType() string {
 	return "ModuleApiRoute"
 }
@@ -188,7 +188,7 @@ func (mc *ModuleController) GetId() uint {
 	return *mc.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (mc *ModuleController) GetType() string {
 	return "ModuleController"
 }
@@ -252,7 +252,7 @@ func (mo *ModuleObject) GetId() uint {
 	return *mo.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (mo *ModuleObject) GetType() string {
 	return "ModuleObject"
 }

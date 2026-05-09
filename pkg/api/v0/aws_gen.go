@@ -68,7 +68,7 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetId() uint {
 	return *aekrd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetType() string {
 	return "AwsEksKubernetesRuntimeDefinition"
 }
@@ -132,7 +132,7 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetId() uint {
 	return *aekri.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetType() string {
 	return "AwsEksKubernetesRuntimeInstance"
 }
@@ -212,7 +212,7 @@ func (ap *AwsProvider) GetId() uint {
 	return *ap.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ap *AwsProvider) GetType() string {
 	return "AwsProvider"
 }

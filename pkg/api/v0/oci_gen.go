@@ -68,7 +68,7 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetId() uint {
 	return *ookrd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ookrd *OciOkeKubernetesRuntimeDefinition) GetType() string {
 	return "OciOkeKubernetesRuntimeDefinition"
 }
@@ -132,7 +132,7 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetId() uint {
 	return *ookri.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ookri *OciOkeKubernetesRuntimeInstance) GetType() string {
 	return "OciOkeKubernetesRuntimeInstance"
 }
@@ -212,7 +212,7 @@ func (op *OciProvider) GetId() uint {
 	return *op.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (op *OciProvider) GetType() string {
 	return "OciProvider"
 }

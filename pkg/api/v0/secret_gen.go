@@ -65,7 +65,7 @@ func (sd *SecretDefinition) GetId() uint {
 	return *sd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (sd *SecretDefinition) GetType() string {
 	return "SecretDefinition"
 }
@@ -135,7 +135,7 @@ func (si *SecretInstance) GetId() uint {
 	return *si.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (si *SecretInstance) GetType() string {
 	return "SecretInstance"
 }

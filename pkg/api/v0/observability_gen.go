@@ -83,7 +83,7 @@ func (ld *LoggingDefinition) GetId() uint {
 	return *ld.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (ld *LoggingDefinition) GetType() string {
 	return "LoggingDefinition"
 }
@@ -158,7 +158,7 @@ func (li *LoggingInstance) GetId() uint {
 	return *li.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (li *LoggingInstance) GetType() string {
 	return "LoggingInstance"
 }
@@ -243,7 +243,7 @@ func (md *MetricsDefinition) GetId() uint {
 	return *md.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (md *MetricsDefinition) GetType() string {
 	return "MetricsDefinition"
 }
@@ -313,7 +313,7 @@ func (mi *MetricsInstance) GetId() uint {
 	return *mi.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (mi *MetricsInstance) GetType() string {
 	return "MetricsInstance"
 }
@@ -393,7 +393,7 @@ func (odd *ObservabilityDashboardDefinition) GetId() uint {
 	return *odd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (odd *ObservabilityDashboardDefinition) GetType() string {
 	return "ObservabilityDashboardDefinition"
 }
@@ -463,7 +463,7 @@ func (odi *ObservabilityDashboardInstance) GetId() uint {
 	return *odi.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (odi *ObservabilityDashboardInstance) GetType() string {
 	return "ObservabilityDashboardInstance"
 }
@@ -543,7 +543,7 @@ func (osd *ObservabilityStackDefinition) GetId() uint {
 	return *osd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (osd *ObservabilityStackDefinition) GetType() string {
 	return "ObservabilityStackDefinition"
 }
@@ -623,7 +623,7 @@ func (osi *ObservabilityStackInstance) GetId() uint {
 	return *osi.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (osi *ObservabilityStackInstance) GetType() string {
 	return "ObservabilityStackInstance"
 }

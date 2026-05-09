@@ -74,7 +74,7 @@ func (wd *WorkloadDefinition) GetId() uint {
 	return *wd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (wd *WorkloadDefinition) GetType() string {
 	return "WorkloadDefinition"
 }
@@ -134,7 +134,7 @@ func (we *WorkloadEvent) GetId() uint {
 	return *we.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (we *WorkloadEvent) GetType() string {
 	return "WorkloadEvent"
 }
@@ -188,7 +188,7 @@ func (wi *WorkloadInstance) GetId() uint {
 	return *wi.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (wi *WorkloadInstance) GetType() string {
 	return "WorkloadInstance"
 }
@@ -263,7 +263,7 @@ func (wrd *WorkloadResourceDefinition) GetId() uint {
 	return *wrd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (wrd *WorkloadResourceDefinition) GetType() string {
 	return "WorkloadResourceDefinition"
 }
@@ -327,7 +327,7 @@ func (wri *WorkloadResourceInstance) GetId() uint {
 	return *wri.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (wri *WorkloadResourceInstance) GetType() string {
 	return "WorkloadResourceInstance"
 }

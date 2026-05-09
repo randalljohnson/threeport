@@ -65,7 +65,7 @@ func (cpd *ControlPlaneDefinition) GetId() uint {
 	return *cpd.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (cpd *ControlPlaneDefinition) GetType() string {
 	return "ControlPlaneDefinition"
 }
@@ -125,7 +125,7 @@ func (cpi *ControlPlaneInstance) GetId() uint {
 	return *cpi.ID
 }
 
-// GetType returns the object type.
+// Type returns the object type.
 func (cpi *ControlPlaneInstance) GetType() string {
 	return "ControlPlaneInstance"
 }

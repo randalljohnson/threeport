@@ -129,6 +129,25 @@ func Decrypt(key, ciphertext string) (string, error) {
 	return string(plaintext), nil
 }
 
+// DecryptEnvSlice decrypts the VALUE portion of each KEY=VALUE entry in
+// env, leaving keys in plaintext. Returns a new slice — input is not
+// mutated.
+func DecryptEnvSlice(env []string, encryptionKey string) ([]string, error) {
+	decrypted := make([]string, len(env))
+	for i, entry := range env {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			return nil, fmt.Errorf("entry %d %q is not in KEY=VALUE format", i, entry)
+		}
+		decValue, err := Decrypt(encryptionKey, value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt entry %d: %w", i, err)
+		}
+		decrypted[i] = key + "=" + decValue
+	}
+	return decrypted, nil
+}
+
 // IsEncrypted attempts to decrypt a value.  If decryption fails it returns
 // false to indicate the value provided is not encrypted.  If decryption is
 // successful it returns true to indicate the value is encrypted.
@@ -198,17 +217,11 @@ func DecryptValues(obj interface{}, encryptionKey string) (interface{}, error) {
 			}
 			*v = decryptedVal
 		case []string:
-			for j, entry := range v {
-				key, value, ok := strings.Cut(entry, "=")
-				if !ok {
-					return obj, fmt.Errorf("%s[%d] is not in KEY=VALUE format", field.Name, j)
-				}
-				decValue, err := Decrypt(encryptionKey, value)
-				if err != nil {
-					return obj, fmt.Errorf("failed to decrypt %s[%d]: %w", field.Name, j, err)
-				}
-				v[j] = key + "=" + decValue
+			decrypted, err := DecryptEnvSlice(v, encryptionKey)
+			if err != nil {
+				return obj, fmt.Errorf("field %s: %w", field.Name, err)
 			}
+			copy(v, decrypted)
 		}
 	}
 	return obj, nil

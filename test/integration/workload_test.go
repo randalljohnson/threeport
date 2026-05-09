@@ -628,6 +628,20 @@ func TestWorkloadIntegration(t *testing.T) {
 				*createdSecretDefinition.ID,
 			)
 			assert.Nil(err, "should have no error deleting secret definition")
+
+			// wait for secret-controller to finish reconciling the delete
+			// and remove the row, otherwise the next test iteration trips
+			// the unique-name constraint when re-creating with the same name
+			secretDefDeleted := false
+			for i := 0; i < 30; i++ {
+				_, err := client.GetSecretDefinitionByID(apiClient, threeportAPIEndpoint, *createdSecretDefinition.ID)
+				if errors.Is(err, client_lib.ErrObjectNotFound) {
+					secretDefDeleted = true
+					break
+				}
+				time.Sleep(time.Second)
+			}
+			assert.True(secretDefDeleted, "secret definition should be gone within 30 seconds")
 		}
 
 		// delete workload definition

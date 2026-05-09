@@ -6,23 +6,23 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddSecretDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddSecretDefinitionVersions() {
-	apiserver_v0.SecretDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.SecretDefinitionTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.SecretDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -36,7 +36,7 @@ func AddSecretDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.SecretDefinitionTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.SecretDefinitionTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -45,16 +45,16 @@ func AddSecretDefinitionVersions() {
 // AddSecretInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddSecretInstanceVersions() {
-	apiserver_v0.SecretInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.SecretInstanceTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.SecretInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -68,7 +68,7 @@ func AddSecretInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.SecretInstanceTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.SecretInstanceTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

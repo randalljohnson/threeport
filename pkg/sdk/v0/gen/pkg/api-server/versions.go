@@ -30,6 +30,7 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 				fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version),
 				fmt.Sprintf("api_%s", objCollection.Version),
 			)
+			f.ImportAlias("github.com/threeport/threeport/pkg/sdk/v0", "sdk")
 			f.ImportAlias(util.SetImportAlias(
 				"github.com/threeport/threeport/pkg/api-server/lib/v0",
 				"apiserver_lib",

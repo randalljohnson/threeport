@@ -6,23 +6,23 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddDomainNameDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddDomainNameDefinitionVersions() {
-	apiserver_v0.DomainNameDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.DomainNameDefinitionTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.DomainNameDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -36,7 +36,7 @@ func AddDomainNameDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.DomainNameDefinitionTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.DomainNameDefinitionTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -45,16 +45,16 @@ func AddDomainNameDefinitionVersions() {
 // AddDomainNameInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddDomainNameInstanceVersions() {
-	apiserver_v0.DomainNameInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.DomainNameInstanceTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.DomainNameInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -68,7 +68,7 @@ func AddDomainNameInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.DomainNameInstanceTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.DomainNameInstanceTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -77,16 +77,16 @@ func AddDomainNameInstanceVersions() {
 // AddGatewayDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddGatewayDefinitionVersions() {
-	apiserver_v0.GatewayDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.GatewayDefinitionTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.GatewayDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -100,7 +100,7 @@ func AddGatewayDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayDefinitionTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayDefinitionTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -109,16 +109,16 @@ func AddGatewayDefinitionVersions() {
 // AddGatewayHttpPortVersions adds field validation info and adds it
 // to the REST API versions.
 func AddGatewayHttpPortVersions() {
-	apiserver_v0.GatewayHttpPortTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.GatewayHttpPortTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.GatewayHttpPort)),
 		"",
 		apiserver_lib.Translate,
@@ -132,7 +132,7 @@ func AddGatewayHttpPortVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayHttpPortTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayHttpPortTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -141,16 +141,16 @@ func AddGatewayHttpPortVersions() {
 // AddGatewayInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddGatewayInstanceVersions() {
-	apiserver_v0.GatewayInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.GatewayInstanceTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.GatewayInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -164,7 +164,7 @@ func AddGatewayInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayInstanceTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayInstanceTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -173,16 +173,16 @@ func AddGatewayInstanceVersions() {
 // AddGatewayTcpPortVersions adds field validation info and adds it
 // to the REST API versions.
 func AddGatewayTcpPortVersions() {
-	apiserver_v0.GatewayTcpPortTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.GatewayTcpPortTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.GatewayTcpPort)),
 		"",
 		apiserver_lib.Translate,
@@ -196,7 +196,7 @@ func AddGatewayTcpPortVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayTcpPortTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GatewayTcpPortTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

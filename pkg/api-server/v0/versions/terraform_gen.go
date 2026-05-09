@@ -6,23 +6,23 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddTerraformDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddTerraformDefinitionVersions() {
-	apiserver_v0.TerraformDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.TerraformDefinitionTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.TerraformDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -36,7 +36,7 @@ func AddTerraformDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.TerraformDefinitionTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.TerraformDefinitionTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -45,16 +45,16 @@ func AddTerraformDefinitionVersions() {
 // AddTerraformInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddTerraformInstanceVersions() {
-	apiserver_v0.TerraformInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.TerraformInstanceTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.TerraformInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -68,7 +68,7 @@ func AddTerraformInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.TerraformInstanceTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.TerraformInstanceTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

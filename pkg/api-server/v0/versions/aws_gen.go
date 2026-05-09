@@ -6,23 +6,23 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
-	v0 "github.com/threeport/threeport/pkg/sdk/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddAwsEksKubernetesRuntimeDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddAwsEksKubernetesRuntimeDefinitionVersions() {
-	apiserver_v0.AwsEksKubernetesRuntimeDefinitionTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.AwsEksKubernetesRuntimeDefinitionTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.AwsEksKubernetesRuntimeDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -36,7 +36,7 @@ func AddAwsEksKubernetesRuntimeDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.AwsEksKubernetesRuntimeDefinitionTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.AwsEksKubernetesRuntimeDefinitionTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -45,16 +45,16 @@ func AddAwsEksKubernetesRuntimeDefinitionVersions() {
 // AddAwsEksKubernetesRuntimeInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddAwsEksKubernetesRuntimeInstanceVersions() {
-	apiserver_v0.AwsEksKubernetesRuntimeInstanceTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.AwsEksKubernetesRuntimeInstanceTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.AwsEksKubernetesRuntimeInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -68,7 +68,7 @@ func AddAwsEksKubernetesRuntimeInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.AwsEksKubernetesRuntimeInstanceTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.AwsEksKubernetesRuntimeInstanceTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -77,16 +77,16 @@ func AddAwsEksKubernetesRuntimeInstanceVersions() {
 // AddAwsProviderVersions adds field validation info and adds it
 // to the REST API versions.
 func AddAwsProviderVersions() {
-	apiserver_v0.AwsProviderTaggedFields[v0.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.AwsProviderTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              v0.ValidateTag,
+		TagName:              sdk.ValidateTag,
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		v0.ValidateTag,
+		sdk.ValidateTag,
 		reflect.ValueOf(new(api_v0.AwsProvider)),
 		"",
 		apiserver_lib.Translate,
@@ -100,7 +100,7 @@ func AddAwsProviderVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.AwsProviderTaggedFields[v0.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.AwsProviderTaggedFields[sdk.ValidateTag]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

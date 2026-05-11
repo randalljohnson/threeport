@@ -258,10 +258,7 @@ func (h Handler) GetWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadDefinition
 	workloadDefinitionID := c.Param("id")
 	var workloadDefinition api_v0.WorkloadDefinition
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&workloadDefinition, workloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -753,10 +750,7 @@ func (h Handler) GetWorkloadEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadEvent
 	workloadEventID := c.Param("id")
 	var workloadEvent api_v0.WorkloadEvent
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&workloadEvent, workloadEventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1219,10 +1213,7 @@ func (h Handler) GetWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadInstance
 	workloadInstanceID := c.Param("id")
 	var workloadInstance api_v0.WorkloadInstance
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&workloadInstance, workloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1708,10 +1699,7 @@ func (h Handler) GetWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceDefinition
 	workloadResourceDefinitionID := c.Param("id")
 	var workloadResourceDefinition api_v0.WorkloadResourceDefinition
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&workloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -2144,10 +2132,7 @@ func (h Handler) GetWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceInstance
 	workloadResourceInstanceID := c.Param("id")
 	var workloadResourceInstance api_v0.WorkloadResourceInstance
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&workloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)

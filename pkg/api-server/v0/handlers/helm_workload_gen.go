@@ -258,10 +258,7 @@ func (h Handler) GetHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	helmWorkloadDefinitionID := c.Param("id")
 	var helmWorkloadDefinition api_v0.HelmWorkloadDefinition
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&helmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -783,10 +780,7 @@ func (h Handler) GetHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	helmWorkloadInstanceID := c.Param("id")
 	var helmWorkloadInstance api_v0.HelmWorkloadInstance
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&helmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)

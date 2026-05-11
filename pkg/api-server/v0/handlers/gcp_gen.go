@@ -244,10 +244,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
 	gcpGkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var gcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&gcpGkeKubernetesRuntimeDefinition, gcpGkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -716,10 +713,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
 	gcpGkeKubernetesRuntimeInstanceID := c.Param("id")
 	var gcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&gcpGkeKubernetesRuntimeInstance, gcpGkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1221,10 +1215,7 @@ func (h Handler) GetGcpProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpProvider
 	gcpProviderID := c.Param("id")
 	var gcpProvider api_v0.GcpProvider
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&gcpProvider, gcpProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)

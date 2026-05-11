@@ -244,10 +244,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeDefinition
 	ociOkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var ociOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -716,10 +713,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeInstance
 	ociOkeKubernetesRuntimeInstanceID := c.Param("id")
 	var ociOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1221,10 +1215,7 @@ func (h Handler) GetOciProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciProvider
 	ociProviderID := c.Param("id")
 	var ociProvider api_v0.OciProvider
-	db := h.DB
-	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
-		db = db.Unscoped()
-	}
+	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
 	if result := db.First(&ociProvider, ociProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)

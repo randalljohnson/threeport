@@ -1330,21 +1330,18 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						),
 						apiObject.TypeName,
 					),
-					// opt-in to seeing soft-deleted rows for historical lookups
-					// (events name resolution); default behavior unchanged.
+					// apply request-driven scopes (e.g. ?includedeleted=true to bypass
+					// the soft-delete filter for historical lookups)
 					Id("db").Op(":=").Do(func(s *Statement) {
 						if gen.Module {
 							s.Id("h").Dot("Handler")
 						} else {
 							s.Id("h")
 						}
-					}).Dot("DB"),
-					If(Id("c").Dot("QueryParam").Call(Qual(
+					}).Dot("DB").Dot("Scopes").Call(Qual(
 						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"QueryParamIncludeDeleted",
-					)).Op("==").Lit("true")).Block(
-						Id("db").Op("=").Id("db").Dot("Unscoped").Call(),
-					),
+						"QueryScopes",
+					).Call(Id("c")).Op("...")),
 					If(
 						// TODO: figure out preload objects
 						Id("result").Op(":=").Id("db").Add(dbLoadAssociationStatement).

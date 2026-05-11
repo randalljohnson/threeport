@@ -183,7 +183,7 @@ func findBlockingAttachedObjectReferences(
 	if err := db.
 		Where(
 			"object_type = ? AND object_id = ? AND relationship IN ?",
-			objectType, objectID, []string{sdk.RelationshipRequires, sdk.RelationshipOwns},
+			objectType, objectID, []sdk.Relationship{sdk.RelationshipRequires, sdk.RelationshipOwns},
 		).
 		Find(&attachedObjectReferences).Error; err != nil {
 		return nil, fmt.Errorf("failed to list blocking attached object references: %w", err)

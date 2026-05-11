@@ -970,7 +970,7 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 	// kind anchors the whole tag — flag anything that isn't one of the
 	// two recognized values up front so downstream emission can rely on
 	// the value being safe
-	if kind != sdk.RelationshipRequires && kind != sdk.RelationshipOwns {
+	if kind != string(sdk.RelationshipRequires) && kind != string(sdk.RelationshipOwns) {
 		problems = append(problems, fmt.Sprintf(
 			"%s.%s: invalid relationship kind %q (expected %q or %q)",
 			object, field, kind,

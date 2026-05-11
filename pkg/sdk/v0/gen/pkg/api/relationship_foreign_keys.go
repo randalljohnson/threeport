@@ -59,7 +59,7 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 
 	kindLit := func(kind string) *Statement {
 		switch kind {
-		case sdk.RelationshipOwns:
+		case string(sdk.RelationshipOwns):
 			return Qual("github.com/threeport/threeport/pkg/sdk/v0", "RelationshipOwns")
 		default:
 			return Qual("github.com/threeport/threeport/pkg/sdk/v0", "RelationshipRequires")

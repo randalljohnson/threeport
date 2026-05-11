@@ -260,7 +260,7 @@ func (h Handler) GetControlPlaneDefinition(c echo.Context) error {
 	controlPlaneDefinitionID := c.Param("id")
 	var controlPlaneDefinition api_v0.ControlPlaneDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
@@ -785,7 +785,7 @@ func (h Handler) GetControlPlaneInstance(c echo.Context) error {
 	controlPlaneInstanceID := c.Param("id")
 	var controlPlaneInstance api_v0.ControlPlaneInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.Preload(clause.Associations).First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {

@@ -241,7 +241,7 @@ func (h Handler) GetProfile(c echo.Context) error {
 	profileID := c.Param("id")
 	var profile api_v0.Profile
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&profile, profileID); result.Error != nil {
@@ -693,7 +693,7 @@ func (h Handler) GetTier(c echo.Context) error {
 	tierID := c.Param("id")
 	var tier api_v0.Tier
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&tier, tierID); result.Error != nil {

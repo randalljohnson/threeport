@@ -241,7 +241,7 @@ func (h Handler) GetModuleApi(c echo.Context) error {
 	moduleApiID := c.Param("id")
 	var moduleApi api_v0.ModuleApi
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&moduleApi, moduleApiID); result.Error != nil {
@@ -677,7 +677,7 @@ func (h Handler) GetModuleApiRoute(c echo.Context) error {
 	moduleApiRouteID := c.Param("id")
 	var moduleApiRoute api_v0.ModuleApiRoute
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
@@ -1129,7 +1129,7 @@ func (h Handler) GetModuleController(c echo.Context) error {
 	moduleControllerID := c.Param("id")
 	var moduleController api_v0.ModuleController
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&moduleController, moduleControllerID); result.Error != nil {
@@ -1565,7 +1565,7 @@ func (h Handler) GetModuleObject(c echo.Context) error {
 	moduleObjectID := c.Param("id")
 	var moduleObject api_v0.ModuleObject
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&moduleObject, moduleObjectID); result.Error != nil {

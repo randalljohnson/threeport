@@ -245,7 +245,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 	gcpGkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var gcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&gcpGkeKubernetesRuntimeDefinition, gcpGkeKubernetesRuntimeDefinitionID); result.Error != nil {
@@ -717,7 +717,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	gcpGkeKubernetesRuntimeInstanceID := c.Param("id")
 	var gcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&gcpGkeKubernetesRuntimeInstance, gcpGkeKubernetesRuntimeInstanceID); result.Error != nil {
@@ -1222,7 +1222,7 @@ func (h Handler) GetGcpProvider(c echo.Context) error {
 	gcpProviderID := c.Param("id")
 	var gcpProvider api_v0.GcpProvider
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&gcpProvider, gcpProviderID); result.Error != nil {

@@ -225,7 +225,7 @@ func (h Handler) GetAttachedObjectReference(c echo.Context) error {
 	attachedObjectReferenceID := c.Param("id")
 	var attachedObjectReference api_v0.AttachedObjectReference
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&attachedObjectReference, attachedObjectReferenceID); result.Error != nil {

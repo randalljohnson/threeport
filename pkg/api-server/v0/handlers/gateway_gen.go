@@ -245,7 +245,7 @@ func (h Handler) GetDomainNameDefinition(c echo.Context) error {
 	domainNameDefinitionID := c.Param("id")
 	var domainNameDefinition api_v0.DomainNameDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&domainNameDefinition, domainNameDefinitionID); result.Error != nil {
@@ -717,7 +717,7 @@ func (h Handler) GetDomainNameInstance(c echo.Context) error {
 	domainNameInstanceID := c.Param("id")
 	var domainNameInstance api_v0.DomainNameInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&domainNameInstance, domainNameInstanceID); result.Error != nil {
@@ -1236,7 +1236,7 @@ func (h Handler) GetGatewayDefinition(c echo.Context) error {
 	gatewayDefinitionID := c.Param("id")
 	var gatewayDefinition api_v0.GatewayDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&gatewayDefinition, gatewayDefinitionID); result.Error != nil {
@@ -1731,7 +1731,7 @@ func (h Handler) GetGatewayHttpPort(c echo.Context) error {
 	gatewayHttpPortID := c.Param("id")
 	var gatewayHttpPort api_v0.GatewayHttpPort
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&gatewayHttpPort, gatewayHttpPortID); result.Error != nil {
@@ -2197,7 +2197,7 @@ func (h Handler) GetGatewayInstance(c echo.Context) error {
 	gatewayInstanceID := c.Param("id")
 	var gatewayInstance api_v0.GatewayInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&gatewayInstance, gatewayInstanceID); result.Error != nil {
@@ -2686,7 +2686,7 @@ func (h Handler) GetGatewayTcpPort(c echo.Context) error {
 	gatewayTcpPortID := c.Param("id")
 	var gatewayTcpPort api_v0.GatewayTcpPort
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&gatewayTcpPort, gatewayTcpPortID); result.Error != nil {

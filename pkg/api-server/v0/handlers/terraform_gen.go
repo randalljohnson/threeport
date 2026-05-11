@@ -259,7 +259,7 @@ func (h Handler) GetTerraformDefinition(c echo.Context) error {
 	terraformDefinitionID := c.Param("id")
 	var terraformDefinition api_v0.TerraformDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&terraformDefinition, terraformDefinitionID); result.Error != nil {
@@ -784,7 +784,7 @@ func (h Handler) GetTerraformInstance(c echo.Context) error {
 	terraformInstanceID := c.Param("id")
 	var terraformInstance api_v0.TerraformInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&terraformInstance, terraformInstanceID); result.Error != nil {

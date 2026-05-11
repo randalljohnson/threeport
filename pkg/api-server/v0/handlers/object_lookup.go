@@ -191,7 +191,7 @@ func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) 
 	out := make(map[uint]string, len(ids))
 	suffix := ""
 	if includeDeleted {
-		suffix = "?includedeleted=true"
+		suffix = "?" + apiserver_lib.QueryParamIncludeDeleted + "=true"
 	}
 	for _, id := range ids {
 		url := fmt.Sprintf("%s%s/%d%s", endpoint, path, id, suffix)

@@ -225,7 +225,7 @@ func (h Handler) GetEvent(c echo.Context) error {
 	eventID := c.Param("id")
 	var event api_v0.Event
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&event, eventID); result.Error != nil {

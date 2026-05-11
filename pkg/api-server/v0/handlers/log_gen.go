@@ -241,7 +241,7 @@ func (h Handler) GetLogBackend(c echo.Context) error {
 	logBackendID := c.Param("id")
 	var logBackend api_v0.LogBackend
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&logBackend, logBackendID); result.Error != nil {
@@ -693,7 +693,7 @@ func (h Handler) GetLogStorageDefinition(c echo.Context) error {
 	logStorageDefinitionID := c.Param("id")
 	var logStorageDefinition api_v0.LogStorageDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
@@ -1151,7 +1151,7 @@ func (h Handler) GetLogStorageInstance(c echo.Context) error {
 	logStorageInstanceID := c.Param("id")
 	var logStorageInstance api_v0.LogStorageInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&logStorageInstance, logStorageInstanceID); result.Error != nil {

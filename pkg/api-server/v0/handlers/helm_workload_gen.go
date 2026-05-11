@@ -259,7 +259,7 @@ func (h Handler) GetHelmWorkloadDefinition(c echo.Context) error {
 	helmWorkloadDefinitionID := c.Param("id")
 	var helmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&helmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
@@ -784,7 +784,7 @@ func (h Handler) GetHelmWorkloadInstance(c echo.Context) error {
 	helmWorkloadInstanceID := c.Param("id")
 	var helmWorkloadInstance api_v0.HelmWorkloadInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&helmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {

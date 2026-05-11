@@ -245,7 +245,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	ociOkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var ociOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
@@ -717,7 +717,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	ociOkeKubernetesRuntimeInstanceID := c.Param("id")
 	var ociOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
@@ -1222,7 +1222,7 @@ func (h Handler) GetOciProvider(c echo.Context) error {
 	ociProviderID := c.Param("id")
 	var ociProvider api_v0.OciProvider
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&ociProvider, ociProviderID); result.Error != nil {

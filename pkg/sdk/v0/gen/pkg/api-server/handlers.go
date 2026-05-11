@@ -1339,7 +1339,10 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							s.Id("h")
 						}
 					}).Dot("DB"),
-					If(Id("c").Dot("QueryParam").Call(Lit("includedeleted")).Op("==").Lit("true")).Block(
+					If(Id("c").Dot("QueryParam").Call(Qual(
+						"github.com/threeport/threeport/pkg/api-server/lib/v0",
+						"QueryParamIncludeDeleted",
+					)).Op("==").Lit("true")).Block(
 						Id("db").Op("=").Id("db").Dot("Unscoped").Call(),
 					),
 					If(

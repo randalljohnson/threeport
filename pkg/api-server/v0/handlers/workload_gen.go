@@ -259,7 +259,7 @@ func (h Handler) GetWorkloadDefinition(c echo.Context) error {
 	workloadDefinitionID := c.Param("id")
 	var workloadDefinition api_v0.WorkloadDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&workloadDefinition, workloadDefinitionID); result.Error != nil {
@@ -754,7 +754,7 @@ func (h Handler) GetWorkloadEvent(c echo.Context) error {
 	workloadEventID := c.Param("id")
 	var workloadEvent api_v0.WorkloadEvent
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&workloadEvent, workloadEventID); result.Error != nil {
@@ -1220,7 +1220,7 @@ func (h Handler) GetWorkloadInstance(c echo.Context) error {
 	workloadInstanceID := c.Param("id")
 	var workloadInstance api_v0.WorkloadInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&workloadInstance, workloadInstanceID); result.Error != nil {
@@ -1709,7 +1709,7 @@ func (h Handler) GetWorkloadResourceDefinition(c echo.Context) error {
 	workloadResourceDefinitionID := c.Param("id")
 	var workloadResourceDefinition api_v0.WorkloadResourceDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&workloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
@@ -2145,7 +2145,7 @@ func (h Handler) GetWorkloadResourceInstance(c echo.Context) error {
 	workloadResourceInstanceID := c.Param("id")
 	var workloadResourceInstance api_v0.WorkloadResourceInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&workloadResourceInstance, workloadResourceInstanceID); result.Error != nil {

@@ -259,7 +259,7 @@ func (h Handler) GetSecretDefinition(c echo.Context) error {
 	secretDefinitionID := c.Param("id")
 	var secretDefinition api_v0.SecretDefinition
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&secretDefinition, secretDefinitionID); result.Error != nil {
@@ -784,7 +784,7 @@ func (h Handler) GetSecretInstance(c echo.Context) error {
 	secretInstanceID := c.Param("id")
 	var secretInstance api_v0.SecretInstance
 	db := h.DB
-	if c.QueryParam("includedeleted") == "true" {
+	if c.QueryParam(apiserver_lib.QueryParamIncludeDeleted) == "true" {
 		db = db.Unscoped()
 	}
 	if result := db.First(&secretInstance, secretInstanceID); result.Error != nil {

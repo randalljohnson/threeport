@@ -969,13 +969,16 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 	kind, modifiers, malformed := ParseRelationshipTagValue(rel)
 
 	// kind anchors the whole tag — flag anything that isn't one of the
-	// two recognized values up front so downstream emission can rely on
+	// recognized values up front so downstream emission can rely on
 	// the value being safe
-	if kind != string(api.RelationshipRequires) && kind != string(api.RelationshipOwns) {
+	switch api.Relationship(kind) {
+	case api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes:
+		// valid
+	default:
 		problems = append(problems, fmt.Sprintf(
-			"%s.%s: invalid relationship kind %q (expected %q or %q)",
+			"%s.%s: invalid relationship kind %q (expected %q, %q, or %q)",
 			object, field, kind,
-			api.RelationshipRequires, api.RelationshipOwns,
+			api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes,
 		))
 	}
 	// surface malformed modifier entries (no colon) verbatim; they were

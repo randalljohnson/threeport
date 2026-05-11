@@ -48,28 +48,13 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 			if v == nil {
 				continue
 			}
-			plain := *v
-			// reject the redacted placeholder — clients should send a real
-			// value to change the field, or omit it to leave it unchanged
-			if plain == encryption.RedactedValuePlaceholder {
-				return util.NewBadRequestError(
-					fmt.Sprintf(
-						"field %s contains redacted placeholder; provide a real value or omit the field",
-						field.Name,
-					),
-				)
-			}
-			// skip if the input is already encrypted — controllers are
-			// responsible for decrypting before submitting, but a forgotten
-			// decrypt round-trips ciphertext; skipping prevents double-encryption.
-			if encryption.IsEncrypted(encryptionKey, plain) {
-				continue
-			}
-			enc, err := encryption.Encrypt(encryptionKey, plain)
+			enc, err := encryptValue(tx, encryptionKey, *v, string(field.Name))
 			if err != nil {
-				return fmt.Errorf("failed to encrypt %s: %w", field.Name, err)
+				return err
 			}
-			tx.Statement.SetColumn(field.Name.Column(), enc)
+			if enc != *v {
+				tx.Statement.SetColumn(field.Name.Column(), enc)
+			}
 
 		case []string:
 			// nil/empty slice: nothing to encrypt
@@ -84,27 +69,15 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 				if !ok {
 					return fmt.Errorf("%s[%d] is not in KEY=VALUE format", field.Name, j)
 				}
-				// reject the redacted placeholder — clients should send a real
-				// value to change the field, or omit it to leave it unchanged
-				if value == encryption.RedactedValuePlaceholder {
-					return util.NewBadRequestError(
-						fmt.Sprintf(
-							"%s[%d] contains redacted placeholder; provide a real value or omit the entry",
-							field.Name, j,
-						),
-					)
-				}
-				// skip if already encrypted — preserves the original entry to
-				// avoid double-encryption when a controller round-trips it.
-				if encryption.IsEncrypted(encryptionKey, value) {
-					encSlice[j] = entry
-					continue
-				}
-				encValue, err := encryption.Encrypt(encryptionKey, value)
+				encValue, err := encryptValue(tx, encryptionKey, value, fmt.Sprintf("%s[%d]", field.Name, j))
 				if err != nil {
-					return fmt.Errorf("failed to encrypt %s[%d]: %w", field.Name, j, err)
+					return err
 				}
-				encSlice[j] = key + "=" + encValue
+				if encValue == value {
+					encSlice[j] = entry
+				} else {
+					encSlice[j] = key + "=" + encValue
+				}
 			}
 			tx.Statement.SetColumn(field.Name.Column(), encSlice)
 
@@ -116,4 +89,33 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 		}
 	}
 	return nil
+}
+
+// encryptValue encrypts plain and returns the ciphertext. Returns plain
+// unchanged when it is already encrypted, and a bad-request error when it
+// is the redacted placeholder. fieldRef identifies the field or entry in
+// error and log messages.
+func encryptValue(tx *gorm.DB, encryptionKey, plain, fieldRef string) (string, error) {
+	// reject the redacted placeholder; clients send a real value to change
+	// the field or omit it to leave existing ciphertext in place
+	if plain == encryption.RedactedValuePlaceholder {
+		return "", util.NewBadRequestError(
+			fmt.Sprintf("%s contains redacted placeholder; provide a real value or omit it", fieldRef),
+		)
+	}
+	// skip if already encrypted; a forgotten decrypt by a controller would
+	// otherwise double-encrypt the value
+	if encryption.IsEncrypted(encryptionKey, plain) {
+		tx.Logger.Info(
+			tx.Statement.Context,
+			"skipping encryption of %s: value already encrypted (likely a controller resubmitted ciphertext)",
+			fieldRef,
+		)
+		return plain, nil
+	}
+	enc, err := encryption.Encrypt(encryptionKey, plain)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt %s: %w", fieldRef, err)
+	}
+	return enc, nil
 }

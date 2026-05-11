@@ -178,6 +178,7 @@ The inverted shape — wrapping the happy path inside nested `if`/`else` branche
   - `pkg/util/v0` → alias `util`
 - **Avoid `v0`, `v01`, `api_v0`, `client_v0`** as aliases. `v0` says nothing about which package; `api_v0` is redundantly versioned in a file that already implies v0.
 - **Use the longer form (e.g. `api_v0`) only when the compiler requires it** — i.e. two distinct versioned packages with the same conceptual name needing to coexist in the same file. A file in `package api` importing `pkg/api/v0` as `api` is fine; Go allows the alias to shadow the local package name without symbol collision.
+- **Function parameter wins over import alias when names collide.** If a function parameter naturally takes the package's conceptual name (e.g. `func F(gen *gen.Generator)`), keep the parameter on its natural name and give the import a longer alias (`sdkgen "github.com/.../sdk/v0/gen"`) so package-level calls inside the body remain reachable. This matters when the body calls a package function (e.g. `sdkgen.ParseRelationshipTagValue(rel)`) — otherwise the parameter shadows the package inside the function body and the package call fails to compile.
 
 ## Function Documentation (Docstrings)
 - ALL functions (both exported and unexported) require documentation comments

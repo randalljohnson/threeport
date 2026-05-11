@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
+	"sync"
 
 	strcase "github.com/iancoleman/strcase"
 	gorm "gorm.io/gorm"
@@ -16,8 +16,26 @@ import (
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 )
 
-// moduleHTTPClient is shared across module dispatch calls for connection pooling.
-var moduleHTTPClient = &http.Client{Timeout: 10 * time.Second}
+var (
+	moduleHTTPClient     *http.Client
+	moduleHTTPClientOnce sync.Once
+)
+
+// getModuleHTTPClient returns the HTTP client used for module API dispatch.
+// On first call it builds an mTLS client from the api-server's own certs at
+// /etc/threeport, falling back to http.DefaultClient when the certs aren't
+// present (auth disabled).
+func getModuleHTTPClient() *http.Client {
+	moduleHTTPClientOnce.Do(func() {
+		c, err := client_lib.GetHTTPClient(true, "", "", "", "")
+		if err != nil {
+			moduleHTTPClient = http.DefaultClient
+			return
+		}
+		moduleHTTPClient = c
+	})
+	return moduleHTTPClient
+}
 
 // GetObjectNames returns id->name for each id of the given object type,
 // dispatching to core SQL or the owning module's API as needed. Returns an
@@ -215,7 +233,7 @@ func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) 
 func getIDFromModuleByName(endpoint, path, objectType, name string) (uint, error) {
 	url := fmt.Sprintf("%s%s?name=%s", endpoint, path, name)
 	resp, err := client_lib.GetResponse(
-		moduleHTTPClient,
+		getModuleHTTPClient(),
 		url,
 		http.MethodGet,
 		new(bytes.Buffer),

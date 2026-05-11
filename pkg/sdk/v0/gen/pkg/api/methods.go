@@ -14,27 +14,27 @@ import (
 	api "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
-	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	sdkgen "github.com/threeport/threeport/pkg/sdk/v0/gen"
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
 )
 
 // GenApiObjectMethods generates the source code for the API objects constants
 // and methods.
-func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error {
 	pluralize := pluralize.NewClient()
 
 	// flatten StructTags so we can look up an API type's relationship-tagged
 	// fields by TypeName when emitting ForeignKeys methods
 	typeToTags := make(map[string]map[string]map[string]string)
-	for _, group := range g.ApiObjectGroups {
+	for _, group := range gen.ApiObjectGroups {
 		for typeName, tagMap := range group.StructTags {
 			typeToTags[typeName] = tagMap
 		}
 	}
 
-	for _, objCollection := range g.VersionedApiObjectCollections {
+	for _, objCollection := range gen.VersionedApiObjectCollections {
 		for _, objGroup := range objCollection.VersionedApiObjectGroups {
-			f := NewFilePath(fmt.Sprintf("%s/pkg/api/%s", g.ModulePath, objCollection.Version))
+			f := NewFilePath(fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version))
 			f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 			f.ImportAlias("github.com/threeport/threeport/pkg/notifications/v0", "notifications")
@@ -53,7 +53,7 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			// object REST path constants
 			paths := &Statement{}
 			for _, apiObj := range objGroup.ApiObjects {
-				if g.Module {
+				if gen.Module {
 					paths.Id(fmt.Sprintf(
 						"Path%sVersions",
 						apiObj.TypeName,
@@ -186,7 +186,7 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				)
 				// Type method
 				typeLiteral := apiObj.TypeName
-				if g.Module {
+				if gen.Module {
 					typeLiteral = fmt.Sprintf(
 						"%s/%s.%s",
 						sdkConfig.ApiNamespace,
@@ -233,7 +233,7 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							if !ok || rel == "" {
 								continue
 							}
-							kind, modifiers, _ := gen.ParseRelationshipTagValue(rel)
+							kind, modifiers, _ := sdkgen.ParseRelationshipTagValue(rel)
 							objectType := strings.TrimSuffix(fieldName, "ID")
 							if v, ok := modifiers[api.RelationshipTypeKey]; ok {
 								objectType = v

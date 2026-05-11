@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"sort"
+	"strings"
 
 	. "github.com/dave/jennifer/jen"
 	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
+	api "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"github.com/threeport/threeport/pkg/sdk/v0/gen"
@@ -217,14 +220,105 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 				// ForeignKeys method emitted for any type with at least one
 				// relationship-tagged FK
-				if foreignKeys := relationshipForeignKeyFields(apiObj.TypeName, typeToTags); len(foreignKeys) > 0 {
-					emitRelationshipForeignKeyMethod(f, apiObj.TypeName, foreignKeys)
+				{
+					type fkEntry struct {
+						fieldName    string
+						objectType   string
+						relationship string
+					}
+					var foreignKeys []fkEntry
+					if tagsForType, ok := typeToTags[apiObj.TypeName]; ok {
+						for fieldName, tagMap := range tagsForType {
+							rel, ok := tagMap[string(api.RelationshipTag)]
+							if !ok || rel == "" {
+								continue
+							}
+							kind, modifiers, _ := gen.ParseRelationshipTagValue(rel)
+							objectType := strings.TrimSuffix(fieldName, "ID")
+							if v, ok := modifiers[api.RelationshipTypeKey]; ok {
+								objectType = v
+							}
+							foreignKeys = append(foreignKeys, fkEntry{
+								fieldName:    fieldName,
+								objectType:   objectType,
+								relationship: kind,
+							})
+						}
+						sort.Slice(foreignKeys, func(i, j int) bool {
+							return foreignKeys[i].fieldName < foreignKeys[j].fieldName
+						})
+					}
+					if len(foreignKeys) > 0 {
+						receiver := strings.ToLower(string(apiObj.TypeName[0]))
+						foreignKeyType := Qual("github.com/threeport/threeport/pkg/api/v0", "ForeignKey")
+						f.Comment(fmt.Sprintf(
+							"ForeignKeys returns the relationship-tagged foreign keys on %s.",
+							apiObj.TypeName,
+						))
+						f.Func().Params(
+							Id(receiver).Op("*").Id(apiObj.TypeName),
+						).Id("ForeignKeys").Params().Index().Add(foreignKeyType).BlockFunc(func(g *Group) {
+							g.Return().Index().Add(foreignKeyType).ValuesFunc(func(vg *Group) {
+								for _, fk := range foreignKeys {
+									var relationshipQual *Statement
+									switch api.Relationship(fk.relationship) {
+									case api.RelationshipOwns:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipOwns")
+									case api.RelationshipDescribes:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipDescribes")
+									default:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipRequires")
+									}
+									vg.Values(Dict{
+										Id("FieldName"): Lit(fk.fieldName),
+										Id("ObjectType"): Qual(
+											"github.com/threeport/threeport/pkg/util/v0",
+											"ObjectTypeName",
+										).Call(Id(fk.objectType).Values()),
+										Id("Relationship"): relationshipQual,
+										Id("ObjectID"):     Id(receiver).Dot(fk.fieldName),
+									})
+								}
+							})
+						})
+						f.Line()
+					}
 				}
 
 				// EncryptedFields method emitted for any type with at least
 				// one encrypt-tagged field
-				if encryptedFields := encryptedFieldNames(apiObj.TypeName, typeToTags); len(encryptedFields) > 0 {
-					emitEncryptedFieldsMethod(f, apiObj.TypeName, encryptedFields)
+				{
+					var encryptedFields []string
+					if tagsForType, ok := typeToTags[apiObj.TypeName]; ok {
+						for fieldName, tagMap := range tagsForType {
+							if tagMap[string(api.EncryptTag)] != api.EncryptTrue {
+								continue
+							}
+							encryptedFields = append(encryptedFields, fieldName)
+						}
+						sort.Strings(encryptedFields)
+					}
+					if len(encryptedFields) > 0 {
+						receiver := strings.ToLower(string(apiObj.TypeName[0]))
+						encryptedFieldType := Qual("github.com/threeport/threeport/pkg/api/v0", "EncryptedField")
+						f.Comment(fmt.Sprintf(
+							"EncryptedFields returns the encrypt-tagged fields on %s.",
+							apiObj.TypeName,
+						))
+						f.Func().Params(
+							Id(receiver).Op("*").Id(apiObj.TypeName),
+						).Id("EncryptedFields").Params().Index().Add(encryptedFieldType).BlockFunc(func(g *Group) {
+							g.Return().Index().Add(encryptedFieldType).ValuesFunc(func(vg *Group) {
+								for _, fieldName := range encryptedFields {
+									vg.Values(Dict{
+										Id("Name"):  Lit(fieldName),
+										Id("Value"): Id(receiver).Dot(fieldName),
+									})
+								}
+							})
+						})
+						f.Line()
+					}
 				}
 			}
 
@@ -249,3 +343,4 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	return nil
 }
+

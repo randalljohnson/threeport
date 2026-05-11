@@ -133,12 +133,18 @@ func resolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
 		Version   string
 	}
 	var rows []row
-	if err := db.
-		Table("v0_module_objects mo").
-		Select("ma.api_namespace AS namespace, mo.version AS version").
-		Joins("JOIN v0_module_apis ma ON ma.id = mo.module_api_id").
-		Where("mo.name = ? AND ma.core = false", bareKind).
-		Scan(&rows).Error; err != nil {
+
+	// start from the registered objects table; JOIN outward to get the
+	// namespace each registration belongs to
+	q := db.Table("v0_module_objects AS object")
+
+	// pull in the parent ModuleApi row so its namespace is queryable
+	q = q.Joins("JOIN v0_module_apis AS module_api ON module_api.id = object.module_api_id")
+
+	// keep only registrations of the bare kind, owned by non-core modules
+	q = q.Where("object.name = ? AND module_api.core = false", bareKind)
+
+	if err := q.Select("module_api.api_namespace AS namespace, object.version AS version").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("failed to resolve object type for %q: %w", bareKind, err)
 	}
 

@@ -13,25 +13,9 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// foreignKey describes a *uint ID field on an API type tagged
-// `relationship:"owns"` or `relationship:"requires"`.
-type foreignKey struct {
-	fieldName    string
-	objectType   string // e.g. "WorkloadInstance"
-	relationship string // sdk.RelationshipOwns or sdk.RelationshipRequires
-	objectID     *uint
-}
-
-// foreignKeyProvider is implemented by every API type with at
-// least one tagged foreign key. The SDK generates the method so runtime
-// hooks read it directly instead of reflecting over struct tags.
-type foreignKeyProvider interface {
-	ForeignKeys() []foreignKey
-}
-
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
-func foreignKeysFor(obj interface{}) []foreignKey {
-	p, ok := obj.(foreignKeyProvider)
+func foreignKeysFor(obj interface{}) []sdk.ForeignKey {
+	p, ok := obj.(sdk.ForeignKeyProvider)
 	if !ok {
 		return nil
 	}
@@ -43,20 +27,20 @@ func foreignKeysFor(obj interface{}) []foreignKey {
 // on first set.
 func insertAttachedObjectReference(
 	tx *gorm.DB,
-	foreignKey foreignKey,
+	foreignKey sdk.ForeignKey,
 	attachedObjectType string,
 	attachedObjectID uint,
 ) error {
 	if err := tx.Create(&AttachedObjectReference{
-		ObjectID:           foreignKey.objectID,
-		ObjectType:         &foreignKey.objectType,
+		ObjectID:           foreignKey.ObjectID,
+		ObjectType:         &foreignKey.ObjectType,
 		AttachedObjectID:   &attachedObjectID,
 		AttachedObjectType: &attachedObjectType,
-		Relationship:       &foreignKey.relationship,
+		Relationship:       &foreignKey.Relationship,
 	}).Error; err != nil {
 		return fmt.Errorf(
 			"failed to create attached object reference for %s.%s: %w",
-			attachedObjectType, foreignKey.fieldName, err,
+			attachedObjectType, foreignKey.FieldName, err,
 		)
 	}
 	return nil
@@ -78,7 +62,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 		)
 	}
 	for _, foreignKey := range foreignKeys {
-		if foreignKey.objectID == nil {
+		if foreignKey.ObjectID == nil {
 			continue
 		}
 		if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {
@@ -95,10 +79,10 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	// reject any update that changes a foreign key with a value already set;
 	// fall through when no foreign key on the row is being changed
 	for _, foreignKey := range foreignKeysFor(obj) {
-		if foreignKey.objectID != nil && tx.Statement.Changed(foreignKey.fieldName) {
+		if foreignKey.ObjectID != nil && tx.Statement.Changed(string(foreignKey.FieldName)) {
 			return util.NewBadRequestError(fmt.Sprintf(
 				"%s is immutable; tear down and recreate the holder to undo this relationship",
-				foreignKey.fieldName,
+				foreignKey.FieldName,
 			))
 		}
 	}
@@ -144,7 +128,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		return nil
 	}
 	for _, foreignKey := range foreignKeys {
-		if foreignKey.objectID == nil || !tx.Statement.Changed(foreignKey.fieldName) {
+		if foreignKey.ObjectID == nil || !tx.Statement.Changed(string(foreignKey.FieldName)) {
 			continue
 		}
 		if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {

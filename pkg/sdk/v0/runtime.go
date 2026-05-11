@@ -35,7 +35,7 @@ type EncryptedFieldProvider interface {
 type ForeignKey struct {
 	FieldName    FieldName
 	ObjectType   string // e.g. "WorkloadInstance"
-	Relationship string // RelationshipOwns or RelationshipRequires
+	Relationship string // Relationship(Owns|Requires|Describes)
 	ObjectID     *uint
 }
 

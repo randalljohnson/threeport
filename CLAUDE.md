@@ -141,6 +141,10 @@ func (b *OCIBootstrapSDK) ValidateOCIUserPropagation() error
 - Never name other functions, tables, fields, files, or systems by identifier in a docstring. Identifiers rename and move; the docstring rots silently.
 - For stub/no-op functions (`return nil` placeholders, hooks reserved for later), the one-line docstring per the conventions above is sufficient. Do not add a paragraph explaining the absence.
 
+## Comment Line Balance
+- When a `//` comment wraps across multiple lines, avoid leaving the last line significantly shorter than the others. A four-line comment ending in just `row.` or `tags via reflection.` reads as an awkward straggler. Pack content so the last line is at least roughly comparable in width to the others, or use fewer lines.
+- This applies to docstrings and inline comment blocks alike. Tighten the prose to fit, rather than letting a trailing fragment dangle.
+
 ## Logging Conventions
 
 ### Structured Logging (Controllers/Reconcilers)

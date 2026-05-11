@@ -8,16 +8,22 @@ import (
 type AttachedObjectReference struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
-	// The object type of the base object.
+	// ObjectType is the kind of the base object being attached to. Read
+	// "this attached object attaches to that object": the no-prefix
+	// Object* fields name the "that" (anchor) side. The naming is
+	// directional because the attached object is the side that can
+	// determine the base object's lifecycle, depending on the type of
+	// relationship (see below).
 	ObjectType *string `json:"ObjectType,omitempty" query:"objecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
 
-	// The object ID of the base object.
+	// ObjectID is the database ID of the base object.
 	ObjectID *uint `json:"ObjectID,omitempty" query:"objectid" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
 
-	// The object type of the attached object.
+	// AttachedObjectType is the kind of the object doing the attaching;
+	// the side that can determine the base object's lifecycle.
 	AttachedObjectType *string `json:"AttachedObjectType,omitempty" query:"attachedobjecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
 
-	// The object ID of the attached object.
+	// AttachedObjectID is the database ID of the attaching object.
 	AttachedObjectID *uint `json:"AttachedObjectID,omitempty" query:"attachedobjectid" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
 
 	// Relationship classifies this reference and drives lifecycle behavior:

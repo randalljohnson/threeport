@@ -25,6 +25,19 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("could not run gorm AutoMigrate: %w", err)
 	}
 
+	// set CockroachDB row-level TTL on event tables so old rows are GC'd
+	// automatically. Events outlive the objects they reference (audit
+	// trail), but accumulating forever is not desired.
+	for _, table := range []string{"v0_events", "v0_workload_events"} {
+		stmt := fmt.Sprintf(
+			"ALTER TABLE %s SET (ttl_expire_after = '7 days', ttl_job_cron = '@hourly')",
+			table,
+		)
+		if err := gormDb.Exec(stmt).Error; err != nil {
+			return fmt.Errorf("failed to set row-level TTL on %s: %w", table, err)
+		}
+	}
+
 	return nil
 }
 

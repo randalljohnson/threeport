@@ -21,8 +21,8 @@ func encryptedFieldsFor(obj interface{}) []sdk.EncryptedField {
 }
 
 // processEncryptTaggedFields encrypts struct fields tagged `encrypt:"true"`
-// and rejects the redacted placeholder. checkChanged limits work to fields
-// the client mutated, used on update.
+// and rejects the redacted placeholder. checkChanged limits the work to
+// fields the client mutated, and is set on update.
 func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error {
 	fields := encryptedFieldsFor(obj)
 	if len(fields) == 0 {
@@ -92,9 +92,8 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 }
 
 // encryptValue encrypts plain and returns the ciphertext. Returns plain
-// unchanged when it is already encrypted, and a bad-request error when it
-// is the redacted placeholder. fieldRef identifies the field or entry in
-// error and log messages.
+// unchanged when already encrypted, and a bad-request error when plain is
+// the redacted placeholder. fieldRef appears in error and log messages.
 func encryptValue(tx *gorm.DB, encryptionKey, plain, fieldRef string) (string, error) {
 	// reject the redacted placeholder; clients send a real value to change
 	// the field or omit it to leave existing ciphertext in place

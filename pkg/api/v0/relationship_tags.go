@@ -14,9 +14,8 @@ import (
 )
 
 // Compile-time assertion that the codegen-emitted ForeignKeys method
-// satisfies sdk.ForeignKeyProvider. Without this, interface drift would
-// silently disable AOR: the runtime type assertion would fall through,
-// returning ok=false for every API type.
+// satisfies sdk.ForeignKeyProvider. Drift would silently disable AOR
+// since the runtime type assertion returns ok=false for every API type.
 var _ sdk.ForeignKeyProvider = (*WorkloadInstance)(nil)
 
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
@@ -28,9 +27,8 @@ func foreignKeysFor(obj interface{}) []sdk.ForeignKey {
 	return p.ForeignKeys()
 }
 
-// insertAttachedObjectReference creates an attached object reference for
-// foreignKey. `owns` and `requires` edges are immutable, so this only runs
-// on first set.
+// insertAttachedObjectReference creates an AOR row for foreignKey. The
+// `owns` and `requires` edges are immutable so this runs only on first set.
 func insertAttachedObjectReference(
 	tx *gorm.DB,
 	foreignKey sdk.ForeignKey,
@@ -78,9 +76,8 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change a
-// foreign key once it has a value, and rejects updates to a row owned by
-// another object.
+// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change
+// a set foreign key, or any update to a row owned by another object.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	// reject any update that changes a foreign key with a value already set;
 	// fall through when no foreign key on the row is being changed
@@ -145,8 +142,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 }
 
 // processRelationshipTaggedFieldsBeforeDelete rejects deletion when an
-// incoming reference blocks it, then deletes outgoing references for this
-// row.
+// incoming reference blocks it, then deletes the row's outgoing references.
 func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
 	objType := util.ObjectTypeName(obj)
 	objID := util.ObjectID(obj)
@@ -195,9 +191,8 @@ func findBlockingAttachedObjectReferences(
 	return attachedObjectReferences, nil
 }
 
-// formatBlockingAttachedObjectReferencesError returns an error describing the
-// blocking attached object references as an aligned two-column table,
-// suitable for a 409 response body.
+// formatBlockingAttachedObjectReferencesError returns an error with the
+// blocking attached object references rendered as a two-column 409 body.
 func formatBlockingAttachedObjectReferencesError(
 	attachedObjectReferences []AttachedObjectReference,
 ) error {

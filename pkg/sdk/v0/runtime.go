@@ -15,8 +15,7 @@ func (f FieldName) Column() string {
 
 // EncryptedField describes an encrypt-tagged field on an API type. The SDK
 // generates an EncryptedFields method per type that returns one entry per
-// field, so runtime hooks read the list directly instead of walking struct
-// tags via reflection.
+// field, so runtime hooks read the list without walking struct tags.
 type EncryptedField struct {
 	Name  FieldName
 	Value interface{} // *string or []string of KEY=VALUE

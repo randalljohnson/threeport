@@ -1,9 +1,5 @@
 package v0
 
-import (
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
-)
-
 // AttachedObjectReference is a reference to an attached object.
 type AttachedObjectReference struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
@@ -35,5 +31,5 @@ type AttachedObjectReference struct {
 	//   - "owns": same blocking-on-delete behavior as "requires" plus the
 	//     base object is locked against external updates and may only be
 	//     mutated by tearing down the attached object first.
-	Relationship *sdk.Relationship `json:"Relationship,omitempty" query:"relationship" gorm:"default:'describes'" validate:"optional"`
+	Relationship *Relationship `json:"Relationship,omitempty" query:"relationship" gorm:"default:'describes'" validate:"optional"`
 }

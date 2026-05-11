@@ -13,6 +13,7 @@ import (
 	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
+	api "github.com/threeport/threeport/pkg/api/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	sdkutil "github.com/threeport/threeport/pkg/sdk/v0/util"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -877,48 +878,48 @@ func (g *Generator) ValidateTags() error {
 			for fieldName, tagMap := range fieldMap {
 				// relationship tags carry sub-structure; delegate to a
 				// helper that splits and validates kind + modifiers
-				if rel, ok := tagMap[sdk.RelationshipTag]; ok && rel != "" {
+				if rel, ok := tagMap[string(api.RelationshipTag)]; ok && rel != "" {
 					problems = append(problems,
 						validateRelationshipTag(objectName, fieldName, rel, knownTypes)...)
 				}
 				// encrypt is a single-value flag; only EncryptTrue is meaningful
-				if enc, ok := tagMap[sdk.EncryptTag]; ok && enc != sdk.EncryptTrue {
+				if enc, ok := tagMap[string(api.EncryptTag)]; ok && enc != api.EncryptTrue {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (only %q allowed)",
 						objectName, fieldName,
-						sdk.EncryptTag, enc, sdk.EncryptTrue,
+						api.EncryptTag, enc, api.EncryptTrue,
 					))
 				}
 				// validate accepts one of three known values; anything else
 				// is a typo or a stale value and must be flagged
-				if val, ok := tagMap[sdk.ValidateTag]; ok &&
-					val != sdk.ValidateRequired &&
-					val != sdk.ValidateOptional &&
-					val != sdk.ValidateOptionalAssociation {
+				if val, ok := tagMap[string(api.ValidateTag)]; ok &&
+					val != string(api.ValidateRequired) &&
+					val != string(api.ValidateOptional) &&
+					val != string(api.ValidateOptionalAssociation) {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (allowed: %q, %q, %q)",
 						objectName, fieldName,
-						sdk.ValidateTag, val,
-						sdk.ValidateRequired, sdk.ValidateOptional, sdk.ValidateOptionalAssociation,
+						api.ValidateTag, val,
+						api.ValidateRequired, api.ValidateOptional, api.ValidateOptionalAssociation,
 					))
 				}
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise
 				// and likely indicates a misunderstanding
-				if per, ok := tagMap[sdk.PersistTag]; ok && per != sdk.PersistFalse {
+				if per, ok := tagMap[string(api.PersistTag)]; ok && per != api.PersistFalse {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (only %q is meaningful; omit the tag for the default)",
 						objectName, fieldName,
-						sdk.PersistTag, per, sdk.PersistFalse,
+						api.PersistTag, per, api.PersistFalse,
 					))
 				}
 				// query feeds URL parameter parsing; restrict to lowercase
 				// alphanumerics so codegen and route matching stay simple
-				if q, ok := tagMap[sdk.QueryTag]; ok && !queryNamePattern.MatchString(q) {
+				if q, ok := tagMap[string(api.QueryTag)]; ok && !queryNamePattern.MatchString(q) {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (must match %s)",
 						objectName, fieldName,
-						sdk.QueryTag, q, queryNamePattern.String(),
+						api.QueryTag, q, queryNamePattern.String(),
 					))
 				}
 			}
@@ -970,11 +971,11 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 	// kind anchors the whole tag — flag anything that isn't one of the
 	// two recognized values up front so downstream emission can rely on
 	// the value being safe
-	if kind != string(sdk.RelationshipRequires) && kind != string(sdk.RelationshipOwns) {
+	if kind != string(api.RelationshipRequires) && kind != string(api.RelationshipOwns) {
 		problems = append(problems, fmt.Sprintf(
 			"%s.%s: invalid relationship kind %q (expected %q or %q)",
 			object, field, kind,
-			sdk.RelationshipRequires, sdk.RelationshipOwns,
+			api.RelationshipRequires, api.RelationshipOwns,
 		))
 	}
 	// surface malformed modifier entries (no colon) verbatim; they were
@@ -990,7 +991,7 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 	// switch rather than letting unknown keys through silently
 	for k, v := range modifiers {
 		switch k {
-		case sdk.RelationshipTypeKey:
+		case api.RelationshipTypeKey:
 			// the value must name a registered API type — otherwise the
 			// generated code would reference a type that doesn't exist
 			if !knownTypes[v] {
@@ -1002,7 +1003,7 @@ func validateRelationshipTag(object, field, rel string, knownTypes map[string]bo
 		default:
 			problems = append(problems, fmt.Sprintf(
 				"%s.%s: unknown relationship modifier key %q (only %q is supported)",
-				object, field, k, sdk.RelationshipTypeKey,
+				object, field, k, api.RelationshipTypeKey,
 			))
 		}
 	}

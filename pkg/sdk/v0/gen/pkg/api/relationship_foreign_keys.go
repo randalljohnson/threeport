@@ -7,7 +7,7 @@ import (
 
 	. "github.com/dave/jennifer/jen"
 
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
 	"github.com/threeport/threeport/pkg/sdk/v0/gen"
 )
 
@@ -16,7 +16,7 @@ import (
 type relationshipForeignKeyField struct {
 	fieldName    string
 	objectType   string
-	relationship string // sdk.RelationshipRequires or sdk.RelationshipOwns
+	relationship string // api.RelationshipRequires or api.RelationshipOwns
 }
 
 // relationshipForeignKeyFields returns the relationship-tagged fields of
@@ -31,13 +31,13 @@ func relationshipForeignKeyFields(
 	}
 	var fields []relationshipForeignKeyField
 	for fieldName, tagMap := range tagsForType {
-		rel, ok := tagMap[sdk.RelationshipTag]
+		rel, ok := tagMap[string(api.RelationshipTag)]
 		if !ok || rel == "" {
 			continue
 		}
 		kind, modifiers, _ := gen.ParseRelationshipTagValue(rel)
 		objectType := strings.TrimSuffix(fieldName, "ID")
-		if v, ok := modifiers[sdk.RelationshipTypeKey]; ok {
+		if v, ok := modifiers[api.RelationshipTypeKey]; ok {
 			objectType = v
 		}
 		fields = append(fields, relationshipForeignKeyField{
@@ -59,10 +59,10 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 
 	kindLit := func(kind string) *Statement {
 		switch kind {
-		case string(sdk.RelationshipOwns):
-			return Qual("github.com/threeport/threeport/pkg/sdk/v0", "RelationshipOwns")
+		case string(api.RelationshipOwns):
+			return Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipOwns")
 		default:
-			return Qual("github.com/threeport/threeport/pkg/sdk/v0", "RelationshipRequires")
+			return Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipRequires")
 		}
 	}
 
@@ -75,7 +75,7 @@ func emitRelationshipForeignKeyMethod(f *File, typeName string, fields []relatio
 		).Call(Id(objectType).Values())
 	}
 
-	foreignKeyType := Qual("github.com/threeport/threeport/pkg/sdk/v0", "ForeignKey")
+	foreignKeyType := Qual("github.com/threeport/threeport/pkg/api/v0", "ForeignKey")
 
 	f.Comment(fmt.Sprintf(
 		"ForeignKeys returns the relationship-tagged foreign keys on %s.",

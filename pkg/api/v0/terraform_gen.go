@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
@@ -142,23 +141,23 @@ func (ti *TerraformInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on TerraformInstance.
-func (t *TerraformInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (t *TerraformInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "AwsProviderID",
 		ObjectID:     t.AwsProviderID,
 		ObjectType:   util.ObjectTypeName(AwsProvider{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "TerraformDefinitionID",
 		ObjectID:     t.TerraformDefinitionID,
 		ObjectType:   util.ObjectTypeName(TerraformDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
 // EncryptedFields returns the encrypt-tagged fields on TerraformInstance.
-func (t *TerraformInstance) EncryptedFields() []sdk.EncryptedField {
-	return []sdk.EncryptedField{{
+func (t *TerraformInstance) EncryptedFields() []EncryptedField {
+	return []EncryptedField{{
 		Name:  "Outputs",
 		Value: t.Outputs,
 	}, {

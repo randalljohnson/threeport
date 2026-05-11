@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
@@ -79,12 +78,12 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
-func (g *GcpGkeKubernetesRuntimeDefinition) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (g *GcpGkeKubernetesRuntimeDefinition) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     g.KubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -149,22 +148,22 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeInstance.
-func (g *GcpGkeKubernetesRuntimeInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (g *GcpGkeKubernetesRuntimeInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
 		ObjectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "GcpProviderID",
 		ObjectID:     g.GcpProviderID,
 		ObjectType:   util.ObjectTypeName(GcpProvider{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     g.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -223,8 +222,8 @@ func (gp *GcpProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on GcpProvider.
-func (g *GcpProvider) EncryptedFields() []sdk.EncryptedField {
-	return []sdk.EncryptedField{{
+func (g *GcpProvider) EncryptedFields() []EncryptedField {
+	return []EncryptedField{{
 		Name:  "ServiceAccountCredentials",
 		Value: g.ServiceAccountCredentials,
 	}}

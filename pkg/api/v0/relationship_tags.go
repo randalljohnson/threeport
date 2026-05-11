@@ -9,13 +9,12 @@ import (
 	"github.com/iancoleman/strcase"
 	"gorm.io/gorm"
 
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
-func foreignKeysFor(obj interface{}) []sdk.ForeignKey {
-	p, ok := obj.(sdk.ForeignKeyProvider)
+func foreignKeysFor(obj interface{}) []ForeignKey {
+	p, ok := obj.(ForeignKeyProvider)
 	if !ok {
 		return nil
 	}
@@ -26,7 +25,7 @@ func foreignKeysFor(obj interface{}) []sdk.ForeignKey {
 // `owns` and `requires` edges are immutable so this runs only on first set.
 func insertAttachedObjectReference(
 	tx *gorm.DB,
-	foreignKey sdk.ForeignKey,
+	foreignKey ForeignKey,
 	attachedObjectType string,
 	attachedObjectID uint,
 ) error {
@@ -92,7 +91,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	}
 	var ownedRefs []AttachedObjectReference
 	if err := tx.
-		Where("object_type = ? AND object_id = ? AND relationship = ?", objType, objID, sdk.RelationshipOwns).
+		Where("object_type = ? AND object_id = ? AND relationship = ?", objType, objID, RelationshipOwns).
 		Find(&ownedRefs).Error; err != nil {
 		return fmt.Errorf(
 			"failed to look up owning attached object references for %s/%d: %w",
@@ -185,7 +184,7 @@ func findBlockingAttachedObjectReferences(
 	if err := db.
 		Where(
 			"object_type = ? AND object_id = ? AND relationship IN ?",
-			objectType, objectID, []sdk.Relationship{sdk.RelationshipRequires, sdk.RelationshipOwns},
+			objectType, objectID, []Relationship{RelationshipRequires, RelationshipOwns},
 		).
 		Find(&attachedObjectReferences).Error; err != nil {
 		return nil, fmt.Errorf("failed to list blocking attached object references: %w", err)

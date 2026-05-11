@@ -7,7 +7,7 @@ import (
 
 	. "github.com/dave/jennifer/jen"
 
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
 )
 
 // encryptedFieldNames returns the encrypt-tagged field names of typeName
@@ -22,7 +22,7 @@ func encryptedFieldNames(
 	}
 	var names []string
 	for fieldName, tagMap := range tagsForType {
-		if tagMap[sdk.EncryptTag] != sdk.EncryptTrue {
+		if tagMap[string(api.EncryptTag)] != api.EncryptTrue {
 			continue
 		}
 		names = append(names, fieldName)
@@ -36,7 +36,7 @@ func encryptedFieldNames(
 func emitEncryptedFieldsMethod(f *File, typeName string, fieldNames []string) {
 	receiver := strings.ToLower(string(typeName[0]))
 
-	encryptedFieldType := Qual("github.com/threeport/threeport/pkg/sdk/v0", "EncryptedField")
+	encryptedFieldType := Qual("github.com/threeport/threeport/pkg/api/v0", "EncryptedField")
 
 	f.Comment(fmt.Sprintf(
 		"EncryptedFields returns the encrypt-tagged fields on %s.",

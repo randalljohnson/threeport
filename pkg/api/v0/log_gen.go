@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -186,11 +185,11 @@ func (lsi *LogStorageInstance) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on LogStorageInstance.
-func (l *LogStorageInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (l *LogStorageInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "ClusterID",
 		ObjectID:     l.ClusterID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }

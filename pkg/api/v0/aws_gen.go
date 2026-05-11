@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
@@ -79,12 +78,12 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
-func (a *AwsEksKubernetesRuntimeDefinition) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (a *AwsEksKubernetesRuntimeDefinition) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     a.KubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -149,22 +148,22 @@ func (aekri *AwsEksKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeInstance.
-func (a *AwsEksKubernetesRuntimeInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (a *AwsEksKubernetesRuntimeInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "AwsEksKubernetesRuntimeDefinitionID",
 		ObjectID:     a.AwsEksKubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "AwsProviderID",
 		ObjectID:     a.AwsProviderID,
 		ObjectType:   util.ObjectTypeName(AwsProvider{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     a.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -223,8 +222,8 @@ func (ap *AwsProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on AwsProvider.
-func (a *AwsProvider) EncryptedFields() []sdk.EncryptedField {
-	return []sdk.EncryptedField{{
+func (a *AwsProvider) EncryptedFields() []EncryptedField {
+	return []EncryptedField{{
 		Name:  "AccessKeyID",
 		Value: a.AccessKeyID,
 	}, {

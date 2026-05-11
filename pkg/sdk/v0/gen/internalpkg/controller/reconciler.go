@@ -9,6 +9,7 @@ import (
 	. "github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
 
+	api "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"github.com/threeport/threeport/pkg/sdk/v0/gen"
@@ -250,7 +251,7 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							// If the object has a "Data" field with a "persist" tag set to "false", skip
 							// the retrieval of the latest object. Otherwise, generate the
 							// source code to retrieve the latest object.
-							if !objGroup.CheckStructTagMap(obj.Name, "Data", sdk.PersistTag, sdk.PersistFalse) {
+							if !objGroup.CheckStructTagMap(obj.Name, "Data", string(api.PersistTag), api.PersistFalse) {
 								getLatestObject(g, &obj, gen.ModulePath)
 							}
 

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
@@ -205,17 +204,17 @@ func (wi *WorkloadInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on WorkloadInstance.
-func (w *WorkloadInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (w *WorkloadInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     w.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadDefinitionID",
 		ObjectID:     w.WorkloadDefinitionID,
 		ObjectType:   util.ObjectTypeName(WorkloadDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -274,12 +273,12 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceDefinition.
-func (w *WorkloadResourceDefinition) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (w *WorkloadResourceDefinition) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "WorkloadDefinitionID",
 		ObjectID:     w.WorkloadDefinitionID,
 		ObjectType:   util.ObjectTypeName(WorkloadDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -338,11 +337,11 @@ func (wri *WorkloadResourceInstance) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceInstance.
-func (w *WorkloadResourceInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (w *WorkloadResourceInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     w.WorkloadInstanceID,
 		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }

@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
-	v0 "github.com/threeport/threeport/pkg/api/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -49,7 +47,7 @@ type EventRecorder struct {
 
 // RecordEvent records a new event with the given information.
 func (r *EventRecorder) RecordEvent(
-	event *v0.Event,
+	event *api.Event,
 	objectId uint,
 	objectVersion string,
 	objectType string,
@@ -72,92 +70,13 @@ func (r *EventRecorder) RecordEvent(
 		return fmt.Errorf("failed to get events by object id %d: %w", objectId, err)
 	}
 
-	var createdEvent *v0.Event
 	switch len(*events) {
 	case 0:
-		// use operations abstraction to atomically create event
-		// and attached object reference
-		operations := util.Operations{}
-		var createdAttachedObjectReference *v0.AttachedObjectReference
-
 		event.ReportingController = &r.ReportingController
 		event.EventTime = util.Ptr(time.Now())
 		event.LastObservedTime = util.Ptr(time.Now())
 		event.Count = util.Ptr(uint(1))
-		operations.AppendOperation(util.Operation{
-			Name: "event",
-			Create: func() error {
-				createdEvent, err = client_v0.CreateEvent(r.APIClient, r.APIServer, event)
-				if err != nil {
-					return fmt.Errorf("failed to create event: %w", err)
-				}
-
-				return nil
-			},
-			Delete: func() error {
-				_, err = client_v0.DeleteEvent(r.APIClient, r.APIServer, *createdEvent.ID)
-				if err != nil {
-					return fmt.Errorf("failed to delete event: %w", err)
-				}
-				return nil
-			},
-		})
-
-		// modules pass a qualified ObjectType ("<namespace>/<version>.<TypeName>")
-		// from obj.GetType(); core call sites pass a bare type name and rely on
-		// version+type concatenation. Detect the qualified form to avoid
-		// double-prefixing.
-		storedObjectType := objectType
-		if !strings.Contains(objectType, "/") {
-			storedObjectType = fmt.Sprintf("%s.%s", objectVersion, objectType)
-		}
-
-		operations.AppendOperation(util.Operation{
-			Name: "attached object reference",
-			Create: func() error {
-				createdAttachedObjectReference, err = client_v0.CreateAttachedObjectReference(
-					r.APIClient,
-					r.APIServer,
-					&v0.AttachedObjectReference{
-						ObjectType:         util.Ptr(storedObjectType),
-						ObjectID:           util.Ptr(objectId),
-						AttachedObjectType: util.Ptr(util.TypeName(v0.Event{})),
-						AttachedObjectID:   createdEvent.ID,
-						Relationship:       util.Ptr(sdk.RelationshipDescribes),
-					},
-				)
-				if err != nil {
-					return fmt.Errorf("failed to create attached object reference: %w", err)
-				}
-				return nil
-			},
-			Delete: func() error {
-				_, err = client_v0.DeleteAttachedObjectReference(
-					r.APIClient,
-					r.APIServer,
-					*createdAttachedObjectReference.ID,
-				)
-				if err != nil {
-					return fmt.Errorf("failed to delete attached object reference: %w", err)
-				}
-				return nil
-			},
-		})
-
-		operations.AppendOperation(util.Operation{
-			Name: "update event",
-			Create: func() error {
-				event.AttachedObjectReferenceID = createdAttachedObjectReference.ID
-				_, err = client_v0.UpdateEvent(r.APIClient, r.APIServer, event)
-				if err != nil {
-					return fmt.Errorf("failed to update event: %w", err)
-				}
-				return nil
-			},
-		})
-
-		// execute all operations
-		if err := operations.Create(); err != nil {
+		if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
 			return fmt.Errorf("failed to create event: %w", err)
 		}
 	case 1:
@@ -183,7 +102,7 @@ func (r *EventRecorder) RecordEvent(
 // unless the provided error is an ErrWithEvent,
 // in which case it records the event provided
 func (r *EventRecorder) HandleEventOverride(
-	event *v0.Event,
+	event *api.Event,
 	objectId uint,
 	objectVersion string,
 	objectType string,

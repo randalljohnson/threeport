@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
@@ -79,12 +78,12 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
-func (o *OciOkeKubernetesRuntimeDefinition) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (o *OciOkeKubernetesRuntimeDefinition) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     o.KubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -149,22 +148,22 @@ func (ookri *OciOkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeInstance.
-func (o *OciOkeKubernetesRuntimeInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (o *OciOkeKubernetesRuntimeInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     o.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "OciOkeKubernetesRuntimeDefinitionID",
 		ObjectID:     o.OciOkeKubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "OciProviderID",
 		ObjectID:     o.OciProviderID,
 		ObjectType:   util.ObjectTypeName(OciProvider{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -223,8 +222,8 @@ func (op *OciProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on OciProvider.
-func (o *OciProvider) EncryptedFields() []sdk.EncryptedField {
-	return []sdk.EncryptedField{{
+func (o *OciProvider) EncryptedFields() []EncryptedField {
+	return []EncryptedField{{
 		Name:  "PrivateKey",
 		Value: o.PrivateKey,
 	}}

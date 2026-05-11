@@ -7,13 +7,12 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/threeport/threeport/pkg/encryption/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // encryptedFieldsFor returns the encrypt-tagged fields of obj, or nil.
-func encryptedFieldsFor(obj interface{}) []sdk.EncryptedField {
-	p, ok := obj.(sdk.EncryptedFieldProvider)
+func encryptedFieldsFor(obj interface{}) []EncryptedField {
+	p, ok := obj.(EncryptedFieldProvider)
 	if !ok {
 		return nil
 	}

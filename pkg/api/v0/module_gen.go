@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -135,12 +134,12 @@ func (mar *ModuleApiRoute) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleApiRoute.
-func (m *ModuleApiRoute) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (m *ModuleApiRoute) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "ModuleApiID",
 		ObjectID:     m.ModuleApiID,
 		ObjectType:   util.ObjectTypeName(ModuleApi{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -199,12 +198,12 @@ func (mc *ModuleController) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleController.
-func (m *ModuleController) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (m *ModuleController) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "ModuleApiID",
 		ObjectID:     m.ModuleApiID,
 		ObjectType:   util.ObjectTypeName(ModuleApi{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -263,16 +262,16 @@ func (mo *ModuleObject) GetVersion() string {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on ModuleObject.
-func (m *ModuleObject) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (m *ModuleObject) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "ModuleApiID",
 		ObjectID:     m.ModuleApiID,
 		ObjectType:   util.ObjectTypeName(ModuleApi{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "ModuleControllerID",
 		ObjectID:     m.ModuleControllerID,
 		ObjectType:   util.ObjectTypeName(ModuleController{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }

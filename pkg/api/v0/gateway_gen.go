@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
@@ -148,22 +147,22 @@ func (dni *DomainNameInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on DomainNameInstance.
-func (d *DomainNameInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (d *DomainNameInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "DomainNameDefinitionID",
 		ObjectID:     d.DomainNameDefinitionID,
 		ObjectType:   util.ObjectTypeName(DomainNameDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     d.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     d.WorkloadInstanceID,
 		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -342,22 +341,22 @@ func (gi *GatewayInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on GatewayInstance.
-func (g *GatewayInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (g *GatewayInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "GatewayDefinitionID",
 		ObjectID:     g.GatewayDefinitionID,
 		ObjectType:   util.ObjectTypeName(GatewayDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     g.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     g.WorkloadInstanceID,
 		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 

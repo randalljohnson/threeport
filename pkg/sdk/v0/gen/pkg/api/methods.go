@@ -31,12 +31,11 @@ func GenApiObjectMethods(g *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	for _, objCollection := range g.VersionedApiObjectCollections {
 		for _, objGroup := range objCollection.VersionedApiObjectGroups {
-			f := NewFile(objCollection.Version)
+			f := NewFilePath(fmt.Sprintf("%s/pkg/api/%s", g.ModulePath, objCollection.Version))
 			f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 			f.ImportAlias("github.com/threeport/threeport/pkg/notifications/v0", "notifications")
-			f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "tpv0")
-			f.ImportAlias("github.com/threeport/threeport/pkg/sdk/v0", "sdk")
+			f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "api")
 			f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 
 			// object type constants

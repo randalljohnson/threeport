@@ -13,6 +13,17 @@ func (f FieldName) Column() string {
 	return strcase.ToSnake(string(f))
 }
 
+// Relationship classifies how an AttachedObjectReference relates the base
+// object to the attached object. Drives lifecycle behavior (deletion and
+// update blocking).
+type Relationship string
+
+const (
+	RelationshipDescribes Relationship = "describes"
+	RelationshipRequires  Relationship = "requires"
+	RelationshipOwns      Relationship = "owns"
+)
+
 // EncryptedField describes an encrypt-tagged field on an API type. The SDK
 // generates an EncryptedFields method per type that returns one entry per
 // field, so runtime hooks read the list without walking struct tags.

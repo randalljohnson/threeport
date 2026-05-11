@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
@@ -82,12 +81,12 @@ func (sd *SecretDefinition) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on SecretDefinition.
-func (s *SecretDefinition) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (s *SecretDefinition) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "AwsProviderID",
 		ObjectID:     s.AwsProviderID,
 		ObjectType:   util.ObjectTypeName(AwsProvider{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }
 
@@ -152,26 +151,26 @@ func (si *SecretInstance) ScheduledForDeletion() *time.Time {
 }
 
 // ForeignKeys returns the relationship-tagged foreign keys on SecretInstance.
-func (s *SecretInstance) ForeignKeys() []sdk.ForeignKey {
-	return []sdk.ForeignKey{{
+func (s *SecretInstance) ForeignKeys() []ForeignKey {
+	return []ForeignKey{{
 		FieldName:    "HelmWorkloadInstanceID",
 		ObjectID:     s.HelmWorkloadInstanceID,
 		ObjectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     s.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "SecretDefinitionID",
 		ObjectID:     s.SecretDefinitionID,
 		ObjectType:   util.ObjectTypeName(SecretDefinition{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     s.WorkloadInstanceID,
 		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
-		Relationship: sdk.RelationshipRequires,
+		Relationship: RelationshipRequires,
 	}}
 }

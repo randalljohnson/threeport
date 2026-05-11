@@ -141,10 +141,14 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
 	objType := util.ObjectTypeName(obj)
 	objID := util.ObjectID(obj)
+	// no ID means the row was never persisted; no references could exist
 	if objID == nil {
 		return nil
 	}
 
+	// check for incoming references where this object is the base and an
+	// attacher has a blocking relationship ("requires" or "owns"). Reject
+	// the delete when any exist; the attacher must be torn down first.
 	blockingRefs, err := findBlockingAttachedObjectReferences(tx, objType, objID)
 	if err != nil {
 		return err
@@ -155,6 +159,9 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 		)
 	}
 
+	// clean up outgoing references where this object is the attacher.
+	// Those rows become orphans once this row is gone, so delete them
+	// in the same transaction.
 	if err := tx.
 		Where("attached_object_type = ? AND attached_object_id = ?", objType, objID).
 		Delete(&AttachedObjectReference{}).Error; err != nil {

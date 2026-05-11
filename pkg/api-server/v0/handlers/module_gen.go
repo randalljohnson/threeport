@@ -240,8 +240,9 @@ func (h Handler) GetModuleApi(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApi
 	moduleApiID := c.Param("id")
 	var moduleApi api_v0.ModuleApi
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&moduleApi, moduleApiID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&moduleApi, moduleApiID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -673,8 +674,9 @@ func (h Handler) GetModuleApiRoute(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApiRoute
 	moduleApiRouteID := c.Param("id")
 	var moduleApiRoute api_v0.ModuleApiRoute
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1122,8 +1124,9 @@ func (h Handler) GetModuleController(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleController
 	moduleControllerID := c.Param("id")
 	var moduleController api_v0.ModuleController
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&moduleController, moduleControllerID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&moduleController, moduleControllerID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1555,8 +1558,9 @@ func (h Handler) GetModuleObject(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleObject
 	moduleObjectID := c.Param("id")
 	var moduleObject api_v0.ModuleObject
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&moduleObject, moduleObjectID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&moduleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

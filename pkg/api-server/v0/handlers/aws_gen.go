@@ -244,8 +244,9 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAwsEksKubernetesRuntimeDefinition
 	awsEksKubernetesRuntimeDefinitionID := c.Param("id")
 	var awsEksKubernetesRuntimeDefinition api_v0.AwsEksKubernetesRuntimeDefinition
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&awsEksKubernetesRuntimeDefinition, awsEksKubernetesRuntimeDefinitionID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&awsEksKubernetesRuntimeDefinition, awsEksKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -713,8 +714,9 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAwsEksKubernetesRuntimeInstance
 	awsEksKubernetesRuntimeInstanceID := c.Param("id")
 	var awsEksKubernetesRuntimeInstance api_v0.AwsEksKubernetesRuntimeInstance
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&awsEksKubernetesRuntimeInstance, awsEksKubernetesRuntimeInstanceID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&awsEksKubernetesRuntimeInstance, awsEksKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1215,8 +1217,9 @@ func (h Handler) GetAwsProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAwsProvider
 	awsProviderID := c.Param("id")
 	var awsProvider api_v0.AwsProvider
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&awsProvider, awsProviderID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&awsProvider, awsProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

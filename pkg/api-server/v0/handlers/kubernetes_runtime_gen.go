@@ -258,8 +258,9 @@ func (h Handler) GetKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
 	kubernetesRuntimeDefinitionID := c.Param("id")
 	var kubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&kubernetesRuntimeDefinition, kubernetesRuntimeDefinitionID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&kubernetesRuntimeDefinition, kubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -780,8 +781,9 @@ func (h Handler) GetKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
 	kubernetesRuntimeInstanceID := c.Param("id")
 	var kubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&kubernetesRuntimeInstance, kubernetesRuntimeInstanceID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&kubernetesRuntimeInstance, kubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

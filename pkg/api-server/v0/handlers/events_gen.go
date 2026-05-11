@@ -224,8 +224,9 @@ func (h Handler) GetEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeEvent
 	eventID := c.Param("id")
 	var event api_v0.Event
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&event, eventID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&event, eventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

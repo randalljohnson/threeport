@@ -1330,22 +1330,22 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						),
 						apiObject.TypeName,
 					),
-					// apply request-driven scopes (e.g. ?includedeleted=true to bypass
-					// the soft-delete filter for historical lookups)
-					Id("db").Op(":=").Do(func(s *Statement) {
-						if gen.Module {
-							s.Id("h").Dot("Handler")
-						} else {
-							s.Id("h")
-						}
-					}).Dot("DB").Dot("Scopes").Call(Qual(
-						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"QueryScopes",
-					).Call(Id("c")).Op("...")),
 					If(
-						// TODO: figure out preload objects
-						Id("result").Op(":=").Id("db").Add(dbLoadAssociationStatement).
-							Dot("First").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
+						// TODO: thread selective preloads through apiserver_lib.QueryScopes
+						// (e.g. ?expand=workloadInstance) so clients can opt in per request
+						// instead of the codegen-baked dbLoadAssociationStatement default.
+						Id("result").Op(":=").Do(func(s *Statement) {
+							if gen.Module {
+								s.Id("h").Dot("Handler")
+							} else {
+								s.Id("h")
+							}
+						}).Dot("DB").Op(".").Line().
+							Id("Scopes").Call(Qual(
+							"github.com/threeport/threeport/pkg/api-server/lib/v0",
+							"QueryScopes",
+						).Call(Id("c")).Op("...")).Add(dbLoadAssociationStatement).Op(".").Line().
+							Id("First").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
 							h.If(

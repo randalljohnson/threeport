@@ -240,8 +240,9 @@ func (h Handler) GetLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
 	logBackendID := c.Param("id")
 	var logBackend api_v0.LogBackend
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&logBackend, logBackendID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&logBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -689,8 +690,9 @@ func (h Handler) GetLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
 	logStorageDefinitionID := c.Param("id")
 	var logStorageDefinition api_v0.LogStorageDefinition
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1144,8 +1146,9 @@ func (h Handler) GetLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
 	logStorageInstanceID := c.Param("id")
 	var logStorageInstance api_v0.LogStorageInstance
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&logStorageInstance, logStorageInstanceID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&logStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

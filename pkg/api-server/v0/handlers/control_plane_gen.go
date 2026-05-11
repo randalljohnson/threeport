@@ -259,8 +259,9 @@ func (h Handler) GetControlPlaneDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneDefinition
 	controlPlaneDefinitionID := c.Param("id")
 	var controlPlaneDefinition api_v0.ControlPlaneDefinition
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).
+		First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -781,8 +782,9 @@ func (h Handler) GetControlPlaneInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneInstance
 	controlPlaneInstanceID := c.Param("id")
 	var controlPlaneInstance api_v0.ControlPlaneInstance
-	db := h.DB.Scopes(apiserver_lib.QueryScopes(c)...)
-	if result := db.Preload(clause.Associations).First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
+	if result := h.DB.
+		Scopes(apiserver_lib.QueryScopes(c)...).Preload(clause.Associations).
+		First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}

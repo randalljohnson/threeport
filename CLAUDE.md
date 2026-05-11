@@ -1,3 +1,72 @@
+### BEGIN KARPATHY ##
+# CLAUDE.md
+
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+### END KARPATHY ###
+
 # Build Commands
 **IMPORTANT**: Use mage for building tptctl, NOT go build
 ```bash
@@ -99,6 +168,16 @@ The inverted shape — wrapping the happy path inside nested `if`/`else` branche
 - **In comments and prose**, write "foreign key" rather than "FK".
 - Established domain abbreviations are fine (`ID`, `URL`, `OCI`, `AWS`, `GCP`, `OCID`, `JSON`, `YAML`, `HTTP`, `TLS`, `DNS`, `K8s`/`Kubernetes`). When in doubt, spell it out.
 - Loop and very-short-scope variables (`i`, `j`, `err`, `ok`) are fine as-is — the rule is about *abbreviations of domain words*, not standard Go idioms.
+
+## Import Aliases
+- **Alias by the package's conceptual name, not its version.** Versioned threeport packages all declare `package v0`, so importing them without an alias would name them all `v0` and clash. Pick the meaningful suffix:
+  - `pkg/api/v0` → alias `api`
+  - `pkg/client/v0` → alias `client`
+  - `pkg/encryption/v0` → alias `encryption`
+  - `pkg/sdk/v0` → alias `sdk`
+  - `pkg/util/v0` → alias `util`
+- **Avoid `v0`, `v01`, `api_v0`, `client_v0`** as aliases. `v0` says nothing about which package; `api_v0` is redundantly versioned in a file that already implies v0.
+- **Use the longer form (e.g. `api_v0`) only when the compiler requires it** — i.e. two distinct versioned packages with the same conceptual name needing to coexist in the same file. A file in `package api` importing `pkg/api/v0` as `api` is fine; Go allows the alias to shadow the local package name without symbol collision.
 
 ## Function Documentation (Docstrings)
 - ALL functions (both exported and unexported) require documentation comments

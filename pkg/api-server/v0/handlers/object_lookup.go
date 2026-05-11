@@ -85,25 +85,38 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 		return "", "", nil
 	}
 
-	q := db.Table("v0_module_api_routes mar")
+	// start from the routes table; we'll JOIN outward to filter by
+	// module, type, and version
+	q := db.Table("v0_module_api_routes AS route")
 
-	// join the module to filter by namespace and read endpoint
-	q = q.Joins("JOIN v0_module_apis ma ON ma.id = mar.module_api_id").
-		Where("ma.api_namespace = ? AND ma.core = false", namespace)
+	// pull in the parent ModuleApi row so its endpoint and namespace
+	// are queryable
+	q = q.Joins("JOIN v0_module_apis AS module_api ON module_api.id = route.module_api_id")
 
-	// join the module object to filter by name and version
-	q = q.Joins("JOIN v0_module_api_routes_module_objects rel ON rel.module_api_route_id = mar.id").
-		Joins("JOIN v0_module_objects mo ON mo.id = rel.module_object_id").
-		Where("mo.name = ? AND mo.version = ?", typeName, version)
+	// keep only routes owned by the named non-core module
+	// (core=false skips the threeport core API itself)
+	q = q.Where("module_api.api_namespace = ? AND module_api.core = false", namespace)
 
-	// exclude the versions route, which ends in /versions
-	q = q.Where("mar.path NOT LIKE ?", "%/versions")
+	// follow the ModuleApiRoute↔ModuleObject junction; the m2m is needed
+	// because one route can in principle serve multiple registered types
+	q = q.Joins("JOIN v0_module_api_routes_module_objects AS link ON link.module_api_route_id = route.id")
+
+	// land on the registered type's row, where its name and version live
+	q = q.Joins("JOIN v0_module_objects AS object ON object.id = link.module_object_id")
+
+	// keep only the specific (name, version) the caller asked for
+	q = q.Where("object.name = ? AND object.version = ?", typeName, version)
+
+	// each registered type gets two routes: a CRUD path and a /versions
+	// discovery path. This query wants the CRUD endpoint, so exclude the
+	// discovery one by path suffix
+	q = q.Where("route.path NOT LIKE ?", "%/versions")
 
 	var result struct {
 		Path     string
 		Endpoint string
 	}
-	if err := q.Select("mar.path, ma.endpoint").Limit(1).Scan(&result).Error; err != nil {
+	if err := q.Select("route.path, module_api.endpoint").Limit(1).Scan(&result).Error; err != nil {
 		return "", "", fmt.Errorf("failed to look up module route for %s: %w", objectType, err)
 	}
 	if result.Path == "" || result.Endpoint == "" {

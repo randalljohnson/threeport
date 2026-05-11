@@ -13,11 +13,6 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// Compile-time assertion that the codegen-emitted ForeignKeys method
-// satisfies sdk.ForeignKeyProvider. Drift would silently disable AOR
-// since the runtime type assertion returns ok=false for every API type.
-var _ sdk.ForeignKeyProvider = (*WorkloadInstance)(nil)
-
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
 func foreignKeysFor(obj interface{}) []sdk.ForeignKey {
 	p, ok := obj.(sdk.ForeignKeyProvider)

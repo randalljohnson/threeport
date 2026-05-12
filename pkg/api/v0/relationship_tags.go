@@ -111,9 +111,11 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	return nil
 }
 
-// processRelationshipTaggedFieldsAfterUpdate inserts an attached object
-// reference for each foreign key that just transitioned from nil to a value.
-// Other transitions are rejected by BeforeUpdate.
+// processRelationshipTaggedFieldsAfterUpdate syncs attached object
+// references with foreign-key transitions. A foreign key that just cleared
+// (value -> nil) has its corresponding reference removed; a foreign key
+// that just became set (nil -> value) gets a new reference inserted.
+// Value -> different-value transitions are rejected by BeforeUpdate.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
 	foreignKeys := foreignKeysFor(obj)
 	if len(foreignKeys) == 0 {
@@ -125,7 +127,21 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		return nil
 	}
 	for _, foreignKey := range foreignKeys {
-		if foreignKey.ObjectID == nil || !tx.Statement.Changed(string(foreignKey.FieldName)) {
+		if !tx.Statement.Changed(string(foreignKey.FieldName)) {
+			continue
+		}
+		if foreignKey.ObjectID == nil {
+			if err := tx.
+				Where(
+					"attached_object_type = ? AND attached_object_id = ? AND object_type = ?",
+					objType, *objID, foreignKey.ObjectType,
+				).
+				Delete(&AttachedObjectReference{}).Error; err != nil {
+				return fmt.Errorf(
+					"failed to remove attached object reference for %s.%s after foreign key cleared: %w",
+					objType, foreignKey.FieldName, err,
+				)
+			}
 			continue
 		}
 		if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {

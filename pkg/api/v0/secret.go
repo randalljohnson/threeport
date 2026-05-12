@@ -12,10 +12,10 @@ type SecretDefinition struct {
 	AwsProviderID *uint `json:"AwsProviderID,omitempty" query:"awsproviderid" validate:"optional" relationship:"requires"`
 
 	// The secret value to be stored in the provider.
-	Data *datatypes.JSON `json:"Data,omitempty" query:"data" validate:"required" persist:"false"`
+	Data *datatypes.JSON `json:",omitempty" query:"data" validate:"required" persist:"false"`
 
 	// The associated secret instances that are deployed from this definition.
-	SecretInstances []*SecretInstance `json:"SecretInstances,omitempty" validate:"optional,association"`
+	SecretInstances []*SecretInstance `json:",omitempty" validate:"optional,association"`
 }
 
 // SecretInstance is an instance of a secret deployed to a runtime.

@@ -11,25 +11,25 @@ type Event struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// A short, machine understandable string that gives the reason for the event being generated.
-	Reason *string `json:"Reason,omitempty" query:"reason" validate:"required"`
+	Reason *string `query:"reason" gorm:"not null" validate:"required"`
 
 	// A human-readable description of the status of this operation.
-	Note *string `json:"Note,omitempty" query:"note" validate:"optional"`
+	Note *string `json:",omitempty" query:"note" validate:"optional"`
 
 	// The number of times this event has occurred.
-	Count *uint `json:"Count,omitempty" query:"count" validate:"required"`
+	Count *uint `query:"count" gorm:"not null" validate:"required"`
 
 	// Time when this Event was first observed.
-	EventTime *time.Time `json:"EventTime,omitempty" query:"eventtime" validate:"required"`
+	EventTime *time.Time `query:"eventtime" gorm:"not null" validate:"required"`
 
 	// The time at which the most recent occurrence of this event was recorded.
-	LastObservedTime *time.Time `json:"LastObservedTime,omitempty" query:"lastobservedtime" validate:"required"`
+	LastObservedTime *time.Time `query:"lastobservedtime" gorm:"not null" validate:"required"`
 
 	// Type of this event (Normal, Warning), new types could be added in the future.
-	Type *string `json:"Type,omitempty" query:"type" validate:"required"`
+	Type *string `query:"type" gorm:"not null" validate:"required"`
 
 	// Name of the controller that emitted this Event.
-	ReportingController *string `json:"ReportingController,omitempty" query:"reportingcontroller" validate:"required"`
+	ReportingController *string `query:"reportingcontroller" gorm:"not null" validate:"required"`
 
 	// Fields carrying the event's subject - the object the event is
 	// about. They flow in both directions:

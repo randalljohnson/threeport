@@ -29,7 +29,7 @@ type AttachedObjectReference struct {
 	//     deletion of the base object is blocked while this reference
 	//     exists. The base object is otherwise externally mutable.
 	//   - "owns": same blocking-on-delete behavior as "requires" plus the
-	//     base object is locked against external updates and may only be
+	//     base object is blocked against external updates and may only be
 	//     mutated by tearing down the attached object first.
 	Relationship *Relationship `json:"Relationship,omitempty" query:"relationship" gorm:"default:'describes'" validate:"optional"`
 }

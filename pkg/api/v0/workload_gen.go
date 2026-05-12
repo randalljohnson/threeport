@@ -73,12 +73,12 @@ func (wd *WorkloadDefinition) GetId() uint {
 	return *wd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wd *WorkloadDefinition) GetType() string {
 	return "WorkloadDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wd *WorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -133,12 +133,12 @@ func (we *WorkloadEvent) GetId() uint {
 	return *we.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (we *WorkloadEvent) GetType() string {
 	return "WorkloadEvent"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (we *WorkloadEvent) GetVersion() string {
 	return "v0"
 }
@@ -187,12 +187,12 @@ func (wi *WorkloadInstance) GetId() uint {
 	return *wi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wi *WorkloadInstance) GetType() string {
 	return "WorkloadInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wi *WorkloadInstance) GetVersion() string {
 	return "v0"
 }
@@ -262,12 +262,12 @@ func (wrd *WorkloadResourceDefinition) GetId() uint {
 	return *wrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wrd *WorkloadResourceDefinition) GetType() string {
 	return "WorkloadResourceDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
@@ -326,12 +326,12 @@ func (wri *WorkloadResourceInstance) GetId() uint {
 	return *wri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wri *WorkloadResourceInstance) GetType() string {
 	return "WorkloadResourceInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
 }

@@ -59,7 +59,7 @@ func (e *Event) GetId() uint {
 	return *e.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (e *Event) GetType() string {
 	return "Event"
 }

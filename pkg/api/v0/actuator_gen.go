@@ -62,7 +62,7 @@ func (p *Profile) GetId() uint {
 	return *p.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (p *Profile) GetType() string {
 	return "Profile"
 }
@@ -116,7 +116,7 @@ func (t *Tier) GetId() uint {
 	return *t.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (t *Tier) GetType() string {
 	return "Tier"
 }

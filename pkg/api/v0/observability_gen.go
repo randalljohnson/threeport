@@ -82,12 +82,12 @@ func (ld *LoggingDefinition) GetId() uint {
 	return *ld.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (ld *LoggingDefinition) GetType() string {
 	return "LoggingDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (ld *LoggingDefinition) GetVersion() string {
 	return "v0"
 }
@@ -157,12 +157,12 @@ func (li *LoggingInstance) GetId() uint {
 	return *li.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (li *LoggingInstance) GetType() string {
 	return "LoggingInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (li *LoggingInstance) GetVersion() string {
 	return "v0"
 }
@@ -242,12 +242,12 @@ func (md *MetricsDefinition) GetId() uint {
 	return *md.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (md *MetricsDefinition) GetType() string {
 	return "MetricsDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (md *MetricsDefinition) GetVersion() string {
 	return "v0"
 }
@@ -312,12 +312,12 @@ func (mi *MetricsInstance) GetId() uint {
 	return *mi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (mi *MetricsInstance) GetType() string {
 	return "MetricsInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (mi *MetricsInstance) GetVersion() string {
 	return "v0"
 }
@@ -392,12 +392,12 @@ func (odd *ObservabilityDashboardDefinition) GetId() uint {
 	return *odd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (odd *ObservabilityDashboardDefinition) GetType() string {
 	return "ObservabilityDashboardDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 	return "v0"
 }
@@ -462,12 +462,12 @@ func (odi *ObservabilityDashboardInstance) GetId() uint {
 	return *odi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (odi *ObservabilityDashboardInstance) GetType() string {
 	return "ObservabilityDashboardInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (odi *ObservabilityDashboardInstance) GetVersion() string {
 	return "v0"
 }
@@ -542,12 +542,12 @@ func (osd *ObservabilityStackDefinition) GetId() uint {
 	return *osd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (osd *ObservabilityStackDefinition) GetType() string {
 	return "ObservabilityStackDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (osd *ObservabilityStackDefinition) GetVersion() string {
 	return "v0"
 }
@@ -622,12 +622,12 @@ func (osi *ObservabilityStackInstance) GetId() uint {
 	return *osi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (osi *ObservabilityStackInstance) GetType() string {
 	return "ObservabilityStackInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (osi *ObservabilityStackInstance) GetVersion() string {
 	return "v0"
 }

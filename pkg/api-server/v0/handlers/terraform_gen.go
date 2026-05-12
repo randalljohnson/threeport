@@ -65,7 +65,7 @@ func (h Handler) AddTerraformDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingTerraformDefinition api_v0.TerraformDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", terraformDefinition.Name).First(&existingTerraformDefinition)
+	result := h.RequestDB(c).Where("name = ?", terraformDefinition.Name).First(&existingTerraformDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -79,7 +79,7 @@ func (h Handler) AddTerraformDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&terraformDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&terraformDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -155,7 +155,7 @@ func (h Handler) GetTerraformDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.TerraformDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.TerraformDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -166,7 +166,7 @@ func (h Handler) GetTerraformDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -258,8 +258,7 @@ func (h Handler) GetTerraformDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformDefinition
 	terraformDefinitionID := c.Param("id")
 	var terraformDefinition api_v0.TerraformDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&terraformDefinition, terraformDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -301,7 +300,7 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformDefinition
 	terraformDefinitionID := c.Param("id")
 	var existingTerraformDefinition api_v0.TerraformDefinition
-	if result := h.DB.First(&existingTerraformDefinition, terraformDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTerraformDefinition, terraformDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -323,7 +322,7 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingTerraformDefinition).Updates(&updatedTerraformDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingTerraformDefinition).Updates(&updatedTerraformDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -383,7 +382,7 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformDefinition
 	terraformDefinitionID := c.Param("id")
 	var existingTerraformDefinition api_v0.TerraformDefinition
-	if result := h.DB.First(&existingTerraformDefinition, terraformDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTerraformDefinition, terraformDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -412,7 +411,7 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformDefinition.ID = existingTerraformDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -425,7 +424,7 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingTerraformDefinition, terraformDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTerraformDefinition, terraformDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -461,7 +460,7 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformDefinition
 	terraformDefinitionID := c.Param("id")
 	var terraformDefinition api_v0.TerraformDefinition
-	if result := h.DB.Preload("TerraformInstances").First(&terraformDefinition, terraformDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("TerraformInstances").First(&terraformDefinition, terraformDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -487,7 +486,7 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&terraformDefinition).Updates(&scheduledTerraformDefinition); result.Error != nil {
+		if result := h.RequestDB(c).Model(&terraformDefinition).Updates(&scheduledTerraformDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -513,7 +512,7 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&terraformDefinition); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&terraformDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
@@ -588,7 +587,7 @@ func (h Handler) AddTerraformInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingTerraformInstance api_v0.TerraformInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", terraformInstance.Name).First(&existingTerraformInstance)
+	result := h.RequestDB(c).Where("name = ?", terraformInstance.Name).First(&existingTerraformInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -602,7 +601,7 @@ func (h Handler) AddTerraformInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&terraformInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&terraformInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -678,7 +677,7 @@ func (h Handler) GetTerraformInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.TerraformInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.TerraformInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -689,7 +688,7 @@ func (h Handler) GetTerraformInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -781,8 +780,7 @@ func (h Handler) GetTerraformInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformInstance
 	terraformInstanceID := c.Param("id")
 	var terraformInstance api_v0.TerraformInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&terraformInstance, terraformInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -824,7 +822,7 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformInstance
 	terraformInstanceID := c.Param("id")
 	var existingTerraformInstance api_v0.TerraformInstance
-	if result := h.DB.First(&existingTerraformInstance, terraformInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTerraformInstance, terraformInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -846,7 +844,7 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingTerraformInstance).Updates(&updatedTerraformInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingTerraformInstance).Updates(&updatedTerraformInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -906,7 +904,7 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformInstance
 	terraformInstanceID := c.Param("id")
 	var existingTerraformInstance api_v0.TerraformInstance
-	if result := h.DB.First(&existingTerraformInstance, terraformInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTerraformInstance, terraformInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -935,7 +933,7 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformInstance.ID = existingTerraformInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -948,7 +946,7 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingTerraformInstance, terraformInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTerraformInstance, terraformInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -984,7 +982,7 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTerraformInstance
 	terraformInstanceID := c.Param("id")
 	var terraformInstance api_v0.TerraformInstance
-	if result := h.DB.First(&terraformInstance, terraformInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&terraformInstance, terraformInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1004,7 +1002,7 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&terraformInstance).Updates(&scheduledTerraformInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&terraformInstance).Updates(&scheduledTerraformInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1030,7 +1028,7 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&terraformInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&terraformInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError

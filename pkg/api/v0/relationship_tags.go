@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/iancoleman/strcase"
@@ -11,6 +12,30 @@ import (
 
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// controllerForType returns the controller name registered for typeKey, or "" if none.
+func controllerForType(tx *gorm.DB, typeKey string) (string, error) {
+	version, name, ok := strings.Cut(typeKey, ".")
+	if !ok {
+		return "", nil
+	}
+	var moduleController ModuleController
+	if err := tx.
+		Joins(
+			"JOIN v0_module_objects ON v0_module_objects.module_controller_id = v0_module_controllers.id",
+		).
+		Where("v0_module_objects.name = ? AND v0_module_objects.version = ?", name, version).
+		First(&moduleController).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to look up controller for type %s: %w", typeKey, err)
+	}
+	if moduleController.Name == nil {
+		return "", nil
+	}
+	return *moduleController.Name, nil
+}
 
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
 func foreignKeysFor(obj interface{}) []ForeignKey {
@@ -98,24 +123,41 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 			objType, *objID, err,
 		)
 	}
-	if len(ownedRefs) > 0 {
-		owner := "another object"
-		if ownedRefs[0].AttachedObjectType != nil && ownedRefs[0].AttachedObjectID != nil {
-			owner = fmt.Sprintf("%s/%d", *ownedRefs[0].AttachedObjectType, *ownedRefs[0].AttachedObjectID)
-		}
-		return util.NewBadRequestError(fmt.Sprintf(
-			"object is owned by %s and cannot be updated externally; tear down the owner first",
-			owner,
-		))
+	if len(ownedRefs) == 0 {
+		return nil
 	}
-	return nil
+
+	// owner can update its own state; non-owners cannot
+	callerCN := CallerCN(tx.Statement.Context)
+	if callerCN != "" {
+		for _, ref := range ownedRefs {
+			if ref.AttachedObjectType == nil {
+				continue
+			}
+			ownerCN, err := controllerForType(tx, *ref.AttachedObjectType)
+			if err != nil {
+				return err
+			}
+			if ownerCN != "" && ownerCN == callerCN {
+				return nil
+			}
+		}
+	}
+
+	owner := "another object"
+	if ownedRefs[0].AttachedObjectType != nil && ownedRefs[0].AttachedObjectID != nil {
+		owner = fmt.Sprintf("%s/%d", *ownedRefs[0].AttachedObjectType, *ownedRefs[0].AttachedObjectID)
+	}
+	return util.NewBadRequestError(fmt.Sprintf(
+		"object is owned by %s and cannot be updated externally; tear down the owner first",
+		owner,
+	))
 }
 
 // processRelationshipTaggedFieldsAfterUpdate syncs attached object
-// references with foreign-key transitions. A foreign key that just cleared
-// (value -> nil) has its corresponding reference removed; a foreign key
-// that just became set (nil -> value) gets a new reference inserted.
-// Value -> different-value transitions are rejected by BeforeUpdate.
+// references with foreign-key transitions. A foreign key that just
+// cleared has its reference removed; one that just became set gets a
+// new reference inserted.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
 	foreignKeys := foreignKeysFor(obj)
 	if len(foreignKeys) == 0 {
@@ -156,15 +198,12 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
 	objType := util.ObjectTypeName(obj)
 	objID := util.ObjectID(obj)
-	// no ID means the row was never persisted; no references could exist
 	if objID == nil {
 		return nil
 	}
 
-	// check for incoming references where this object is the base and an
-	// attacher has a blocking relationship ("requires" or "owns"). Reject
-	// the delete when any exist; the attacher must be torn down first.
-	blockingRefs, err := findBlockingAttachedObjectReferences(tx, objType, objID)
+	callerCN := CallerCN(tx.Statement.Context)
+	blockingRefs, err := findBlockingAttachedObjectReferences(tx, objType, objID, callerCN)
 	if err != nil {
 		return err
 	}
@@ -188,13 +227,15 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 	return nil
 }
 
-// findBlockingAttachedObjectReferences returns attached object references
-// that target the given object with a relationship that blocks deletion
-// ("requires" or "owns"). "describes" references are excluded.
+// findBlockingAttachedObjectReferences returns the attached object
+// references that block deletion of the given object. "requires" always
+// blocks; "owns" blocks unless callerCN matches the owner type's
+// registered controller.
 func findBlockingAttachedObjectReferences(
 	db *gorm.DB,
 	objectType string,
 	objectID *uint,
+	callerCN string,
 ) ([]AttachedObjectReference, error) {
 	var attachedObjectReferences []AttachedObjectReference
 	if err := db.
@@ -205,7 +246,26 @@ func findBlockingAttachedObjectReferences(
 		Find(&attachedObjectReferences).Error; err != nil {
 		return nil, fmt.Errorf("failed to list blocking attached object references: %w", err)
 	}
-	return attachedObjectReferences, nil
+
+	if callerCN == "" {
+		return attachedObjectReferences, nil
+	}
+
+	var blockingRefs []AttachedObjectReference
+	for _, ref := range attachedObjectReferences {
+		if ref.Relationship == nil || *ref.Relationship != RelationshipOwns || ref.AttachedObjectType == nil {
+			blockingRefs = append(blockingRefs, ref)
+			continue
+		}
+		ownerCN, err := controllerForType(db, *ref.AttachedObjectType)
+		if err != nil {
+			return nil, err
+		}
+		if ownerCN == "" || ownerCN != callerCN {
+			blockingRefs = append(blockingRefs, ref)
+		}
+	}
+	return blockingRefs, nil
 }
 
 // formatBlockingAttachedObjectReferencesError returns an error with the

@@ -65,7 +65,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", helmWorkloadDefinition.Name).First(&existingHelmWorkloadDefinition)
+	result := h.RequestDB(c).Where("name = ?", helmWorkloadDefinition.Name).First(&existingHelmWorkloadDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -79,7 +79,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&helmWorkloadDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&helmWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -155,7 +155,7 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.HelmWorkloadDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.HelmWorkloadDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -166,7 +166,7 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -258,8 +258,7 @@ func (h Handler) GetHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	helmWorkloadDefinitionID := c.Param("id")
 	var helmWorkloadDefinition api_v0.HelmWorkloadDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&helmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -301,7 +300,7 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	helmWorkloadDefinitionID := c.Param("id")
 	var existingHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
-	if result := h.DB.First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -323,7 +322,7 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingHelmWorkloadDefinition).Updates(&updatedHelmWorkloadDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingHelmWorkloadDefinition).Updates(&updatedHelmWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -383,7 +382,7 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	helmWorkloadDefinitionID := c.Param("id")
 	var existingHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
-	if result := h.DB.First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -412,7 +411,7 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedHelmWorkloadDefinition.ID = existingHelmWorkloadDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -425,7 +424,7 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -461,7 +460,7 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	helmWorkloadDefinitionID := c.Param("id")
 	var helmWorkloadDefinition api_v0.HelmWorkloadDefinition
-	if result := h.DB.Preload("HelmWorkloadInstances").First(&helmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("HelmWorkloadInstances").First(&helmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -487,7 +486,7 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&helmWorkloadDefinition).Updates(&scheduledHelmWorkloadDefinition); result.Error != nil {
+		if result := h.RequestDB(c).Model(&helmWorkloadDefinition).Updates(&scheduledHelmWorkloadDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -513,7 +512,7 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&helmWorkloadDefinition); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&helmWorkloadDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
@@ -588,7 +587,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", helmWorkloadInstance.Name).First(&existingHelmWorkloadInstance)
+	result := h.RequestDB(c).Where("name = ?", helmWorkloadInstance.Name).First(&existingHelmWorkloadInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -602,7 +601,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&helmWorkloadInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&helmWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -678,7 +677,7 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.HelmWorkloadInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.HelmWorkloadInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -689,7 +688,7 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -781,8 +780,7 @@ func (h Handler) GetHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	helmWorkloadInstanceID := c.Param("id")
 	var helmWorkloadInstance api_v0.HelmWorkloadInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&helmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -824,7 +822,7 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	helmWorkloadInstanceID := c.Param("id")
 	var existingHelmWorkloadInstance api_v0.HelmWorkloadInstance
-	if result := h.DB.First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -846,7 +844,7 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingHelmWorkloadInstance).Updates(&updatedHelmWorkloadInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingHelmWorkloadInstance).Updates(&updatedHelmWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -906,7 +904,7 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	helmWorkloadInstanceID := c.Param("id")
 	var existingHelmWorkloadInstance api_v0.HelmWorkloadInstance
-	if result := h.DB.First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -935,7 +933,7 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedHelmWorkloadInstance.ID = existingHelmWorkloadInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -948,7 +946,7 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -984,7 +982,7 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	helmWorkloadInstanceID := c.Param("id")
 	var helmWorkloadInstance api_v0.HelmWorkloadInstance
-	if result := h.DB.First(&helmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&helmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1004,7 +1002,7 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&helmWorkloadInstance).Updates(&scheduledHelmWorkloadInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&helmWorkloadInstance).Updates(&scheduledHelmWorkloadInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1030,7 +1028,7 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&helmWorkloadInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&helmWorkloadInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError

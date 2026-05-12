@@ -66,7 +66,7 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingControlPlaneDefinition api_v0.ControlPlaneDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", controlPlaneDefinition.Name).First(&existingControlPlaneDefinition)
+	result := h.RequestDB(c).Where("name = ?", controlPlaneDefinition.Name).First(&existingControlPlaneDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -80,7 +80,7 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&controlPlaneDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&controlPlaneDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -156,7 +156,7 @@ func (h Handler) GetControlPlaneDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.ControlPlaneDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.ControlPlaneDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -167,7 +167,7 @@ func (h Handler) GetControlPlaneDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -259,8 +259,7 @@ func (h Handler) GetControlPlaneDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneDefinition
 	controlPlaneDefinitionID := c.Param("id")
 	var controlPlaneDefinition api_v0.ControlPlaneDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -302,7 +301,7 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneDefinition
 	controlPlaneDefinitionID := c.Param("id")
 	var existingControlPlaneDefinition api_v0.ControlPlaneDefinition
-	if result := h.DB.First(&existingControlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingControlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -324,7 +323,7 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingControlPlaneDefinition).Updates(&updatedControlPlaneDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingControlPlaneDefinition).Updates(&updatedControlPlaneDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -384,7 +383,7 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneDefinition
 	controlPlaneDefinitionID := c.Param("id")
 	var existingControlPlaneDefinition api_v0.ControlPlaneDefinition
-	if result := h.DB.First(&existingControlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingControlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -413,7 +412,7 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedControlPlaneDefinition.ID = existingControlPlaneDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -426,7 +425,7 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingControlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingControlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -462,7 +461,7 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneDefinition
 	controlPlaneDefinitionID := c.Param("id")
 	var controlPlaneDefinition api_v0.ControlPlaneDefinition
-	if result := h.DB.Preload("ControlPlaneInstances").First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("ControlPlaneInstances").First(&controlPlaneDefinition, controlPlaneDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -488,7 +487,7 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&controlPlaneDefinition).Updates(&scheduledControlPlaneDefinition); result.Error != nil {
+		if result := h.RequestDB(c).Model(&controlPlaneDefinition).Updates(&scheduledControlPlaneDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -514,7 +513,7 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&controlPlaneDefinition); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&controlPlaneDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
@@ -589,7 +588,7 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingControlPlaneInstance api_v0.ControlPlaneInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", controlPlaneInstance.Name).First(&existingControlPlaneInstance)
+	result := h.RequestDB(c).Where("name = ?", controlPlaneInstance.Name).First(&existingControlPlaneInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -603,7 +602,7 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&controlPlaneInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&controlPlaneInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -679,7 +678,7 @@ func (h Handler) GetControlPlaneInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.ControlPlaneInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.ControlPlaneInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -690,7 +689,7 @@ func (h Handler) GetControlPlaneInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -782,8 +781,7 @@ func (h Handler) GetControlPlaneInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneInstance
 	controlPlaneInstanceID := c.Param("id")
 	var controlPlaneInstance api_v0.ControlPlaneInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).Preload(clause.Associations).
+	if result := h.RequestDB(c).Preload(clause.Associations).
 		First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -825,7 +823,7 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneInstance
 	controlPlaneInstanceID := c.Param("id")
 	var existingControlPlaneInstance api_v0.ControlPlaneInstance
-	if result := h.DB.First(&existingControlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingControlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -847,7 +845,7 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingControlPlaneInstance).Updates(&updatedControlPlaneInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingControlPlaneInstance).Updates(&updatedControlPlaneInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -907,7 +905,7 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneInstance
 	controlPlaneInstanceID := c.Param("id")
 	var existingControlPlaneInstance api_v0.ControlPlaneInstance
-	if result := h.DB.First(&existingControlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingControlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -936,7 +934,7 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedControlPlaneInstance.ID = existingControlPlaneInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -949,7 +947,7 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingControlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingControlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -985,7 +983,7 @@ func (h Handler) DeleteControlPlaneInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeControlPlaneInstance
 	controlPlaneInstanceID := c.Param("id")
 	var controlPlaneInstance api_v0.ControlPlaneInstance
-	if result := h.DB.First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&controlPlaneInstance, controlPlaneInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1005,7 +1003,7 @@ func (h Handler) DeleteControlPlaneInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&controlPlaneInstance).Updates(&scheduledControlPlaneInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&controlPlaneInstance).Updates(&scheduledControlPlaneInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1031,7 +1029,7 @@ func (h Handler) DeleteControlPlaneInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&controlPlaneInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&controlPlaneInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError

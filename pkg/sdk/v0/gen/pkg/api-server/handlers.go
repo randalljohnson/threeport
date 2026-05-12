@@ -89,7 +89,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						} else {
 							s.Id("h")
 						}
-					}).Dot("DB").Dot("Where").Call(
+					}).Dot("RequestDB").Call(Id("c")).Dot("Where").Call(
 						Lit("name = ?"), Id(strcase.ToLowerCamel(apiObject.TypeName)).Dot("Name"),
 					).Dot("First").Call(
 						Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)),
@@ -279,7 +279,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								} else {
 									s.Id("h")
 								}
-							}).Dot("DB").Dot("Model").Call(
+							}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
 								Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)),
 							).Dot("Updates").Call(
 								Op("&").Id(fmt.Sprintf("scheduled%s", apiObject.TypeName)),
@@ -374,7 +374,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									} else {
 										s.Id("h")
 									}
-								}).Dot("DB").Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
+								}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
 								Id("result").Dot("Error").Op("!=").Nil(),
 							).BlockFunc(func(h *Group) {
 								if gen.Module {
@@ -423,7 +423,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
+						}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
 						Id("result").Dot("Error").Op("!=").Nil(),
 					).BlockFunc(func(h *Group) {
 						if gen.Module {
@@ -475,7 +475,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Preload").Call(
+						}).Dot("RequestDB").Call(Id("c")).Dot("Preload").Call(
 							Lit(instancesName),
 						).Dot("First").Call(Op("&").Id(
 							strcase.ToLowerCamel(apiObject.TypeName),
@@ -538,7 +538,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(
 							strcase.ToLowerCamel(apiObject.TypeName),
 						).Op(",").Id(fmt.Sprintf(
@@ -822,7 +822,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						} else {
 							s.Id("h")
 						}
-					}).Dot("DB").Dot("Create").Call(
+					}).Dot("RequestDB").Call(Id("c")).Dot("Create").Call(
 						Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)),
 					).Op(";").Id("result").Dot("Error").Op("!=").Nil()).BlockFunc(func(h *Group) {
 						if gen.Module {
@@ -1022,7 +1022,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								} else {
 									s.Id("h")
 								}
-							}).Dot("DB").Dot("Model").Call(
+							}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
 								Op("&").Qual(
 									fmt.Sprintf(
 										"%s/pkg/api/%s",
@@ -1063,7 +1063,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										} else {
 											s.Id("h")
 										}
-									}).Dot("DB").Dot("Order").Call(Lit("ID asc")).Dot("Where").Call(Op("&").Id("filter")).Dot("Find").Call(Id("records")),
+									}).Dot("RequestDB").Call(Id("c")).Dot("Order").Call(Lit("ID asc")).Dot("Where").Call(Op("&").Id("filter")).Dot("Find").Call(Id("records")),
 										Id("result").Dot("Error").Op("!=").Nil(),
 									).BlockFunc(func(h *Group) {
 										if gen.Module {
@@ -1340,11 +1340,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Op(".").Line().
-							Id("Scopes").Call(Qual(
-							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"QueryScopes",
-						).Call(Id("c")).Op("...")).Add(dbLoadAssociationStatement).Op(".").Line().
+						}).Dot("RequestDB").Call(Id("c")).Add(dbLoadAssociationStatement).Op(".").Line().
 							Id("First").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
@@ -1499,7 +1495,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
@@ -1638,7 +1634,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Model").Call(
+						}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
 							Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)),
 						).Dot("Updates").Call(
 							Op("&").Id(fmt.Sprintf("updated%s", apiObject.TypeName)),
@@ -1802,7 +1798,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
@@ -1970,7 +1966,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Session").Call(
+						}).Dot("RequestDB").Call(Id("c")).Dot("Session").Call(
 							Op("&").Qual(
 								"gorm.io/gorm",
 								"Session",
@@ -2025,7 +2021,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {

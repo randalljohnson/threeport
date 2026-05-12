@@ -59,7 +59,7 @@ func (h Handler) AddAttachedObjectReference(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&attachedObjectReference); result.Error != nil {
+	if result := h.RequestDB(c).Create(&attachedObjectReference); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -121,7 +121,7 @@ func (h Handler) GetAttachedObjectReferences(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.AttachedObjectReference{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.AttachedObjectReference{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -132,7 +132,7 @@ func (h Handler) GetAttachedObjectReferences(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -224,8 +224,7 @@ func (h Handler) GetAttachedObjectReference(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAttachedObjectReference
 	attachedObjectReferenceID := c.Param("id")
 	var attachedObjectReference api_v0.AttachedObjectReference
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&attachedObjectReference, attachedObjectReferenceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -267,7 +266,7 @@ func (h Handler) UpdateAttachedObjectReference(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAttachedObjectReference
 	attachedObjectReferenceID := c.Param("id")
 	var existingAttachedObjectReference api_v0.AttachedObjectReference
-	if result := h.DB.First(&existingAttachedObjectReference, attachedObjectReferenceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingAttachedObjectReference, attachedObjectReferenceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -289,7 +288,7 @@ func (h Handler) UpdateAttachedObjectReference(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingAttachedObjectReference).Updates(&updatedAttachedObjectReference); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingAttachedObjectReference).Updates(&updatedAttachedObjectReference); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -335,7 +334,7 @@ func (h Handler) ReplaceAttachedObjectReference(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAttachedObjectReference
 	attachedObjectReferenceID := c.Param("id")
 	var existingAttachedObjectReference api_v0.AttachedObjectReference
-	if result := h.DB.First(&existingAttachedObjectReference, attachedObjectReferenceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingAttachedObjectReference, attachedObjectReferenceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -364,7 +363,7 @@ func (h Handler) ReplaceAttachedObjectReference(c echo.Context) error {
 
 	// persist provided data
 	updatedAttachedObjectReference.ID = existingAttachedObjectReference.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAttachedObjectReference); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAttachedObjectReference); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -377,7 +376,7 @@ func (h Handler) ReplaceAttachedObjectReference(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingAttachedObjectReference, attachedObjectReferenceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingAttachedObjectReference, attachedObjectReferenceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -413,7 +412,7 @@ func (h Handler) DeleteAttachedObjectReference(c echo.Context) error {
 	objectType := api_v0.ObjectTypeAttachedObjectReference
 	attachedObjectReferenceID := c.Param("id")
 	var attachedObjectReference api_v0.AttachedObjectReference
-	if result := h.DB.First(&attachedObjectReference, attachedObjectReferenceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&attachedObjectReference, attachedObjectReferenceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -422,7 +421,7 @@ func (h Handler) DeleteAttachedObjectReference(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&attachedObjectReference); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&attachedObjectReference); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

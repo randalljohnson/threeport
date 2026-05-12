@@ -64,6 +64,11 @@ func main() {
 			return next(cc)
 		}
 	})
+
+	// capture the request's mTLS peer CN so GORM hooks can read it via
+	// apiserver_lib.CallerCN(tx.Statement.Context)
+	e.Use(apiserver_lib.CaptureCallerCN)
+
 	logger, err := log.NewLogger(verbose)
 	if err != nil {
 		panic(err)

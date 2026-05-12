@@ -65,7 +65,7 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingDomainNameDefinition api_v0.DomainNameDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", domainNameDefinition.Name).First(&existingDomainNameDefinition)
+	result := h.RequestDB(c).Where("name = ?", domainNameDefinition.Name).First(&existingDomainNameDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -79,7 +79,7 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&domainNameDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&domainNameDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -141,7 +141,7 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.DomainNameDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.DomainNameDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -152,7 +152,7 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -244,8 +244,7 @@ func (h Handler) GetDomainNameDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameDefinition
 	domainNameDefinitionID := c.Param("id")
 	var domainNameDefinition api_v0.DomainNameDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&domainNameDefinition, domainNameDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -287,7 +286,7 @@ func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameDefinition
 	domainNameDefinitionID := c.Param("id")
 	var existingDomainNameDefinition api_v0.DomainNameDefinition
-	if result := h.DB.First(&existingDomainNameDefinition, domainNameDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingDomainNameDefinition, domainNameDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -309,7 +308,7 @@ func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingDomainNameDefinition).Updates(&updatedDomainNameDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingDomainNameDefinition).Updates(&updatedDomainNameDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -355,7 +354,7 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameDefinition
 	domainNameDefinitionID := c.Param("id")
 	var existingDomainNameDefinition api_v0.DomainNameDefinition
-	if result := h.DB.First(&existingDomainNameDefinition, domainNameDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingDomainNameDefinition, domainNameDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -384,7 +383,7 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedDomainNameDefinition.ID = existingDomainNameDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -397,7 +396,7 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingDomainNameDefinition, domainNameDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingDomainNameDefinition, domainNameDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -433,7 +432,7 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameDefinition
 	domainNameDefinitionID := c.Param("id")
 	var domainNameDefinition api_v0.DomainNameDefinition
-	if result := h.DB.Preload("DomainNameInstances").First(&domainNameDefinition, domainNameDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("DomainNameInstances").First(&domainNameDefinition, domainNameDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -448,7 +447,7 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&domainNameDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&domainNameDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -521,7 +520,7 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingDomainNameInstance api_v0.DomainNameInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", domainNameInstance.Name).First(&existingDomainNameInstance)
+	result := h.RequestDB(c).Where("name = ?", domainNameInstance.Name).First(&existingDomainNameInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -535,7 +534,7 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&domainNameInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&domainNameInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -611,7 +610,7 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.DomainNameInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.DomainNameInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -622,7 +621,7 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -714,8 +713,7 @@ func (h Handler) GetDomainNameInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameInstance
 	domainNameInstanceID := c.Param("id")
 	var domainNameInstance api_v0.DomainNameInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&domainNameInstance, domainNameInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -757,7 +755,7 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameInstance
 	domainNameInstanceID := c.Param("id")
 	var existingDomainNameInstance api_v0.DomainNameInstance
-	if result := h.DB.First(&existingDomainNameInstance, domainNameInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingDomainNameInstance, domainNameInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -779,7 +777,7 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingDomainNameInstance).Updates(&updatedDomainNameInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingDomainNameInstance).Updates(&updatedDomainNameInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -839,7 +837,7 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameInstance
 	domainNameInstanceID := c.Param("id")
 	var existingDomainNameInstance api_v0.DomainNameInstance
-	if result := h.DB.First(&existingDomainNameInstance, domainNameInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingDomainNameInstance, domainNameInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -868,7 +866,7 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedDomainNameInstance.ID = existingDomainNameInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -881,7 +879,7 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingDomainNameInstance, domainNameInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingDomainNameInstance, domainNameInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -917,7 +915,7 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeDomainNameInstance
 	domainNameInstanceID := c.Param("id")
 	var domainNameInstance api_v0.DomainNameInstance
-	if result := h.DB.First(&domainNameInstance, domainNameInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&domainNameInstance, domainNameInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -937,7 +935,7 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&domainNameInstance).Updates(&scheduledDomainNameInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&domainNameInstance).Updates(&scheduledDomainNameInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -963,7 +961,7 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&domainNameInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&domainNameInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
@@ -1038,7 +1036,7 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingGatewayDefinition api_v0.GatewayDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", gatewayDefinition.Name).First(&existingGatewayDefinition)
+	result := h.RequestDB(c).Where("name = ?", gatewayDefinition.Name).First(&existingGatewayDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -1052,7 +1050,7 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&gatewayDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&gatewayDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1128,7 +1126,7 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.GatewayDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.GatewayDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1139,7 +1137,7 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1231,8 +1229,7 @@ func (h Handler) GetGatewayDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayDefinition
 	gatewayDefinitionID := c.Param("id")
 	var gatewayDefinition api_v0.GatewayDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&gatewayDefinition, gatewayDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1274,7 +1271,7 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayDefinition
 	gatewayDefinitionID := c.Param("id")
 	var existingGatewayDefinition api_v0.GatewayDefinition
-	if result := h.DB.First(&existingGatewayDefinition, gatewayDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayDefinition, gatewayDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1296,7 +1293,7 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingGatewayDefinition).Updates(&updatedGatewayDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingGatewayDefinition).Updates(&updatedGatewayDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1356,7 +1353,7 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayDefinition
 	gatewayDefinitionID := c.Param("id")
 	var existingGatewayDefinition api_v0.GatewayDefinition
-	if result := h.DB.First(&existingGatewayDefinition, gatewayDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayDefinition, gatewayDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1385,7 +1382,7 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayDefinition.ID = existingGatewayDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1398,7 +1395,7 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingGatewayDefinition, gatewayDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayDefinition, gatewayDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1434,7 +1431,7 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayDefinition
 	gatewayDefinitionID := c.Param("id")
 	var gatewayDefinition api_v0.GatewayDefinition
-	if result := h.DB.Preload("GatewayInstances").First(&gatewayDefinition, gatewayDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("GatewayInstances").First(&gatewayDefinition, gatewayDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1460,7 +1457,7 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&gatewayDefinition).Updates(&scheduledGatewayDefinition); result.Error != nil {
+		if result := h.RequestDB(c).Model(&gatewayDefinition).Updates(&scheduledGatewayDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1486,7 +1483,7 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&gatewayDefinition); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&gatewayDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
@@ -1559,7 +1556,7 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&gatewayHttpPort); result.Error != nil {
+	if result := h.RequestDB(c).Create(&gatewayHttpPort); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1621,7 +1618,7 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.GatewayHttpPort{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.GatewayHttpPort{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1632,7 +1629,7 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1724,8 +1721,7 @@ func (h Handler) GetGatewayHttpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayHttpPort
 	gatewayHttpPortID := c.Param("id")
 	var gatewayHttpPort api_v0.GatewayHttpPort
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&gatewayHttpPort, gatewayHttpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1767,7 +1763,7 @@ func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayHttpPort
 	gatewayHttpPortID := c.Param("id")
 	var existingGatewayHttpPort api_v0.GatewayHttpPort
-	if result := h.DB.First(&existingGatewayHttpPort, gatewayHttpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayHttpPort, gatewayHttpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1789,7 +1785,7 @@ func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingGatewayHttpPort).Updates(&updatedGatewayHttpPort); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingGatewayHttpPort).Updates(&updatedGatewayHttpPort); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1835,7 +1831,7 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayHttpPort
 	gatewayHttpPortID := c.Param("id")
 	var existingGatewayHttpPort api_v0.GatewayHttpPort
-	if result := h.DB.First(&existingGatewayHttpPort, gatewayHttpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayHttpPort, gatewayHttpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1864,7 +1860,7 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayHttpPort.ID = existingGatewayHttpPort.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayHttpPort); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayHttpPort); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1877,7 +1873,7 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingGatewayHttpPort, gatewayHttpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayHttpPort, gatewayHttpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1913,7 +1909,7 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayHttpPort
 	gatewayHttpPortID := c.Param("id")
 	var gatewayHttpPort api_v0.GatewayHttpPort
-	if result := h.DB.First(&gatewayHttpPort, gatewayHttpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&gatewayHttpPort, gatewayHttpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1922,7 +1918,7 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&gatewayHttpPort); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&gatewayHttpPort); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1995,7 +1991,7 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingGatewayInstance api_v0.GatewayInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", gatewayInstance.Name).First(&existingGatewayInstance)
+	result := h.RequestDB(c).Where("name = ?", gatewayInstance.Name).First(&existingGatewayInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -2009,7 +2005,7 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&gatewayInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&gatewayInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2085,7 +2081,7 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.GatewayInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.GatewayInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -2096,7 +2092,7 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -2188,8 +2184,7 @@ func (h Handler) GetGatewayInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayInstance
 	gatewayInstanceID := c.Param("id")
 	var gatewayInstance api_v0.GatewayInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&gatewayInstance, gatewayInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -2231,7 +2226,7 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayInstance
 	gatewayInstanceID := c.Param("id")
 	var existingGatewayInstance api_v0.GatewayInstance
-	if result := h.DB.First(&existingGatewayInstance, gatewayInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayInstance, gatewayInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2253,7 +2248,7 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingGatewayInstance).Updates(&updatedGatewayInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingGatewayInstance).Updates(&updatedGatewayInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2313,7 +2308,7 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayInstance
 	gatewayInstanceID := c.Param("id")
 	var existingGatewayInstance api_v0.GatewayInstance
-	if result := h.DB.First(&existingGatewayInstance, gatewayInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayInstance, gatewayInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2342,7 +2337,7 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayInstance.ID = existingGatewayInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2355,7 +2350,7 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingGatewayInstance, gatewayInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayInstance, gatewayInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2391,7 +2386,7 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayInstance
 	gatewayInstanceID := c.Param("id")
 	var gatewayInstance api_v0.GatewayInstance
-	if result := h.DB.First(&gatewayInstance, gatewayInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&gatewayInstance, gatewayInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2411,7 +2406,7 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&gatewayInstance).Updates(&scheduledGatewayInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&gatewayInstance).Updates(&scheduledGatewayInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -2437,7 +2432,7 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&gatewayInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&gatewayInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
@@ -2510,7 +2505,7 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&gatewayTcpPort); result.Error != nil {
+	if result := h.RequestDB(c).Create(&gatewayTcpPort); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2572,7 +2567,7 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.GatewayTcpPort{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.GatewayTcpPort{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -2583,7 +2578,7 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -2675,8 +2670,7 @@ func (h Handler) GetGatewayTcpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayTcpPort
 	gatewayTcpPortID := c.Param("id")
 	var gatewayTcpPort api_v0.GatewayTcpPort
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&gatewayTcpPort, gatewayTcpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -2718,7 +2712,7 @@ func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayTcpPort
 	gatewayTcpPortID := c.Param("id")
 	var existingGatewayTcpPort api_v0.GatewayTcpPort
-	if result := h.DB.First(&existingGatewayTcpPort, gatewayTcpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayTcpPort, gatewayTcpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2740,7 +2734,7 @@ func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingGatewayTcpPort).Updates(&updatedGatewayTcpPort); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingGatewayTcpPort).Updates(&updatedGatewayTcpPort); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2786,7 +2780,7 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayTcpPort
 	gatewayTcpPortID := c.Param("id")
 	var existingGatewayTcpPort api_v0.GatewayTcpPort
-	if result := h.DB.First(&existingGatewayTcpPort, gatewayTcpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayTcpPort, gatewayTcpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2815,7 +2809,7 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayTcpPort.ID = existingGatewayTcpPort.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayTcpPort); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayTcpPort); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2828,7 +2822,7 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingGatewayTcpPort, gatewayTcpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingGatewayTcpPort, gatewayTcpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2864,7 +2858,7 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGatewayTcpPort
 	gatewayTcpPortID := c.Param("id")
 	var gatewayTcpPort api_v0.GatewayTcpPort
-	if result := h.DB.First(&gatewayTcpPort, gatewayTcpPortID); result.Error != nil {
+	if result := h.RequestDB(c).First(&gatewayTcpPort, gatewayTcpPortID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2873,7 +2867,7 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&gatewayTcpPort); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&gatewayTcpPort); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

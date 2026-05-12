@@ -23,12 +23,11 @@ type AttachedObjectReference struct {
 	AttachedObjectID *uint `json:"AttachedObjectID,omitempty" query:"attachedobjectid" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
 
 	// Relationship classifies this reference and drives lifecycle behavior:
-	//   - "describes": informational link; does not block deletion or
-	//     restrict updates of the base object.
-	//   - "requires": the attached object depends on the base object;
-	//     deletion of the base object is blocked while this reference
-	//     exists. The base object is otherwise externally mutable.
-	//   - "owns": same blocking-on-delete behavior as "requires" plus the
-	//     base object is blocked against external updates.
+	//   - "describes": informational; does not block delete or update of the base.
+	//   - "requires": blocks any caller from deleting the base while this
+	//     reference exists.
+	//   - "owns": blocks both delete and update of the base for any caller
+	//     except the controller registered for the attached object's type,
+	//     identified by its mTLS peer common name.
 	Relationship *Relationship `json:"Relationship,omitempty" query:"relationship" gorm:"default:'describes'" validate:"optional"`
 }

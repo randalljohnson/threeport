@@ -61,7 +61,7 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 	// check for duplicate names
 	var existingLogBackend api_v0.LogBackend
 	nameUsed := true
-	result := h.DB.Where("name = ?", logBackend.Name).First(&existingLogBackend)
+	result := h.RequestDB(c).Where("name = ?", logBackend.Name).First(&existingLogBackend)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -75,7 +75,7 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&logBackend); result.Error != nil {
+	if result := h.RequestDB(c).Create(&logBackend); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -137,7 +137,7 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.LogBackend{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.LogBackend{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -148,7 +148,7 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -240,8 +240,7 @@ func (h Handler) GetLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
 	logBackendID := c.Param("id")
 	var logBackend api_v0.LogBackend
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&logBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -283,7 +282,7 @@ func (h Handler) UpdateLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
 	logBackendID := c.Param("id")
 	var existingLogBackend api_v0.LogBackend
-	if result := h.DB.First(&existingLogBackend, logBackendID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -305,7 +304,7 @@ func (h Handler) UpdateLogBackend(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingLogBackend).Updates(&updatedLogBackend); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingLogBackend).Updates(&updatedLogBackend); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -351,7 +350,7 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
 	logBackendID := c.Param("id")
 	var existingLogBackend api_v0.LogBackend
-	if result := h.DB.First(&existingLogBackend, logBackendID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -380,7 +379,7 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 
 	// persist provided data
 	updatedLogBackend.ID = existingLogBackend.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogBackend); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogBackend); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -393,7 +392,7 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingLogBackend, logBackendID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -429,7 +428,7 @@ func (h Handler) DeleteLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
 	logBackendID := c.Param("id")
 	var logBackend api_v0.LogBackend
-	if result := h.DB.First(&logBackend, logBackendID); result.Error != nil {
+	if result := h.RequestDB(c).First(&logBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -438,7 +437,7 @@ func (h Handler) DeleteLogBackend(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&logBackend); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&logBackend); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -511,7 +510,7 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingLogStorageDefinition api_v0.LogStorageDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", logStorageDefinition.Name).First(&existingLogStorageDefinition)
+	result := h.RequestDB(c).Where("name = ?", logStorageDefinition.Name).First(&existingLogStorageDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -525,7 +524,7 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&logStorageDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&logStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -587,7 +586,7 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.LogStorageDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.LogStorageDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -598,7 +597,7 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -690,8 +689,7 @@ func (h Handler) GetLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
 	logStorageDefinitionID := c.Param("id")
 	var logStorageDefinition api_v0.LogStorageDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -733,7 +731,7 @@ func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
 	logStorageDefinitionID := c.Param("id")
 	var existingLogStorageDefinition api_v0.LogStorageDefinition
-	if result := h.DB.First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -755,7 +753,7 @@ func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingLogStorageDefinition).Updates(&updatedLogStorageDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingLogStorageDefinition).Updates(&updatedLogStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -801,7 +799,7 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
 	logStorageDefinitionID := c.Param("id")
 	var existingLogStorageDefinition api_v0.LogStorageDefinition
-	if result := h.DB.First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -830,7 +828,7 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedLogStorageDefinition.ID = existingLogStorageDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -843,7 +841,7 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -879,7 +877,7 @@ func (h Handler) DeleteLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
 	logStorageDefinitionID := c.Param("id")
 	var logStorageDefinition api_v0.LogStorageDefinition
-	if result := h.DB.Preload("LogStorageInstances").First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("LogStorageInstances").First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -894,7 +892,7 @@ func (h Handler) DeleteLogStorageDefinition(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&logStorageDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&logStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -967,7 +965,7 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingLogStorageInstance api_v0.LogStorageInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", logStorageInstance.Name).First(&existingLogStorageInstance)
+	result := h.RequestDB(c).Where("name = ?", logStorageInstance.Name).First(&existingLogStorageInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -981,7 +979,7 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&logStorageInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&logStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1043,7 +1041,7 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.LogStorageInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.LogStorageInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1054,7 +1052,7 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1146,8 +1144,7 @@ func (h Handler) GetLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
 	logStorageInstanceID := c.Param("id")
 	var logStorageInstance api_v0.LogStorageInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&logStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1189,7 +1186,7 @@ func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
 	logStorageInstanceID := c.Param("id")
 	var existingLogStorageInstance api_v0.LogStorageInstance
-	if result := h.DB.First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1211,7 +1208,7 @@ func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingLogStorageInstance).Updates(&updatedLogStorageInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingLogStorageInstance).Updates(&updatedLogStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1257,7 +1254,7 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
 	logStorageInstanceID := c.Param("id")
 	var existingLogStorageInstance api_v0.LogStorageInstance
-	if result := h.DB.First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1286,7 +1283,7 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedLogStorageInstance.ID = existingLogStorageInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1299,7 +1296,7 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1335,7 +1332,7 @@ func (h Handler) DeleteLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
 	logStorageInstanceID := c.Param("id")
 	var logStorageInstance api_v0.LogStorageInstance
-	if result := h.DB.First(&logStorageInstance, logStorageInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&logStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1344,7 +1341,7 @@ func (h Handler) DeleteLogStorageInstance(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&logStorageInstance); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&logStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

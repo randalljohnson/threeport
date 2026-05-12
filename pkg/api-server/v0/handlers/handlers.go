@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -25,6 +26,15 @@ type Handler struct {
 // New returns a new Handler.
 func New(db *gorm.DB, nc *nats.Conn, rc nats.JetStreamContext, logger *zap.Logger) Handler {
 	return Handler{db, nc, rc, logger}
+}
+
+// RequestDB returns the handler DB scoped to the HTTP request, with query
+// scopes applied and the request context attached so GORM honors client
+// cancellation and hooks can read per-request state.
+func (h Handler) RequestDB(c echo.Context) *gorm.DB {
+	return h.DB.
+		WithContext(c.Request().Context()).
+		Scopes(apiserver_lib.QueryScopes(c)...)
 }
 
 // CreateMaterializedView creates a materialized view for a given object type and returns the

@@ -61,7 +61,7 @@ func (h Handler) AddProfile(c echo.Context) error {
 	// check for duplicate names
 	var existingProfile api_v0.Profile
 	nameUsed := true
-	result := h.DB.Where("name = ?", profile.Name).First(&existingProfile)
+	result := h.RequestDB(c).Where("name = ?", profile.Name).First(&existingProfile)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -75,7 +75,7 @@ func (h Handler) AddProfile(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&profile); result.Error != nil {
+	if result := h.RequestDB(c).Create(&profile); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -137,7 +137,7 @@ func (h Handler) GetProfiles(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.Profile{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.Profile{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -148,7 +148,7 @@ func (h Handler) GetProfiles(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -240,8 +240,7 @@ func (h Handler) GetProfile(c echo.Context) error {
 	objectType := api_v0.ObjectTypeProfile
 	profileID := c.Param("id")
 	var profile api_v0.Profile
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&profile, profileID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -283,7 +282,7 @@ func (h Handler) UpdateProfile(c echo.Context) error {
 	objectType := api_v0.ObjectTypeProfile
 	profileID := c.Param("id")
 	var existingProfile api_v0.Profile
-	if result := h.DB.First(&existingProfile, profileID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingProfile, profileID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -305,7 +304,7 @@ func (h Handler) UpdateProfile(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingProfile).Updates(&updatedProfile); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingProfile).Updates(&updatedProfile); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -351,7 +350,7 @@ func (h Handler) ReplaceProfile(c echo.Context) error {
 	objectType := api_v0.ObjectTypeProfile
 	profileID := c.Param("id")
 	var existingProfile api_v0.Profile
-	if result := h.DB.First(&existingProfile, profileID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingProfile, profileID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -380,7 +379,7 @@ func (h Handler) ReplaceProfile(c echo.Context) error {
 
 	// persist provided data
 	updatedProfile.ID = existingProfile.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedProfile); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedProfile); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -393,7 +392,7 @@ func (h Handler) ReplaceProfile(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingProfile, profileID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingProfile, profileID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -429,7 +428,7 @@ func (h Handler) DeleteProfile(c echo.Context) error {
 	objectType := api_v0.ObjectTypeProfile
 	profileID := c.Param("id")
 	var profile api_v0.Profile
-	if result := h.DB.First(&profile, profileID); result.Error != nil {
+	if result := h.RequestDB(c).First(&profile, profileID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -438,7 +437,7 @@ func (h Handler) DeleteProfile(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&profile); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&profile); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -511,7 +510,7 @@ func (h Handler) AddTier(c echo.Context) error {
 	// check for duplicate names
 	var existingTier api_v0.Tier
 	nameUsed := true
-	result := h.DB.Where("name = ?", tier.Name).First(&existingTier)
+	result := h.RequestDB(c).Where("name = ?", tier.Name).First(&existingTier)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -525,7 +524,7 @@ func (h Handler) AddTier(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&tier); result.Error != nil {
+	if result := h.RequestDB(c).Create(&tier); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -587,7 +586,7 @@ func (h Handler) GetTiers(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.Tier{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.Tier{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -598,7 +597,7 @@ func (h Handler) GetTiers(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -690,8 +689,7 @@ func (h Handler) GetTier(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTier
 	tierID := c.Param("id")
 	var tier api_v0.Tier
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&tier, tierID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -733,7 +731,7 @@ func (h Handler) UpdateTier(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTier
 	tierID := c.Param("id")
 	var existingTier api_v0.Tier
-	if result := h.DB.First(&existingTier, tierID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTier, tierID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -755,7 +753,7 @@ func (h Handler) UpdateTier(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingTier).Updates(&updatedTier); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingTier).Updates(&updatedTier); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -801,7 +799,7 @@ func (h Handler) ReplaceTier(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTier
 	tierID := c.Param("id")
 	var existingTier api_v0.Tier
-	if result := h.DB.First(&existingTier, tierID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTier, tierID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -830,7 +828,7 @@ func (h Handler) ReplaceTier(c echo.Context) error {
 
 	// persist provided data
 	updatedTier.ID = existingTier.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTier); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTier); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -843,7 +841,7 @@ func (h Handler) ReplaceTier(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingTier, tierID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingTier, tierID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -879,7 +877,7 @@ func (h Handler) DeleteTier(c echo.Context) error {
 	objectType := api_v0.ObjectTypeTier
 	tierID := c.Param("id")
 	var tier api_v0.Tier
-	if result := h.DB.First(&tier, tierID); result.Error != nil {
+	if result := h.RequestDB(c).First(&tier, tierID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -888,7 +886,7 @@ func (h Handler) DeleteTier(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&tier); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&tier); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError

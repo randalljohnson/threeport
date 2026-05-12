@@ -6,23 +6,22 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddProfileVersions adds field validation info and adds it
 // to the REST API versions.
 func AddProfileVersions() {
-	apiserver_v0.ProfileTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ProfileTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              sdk.ValidateTag,
+		TagName:              string(api_v0.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		sdk.ValidateTag,
+		string(api_v0.ValidateTag),
 		reflect.ValueOf(new(api_v0.Profile)),
 		"",
 		apiserver_lib.Translate,
@@ -36,7 +35,7 @@ func AddProfileVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ProfileTaggedFields[sdk.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ProfileTaggedFields[string(api_v0.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -45,16 +44,16 @@ func AddProfileVersions() {
 // AddTierVersions adds field validation info and adds it
 // to the REST API versions.
 func AddTierVersions() {
-	apiserver_v0.TierTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.TierTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              sdk.ValidateTag,
+		TagName:              string(api_v0.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		sdk.ValidateTag,
+		string(api_v0.ValidateTag),
 		reflect.ValueOf(new(api_v0.Tier)),
 		"",
 		apiserver_lib.Translate,
@@ -68,7 +67,7 @@ func AddTierVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.TierTaggedFields[sdk.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.TierTaggedFields[string(api_v0.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

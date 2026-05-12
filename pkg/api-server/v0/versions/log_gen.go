@@ -6,23 +6,22 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
-	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"reflect"
 )
 
 // AddLogBackendVersions adds field validation info and adds it
 // to the REST API versions.
 func AddLogBackendVersions() {
-	apiserver_v0.LogBackendTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.LogBackendTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              sdk.ValidateTag,
+		TagName:              string(api_v0.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		sdk.ValidateTag,
+		string(api_v0.ValidateTag),
 		reflect.ValueOf(new(api_v0.LogBackend)),
 		"",
 		apiserver_lib.Translate,
@@ -36,7 +35,7 @@ func AddLogBackendVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LogBackendTaggedFields[sdk.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LogBackendTaggedFields[string(api_v0.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -45,16 +44,16 @@ func AddLogBackendVersions() {
 // AddLogStorageDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddLogStorageDefinitionVersions() {
-	apiserver_v0.LogStorageDefinitionTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.LogStorageDefinitionTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              sdk.ValidateTag,
+		TagName:              string(api_v0.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		sdk.ValidateTag,
+		string(api_v0.ValidateTag),
 		reflect.ValueOf(new(api_v0.LogStorageDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -68,7 +67,7 @@ func AddLogStorageDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LogStorageDefinitionTaggedFields[sdk.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LogStorageDefinitionTaggedFields[string(api_v0.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -77,16 +76,16 @@ func AddLogStorageDefinitionVersions() {
 // AddLogStorageInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddLogStorageInstanceVersions() {
-	apiserver_v0.LogStorageInstanceTaggedFields[sdk.ValidateTag] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.LogStorageInstanceTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              sdk.ValidateTag,
+		TagName:              string(api_v0.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		sdk.ValidateTag,
+		string(api_v0.ValidateTag),
 		reflect.ValueOf(new(api_v0.LogStorageInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -100,7 +99,7 @@ func AddLogStorageInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LogStorageInstanceTaggedFields[sdk.ValidateTag]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.LogStorageInstanceTaggedFields[string(api_v0.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

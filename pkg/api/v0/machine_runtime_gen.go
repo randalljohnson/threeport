@@ -63,12 +63,12 @@ func (mrd *MachineRuntimeDefinition) GetId() uint {
 	return *mrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (mrd *MachineRuntimeDefinition) GetType() string {
 	return "MachineRuntimeDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (mrd *MachineRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
@@ -117,12 +117,12 @@ func (mri *MachineRuntimeInstance) GetId() uint {
 	return *mri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (mri *MachineRuntimeInstance) GetType() string {
 	return "MachineRuntimeInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (mri *MachineRuntimeInstance) GetVersion() string {
 	return "v0"
 }

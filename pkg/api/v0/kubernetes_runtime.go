@@ -94,13 +94,13 @@ type KubernetesRuntimeInstance struct {
 	ForceDelete *bool `json:"ForceDelete,omitempty" query:"forcedelete" gorm:"default:false" validate:"optional"`
 
 	// The WorkloadInstanceID of the gateway support service
-	GatewayControllerInstanceID *uint `json:"GatewayWorkloadInstanceID,omitempty" validate:"optional" relationship:"owns;type:WorkloadInstance"`
+	GatewayControllerInstanceID *uint `json:"GatewayWorkloadInstanceID,omitempty" validate:"optional"`
 
 	// The WorkloadInstanceID of the dns support service
-	DnsControllerInstanceID *uint `json:"DnsControllerInstanceId,omitempty" validate:"optional" relationship:"owns;type:WorkloadInstance"`
+	DnsControllerInstanceID *uint `json:"DnsControllerInstanceId,omitempty" validate:"optional"`
 
 	// The WorkloadInstanceID of the secrets support service
-	SecretsControllerInstanceID *uint `json:"SecretsControllerInstanceId,omitempty" validate:"optional" relationship:"owns;type:WorkloadInstance"`
+	SecretsControllerInstanceID *uint `json:"SecretsControllerInstanceId,omitempty" validate:"optional"`
 
 	// An alternate threeport image to use when deploying threeport agent to
 	// managed Kubernetes runtime clusters.  If not supplied, the official image

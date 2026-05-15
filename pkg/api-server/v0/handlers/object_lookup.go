@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	strcase "github.com/iancoleman/strcase"
 	gorm "gorm.io/gorm"
@@ -15,14 +16,19 @@ import (
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 )
 
-// moduleHTTPClient is the HTTP client used for module API dispatch. It loads
-// the api-server's own mTLS certs from /etc/threeport, falling back to
-// http.DefaultClient when those aren't present (auth disabled).
+// moduleHTTPClient is the HTTP client used for module API dispatch.
+// Module api-servers don't currently support server-side TLS, so we
+// always use plain HTTP regardless of threeport-core's auth-enabled
+// setting; the call is in-cluster service-to-service. A short timeout
+// caps cross-module lookups so a misconfigured/unreachable module
+// doesn't stall response formatting; the caller falls back to id-only
+// when the lookup fails.
 var moduleHTTPClient = func() *http.Client {
-	c, err := client_lib.GetHTTPClient(true, "", "", "", "")
+	c, err := client_lib.GetHTTPClient(false, "", "", "", "")
 	if err != nil {
-		return http.DefaultClient
+		c = http.DefaultClient
 	}
+	c.Timeout = 3 * time.Second
 	return c
 }()
 
@@ -77,12 +83,41 @@ func GetObjectIDByName(db *gorm.DB, objectType, name string) (uint, error) {
 }
 
 // GetModuleRouteForType returns the upstream endpoint and CRUD path for
-// an ObjectType prefixed with its module's ApiNamespace, or empty strings
-// if the type isn't prefixed or no module owns it.
+// an ObjectType, dispatching to whichever module registered it. Accepts
+// either the qualified form ("<namespace>/<version>.<TypeName>") or the
+// reflect-derived bare form ("<version>.<TypeName>" produced by
+// util.ObjectTypeName) that the AOR storage uses; bare types are
+// disambiguated by looking up the module in v0_module_objects.
 func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, error) {
+	// fresh session to avoid inheriting WHERE clauses from the caller's db
+	db = db.Session(&gorm.Session{NewDB: true})
 	namespace, version, typeName, ok := parseQualifiedType(objectType)
 	if !ok {
-		return "", "", nil
+		// bare "<version>.<TypeName>" — look up the namespace via the
+		// registry; ambiguous bare kinds (registered in >1 module) are
+		// surfaced upstream by resolveObjectType, so we return empty
+		// here to keep the resolver flow simple
+		dotIdx := strings.Index(objectType, ".")
+		if dotIdx < 1 || dotIdx == len(objectType)-1 {
+			return "", "", nil
+		}
+		bareVersion := objectType[:dotIdx]
+		bareKind := objectType[dotIdx+1:]
+
+		var ns string
+		// fresh session to avoid inheriting WHERE clauses from the caller's db
+		row := db.Session(&gorm.Session{NewDB: true}).
+			Table("v0_module_objects AS object").
+			Joins("JOIN v0_module_apis AS module_api ON module_api.id = object.module_api_id").
+			Where("object.name = ? AND object.version = ? AND module_api.core = false", bareKind, bareVersion).
+			Select("module_api.api_namespace").
+			Limit(1).
+			Row()
+		if err := row.Scan(&ns); err != nil {
+			// not registered as a module type — caller will fall through to empty result
+			return "", "", nil
+		}
+		namespace, version, typeName = ns, bareVersion, bareKind
 	}
 
 	// start from the routes table; we'll JOIN outward to filter by

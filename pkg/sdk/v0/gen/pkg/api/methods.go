@@ -32,6 +32,15 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 		}
 	}
 
+	// types declared locally; relationship targets outside this set are
+	// module-only references into threeport core
+	localTypes := map[string]bool{}
+	for _, group := range gen.ApiObjectGroups {
+		for _, obj := range group.ApiObjects {
+			localTypes[obj.TypeName] = true
+		}
+	}
+
 	for _, objCollection := range gen.VersionedApiObjectCollections {
 		for _, objGroup := range objCollection.VersionedApiObjectGroups {
 			f := NewFilePath(fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version))
@@ -271,15 +280,26 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 									default:
 										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipRequires")
 									}
-									vg.Values(Dict{
-										Id("FieldName"): Lit(fk.fieldName),
-										Id("ObjectType"): Qual(
-											"github.com/threeport/threeport/pkg/util/v0",
-											"ObjectTypeName",
-										).Call(Id(fk.objectType).Values()),
-										Id("Relationship"): relationshipQual,
-										Id("ObjectID"):     Id(receiver).Dot(fk.fieldName),
-									})
+									// cross-module refs need Qual; bare Id wouldn't
+								// resolve in the module's package
+								var targetTypeRef *Statement
+								if gen.Module && !localTypes[fk.objectType] {
+									targetTypeRef = Qual(
+										"github.com/threeport/threeport/pkg/api/v0",
+										fk.objectType,
+									)
+								} else {
+									targetTypeRef = Id(fk.objectType)
+								}
+								vg.Values(Dict{
+									Id("FieldName"): Lit(fk.fieldName),
+									Id("ObjectType"): Qual(
+										"github.com/threeport/threeport/pkg/util/v0",
+										"ObjectTypeName",
+									).Call(targetTypeRef.Values()),
+									Id("Relationship"): relationshipQual,
+									Id("ObjectID"):     Id(receiver).Dot(fk.fieldName),
+								})
 								}
 							})
 						})

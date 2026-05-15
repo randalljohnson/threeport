@@ -891,7 +891,7 @@ func (g *Generator) ValidateTags() error {
 				if rel, ok := tagMap[string(api.RelationshipTag)]; ok && rel != "" {
 					fieldType := group.FieldTypes[objectName][fieldName]
 					problems = append(problems,
-						validateRelationshipTag(objectName, fieldName, fieldType, rel, knownTypes)...)
+						validateRelationshipTag(objectName, fieldName, fieldType, rel, knownTypes, g.Module)...)
 				}
 				// encrypt is a single-value flag; only EncryptTrue is meaningful
 				if enc, ok := tagMap[string(api.EncryptTag)]; ok && enc != api.EncryptTrue {
@@ -973,9 +973,11 @@ func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]st
 	return
 }
 
-// validateRelationshipTag returns one error string per problem found in a
-// single relationship tag value.
-func validateRelationshipTag(object, field, fieldType, rel string, knownTypes map[string]bool) []string {
+// validateRelationshipTag returns one error per problem in a relationship
+// tag value. In module mode, types outside the local set are presumed to
+// be in threeport core (an already-built imported package) and verified
+// when the module compiles.
+func validateRelationshipTag(object, field, fieldType, rel string, knownTypes map[string]bool, module bool) []string {
 	var problems []string
 	kind, modifiers, malformed := ParseRelationshipTagValue(rel)
 
@@ -1014,9 +1016,9 @@ func validateRelationshipTag(object, field, fieldType, rel string, knownTypes ma
 	for k, v := range modifiers {
 		switch k {
 		case api.RelationshipTypeKey:
-			// the value must name a registered API type — otherwise the
-			// generated code would reference a type that doesn't exist
-			if !knownTypes[v] {
+			// in module mode, types may live in the imported threeport
+			// core package; the Go compiler verifies them at build time
+			if !knownTypes[v] && !module {
 				problems = append(problems, fmt.Sprintf(
 					"%s.%s: relationship references unknown API type %q",
 					object, field, v,
@@ -1040,7 +1042,7 @@ func validateRelationshipTag(object, field, fieldType, rel string, knownTypes ma
 			))
 		} else {
 			derived := strings.TrimSuffix(field, "ID")
-			if !knownTypes[derived] {
+			if !knownTypes[derived] && !module {
 				problems = append(problems, fmt.Sprintf(
 					"%s.%s: relationship references unknown API type %q (derived from field name; add %q modifier to override)",
 					object, field, derived, api.RelationshipTypeKey,

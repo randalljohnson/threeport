@@ -22,6 +22,7 @@ const (
 	RelationshipDescribes Relationship = "describes"
 	RelationshipRequires  Relationship = "requires"
 	RelationshipOwns      Relationship = "owns"
+	RelationshipMarries   Relationship = "marries"
 )
 
 // EncryptedField describes an encrypt-tagged field on an API type. The SDK
@@ -38,19 +39,20 @@ type EncryptedFieldProvider interface {
 	EncryptedFields() []EncryptedField
 }
 
-// ForeignKey describes a *uint ID field on an API type tagged
-// `relationship:"owns"` or `relationship:"requires"`. The SDK generates a
-// ForeignKeys method per type that returns one entry per field, so runtime
-// hooks read the list directly instead of walking struct tags via reflection.
-type ForeignKey struct {
+// RelationshipTaggedForeignKey describes a *uint ID field on an API type
+// tagged with a `relationship:` value. The SDK generates a
+// RelationshipTaggedForeignKeys method per type that returns one entry
+// per such field, so runtime hooks read the list directly instead of
+// walking struct tags via reflection.
+type RelationshipTaggedForeignKey struct {
 	FieldName    FieldName
 	ObjectType   string // e.g. "WorkloadInstance"
 	Relationship Relationship
 	ObjectID     *uint
 }
 
-// ForeignKeyProvider is implemented by every API type with at least one
-// relationship-tagged foreign key.
-type ForeignKeyProvider interface {
-	ForeignKeys() []ForeignKey
+// RelationshipTaggedForeignKeyProvider is implemented by every API type
+// with at least one relationship-tagged foreign key.
+type RelationshipTaggedForeignKeyProvider interface {
+	RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey
 }

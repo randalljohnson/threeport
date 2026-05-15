@@ -10,17 +10,17 @@ type AttachedObjectReference struct {
 	// directional because the attached object is the side that can
 	// determine the base object's lifecycle, depending on the type of
 	// relationship (see below).
-	ObjectType *string `json:"ObjectType,omitempty" query:"objecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
+	ObjectType *string `json:"ObjectType,omitempty" query:"objecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries'" validate:"required"`
 
 	// ObjectID is the database ID of the base object.
-	ObjectID *uint `json:"ObjectID,omitempty" query:"objectid" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
+	ObjectID *uint `json:"ObjectID,omitempty" query:"objectid" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries'" validate:"required"`
 
 	// AttachedObjectType is the kind of the object doing the attaching;
 	// the side that can determine the base object's lifecycle.
-	AttachedObjectType *string `json:"AttachedObjectType,omitempty" query:"attachedobjecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
+	AttachedObjectType *string `json:"AttachedObjectType,omitempty" query:"attachedobjecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_attached,where:relationship = 'marries'" validate:"required"`
 
 	// AttachedObjectID is the database ID of the attaching object.
-	AttachedObjectID *uint `json:"AttachedObjectID,omitempty" query:"attachedobjectid" gorm:"not null;uniqueIndex:idx_attached_object_unique" validate:"required"`
+	AttachedObjectID *uint `json:"AttachedObjectID,omitempty" query:"attachedobjectid" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_attached,where:relationship = 'marries'" validate:"required"`
 
 	// Relationship classifies this reference and drives lifecycle behavior:
 	//   - "describes": informational; does not block delete or update of the base.

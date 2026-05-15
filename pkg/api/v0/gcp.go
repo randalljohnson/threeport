@@ -55,7 +55,7 @@ type GcpGkeKubernetesRuntimeDefinition struct {
 	GcpGkeKubernetesRuntimeInstances []*GcpGkeKubernetesRuntimeInstance `json:"GcpGkeKubernetesRuntimeInstances,omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for a GKE cluster in GCP.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"marries"`
 }
 
 // GcpGkeKubernetesRuntimeInstance is a deployed instance of a GKE cluster.
@@ -74,7 +74,7 @@ type GcpGkeKubernetesRuntimeInstance struct {
 	GcpGkeKubernetesRuntimeDefinitionID *uint `json:"GcpGkeKubernetesRuntimeDefinitionID,omitempty" query:"gcpgkekubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kubernetes runtime instance associated with the GKE cluster.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"marries"`
 
 	// An inventory of all GCP resources for the GKE cluster.
 	ResourceInventory *datatypes.JSON `json:"ResourceInventory,omitempty" validate:"optional"`

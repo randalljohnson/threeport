@@ -6,16 +6,23 @@ import (
 	api "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// CaptureCallerCN is an Echo middleware that reads the request's mTLS peer
-// common name when present and stashes it in the request context.
-func CaptureCallerCN(next echo.HandlerFunc) echo.HandlerFunc {
+// CaptureCaller is an Echo middleware that reads the request's mTLS peer
+// identity (CommonName, Organization, OrganizationalUnit) and stashes it
+// in the request context.
+func CaptureCaller(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if tlsState := c.Request().TLS; tlsState != nil && len(tlsState.PeerCertificates) > 0 {
-			if cn := tlsState.PeerCertificates[0].Subject.CommonName; cn != "" {
-				c.SetRequest(c.Request().WithContext(
-					api.WithCallerCN(c.Request().Context(), cn),
-				))
+			subject := tlsState.PeerCertificates[0].Subject
+			id := api.CallerIdentity{CommonName: subject.CommonName}
+			if len(subject.Organization) > 0 {
+				id.Organization = subject.Organization[0]
 			}
+			if len(subject.OrganizationalUnit) > 0 {
+				id.OrganizationalUnit = subject.OrganizationalUnit[0]
+			}
+			c.SetRequest(c.Request().WithContext(
+				api.WithCaller(c.Request().Context(), id),
+			))
 		}
 		return next(c)
 	}

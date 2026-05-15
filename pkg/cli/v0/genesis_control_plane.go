@@ -521,6 +521,8 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-owner",
+			"",
+			"",
 		)
 		if err != nil {
 			return uninstaller.cleanOnCreateError("failed to generate client certificate and private key", err)

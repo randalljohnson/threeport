@@ -30,6 +30,11 @@ func GenPkg(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		return fmt.Errorf("failed to generate API object validation hooks: %w", err)
 	}
 
+	// generate the runtime types-by-name registry used by AOR cascade hooks
+	if err := api.GenTypesByName(generator, sdkConfig); err != nil {
+		return fmt.Errorf("failed to generate types-by-name registry: %w", err)
+	}
+
 	//////////////////////////// pkg/api-server ////////////////////////////////
 	// generate API server routes
 	if err := apiserver.GenRoutes(generator, sdkConfig); err != nil {

@@ -77,13 +77,13 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
-// ForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
-func (a *AwsEksKubernetesRuntimeDefinition) ForeignKeys() []ForeignKey {
-	return []ForeignKey{{
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
+func (a *AwsEksKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     a.KubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		Relationship: RelationshipRequires,
+		Relationship: RelationshipMarries,
 	}}
 }
 
@@ -147,9 +147,9 @@ func (aekri *AwsEksKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 	return aekri.DeletionScheduled
 }
 
-// ForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeInstance.
-func (a *AwsEksKubernetesRuntimeInstance) ForeignKeys() []ForeignKey {
-	return []ForeignKey{{
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeInstance.
+func (a *AwsEksKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsEksKubernetesRuntimeDefinitionID",
 		ObjectID:     a.AwsEksKubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
@@ -163,7 +163,7 @@ func (a *AwsEksKubernetesRuntimeInstance) ForeignKeys() []ForeignKey {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     a.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: RelationshipRequires,
+		Relationship: RelationshipMarries,
 	}}
 }
 

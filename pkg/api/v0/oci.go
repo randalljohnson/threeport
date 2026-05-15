@@ -51,7 +51,7 @@ type OciOkeKubernetesRuntimeDefinition struct {
 	OciOkeKubernetesRuntimeInstances []*OciOkeKubernetesRuntimeInstance `json:"OciOkeKubernetesRuntimeInstances,omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for an OKE cluster in OCI.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"marries"`
 }
 
 // OciOkeKubernetesRuntimeInstance is a deployed instance of an OKE cluster.
@@ -75,7 +75,7 @@ type OciOkeKubernetesRuntimeInstance struct {
 	ResourceInventory *datatypes.JSON `json:"ResourceInventory,omitempty" validate:"optional"`
 
 	// The kubernetes runtime instance associated with the OCI OKE cluster.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"marries"`
 
 	// The OCID for the OKE cluster. Populated by the controller after cluster creation.
 	ClusterOCID *string `json:"ClusterOCID,omitempty" query:"clusterocid" validate:"optional"`

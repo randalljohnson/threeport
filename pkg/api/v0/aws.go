@@ -68,7 +68,7 @@ type AwsEksKubernetesRuntimeDefinition struct {
 	AwsEksKubernetesRuntimeInstances []*AwsEksKubernetesRuntimeInstance `json:"AwsEksKubernetesRuntimeInstances,omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for an EKS cluster in AWS.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"marries"`
 }
 
 // AwsEksKubernetesRuntimeInstance is a deployed instance of an EKS cluster.
@@ -90,5 +90,5 @@ type AwsEksKubernetesRuntimeInstance struct {
 	ResourceInventory *datatypes.JSON `json:"ResourceInventory,omitempty" validate:"optional"`
 
 	// The kubernetes runtime instance associated with the AWS EKS cluster.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"marries"`
 }

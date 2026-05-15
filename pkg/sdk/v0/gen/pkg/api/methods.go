@@ -250,14 +250,14 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					}
 					if len(foreignKeys) > 0 {
 						receiver := strings.ToLower(string(apiObj.TypeName[0]))
-						foreignKeyType := Qual("github.com/threeport/threeport/pkg/api/v0", "ForeignKey")
+						foreignKeyType := Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipTaggedForeignKey")
 						f.Comment(fmt.Sprintf(
-							"ForeignKeys returns the relationship-tagged foreign keys on %s.",
+							"RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on %s.",
 							apiObj.TypeName,
 						))
 						f.Func().Params(
 							Id(receiver).Op("*").Id(apiObj.TypeName),
-						).Id("ForeignKeys").Params().Index().Add(foreignKeyType).BlockFunc(func(g *Group) {
+						).Id("RelationshipTaggedForeignKeys").Params().Index().Add(foreignKeyType).BlockFunc(func(g *Group) {
 							g.Return().Index().Add(foreignKeyType).ValuesFunc(func(vg *Group) {
 								for _, fk := range foreignKeys {
 									var relationshipQual *Statement
@@ -266,6 +266,8 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipOwns")
 									case api.RelationshipDescribes:
 										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipDescribes")
+									case api.RelationshipMarries:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipMarries")
 									default:
 										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipRequires")
 									}

@@ -983,13 +983,13 @@ func validateRelationshipTag(object, field, fieldType, rel string, knownTypes ma
 	// recognized values up front so downstream emission can rely on
 	// the value being safe
 	switch api.Relationship(kind) {
-	case api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes:
+	case api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes, api.RelationshipMarries:
 		// valid
 	default:
 		problems = append(problems, fmt.Sprintf(
-			"%s.%s: invalid relationship kind %q (expected %q, %q, or %q)",
+			"%s.%s: invalid relationship kind %q (expected %q, %q, %q, or %q)",
 			object, field, kind,
-			api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes,
+			api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes, api.RelationshipMarries,
 		))
 	}
 	// relationship-tagged fields are emitted as *uint foreign keys; a

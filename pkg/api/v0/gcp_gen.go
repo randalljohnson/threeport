@@ -77,13 +77,13 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
-// ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
-func (g *GcpGkeKubernetesRuntimeDefinition) ForeignKeys() []ForeignKey {
-	return []ForeignKey{{
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
+func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     g.KubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
-		Relationship: RelationshipRequires,
+		Relationship: RelationshipMarries,
 	}}
 }
 
@@ -147,9 +147,9 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time 
 	return ggkri.DeletionScheduled
 }
 
-// ForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeInstance.
-func (g *GcpGkeKubernetesRuntimeInstance) ForeignKeys() []ForeignKey {
-	return []ForeignKey{{
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeInstance.
+func (g *GcpGkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
 		ObjectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
 		ObjectType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
@@ -163,7 +163,7 @@ func (g *GcpGkeKubernetesRuntimeInstance) ForeignKeys() []ForeignKey {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     g.KubernetesRuntimeInstanceID,
 		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
-		Relationship: RelationshipRequires,
+		Relationship: RelationshipMarries,
 	}}
 }
 

@@ -4,53 +4,29 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/iancoleman/strcase"
 	"gorm.io/gorm"
 
+	auth "github.com/threeport/threeport/pkg/auth/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// controllerForType returns the controller name registered for typeKey, or "" if none.
-func controllerForType(tx *gorm.DB, typeKey string) (string, error) {
-	version, name, ok := strings.Cut(typeKey, ".")
-	if !ok {
-		return "", nil
-	}
-	var moduleController ModuleController
-	if err := tx.
-		Joins(
-			"JOIN v0_module_objects ON v0_module_objects.module_controller_id = v0_module_controllers.id",
-		).
-		Where("v0_module_objects.name = ? AND v0_module_objects.version = ?", name, version).
-		First(&moduleController).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", nil
-		}
-		return "", fmt.Errorf("failed to look up controller for type %s: %w", typeKey, err)
-	}
-	if moduleController.Name == nil {
-		return "", nil
-	}
-	return *moduleController.Name, nil
-}
-
 // foreignKeysFor returns the tagged foreign keys of obj, or nil.
-func foreignKeysFor(obj interface{}) []ForeignKey {
-	p, ok := obj.(ForeignKeyProvider)
+func foreignKeysFor(obj interface{}) []RelationshipTaggedForeignKey {
+	p, ok := obj.(RelationshipTaggedForeignKeyProvider)
 	if !ok {
 		return nil
 	}
-	return p.ForeignKeys()
+	return p.RelationshipTaggedForeignKeys()
 }
 
 // insertAttachedObjectReference creates an AOR row for foreignKey. The
 // `owns` and `requires` edges are immutable so this runs only on first set.
 func insertAttachedObjectReference(
 	tx *gorm.DB,
-	foreignKey ForeignKey,
+	foreignKey RelationshipTaggedForeignKey,
 	attachedObjectType string,
 	attachedObjectID uint,
 ) error {
@@ -116,7 +92,10 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	}
 	var ownedRefs []AttachedObjectReference
 	if err := tx.
-		Where("object_type = ? AND object_id = ? AND relationship = ?", objType, objID, RelationshipOwns).
+		Where(
+			"object_type = ? AND object_id = ? AND relationship IN ?",
+			objType, objID, []Relationship{RelationshipOwns, RelationshipMarries},
+		).
 		Find(&ownedRefs).Error; err != nil {
 		return fmt.Errorf(
 			"failed to look up owning attached object references for %s/%d: %w",
@@ -127,21 +106,9 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	// owner can update its own state; non-owners cannot
-	callerCN := CallerCN(tx.Statement.Context)
-	if callerCN != "" {
-		for _, ref := range ownedRefs {
-			if ref.AttachedObjectType == nil {
-				continue
-			}
-			ownerCN, err := controllerForType(tx, *ref.AttachedObjectType)
-			if err != nil {
-				return err
-			}
-			if ownerCN != "" && ownerCN == callerCN {
-				return nil
-			}
-		}
+	// any control-plane caller bypasses the block
+	if Caller(tx.Statement.Context).OrganizationalUnit == auth.OUControlPlane {
+		return nil
 	}
 
 	owner := "another object"
@@ -194,7 +161,8 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 }
 
 // processRelationshipTaggedFieldsBeforeDelete rejects deletion when an
-// incoming reference blocks it, then deletes the row's outgoing references.
+// incoming reference blocks it, then cascade-deletes married bases and
+// removes the row's outgoing references.
 func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
 	objType := util.ObjectTypeName(obj)
 	objID := util.ObjectID(obj)
@@ -202,8 +170,8 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	callerCN := CallerCN(tx.Statement.Context)
-	blockingRefs, err := findBlockingAttachedObjectReferences(tx, objType, objID, callerCN)
+	callerOU := Caller(tx.Statement.Context).OrganizationalUnit
+	blockingRefs, err := findBlockingAttachedObjectReferences(tx, objType, objID, callerOU)
 	if err != nil {
 		return err
 	}
@@ -211,6 +179,39 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 		return util.NewConflictError(
 			formatBlockingAttachedObjectReferencesError(blockingRefs).Error(),
 		)
+	}
+
+	// cascade-delete married bases. The base's own BeforeDelete fires and
+	// passes the bypass check because the caller is the partner's controller.
+	var marriedRefs []AttachedObjectReference
+	if err := tx.
+		Where(
+			"attached_object_type = ? AND attached_object_id = ? AND relationship = ?",
+			objType, objID, RelationshipMarries,
+		).
+		Find(&marriedRefs).Error; err != nil {
+		return fmt.Errorf(
+			"failed to find married attached object references for %s/%d: %w",
+			objType, *objID, err,
+		)
+	}
+	for _, ref := range marriedRefs {
+		if ref.ObjectType == nil || ref.ObjectID == nil {
+			continue
+		}
+		base, err := newByObjectTypeName(*ref.ObjectType)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to construct base for cascade-delete of %s/%d: %w",
+				*ref.ObjectType, *ref.ObjectID, err,
+			)
+		}
+		if err := tx.Delete(base, *ref.ObjectID).Error; err != nil {
+			return fmt.Errorf(
+				"failed to cascade-delete married base %s/%d: %w",
+				*ref.ObjectType, *ref.ObjectID, err,
+			)
+		}
 	}
 
 	// clean up outgoing references where this object is the attacher.
@@ -229,39 +230,31 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 
 // findBlockingAttachedObjectReferences returns the attached object
 // references that block deletion of the given object. "requires" always
-// blocks; "owns" blocks unless callerCN matches the owner type's
-// registered controller.
+// blocks; "owns" and "marries" block unless the caller is a control-plane
+// component.
 func findBlockingAttachedObjectReferences(
 	db *gorm.DB,
 	objectType string,
 	objectID *uint,
-	callerCN string,
+	callerOU string,
 ) ([]AttachedObjectReference, error) {
 	var attachedObjectReferences []AttachedObjectReference
 	if err := db.
 		Where(
 			"object_type = ? AND object_id = ? AND relationship IN ?",
-			objectType, objectID, []Relationship{RelationshipRequires, RelationshipOwns},
+			objectType, objectID, []Relationship{RelationshipRequires, RelationshipOwns, RelationshipMarries},
 		).
 		Find(&attachedObjectReferences).Error; err != nil {
 		return nil, fmt.Errorf("failed to list blocking attached object references: %w", err)
 	}
 
-	if callerCN == "" {
+	if callerOU != auth.OUControlPlane {
 		return attachedObjectReferences, nil
 	}
 
 	var blockingRefs []AttachedObjectReference
 	for _, ref := range attachedObjectReferences {
-		if ref.Relationship == nil || *ref.Relationship != RelationshipOwns || ref.AttachedObjectType == nil {
-			blockingRefs = append(blockingRefs, ref)
-			continue
-		}
-		ownerCN, err := controllerForType(db, *ref.AttachedObjectType)
-		if err != nil {
-			return nil, err
-		}
-		if ownerCN == "" || ownerCN != callerCN {
+		if ref.Relationship != nil && *ref.Relationship == RelationshipRequires {
 			blockingRefs = append(blockingRefs, ref)
 		}
 	}

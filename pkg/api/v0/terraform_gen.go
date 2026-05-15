@@ -140,9 +140,9 @@ func (ti *TerraformInstance) ScheduledForDeletion() *time.Time {
 	return ti.DeletionScheduled
 }
 
-// ForeignKeys returns the relationship-tagged foreign keys on TerraformInstance.
-func (t *TerraformInstance) ForeignKeys() []ForeignKey {
-	return []ForeignKey{{
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on TerraformInstance.
+func (t *TerraformInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsProviderID",
 		ObjectID:     t.AwsProviderID,
 		ObjectType:   util.ObjectTypeName(AwsProvider{}),

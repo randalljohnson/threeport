@@ -100,6 +100,8 @@ func GenerateCertificate(
 	caConfig *x509.Certificate,
 	caPrivateKey *rsa.PrivateKey,
 	commonName string,
+	organization string,
+	organizationalUnit string,
 	altNames ...string,
 ) (certificate string, privateKey string, err error) {
 	// generate a random identifier for use as a serial number
@@ -127,7 +129,9 @@ func GenerateCertificate(
 		DNSNames:     dnsNames,
 		IPAddresses:  ipAddresses,
 		Subject: pkix.Name{
-			CommonName: commonName,
+			CommonName:         commonName,
+			Organization:       []string{organization},
+			OrganizationalUnit: []string{organizationalUnit},
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0),

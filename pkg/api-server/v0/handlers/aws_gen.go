@@ -449,6 +449,15 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&awsEksKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -963,6 +972,15 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&awsEksKubernetesRuntimeInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1414,6 +1432,15 @@ func (h Handler) DeleteAwsProvider(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&awsProvider); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {

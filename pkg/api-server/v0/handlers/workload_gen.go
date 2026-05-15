@@ -514,6 +514,15 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&workloadDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -949,6 +958,15 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&workloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -1463,6 +1481,15 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&workloadInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1898,6 +1925,15 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&workloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -2331,6 +2367,15 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&workloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {

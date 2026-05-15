@@ -2,8 +2,8 @@ package v0
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/iancoleman/strcase"
@@ -13,8 +13,70 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// foreignKeysFor returns the tagged foreign keys of obj, or nil.
-func foreignKeysFor(obj interface{}) []RelationshipTaggedForeignKey {
+// BlockedDeleteError reports a delete rejected by one or more attached
+// object references. Error() renders the message with id-only paths; the
+// API server upgrades to name-resolved paths when it can. AttachedRefs
+// is always non-empty.
+type BlockedDeleteError struct {
+	AttachedRefs []AttachedObjectReference
+}
+
+func (e *BlockedDeleteError) Error() string {
+	return FormatBlockedDelete(e, nil)
+}
+
+// FormatBlockedDelete renders the 409 message body. namesByType holds
+// id->name for each object type that the caller resolved; pass nil for
+// id-only output.
+func FormatBlockedDelete(e *BlockedDeleteError, namesByType map[string]map[uint]string) string {
+	baseType := *e.AttachedRefs[0].ObjectType
+	baseID := *e.AttachedRefs[0].ObjectID
+	baseLabel := FormatObjectPath(baseType, baseID, namesByType[baseType])
+
+	var buf bytes.Buffer
+	writer := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
+	for _, ref := range e.AttachedRefs {
+		fmt.Fprintf(writer, "  - %s\n", FormatObjectPath(
+			*ref.AttachedObjectType, *ref.AttachedObjectID, namesByType[*ref.AttachedObjectType],
+		))
+	}
+	writer.Flush()
+
+	return fmt.Sprintf(
+		"%s cannot be deleted while %d object(s) still reference it:\n\n%sRemove dependents first.",
+		baseLabel, len(e.AttachedRefs), buf.String(),
+	)
+}
+
+// FormatObjectPath renders <namespace>/<kebab-kind>/<name> for module
+// types and <kebab-kind>/<name> for core, falling back to id when no name
+// is available.
+func FormatObjectPath(rawType string, id uint, names map[uint]string) string {
+	namespace := ""
+	versionedName := rawType
+	if slashIdx := strings.Index(rawType, "/"); slashIdx >= 0 {
+		namespace = rawType[:slashIdx]
+		versionedName = rawType[slashIdx+1:]
+	}
+	typeName := versionedName
+	if dotIdx := strings.LastIndex(versionedName, "."); dotIdx >= 0 {
+		typeName = versionedName[dotIdx+1:]
+	}
+	kind := strcase.ToKebab(typeName)
+
+	tail := kind
+	if namespace != "" {
+		tail = fmt.Sprintf("%s/%s", namespace, kind)
+	}
+
+	if name, ok := names[id]; ok && name != "" {
+		return fmt.Sprintf("%s/%s", tail, name)
+	}
+	return fmt.Sprintf("%s/%d", tail, id)
+}
+
+// relationshipTaggedForeignKeysFor returns the tagged foreign keys of obj, or nil.
+func relationshipTaggedForeignKeysFor(obj interface{}) []RelationshipTaggedForeignKey {
 	p, ok := obj.(RelationshipTaggedForeignKeyProvider)
 	if !ok {
 		return nil
@@ -48,7 +110,7 @@ func insertAttachedObjectReference(
 // processRelationshipTaggedFieldsAfterCreate inserts an attached object
 // reference for each foreign key that has a value.
 func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) error {
-	foreignKeys := foreignKeysFor(obj)
+	foreignKeys := relationshipTaggedForeignKeysFor(obj)
 	if len(foreignKeys) == 0 {
 		return nil
 	}
@@ -76,7 +138,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	// reject any update that changes a foreign key with a value already set;
 	// fall through when no foreign key on the row is being changed
-	for _, foreignKey := range foreignKeysFor(obj) {
+	for _, foreignKey := range relationshipTaggedForeignKeysFor(obj) {
 		if foreignKey.ObjectID != nil && tx.Statement.Changed(string(foreignKey.FieldName)) {
 			return util.NewBadRequestError(fmt.Sprintf(
 				"%s is immutable; tear down and recreate the holder to undo this relationship",
@@ -126,7 +188,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 // cleared has its reference removed; one that just became set gets a
 // new reference inserted.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
-	foreignKeys := foreignKeysFor(obj)
+	foreignKeys := relationshipTaggedForeignKeysFor(obj)
 	if len(foreignKeys) == 0 {
 		return nil
 	}
@@ -176,9 +238,7 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 		return err
 	}
 	if len(blockingRefs) > 0 {
-		return util.NewConflictError(
-			formatBlockingAttachedObjectReferencesError(blockingRefs).Error(),
-		)
+		return &BlockedDeleteError{AttachedRefs: blockingRefs}
 	}
 
 	// cascade-delete married bases. The base's own BeforeDelete fires and
@@ -261,35 +321,3 @@ func findBlockingAttachedObjectReferences(
 	return blockingRefs, nil
 }
 
-// formatBlockingAttachedObjectReferencesError returns an error with the
-// blocking attached object references rendered as a two-column 409 body.
-func formatBlockingAttachedObjectReferencesError(
-	attachedObjectReferences []AttachedObjectReference,
-) error {
-	baseType := "object"
-	if len(attachedObjectReferences) > 0 && attachedObjectReferences[0].ObjectType != nil {
-		baseType = strcase.ToDelimited(*attachedObjectReferences[0].ObjectType, ' ')
-	}
-
-	var buf bytes.Buffer
-	writer := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(writer, "  TYPE\tID")
-	for _, attachedObjectReference := range attachedObjectReferences {
-		attachedObjectType := "<unknown>"
-		attachedObjectID := "<unknown>"
-		if attachedObjectReference.AttachedObjectType != nil {
-			attachedObjectType = *attachedObjectReference.AttachedObjectType
-		}
-		if attachedObjectReference.AttachedObjectID != nil {
-			attachedObjectID = fmt.Sprintf("%d", *attachedObjectReference.AttachedObjectID)
-		}
-		fmt.Fprintf(writer, "  %s\t%s\n", attachedObjectType, attachedObjectID)
-	}
-	writer.Flush()
-
-	msg := fmt.Sprintf(
-		"%s cannot be deleted while %d object(s) still reference it:\n\n%s\nRemove dependents first.",
-		baseType, len(attachedObjectReferences), buf.String(),
-	)
-	return errors.New(msg)
-}

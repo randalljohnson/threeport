@@ -449,6 +449,15 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&domainNameDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -963,6 +972,15 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&domainNameInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1485,6 +1503,15 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&gatewayDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1920,6 +1947,15 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&gatewayHttpPort); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -2434,6 +2470,15 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&gatewayInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -2869,6 +2914,15 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&gatewayTcpPort); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// check if blocked by attached object references
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {

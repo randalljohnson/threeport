@@ -514,6 +514,15 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&helmWorkloadDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1030,6 +1039,15 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&helmWorkloadInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {

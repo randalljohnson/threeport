@@ -388,6 +388,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
 									)
 								}
+								emitBlockedDeleteCheck(h, gen.Module)
 								h.Comment("check if this is a custom HTTP error with specific status code")
 								h.Var().Id("httpErr").Op("*").Qual(
 									"github.com/threeport/threeport/pkg/util/v0",
@@ -437,6 +438,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
 							)
 						}
+						emitBlockedDeleteCheck(h, gen.Module)
 						h.Comment("check if this is a custom HTTP error with specific status code")
 						h.Var().Id("httpErr").Op("*").Qual(
 							"github.com/threeport/threeport/pkg/util/v0",
@@ -2219,4 +2221,37 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	}
 
 	return nil
+}
+
+// emitBlockedDeleteCheck appends the delete-blocked branch that turns a
+// typed signal from the BeforeDelete hook into a 409 listing blockers.
+func emitBlockedDeleteCheck(h *Group, module bool) {
+	h.Comment("check if blocked by attached object references")
+	h.Var().Id("blockedErr").Op("*").Qual(
+		"github.com/threeport/threeport/pkg/api/v0",
+		"BlockedDeleteError",
+	)
+	h.If(Qual("errors", "As").Call(Id("result").Dot("Error"), Op("&").Id("blockedErr"))).Block(
+		Return(Do(func(s *Statement) {
+			if module {
+				s.Qual(
+					"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+					"RespondBlockedDelete",
+				)
+			} else {
+				s.Id("RespondBlockedDelete")
+			}
+		}).Call(
+			Line().Id("c"),
+			Line().Do(func(s *Statement) {
+				if module {
+					s.Id("h").Dot("Handler")
+				} else {
+					s.Id("h")
+				}
+			}).Dot("RequestDB").Call(Id("c")),
+			Line().Id("blockedErr"),
+			Line(),
+		)),
+	)
 }

@@ -514,6 +514,15 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&loggingDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1030,6 +1039,15 @@ func (h Handler) DeleteLoggingInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&loggingInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1552,6 +1570,15 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&metricsDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -2068,6 +2095,15 @@ func (h Handler) DeleteMetricsInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&metricsInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -2590,6 +2626,15 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityDashboardDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -3106,6 +3151,15 @@ func (h Handler) DeleteObservabilityDashboardInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityDashboardInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -3628,6 +3682,15 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityStackDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -4144,6 +4207,15 @@ func (h Handler) DeleteObservabilityStackInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityStackInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// check if blocked by attached object references
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {

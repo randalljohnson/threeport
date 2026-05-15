@@ -222,10 +222,11 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeDelete rejects deletion when an
-// incoming reference blocks it, then cascade-deletes married bases and
-// removes the row's outgoing references.
-func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
+// CheckBlockingAttachedObjectReferences returns a BlockedDeleteError if obj
+// has any incoming references that block its deletion. Handlers call this
+// synchronously before scheduling a delete so the caller sees the 409
+// immediately instead of the controller looping on the BeforeDelete hook.
+func CheckBlockingAttachedObjectReferences(tx *gorm.DB, obj interface{}) error {
 	objType := util.ObjectTypeName(obj)
 	objID := util.ObjectID(obj)
 	if objID == nil {
@@ -239,6 +240,21 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 	}
 	if len(blockingRefs) > 0 {
 		return &BlockedDeleteError{AttachedRefs: blockingRefs}
+	}
+	return nil
+}
+
+// processRelationshipTaggedFieldsBeforeDelete rejects deletion when an
+// incoming reference blocks it, then cascade-deletes married bases and
+// removes the row's outgoing references.
+func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
+	if err := CheckBlockingAttachedObjectReferences(tx, obj); err != nil {
+		return err
+	}
+	objType := util.ObjectTypeName(obj)
+	objID := util.ObjectID(obj)
+	if objID == nil {
+		return nil
 	}
 
 	// cascade-delete married bases. The base's own BeforeDelete fires and

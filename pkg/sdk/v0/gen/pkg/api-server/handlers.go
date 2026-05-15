@@ -246,7 +246,9 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					))
 
 					// schedule for deletion
-					deleteObjectExecution = Comment("schedule for deletion if not already scheduled")
+					deleteObjectExecution = &Statement{}
+					emitPreCheckBlockingRefs(deleteObjectExecution, strcase.ToLowerCamel(apiObject.TypeName), gen.Module)
+					deleteObjectExecution.Comment("schedule for deletion if not already scheduled")
 					deleteObjectExecution.Line()
 					deleteObjectExecution.Comment("if scheduled and reconciled, delete object from DB")
 					deleteObjectExecution.Line()
@@ -2254,4 +2256,59 @@ func emitBlockedDeleteCheck(h *Group, module bool) {
 			Line(),
 		)),
 	)
+}
+
+// emitPreCheckBlockingRefs emits a synchronous block check before
+// reconciler-backed deletes are scheduled, so the caller sees the 409
+// immediately rather than the controller looping on BeforeDelete.
+func emitPreCheckBlockingRefs(s *Statement, objVar string, module bool) {
+	requestDB := func(g *Statement) *Statement {
+		return g.Do(func(s *Statement) {
+			if module {
+				s.Id("h").Dot("Handler")
+			} else {
+				s.Id("h")
+			}
+		}).Dot("RequestDB").Call(Id("c"))
+	}
+	respondBlocked := func() *Statement {
+		return Do(func(s *Statement) {
+			if module {
+				s.Qual(
+					"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+					"RespondBlockedDelete",
+				)
+			} else {
+				s.Id("RespondBlockedDelete")
+			}
+		})
+	}
+
+	s.Comment("pre-check: refuse synchronously when blocked by attached object references")
+	s.Line()
+	s.If(
+		Id("checkErr").Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/api/v0",
+			"CheckBlockingAttachedObjectReferences",
+		).Call(requestDB(&Statement{}), Op("&").Id(objVar)),
+		Id("checkErr").Op("!=").Nil(),
+	).Block(
+		Var().Id("blockedErr").Op("*").Qual(
+			"github.com/threeport/threeport/pkg/api/v0",
+			"BlockedDeleteError",
+		),
+		If(Qual("errors", "As").Call(Id("checkErr"), Op("&").Id("blockedErr"))).Block(
+			Return(respondBlocked().Call(
+				Line().Id("c"),
+				Line().Add(requestDB(&Statement{})),
+				Line().Id("blockedErr"),
+				Line(),
+			)),
+		),
+		Return(Qual(
+			"github.com/threeport/threeport/pkg/api-server/lib/v0",
+			"ResponseStatus500",
+		).Call(Id("c"), Nil(), Id("checkErr"), Id("objectType"))),
+	)
+	s.Line()
 }

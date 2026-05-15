@@ -63,12 +63,12 @@ func (mwd *MachineWorkloadDefinition) GetId() uint {
 	return *mwd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (mwd *MachineWorkloadDefinition) GetType() string {
 	return "MachineWorkloadDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (mwd *MachineWorkloadDefinition) GetVersion() string {
 	return "v0"
 }
@@ -117,12 +117,12 @@ func (mwi *MachineWorkloadInstance) GetId() uint {
 	return *mwi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (mwi *MachineWorkloadInstance) GetType() string {
 	return "MachineWorkloadInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (mwi *MachineWorkloadInstance) GetVersion() string {
 	return "v0"
 }

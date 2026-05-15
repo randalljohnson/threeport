@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -76,8 +77,38 @@ func (r *EventRecorder) RecordEvent(
 		event.EventTime = util.Ptr(time.Now())
 		event.LastObservedTime = util.Ptr(time.Now())
 		event.Count = util.Ptr(uint(1))
-		if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
+		createdEvent, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event)
+		if err != nil {
 			return fmt.Errorf("failed to create event: %w", err)
+		}
+
+		// link the event to its base object via an attached object reference.
+		// modules pass a qualified ObjectType ("<namespace>/<version>.<Type>")
+		// from obj.GetType(); core call sites pass a bare type name and rely
+		// on version+type concatenation. detect the qualified form to avoid
+		// double-prefixing.
+		storedObjectType := objectType
+		if !strings.Contains(objectType, "/") {
+			storedObjectType = fmt.Sprintf("%s.%s", objectVersion, objectType)
+		}
+		aor, err := client_v0.CreateAttachedObjectReference(
+			r.APIClient,
+			r.APIServer,
+			&api.AttachedObjectReference{
+				ObjectType:         util.Ptr(storedObjectType),
+				ObjectID:           util.Ptr(objectId),
+				AttachedObjectType: util.Ptr(util.TypeName(api.Event{})),
+				AttachedObjectID:   createdEvent.ID,
+				Relationship:       util.Ptr(api.RelationshipDescribes),
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create attached object reference for event: %w", err)
+		}
+
+		createdEvent.AttachedObjectReferenceID = aor.ID
+		if _, err := client_v0.UpdateEvent(r.APIClient, r.APIServer, createdEvent); err != nil {
+			return fmt.Errorf("failed to set attached object reference id on event: %w", err)
 		}
 	case 1:
 		event = &(*events)[0]

@@ -3,6 +3,7 @@ package v0
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 	"text/tabwriter"
 
@@ -188,8 +189,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 // cleared has its reference removed; one that just became set gets a
 // new reference inserted.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
-	foreignKeys := relationshipTaggedForeignKeysFor(obj)
-	if len(foreignKeys) == 0 {
+	if len(relationshipTaggedForeignKeysFor(obj)) == 0 {
 		return nil
 	}
 	objType := util.ObjectTypeName(obj)
@@ -197,26 +197,54 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	if objID == nil {
 		return nil
 	}
-	for _, foreignKey := range foreignKeys {
-		if !tx.Statement.Changed(string(foreignKey.FieldName)) {
-			continue
+
+	// GORM's Model(&existing).Updates(...) pattern leaves the receiver's
+	// FK fields at their pre-update values; reload into a fresh instance
+	// so we can read post-update FK values without mutating obj (mutating
+	// obj would null out tx.Statement.Changed's diff detection).
+	freshObj := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
+	if err := tx.Session(&gorm.Session{NewDB: true}).First(freshObj, *objID).Error; err != nil {
+		return fmt.Errorf(
+			"failed to reload %s/%d after update: %w",
+			objType, *objID, err,
+		)
+	}
+
+	// state-based sync: GORM's Statement.Changed() is unreliable in
+	// AfterUpdate, so reconcile the AOR table against the post-update FK
+	// values directly. For each tagged FK, the AOR exists iff FK is set.
+	for _, foreignKey := range relationshipTaggedForeignKeysFor(freshObj) {
+		var count int64
+		if err := tx.Session(&gorm.Session{NewDB: true}).
+			Model(&AttachedObjectReference{}).
+			Where(
+				"object_type = ? AND attached_object_type = ? AND attached_object_id = ?",
+				foreignKey.ObjectType, objType, *objID,
+			).
+			Count(&count).Error; err != nil {
+			return fmt.Errorf(
+				"failed to count attached object references for %s.%s: %w",
+				objType, foreignKey.FieldName, err,
+			)
 		}
-		if foreignKey.ObjectID == nil {
-			if err := tx.
+
+		switch {
+		case foreignKey.ObjectID == nil && count > 0:
+			if err := tx.Session(&gorm.Session{NewDB: true}).
 				Where(
-					"attached_object_type = ? AND attached_object_id = ? AND object_type = ?",
-					objType, *objID, foreignKey.ObjectType,
+					"object_type = ? AND attached_object_type = ? AND attached_object_id = ?",
+					foreignKey.ObjectType, objType, *objID,
 				).
 				Delete(&AttachedObjectReference{}).Error; err != nil {
 				return fmt.Errorf(
-					"failed to remove attached object reference for %s.%s after foreign key cleared: %w",
+					"failed to remove attached object reference for %s.%s: %w",
 					objType, foreignKey.FieldName, err,
 				)
 			}
-			continue
-		}
-		if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {
-			return err
+		case foreignKey.ObjectID != nil && count == 0:
+			if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

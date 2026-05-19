@@ -3150,7 +3150,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "summary": "gets all events joined with attached object references.",
-                "operationId": "get-v0-eventsJoinAttachedObjectReferences",
+                "operationId": "get-v0-events-join-attached-object-references",
                 "parameters": [
                     {
                         "type": "string",
@@ -14985,7 +14985,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Relationship": {
-                    "description": "Relationship classifies this reference and drives lifecycle behavior:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.",
+                    "description": "Relationship classifies this reference and drives lifecycle behavior:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base for any caller except the partner's controller.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/v0.Relationship"
@@ -15444,10 +15444,6 @@ const docTemplate = `{
                 "Type"
             ],
             "properties": {
-                "AttachedObjectReferenceID": {
-                    "description": "AttachedObjectReferenceID is a reference to an attached object.\nA foreign key is configured via db migration in cmd/database-migrator/migrations/000010_add_events_foreign_key.go",
-                    "type": "integer"
-                },
                 "Count": {
                     "description": "The number of times this event has occurred.",
                     "type": "integer"

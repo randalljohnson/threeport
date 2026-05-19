@@ -49,6 +49,9 @@ definitions:
             - "owns": blocks both delete and update of the base for any caller
               except the controller registered for the attached object's type,
               identified by its mTLS peer common name.
+            - "marries": enforces 1-to-1 cardinality between base and attacher
+              via the partial indexes above; blocks both delete and update of
+              the base for any caller except the partner's controller.
     required:
     - AttachedObjectID
     - AttachedObjectType
@@ -473,11 +476,6 @@ definitions:
     type: object
   v0.Event:
     properties:
-      AttachedObjectReferenceID:
-        description: |-
-          AttachedObjectReferenceID is a reference to an attached object.
-          A foreign key is configured via db migration in cmd/database-migrator/migrations/000010_add_events_foreign_key.go
-        type: integer
       Count:
         description: The number of times this event has occurred.
         type: integer
@@ -5058,7 +5056,7 @@ paths:
       - application/json
       description: Get all events joined with attached object references from the
         Threeport database.
-      operationId: get-v0-eventsJoinAttachedObjectReferences
+      operationId: get-v0-events-join-attached-object-references
       parameters:
       - description: filter events by object ID
         in: query

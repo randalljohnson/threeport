@@ -19,17 +19,36 @@ definitions:
   v0.AttachedObjectReference:
     properties:
       AttachedObjectID:
-        description: The object ID of the attached object.
+        description: AttachedObjectID is the database ID of the attaching object.
         type: integer
       AttachedObjectType:
-        description: The object type of the attached object.
+        description: |-
+          AttachedObjectType is the kind of the object doing the attaching;
+          the side that can determine the base object's lifecycle.
         type: string
       ObjectID:
-        description: The object ID of the base object.
+        description: ObjectID is the database ID of the base object.
         type: integer
       ObjectType:
-        description: The object type of the base object.
+        description: |-
+          ObjectType is the kind of the base object being attached to. Read
+          "this attached object attaches to that object": the no-prefix
+          Object* fields name the "that" (anchor) side. The naming is
+          directional because the attached object is the side that can
+          determine the base object's lifecycle, depending on the type of
+          relationship (see below).
         type: string
+      Relationship:
+        allOf:
+        - $ref: '#/definitions/v0.Relationship'
+        description: |-
+          Relationship classifies this reference and drives lifecycle behavior:
+            - "describes": informational; does not block delete or update of the base.
+            - "requires": blocks any caller from deleting the base while this
+              reference exists.
+            - "owns": blocks both delete and update of the base for any caller
+              except the controller registered for the attached object's type,
+              identified by its mTLS peer common name.
     required:
     - AttachedObjectID
     - AttachedObjectType
@@ -444,7 +463,7 @@ definitions:
           TODO: use a custom type
         type: string
       WorkloadInstanceID:
-        description: The workload instance this gateway belongs to.
+        description: The workload instance this domain name belongs to.
         type: integer
     required:
     - DomainNameDefinitionID
@@ -471,6 +490,15 @@ definitions:
         type: string
       Note:
         description: A human-readable description of the status of this operation.
+        type: string
+      ObjectID:
+        type: integer
+      ObjectName:
+        type: string
+      ObjectType:
+        description: |-
+          Enrichment fields populated when events are loaded with their
+          attached object reference. gorm:"-" keeps them out of normal CRUD.
         type: string
       Reason:
         description: A short, machine understandable string that gives the reason
@@ -625,7 +653,7 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       GatewayDefinitionID:
-        description: GatewayDefinitionID is the definition used to configure the workload
+        description: GatewayDefinitionID is the definition used to configure the gateway
           instance.
         type: integer
       InterruptReconciliation:
@@ -1142,11 +1170,8 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       DnsControllerInstanceId:
-        description: The WorkloadInstanceID of the gateway support service
+        description: The WorkloadInstanceID of the dns support service
         type: integer
-      ForceDelete:
-        description: If true, delete the runtime even if there are workloads present.
-        type: boolean
       GatewayWorkloadInstanceID:
         description: The WorkloadInstanceID of the gateway support service
         type: integer
@@ -1585,6 +1610,9 @@ definitions:
     type: object
   v0.ModuleApi:
     properties:
+      ApiNamespace:
+        description: The reverse-DNS namespace identifying this module API (e.g. "example.com").
+        type: string
       Core:
         description: If true, represents the core Threeport API.
         type: boolean
@@ -1792,7 +1820,7 @@ definitions:
           underlying grafana chart.
         type: string
       GrafanaHelmWorkloadInstanceID:
-        description: The Grafana Helm workload definition that belongs to this resource.
+        description: The Grafana Helm workload instance that belongs to this resource.
         type: integer
       InterruptReconciliation:
         description: |-
@@ -2220,6 +2248,18 @@ definitions:
     required:
     - Name
     type: object
+  v0.Relationship:
+    enum:
+    - describes
+    - requires
+    - owns
+    - marries
+    type: string
+    x-enum-varnames:
+    - RelationshipDescribes
+    - RelationshipRequires
+    - RelationshipOwns
+    - RelationshipMarries
   v0.Response:
     properties:
       Data:
@@ -2347,7 +2387,7 @@ definitions:
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
-        description: The kubernetes runtime to which the helm workload is deployed.
+        description: The kubernetes runtime to which the secret is deployed.
         type: integer
       Name:
         description: An arbitrary name the instance
@@ -2769,7 +2809,7 @@ definitions:
         description: Whether another controller has scheduled this resource for deletion
         type: string
       WorkloadInstanceID:
-        description: The workload definition this resource belongs to.
+        description: The workload instance this resource belongs to.
         type: integer
     required:
     - JSONDefinition
@@ -2777,7 +2817,7 @@ definitions:
     type: object
 info:
   contact:
-    url: https://threerport.io
+    url: https://threeport.io
   description: Core API server for the Threeport application orchestration control
     plane.
   title: Threeport RESTful API
@@ -5016,12 +5056,21 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all events joined with attached object references
-      operationId: get-v0-events-join-attached-object-references
+      description: Get all events joined with attached object references from the
+        Threeport database.
+      operationId: get-v0-eventsJoinAttachedObjectReferences
       parameters:
-      - description: events joined with attached object references search by objectId
+      - description: filter events by object ID
         in: query
-        name: name
+        name: objectid
+        type: string
+      - description: filter events by object kind (with objectname)
+        in: query
+        name: objecttype
+        type: string
+      - description: filter events by object name (with objecttype)
+        in: query
+        name: objectname
         type: string
       produces:
       - application/json

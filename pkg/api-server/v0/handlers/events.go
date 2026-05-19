@@ -247,40 +247,44 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		return nil
 	}
 
-	// collect distinct attached object reference ids
-	aorIDs := make([]uint, 0, len(events))
+	// collect distinct event ids to look up their AOR rows via the
+	// (attached_object_type, attached_object_id) composite index
+	eventIDs := make([]uint, 0, len(events))
 	seen := map[uint]struct{}{}
 	for _, e := range events {
-		if e.AttachedObjectReferenceID == nil {
+		if e.ID == nil {
 			continue
 		}
-		if _, ok := seen[*e.AttachedObjectReferenceID]; ok {
+		if _, ok := seen[*e.ID]; ok {
 			continue
 		}
-		seen[*e.AttachedObjectReferenceID] = struct{}{}
-		aorIDs = append(aorIDs, *e.AttachedObjectReferenceID)
+		seen[*e.ID] = struct{}{}
+		eventIDs = append(eventIDs, *e.ID)
 	}
-	if len(aorIDs) == 0 {
+	if len(eventIDs) == 0 {
 		return nil
 	}
 
+	eventType := util.TypeName(v0.Event{})
 	var aors []v0.AttachedObjectReference
-	if err := db.Where("id IN ?", aorIDs).Find(&aors).Error; err != nil {
+	if err := db.
+		Where("attached_object_type = ? AND attached_object_id IN ?", eventType, eventIDs).
+		Find(&aors).Error; err != nil {
 		return fmt.Errorf("failed to load attached object references: %w", err)
 	}
-	aorByID := make(map[uint]v0.AttachedObjectReference, len(aors))
+	aorByEventID := make(map[uint]v0.AttachedObjectReference, len(aors))
 	for _, a := range aors {
-		if a.ID != nil {
-			aorByID[*a.ID] = a
+		if a.AttachedObjectID != nil {
+			aorByEventID[*a.AttachedObjectID] = a
 		}
 	}
 
 	for i := range events {
 		e := &events[i]
-		if e.AttachedObjectReferenceID == nil {
+		if e.ID == nil {
 			continue
 		}
-		a, ok := aorByID[*e.AttachedObjectReferenceID]
+		a, ok := aorByEventID[*e.ID]
 		if !ok {
 			continue
 		}

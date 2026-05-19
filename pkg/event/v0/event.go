@@ -91,7 +91,7 @@ func (r *EventRecorder) RecordEvent(
 		if !strings.Contains(objectType, "/") {
 			storedObjectType = fmt.Sprintf("%s.%s", objectVersion, objectType)
 		}
-		aor, err := client_v0.CreateAttachedObjectReference(
+		if _, err := client_v0.CreateAttachedObjectReference(
 			r.APIClient,
 			r.APIServer,
 			&api.AttachedObjectReference{
@@ -101,14 +101,8 @@ func (r *EventRecorder) RecordEvent(
 				AttachedObjectID:   createdEvent.ID,
 				Relationship:       util.Ptr(api.RelationshipDescribes),
 			},
-		)
-		if err != nil {
+		); err != nil {
 			return fmt.Errorf("failed to create attached object reference for event: %w", err)
-		}
-
-		createdEvent.AttachedObjectReferenceID = aor.ID
-		if _, err := client_v0.UpdateEvent(r.APIClient, r.APIServer, createdEvent); err != nil {
-			return fmt.Errorf("failed to set attached object reference id on event: %w", err)
 		}
 	case 1:
 		event = &(*events)[0]

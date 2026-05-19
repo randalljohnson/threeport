@@ -39,7 +39,7 @@ func (h Handler) RequestDB(c echo.Context) *gorm.DB {
 }
 
 // RespondBlockedDelete writes a 409 with blockers rendered as
-// <namespace>/<kebab-kind>/<name>, falling back to id when no name resolves.
+// <api-namespace>/<kebab-kind>/<name>, falling back to id when no name resolves.
 func RespondBlockedDelete(c echo.Context, db *gorm.DB, blocked *api_v0.BlockedDeleteError) error {
 	baseType := *blocked.AttachedRefs[0].ObjectType
 	baseID := *blocked.AttachedRefs[0].ObjectID

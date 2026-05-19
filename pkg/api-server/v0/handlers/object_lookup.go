@@ -84,7 +84,7 @@ func GetObjectIDByName(db *gorm.DB, objectType, name string) (uint, error) {
 
 // GetModuleRouteForType returns the upstream endpoint and CRUD path for
 // an ObjectType, dispatching to whichever module registered it. Accepts
-// either the qualified form ("<namespace>/<version>.<TypeName>") or the
+// either the qualified form ("<api-namespace>/<version>.<TypeName>") or the
 // reflect-derived bare form ("<version>.<TypeName>" produced by
 // util.ObjectTypeName) that the AOR storage uses; bare types are
 // disambiguated by looking up the module in v0_module_objects.
@@ -223,7 +223,7 @@ func resolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
 	return out, nil
 }
 
-// parseQualifiedType splits "<namespace>/<version>.<TypeName>" into its
+// parseQualifiedType splits "<api-namespace>/<version>.<TypeName>" into its
 // three parts. Returns ok=false for unqualified strings (core types).
 func parseQualifiedType(objectType string) (namespace, version, typeName string, ok bool) {
 	slashIdx := strings.Index(objectType, "/")

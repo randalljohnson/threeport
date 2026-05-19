@@ -83,7 +83,7 @@ func (r *EventRecorder) RecordEvent(
 		}
 
 		// link the event to its base object via an attached object reference.
-		// modules pass a qualified ObjectType ("<namespace>/<version>.<Type>")
+		// modules pass a qualified ObjectType ("<api-namespace>/<version>.<Type>")
 		// from obj.GetType(); core call sites pass a bare type name and rely
 		// on version+type concatenation. detect the qualified form to avoid
 		// double-prefixing.

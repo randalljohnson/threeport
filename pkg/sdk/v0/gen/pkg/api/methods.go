@@ -193,7 +193,7 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 				).Id("GetId").Params().Uint().Block(
 					Return(Op("*").Id(util.TypeAbbrev(apiObj.TypeName)).Dot("ID")),
 				)
-				// Type method
+				// GetType method
 				typeLiteral := apiObj.TypeName
 				if gen.Module {
 					typeLiteral = fmt.Sprintf(
@@ -209,7 +209,7 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 				).Id("GetType").Params().String().Block(
 					Return(Lit(typeLiteral)),
 				)
-				// Version method
+				// GetVersion method
 				f.Comment("GetVersion returns the version of the API object.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
@@ -227,8 +227,8 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					)
 				}
 
-				// ForeignKeys method emitted for any type with at least one
-				// relationship-tagged FK
+				// RelationshipTaggedForeignKeys method emitted for any type
+				// with at least one relationship-tagged FK
 				{
 					type fkEntry struct {
 						fieldName    string

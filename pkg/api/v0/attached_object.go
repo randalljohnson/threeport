@@ -2,7 +2,7 @@ package v0
 
 // AttachedObjectReference is a reference to an attached object.
 //
-// Three DB indexes are declared in the GORM tags below:
+// Four DB indexes are declared in the GORM tags below:
 //
 //   - idx_attached_object_unique: full-table unique composite across
 //     (object_type, object_id, attached_object_type, attached_object_id).
@@ -18,6 +18,12 @@ package v0
 //     (attached_object_type, attached_object_id) where relationship =
 //     'marries'. Same constraint applied to the attacher side.
 //
+//   - idx_aor_owns_base: partial unique composite across
+//     (object_type, object_id) where relationship = 'owns'. Enforces
+//     that an owned base appears in at most one owns row, so a given
+//     object has at most one owner. The attacher side is intentionally
+//     unconstrained for owns: an owner may own many bases.
+//
 // Each participating column repeats the index name in its `uniqueIndex:`
 // tag; GORM bundles them by name. The `,where:...` suffix on the marries
 // indexes makes them partial indexes: only rows matching the predicate
@@ -31,10 +37,10 @@ type AttachedObjectReference struct {
 	// directional because the attached object is the side that can
 	// determine the base object's lifecycle, depending on the type of
 	// relationship (see below).
-	ObjectType *string `json:"ObjectType,omitempty" query:"objecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries'" validate:"required"`
+	ObjectType *string `json:"ObjectType,omitempty" query:"objecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries';uniqueIndex:idx_aor_owns_base,where:relationship = 'owns'" validate:"required"`
 
 	// ObjectID is the database ID of the base object.
-	ObjectID *uint `json:"ObjectID,omitempty" query:"objectid" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries'" validate:"required"`
+	ObjectID *uint `json:"ObjectID,omitempty" query:"objectid" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries';uniqueIndex:idx_aor_owns_base,where:relationship = 'owns'" validate:"required"`
 
 	// AttachedObjectType is the kind of the object doing the attaching;
 	// the side that can determine the base object's lifecycle.
@@ -50,6 +56,8 @@ type AttachedObjectReference struct {
 	//   - "owns": blocks both delete and update of the base for any caller
 	//     except the controller registered for the attached object's type,
 	//     identified by its mTLS peer common name.
+	//     An owned base has at most one owner (enforced by the partial
+	//     index idx_aor_owns_base above); an owner may own many bases.
 	//   - "marries": enforces 1-to-1 cardinality between base and attacher
 	//     via the partial indexes above; blocks both delete and update of
 	//     the base for any caller except the partner's controller.

@@ -17,7 +17,7 @@ import (
 
 // @Summary gets all events joined with attached object references.
 // @Description Get all events joined with attached object references from the Threeport database.
-// @ID get-v0-eventsJoinAttachedObjectReferences
+// @ID get-v0-events-join-attached-object-references
 // @Accept json
 // @Produce json
 // @Param objectid query string false "filter events by object ID"

@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
@@ -222,8 +223,8 @@ func (op *OciProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on OciProvider.
-func (o *OciProvider) EncryptedFields() []EncryptedField {
-	return []EncryptedField{{
+func (o *OciProvider) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
 		Name:  "PrivateKey",
 		Value: o.PrivateKey,
 	}}

@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
@@ -222,8 +223,8 @@ func (gp *GcpProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on GcpProvider.
-func (g *GcpProvider) EncryptedFields() []EncryptedField {
-	return []EncryptedField{{
+func (g *GcpProvider) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
 		Name:  "ServiceAccountCredentials",
 		Value: g.ServiceAccountCredentials,
 	}}

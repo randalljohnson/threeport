@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
@@ -222,8 +223,8 @@ func (ap *AwsProvider) GetVersion() string {
 }
 
 // EncryptedFields returns the encrypt-tagged fields on AwsProvider.
-func (a *AwsProvider) EncryptedFields() []EncryptedField {
-	return []EncryptedField{{
+func (a *AwsProvider) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
 		Name:  "AccessKeyID",
 		Value: a.AccessKeyID,
 	}, {

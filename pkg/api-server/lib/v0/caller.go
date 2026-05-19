@@ -3,7 +3,7 @@ package v0
 import (
 	"github.com/labstack/echo/v4"
 
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // CaptureCaller is an Echo middleware that reads the request's mTLS peer
@@ -13,7 +13,7 @@ func CaptureCaller(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if tlsState := c.Request().TLS; tlsState != nil && len(tlsState.PeerCertificates) > 0 {
 			subject := tlsState.PeerCertificates[0].Subject
-			id := api_lib.CallerIdentity{CommonName: subject.CommonName}
+			id := lib.CallerIdentity{CommonName: subject.CommonName}
 			if len(subject.Organization) > 0 {
 				id.Organization = subject.Organization[0]
 			}
@@ -21,7 +21,7 @@ func CaptureCaller(next echo.HandlerFunc) echo.HandlerFunc {
 				id.OrganizationalUnit = subject.OrganizationalUnit[0]
 			}
 			c.SetRequest(c.Request().WithContext(
-				api_lib.WithCaller(c.Request().Context(), id),
+				lib.WithCaller(c.Request().Context(), id),
 			))
 		}
 		return next(c)

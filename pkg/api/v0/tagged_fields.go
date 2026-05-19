@@ -2,12 +2,14 @@ package v0
 
 import (
 	"gorm.io/gorm"
+
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // ProcessCoreTaggedFieldsBeforeCreate runs core tag-triggered behavior on
 // an API object before create.
 func ProcessCoreTaggedFieldsBeforeCreate(tx *gorm.DB, obj interface{}) error {
-	return processEncryptTaggedFields(tx, obj, false)
+	return lib.ProcessEncryptTaggedFields(tx, obj, false)
 }
 
 // ProcessCoreTaggedFieldsBeforeUpdate runs core tag-triggered behavior on
@@ -16,7 +18,7 @@ func ProcessCoreTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	if err := processRelationshipTaggedFieldsBeforeUpdate(tx, obj); err != nil {
 		return err
 	}
-	return processEncryptTaggedFields(tx, obj, true)
+	return lib.ProcessEncryptTaggedFields(tx, obj, true)
 }
 
 // ProcessCoreTaggedFieldsBeforeDelete runs core tag-triggered behavior on

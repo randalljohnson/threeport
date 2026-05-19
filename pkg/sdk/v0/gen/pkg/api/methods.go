@@ -48,6 +48,7 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 
 			f.ImportAlias("github.com/threeport/threeport/pkg/notifications/v0", "notifications")
 			f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "api")
+			f.ImportAlias("github.com/threeport/threeport/pkg/api/lib/v0", "lib")
 			f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 
 			// object type constants
@@ -322,7 +323,7 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					}
 					if len(encryptedFields) > 0 {
 						receiver := strings.ToLower(string(apiObj.TypeName[0]))
-						encryptedFieldType := Qual("github.com/threeport/threeport/pkg/api/v0", "EncryptedField")
+						encryptedFieldType := Qual("github.com/threeport/threeport/pkg/api/lib/v0", "EncryptedField")
 						f.Comment(fmt.Sprintf(
 							"EncryptedFields returns the encrypt-tagged fields on %s.",
 							apiObj.TypeName,

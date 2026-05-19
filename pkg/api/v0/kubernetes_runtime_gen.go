@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
@@ -151,8 +152,8 @@ func (k *KubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Relationsh
 }
 
 // EncryptedFields returns the encrypt-tagged fields on KubernetesRuntimeInstance.
-func (k *KubernetesRuntimeInstance) EncryptedFields() []EncryptedField {
-	return []EncryptedField{{
+func (k *KubernetesRuntimeInstance) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
 		Name:  "CertificateKey",
 		Value: k.CertificateKey,
 	}, {

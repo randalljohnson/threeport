@@ -2199,7 +2199,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	// /////////////////////////////////////////////////////////////////////////////
 	// registering object AttachedObjectReference
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("AttachedObjectReference is a reference to an attached object."),
+		Description: util.Ptr("AttachedObjectReference is a reference to an attached object. Three DB indexes are declared in the GORM tags below: - idx_attached_object_unique: full-table unique composite across (object_type, object_id, attached_object_type, attached_object_id). Enforces that a given (base, attacher) pair appears in at most one row regardless of relationship kind. - idx_aor_marries_base: partial unique composite across (object_type, object_id) where relationship = 'marries'. Enforces that the base side of a marriage appears in at most one marries row (1-to-1 cardinality for the base). - idx_aor_marries_attached: partial unique composite across (attached_object_type, attached_object_id) where relationship = 'marries'. Same constraint applied to the attacher side. Each participating column repeats the index name in its `uniqueIndex:` tag; GORM bundles them by name. The `,where:...` suffix on the marries indexes makes them partial indexes: only rows matching the predicate are indexed, so non-marries rows are invisible to the uniqueness check."),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("AttachedObjectReference"),
 		Version:     util.Ptr("v0"),

@@ -4,11 +4,28 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/iancoleman/strcase"
 	"gorm.io/gorm"
 
 	"github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// EncryptedField describes an encrypt-tagged field on an API type. The SDK
+// generates an EncryptedFields method per type that returns one entry per
+// field, so runtime hooks read the list without walking struct tags. Name
+// is the Go struct field name; the GORM column is derived via the default
+// snake-case naming strategy at write time.
+type EncryptedField struct {
+	Name  string
+	Value interface{} // *string or []string of KEY=VALUE
+}
+
+// EncryptedFieldProvider is implemented by every API type with at least one
+// encrypt-tagged field.
+type EncryptedFieldProvider interface {
+	EncryptedFields() []EncryptedField
+}
 
 // encryptedFieldsFor returns the encrypt-tagged fields of obj, or nil.
 func encryptedFieldsFor(obj interface{}) []EncryptedField {
@@ -19,10 +36,10 @@ func encryptedFieldsFor(obj interface{}) []EncryptedField {
 	return p.EncryptedFields()
 }
 
-// processEncryptTaggedFields encrypts struct fields tagged `encrypt:"true"`
+// ProcessEncryptTaggedFields encrypts struct fields tagged `encrypt:"true"`
 // and rejects the redacted placeholder. checkChanged limits the work to
 // fields the client mutated, and is set on update.
-func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error {
+func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error {
 	fields := encryptedFieldsFor(obj)
 	if len(fields) == 0 {
 		return nil
@@ -52,7 +69,7 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 				return err
 			}
 			if enc != *v {
-				tx.Statement.SetColumn(field.Name.Column(), enc)
+				tx.Statement.SetColumn(strcase.ToSnake(field.Name), enc)
 			}
 
 		case []string:
@@ -78,7 +95,7 @@ func processEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 					encSlice[j] = key + "=" + encValue
 				}
 			}
-			tx.Statement.SetColumn(field.Name.Column(), encSlice)
+			tx.Statement.SetColumn(strcase.ToSnake(field.Name), encSlice)
 
 		default:
 			return fmt.Errorf(

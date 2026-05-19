@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -69,13 +70,13 @@ func (t *TerraformInstanceConfig) Get(
 	for _, terraformInstance := range *terraformInstances {
 		// handle encryption if needed
 		if encryptionKey != "" {
-			a, err := api.DecryptValues(&terraformInstance, encryptionKey)
+			a, err := lib.DecryptValues(&terraformInstance, encryptionKey)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt terraform instance secret values: %w", err)
 			}
 			terraformInstance = *(a.(*api.TerraformInstance))
 		} else {
-			a := api.RedactEncryptedValues(&terraformInstance)
+			a := lib.RedactEncryptedValues(&terraformInstance)
 			terraformInstance = *(a.(*api.TerraformInstance))
 		}
 

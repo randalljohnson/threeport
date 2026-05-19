@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -66,13 +67,13 @@ func (o *OciProviderConfig) Get(
 	for _, ociProvider := range *ociProviders {
 		// handle encryption if needed
 		if encryptionKey != "" {
-			a, err := api.DecryptValues(&ociProvider, encryptionKey)
+			a, err := lib.DecryptValues(&ociProvider, encryptionKey)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt oci provider secret values: %w", err)
 			}
 			ociProvider = *(a.(*api.OciProvider))
 		} else {
-			a := api.RedactEncryptedValues(&ociProvider)
+			a := lib.RedactEncryptedValues(&ociProvider)
 			ociProvider = *(a.(*api.OciProvider))
 		}
 

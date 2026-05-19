@@ -9,7 +9,7 @@ import (
 	"github.com/iancoleman/strcase"
 	"gorm.io/gorm"
 
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -87,7 +87,7 @@ func CheckBlockingAttachedObjectReferences(tx *gorm.DB, obj interface{}) error {
 		return nil
 	}
 
-	callerOU := api_lib.Caller(tx.Statement.Context).OrganizationalUnit
+	callerOU := lib.Caller(tx.Statement.Context).OrganizationalUnit
 	blockingRefs, err := findBlockingAttachedObjectReferences(tx, objType, objID, callerOU)
 	if err != nil {
 		return err

@@ -10,6 +10,7 @@ import (
 	"gopkg.in/ini.v1"
 
 	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -72,13 +73,13 @@ func (a *AwsProviderConfig) Get(
 	for _, awsProvider := range *awsProviders {
 		// handle encryption if needed
 		if encryptionKey != "" {
-			a, err := api.DecryptValues(&awsProvider, encryptionKey)
+			a, err := lib.DecryptValues(&awsProvider, encryptionKey)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt aws provider secret values: %w", err)
 			}
 			awsProvider = *(a.(*api.AwsProvider))
 		} else {
-			a := api.RedactEncryptedValues(&awsProvider)
+			a := lib.RedactEncryptedValues(&awsProvider)
 			awsProvider = *(a.(*api.AwsProvider))
 		}
 

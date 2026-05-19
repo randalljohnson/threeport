@@ -6,10 +6,40 @@ import (
 
 	"gorm.io/gorm"
 
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// Relationship classifies how an AttachedObjectReference relates the base
+// object to the attached object. Drives lifecycle behavior (deletion and
+// update blocking).
+type Relationship string
+
+const (
+	RelationshipDescribes Relationship = "describes"
+	RelationshipRequires  Relationship = "requires"
+	RelationshipOwns      Relationship = "owns"
+	RelationshipMarries   Relationship = "marries"
+)
+
+// RelationshipTaggedForeignKey describes a *uint ID field on an API type
+// tagged with a `relationship:` value. The SDK generates a
+// RelationshipTaggedForeignKeys method per type that returns one entry
+// per such field, so runtime hooks read the list directly instead of
+// walking struct tags via reflection.
+type RelationshipTaggedForeignKey struct {
+	FieldName    string
+	ObjectType   string // e.g. "WorkloadInstance"
+	Relationship Relationship
+	ObjectID     *uint
+}
+
+// RelationshipTaggedForeignKeyProvider is implemented by every API type
+// with at least one relationship-tagged foreign key.
+type RelationshipTaggedForeignKeyProvider interface {
+	RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey
+}
 
 // relationshipTaggedForeignKeysFor returns the tagged foreign keys of obj, or nil.
 func relationshipTaggedForeignKeysFor(obj interface{}) []RelationshipTaggedForeignKey {
@@ -111,7 +141,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 
 	// the owner/partner controller is allowed to update its owned/married
 	// row; any control-plane caller bypasses the block
-	if api_lib.Caller(tx.Statement.Context).OrganizationalUnit == auth.OUControlPlane {
+	if lib.Caller(tx.Statement.Context).OrganizationalUnit == auth.OUControlPlane {
 		return nil
 	}
 

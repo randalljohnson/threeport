@@ -273,8 +273,7 @@ func CheckBlockingAttachedObjectReferences(tx *gorm.DB, obj interface{}) error {
 }
 
 // processRelationshipTaggedFieldsBeforeDelete rejects deletion when an
-// incoming reference blocks it, then cascade-deletes married bases and
-// removes the row's outgoing references.
+// incoming reference blocks it, then removes the row's outgoing references.
 func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) error {
 	if err := CheckBlockingAttachedObjectReferences(tx, obj); err != nil {
 		return err
@@ -283,39 +282,6 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 	objID := util.ObjectID(obj)
 	if objID == nil {
 		return nil
-	}
-
-	// cascade-delete married bases. The base's own BeforeDelete fires and
-	// passes the bypass check because the caller is the partner's controller.
-	var marriedRefs []AttachedObjectReference
-	if err := tx.
-		Where(
-			"attached_object_type = ? AND attached_object_id = ? AND relationship = ?",
-			objType, objID, RelationshipMarries,
-		).
-		Find(&marriedRefs).Error; err != nil {
-		return fmt.Errorf(
-			"failed to find married attached object references for %s/%d: %w",
-			objType, *objID, err,
-		)
-	}
-	for _, ref := range marriedRefs {
-		if ref.ObjectType == nil || ref.ObjectID == nil {
-			continue
-		}
-		base, err := newByObjectTypeName(*ref.ObjectType)
-		if err != nil {
-			return fmt.Errorf(
-				"failed to construct base for cascade-delete of %s/%d: %w",
-				*ref.ObjectType, *ref.ObjectID, err,
-			)
-		}
-		if err := tx.Delete(base, *ref.ObjectID).Error; err != nil {
-			return fmt.Errorf(
-				"failed to cascade-delete married base %s/%d: %w",
-				*ref.ObjectType, *ref.ObjectID, err,
-			)
-		}
 	}
 
 	// clean up outgoing references where this object is the attacher.

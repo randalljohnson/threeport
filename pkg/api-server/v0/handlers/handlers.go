@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -35,6 +36,40 @@ func (h Handler) RequestDB(c echo.Context) *gorm.DB {
 	return h.DB.
 		WithContext(c.Request().Context()).
 		Scopes(apiserver_lib.QueryScopes(c)...)
+}
+
+// RespondBlockedDelete writes a 409 with blockers rendered as
+// <namespace>/<kebab-kind>/<name>, falling back to id when no name resolves.
+func RespondBlockedDelete(c echo.Context, db *gorm.DB, blocked *api_v0.BlockedDeleteError) error {
+	baseType := *blocked.AttachedRefs[0].ObjectType
+	baseID := *blocked.AttachedRefs[0].ObjectID
+	idsByType := map[string]map[uint]struct{}{
+		baseType: {baseID: struct{}{}},
+	}
+	for _, ref := range blocked.AttachedRefs {
+		if idsByType[*ref.AttachedObjectType] == nil {
+			idsByType[*ref.AttachedObjectType] = map[uint]struct{}{}
+		}
+		idsByType[*ref.AttachedObjectType][*ref.AttachedObjectID] = struct{}{}
+	}
+
+	// resolve names per object type; on lookup failure, fall back to an
+	// empty map so one bad type doesn't drop every blocker from the response.
+	namesByType := make(map[string]map[uint]string, len(idsByType))
+	for objectType, idSet := range idsByType {
+		ids := make([]uint, 0, len(idSet))
+		for id := range idSet {
+			ids = append(ids, id)
+		}
+		names, err := GetObjectNames(db, objectType, ids, false)
+		if err != nil {
+			names = map[uint]string{}
+		}
+		namesByType[objectType] = names
+	}
+
+	msg := api_v0.FormatBlockedDelete(blocked, namesByType)
+	return apiserver_lib.ResponseStatus409(c, nil, fmt.Errorf("%s", msg), baseType)
 }
 
 // CreateMaterializedView creates a materialized view for a given object type and returns the

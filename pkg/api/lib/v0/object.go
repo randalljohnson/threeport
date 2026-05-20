@@ -23,6 +23,7 @@ type ReconciledThreeportApiObject interface {
 	GetId() uint
 	GetType() string
 	GetVersion() string
+	GetFullyQualifiedTypeName() string
 	ScheduledForDeletion() *time.Time
 }
 

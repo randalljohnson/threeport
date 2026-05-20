@@ -121,30 +121,39 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	}
 
 	// start from the routes table; we'll JOIN outward to filter by
-	// module, type, and version
+	// module, type, and version.
+	//   rows so far: every row in v0_module_api_routes
 	q := db.Table("v0_module_api_routes AS route")
 
 	// pull in the parent ModuleApi row so its endpoint and namespace
-	// are queryable
+	// are queryable.
+	//   rows so far: every (route, module_api) pair
 	q = q.Joins("JOIN v0_module_apis AS module_api ON module_api.id = route.module_api_id")
 
 	// keep only routes owned by the named non-core module
-	// (core=false skips the threeport core API itself)
+	// (core=false skips the threeport core API itself).
+	//   rows so far: (route, module_api) pairs for "example.com" only
 	q = q.Where("module_api.api_namespace = ? AND module_api.core = false", namespace)
 
 	// follow the ModuleApiRoute↔ModuleObject junction; the m2m is needed
-	// because one route can in principle serve multiple registered types
+	// because one route can in principle serve multiple registered types.
+	//   rows so far: (route, module_api, link) triples for "example.com"
 	q = q.Joins("JOIN v0_module_api_routes_module_objects AS link ON link.module_api_route_id = route.id")
 
-	// land on the registered type's row, where its name and version live
+	// land on the registered type's row, where its name and version live.
+	//   rows so far: (route, module_api, link, object) for every type on
+	//   "example.com"'s routes
 	q = q.Joins("JOIN v0_module_objects AS object ON object.id = link.module_object_id")
 
-	// keep only the specific (name, version) the caller asked for
+	// keep only the specific (name, version) the caller asked for.
+	//   rows so far: routes serving "example.com"'s "Widget" at "v0"
+	//   (typically 2: the CRUD path and the /versions discovery path)
 	q = q.Where("object.name = ? AND object.version = ?", typeName, version)
 
 	// each registered type gets two routes: a CRUD path and a /versions
 	// discovery path. This query wants the CRUD endpoint, so exclude the
-	// discovery one by path suffix
+	// discovery one by path suffix.
+	//   rows so far: 1 - the CRUD route for "example.com/v0.Widget"
 	q = q.Where("route.path NOT LIKE ?", "%/versions")
 
 	var result struct {

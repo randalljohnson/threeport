@@ -29,8 +29,21 @@ var (
 // GetEventsCmd represents the command 'tptctl get events'
 var GetEventsCmd = &cobra.Command{
 	Aliases: []string{"event"},
-	Example: "  # get all events\n  tptctl get events\n\n  # filter to a specific object\n  tptctl get events --for machine-runtime-instance/oci-test-host\n  tptctl get events --for router-instance/sxalable-router-demo-1",
-	Long:    "Get events from the system.\n\nUse --for <kind>/<name> to filter events to a specific object. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.\n\nUse --sort to control row order: newest (default) puts the most recent activity at the top; oldest is reverse.\n\nUse --limit N to cap the number of rows shown (after sort). 0 means no cap.\n\nFull event notes (including captured script stdout/stderr) can be viewed with -o yaml.",
+	Example: `  # get all events
+  tptctl get events
+
+  # filter to a specific object
+  tptctl get events --for workload-instance/some-workload
+  tptctl get events --for machine-runtime-instance/some-host`,
+	Long: `Get events from the system.
+
+Use --for <kind>/<name> to filter events to a specific object. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.
+
+Use --sort to control row order: newest (default) puts the most recent activity at the top; oldest is reverse.
+
+Use --limit N to cap the number of rows shown (after sort). 0 means no cap.
+
+Full event notes (including captured script stdout/stderr) can be viewed with -o yaml.`,
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)

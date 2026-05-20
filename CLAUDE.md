@@ -135,6 +135,16 @@ Before digging into code to understand the API, refer to the Swagger API spec fi
 
 Flat prose, no headers, no checkboxes. For comment-only or docs-only PRs, one or two sentences is enough. Lead with what changed and why; skip the test-plan boilerplate unless the PR genuinely needs verification steps. Match the style the user already writes in: terse, no marketing tone, no AI flourishes.
 
+# Branch Names
+
+Branch names use conventional-commits prefixes mirroring the commit-subject types: `feat-`, `fix-`, `refactor-`, `docs-`, `chore-`. Prefix is followed by a hyphen, then a kebab-case description. The description follows the same rules as commit subjects (lowercase, plain English, no CamelCase type names, no stage markers).
+
+Format: `<type>-<kebab-description>`.
+
+Examples: `feat-aor-delete-guards`, `fix-control-plane-only-cluster-name`, `refactor-extract-encrypt-hooks-to-api-lib`, `docs-add-boilerplate-scaffolding-markers`.
+
+Avoid: non-conventional prefixes like `add-`, `improve-`, or descriptive-only names with no prefix at all.
+
 # Threeport Code Conventions
 
 ## Reading Before Writing

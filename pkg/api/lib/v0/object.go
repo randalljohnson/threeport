@@ -36,11 +36,11 @@ func NewCleanSession(tx *gorm.DB) *gorm.DB {
 	return tx.Session(&gorm.Session{NewDB: true})
 }
 
-// LoadFreshFromDB returns a newly-allocated instance of obj's concrete
+// LoadUpdatedObjFromDB returns a newly-allocated instance of obj's concrete
 // type populated from the database by ID. The original obj is not
 // mutated. Use this from GORM hooks that need to read post-write field
 // values while keeping the original as a pre-write snapshot.
-func LoadFreshFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
+func LoadUpdatedObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
 	// allocate a new instance of obj's concrete type via reflection;
 	// the caller's obj stays untouched while loaded values land here
 	updatedObj := reflect.New(reflect.TypeOf(obj).Elem()).Interface()

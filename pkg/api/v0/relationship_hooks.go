@@ -179,7 +179,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 
 	// load post-update row into updatedObj; obj is preserved as the
 	// pre-update snapshot for callers that still need to read it
-	updatedObj, err := lib.LoadFreshFromDB(tx, obj, *objID)
+	updatedObj, err := lib.LoadUpdatedObjFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
 	}

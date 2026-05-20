@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -86,6 +85,11 @@ func (dnd *DomainNameDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (dnd *DomainNameDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.DomainNameDefinition"
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -140,6 +144,11 @@ func (dni *DomainNameInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (dni *DomainNameInstance) GetFullyQualifiedTypeName() string {
+	return "v0.DomainNameInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (dni *DomainNameInstance) ScheduledForDeletion() *time.Time {
@@ -151,17 +160,17 @@ func (d *DomainNameInstance) RelationshipTaggedForeignKeys() []RelationshipTagge
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "DomainNameDefinitionID",
 		ObjectID:     d.DomainNameDefinitionID,
-		ObjectType:   util.ObjectTypeName(DomainNameDefinition{}),
+		ObjectType:   new(DomainNameDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     d.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     d.WorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		ObjectType:   new(WorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -218,6 +227,11 @@ func (gd *GatewayDefinition) GetType() string {
 // GetVersion returns the version of the API object.
 func (gd *GatewayDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (gd *GatewayDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.GatewayDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -280,6 +294,11 @@ func (ghp *GatewayHttpPort) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ghp *GatewayHttpPort) GetFullyQualifiedTypeName() string {
+	return "v0.GatewayHttpPort"
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -334,6 +353,11 @@ func (gi *GatewayInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (gi *GatewayInstance) GetFullyQualifiedTypeName() string {
+	return "v0.GatewayInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (gi *GatewayInstance) ScheduledForDeletion() *time.Time {
@@ -345,17 +369,17 @@ func (g *GatewayInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFo
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GatewayDefinitionID",
 		ObjectID:     g.GatewayDefinitionID,
-		ObjectType:   util.ObjectTypeName(GatewayDefinition{}),
+		ObjectType:   new(GatewayDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     g.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     g.WorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		ObjectType:   new(WorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -412,4 +436,9 @@ func (gtp *GatewayTcpPort) GetType() string {
 // GetVersion returns the version of the API object.
 func (gtp *GatewayTcpPort) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (gtp *GatewayTcpPort) GetFullyQualifiedTypeName() string {
+	return "v0.GatewayTcpPort"
 }

@@ -179,8 +179,7 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						helmWorkloadInstance.GetId(),
-						helmWorkloadInstance.GetVersion(),
-						helmWorkloadInstance.GetType(),
+						helmWorkloadInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						helmWorkloadInstance.GetId(),
-						helmWorkloadInstance.GetVersion(),
-						helmWorkloadInstance.GetType(),
+						helmWorkloadInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						helmWorkloadInstance.GetId(),
-						helmWorkloadInstance.GetVersion(),
-						helmWorkloadInstance.GetType(),
+						helmWorkloadInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				helmWorkloadInstance.GetId(),
-				helmWorkloadInstance.GetVersion(),
-				helmWorkloadInstance.GetType(),
+				helmWorkloadInstance.GetFullyQualifiedTypeName(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful helm workload instance reconciliation")
 			}

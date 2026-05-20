@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -74,6 +73,11 @@ func (hwd *HelmWorkloadDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (hwd *HelmWorkloadDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.HelmWorkloadDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (hwd *HelmWorkloadDefinition) ScheduledForDeletion() *time.Time {
@@ -134,6 +138,11 @@ func (hwi *HelmWorkloadInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (hwi *HelmWorkloadInstance) GetFullyQualifiedTypeName() string {
+	return "v0.HelmWorkloadInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (hwi *HelmWorkloadInstance) ScheduledForDeletion() *time.Time {
@@ -145,12 +154,12 @@ func (h *HelmWorkloadInstance) RelationshipTaggedForeignKeys() []RelationshipTag
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "HelmWorkloadDefinitionID",
 		ObjectID:     h.HelmWorkloadDefinitionID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     h.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }

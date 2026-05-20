@@ -179,8 +179,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						loggingDefinition.GetId(),
-						loggingDefinition.GetVersion(),
-						loggingDefinition.GetType(),
+						loggingDefinition.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						loggingDefinition.GetId(),
-						loggingDefinition.GetVersion(),
-						loggingDefinition.GetType(),
+						loggingDefinition.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						loggingDefinition.GetId(),
-						loggingDefinition.GetVersion(),
-						loggingDefinition.GetType(),
+						loggingDefinition.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				loggingDefinition.GetId(),
-				loggingDefinition.GetVersion(),
-				loggingDefinition.GetType(),
+				loggingDefinition.GetFullyQualifiedTypeName(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful logging definition reconciliation")
 			}

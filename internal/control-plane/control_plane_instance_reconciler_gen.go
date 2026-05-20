@@ -179,8 +179,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						controlPlaneInstance.GetId(),
-						controlPlaneInstance.GetVersion(),
-						controlPlaneInstance.GetType(),
+						controlPlaneInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						controlPlaneInstance.GetId(),
-						controlPlaneInstance.GetVersion(),
-						controlPlaneInstance.GetType(),
+						controlPlaneInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						controlPlaneInstance.GetId(),
-						controlPlaneInstance.GetVersion(),
-						controlPlaneInstance.GetType(),
+						controlPlaneInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				controlPlaneInstance.GetId(),
-				controlPlaneInstance.GetVersion(),
-				controlPlaneInstance.GetType(),
+				controlPlaneInstance.GetFullyQualifiedTypeName(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful control plane instance reconciliation")
 			}

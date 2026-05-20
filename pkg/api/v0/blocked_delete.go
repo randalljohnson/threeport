@@ -81,7 +81,7 @@ func FormatObjectPath(rawType string, id uint, names map[uint]string) string {
 // synchronously before scheduling a delete so the caller sees the 409
 // immediately instead of the controller looping on the BeforeDelete hook.
 func CheckBlockingAttachedObjectReferences(tx *gorm.DB, obj interface{}) error {
-	objType := util.ObjectTypeName(obj)
+	objType := obj.(lib.FullyQualifiedTypeNamer).GetFullyQualifiedTypeName()
 	objID := util.ObjectID(obj)
 	if objID == nil {
 		return nil

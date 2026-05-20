@@ -149,8 +149,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						secretDefinition.GetId(),
-						secretDefinition.GetVersion(),
-						secretDefinition.GetType(),
+						secretDefinition.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -197,8 +196,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						secretDefinition.GetId(),
-						secretDefinition.GetVersion(),
-						secretDefinition.GetType(),
+						secretDefinition.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -245,8 +243,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						secretDefinition.GetId(),
-						secretDefinition.GetVersion(),
-						secretDefinition.GetType(),
+						secretDefinition.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -352,8 +349,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				secretDefinition.GetId(),
-				secretDefinition.GetVersion(),
-				secretDefinition.GetType(),
+				secretDefinition.GetFullyQualifiedTypeName(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful secret definition reconciliation")
 			}

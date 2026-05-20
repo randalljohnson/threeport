@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -74,6 +73,11 @@ func (sd *SecretDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (sd *SecretDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.SecretDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (sd *SecretDefinition) ScheduledForDeletion() *time.Time {
@@ -85,7 +89,7 @@ func (s *SecretDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedF
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsProviderID",
 		ObjectID:     s.AwsProviderID,
-		ObjectType:   util.ObjectTypeName(AwsProvider{}),
+		ObjectType:   new(AwsProvider).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -144,6 +148,11 @@ func (si *SecretInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (si *SecretInstance) GetFullyQualifiedTypeName() string {
+	return "v0.SecretInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (si *SecretInstance) ScheduledForDeletion() *time.Time {
@@ -155,22 +164,22 @@ func (s *SecretInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFor
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "HelmWorkloadInstanceID",
 		ObjectID:     s.HelmWorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     s.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "SecretDefinitionID",
 		ObjectID:     s.SecretDefinitionID,
-		ObjectType:   util.ObjectTypeName(SecretDefinition{}),
+		ObjectType:   new(SecretDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     s.WorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
+		ObjectType:   new(WorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }

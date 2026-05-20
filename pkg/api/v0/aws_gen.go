@@ -7,7 +7,6 @@ import (
 	"fmt"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -78,12 +77,17 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (aekrd *AwsEksKubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.AwsEksKubernetesRuntimeDefinition"
+}
+
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
 func (a *AwsEksKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     a.KubernetesRuntimeDefinitionID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -142,6 +146,11 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (aekri *AwsEksKubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+	return "v0.AwsEksKubernetesRuntimeInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (aekri *AwsEksKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
@@ -153,17 +162,17 @@ func (a *AwsEksKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Rela
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsEksKubernetesRuntimeDefinitionID",
 		ObjectID:     a.AwsEksKubernetesRuntimeDefinitionID,
-		ObjectType:   util.ObjectTypeName(AwsEksKubernetesRuntimeDefinition{}),
+		ObjectType:   new(AwsEksKubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "AwsProviderID",
 		ObjectID:     a.AwsProviderID,
-		ObjectType:   util.ObjectTypeName(AwsProvider{}),
+		ObjectType:   new(AwsProvider).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     a.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -220,6 +229,11 @@ func (ap *AwsProvider) GetType() string {
 // GetVersion returns the version of the API object.
 func (ap *AwsProvider) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ap *AwsProvider) GetFullyQualifiedTypeName() string {
+	return "v0.AwsProvider"
 }
 
 // EncryptedFields returns the encrypt-tagged fields on AwsProvider.

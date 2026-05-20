@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -46,11 +45,13 @@ type EventRecorder struct {
 	ReportingController string
 }
 
-// RecordEvent records a new event with the given information.
+// RecordEvent records a new event with the given information. objectType
+// must be the API-namespace-qualified form returned by
+// GetFullyQualifiedTypeName ("<version>.<TypeName>" for core,
+// "<api-namespace>/<version>.<TypeName>" for modules).
 func (r *EventRecorder) RecordEvent(
 	event *api.Event,
 	objectId uint,
-	objectVersion string,
 	objectType string,
 ) error {
 	formatString := "reason=%s&note=%s&type=%s&objectid=%d"
@@ -82,20 +83,14 @@ func (r *EventRecorder) RecordEvent(
 			return fmt.Errorf("failed to create event: %w", err)
 		}
 
-		// link the event to its base object via an attached object reference.
-		// modules pass a qualified ObjectType ("<api-namespace>/<version>.<Type>")
-		// from obj.GetType(); core call sites pass a bare type name and rely
-		// on version+type concatenation. detect the qualified form to avoid
-		// double-prefixing.
-		storedObjectType := objectType
-		if !strings.Contains(objectType, "/") {
-			storedObjectType = fmt.Sprintf("%s.%s", objectVersion, objectType)
-		}
+		// link the event to its base object via an attached object
+		// reference; objectType is already the qualified form so it
+		// goes in as-is
 		if _, err := client_v0.CreateAttachedObjectReference(
 			r.APIClient,
 			r.APIServer,
 			&api.AttachedObjectReference{
-				ObjectType:         util.Ptr(storedObjectType),
+				ObjectType:         util.Ptr(objectType),
 				ObjectID:           util.Ptr(objectId),
 				AttachedObjectType: util.Ptr(util.TypeName(api.Event{})),
 				AttachedObjectID:   createdEvent.ID,
@@ -125,11 +120,12 @@ func (r *EventRecorder) RecordEvent(
 
 // HandleEventOverride records the specified event
 // unless the provided error is an ErrWithEvent,
-// in which case it records the event provided
+// in which case it records the event provided.
+// objectType must be the qualified form returned by
+// GetFullyQualifiedTypeName (see RecordEvent).
 func (r *EventRecorder) HandleEventOverride(
 	event *api.Event,
 	objectId uint,
-	objectVersion string,
 	objectType string,
 	err error,
 	log *logr.Logger,
@@ -140,7 +136,6 @@ func (r *EventRecorder) HandleEventOverride(
 		if err := r.RecordEvent(
 			&errWithEvent.Event,
 			objectId,
-			objectVersion,
 			objectType,
 		); err != nil {
 			log.Error(err, "failed to record event")
@@ -149,7 +144,6 @@ func (r *EventRecorder) HandleEventOverride(
 		if err := r.RecordEvent(
 			event,
 			objectId,
-			objectVersion,
 			objectType,
 		); err != nil {
 			log.Error(err, "failed to record event")

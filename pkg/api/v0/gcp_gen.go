@@ -7,7 +7,6 @@ import (
 	"fmt"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -78,12 +77,17 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.GcpGkeKubernetesRuntimeDefinition"
+}
+
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
 func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     g.KubernetesRuntimeDefinitionID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -142,6 +146,11 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ggkri *GcpGkeKubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+	return "v0.GcpGkeKubernetesRuntimeInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ggkri *GcpGkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
@@ -153,17 +162,17 @@ func (g *GcpGkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Rela
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
 		ObjectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
-		ObjectType:   util.ObjectTypeName(GcpGkeKubernetesRuntimeDefinition{}),
+		ObjectType:   new(GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "GcpProviderID",
 		ObjectID:     g.GcpProviderID,
-		ObjectType:   util.ObjectTypeName(GcpProvider{}),
+		ObjectType:   new(GcpProvider).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     g.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -220,6 +229,11 @@ func (gp *GcpProvider) GetType() string {
 // GetVersion returns the version of the API object.
 func (gp *GcpProvider) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (gp *GcpProvider) GetFullyQualifiedTypeName() string {
+	return "v0.GcpProvider"
 }
 
 // EncryptedFields returns the encrypt-tagged fields on GcpProvider.

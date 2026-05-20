@@ -68,3 +68,8 @@ func (e *Event) GetType() string {
 func (e *Event) GetVersion() string {
 	return "v0"
 }
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (e *Event) GetFullyQualifiedTypeName() string {
+	return "v0.Event"
+}

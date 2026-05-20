@@ -7,7 +7,6 @@ import (
 	"fmt"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -75,6 +74,11 @@ func (krd *KubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (krd *KubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.KubernetesRuntimeDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (krd *KubernetesRuntimeDefinition) ScheduledForDeletion() *time.Time {
@@ -135,6 +139,11 @@ func (kri *KubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (kri *KubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+	return "v0.KubernetesRuntimeInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (kri *KubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
@@ -146,7 +155,7 @@ func (k *KubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Relationsh
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     k.KubernetesRuntimeDefinitionID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }

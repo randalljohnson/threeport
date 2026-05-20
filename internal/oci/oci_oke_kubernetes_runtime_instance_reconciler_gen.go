@@ -179,8 +179,7 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						ociOkeKubernetesRuntimeInstance.GetId(),
-						ociOkeKubernetesRuntimeInstance.GetVersion(),
-						ociOkeKubernetesRuntimeInstance.GetType(),
+						ociOkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						ociOkeKubernetesRuntimeInstance.GetId(),
-						ociOkeKubernetesRuntimeInstance.GetVersion(),
-						ociOkeKubernetesRuntimeInstance.GetType(),
+						ociOkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						ociOkeKubernetesRuntimeInstance.GetId(),
-						ociOkeKubernetesRuntimeInstance.GetVersion(),
-						ociOkeKubernetesRuntimeInstance.GetType(),
+						ociOkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				ociOkeKubernetesRuntimeInstance.GetId(),
-				ociOkeKubernetesRuntimeInstance.GetVersion(),
-				ociOkeKubernetesRuntimeInstance.GetType(),
+				ociOkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful oci oke kubernetes runtime instance reconciliation")
 			}

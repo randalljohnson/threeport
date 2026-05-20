@@ -7,7 +7,6 @@ import (
 	"fmt"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -75,6 +74,11 @@ func (td *TerraformDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (td *TerraformDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.TerraformDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (td *TerraformDefinition) ScheduledForDeletion() *time.Time {
@@ -135,6 +139,11 @@ func (ti *TerraformInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ti *TerraformInstance) GetFullyQualifiedTypeName() string {
+	return "v0.TerraformInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ti *TerraformInstance) ScheduledForDeletion() *time.Time {
@@ -146,12 +155,12 @@ func (t *TerraformInstance) RelationshipTaggedForeignKeys() []RelationshipTagged
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsProviderID",
 		ObjectID:     t.AwsProviderID,
-		ObjectType:   util.ObjectTypeName(AwsProvider{}),
+		ObjectType:   new(AwsProvider).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "TerraformDefinitionID",
 		ObjectID:     t.TerraformDefinitionID,
-		ObjectType:   util.ObjectTypeName(TerraformDefinition{}),
+		ObjectType:   new(TerraformDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }

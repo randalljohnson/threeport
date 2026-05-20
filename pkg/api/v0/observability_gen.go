@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -92,6 +91,11 @@ func (ld *LoggingDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ld *LoggingDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.LoggingDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ld *LoggingDefinition) ScheduledForDeletion() *time.Time {
@@ -103,12 +107,12 @@ func (l *LoggingDefinition) RelationshipTaggedForeignKeys() []RelationshipTagged
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "LokiHelmWorkloadDefinitionID",
 		ObjectID:     l.LokiHelmWorkloadDefinitionID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "PromtailHelmWorkloadDefinitionID",
 		ObjectID:     l.PromtailHelmWorkloadDefinitionID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -167,6 +171,11 @@ func (li *LoggingInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (li *LoggingInstance) GetFullyQualifiedTypeName() string {
+	return "v0.LoggingInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (li *LoggingInstance) ScheduledForDeletion() *time.Time {
@@ -178,22 +187,22 @@ func (l *LoggingInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFo
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     l.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "LoggingDefinitionID",
 		ObjectID:     l.LoggingDefinitionID,
-		ObjectType:   util.ObjectTypeName(LoggingDefinition{}),
+		ObjectType:   new(LoggingDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "LokiHelmWorkloadInstanceID",
 		ObjectID:     l.LokiHelmWorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "PromtailHelmWorkloadInstanceID",
 		ObjectID:     l.PromtailHelmWorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -252,6 +261,11 @@ func (md *MetricsDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (md *MetricsDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.MetricsDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (md *MetricsDefinition) ScheduledForDeletion() *time.Time {
@@ -263,7 +277,7 @@ func (m *MetricsDefinition) RelationshipTaggedForeignKeys() []RelationshipTagged
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubePrometheusStackHelmWorkloadDefinitionID",
 		ObjectID:     m.KubePrometheusStackHelmWorkloadDefinitionID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -322,6 +336,11 @@ func (mi *MetricsInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (mi *MetricsInstance) GetFullyQualifiedTypeName() string {
+	return "v0.MetricsInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (mi *MetricsInstance) ScheduledForDeletion() *time.Time {
@@ -333,17 +352,17 @@ func (m *MetricsInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFo
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubePrometheusStackHelmWorkloadInstanceID",
 		ObjectID:     m.KubePrometheusStackHelmWorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     m.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "MetricsDefinitionID",
 		ObjectID:     m.MetricsDefinitionID,
-		ObjectType:   util.ObjectTypeName(MetricsDefinition{}),
+		ObjectType:   new(MetricsDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -402,6 +421,11 @@ func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (odd *ObservabilityDashboardDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.ObservabilityDashboardDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (odd *ObservabilityDashboardDefinition) ScheduledForDeletion() *time.Time {
@@ -413,7 +437,7 @@ func (o *ObservabilityDashboardDefinition) RelationshipTaggedForeignKeys() []Rel
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GrafanaHelmWorkloadDefinitionID",
 		ObjectID:     o.GrafanaHelmWorkloadDefinitionID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadDefinition{}),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -472,6 +496,11 @@ func (odi *ObservabilityDashboardInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (odi *ObservabilityDashboardInstance) GetFullyQualifiedTypeName() string {
+	return "v0.ObservabilityDashboardInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (odi *ObservabilityDashboardInstance) ScheduledForDeletion() *time.Time {
@@ -483,17 +512,17 @@ func (o *ObservabilityDashboardInstance) RelationshipTaggedForeignKeys() []Relat
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GrafanaHelmWorkloadInstanceID",
 		ObjectID:     o.GrafanaHelmWorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(HelmWorkloadInstance{}),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     o.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "ObservabilityDashboardDefinitionID",
 		ObjectID:     o.ObservabilityDashboardDefinitionID,
-		ObjectType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
+		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -552,6 +581,11 @@ func (osd *ObservabilityStackDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (osd *ObservabilityStackDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.ObservabilityStackDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (osd *ObservabilityStackDefinition) ScheduledForDeletion() *time.Time {
@@ -563,17 +597,17 @@ func (o *ObservabilityStackDefinition) RelationshipTaggedForeignKeys() []Relatio
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "LoggingDefinitionID",
 		ObjectID:     o.LoggingDefinitionID,
-		ObjectType:   util.ObjectTypeName(LoggingDefinition{}),
+		ObjectType:   new(LoggingDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "MetricsDefinitionID",
 		ObjectID:     o.MetricsDefinitionID,
-		ObjectType:   util.ObjectTypeName(MetricsDefinition{}),
+		ObjectType:   new(MetricsDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "ObservabilityDashboardDefinitionID",
 		ObjectID:     o.ObservabilityDashboardDefinitionID,
-		ObjectType:   util.ObjectTypeName(ObservabilityDashboardDefinition{}),
+		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -632,6 +666,11 @@ func (osi *ObservabilityStackInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (osi *ObservabilityStackInstance) GetFullyQualifiedTypeName() string {
+	return "v0.ObservabilityStackInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (osi *ObservabilityStackInstance) ScheduledForDeletion() *time.Time {
@@ -643,27 +682,27 @@ func (o *ObservabilityStackInstance) RelationshipTaggedForeignKeys() []Relations
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     o.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "LoggingInstanceID",
 		ObjectID:     o.LoggingInstanceID,
-		ObjectType:   util.ObjectTypeName(LoggingInstance{}),
+		ObjectType:   new(LoggingInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "MetricsInstanceID",
 		ObjectID:     o.MetricsInstanceID,
-		ObjectType:   util.ObjectTypeName(MetricsInstance{}),
+		ObjectType:   new(MetricsInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "ObservabilityDashboardInstanceID",
 		ObjectID:     o.ObservabilityDashboardInstanceID,
-		ObjectType:   util.ObjectTypeName(ObservabilityDashboardInstance{}),
+		ObjectType:   new(ObservabilityDashboardInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "ObservabilityStackDefinitionID",
 		ObjectID:     o.ObservabilityStackDefinitionID,
-		ObjectType:   util.ObjectTypeName(ObservabilityStackDefinition{}),
+		ObjectType:   new(ObservabilityStackDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }

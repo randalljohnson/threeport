@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -83,6 +82,11 @@ func (wd *WorkloadDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (wd *WorkloadDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.WorkloadDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (wd *WorkloadDefinition) ScheduledForDeletion() *time.Time {
@@ -143,6 +147,11 @@ func (we *WorkloadEvent) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (we *WorkloadEvent) GetFullyQualifiedTypeName() string {
+	return "v0.WorkloadEvent"
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -197,6 +206,11 @@ func (wi *WorkloadInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (wi *WorkloadInstance) GetFullyQualifiedTypeName() string {
+	return "v0.WorkloadInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (wi *WorkloadInstance) ScheduledForDeletion() *time.Time {
@@ -208,12 +222,12 @@ func (w *WorkloadInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedF
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     w.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadDefinitionID",
 		ObjectID:     w.WorkloadDefinitionID,
-		ObjectType:   util.ObjectTypeName(WorkloadDefinition{}),
+		ObjectType:   new(WorkloadDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -272,6 +286,11 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (wrd *WorkloadResourceDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.WorkloadResourceDefinition"
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -324,4 +343,9 @@ func (wri *WorkloadResourceInstance) GetType() string {
 // GetVersion returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (wri *WorkloadResourceInstance) GetFullyQualifiedTypeName() string {
+	return "v0.WorkloadResourceInstance"
 }

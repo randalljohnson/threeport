@@ -195,21 +195,15 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 				).Id("GetId").Params().Uint().Block(
 					Return(Op("*").Id(util.TypeAbbrev(apiObj.TypeName)).Dot("ID")),
 				)
-				// GetType method
-				typeLiteral := apiObj.TypeName
-				if gen.Module {
-					typeLiteral = fmt.Sprintf(
-						"%s/%s.%s",
-						sdkConfig.ApiNamespace,
-						objCollection.Version,
-						apiObj.TypeName,
-					)
-				}
+				// GetType method - bare TypeName, same shape for core
+				// and modules. For the API-namespace-qualified form
+				// (used as the AOR identity string) use
+				// GetFullyQualifiedTypeName instead
 				f.Comment("GetType returns the object type.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetType").Params().String().Block(
-					Return(Lit(typeLiteral)),
+					Return(Lit(apiObj.TypeName)),
 				)
 				// GetVersion method
 				f.Comment("GetVersion returns the version of the API object.")
@@ -217,6 +211,25 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetVersion").Params().String().Block(
 					Return(Lit(objCollection.Version)),
+				)
+				// GetFullyQualifiedTypeName method - returns
+				// "<api-namespace>/<version>.<TypeName>" in module mode,
+				// "<version>.<TypeName>" in core mode. used as the
+				// identity string in AttachedObjectReference rows
+				fullyQualifiedTypeLiteral := fmt.Sprintf("%s.%s", objCollection.Version, apiObj.TypeName)
+				if gen.Module {
+					fullyQualifiedTypeLiteral = fmt.Sprintf(
+						"%s/%s.%s",
+						sdkConfig.ApiNamespace,
+						objCollection.Version,
+						apiObj.TypeName,
+					)
+				}
+				f.Comment("GetFullyQualifiedTypeName returns the API-namespace-qualified type name.")
+				f.Func().Params(
+					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
+				).Id("GetFullyQualifiedTypeName").Params().String().Block(
+					Return(Lit(fullyQualifiedTypeLiteral)),
 				)
 				// ScheduledForDeletion method
 				if apiObj.Reconciler {
@@ -282,8 +295,9 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 									default:
 										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipRequires")
 									}
-									// cross-module refs need Qual; bare Id wouldn't
-								// resolve in the module's package
+								// reference the target type either locally or via Qual for
+								// a cross-module ref (which is always to a core type, since
+								// modules can't ref other modules)
 								var targetTypeRef *Statement
 								if gen.Module && !localTypes[fk.objectType] {
 									targetTypeRef = Qual(
@@ -295,10 +309,12 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 								}
 								vg.Values(Dict{
 									Id("FieldName"): Lit(fk.fieldName),
-									Id("ObjectType"): Qual(
-										"github.com/threeport/threeport/pkg/util/v0",
-										"ObjectTypeName",
-									).Call(targetTypeRef.Values()),
+									// call GetFullyQualifiedTypeName on the target type
+									// so the call site reads as intent ("identify rows
+									// in the AOR table by qualified type") and the
+									// reader can hop to the method to see the literal
+									Id("ObjectType"): Id("new").Call(targetTypeRef).
+										Dot("GetFullyQualifiedTypeName").Call(),
 									Id("Relationship"): relationshipQual,
 									Id("ObjectID"):     Id(receiver).Dot(fk.fieldName),
 								})

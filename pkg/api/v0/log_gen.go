@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 const (
@@ -76,6 +75,11 @@ func (lb *LogBackend) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (lb *LogBackend) GetFullyQualifiedTypeName() string {
+	return "v0.LogBackend"
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -128,6 +132,11 @@ func (lsd *LogStorageDefinition) GetType() string {
 // GetVersion returns the version of the API object.
 func (lsd *LogStorageDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (lsd *LogStorageDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.LogStorageDefinition"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -184,12 +193,17 @@ func (lsi *LogStorageInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (lsi *LogStorageInstance) GetFullyQualifiedTypeName() string {
+	return "v0.LogStorageInstance"
+}
+
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on LogStorageInstance.
 func (l *LogStorageInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "ClusterID",
 		ObjectID:     l.ClusterID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }

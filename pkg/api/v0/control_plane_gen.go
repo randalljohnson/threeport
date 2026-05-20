@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -74,6 +73,11 @@ func (cpd *ControlPlaneDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (cpd *ControlPlaneDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.ControlPlaneDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (cpd *ControlPlaneDefinition) ScheduledForDeletion() *time.Time {
@@ -134,6 +138,11 @@ func (cpi *ControlPlaneInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (cpi *ControlPlaneInstance) GetFullyQualifiedTypeName() string {
+	return "v0.ControlPlaneInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (cpi *ControlPlaneInstance) ScheduledForDeletion() *time.Time {
@@ -145,17 +154,17 @@ func (c *ControlPlaneInstance) RelationshipTaggedForeignKeys() []RelationshipTag
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "ControlPlaneDefinitionID",
 		ObjectID:     c.ControlPlaneDefinitionID,
-		ObjectType:   util.ObjectTypeName(ControlPlaneDefinition{}),
+		ObjectType:   new(ControlPlaneDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     c.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "ParentControlPlaneInstanceID",
 		ObjectID:     c.ParentControlPlaneInstanceID,
-		ObjectType:   util.ObjectTypeName(ControlPlaneInstance{}),
+		ObjectType:   new(ControlPlaneInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }

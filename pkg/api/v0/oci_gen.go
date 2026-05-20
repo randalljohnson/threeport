@@ -7,7 +7,6 @@ import (
 	"fmt"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"time"
 )
 
@@ -78,12 +77,17 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ookrd *OciOkeKubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+	return "v0.OciOkeKubernetesRuntimeDefinition"
+}
+
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
 func (o *OciOkeKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     o.KubernetesRuntimeDefinitionID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeDefinition{}),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -142,6 +146,11 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (ookri *OciOkeKubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+	return "v0.OciOkeKubernetesRuntimeInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ookri *OciOkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
@@ -153,17 +162,17 @@ func (o *OciOkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Rela
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     o.KubernetesRuntimeInstanceID,
-		ObjectType:   util.ObjectTypeName(KubernetesRuntimeInstance{}),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipMarries,
 	}, {
 		FieldName:    "OciOkeKubernetesRuntimeDefinitionID",
 		ObjectID:     o.OciOkeKubernetesRuntimeDefinitionID,
-		ObjectType:   util.ObjectTypeName(OciOkeKubernetesRuntimeDefinition{}),
+		ObjectType:   new(OciOkeKubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "OciProviderID",
 		ObjectID:     o.OciProviderID,
-		ObjectType:   util.ObjectTypeName(OciProvider{}),
+		ObjectType:   new(OciProvider).GetFullyQualifiedTypeName(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -220,6 +229,11 @@ func (op *OciProvider) GetType() string {
 // GetVersion returns the version of the API object.
 func (op *OciProvider) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
+func (op *OciProvider) GetFullyQualifiedTypeName() string {
+	return "v0.OciProvider"
 }
 
 // EncryptedFields returns the encrypt-tagged fields on OciProvider.

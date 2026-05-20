@@ -2,7 +2,6 @@ package v0
 
 import (
 	"fmt"
-	"reflect"
 
 	"gorm.io/gorm"
 
@@ -158,13 +157,17 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 }
 
 // processRelationshipTaggedFieldsAfterUpdate syncs attached object
-// references with foreign-key transitions. A foreign key that just
-// cleared has its reference removed; one that just became set gets a
-// new reference inserted.
+// references with foreign-key transitions. After each successful update
+// the reference table is reconciled against the row's post-update FK
+// values: an FK that just cleared has its reference removed; one that
+// just became set gets a new reference inserted.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
+	// skip types with no relationship-tagged foreign keys
 	if len(relationshipTaggedForeignKeysFor(obj)) == 0 {
 		return nil
 	}
+
+	// identify the row that was just updated
 	objType := util.ObjectTypeName(obj)
 	objID := util.ObjectID(obj)
 	if objID == nil {
@@ -174,53 +177,57 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		)
 	}
 
-	// GORM's Model(&existing).Updates(...) pattern leaves the receiver's
-	// FK fields at their pre-update values; reload into a fresh instance
-	// so we can read post-update FK values without mutating obj (mutating
-	// obj would null out tx.Statement.Changed's diff detection).
-	freshObj := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
-	if err := tx.Session(&gorm.Session{NewDB: true}).First(freshObj, *objID).Error; err != nil {
-		return fmt.Errorf(
-			"failed to reload %s/%d after update: %w",
-			objType, *objID, err,
-		)
+	// load post-update row into updatedObj; obj is preserved as the
+	// pre-update snapshot for callers that still need to read it
+	updatedObj, err := lib.LoadFreshFromDB(tx, obj, *objID)
+	if err != nil {
+		return err
 	}
 
-	// state-based sync: GORM's Statement.Changed() is unreliable in
-	// AfterUpdate, so reconcile the AOR table against the post-update FK
-	// values directly. For each tagged FK, the AOR exists iff FK is set.
-	for _, foreignKey := range relationshipTaggedForeignKeysFor(freshObj) {
+	// reconcile reference rows against the post-update state: for each
+	// tagged foreign key, a reference exists iff updatedObj has it set
+	for _, updatedObjForeignKey := range relationshipTaggedForeignKeysFor(updatedObj) {
+
+		// count existing references for this base/attacher pair to
+		// decide whether to insert, delete, or leave the table alone
 		var count int64
 		if err := tx.Session(&gorm.Session{NewDB: true}).
 			Model(&AttachedObjectReference{}).
 			Where(
 				"object_type = ? AND attached_object_type = ? AND attached_object_id = ?",
-				foreignKey.ObjectType, objType, *objID,
+				updatedObjForeignKey.ObjectType, objType, *objID,
 			).
 			Count(&count).Error; err != nil {
 			return fmt.Errorf(
 				"failed to count attached object references for %s.%s: %w",
-				objType, foreignKey.FieldName, err,
+				objType, updatedObjForeignKey.FieldName, err,
 			)
 		}
 
 		switch {
-		case foreignKey.ObjectID == nil && count > 0:
+
+		// foreign key cleared, stale reference remains: delete it
+		case updatedObjForeignKey.ObjectID == nil && count > 0:
 			if err := tx.Session(&gorm.Session{NewDB: true}).
 				Where(
 					"object_type = ? AND attached_object_type = ? AND attached_object_id = ?",
-					foreignKey.ObjectType, objType, *objID,
+					updatedObjForeignKey.ObjectType, objType, *objID,
 				).
 				Delete(&AttachedObjectReference{}).Error; err != nil {
 				return fmt.Errorf(
 					"failed to remove attached object reference for %s.%s: %w",
-					objType, foreignKey.FieldName, err,
+					objType, updatedObjForeignKey.FieldName, err,
 				)
 			}
-		case foreignKey.ObjectID != nil && count == 0:
-			if err := insertAttachedObjectReference(tx, foreignKey, objType, *objID); err != nil {
+
+		// foreign key newly set, no reference yet: insert one
+		case updatedObjForeignKey.ObjectID != nil && count == 0:
+			if err := insertAttachedObjectReference(tx, updatedObjForeignKey, objType, *objID); err != nil {
 				return err
 			}
+
+		// other states (both empty, or both present) are already
+		// consistent; nothing to do
 		}
 	}
 	return nil

@@ -9,7 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 
-	api "github.com/threeport/threeport/pkg/api/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 type CustomValidator struct {
@@ -44,7 +44,7 @@ func ValidateObj(c echo.Context, obj interface{}, missingRequiredFields *[]strin
 	if err := c.Validate(obj); err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			switch err.Tag() {
-			case string(api.ValidateRequired):
+			case string(api_lib.ValidateRequired):
 				*missingRequiredFields = append(*missingRequiredFields, err.Field())
 			}
 		}

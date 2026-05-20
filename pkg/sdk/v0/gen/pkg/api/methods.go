@@ -12,6 +12,7 @@ import (
 	"github.com/iancoleman/strcase"
 
 	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	sdkgen "github.com/threeport/threeport/pkg/sdk/v0/gen"
@@ -239,13 +240,13 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					var foreignKeys []fkEntry
 					if tagsForType, ok := typeToTags[apiObj.TypeName]; ok {
 						for fieldName, tagMap := range tagsForType {
-							rel, ok := tagMap[string(api.RelationshipTag)]
+							rel, ok := tagMap[string(lib.RelationshipTag)]
 							if !ok || rel == "" {
 								continue
 							}
 							kind, modifiers, _ := sdkgen.ParseRelationshipTagValue(rel)
 							objectType := strings.TrimSuffix(fieldName, "ID")
-							if v, ok := modifiers[api.RelationshipTypeKey]; ok {
+							if v, ok := modifiers[lib.RelationshipTypeKey]; ok {
 								objectType = v
 							}
 							foreignKeys = append(foreignKeys, fkEntry{
@@ -314,7 +315,7 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					var encryptedFields []string
 					if tagsForType, ok := typeToTags[apiObj.TypeName]; ok {
 						for fieldName, tagMap := range tagsForType {
-							if tagMap[string(api.EncryptTag)] != api.EncryptTrue {
+							if tagMap[string(lib.EncryptTag)] != lib.EncryptTrue {
 								continue
 							}
 							encryptedFields = append(encryptedFields, fieldName)

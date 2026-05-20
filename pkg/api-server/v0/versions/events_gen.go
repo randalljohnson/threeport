@@ -5,6 +5,7 @@ package versions
 import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	"reflect"
 )
@@ -12,16 +13,16 @@ import (
 // AddEventVersions adds field validation info and adds it
 // to the REST API versions.
 func AddEventVersions() {
-	apiserver_v0.EventTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.EventTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              string(api_v0.ValidateTag),
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		string(api_v0.ValidateTag),
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.Event)),
 		"",
 		apiserver_lib.Translate,
@@ -35,7 +36,7 @@ func AddEventVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.EventTaggedFields[string(api_v0.ValidateTag)]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.EventTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

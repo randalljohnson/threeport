@@ -15,6 +15,7 @@ import (
 	"github.com/iancoleman/strcase"
 
 	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	sdkutil "github.com/threeport/threeport/pkg/sdk/v0/util"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -888,49 +889,49 @@ func (g *Generator) ValidateTags() error {
 			for fieldName, tagMap := range fieldMap {
 				// relationship tags carry sub-structure; delegate to a
 				// helper that splits and validates kind + modifiers
-				if rel, ok := tagMap[string(api.RelationshipTag)]; ok && rel != "" {
+				if rel, ok := tagMap[string(lib.RelationshipTag)]; ok && rel != "" {
 					fieldType := group.FieldTypes[objectName][fieldName]
 					problems = append(problems,
 						validateRelationshipTag(objectName, fieldName, fieldType, rel, knownTypes, g.Module)...)
 				}
 				// encrypt is a single-value flag; only EncryptTrue is meaningful
-				if enc, ok := tagMap[string(api.EncryptTag)]; ok && enc != api.EncryptTrue {
+				if enc, ok := tagMap[string(lib.EncryptTag)]; ok && enc != lib.EncryptTrue {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (only %q allowed)",
 						objectName, fieldName,
-						api.EncryptTag, enc, api.EncryptTrue,
+						lib.EncryptTag, enc, lib.EncryptTrue,
 					))
 				}
 				// validate accepts one of three known values; anything else
 				// is a typo or a stale value and must be flagged
-				if val, ok := tagMap[string(api.ValidateTag)]; ok &&
-					val != string(api.ValidateRequired) &&
-					val != string(api.ValidateOptional) &&
-					val != string(api.ValidateOptionalAssociation) {
+				if val, ok := tagMap[string(lib.ValidateTag)]; ok &&
+					val != string(lib.ValidateRequired) &&
+					val != string(lib.ValidateOptional) &&
+					val != string(lib.ValidateOptionalAssociation) {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (allowed: %q, %q, %q)",
 						objectName, fieldName,
-						api.ValidateTag, val,
-						api.ValidateRequired, api.ValidateOptional, api.ValidateOptionalAssociation,
+						lib.ValidateTag, val,
+						lib.ValidateRequired, lib.ValidateOptional, lib.ValidateOptionalAssociation,
 					))
 				}
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise
 				// and likely indicates a misunderstanding
-				if per, ok := tagMap[string(api.PersistTag)]; ok && per != api.PersistFalse {
+				if per, ok := tagMap[string(lib.PersistTag)]; ok && per != lib.PersistFalse {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (only %q is meaningful; omit the tag for the default)",
 						objectName, fieldName,
-						api.PersistTag, per, api.PersistFalse,
+						lib.PersistTag, per, lib.PersistFalse,
 					))
 				}
 				// query feeds URL parameter parsing; restrict to lowercase
 				// alphanumerics so codegen and route matching stay simple
-				if q, ok := tagMap[string(api.QueryTag)]; ok && !queryNamePattern.MatchString(q) {
+				if q, ok := tagMap[string(lib.QueryTag)]; ok && !queryNamePattern.MatchString(q) {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s: %s:%q invalid (must match %s)",
 						objectName, fieldName,
-						api.QueryTag, q, queryNamePattern.String(),
+						lib.QueryTag, q, queryNamePattern.String(),
 					))
 				}
 			}
@@ -1015,7 +1016,7 @@ func validateRelationshipTag(object, field, fieldType, rel string, knownTypes ma
 	// switch rather than letting unknown keys through silently
 	for k, v := range modifiers {
 		switch k {
-		case api.RelationshipTypeKey:
+		case lib.RelationshipTypeKey:
 			// in module mode, types may live in the imported threeport
 			// core package; the Go compiler verifies them at build time
 			if !knownTypes[v] && !module {
@@ -1027,25 +1028,25 @@ func validateRelationshipTag(object, field, fieldType, rel string, knownTypes ma
 		default:
 			problems = append(problems, fmt.Sprintf(
 				"%s.%s: unknown relationship modifier key %q (only %q is supported)",
-				object, field, k, api.RelationshipTypeKey,
+				object, field, k, lib.RelationshipTypeKey,
 			))
 		}
 	}
 	// when there's no `type:` modifier, the target type is derived by
 	// stripping the field's "ID" suffix. Reject anything the derivation
 	// can't resolve to a registered API type
-	if _, hasTypeModifier := modifiers[api.RelationshipTypeKey]; !hasTypeModifier {
+	if _, hasTypeModifier := modifiers[lib.RelationshipTypeKey]; !hasTypeModifier {
 		if !strings.HasSuffix(field, "ID") {
 			problems = append(problems, fmt.Sprintf(
 				"%s.%s: relationship-tagged field name must end in %q or include a %q modifier",
-				object, field, "ID", api.RelationshipTypeKey,
+				object, field, "ID", lib.RelationshipTypeKey,
 			))
 		} else {
 			derived := strings.TrimSuffix(field, "ID")
 			if !knownTypes[derived] && !module {
 				problems = append(problems, fmt.Sprintf(
 					"%s.%s: relationship references unknown API type %q (derived from field name; add %q modifier to override)",
-					object, field, derived, api.RelationshipTypeKey,
+					object, field, derived, lib.RelationshipTypeKey,
 				))
 			}
 		}

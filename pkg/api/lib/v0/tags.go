@@ -1,8 +1,6 @@
 package v0
 
-// TagKey is a struct-tag key recognized by the threeport API schema
-// (e.g. "gorm", "validate", "encrypt"). Compile-time enforcement that
-// callers reference one of the known keys.
+// TagKey names a struct-tag key recognized by the threeport API schema.
 type TagKey string
 
 const (
@@ -14,7 +12,7 @@ const (
 )
 
 // RelationshipTypeKey is the modifier name in a relationship tag value
-// (e.g. `relationship:"requires,type:KubernetesRuntimeInstance"`).
+// (e.g. `relationship:"requires;type:KubernetesRuntimeInstance"`).
 const RelationshipTypeKey = "type"
 
 // Validate is the value space of the "validate" struct tag on API type fields.

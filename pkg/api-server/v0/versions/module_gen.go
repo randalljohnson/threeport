@@ -5,6 +5,7 @@ package versions
 import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	"reflect"
 )
@@ -12,16 +13,16 @@ import (
 // AddModuleApiVersions adds field validation info and adds it
 // to the REST API versions.
 func AddModuleApiVersions() {
-	apiserver_v0.ModuleApiTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ModuleApiTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              string(api_v0.ValidateTag),
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		string(api_v0.ValidateTag),
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.ModuleApi)),
 		"",
 		apiserver_lib.Translate,
@@ -35,7 +36,7 @@ func AddModuleApiVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleApiTaggedFields[string(api_v0.ValidateTag)]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleApiTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -44,16 +45,16 @@ func AddModuleApiVersions() {
 // AddModuleApiRouteVersions adds field validation info and adds it
 // to the REST API versions.
 func AddModuleApiRouteVersions() {
-	apiserver_v0.ModuleApiRouteTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ModuleApiRouteTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              string(api_v0.ValidateTag),
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		string(api_v0.ValidateTag),
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.ModuleApiRoute)),
 		"",
 		apiserver_lib.Translate,
@@ -67,7 +68,7 @@ func AddModuleApiRouteVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleApiRouteTaggedFields[string(api_v0.ValidateTag)]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleApiRouteTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -76,16 +77,16 @@ func AddModuleApiRouteVersions() {
 // AddModuleControllerVersions adds field validation info and adds it
 // to the REST API versions.
 func AddModuleControllerVersions() {
-	apiserver_v0.ModuleControllerTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ModuleControllerTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              string(api_v0.ValidateTag),
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		string(api_v0.ValidateTag),
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.ModuleController)),
 		"",
 		apiserver_lib.Translate,
@@ -99,7 +100,7 @@ func AddModuleControllerVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleControllerTaggedFields[string(api_v0.ValidateTag)]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleControllerTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -108,16 +109,16 @@ func AddModuleControllerVersions() {
 // AddModuleObjectVersions adds field validation info and adds it
 // to the REST API versions.
 func AddModuleObjectVersions() {
-	apiserver_v0.ModuleObjectTaggedFields[string(api_v0.ValidateTag)] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.ModuleObjectTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              string(api_v0.ValidateTag),
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		string(api_v0.ValidateTag),
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.ModuleObject)),
 		"",
 		apiserver_lib.Translate,
@@ -131,7 +132,7 @@ func AddModuleObjectVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleObjectTaggedFields[string(api_v0.ValidateTag)]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.ModuleObjectTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

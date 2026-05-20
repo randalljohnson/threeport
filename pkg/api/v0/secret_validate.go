@@ -7,6 +7,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // beforeCreate validates a secret definition before
@@ -22,8 +24,8 @@ func (s *SecretDefinition) beforeCreate(tx *gorm.DB) error {
 		field := objType.Field(i)
 
 		if field.Name == "Data" {
-			persist := field.Tag.Get(string(PersistTag))
-			if persist == PersistFalse {
+			persist := field.Tag.Get(string(lib.PersistTag))
+			if persist == lib.PersistFalse {
 				columnName := ns.ColumnName("", field.Name)
 				tx.Statement.SetColumn(columnName, nil)
 			}

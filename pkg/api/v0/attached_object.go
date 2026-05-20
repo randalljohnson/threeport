@@ -49,7 +49,9 @@ type AttachedObjectReference struct {
 	// AttachedObjectID is the database ID of the attaching object.
 	AttachedObjectID *uint `json:"AttachedObjectID,omitempty" query:"attachedobjectid" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_attached,where:relationship = 'marries'" validate:"required"`
 
-	// Relationship classifies this reference and drives lifecycle behavior:
+	// Relationship classifies this reference and drives lifecycle behavior
+	// via gorm hooks and generated code that reveals information about a
+	// type's foreign keys:
 	//   - "describes": informational; does not block delete or update of the base.
 	//   - "requires": blocks any caller from deleting the base while this
 	//     reference exists.

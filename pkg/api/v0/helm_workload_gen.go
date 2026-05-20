@@ -73,8 +73,8 @@ func (hwd *HelmWorkloadDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (hwd *HelmWorkloadDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (hwd *HelmWorkloadDefinition) GetFullyQualifiedType() string {
 	return "v0.HelmWorkloadDefinition"
 }
 
@@ -138,8 +138,8 @@ func (hwi *HelmWorkloadInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (hwi *HelmWorkloadInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (hwi *HelmWorkloadInstance) GetFullyQualifiedType() string {
 	return "v0.HelmWorkloadInstance"
 }
 
@@ -154,12 +154,12 @@ func (h *HelmWorkloadInstance) RelationshipTaggedForeignKeys() []RelationshipTag
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "HelmWorkloadDefinitionID",
 		ObjectID:     h.HelmWorkloadDefinitionID,
-		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     h.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

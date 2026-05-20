@@ -179,7 +179,7 @@ func WorkloadInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						workloadInstance.GetId(),
-						workloadInstance.GetFullyQualifiedTypeName(),
+						workloadInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func WorkloadInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						workloadInstance.GetId(),
-						workloadInstance.GetFullyQualifiedTypeName(),
+						workloadInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func WorkloadInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						workloadInstance.GetId(),
-						workloadInstance.GetFullyQualifiedTypeName(),
+						workloadInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func WorkloadInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				workloadInstance.GetId(),
-				workloadInstance.GetFullyQualifiedTypeName(),
+				workloadInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful workload instance reconciliation")
 			}

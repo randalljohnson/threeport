@@ -75,8 +75,8 @@ func (lb *LogBackend) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (lb *LogBackend) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (lb *LogBackend) GetFullyQualifiedType() string {
 	return "v0.LogBackend"
 }
 
@@ -134,8 +134,8 @@ func (lsd *LogStorageDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (lsd *LogStorageDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (lsd *LogStorageDefinition) GetFullyQualifiedType() string {
 	return "v0.LogStorageDefinition"
 }
 
@@ -193,8 +193,8 @@ func (lsi *LogStorageInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (lsi *LogStorageInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (lsi *LogStorageInstance) GetFullyQualifiedType() string {
 	return "v0.LogStorageInstance"
 }
 
@@ -203,7 +203,7 @@ func (l *LogStorageInstance) RelationshipTaggedForeignKeys() []RelationshipTagge
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "ClusterID",
 		ObjectID:     l.ClusterID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

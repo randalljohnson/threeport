@@ -82,8 +82,8 @@ func (wd *WorkloadDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (wd *WorkloadDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wd *WorkloadDefinition) GetFullyQualifiedType() string {
 	return "v0.WorkloadDefinition"
 }
 
@@ -147,8 +147,8 @@ func (we *WorkloadEvent) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (we *WorkloadEvent) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (we *WorkloadEvent) GetFullyQualifiedType() string {
 	return "v0.WorkloadEvent"
 }
 
@@ -206,8 +206,8 @@ func (wi *WorkloadInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (wi *WorkloadInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wi *WorkloadInstance) GetFullyQualifiedType() string {
 	return "v0.WorkloadInstance"
 }
 
@@ -222,12 +222,12 @@ func (w *WorkloadInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedF
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     w.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadDefinitionID",
 		ObjectID:     w.WorkloadDefinitionID,
-		ObjectType:   new(WorkloadDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(WorkloadDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -286,8 +286,8 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (wrd *WorkloadResourceDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wrd *WorkloadResourceDefinition) GetFullyQualifiedType() string {
 	return "v0.WorkloadResourceDefinition"
 }
 
@@ -345,7 +345,7 @@ func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (wri *WorkloadResourceInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wri *WorkloadResourceInstance) GetFullyQualifiedType() string {
 	return "v0.WorkloadResourceInstance"
 }

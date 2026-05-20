@@ -22,18 +22,18 @@ type ReconciledThreeportApiObject interface {
 	DecodeNotifObject(object interface{}) error
 	GetId() uint
 	GetType() string
+	GetFullyQualifiedType() string
 	GetVersion() string
-	GetFullyQualifiedTypeName() string
 	ScheduledForDeletion() *time.Time
 }
 
-// FullyQualifiedTypeNamer is implemented by every API object. The
+// FullyQualifiedTypeProvider is implemented by every API object. The
 // returned string is "<version>.<TypeName>" for core types and
 // "<api-namespace>/<version>.<TypeName>" for module types. Used as
 // the identity string in AttachedObjectReference rows so the table
 // is unambiguous across modules.
-type FullyQualifiedTypeNamer interface {
-	GetFullyQualifiedTypeName() string
+type FullyQualifiedTypeProvider interface {
+	GetFullyQualifiedType() string
 }
 
 // NewCleanSession returns a session on the existing transaction that

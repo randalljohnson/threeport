@@ -179,7 +179,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						secretInstance.GetId(),
-						secretInstance.GetFullyQualifiedTypeName(),
+						secretInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						secretInstance.GetId(),
-						secretInstance.GetFullyQualifiedTypeName(),
+						secretInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						secretInstance.GetId(),
-						secretInstance.GetFullyQualifiedTypeName(),
+						secretInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				secretInstance.GetId(),
-				secretInstance.GetFullyQualifiedTypeName(),
+				secretInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful secret instance reconciliation")
 			}

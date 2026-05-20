@@ -77,8 +77,8 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (aekrd *AwsEksKubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (aekrd *AwsEksKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
 	return "v0.AwsEksKubernetesRuntimeDefinition"
 }
 
@@ -87,7 +87,7 @@ func (a *AwsEksKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []Re
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     a.KubernetesRuntimeDefinitionID,
-		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -146,8 +146,8 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (aekri *AwsEksKubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (aekri *AwsEksKubernetesRuntimeInstance) GetFullyQualifiedType() string {
 	return "v0.AwsEksKubernetesRuntimeInstance"
 }
 
@@ -162,17 +162,17 @@ func (a *AwsEksKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Rela
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsEksKubernetesRuntimeDefinitionID",
 		ObjectID:     a.AwsEksKubernetesRuntimeDefinitionID,
-		ObjectType:   new(AwsEksKubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(AwsEksKubernetesRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "AwsProviderID",
 		ObjectID:     a.AwsProviderID,
-		ObjectType:   new(AwsProvider).GetFullyQualifiedTypeName(),
+		ObjectType:   new(AwsProvider).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     a.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -231,8 +231,8 @@ func (ap *AwsProvider) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ap *AwsProvider) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ap *AwsProvider) GetFullyQualifiedType() string {
 	return "v0.AwsProvider"
 }
 

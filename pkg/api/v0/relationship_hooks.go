@@ -79,7 +79,7 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 	if len(foreignKeys) == 0 {
 		return nil
 	}
-	objType := obj.(lib.FullyQualifiedTypeNamer).GetFullyQualifiedTypeName()
+	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
 	objID := util.ObjectID(obj)
 	if objID == nil {
 		return fmt.Errorf(
@@ -115,7 +115,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 
 	// look up incoming owns/marries refs to decide whether this row's
 	// non-FK fields can be updated by the caller
-	objType := obj.(lib.FullyQualifiedTypeNamer).GetFullyQualifiedTypeName()
+	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
 	objID := util.ObjectID(obj)
 	if objID == nil {
 		return nil
@@ -168,7 +168,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	}
 
 	// identify the row that was just updated
-	objType := obj.(lib.FullyQualifiedTypeNamer).GetFullyQualifiedTypeName()
+	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
 	objID := util.ObjectID(obj)
 	if objID == nil {
 		return fmt.Errorf(
@@ -248,7 +248,7 @@ func processRelationshipTaggedFieldsBeforeDelete(tx *gorm.DB, obj interface{}) e
 	if err := CheckBlockingAttachedObjectReferences(tx, obj); err != nil {
 		return err
 	}
-	objType := obj.(lib.FullyQualifiedTypeNamer).GetFullyQualifiedTypeName()
+	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
 	objID := util.ObjectID(obj)
 	if objID == nil {
 		return nil

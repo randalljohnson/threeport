@@ -73,8 +73,8 @@ func (sd *SecretDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (sd *SecretDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (sd *SecretDefinition) GetFullyQualifiedType() string {
 	return "v0.SecretDefinition"
 }
 
@@ -89,7 +89,7 @@ func (s *SecretDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedF
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsProviderID",
 		ObjectID:     s.AwsProviderID,
-		ObjectType:   new(AwsProvider).GetFullyQualifiedTypeName(),
+		ObjectType:   new(AwsProvider).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -148,8 +148,8 @@ func (si *SecretInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (si *SecretInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (si *SecretInstance) GetFullyQualifiedType() string {
 	return "v0.SecretInstance"
 }
 
@@ -164,22 +164,22 @@ func (s *SecretInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFor
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "HelmWorkloadInstanceID",
 		ObjectID:     s.HelmWorkloadInstanceID,
-		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     s.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "SecretDefinitionID",
 		ObjectID:     s.SecretDefinitionID,
-		ObjectType:   new(SecretDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(SecretDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     s.WorkloadInstanceID,
-		ObjectType:   new(WorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(WorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

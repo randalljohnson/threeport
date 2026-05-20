@@ -179,7 +179,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						kubernetesRuntimeInstance.GetId(),
-						kubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						kubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						kubernetesRuntimeInstance.GetId(),
-						kubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						kubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						kubernetesRuntimeInstance.GetId(),
-						kubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						kubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				kubernetesRuntimeInstance.GetId(),
-				kubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+				kubernetesRuntimeInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful kubernetes runtime instance reconciliation")
 			}

@@ -91,8 +91,8 @@ func (ld *LoggingDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ld *LoggingDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ld *LoggingDefinition) GetFullyQualifiedType() string {
 	return "v0.LoggingDefinition"
 }
 
@@ -107,12 +107,12 @@ func (l *LoggingDefinition) RelationshipTaggedForeignKeys() []RelationshipTagged
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "LokiHelmWorkloadDefinitionID",
 		ObjectID:     l.LokiHelmWorkloadDefinitionID,
-		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "PromtailHelmWorkloadDefinitionID",
 		ObjectID:     l.PromtailHelmWorkloadDefinitionID,
-		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -171,8 +171,8 @@ func (li *LoggingInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (li *LoggingInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (li *LoggingInstance) GetFullyQualifiedType() string {
 	return "v0.LoggingInstance"
 }
 
@@ -187,22 +187,22 @@ func (l *LoggingInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFo
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     l.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "LoggingDefinitionID",
 		ObjectID:     l.LoggingDefinitionID,
-		ObjectType:   new(LoggingDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(LoggingDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "LokiHelmWorkloadInstanceID",
 		ObjectID:     l.LokiHelmWorkloadInstanceID,
-		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "PromtailHelmWorkloadInstanceID",
 		ObjectID:     l.PromtailHelmWorkloadInstanceID,
-		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -261,8 +261,8 @@ func (md *MetricsDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (md *MetricsDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (md *MetricsDefinition) GetFullyQualifiedType() string {
 	return "v0.MetricsDefinition"
 }
 
@@ -277,7 +277,7 @@ func (m *MetricsDefinition) RelationshipTaggedForeignKeys() []RelationshipTagged
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubePrometheusStackHelmWorkloadDefinitionID",
 		ObjectID:     m.KubePrometheusStackHelmWorkloadDefinitionID,
-		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -336,8 +336,8 @@ func (mi *MetricsInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (mi *MetricsInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mi *MetricsInstance) GetFullyQualifiedType() string {
 	return "v0.MetricsInstance"
 }
 
@@ -352,17 +352,17 @@ func (m *MetricsInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFo
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubePrometheusStackHelmWorkloadInstanceID",
 		ObjectID:     m.KubePrometheusStackHelmWorkloadInstanceID,
-		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     m.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "MetricsDefinitionID",
 		ObjectID:     m.MetricsDefinitionID,
-		ObjectType:   new(MetricsDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(MetricsDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -421,8 +421,8 @@ func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (odd *ObservabilityDashboardDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (odd *ObservabilityDashboardDefinition) GetFullyQualifiedType() string {
 	return "v0.ObservabilityDashboardDefinition"
 }
 
@@ -437,7 +437,7 @@ func (o *ObservabilityDashboardDefinition) RelationshipTaggedForeignKeys() []Rel
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GrafanaHelmWorkloadDefinitionID",
 		ObjectID:     o.GrafanaHelmWorkloadDefinitionID,
-		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -496,8 +496,8 @@ func (odi *ObservabilityDashboardInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (odi *ObservabilityDashboardInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (odi *ObservabilityDashboardInstance) GetFullyQualifiedType() string {
 	return "v0.ObservabilityDashboardInstance"
 }
 
@@ -512,17 +512,17 @@ func (o *ObservabilityDashboardInstance) RelationshipTaggedForeignKeys() []Relat
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GrafanaHelmWorkloadInstanceID",
 		ObjectID:     o.GrafanaHelmWorkloadInstanceID,
-		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     o.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "ObservabilityDashboardDefinitionID",
 		ObjectID:     o.ObservabilityDashboardDefinitionID,
-		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -581,8 +581,8 @@ func (osd *ObservabilityStackDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (osd *ObservabilityStackDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (osd *ObservabilityStackDefinition) GetFullyQualifiedType() string {
 	return "v0.ObservabilityStackDefinition"
 }
 
@@ -597,17 +597,17 @@ func (o *ObservabilityStackDefinition) RelationshipTaggedForeignKeys() []Relatio
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "LoggingDefinitionID",
 		ObjectID:     o.LoggingDefinitionID,
-		ObjectType:   new(LoggingDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(LoggingDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "MetricsDefinitionID",
 		ObjectID:     o.MetricsDefinitionID,
-		ObjectType:   new(MetricsDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(MetricsDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "ObservabilityDashboardDefinitionID",
 		ObjectID:     o.ObservabilityDashboardDefinitionID,
-		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}}
 }
@@ -666,8 +666,8 @@ func (osi *ObservabilityStackInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (osi *ObservabilityStackInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (osi *ObservabilityStackInstance) GetFullyQualifiedType() string {
 	return "v0.ObservabilityStackInstance"
 }
 
@@ -682,27 +682,27 @@ func (o *ObservabilityStackInstance) RelationshipTaggedForeignKeys() []Relations
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     o.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "LoggingInstanceID",
 		ObjectID:     o.LoggingInstanceID,
-		ObjectType:   new(LoggingInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(LoggingInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "MetricsInstanceID",
 		ObjectID:     o.MetricsInstanceID,
-		ObjectType:   new(MetricsInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(MetricsInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "ObservabilityDashboardInstanceID",
 		ObjectID:     o.ObservabilityDashboardInstanceID,
-		ObjectType:   new(ObservabilityDashboardInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ObservabilityDashboardInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipOwns,
 	}, {
 		FieldName:    "ObservabilityStackDefinitionID",
 		ObjectID:     o.ObservabilityStackDefinitionID,
-		ObjectType:   new(ObservabilityStackDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ObservabilityStackDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

@@ -74,8 +74,8 @@ func (krd *KubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (krd *KubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (krd *KubernetesRuntimeDefinition) GetFullyQualifiedType() string {
 	return "v0.KubernetesRuntimeDefinition"
 }
 
@@ -139,8 +139,8 @@ func (kri *KubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (kri *KubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (kri *KubernetesRuntimeInstance) GetFullyQualifiedType() string {
 	return "v0.KubernetesRuntimeInstance"
 }
 
@@ -155,7 +155,7 @@ func (k *KubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Relationsh
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     k.KubernetesRuntimeDefinitionID,
-		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

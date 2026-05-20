@@ -179,7 +179,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						awsEksKubernetesRuntimeInstance.GetId(),
-						awsEksKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						awsEksKubernetesRuntimeInstance.GetId(),
-						awsEksKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						awsEksKubernetesRuntimeInstance.GetId(),
-						awsEksKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				awsEksKubernetesRuntimeInstance.GetId(),
-				awsEksKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+				awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful aws eks kubernetes runtime instance reconciliation")
 			}

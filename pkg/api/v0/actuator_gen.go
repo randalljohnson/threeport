@@ -72,8 +72,8 @@ func (p *Profile) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (p *Profile) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (p *Profile) GetFullyQualifiedType() string {
 	return "v0.Profile"
 }
 
@@ -131,7 +131,7 @@ func (t *Tier) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (t *Tier) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (t *Tier) GetFullyQualifiedType() string {
 	return "v0.Tier"
 }

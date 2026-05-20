@@ -397,7 +397,7 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									),
 								}),
 								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
-								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedTypeName").Call(),
+								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
 								Line(),
 							).Op(";").Id("err").Op("!=").Nil().Block(
 								Id("log").Dot("Error").Call(
@@ -592,7 +592,7 @@ func operationCase(
 					),
 				}),
 				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
-				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedTypeName").Call(),
+				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
 				Line().Id("operationErr"),
 				Line().Op("&").Id("log"),
 				Line(),

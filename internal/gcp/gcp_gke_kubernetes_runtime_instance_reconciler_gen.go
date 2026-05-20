@@ -179,7 +179,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gcpGkeKubernetesRuntimeInstance.GetId(),
-						gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gcpGkeKubernetesRuntimeInstance.GetId(),
-						gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gcpGkeKubernetesRuntimeInstance.GetId(),
-						gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+						gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				gcpGkeKubernetesRuntimeInstance.GetId(),
-				gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedTypeName(),
+				gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful gcp gke kubernetes runtime instance reconciliation")
 			}

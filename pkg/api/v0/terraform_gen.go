@@ -74,8 +74,8 @@ func (td *TerraformDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (td *TerraformDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (td *TerraformDefinition) GetFullyQualifiedType() string {
 	return "v0.TerraformDefinition"
 }
 
@@ -139,8 +139,8 @@ func (ti *TerraformInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ti *TerraformInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ti *TerraformInstance) GetFullyQualifiedType() string {
 	return "v0.TerraformInstance"
 }
 
@@ -155,12 +155,12 @@ func (t *TerraformInstance) RelationshipTaggedForeignKeys() []RelationshipTagged
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "AwsProviderID",
 		ObjectID:     t.AwsProviderID,
-		ObjectType:   new(AwsProvider).GetFullyQualifiedTypeName(),
+		ObjectType:   new(AwsProvider).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "TerraformDefinitionID",
 		ObjectID:     t.TerraformDefinitionID,
-		ObjectType:   new(TerraformDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(TerraformDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

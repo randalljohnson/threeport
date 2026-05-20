@@ -198,7 +198,7 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 				// GetType method - bare TypeName, same shape for core
 				// and modules. For the API-namespace-qualified form
 				// (used as the AOR identity string) use
-				// GetFullyQualifiedTypeName instead
+				// GetFullyQualifiedType instead
 				f.Comment("GetType returns the object type.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
@@ -212,7 +212,7 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 				).Id("GetVersion").Params().String().Block(
 					Return(Lit(objCollection.Version)),
 				)
-				// GetFullyQualifiedTypeName method - returns
+				// GetFullyQualifiedType method - returns
 				// "<api-namespace>/<version>.<TypeName>" in module mode,
 				// "<version>.<TypeName>" in core mode. used as the
 				// identity string in AttachedObjectReference rows
@@ -225,10 +225,10 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 						apiObj.TypeName,
 					)
 				}
-				f.Comment("GetFullyQualifiedTypeName returns the API-namespace-qualified type name.")
+				f.Comment("GetFullyQualifiedType returns the API-namespace-qualified type name.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
-				).Id("GetFullyQualifiedTypeName").Params().String().Block(
+				).Id("GetFullyQualifiedType").Params().String().Block(
 					Return(Lit(fullyQualifiedTypeLiteral)),
 				)
 				// ScheduledForDeletion method
@@ -309,12 +309,12 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 								}
 								vg.Values(Dict{
 									Id("FieldName"): Lit(fk.fieldName),
-									// call GetFullyQualifiedTypeName on the target type
+									// call GetFullyQualifiedType on the target type
 									// so the call site reads as intent ("identify rows
 									// in the AOR table by qualified type") and the
 									// reader can hop to the method to see the literal
 									Id("ObjectType"): Id("new").Call(targetTypeRef).
-										Dot("GetFullyQualifiedTypeName").Call(),
+										Dot("GetFullyQualifiedType").Call(),
 									Id("Relationship"): relationshipQual,
 									Id("ObjectID"):     Id(receiver).Dot(fk.fieldName),
 								})

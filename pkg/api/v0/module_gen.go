@@ -78,8 +78,8 @@ func (ma *ModuleApi) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ma *ModuleApi) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ma *ModuleApi) GetFullyQualifiedType() string {
 	return "v0.ModuleApi"
 }
 
@@ -137,8 +137,8 @@ func (mar *ModuleApiRoute) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (mar *ModuleApiRoute) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mar *ModuleApiRoute) GetFullyQualifiedType() string {
 	return "v0.ModuleApiRoute"
 }
 
@@ -147,7 +147,7 @@ func (m *ModuleApiRoute) RelationshipTaggedForeignKeys() []RelationshipTaggedFor
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "ModuleApiID",
 		ObjectID:     m.ModuleApiID,
-		ObjectType:   new(ModuleApi).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ModuleApi).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -206,8 +206,8 @@ func (mc *ModuleController) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (mc *ModuleController) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mc *ModuleController) GetFullyQualifiedType() string {
 	return "v0.ModuleController"
 }
 
@@ -216,7 +216,7 @@ func (m *ModuleController) RelationshipTaggedForeignKeys() []RelationshipTaggedF
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "ModuleApiID",
 		ObjectID:     m.ModuleApiID,
-		ObjectType:   new(ModuleApi).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ModuleApi).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -275,8 +275,8 @@ func (mo *ModuleObject) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (mo *ModuleObject) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mo *ModuleObject) GetFullyQualifiedType() string {
 	return "v0.ModuleObject"
 }
 
@@ -285,12 +285,12 @@ func (m *ModuleObject) RelationshipTaggedForeignKeys() []RelationshipTaggedForei
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "ModuleApiID",
 		ObjectID:     m.ModuleApiID,
-		ObjectType:   new(ModuleApi).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ModuleApi).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "ModuleControllerID",
 		ObjectID:     m.ModuleControllerID,
-		ObjectType:   new(ModuleController).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ModuleController).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

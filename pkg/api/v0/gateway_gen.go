@@ -85,8 +85,8 @@ func (dnd *DomainNameDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (dnd *DomainNameDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (dnd *DomainNameDefinition) GetFullyQualifiedType() string {
 	return "v0.DomainNameDefinition"
 }
 
@@ -144,8 +144,8 @@ func (dni *DomainNameInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (dni *DomainNameInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (dni *DomainNameInstance) GetFullyQualifiedType() string {
 	return "v0.DomainNameInstance"
 }
 
@@ -160,17 +160,17 @@ func (d *DomainNameInstance) RelationshipTaggedForeignKeys() []RelationshipTagge
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "DomainNameDefinitionID",
 		ObjectID:     d.DomainNameDefinitionID,
-		ObjectType:   new(DomainNameDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(DomainNameDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     d.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     d.WorkloadInstanceID,
-		ObjectType:   new(WorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(WorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -229,8 +229,8 @@ func (gd *GatewayDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (gd *GatewayDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (gd *GatewayDefinition) GetFullyQualifiedType() string {
 	return "v0.GatewayDefinition"
 }
 
@@ -294,8 +294,8 @@ func (ghp *GatewayHttpPort) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ghp *GatewayHttpPort) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ghp *GatewayHttpPort) GetFullyQualifiedType() string {
 	return "v0.GatewayHttpPort"
 }
 
@@ -353,8 +353,8 @@ func (gi *GatewayInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (gi *GatewayInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (gi *GatewayInstance) GetFullyQualifiedType() string {
 	return "v0.GatewayInstance"
 }
 
@@ -369,17 +369,17 @@ func (g *GatewayInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedFo
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GatewayDefinitionID",
 		ObjectID:     g.GatewayDefinitionID,
-		ObjectType:   new(GatewayDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(GatewayDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     g.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "WorkloadInstanceID",
 		ObjectID:     g.WorkloadInstanceID,
-		ObjectType:   new(WorkloadInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(WorkloadInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -438,7 +438,7 @@ func (gtp *GatewayTcpPort) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (gtp *GatewayTcpPort) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (gtp *GatewayTcpPort) GetFullyQualifiedType() string {
 	return "v0.GatewayTcpPort"
 }

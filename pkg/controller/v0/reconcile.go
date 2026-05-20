@@ -82,7 +82,7 @@ type Reconciler struct {
 
 // Recorder is an interface for recording events. The objectType
 // string passed to either method must be the API-namespace-qualified
-// form returned by GetFullyQualifiedTypeName.
+// form returned by GetFullyQualifiedType.
 type Recorder interface {
 	RecordEvent(*v0.Event, uint, string) error
 	HandleEventOverride(*v0.Event, uint, string, error, *logr.Logger)

@@ -77,8 +77,8 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
 	return "v0.GcpGkeKubernetesRuntimeDefinition"
 }
 
@@ -87,7 +87,7 @@ func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []Re
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     g.KubernetesRuntimeDefinitionID,
-		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -146,8 +146,8 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ggkri *GcpGkeKubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ggkri *GcpGkeKubernetesRuntimeInstance) GetFullyQualifiedType() string {
 	return "v0.GcpGkeKubernetesRuntimeInstance"
 }
 
@@ -162,17 +162,17 @@ func (g *GcpGkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Rela
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
 		ObjectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
-		ObjectType:   new(GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "GcpProviderID",
 		ObjectID:     g.GcpProviderID,
-		ObjectType:   new(GcpProvider).GetFullyQualifiedTypeName(),
+		ObjectType:   new(GcpProvider).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     g.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -231,8 +231,8 @@ func (gp *GcpProvider) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (gp *GcpProvider) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (gp *GcpProvider) GetFullyQualifiedType() string {
 	return "v0.GcpProvider"
 }
 

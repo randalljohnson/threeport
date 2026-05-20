@@ -73,8 +73,8 @@ func (cpd *ControlPlaneDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (cpd *ControlPlaneDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (cpd *ControlPlaneDefinition) GetFullyQualifiedType() string {
 	return "v0.ControlPlaneDefinition"
 }
 
@@ -138,8 +138,8 @@ func (cpi *ControlPlaneInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (cpi *ControlPlaneInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (cpi *ControlPlaneInstance) GetFullyQualifiedType() string {
 	return "v0.ControlPlaneInstance"
 }
 
@@ -154,17 +154,17 @@ func (c *ControlPlaneInstance) RelationshipTaggedForeignKeys() []RelationshipTag
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "ControlPlaneDefinitionID",
 		ObjectID:     c.ControlPlaneDefinitionID,
-		ObjectType:   new(ControlPlaneDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ControlPlaneDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     c.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "ParentControlPlaneInstanceID",
 		ObjectID:     c.ParentControlPlaneInstanceID,
-		ObjectType:   new(ControlPlaneInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(ControlPlaneInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }

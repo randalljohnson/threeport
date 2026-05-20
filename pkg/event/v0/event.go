@@ -47,7 +47,7 @@ type EventRecorder struct {
 
 // RecordEvent records a new event with the given information. objectType
 // must be the API-namespace-qualified form returned by
-// GetFullyQualifiedTypeName ("<version>.<TypeName>" for core,
+// GetFullyQualifiedType ("<version>.<TypeName>" for core,
 // "<api-namespace>/<version>.<TypeName>" for modules).
 func (r *EventRecorder) RecordEvent(
 	event *api.Event,
@@ -122,7 +122,7 @@ func (r *EventRecorder) RecordEvent(
 // unless the provided error is an ErrWithEvent,
 // in which case it records the event provided.
 // objectType must be the qualified form returned by
-// GetFullyQualifiedTypeName (see RecordEvent).
+// GetFullyQualifiedType (see RecordEvent).
 func (r *EventRecorder) HandleEventOverride(
 	event *api.Event,
 	objectId uint,

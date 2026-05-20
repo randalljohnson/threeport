@@ -77,8 +77,8 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ookrd *OciOkeKubernetesRuntimeDefinition) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ookrd *OciOkeKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
 	return "v0.OciOkeKubernetesRuntimeDefinition"
 }
 
@@ -87,7 +87,7 @@ func (o *OciOkeKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []Re
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeDefinitionID",
 		ObjectID:     o.KubernetesRuntimeDefinitionID,
-		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipMarries,
 	}}
 }
@@ -146,8 +146,8 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (ookri *OciOkeKubernetesRuntimeInstance) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ookri *OciOkeKubernetesRuntimeInstance) GetFullyQualifiedType() string {
 	return "v0.OciOkeKubernetesRuntimeInstance"
 }
 
@@ -162,17 +162,17 @@ func (o *OciOkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Rela
 	return []RelationshipTaggedForeignKey{{
 		FieldName:    "KubernetesRuntimeInstanceID",
 		ObjectID:     o.KubernetesRuntimeInstanceID,
-		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedTypeName(),
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
 		Relationship: RelationshipMarries,
 	}, {
 		FieldName:    "OciOkeKubernetesRuntimeDefinitionID",
 		ObjectID:     o.OciOkeKubernetesRuntimeDefinitionID,
-		ObjectType:   new(OciOkeKubernetesRuntimeDefinition).GetFullyQualifiedTypeName(),
+		ObjectType:   new(OciOkeKubernetesRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "OciProviderID",
 		ObjectID:     o.OciProviderID,
-		ObjectType:   new(OciProvider).GetFullyQualifiedTypeName(),
+		ObjectType:   new(OciProvider).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
 }
@@ -231,8 +231,8 @@ func (op *OciProvider) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (op *OciProvider) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (op *OciProvider) GetFullyQualifiedType() string {
 	return "v0.OciProvider"
 }
 

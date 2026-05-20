@@ -179,7 +179,7 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						controlPlaneDefinition.GetId(),
-						controlPlaneDefinition.GetFullyQualifiedTypeName(),
+						controlPlaneDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						controlPlaneDefinition.GetId(),
-						controlPlaneDefinition.GetFullyQualifiedTypeName(),
+						controlPlaneDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						controlPlaneDefinition.GetId(),
-						controlPlaneDefinition.GetFullyQualifiedTypeName(),
+						controlPlaneDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				controlPlaneDefinition.GetId(),
-				controlPlaneDefinition.GetFullyQualifiedTypeName(),
+				controlPlaneDefinition.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful control plane definition reconciliation")
 			}

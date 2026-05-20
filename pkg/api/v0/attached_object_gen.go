@@ -69,7 +69,7 @@ func (aor *AttachedObjectReference) GetVersion() string {
 	return "v0"
 }
 
-// GetFullyQualifiedTypeName returns the API-namespace-qualified type name.
-func (aor *AttachedObjectReference) GetFullyQualifiedTypeName() string {
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (aor *AttachedObjectReference) GetFullyQualifiedType() string {
 	return "v0.AttachedObjectReference"
 }

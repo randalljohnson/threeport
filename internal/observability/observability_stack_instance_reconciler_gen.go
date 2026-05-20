@@ -179,7 +179,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						observabilityStackInstance.GetId(),
-						observabilityStackInstance.GetFullyQualifiedTypeName(),
+						observabilityStackInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						observabilityStackInstance.GetId(),
-						observabilityStackInstance.GetFullyQualifiedTypeName(),
+						observabilityStackInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						observabilityStackInstance.GetId(),
-						observabilityStackInstance.GetFullyQualifiedTypeName(),
+						observabilityStackInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				observabilityStackInstance.GetId(),
-				observabilityStackInstance.GetFullyQualifiedTypeName(),
+				observabilityStackInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful observability stack instance reconciliation")
 			}

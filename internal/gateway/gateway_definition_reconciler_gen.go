@@ -179,7 +179,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayDefinition.GetId(),
-						gatewayDefinition.GetFullyQualifiedTypeName(),
+						gatewayDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -226,7 +226,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayDefinition.GetId(),
-						gatewayDefinition.GetFullyQualifiedTypeName(),
+						gatewayDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -273,7 +273,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayDefinition.GetId(),
-						gatewayDefinition.GetFullyQualifiedTypeName(),
+						gatewayDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -379,7 +379,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				gatewayDefinition.GetId(),
-				gatewayDefinition.GetFullyQualifiedTypeName(),
+				gatewayDefinition.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful gateway definition reconciliation")
 			}

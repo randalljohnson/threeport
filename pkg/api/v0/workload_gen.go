@@ -272,16 +272,6 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
 }
 
-// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceDefinition.
-func (w *WorkloadResourceDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
-	return []RelationshipTaggedForeignKey{{
-		FieldName:    "WorkloadDefinitionID",
-		ObjectID:     w.WorkloadDefinitionID,
-		ObjectType:   util.ObjectTypeName(WorkloadDefinition{}),
-		Relationship: RelationshipRequires,
-	}}
-}
-
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -334,14 +324,4 @@ func (wri *WorkloadResourceInstance) GetType() string {
 // GetVersion returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
-}
-
-// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on WorkloadResourceInstance.
-func (w *WorkloadResourceInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
-	return []RelationshipTaggedForeignKey{{
-		FieldName:    "WorkloadInstanceID",
-		ObjectID:     w.WorkloadInstanceID,
-		ObjectType:   util.ObjectTypeName(WorkloadInstance{}),
-		Relationship: RelationshipRequires,
-	}}
 }

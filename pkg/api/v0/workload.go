@@ -35,7 +35,7 @@ type WorkloadResourceDefinition struct {
 	JSONDefinition *datatypes.JSON `json:"JSONDefinition,omitempty" gorm:"not null" validate:"required"`
 
 	// The workload definition this resource belongs to.
-	WorkloadDefinitionID *uint `json:"WorkloadDefinitionID,omitempty" query:"workloaddefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	WorkloadDefinitionID *uint `json:"WorkloadDefinitionID,omitempty" query:"workloaddefinitionid" gorm:"not null" validate:"required"`
 }
 
 // WorkloadInstance is a deployed instance of a workload.
@@ -72,7 +72,7 @@ type WorkloadResourceInstance struct {
 	JSONDefinition *datatypes.JSON `json:"JSONDefinition,omitempty" gorm:"not null" validate:"required"`
 
 	// The workload instance this resource belongs to.
-	WorkloadInstanceID *uint `json:"WorkloadInstanceID,omitempty" query:"workloadinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
+	WorkloadInstanceID *uint `json:"WorkloadInstanceID,omitempty" query:"workloadinstanceid" gorm:"not null" validate:"required"`
 
 	// The most recent operation performed on a Kubernete resource in the
 	// kubernetes runtime.

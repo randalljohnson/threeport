@@ -390,7 +390,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
 									)
 								}
-								emitBlockedDeleteCheck(h, gen.Module)
+								emitBlockedDeleteCheck(h, gen.Module, blockedDeleteCheckBackstop)
 								h.Comment("check if this is a custom HTTP error with specific status code")
 								h.Var().Id("httpErr").Op("*").Qual(
 									"github.com/threeport/threeport/pkg/util/v0",
@@ -440,7 +440,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
 							)
 						}
-						emitBlockedDeleteCheck(h, gen.Module)
+						emitBlockedDeleteCheck(h, gen.Module, blockedDeleteCheckSole)
 						h.Comment("check if this is a custom HTTP error with specific status code")
 						h.Var().Id("httpErr").Op("*").Qual(
 							"github.com/threeport/threeport/pkg/util/v0",
@@ -2225,10 +2225,26 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	return nil
 }
 
+// blockedDeleteCheckRole distinguishes the two contexts in which the
+// BlockedDeleteError catch is emitted: the sole blocking check for
+// non-reconciled types, or the backstop after the synchronous pre-check
+// for reconciled types.
+type blockedDeleteCheckRole int
+
+const (
+	blockedDeleteCheckSole blockedDeleteCheckRole = iota
+	blockedDeleteCheckBackstop
+)
+
 // emitBlockedDeleteCheck appends the delete-blocked branch that turns a
 // typed signal from the BeforeDelete hook into a 409 listing blockers.
-func emitBlockedDeleteCheck(h *Group, module bool) {
-	h.Comment("check if blocked by attached object references")
+func emitBlockedDeleteCheck(h *Group, module bool, role blockedDeleteCheckRole) {
+	switch role {
+	case blockedDeleteCheckSole:
+		h.Comment("surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types")
+	case blockedDeleteCheckBackstop:
+		h.Comment("surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check")
+	}
 	h.Var().Id("blockedErr").Op("*").Qual(
 		"github.com/threeport/threeport/pkg/api/v0",
 		"BlockedDeleteError",
@@ -2284,7 +2300,7 @@ func emitPreCheckBlockingRefs(s *Statement, objVar string, module bool) {
 		})
 	}
 
-	s.Comment("pre-check: refuse synchronously when blocked by attached object references")
+	s.Comment("pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler")
 	s.Line()
 	s.If(
 		Id("checkErr").Op(":=").Qual(

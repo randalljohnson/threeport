@@ -474,7 +474,7 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &loggingDefinition); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -526,7 +526,7 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&loggingDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -1011,7 +1011,7 @@ func (h Handler) DeleteLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &loggingInstance); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -1063,7 +1063,7 @@ func (h Handler) DeleteLoggingInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&loggingInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -1554,7 +1554,7 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &metricsDefinition); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -1606,7 +1606,7 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&metricsDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -2091,7 +2091,7 @@ func (h Handler) DeleteMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &metricsInstance); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -2143,7 +2143,7 @@ func (h Handler) DeleteMetricsInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&metricsInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -2634,7 +2634,7 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &observabilityDashboardDefinition); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -2686,7 +2686,7 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityDashboardDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -3171,7 +3171,7 @@ func (h Handler) DeleteObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &observabilityDashboardInstance); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -3223,7 +3223,7 @@ func (h Handler) DeleteObservabilityDashboardInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityDashboardInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -3714,7 +3714,7 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &observabilityStackDefinition); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -3766,7 +3766,7 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityStackDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -4251,7 +4251,7 @@ func (h Handler) DeleteObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &observabilityStackInstance); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -4303,7 +4303,7 @@ func (h Handler) DeleteObservabilityStackInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&observabilityStackInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(

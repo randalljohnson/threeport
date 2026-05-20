@@ -439,7 +439,7 @@ func (h Handler) DeleteProfile(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&profile); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-		// check if blocked by attached object references
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(result.Error, &blockedErr) {
 			return RespondBlockedDelete(
@@ -897,7 +897,7 @@ func (h Handler) DeleteTier(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&tier); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-		// check if blocked by attached object references
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(result.Error, &blockedErr) {
 			return RespondBlockedDelete(

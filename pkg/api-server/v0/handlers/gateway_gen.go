@@ -449,7 +449,7 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&domainNameDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-		// check if blocked by attached object references
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(result.Error, &blockedErr) {
 			return RespondBlockedDelete(
@@ -932,7 +932,7 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &domainNameInstance); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -984,7 +984,7 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&domainNameInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -1475,7 +1475,7 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &gatewayDefinition); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -1527,7 +1527,7 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&gatewayDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -1971,7 +1971,7 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&gatewayHttpPort); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-		// check if blocked by attached object references
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(result.Error, &blockedErr) {
 			return RespondBlockedDelete(
@@ -2454,7 +2454,7 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &gatewayInstance); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -2506,7 +2506,7 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&gatewayInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -2950,7 +2950,7 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 	// delete object
 	if result := h.RequestDB(c).Delete(&gatewayTcpPort); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-		// check if blocked by attached object references
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(result.Error, &blockedErr) {
 			return RespondBlockedDelete(

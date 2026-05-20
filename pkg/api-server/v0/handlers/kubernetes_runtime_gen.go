@@ -474,7 +474,7 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &kubernetesRuntimeDefinition); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -526,7 +526,7 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&kubernetesRuntimeDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(
@@ -1011,7 +1011,7 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// pre-check: refuse synchronously when blocked by attached object references
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
 	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &kubernetesRuntimeInstance); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
 		if errors.As(checkErr, &blockedErr) {
@@ -1063,7 +1063,7 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 			// from DB
 			if result := h.RequestDB(c).Delete(&kubernetesRuntimeInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// check if blocked by attached object references
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
 				if errors.As(result.Error, &blockedErr) {
 					return RespondBlockedDelete(

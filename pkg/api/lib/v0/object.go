@@ -26,6 +26,16 @@ type ReconciledThreeportApiObject interface {
 	ScheduledForDeletion() *time.Time
 }
 
+// NewCleanSession returns a session on the existing transaction that
+// does not inherit clauses (WHERE filters, model targets, etc.) from
+// the parent statement. Use this from GORM hooks when issuing a query
+// that is unrelated to the operation that triggered the hook - without
+// it the surrounding statement's clauses would silently apply to the
+// new query.
+func NewCleanSession(tx *gorm.DB) *gorm.DB {
+	return tx.Session(&gorm.Session{NewDB: true})
+}
+
 // LoadFreshFromDB returns a newly-allocated instance of obj's concrete
 // type populated from the database by ID. The original obj is not
 // mutated. Use this from GORM hooks that need to read post-write field
@@ -35,12 +45,8 @@ func LoadFreshFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error)
 	// the caller's obj stays untouched while loaded values land here
 	updatedObj := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
 
-	// open a new session; the inbound tx may carry filter clauses from
-	// the surrounding hook's statement that would taint an unrelated read
-	cleanSession := tx.Session(&gorm.Session{NewDB: true})
-
 	// read the row by primary key into updatedObj
-	if err := cleanSession.First(updatedObj, id).Error; err != nil {
+	if err := NewCleanSession(tx).First(updatedObj, id).Error; err != nil {
 		return nil, fmt.Errorf(
 			"failed to reload %s/%d from database: %w",
 			util.ObjectTypeName(obj), id, err,

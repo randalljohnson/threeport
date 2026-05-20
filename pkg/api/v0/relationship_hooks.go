@@ -188,16 +188,27 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	// tagged foreign key, a reference exists iff updatedObj has it set
 	for _, updatedObjForeignKey := range relationshipTaggedForeignKeysFor(updatedObj) {
 
+		// the where clause matches the unique-by-trio shape of the AOR
+		// table: object_type identifies the base type the foreign key
+		// points at; attached_object_type and attached_object_id pin this
+		// specific row as the attacher. Together they isolate the one
+		// reference (if any) that represents this foreign key's current
+		// state in the table
+		whereClause := "object_type = ? AND attached_object_type = ? AND attached_object_id = ?"
+		whereArgs := []interface{}{
+			updatedObjForeignKey.ObjectType, objType, *objID,
+		}
+
 		// count existing references for this base/attacher pair to
-		// decide whether to insert, delete, or leave the table alone
+		// decide whether to insert, delete, or leave the table alone.
+		// each query gets its own clean session so an earlier chain's
+		// accumulated clauses don't bleed into a later one
 		var count int64
-		if err := tx.Session(&gorm.Session{NewDB: true}).
+		err := lib.NewCleanSession(tx).
 			Model(&AttachedObjectReference{}).
-			Where(
-				"object_type = ? AND attached_object_type = ? AND attached_object_id = ?",
-				updatedObjForeignKey.ObjectType, objType, *objID,
-			).
-			Count(&count).Error; err != nil {
+			Where(whereClause, whereArgs...).
+			Count(&count).Error
+		if err != nil {
 			return fmt.Errorf(
 				"failed to count attached object references for %s.%s: %w",
 				objType, updatedObjForeignKey.FieldName, err,
@@ -208,12 +219,10 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 
 		// foreign key cleared, stale reference remains: delete it
 		case updatedObjForeignKey.ObjectID == nil && count > 0:
-			if err := tx.Session(&gorm.Session{NewDB: true}).
-				Where(
-					"object_type = ? AND attached_object_type = ? AND attached_object_id = ?",
-					updatedObjForeignKey.ObjectType, objType, *objID,
-				).
-				Delete(&AttachedObjectReference{}).Error; err != nil {
+			err := lib.NewCleanSession(tx).
+				Where(whereClause, whereArgs...).
+				Delete(&AttachedObjectReference{}).Error
+			if err != nil {
 				return fmt.Errorf(
 					"failed to remove attached object reference for %s.%s: %w",
 					objType, updatedObjForeignKey.FieldName, err,

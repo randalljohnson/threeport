@@ -185,7 +185,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	}
 
 	// reconcile reference rows against the post-update state: for each
-	// tagged foreign key, a reference exists iff updatedObj has it set
+	// tagged foreign key, a reference exists if updatedObj has it set
 	for _, updatedObjForeignKey := range relationshipTaggedForeignKeysFor(updatedObj) {
 
 		// the where clause matches the unique-by-trio shape of the AOR

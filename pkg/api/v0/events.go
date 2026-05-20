@@ -35,8 +35,23 @@ type Event struct {
 	// Name of the controller that emitted this Event.
 	ReportingController *string `json:"ReportingController,omitempty" query:"reportingcontroller" validate:"required"`
 
-	// Enrichment fields populated when events are loaded with their
-	// attached object reference. gorm:"-" keeps them out of normal CRUD.
+	// Enrichment fields giving each event context about its subject -
+	// what the event is about. Every Event row has a matching
+	// AttachedObjectReference where this event is the attached side
+	// and the subject object is the base side. Callers that want
+	// these fields populated read events via
+	// GetEventsJoinAttachedObjectReferenceByQueryString, which
+	// projects the base object's type, ID, and name into the response.
+	// gorm:"-" keeps them out of normal CRUD writes - they're
+	// populated on read, never stored on the Event row.
+	//
+	// For an event describing a script failure on a
+	// MachineRuntimeInstance named "some-host" (id 42), these hold:
+	//   ObjectType = "v0.MachineRuntimeInstance"
+	//   ObjectID   = 42
+	//   ObjectName = "some-host"
+	// A consumer like `tptctl get events` uses them to render
+	// "machine-runtime-instance/some-host" in the OBJECT column.
 	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`
 	ObjectID   *uint   `json:"ObjectID,omitempty" gorm:"-"`
 	ObjectName *string `json:"ObjectName,omitempty" gorm:"-"`

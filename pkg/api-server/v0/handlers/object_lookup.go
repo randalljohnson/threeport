@@ -234,30 +234,67 @@ func resolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
 
 // parseQualifiedType splits "<namespace>/<version>.<TypeName>" into its
 // three parts. Returns ok=false for unqualified strings (core types).
+//
+// For "example.com/v0.Widget":
+//   namespace = "example.com", version = "v0", typeName = "Widget", ok = true
 func parseQualifiedType(objectType string) (namespace, version, typeName string, ok bool) {
+	// find the slash that separates the namespace from the rest.
+	// for "example.com/v0.Widget" this is at index 11
 	slashIdx := strings.Index(objectType, "/")
+
+	// reject malformed inputs: no slash, slash at position 0 ("/foo"),
+	// or slash as the last char ("foo/"). either side of the slash
+	// must be non-empty
 	if slashIdx < 1 || slashIdx == len(objectType)-1 {
 		return "", "", "", false
 	}
+
+	// everything before the slash is the api namespace.
+	// for "example.com/v0.Widget": namespace = "example.com"
 	namespace = objectType[:slashIdx]
+
+	// everything after the slash is "<version>.<TypeName>".
+	// for "example.com/v0.Widget": rest = "v0.Widget"
 	rest := objectType[slashIdx+1:]
+
+	// find the dot that separates the version from the type name.
+	// for rest = "v0.Widget" this is at index 2
 	dotIdx := strings.Index(rest, ".")
+
+	// reject malformed inputs: no dot, dot at position 0 (".Widget"),
+	// or dot as the last char ("v0."). either side of the dot must
+	// be non-empty
 	if dotIdx < 1 || dotIdx == len(rest)-1 {
 		return "", "", "", false
 	}
+
+	// split rest into version and type name on the dot.
+	// for "v0.Widget": version = "v0", typeName = "Widget"
 	return namespace, rest[:dotIdx], rest[dotIdx+1:], true
 }
 
 // getNamesFromModule fetches each id's Name from the module API, skipping
 // ids whose lookups fail.
 func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) (map[uint]string, error) {
+	// preallocate the result map at the upper bound; ids that fail
+	// lookup simply won't appear in it
 	out := make(map[uint]string, len(ids))
+
+	// when the caller wants soft-deleted rows too, ask the module
+	// to bypass its delete filter via the shared query param
 	suffix := ""
 	if includeDeleted {
 		suffix = "?" + apiserver_lib.QueryParamIncludeDeleted + "=true"
 	}
+
+	// one GET per id; the module API doesn't have a batch by-ids
+	// endpoint, so this is a fan-out of N requests
 	for _, id := range ids {
+		// build the per-id URL.
+		// e.g. "http://widget-api.threeport-control-plane:80/v0/widgets/42"
 		url := fmt.Sprintf("%s%s/%d%s", endpoint, path, id, suffix)
+
+		// dispatch via the shared module HTTP client
 		resp, err := client_lib.GetResponse(
 			moduleHTTPClient,
 			url,
@@ -266,13 +303,23 @@ func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) 
 			map[string]string{},
 			http.StatusOK,
 		)
+
+		// transport or non-200 error - skip this id rather than
+		// failing the whole batch; the caller renders id-only for
+		// missing names
 		if err != nil {
 			continue
 		}
+
+		// the module response wraps the row in a Data array; pluck
+		// the first (and typically only) row as a generic map
 		row, ok := getFirstRow(resp)
 		if !ok {
 			continue
 		}
+
+		// only record entries that actually have a non-empty Name;
+		// otherwise drop and let the caller fall back to id-only
 		if name, ok := row["Name"].(string); ok && name != "" {
 			out[id] = name
 		}
@@ -283,7 +330,11 @@ func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) 
 // getIDFromModuleByName issues a name-filtered GET to the module API and
 // returns the first matching row's ID.
 func getIDFromModuleByName(endpoint, path, objectType, name string) (uint, error) {
+	// build the name-filtered list URL.
+	// e.g. "http://widget-api.threeport-control-plane:80/v0/widgets?name=my-widget"
 	url := fmt.Sprintf("%s%s?name=%s", endpoint, path, name)
+
+	// dispatch via the shared module HTTP client
 	resp, err := client_lib.GetResponse(
 		moduleHTTPClient,
 		url,
@@ -295,10 +346,18 @@ func getIDFromModuleByName(endpoint, path, objectType, name string) (uint, error
 	if err != nil {
 		return 0, fmt.Errorf("module lookup of %s by name failed: %w", objectType, err)
 	}
+
+	// the module response wraps rows in a Data array; get the first
+	// (and typically only) one as a generic map
 	row, ok := getFirstRow(resp)
 	if !ok {
 		return 0, fmt.Errorf("no %s found with name %q in module response", objectType, name)
 	}
+
+	// extract the ID field. JSON unmarshalling into interface{} gives
+	// us float64 by default; if the response was decoded with
+	// json.Number (UseNumber), we get json.Number instead. handle both
+	// so we don't depend on the caller's decoder settings
 	switch v := row["ID"].(type) {
 	case float64:
 		return uint(v), nil
@@ -309,6 +368,9 @@ func getIDFromModuleByName(endpoint, path, objectType, name string) (uint, error
 		}
 		return uint(i), nil
 	}
+
+	// row exists but the ID field is missing or has an unexpected type;
+	// treat as "not found" rather than crashing the response
 	return 0, fmt.Errorf("no %s found with name %q in module response", objectType, name)
 }
 

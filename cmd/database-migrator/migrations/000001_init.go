@@ -28,7 +28,7 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 	// set CockroachDB row-level TTL on event tables so old rows are GC'd
 	// automatically. Events outlive the objects they reference (audit
 	// trail), but accumulating forever is not desired.
-	for _, table := range []string{"v0_events", "v0_workload_events"} {
+	for _, table := range []string{"v0_events"} {
 		stmt := fmt.Sprintf(
 			"ALTER TABLE %s SET (ttl_expire_after = '7 days', ttl_job_cron = '@hourly')",
 			table,

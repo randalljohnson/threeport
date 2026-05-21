@@ -41,14 +41,17 @@ type AttachedObjectReference struct {
 	// Object* fields name the "that" (anchor) side. The naming is
 	// directional because the attached object is the side that can
 	// determine the base object's lifecycle, depending on the type of
-	// relationship (see below).
+	// relationship (see below). Stored as a fully qualified type name
+	// in the form "<api-namespace>/<version>.<TypeName>".
 	ObjectType *string `json:"ObjectType,omitempty" query:"objecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries';uniqueIndex:idx_aor_owns_base,where:relationship = 'owns'" validate:"required"`
 
 	// ObjectID is the database ID of the base object.
 	ObjectID *uint `json:"ObjectID,omitempty" query:"objectid" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_base,where:relationship = 'marries';uniqueIndex:idx_aor_owns_base,where:relationship = 'owns'" validate:"required"`
 
 	// AttachedObjectType is the kind of the object doing the attaching;
-	// the side that can determine the base object's lifecycle.
+	// the side that can determine the base object's lifecycle. Stored
+	// as a fully qualified type name in the form
+	// "<api-namespace>/<version>.<TypeName>".
 	AttachedObjectType *string `json:"AttachedObjectType,omitempty" query:"attachedobjecttype" gorm:"not null;uniqueIndex:idx_attached_object_unique;uniqueIndex:idx_aor_marries_attached,where:relationship = 'marries'" validate:"required"`
 
 	// AttachedObjectID is the database ID of the attaching object.

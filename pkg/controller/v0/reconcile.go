@@ -80,12 +80,12 @@ type Reconciler struct {
 	EventsRecorder Recorder
 }
 
-// Recorder is an interface for recording events. The objectType
-// string passed to either method must be the API-namespace-qualified
+// Recorder is an interface for recording events. The
+// fullyQualifiedObjectType string passed to either method must be the
 // form returned by GetFullyQualifiedType.
 type Recorder interface {
-	RecordEvent(*v0.Event, uint, string) error
-	HandleEventOverride(*v0.Event, uint, string, error, *logr.Logger)
+	RecordEvent(event *v0.Event, objectId uint, fullyQualifiedObjectType string) error
+	HandleEventOverride(event *v0.Event, objectId uint, fullyQualifiedObjectType string, err error, log *logr.Logger)
 }
 
 // PullMessage checks the queue for a message and returns it if there was a

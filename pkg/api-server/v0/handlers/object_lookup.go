@@ -107,7 +107,7 @@ func GetObjectIDByName(db *gorm.DB, objectType, name string) (uint, error) {
 //
 // For an input of "example.com/v0.Widget", returns:
 //   endpoint = "http://widget-api.threeport-control-plane:80"
-//   path     = "/v0/widgets"
+//   path     = "/example-com/v0/widgets"
 func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, error) {
 	// fresh session to avoid inheriting WHERE clauses from the caller's db
 	db = db.Session(&gorm.Session{NewDB: true})
@@ -122,54 +122,56 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	// start from the routes table; we'll JOIN outward to filter by
 	// module, type, and version.
 	//   rows so far: every row in v0_module_api_routes
-	//   ex. route(id=1, path="/v0/widgets", module_api_id=5)
-	//       route(id=2, path="/v0/widgets/versions", module_api_id=5)
-	//       route(id=3, path="/internal/healthz", module_api_id=1)
+	//   ex. route(id=1, path="/example-com/v0/widgets",       module_api_id=5)
+	//       route(id=2, path="/example-com/widgets/versions", module_api_id=5)
+	//       ...rows from other modules registered in this control plane
 	q := db.Table("v0_module_api_routes AS route")
 
 	// pull in the parent ModuleApi row so its endpoint and namespace
 	// are queryable.
 	//   rows so far: every (route, module_api) pair
-	//   ex. (route.path="/v0/widgets",
+	//   ex. (route.path="/example-com/v0/widgets",
 	//        module_api.api_namespace="example.com",
 	//        module_api.endpoint="http://widget-api.threeport-control-plane:80",
 	//        module_api.core=false)
-	//       (route.path="/internal/healthz",
-	//        module_api.api_namespace="threeport.io",
-	//        module_api.core=true)
+	//       (route.path="/example-com/widgets/versions",
+	//        module_api.api_namespace="example.com",
+	//        module_api.endpoint="http://widget-api.threeport-control-plane:80",
+	//        module_api.core=false)
+	//       ...similarly for any other registered modules
 	q = q.Joins("JOIN v0_module_apis AS module_api ON module_api.id = route.module_api_id")
 
 	// keep only routes owned by the named non-core module
 	// (core=false skips the threeport core API itself).
 	//   rows so far: (route, module_api) pairs for "example.com" only
-	//   ex. (route.path="/v0/widgets",
+	//   ex. (route.path="/example-com/v0/widgets",
 	//        module_api.endpoint="http://widget-api.threeport-control-plane:80")
-	//       (route.path="/v0/widgets/versions",
+	//       (route.path="/example-com/widgets/versions",
 	//        module_api.endpoint="http://widget-api.threeport-control-plane:80")
 	q = q.Where("module_api.api_namespace = ? AND module_api.core = false", namespace)
 
 	// follow the ModuleApiRoute↔ModuleObject junction; the m2m is needed
 	// because one route can in principle serve multiple registered types.
 	//   rows so far: (route, module_api, link) triples for "example.com"
-	//   ex. (route.path="/v0/widgets",          link.module_object_id=42)
-	//       (route.path="/v0/widgets/versions", link.module_object_id=42)
+	//   ex. (route.path="/example-com/v0/widgets",       link.module_object_id=42)
+	//       (route.path="/example-com/widgets/versions", link.module_object_id=42)
 	q = q.Joins("JOIN v0_module_api_routes_module_objects AS link ON link.module_api_route_id = route.id")
 
 	// land on the registered type's row, where its name and version live.
 	//   rows so far: (route, module_api, link, object) for every type on
 	//   "example.com"'s routes
-	//   ex. (route.path="/v0/widgets",
+	//   ex. (route.path="/example-com/v0/widgets",
 	//        object.name="Widget", object.version="v0")
-	//       (route.path="/v0/widgets/versions",
+	//       (route.path="/example-com/widgets/versions",
 	//        object.name="Widget", object.version="v0")
 	q = q.Joins("JOIN v0_module_objects AS object ON object.id = link.module_object_id")
 
 	// keep only the specific (name, version) the caller asked for.
 	//   rows so far: routes serving "example.com"'s "Widget" at "v0"
 	//   (typically 2: the CRUD path and the /versions discovery path)
-	//   ex. (route.path="/v0/widgets",
+	//   ex. (route.path="/example-com/v0/widgets",
 	//        object.name="Widget", object.version="v0")
-	//       (route.path="/v0/widgets/versions",
+	//       (route.path="/example-com/widgets/versions",
 	//        object.name="Widget", object.version="v0")
 	q = q.Where("object.name = ? AND object.version = ?", typeName, version)
 
@@ -177,7 +179,7 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	// discovery path. This query wants the CRUD endpoint, so exclude the
 	// discovery one by path suffix.
 	//   rows so far: 1 - the CRUD route for "example.com/v0.Widget"
-	//   ex. (route.path="/v0/widgets",
+	//   ex. (route.path="/example-com/v0/widgets",
 	//        module_api.endpoint="http://widget-api.threeport-control-plane:80")
 	q = q.Where("route.path NOT LIKE ?", "%/versions")
 
@@ -204,13 +206,31 @@ func resolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
 	var rows []row
 
 	// start from the registered objects table; JOIN outward to get the
-	// namespace each registration belongs to
+	// namespace each registration belongs to.
+	//   rows so far: every row in v0_module_objects
+	//   ex. object(name="Widget",  version="v0", module_api_id=5)
+	//       object(name="Gadget",  version="v0", module_api_id=5)
+	//       ...rows from other modules registered in this control plane
 	q := db.Table("v0_module_objects AS object")
 
-	// pull in the parent ModuleApi row so its namespace is queryable
+	// pull in the parent ModuleApi row so its namespace is queryable.
+	//   rows so far: every (object, module_api) pair
+	//   ex. (object.name="Widget",
+	//        module_api.api_namespace="example.com",
+	//        module_api.core=false)
+	//       (object.name="Gadget",
+	//        module_api.api_namespace="example.com",
+	//        module_api.core=false)
+	//       ...similarly for any other registered modules
 	q = q.Joins("JOIN v0_module_apis AS module_api ON module_api.id = object.module_api_id")
 
 	// keep only registrations of the bare kind, owned by non-core modules
+	// (core=false skips the threeport core API itself).
+	//   rows so far: (object, module_api) pairs for "Widget" only
+	//   ex. (object.name="Widget", object.version="v0",
+	//        module_api.api_namespace="example.com")
+	//       (object.name="Widget", object.version="v1",
+	//        module_api.api_namespace="example.com")
 	q = q.Where("object.name = ? AND module_api.core = false", bareKind)
 
 	if err := q.Select("module_api.api_namespace AS namespace, object.version AS version").Scan(&rows).Error; err != nil {

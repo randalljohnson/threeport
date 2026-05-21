@@ -32,6 +32,11 @@ import (
 func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	objectType := v0.ObjectTypeEvent
 
+	// FQTN of Event - written to AOR.AttachedObjectType when an event
+	// is recorded, and used here as the join key between v0_events
+	// and v0_attached_object_references
+	fullyQualifiedEventType := (&v0.Event{}).GetFullyQualifiedType()
+
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
@@ -103,13 +108,17 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		)
 	}
 
+	// pagination state is built up across the branches below and read
+	// into the final response Meta
 	pagination := new(apiserver_lib.Pagination)
 	pagination.Limit = pageParams.Limit
 
 	records := &[]v0.Event{}
 	var returnedCount int64
 
-	// apply the object id filter only when ids were supplied
+	// apply the object id filter only when ids were supplied; with no
+	// ids the caller wants every event row to come back through the
+	// JOIN to AOR
 	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
 		if len(ids) == 0 {
 			return query
@@ -119,25 +128,40 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 	switch {
 	case pageParams.QueryId == "":
-		// no query ID provided, so the client is not requesting a specific page of results
-		// count total number of objects
+		// first-page request: no QueryId means the client is asking
+		// for the start of a fresh result set, not a continuation
+
+		// count total number of objects so we can decide whether
+		// pagination is needed at all. The JOIN matches each event row
+		// to its AOR row via AOR.attached_object_type = <event FQTN>
+		// AND AOR.attached_object_id = v0_events.id (the polymorphic
+		// FK that AOR uses to point at any kind of attached object).
 		var totalCount int64
 		countQuery := h.DB.Model(&v0.Event{}).Joins(
-			"INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id",
+			`INNER JOIN v0_attached_object_references
+				ON v0_attached_object_references.attached_object_type = ?
+				AND v0_attached_object_references.attached_object_id = v0_events.id`,
+			fullyQualifiedEventType,
 		)
 		if result := applyObjectIdFilter(countQuery).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
-		// see if total count is greater than the limit
+		// total greater than the limit means the client will need to
+		// page through the result set; HasMore signals that
 		pagination.HasMore = totalCount > pagination.Limit
 
 		switch pagination.HasMore {
 		case false:
-			// if we don't have to paginate, return all records
+			// small result set: skip the materialized view machinery
+			// and return everything in one shot. Same JOIN shape as
+			// the count query above.
 			findQuery := h.DB.Order("ID asc").Joins(
-				"INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id",
+				`INNER JOIN v0_attached_object_references
+					ON v0_attached_object_references.attached_object_type = ?
+					AND v0_attached_object_references.attached_object_id = v0_events.id`,
+				fullyQualifiedEventType,
 			)
 			if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
@@ -146,9 +170,15 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			returnedCount = int64(len(*records))
 
 		case true:
+			// large result set: materialize the join so subsequent
+			// cursor-based page requests can scan a stable view
+			// instead of re-running the join each time
 			viewName, queryId := GenerateMaterializedViewName()
 
-			// create the materialized view; object id filter is included only when ids were supplied
+			// add the object id filter when ids were supplied so the
+			// materialized view only contains rows the client cares
+			// about. ids are formatted as quoted strings to keep the
+			// substitution simple even though they're uints
 			whereClause := ""
 			if len(ids) > 0 {
 				idStrs := make([]string, len(ids))
@@ -157,9 +187,22 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				}
 				whereClause = fmt.Sprintf(" WHERE v0_attached_object_references.object_id IN (%s)", strings.Join(idStrs, ", "))
 			}
-			createView := fmt.Sprintf(
-				"CREATE MATERIALIZED VIEW %s AS SELECT v0_events.* FROM v0_events INNER JOIN v0_attached_object_references ON v0_events.attached_object_reference_id = v0_attached_object_references.id%s ORDER BY v0_events.id ASC",
+
+			// build and execute the CREATE MATERIALIZED VIEW. Same
+			// JOIN shape as the count/find queries above, embedded
+			// inline since the view definition is raw SQL.
+			createView := fmt.Sprintf(`
+				CREATE MATERIALIZED VIEW %s AS
+				SELECT v0_events.*
+				FROM v0_events
+				INNER JOIN v0_attached_object_references
+					ON v0_attached_object_references.attached_object_type = '%s'
+					AND v0_attached_object_references.attached_object_id = v0_events.id
+				%s
+				ORDER BY v0_events.id ASC
+			`,
 				viewName,
+				fullyQualifiedEventType,
 				whereClause,
 			)
 			if result := h.DB.Exec(createView); result.Error != nil {
@@ -167,21 +210,27 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 
-			// create an ID index on the materialized view
+			// index on ID so subsequent cursor pagination (WHERE ID > cursor)
+			// doesn't full-scan the view
 			createIdIndex := fmt.Sprintf("CREATE INDEX ON %s (ID)", viewName)
 			if result := h.DB.Exec(createIdIndex); result.Error != nil {
 				h.Logger.Error("handler error: error creating ID index", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 
+			// expose the queryId so the client can request subsequent pages
 			pagination.QueryId = queryId
 
+			// fetch the first page off the new materialized view
 			query := fmt.Sprintf("SELECT * FROM %s ORDER BY ID ASC LIMIT %d", viewName, pageParams.Limit)
 			if result := h.DB.Raw(query).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
+
+			// set NextCursor to the last record's ID so the client's
+			// next request resumes at the row right after this one
 			if len(*records) > 0 {
 				pagination.NextCursor = *(*records)[len(*records)-1].ID
 			} else {
@@ -190,20 +239,29 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
-		// client provided a query ID but no cursor, so we cannot fetch the next page of results
+		// QueryId without Cursor is incoherent - we can't know which
+		// page to return without a cursor position
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
+		// continuation request: client gave a QueryId+Cursor pair, so
+		// resume from the materialized view we created in a prior call
+
+		// use the query ID to find the materialized view name (the view
+		// name is deterministic from the queryId)
 		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
 			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
 
+		// preserve the queryId across pages so the client keeps using
+		// the same view for subsequent continuation requests
 		pagination.QueryId = pageParams.QueryId
 
-		// fetch records from the materialized view based on cursor
+		// fetch the next page from the view starting just past the
+		// previous cursor. the ID index built at create-time keeps
+		// this O(limit) rather than O(view size)
 		recordsQuery := fmt.Sprintf("SELECT * FROM %s WHERE ID > %d ORDER BY ID ASC LIMIT %d", viewName, pageParams.Cursor, pageParams.Limit)
 		if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
 			h.Logger.Error("handler error: error finding records", zap.Error(result.Error))
@@ -212,14 +270,16 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 		returnedCount = int64(len(*records))
 
-		// set the next cursor
+		// set the next cursor to the last record's ID, or 0 when the
+		// page came back empty (caller can treat 0 as "no more")
 		if len(*records) > 0 {
 			pagination.NextCursor = *(*records)[len(*records)-1].ID
 		} else {
 			pagination.NextCursor = 0
 		}
 
-		// see if we fetched the last of the records
+		// returnedCount >= limit means there's likely another page; a
+		// smaller-than-limit page means we hit the tail
 		pagination.HasMore = returnedCount >= pagination.Limit
 	}
 
@@ -290,6 +350,7 @@ func filterQualifiedTypes(qualifiedTypes []string, namespace, version string) []
 // on each event from the joined attached object reference and a per-type
 // batched name lookup.
 func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger) error {
+	// no events to enrich - nothing to do
 	if len(events) == 0 {
 		return nil
 	}
@@ -299,26 +360,38 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 	eventIDs := make([]uint, 0, len(events))
 	seen := map[uint]struct{}{}
 	for _, e := range events {
+		// skip events without an ID (shouldn't happen for persisted rows
+		// but avoids a nil deref if it does)
 		if e.ID == nil {
 			continue
 		}
+		// dedupe: an event id may appear more than once in events when
+		// pagination retries land overlapping pages
 		if _, ok := seen[*e.ID]; ok {
 			continue
 		}
 		seen[*e.ID] = struct{}{}
 		eventIDs = append(eventIDs, *e.ID)
 	}
+
+	// nothing left after the ID dedupe pass; bail before issuing the AOR query
 	if len(eventIDs) == 0 {
 		return nil
 	}
 
-	eventType := util.TypeName(v0.Event{})
+	// load every AOR row where this event is the attached side. The
+	// (attached_object_type, attached_object_id) composite uniquely
+	// identifies one AOR per event id.
+	fullyQualifiedEventType := (&v0.Event{}).GetFullyQualifiedType()
 	var aors []v0.AttachedObjectReference
 	if err := db.
-		Where("attached_object_type = ? AND attached_object_id IN ?", eventType, eventIDs).
+		Where("attached_object_type = ? AND attached_object_id IN ?", fullyQualifiedEventType, eventIDs).
 		Find(&aors).Error; err != nil {
 		return fmt.Errorf("failed to load attached object references: %w", err)
 	}
+
+	// build an event-id -> AOR map so the per-event projection step
+	// below is O(1) per lookup
 	aorByEventID := make(map[uint]v0.AttachedObjectReference, len(aors))
 	for _, a := range aors {
 		if a.AttachedObjectID != nil {
@@ -326,6 +399,8 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		}
 	}
 
+	// project AOR.ObjectType and AOR.ObjectID onto each event row
+	// (these are gorm:"-" projection-only fields on the Event struct)
 	for i := range events {
 		e := &events[i]
 		if e.ID == nil {
@@ -333,12 +408,17 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		}
 		a, ok := aorByEventID[*e.ID]
 		if !ok {
+			// event has no matching AOR; leave the projection fields nil
+			// and let the response render id-only when shown
 			continue
 		}
 		e.ObjectType = a.ObjectType
 		e.ObjectID = a.ObjectID
 	}
 
+	// group object ids by their qualified type so the name lookup can
+	// fan out one batch per type (each batch hits either core SQL or
+	// one module HTTP endpoint - see GetObjectNames)
 	idsByType := map[string]map[uint]struct{}{}
 	for _, e := range events {
 		if e.ObjectType == nil || e.ObjectID == nil {
@@ -350,7 +430,9 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		idsByType[*e.ObjectType][*e.ObjectID] = struct{}{}
 	}
 
-	// dispatch each type to core sql or module http and collect resolved names
+	// dispatch each type to core sql or module http and collect
+	// resolved names; failures are logged so events still come back
+	// (rendered id-only) when name resolution fails for some types
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
 		ids := make([]uint, 0, len(idSet))
@@ -365,6 +447,8 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		namesByType[typ] = names
 	}
 
+	// project the resolved name onto each event row when available;
+	// events whose subject lookup failed keep ObjectName=nil
 	for i := range events {
 		e := &events[i]
 		if e.ObjectType == nil || e.ObjectID == nil {

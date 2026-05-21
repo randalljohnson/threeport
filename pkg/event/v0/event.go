@@ -45,14 +45,13 @@ type EventRecorder struct {
 	ReportingController string
 }
 
-// RecordEvent records a new event with the given information. objectType
-// must be the API-namespace-qualified form returned by
-// GetFullyQualifiedType (always "<api-namespace>/<version>.<TypeName>";
-// core types use "threeport.io" as the namespace).
+// RecordEvent records a new event for the given object.
+// fullyQualifiedObjectType must be the form returned by
+// GetFullyQualifiedType.
 func (r *EventRecorder) RecordEvent(
 	event *api.Event,
 	objectId uint,
-	objectType string,
+	fullyQualifiedObjectType string,
 ) error {
 	formatString := "reason=%s&note=%s&type=%s&objectid=%d"
 	formatArgs := []any{
@@ -84,15 +83,16 @@ func (r *EventRecorder) RecordEvent(
 		}
 
 		// link the event to its base object via an attached object
-		// reference; objectType is already the qualified form so it
-		// goes in as-is
+		// reference. Both type fields use the FQTN form for
+		// consistency with how relationship-hook-written AOR rows
+		// store them.
 		if _, err := client_v0.CreateAttachedObjectReference(
 			r.APIClient,
 			r.APIServer,
 			&api.AttachedObjectReference{
-				ObjectType:         util.Ptr(objectType),
+				ObjectType:         util.Ptr(fullyQualifiedObjectType),
 				ObjectID:           util.Ptr(objectId),
-				AttachedObjectType: util.Ptr(util.TypeName(api.Event{})),
+				AttachedObjectType: util.Ptr((&api.Event{}).GetFullyQualifiedType()),
 				AttachedObjectID:   createdEvent.ID,
 				Relationship:       util.Ptr(api.RelationshipDescribes),
 			},
@@ -118,15 +118,14 @@ func (r *EventRecorder) RecordEvent(
 	return nil
 }
 
-// HandleEventOverride records the specified event
-// unless the provided error is an ErrWithEvent,
-// in which case it records the event provided.
-// objectType must be the qualified form returned by
-// GetFullyQualifiedType (see RecordEvent).
+// HandleEventOverride records the given event unless the error is an
+// ErrWithEvent, in which case it records the event carried by the
+// error. fullyQualifiedObjectType must be the form returned by
+// GetFullyQualifiedType.
 func (r *EventRecorder) HandleEventOverride(
 	event *api.Event,
 	objectId uint,
-	objectType string,
+	fullyQualifiedObjectType string,
 	err error,
 	log *logr.Logger,
 ) {
@@ -136,7 +135,7 @@ func (r *EventRecorder) HandleEventOverride(
 		if err := r.RecordEvent(
 			&errWithEvent.Event,
 			objectId,
-			objectType,
+			fullyQualifiedObjectType,
 		); err != nil {
 			log.Error(err, "failed to record event")
 		}
@@ -144,7 +143,7 @@ func (r *EventRecorder) HandleEventOverride(
 		if err := r.RecordEvent(
 			event,
 			objectId,
-			objectType,
+			fullyQualifiedObjectType,
 		); err != nil {
 			log.Error(err, "failed to record event")
 		}

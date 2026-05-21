@@ -43,7 +43,7 @@ type Event struct {
 	//
 	// For an event describing a script failure on a
 	// MachineRuntimeInstance named "some-host" (id 42), these hold:
-	//   ObjectType = "v0.MachineRuntimeInstance"
+	//   ObjectType = "threeport.io/v0.MachineRuntimeInstance"
 	//   ObjectID   = 42
 	//   ObjectName = "some-host"
 	// A consumer like `tptctl get events` uses them to render

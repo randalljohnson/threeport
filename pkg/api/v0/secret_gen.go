@@ -75,7 +75,7 @@ func (sd *SecretDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (sd *SecretDefinition) GetFullyQualifiedType() string {
-	return "v0.SecretDefinition"
+	return "threeport.io/v0.SecretDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -150,7 +150,7 @@ func (si *SecretInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (si *SecretInstance) GetFullyQualifiedType() string {
-	return "v0.SecretInstance"
+	return "threeport.io/v0.SecretInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp

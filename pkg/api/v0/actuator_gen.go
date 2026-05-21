@@ -74,7 +74,7 @@ func (p *Profile) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (p *Profile) GetFullyQualifiedType() string {
-	return "v0.Profile"
+	return "threeport.io/v0.Profile"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -133,5 +133,5 @@ func (t *Tier) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (t *Tier) GetFullyQualifiedType() string {
-	return "v0.Tier"
+	return "threeport.io/v0.Tier"
 }

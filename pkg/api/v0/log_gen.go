@@ -77,7 +77,7 @@ func (lb *LogBackend) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (lb *LogBackend) GetFullyQualifiedType() string {
-	return "v0.LogBackend"
+	return "threeport.io/v0.LogBackend"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -136,7 +136,7 @@ func (lsd *LogStorageDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (lsd *LogStorageDefinition) GetFullyQualifiedType() string {
-	return "v0.LogStorageDefinition"
+	return "threeport.io/v0.LogStorageDefinition"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -195,7 +195,7 @@ func (lsi *LogStorageInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (lsi *LogStorageInstance) GetFullyQualifiedType() string {
-	return "v0.LogStorageInstance"
+	return "threeport.io/v0.LogStorageInstance"
 }
 
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on LogStorageInstance.

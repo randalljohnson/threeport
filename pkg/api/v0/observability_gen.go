@@ -93,7 +93,7 @@ func (ld *LoggingDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ld *LoggingDefinition) GetFullyQualifiedType() string {
-	return "v0.LoggingDefinition"
+	return "threeport.io/v0.LoggingDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -173,7 +173,7 @@ func (li *LoggingInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (li *LoggingInstance) GetFullyQualifiedType() string {
-	return "v0.LoggingInstance"
+	return "threeport.io/v0.LoggingInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -263,7 +263,7 @@ func (md *MetricsDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (md *MetricsDefinition) GetFullyQualifiedType() string {
-	return "v0.MetricsDefinition"
+	return "threeport.io/v0.MetricsDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -338,7 +338,7 @@ func (mi *MetricsInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (mi *MetricsInstance) GetFullyQualifiedType() string {
-	return "v0.MetricsInstance"
+	return "threeport.io/v0.MetricsInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -423,7 +423,7 @@ func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (odd *ObservabilityDashboardDefinition) GetFullyQualifiedType() string {
-	return "v0.ObservabilityDashboardDefinition"
+	return "threeport.io/v0.ObservabilityDashboardDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -498,7 +498,7 @@ func (odi *ObservabilityDashboardInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (odi *ObservabilityDashboardInstance) GetFullyQualifiedType() string {
-	return "v0.ObservabilityDashboardInstance"
+	return "threeport.io/v0.ObservabilityDashboardInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -583,7 +583,7 @@ func (osd *ObservabilityStackDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (osd *ObservabilityStackDefinition) GetFullyQualifiedType() string {
-	return "v0.ObservabilityStackDefinition"
+	return "threeport.io/v0.ObservabilityStackDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -668,7 +668,7 @@ func (osi *ObservabilityStackInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (osi *ObservabilityStackInstance) GetFullyQualifiedType() string {
-	return "v0.ObservabilityStackInstance"
+	return "threeport.io/v0.ObservabilityStackInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp

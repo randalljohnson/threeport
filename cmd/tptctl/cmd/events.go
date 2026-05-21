@@ -169,24 +169,38 @@ func buildEventsQueryString(forFlag string) (string, error) {
 
 // outputEventsTable produces the tabular output for the events list.
 func outputEventsTable(events *[]v0.Event) error {
+	// configure a tabwriter so the columns align regardless of the
+	// width of any individual cell's content
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	fmt.Fprintln(writer, "AGE\t TYPE\t REASON\t OBJECT\t NOTE")
 
+	// track whether any note got truncated so we can hint about -o yaml
+	// at the bottom of the output
 	anyTruncated := false
 	for _, e := range *events {
+		// derive the human-readable cell values per event
 		age := util.GetAgeFormatted(e.EventTime)
 		eventType := util.DerefString(e.Type)
 		reason := util.DerefString(e.Reason)
 
+		// resolve the OBJECT column from the AOR-projected fields
+		// on the event row (see Event.ObjectType/ID/Name)
 		object := formatEventObject(&e)
 
+		// collapse whitespace runs in the note so multi-line script
+		// output renders on one row
 		rawNote := util.DerefString(e.Note)
 		note := strings.Join(strings.Fields(rawNote), " ")
+
+		// truncate over-long notes so a single noisy event doesn't
+		// wreck the table layout
 		if len(note) > eventMessageTableMax {
 			note = util.TruncateString(note, eventMessageTableMax)
 			anyTruncated = true
 		}
 
+		// emit one tab-separated row through the writer; column
+		// alignment is finalized at Flush() below
 		fmt.Fprintln(
 			writer,
 			age, "\t",
@@ -198,6 +212,8 @@ func outputEventsTable(events *[]v0.Event) error {
 	}
 	writer.Flush()
 
+	// nudge the reader toward -o yaml when at least one note was
+	// shortened so they can see the full content
 	if anyTruncated {
 		fmt.Println("(use -o yaml to see full note)")
 	}
@@ -205,26 +221,39 @@ func outputEventsTable(events *[]v0.Event) error {
 }
 
 // formatEventObject formats an event's target object as <kebab-kind>/<name>.
+// For an event with ObjectType="example.com/v0.RouterInstance",
+// ObjectID=42, ObjectName="some-router" the result is
+// "router-instance/some-router". Falls back to "<kind>/<id>" if the
+// name wasn't resolved (e.g. lookup failed), or just "<kind>" if the
+// id is nil too.
 func formatEventObject(e *v0.Event) string {
+	// no recorded subject - nothing to render
 	rawType := util.DerefString(e.ObjectType)
 	if rawType == "" {
 		return ""
 	}
 
-	// strip the optional namespace prefix and isolate just the type name
-	versionedName := rawType
-	if slashIdx := strings.Index(rawType, "/"); slashIdx >= 0 {
-		versionedName = rawType[slashIdx+1:]
+	// FQTN is always "<namespace>/<version>.<TypeName>" now.
+	// "example.com/v0.RouterInstance" -> typeName = "RouterInstance"
+	dotIdx := strings.LastIndex(rawType, ".")
+	if dotIdx < 0 {
+		// malformed; surface the raw value so the user can still grep
+		return rawType
 	}
-	typeName := versionedName
-	if dotIdx := strings.LastIndex(versionedName, "."); dotIdx >= 0 {
-		typeName = versionedName[dotIdx+1:]
-	}
+	typeName := rawType[dotIdx+1:]
+
+	// CamelCase -> kebab so the output matches the --for flag shape.
+	// "RouterInstance" -> kind = "router-instance"
 	kind := strcase.ToKebab(typeName)
 
+	// prefer name when resolved; this is the common case after the
+	// events-join handler enriches the row
 	if name := util.DerefString(e.ObjectName); name != "" {
 		return fmt.Sprintf("%s/%s", kind, name)
 	}
+
+	// name wasn't resolved (lookup failed, deleted subject, etc.);
+	// fall back to id so the user still has something to grep
 	if e.ObjectID != nil {
 		return fmt.Sprintf("%s/%d", kind, *e.ObjectID)
 	}

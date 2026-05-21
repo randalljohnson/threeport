@@ -87,7 +87,7 @@ func (dnd *DomainNameDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (dnd *DomainNameDefinition) GetFullyQualifiedType() string {
-	return "v0.DomainNameDefinition"
+	return "threeport.io/v0.DomainNameDefinition"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -146,7 +146,7 @@ func (dni *DomainNameInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (dni *DomainNameInstance) GetFullyQualifiedType() string {
-	return "v0.DomainNameInstance"
+	return "threeport.io/v0.DomainNameInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -231,7 +231,7 @@ func (gd *GatewayDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (gd *GatewayDefinition) GetFullyQualifiedType() string {
-	return "v0.GatewayDefinition"
+	return "threeport.io/v0.GatewayDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -296,7 +296,7 @@ func (ghp *GatewayHttpPort) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ghp *GatewayHttpPort) GetFullyQualifiedType() string {
-	return "v0.GatewayHttpPort"
+	return "threeport.io/v0.GatewayHttpPort"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -355,7 +355,7 @@ func (gi *GatewayInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (gi *GatewayInstance) GetFullyQualifiedType() string {
-	return "v0.GatewayInstance"
+	return "threeport.io/v0.GatewayInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -440,5 +440,5 @@ func (gtp *GatewayTcpPort) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (gtp *GatewayTcpPort) GetFullyQualifiedType() string {
-	return "v0.GatewayTcpPort"
+	return "threeport.io/v0.GatewayTcpPort"
 }

@@ -47,8 +47,8 @@ type EventRecorder struct {
 
 // RecordEvent records a new event with the given information. objectType
 // must be the API-namespace-qualified form returned by
-// GetFullyQualifiedType ("<version>.<TypeName>" for core,
-// "<api-namespace>/<version>.<TypeName>" for modules).
+// GetFullyQualifiedType (always "<api-namespace>/<version>.<TypeName>";
+// core types use "threeport.io" as the namespace).
 func (r *EventRecorder) RecordEvent(
 	event *api.Event,
 	objectId uint,

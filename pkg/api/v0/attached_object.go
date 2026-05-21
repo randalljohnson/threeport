@@ -1,5 +1,10 @@
 package v0
 
+// AttachedObjectReferenceRelationshipField is the Go struct field name
+// of AttachedObjectReference.Relationship. Used by hooks that need to
+// detect changes to the field via tx.Statement.Changed().
+const AttachedObjectReferenceRelationshipField = "Relationship"
+
 // AttachedObjectReference is a reference to an attached object.
 //
 // Four DB indexes are declared in the GORM tags below:

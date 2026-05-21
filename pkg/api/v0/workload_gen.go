@@ -84,7 +84,7 @@ func (wd *WorkloadDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (wd *WorkloadDefinition) GetFullyQualifiedType() string {
-	return "v0.WorkloadDefinition"
+	return "threeport.io/v0.WorkloadDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -149,7 +149,7 @@ func (we *WorkloadEvent) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (we *WorkloadEvent) GetFullyQualifiedType() string {
-	return "v0.WorkloadEvent"
+	return "threeport.io/v0.WorkloadEvent"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -208,7 +208,7 @@ func (wi *WorkloadInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (wi *WorkloadInstance) GetFullyQualifiedType() string {
-	return "v0.WorkloadInstance"
+	return "threeport.io/v0.WorkloadInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -288,7 +288,7 @@ func (wrd *WorkloadResourceDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (wrd *WorkloadResourceDefinition) GetFullyQualifiedType() string {
-	return "v0.WorkloadResourceDefinition"
+	return "threeport.io/v0.WorkloadResourceDefinition"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -347,5 +347,5 @@ func (wri *WorkloadResourceInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (wri *WorkloadResourceInstance) GetFullyQualifiedType() string {
-	return "v0.WorkloadResourceInstance"
+	return "threeport.io/v0.WorkloadResourceInstance"
 }

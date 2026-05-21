@@ -17,7 +17,7 @@ func (a *AttachedObjectReference) beforeCreate(tx *gorm.DB) error {
 func (a *AttachedObjectReference) beforeUpdate(tx *gorm.DB) error {
 	// Relationship is the lifecycle dial; silently widening or narrowing it
 	// post-create would change blocking behavior of an existing reference
-	if tx.Statement.Changed("Relationship") {
+	if tx.Statement.Changed(AttachedObjectReferenceRelationshipField) {
 		return util.NewBadRequestError(
 			"AttachedObjectReference.Relationship is immutable; recreate the reference to change it",
 		)

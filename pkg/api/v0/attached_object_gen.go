@@ -71,5 +71,5 @@ func (aor *AttachedObjectReference) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (aor *AttachedObjectReference) GetFullyQualifiedType() string {
-	return "v0.AttachedObjectReference"
+	return "threeport.io/v0.AttachedObjectReference"
 }

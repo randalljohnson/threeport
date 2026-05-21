@@ -79,7 +79,7 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ookrd *OciOkeKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
-	return "v0.OciOkeKubernetesRuntimeDefinition"
+	return "threeport.io/v0.OciOkeKubernetesRuntimeDefinition"
 }
 
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
@@ -148,7 +148,7 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ookri *OciOkeKubernetesRuntimeInstance) GetFullyQualifiedType() string {
-	return "v0.OciOkeKubernetesRuntimeInstance"
+	return "threeport.io/v0.OciOkeKubernetesRuntimeInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -233,7 +233,7 @@ func (op *OciProvider) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (op *OciProvider) GetFullyQualifiedType() string {
-	return "v0.OciProvider"
+	return "threeport.io/v0.OciProvider"
 }
 
 // EncryptedFields returns the encrypt-tagged fields on OciProvider.

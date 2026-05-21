@@ -213,18 +213,20 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					Return(Lit(objCollection.Version)),
 				)
 				// GetFullyQualifiedType method - returns
-				// "<api-namespace>/<version>.<TypeName>" in module mode,
-				// "<version>.<TypeName>" in core mode. used as the
-				// identity string in AttachedObjectReference rows
-				fullyQualifiedTypeLiteral := fmt.Sprintf("%s.%s", objCollection.Version, apiObj.TypeName)
+				// "<api-namespace>/<version>.<TypeName>". Core types get
+				// "threeport.io" as the namespace; modules get their
+				// configured ApiNamespace. Used as the identity string
+				// in AttachedObjectReference rows.
+				namespace := "threeport.io"
 				if gen.Module {
-					fullyQualifiedTypeLiteral = fmt.Sprintf(
-						"%s/%s.%s",
-						sdkConfig.ApiNamespace,
-						objCollection.Version,
-						apiObj.TypeName,
-					)
+					namespace = sdkConfig.ApiNamespace
 				}
+				fullyQualifiedTypeLiteral := fmt.Sprintf(
+					"%s/%s.%s",
+					namespace,
+					objCollection.Version,
+					apiObj.TypeName,
+				)
 				f.Comment("GetFullyQualifiedType returns the API-namespace-qualified type name.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),

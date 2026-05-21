@@ -75,7 +75,7 @@ func (cpd *ControlPlaneDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (cpd *ControlPlaneDefinition) GetFullyQualifiedType() string {
-	return "v0.ControlPlaneDefinition"
+	return "threeport.io/v0.ControlPlaneDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -140,7 +140,7 @@ func (cpi *ControlPlaneInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (cpi *ControlPlaneInstance) GetFullyQualifiedType() string {
-	return "v0.ControlPlaneInstance"
+	return "threeport.io/v0.ControlPlaneInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp

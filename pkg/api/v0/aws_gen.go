@@ -79,7 +79,7 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
-	return "v0.AwsEksKubernetesRuntimeDefinition"
+	return "threeport.io/v0.AwsEksKubernetesRuntimeDefinition"
 }
 
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
@@ -148,7 +148,7 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetFullyQualifiedType() string {
-	return "v0.AwsEksKubernetesRuntimeInstance"
+	return "threeport.io/v0.AwsEksKubernetesRuntimeInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -233,7 +233,7 @@ func (ap *AwsProvider) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ap *AwsProvider) GetFullyQualifiedType() string {
-	return "v0.AwsProvider"
+	return "threeport.io/v0.AwsProvider"
 }
 
 // EncryptedFields returns the encrypt-tagged fields on AwsProvider.

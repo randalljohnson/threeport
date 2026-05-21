@@ -79,7 +79,7 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
-	return "v0.GcpGkeKubernetesRuntimeDefinition"
+	return "threeport.io/v0.GcpGkeKubernetesRuntimeDefinition"
 }
 
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
@@ -148,7 +148,7 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ggkri *GcpGkeKubernetesRuntimeInstance) GetFullyQualifiedType() string {
-	return "v0.GcpGkeKubernetesRuntimeInstance"
+	return "threeport.io/v0.GcpGkeKubernetesRuntimeInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -233,7 +233,7 @@ func (gp *GcpProvider) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (gp *GcpProvider) GetFullyQualifiedType() string {
-	return "v0.GcpProvider"
+	return "threeport.io/v0.GcpProvider"
 }
 
 // EncryptedFields returns the encrypt-tagged fields on GcpProvider.

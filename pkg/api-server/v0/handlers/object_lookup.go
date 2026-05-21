@@ -226,13 +226,15 @@ func resolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
 	}
 	out := make([]string, 0, len(obj.Versions))
 	for _, v := range obj.Versions {
-		out = append(out, fmt.Sprintf("%s.%s", v, bareKind))
+		out = append(out, fmt.Sprintf("threeport.io/%s.%s", v, bareKind))
 	}
 	return out, nil
 }
 
-// parseQualifiedType splits "<api-namespace>/<version>.<TypeName>" into its
-// three parts. Returns ok=false for unqualified strings (core types).
+// parseQualifiedType splits "<api-namespace>/<version>.<TypeName>" into
+// its three parts. Returns ok=false for malformed inputs (every API
+// type stores its FQTN in this shape - core types use the
+// "threeport.io" namespace, modules use their own).
 //
 // For "example.com/v0.Widget":
 //   namespace = "example.com", version = "v0", typeName = "Widget", ok = true

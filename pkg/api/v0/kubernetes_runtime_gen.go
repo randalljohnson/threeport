@@ -76,7 +76,7 @@ func (krd *KubernetesRuntimeDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (krd *KubernetesRuntimeDefinition) GetFullyQualifiedType() string {
-	return "v0.KubernetesRuntimeDefinition"
+	return "threeport.io/v0.KubernetesRuntimeDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -141,7 +141,7 @@ func (kri *KubernetesRuntimeInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (kri *KubernetesRuntimeInstance) GetFullyQualifiedType() string {
-	return "v0.KubernetesRuntimeInstance"
+	return "threeport.io/v0.KubernetesRuntimeInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp

@@ -80,7 +80,7 @@ func (ma *ModuleApi) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ma *ModuleApi) GetFullyQualifiedType() string {
-	return "v0.ModuleApi"
+	return "threeport.io/v0.ModuleApi"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -139,7 +139,7 @@ func (mar *ModuleApiRoute) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (mar *ModuleApiRoute) GetFullyQualifiedType() string {
-	return "v0.ModuleApiRoute"
+	return "threeport.io/v0.ModuleApiRoute"
 }
 
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ModuleApiRoute.
@@ -208,7 +208,7 @@ func (mc *ModuleController) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (mc *ModuleController) GetFullyQualifiedType() string {
-	return "v0.ModuleController"
+	return "threeport.io/v0.ModuleController"
 }
 
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ModuleController.
@@ -277,7 +277,7 @@ func (mo *ModuleObject) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (mo *ModuleObject) GetFullyQualifiedType() string {
-	return "v0.ModuleObject"
+	return "threeport.io/v0.ModuleObject"
 }
 
 // RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ModuleObject.

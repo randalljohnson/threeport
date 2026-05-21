@@ -75,7 +75,7 @@ func (hwd *HelmWorkloadDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (hwd *HelmWorkloadDefinition) GetFullyQualifiedType() string {
-	return "v0.HelmWorkloadDefinition"
+	return "threeport.io/v0.HelmWorkloadDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -140,7 +140,7 @@ func (hwi *HelmWorkloadInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (hwi *HelmWorkloadInstance) GetFullyQualifiedType() string {
-	return "v0.HelmWorkloadInstance"
+	return "threeport.io/v0.HelmWorkloadInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp

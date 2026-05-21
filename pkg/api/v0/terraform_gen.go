@@ -76,7 +76,7 @@ func (td *TerraformDefinition) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (td *TerraformDefinition) GetFullyQualifiedType() string {
-	return "v0.TerraformDefinition"
+	return "threeport.io/v0.TerraformDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -141,7 +141,7 @@ func (ti *TerraformInstance) GetVersion() string {
 
 // GetFullyQualifiedType returns the API-namespace-qualified type name.
 func (ti *TerraformInstance) GetFullyQualifiedType() string {
-	return "v0.TerraformInstance"
+	return "threeport.io/v0.TerraformInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp

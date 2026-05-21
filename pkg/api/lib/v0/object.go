@@ -28,10 +28,11 @@ type ReconciledThreeportApiObject interface {
 }
 
 // FullyQualifiedTypeProvider is implemented by every API object. The
-// returned string is "<version>.<TypeName>" for core types and
-// "<api-namespace>/<version>.<TypeName>" for module types. Used as
-// the identity string in AttachedObjectReference rows so the table
-// is unambiguous across modules.
+// returned string is "<api-namespace>/<version>.<TypeName>" - core
+// types use "threeport.io" as the namespace, modules use their
+// configured ApiNamespace. Used as the identity string in
+// AttachedObjectReference rows so the table is unambiguous across
+// modules.
 type FullyQualifiedTypeProvider interface {
 	GetFullyQualifiedType() string
 }

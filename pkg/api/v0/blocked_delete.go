@@ -49,27 +49,41 @@ func FormatBlockedDelete(e *BlockedDeleteError, namesByType map[string]map[uint]
 	)
 }
 
-// FormatObjectPath renders <api-namespace>/<kebab-kind>/<name> for module
-// types and <kebab-kind>/<name> for core, falling back to id when no name
-// is available.
+// FormatObjectPath renders <api-namespace>/<kebab-kind>/<name>, falling
+// back to id when no name is available. rawType is the
+// API-namespace-qualified form ("threeport.io/v0.Foo",
+// "example.com/v0.Bar") that AOR rows store.
 func FormatObjectPath(rawType string, id uint, names map[uint]string) string {
-	namespace := ""
-	versionedName := rawType
-	if slashIdx := strings.Index(rawType, "/"); slashIdx >= 0 {
-		namespace = rawType[:slashIdx]
-		versionedName = rawType[slashIdx+1:]
+	// FQTN shape is "<namespace>/<version>.<TypeName>"; locate the two
+	// separators so we can extract the namespace and TypeName segments
+	slashIdx := strings.Index(rawType, "/")
+	dotIdx := strings.LastIndex(rawType, ".")
+
+	// malformed input - missing slash or dot in the wrong position;
+	// emit the raw type alongside the id so the caller still has
+	// something to grep for
+	if slashIdx < 0 || dotIdx < slashIdx {
+		return fmt.Sprintf("%s/%d", rawType, id)
 	}
-	typeName := versionedName
-	if dotIdx := strings.LastIndex(versionedName, "."); dotIdx >= 0 {
-		typeName = versionedName[dotIdx+1:]
-	}
+
+	// namespace = everything before the first slash.
+	// "example.com/v0.Foo" -> namespace = "example.com"
+	namespace := rawType[:slashIdx]
+
+	// typeName = everything after the last dot.
+	// "example.com/v0.Foo" -> typeName = "Foo"
+	typeName := rawType[dotIdx+1:]
+
+	// CamelCase -> kebab so the rendered path matches user-facing
+	// kebab conventions. "Foo" -> kind = "foo"
 	kind := strcase.ToKebab(typeName)
 
-	tail := kind
-	if namespace != "" {
-		tail = fmt.Sprintf("%s/%s", namespace, kind)
-	}
+	// build the path prefix "<namespace>/<kebab-kind>"; the id-or-name
+	// suffix is appended next
+	tail := fmt.Sprintf("%s/%s", namespace, kind)
 
+	// prefer the resolved name when available; falls back to id when
+	// the lookup didn't return a name for this id
 	if name, ok := names[id]; ok && name != "" {
 		return fmt.Sprintf("%s/%s", tail, name)
 	}

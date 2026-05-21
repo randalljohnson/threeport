@@ -8,13 +8,22 @@ import (
 	"fmt"
 
 	goose "github.com/pressly/goose/v3"
+
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
+// eventRetention is the time-to-live for event rows and the
+// attached object reference rows that link them to their subject.
+const eventRetention = "7 days"
+
+// init registers the migration with goose at startup.
 func init() {
 	goose.AddMigrationNoTxContext(Up000001, Down000001)
 }
 
+// Up000001 creates the initial database schema and sets row-level
+// time-to-lives for event rows and the attached object reference
+// rows that link events to their subjects.
 func Up000001(ctx context.Context, db *sql.DB) error {
 	gormDb, err := getGormDbFromContext(ctx)
 	if err != nil {
@@ -25,22 +34,35 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("could not run gorm AutoMigrate: %w", err)
 	}
 
-	// set CockroachDB row-level TTL on event tables so old rows are GC'd
-	// automatically. Events outlive the objects they reference (audit
-	// trail), but accumulating forever is not desired.
-	for _, table := range []string{"v0_events"} {
-		stmt := fmt.Sprintf(
-			"ALTER TABLE %s SET (ttl_expire_after = '7 days', ttl_job_cron = '@hourly')",
-			table,
+	// uniform row-level time-to-live on events
+	if err := gormDb.Exec(fmt.Sprintf(
+		"ALTER TABLE v0_events SET (ttl_expire_after = '%s', ttl_job_cron = '@hourly')",
+		eventRetention,
+	)).Error; err != nil {
+		return fmt.Errorf("failed to set time-to-live on v0_events: %w", err)
+	}
+
+	// partial row-level time-to-live on event-linked attached object
+	// reference rows
+	if err := gormDb.Exec(fmt.Sprintf(`
+		ALTER TABLE v0_attached_object_references SET (
+			ttl_expiration_expression = $$
+				CASE
+					WHEN attached_object_type = '%s'
+						THEN created_at + INTERVAL '%s'
+					ELSE NULL
+				END
+			$$,
+			ttl_job_cron = '@hourly'
 		)
-		if err := gormDb.Exec(stmt).Error; err != nil {
-			return fmt.Errorf("failed to set row-level TTL on %s: %w", table, err)
-		}
+	`, (&v0.Event{}).GetFullyQualifiedType(), eventRetention)).Error; err != nil {
+		return fmt.Errorf("failed to set time-to-live on event-linked attached object references: %w", err)
 	}
 
 	return nil
 }
 
+// Down000001 drops every table created by Up000001.
 func Down000001(ctx context.Context, db *sql.DB) error {
 	gormDb, err := getGormDbFromContext(ctx)
 	if err != nil {

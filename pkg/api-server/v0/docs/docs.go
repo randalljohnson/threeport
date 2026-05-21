@@ -14985,7 +14985,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Relationship": {
-                    "description": "Relationship classifies this reference and drives lifecycle behavior:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base for any caller except the partner's controller.",
+                    "description": "Relationship classifies this reference and drives lifecycle behavior\nvia gorm hooks and generated code that reveals information about a\ntype's foreign keys:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.\n    An owned base has at most one owner (enforced by the partial\n    index idx_aor_owns_base above); an owner may own many bases.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base for any caller except the partner's controller.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/v0.Relationship"
@@ -15467,7 +15467,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ObjectType": {
-                    "description": "Enrichment fields populated when events are loaded with their\nattached object reference. gorm:\"-\" keeps them out of normal CRUD.",
+                    "description": "Enrichment fields giving each event context about its subject -\nwhat the event is about. Every Event row has a matching\nAttachedObjectReference where this event is the attached side\nand the subject object is the base side. Callers that want\nthese fields populated read events via\nGetEventsJoinAttachedObjectReferenceByQueryString, which\nprojects the base object's type, ID, and name into the response.\ngorm:\"-\" keeps them out of normal CRUD writes - they're\npopulated on read, never stored on the Event row.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"machine-runtime-instance/some-host\" in the OBJECT column.",
                     "type": "string"
                 },
                 "Reason": {

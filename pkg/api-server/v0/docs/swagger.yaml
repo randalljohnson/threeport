@@ -42,13 +42,17 @@ definitions:
         allOf:
         - $ref: '#/definitions/v0.Relationship'
         description: |-
-          Relationship classifies this reference and drives lifecycle behavior:
+          Relationship classifies this reference and drives lifecycle behavior
+          via gorm hooks and generated code that reveals information about a
+          type's foreign keys:
             - "describes": informational; does not block delete or update of the base.
             - "requires": blocks any caller from deleting the base while this
               reference exists.
             - "owns": blocks both delete and update of the base for any caller
               except the controller registered for the attached object's type,
               identified by its mTLS peer common name.
+              An owned base has at most one owner (enforced by the partial
+              index idx_aor_owns_base above); an owner may own many bases.
             - "marries": enforces 1-to-1 cardinality between base and attacher
               via the partial indexes above; blocks both delete and update of
               the base for any caller except the partner's controller.
@@ -495,8 +499,23 @@ definitions:
         type: string
       ObjectType:
         description: |-
-          Enrichment fields populated when events are loaded with their
-          attached object reference. gorm:"-" keeps them out of normal CRUD.
+          Enrichment fields giving each event context about its subject -
+          what the event is about. Every Event row has a matching
+          AttachedObjectReference where this event is the attached side
+          and the subject object is the base side. Callers that want
+          these fields populated read events via
+          GetEventsJoinAttachedObjectReferenceByQueryString, which
+          projects the base object's type, ID, and name into the response.
+          gorm:"-" keeps them out of normal CRUD writes - they're
+          populated on read, never stored on the Event row.
+
+          For an event describing a script failure on a
+          MachineRuntimeInstance named "some-host" (id 42), these hold:
+            ObjectType = "v0.MachineRuntimeInstance"
+            ObjectID   = 42
+            ObjectName = "some-host"
+          A consumer like `tptctl get events` uses them to render
+          "machine-runtime-instance/some-host" in the OBJECT column.
         type: string
       Reason:
         description: A short, machine understandable string that gives the reason

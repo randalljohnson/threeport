@@ -21,8 +21,10 @@ import (
 // @Accept json
 // @Produce json
 // @Param objectid query string false "filter events by object ID"
-// @Param objecttype query string false "filter events by object kind (with objectname)"
-// @Param objectname query string false "filter events by object name (with objecttype)"
+// @Param objecttypename query string false "filter events by object type name (with objectname); CamelCase Go TypeName like 'WorkloadInstance'"
+// @Param objectversion query string false "narrow objecttypename match to one version (e.g. 'v0')"
+// @Param objectnamespace query string false "narrow objecttypename match to one api namespace (e.g. 'threeport.io')"
+// @Param objectname query string false "filter events by object name (with objecttypename)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -44,8 +46,9 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	}
 
 	// collect object IDs to filter on, either from a direct objectid
-	// query param or by resolving objecttype+objectname across every
-	// registered version of the kind
+	// query param or by resolving the object-type filter against the
+	// registry. objecttypename is required; objectversion and
+	// objectnamespace progressively narrow the resolved set.
 	var ids []uint
 	if directObjectId := c.QueryParam("objectid"); directObjectId != "" {
 		parsed, err := strconv.ParseUint(directObjectId, 10, 64)
@@ -56,25 +59,30 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		ids = []uint{uint(parsed)}
 	}
 
-	targetType := c.QueryParam("objecttype")
+	targetTypeName := c.QueryParam("objecttypename")
+	targetVersion := c.QueryParam("objectversion")
+	targetNamespace := c.QueryParam("objectnamespace")
 	targetName := c.QueryParam("objectname")
 	switch {
-	case targetType != "" && targetName != "":
+	case targetTypeName != "" && targetName != "":
 		if len(ids) > 0 {
 			return apiserver_lib.ResponseStatus400(
 				c, pageParams,
-				errors.New("provide either objectid or (objecttype + objectname), not both"),
+				errors.New("provide either objectid or (objecttypename + objectname), not both"),
 				objectType,
 			)
 		}
-		qualifiedTypes, resolveErr := resolveObjectType(h.DB, targetType)
+		qualifiedTypes, resolveErr := resolveObjectType(h.DB, targetTypeName)
 		if resolveErr != nil {
 			h.Logger.Error("handler error: error resolving kind", zap.Error(resolveErr))
 			return apiserver_lib.ResponseStatus400(c, pageParams, resolveErr, objectType)
 		}
+		// progressively narrow the resolved set by version and namespace
+		// when those params were supplied
+		qualifiedTypes = filterQualifiedTypes(qualifiedTypes, targetNamespace, targetVersion)
 		if len(qualifiedTypes) == 0 {
 			return apiserver_lib.ResponseStatus400(c, pageParams,
-				fmt.Errorf("kind %q is not registered", targetType), objectType)
+				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
 		}
 		// look up the named object across every registered version
 		for _, qt := range qualifiedTypes {
@@ -85,12 +93,12 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 		if len(ids) == 0 {
 			return apiserver_lib.ResponseStatus400(c, pageParams,
-				fmt.Errorf("no object found with name %q for kind %q", targetName, targetType), objectType)
+				fmt.Errorf("no object found with name %q for kind %q", targetName, targetTypeName), objectType)
 		}
-	case targetType != "" || targetName != "":
+	case targetTypeName != "" || targetName != "":
 		return apiserver_lib.ResponseStatus400(
 			c, pageParams,
-			errors.New("objecttype and objectname must be provided together"),
+			errors.New("objecttypename and objectname must be provided together"),
 			objectType,
 		)
 	}
@@ -237,6 +245,45 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// filterQualifiedTypes narrows the resolved-type list to entries
+// matching the optional namespace and/or version. Empty filter values
+// match anything. FQTNs are "<namespace>/<version>.<TypeName>".
+func filterQualifiedTypes(qualifiedTypes []string, namespace, version string) []string {
+	// no filters supplied - everything passes through unchanged
+	if namespace == "" && version == "" {
+		return qualifiedTypes
+	}
+
+	// allocate a fresh backing array sized for the worst case (all
+	// entries pass); the [:0:0] form keeps cap separate from the
+	// input slice so we don't accidentally overwrite the caller's data
+	out := qualifiedTypes[:0:0]
+
+	for _, qt := range qualifiedTypes {
+		// parse the FQTN into parts so we can match on namespace and
+		// version independently
+		ns, ver, _, ok := parseQualifiedType(qt)
+		if !ok {
+			// malformed FQTN; drop rather than fail the whole query
+			continue
+		}
+
+		// drop entries whose namespace doesn't match the filter (when set)
+		if namespace != "" && ns != namespace {
+			continue
+		}
+
+		// drop entries whose version doesn't match the filter (when set)
+		if version != "" && ver != version {
+			continue
+		}
+
+		// passed all active filters - keep it
+		out = append(out, qt)
+	}
+	return out
 }
 
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName

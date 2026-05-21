@@ -150,20 +150,69 @@ func init() {
 	)
 }
 
-// buildEventsQueryString turns the --for flag into the events query string.
+// buildEventsQueryString turns the --for flag into the events query
+// string. Accepts three input shapes, narrowing the query as more
+// parts are supplied:
+//
+//   <kebab-kind>/<name>                                 - broad, any namespace/version
+//   <version>/<kebab-kind>/<name>                       - narrow to one version
+//   <namespace>/<version>/<kebab-kind>/<name>           - exact FQTN match
+//
+// The flag is split right-to-left so the last segment is always
+// the object name, the second-to-last is always the kebab kind, etc.
+// Empty flag returns empty string so the events list isn't filtered.
 func buildEventsQueryString(forFlag string) (string, error) {
+	// no filter requested - return empty so the caller queries every event
 	if forFlag == "" {
 		return "", nil
 	}
 
-	kind, name, ok := strings.Cut(forFlag, "/")
-	if !ok || kind == "" || name == "" {
-		return "", fmt.Errorf("invalid --for value %q: expected <kind>/<name>", forFlag)
+	// segments are slash-delimited; parse right-to-left so the
+	// optional namespace and version land in the right slots
+	parts := strings.Split(forFlag, "/")
+	if len(parts) < 2 || len(parts) > 4 {
+		return "", fmt.Errorf(
+			"invalid --for value %q: expected [<namespace>/][<version>/]<kind>/<name>",
+			forFlag,
+		)
 	}
 
 	q := url.Values{}
-	q.Set("objecttype", strcase.ToCamel(kind))
+
+	// last segment is always the object name
+	name := parts[len(parts)-1]
+	if name == "" {
+		return "", fmt.Errorf("invalid --for value %q: empty name", forFlag)
+	}
 	q.Set("objectname", name)
+
+	// second-to-last is always the kebab kind; convert to CamelCase
+	// to match the TypeName segment of FQTN ("workload-instance" ->
+	// "WorkloadInstance")
+	kind := parts[len(parts)-2]
+	if kind == "" {
+		return "", fmt.Errorf("invalid --for value %q: empty kind", forFlag)
+	}
+	q.Set("objecttypename", strcase.ToCamel(kind))
+
+	// third-to-last (if present) is the version
+	if len(parts) >= 3 {
+		version := parts[len(parts)-3]
+		if version == "" {
+			return "", fmt.Errorf("invalid --for value %q: empty version", forFlag)
+		}
+		q.Set("objectversion", version)
+	}
+
+	// fourth-to-last (if present) is the api namespace
+	if len(parts) == 4 {
+		namespace := parts[0]
+		if namespace == "" {
+			return "", fmt.Errorf("invalid --for value %q: empty namespace", forFlag)
+		}
+		q.Set("objectnamespace", namespace)
+	}
+
 	return q.Encode(), nil
 }
 

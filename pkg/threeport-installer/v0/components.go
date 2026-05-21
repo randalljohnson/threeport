@@ -331,6 +331,8 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAPITLS(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-api-server",
+			auth.OrgCore,
+			auth.OUControlPlane,
 			serverAltNames...,
 		)
 		if err != nil {
@@ -375,6 +377,8 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 				authConfig.CAConfig,
 				&authConfig.CAPrivateKey,
 				controller.Name,
+				auth.OrgCore,
+				auth.OUControlPlane,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to generate client certificate and private key for workload controller: %w", err)
@@ -501,6 +505,8 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAgent(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-agent",
+			auth.OrgCore,
+			auth.OUControlPlane,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to generate client certificate and private key for threeport agent: %w", err)

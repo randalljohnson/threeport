@@ -65,7 +65,7 @@ func (h Handler) AddSecretDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingSecretDefinition api_v0.SecretDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", secretDefinition.Name).First(&existingSecretDefinition)
+	result := h.RequestDB(c).Where("name = ?", secretDefinition.Name).First(&existingSecretDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -79,7 +79,7 @@ func (h Handler) AddSecretDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&secretDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&secretDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -155,7 +155,7 @@ func (h Handler) GetSecretDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.SecretDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.SecretDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -166,7 +166,7 @@ func (h Handler) GetSecretDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -258,8 +258,7 @@ func (h Handler) GetSecretDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretDefinition
 	secretDefinitionID := c.Param("id")
 	var secretDefinition api_v0.SecretDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&secretDefinition, secretDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -301,7 +300,7 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretDefinition
 	secretDefinitionID := c.Param("id")
 	var existingSecretDefinition api_v0.SecretDefinition
-	if result := h.DB.First(&existingSecretDefinition, secretDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingSecretDefinition, secretDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -323,7 +322,7 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingSecretDefinition).Updates(&updatedSecretDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingSecretDefinition).Updates(&updatedSecretDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -383,7 +382,7 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretDefinition
 	secretDefinitionID := c.Param("id")
 	var existingSecretDefinition api_v0.SecretDefinition
-	if result := h.DB.First(&existingSecretDefinition, secretDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingSecretDefinition, secretDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -412,7 +411,7 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedSecretDefinition.ID = existingSecretDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -425,7 +424,7 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingSecretDefinition, secretDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingSecretDefinition, secretDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -461,7 +460,7 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretDefinition
 	secretDefinitionID := c.Param("id")
 	var secretDefinition api_v0.SecretDefinition
-	if result := h.DB.Preload("SecretInstances").First(&secretDefinition, secretDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("SecretInstances").First(&secretDefinition, secretDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -475,6 +474,18 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
+	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &secretDefinition); checkErr != nil {
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(checkErr, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -487,7 +498,7 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&secretDefinition).Updates(&scheduledSecretDefinition); result.Error != nil {
+		if result := h.RequestDB(c).Model(&secretDefinition).Updates(&scheduledSecretDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -513,8 +524,17 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&secretDefinition); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&secretDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -588,7 +608,7 @@ func (h Handler) AddSecretInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingSecretInstance api_v0.SecretInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", secretInstance.Name).First(&existingSecretInstance)
+	result := h.RequestDB(c).Where("name = ?", secretInstance.Name).First(&existingSecretInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -602,7 +622,7 @@ func (h Handler) AddSecretInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&secretInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&secretInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -678,7 +698,7 @@ func (h Handler) GetSecretInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.SecretInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.SecretInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -689,7 +709,7 @@ func (h Handler) GetSecretInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -781,8 +801,7 @@ func (h Handler) GetSecretInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretInstance
 	secretInstanceID := c.Param("id")
 	var secretInstance api_v0.SecretInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&secretInstance, secretInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -824,7 +843,7 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretInstance
 	secretInstanceID := c.Param("id")
 	var existingSecretInstance api_v0.SecretInstance
-	if result := h.DB.First(&existingSecretInstance, secretInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingSecretInstance, secretInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -846,7 +865,7 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingSecretInstance).Updates(&updatedSecretInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingSecretInstance).Updates(&updatedSecretInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -906,7 +925,7 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretInstance
 	secretInstanceID := c.Param("id")
 	var existingSecretInstance api_v0.SecretInstance
-	if result := h.DB.First(&existingSecretInstance, secretInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingSecretInstance, secretInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -935,7 +954,7 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedSecretInstance.ID = existingSecretInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -948,7 +967,7 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingSecretInstance, secretInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingSecretInstance, secretInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -984,7 +1003,7 @@ func (h Handler) DeleteSecretInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeSecretInstance
 	secretInstanceID := c.Param("id")
 	var secretInstance api_v0.SecretInstance
-	if result := h.DB.First(&secretInstance, secretInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&secretInstance, secretInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -992,6 +1011,18 @@ func (h Handler) DeleteSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
+	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &secretInstance); checkErr != nil {
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(checkErr, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -1004,7 +1035,7 @@ func (h Handler) DeleteSecretInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&secretInstance).Updates(&scheduledSecretInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&secretInstance).Updates(&scheduledSecretInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1030,8 +1061,17 @@ func (h Handler) DeleteSecretInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&secretInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&secretInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {

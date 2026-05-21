@@ -16,8 +16,9 @@ import (
 	notif "github.com/threeport/threeport/internal/workload/notif"
 	tpclient_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
-	v0 "github.com/threeport/threeport/pkg/util/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	zap "go.uber.org/zap"
 	"net/http"
 	"os"
@@ -50,9 +51,9 @@ func main() {
 	flag.Parse()
 
 	var log logr.Logger
-	var encryptionKey = os.Getenv("ENCRYPTION_KEY")
+	var encryptionKey = os.Getenv(encryption.KeyEnvVar)
 	if encryptionKey == "" {
-		log.Error(errors.New("environment variable ENCRYPTION_KEY is not set"), "encryption key not found")
+		log.Error(fmt.Errorf("environment variable %s is not set", encryption.KeyEnvVar), "encryption key not found")
 	}
 
 	if *help {
@@ -79,7 +80,7 @@ func main() {
 	}
 
 	// wait for API server to be reachable before proceeding
-	v0.WaitForAPI(*apiServer, log)
+	util.WaitForAPI(*apiServer, log)
 
 	// connect to NATS server
 	natsConn := fmt.Sprintf(

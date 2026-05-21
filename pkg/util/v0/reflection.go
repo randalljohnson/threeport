@@ -6,6 +6,30 @@ import (
 	"reflect"
 )
 
+// ObjectID returns the *uint ID field of an API object, or nil if missing
+// or unset.
+func ObjectID(obj interface{}) *uint {
+	objVal := reflect.ValueOf(obj)
+	if objVal.Kind() == reflect.Ptr {
+		objVal = objVal.Elem()
+	}
+	idField := objVal.FieldByName("ID")
+	if !idField.IsValid() || idField.Kind() != reflect.Ptr || idField.IsNil() {
+		return nil
+	}
+	return idField.Interface().(*uint)
+}
+
+// ObjectTypeName returns the package-qualified type name of the dereferenced
+// object, so a value and its pointer produce the same string.
+func ObjectTypeName(obj interface{}) string {
+	t := reflect.TypeOf(obj)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t.String()
+}
+
 // GetPtrValue returns the string value of a pointer field.
 func GetPtrValue(field reflect.Value) (string, error) {
 	if !IsNonNilPtr(field) {

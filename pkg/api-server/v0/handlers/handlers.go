@@ -5,11 +5,13 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -25,6 +27,49 @@ type Handler struct {
 // New returns a new Handler.
 func New(db *gorm.DB, nc *nats.Conn, rc nats.JetStreamContext, logger *zap.Logger) Handler {
 	return Handler{db, nc, rc, logger}
+}
+
+// RequestDB returns the handler DB scoped to the HTTP request, with query
+// scopes applied and the request context attached so GORM honors client
+// cancellation and hooks can read per-request state.
+func (h Handler) RequestDB(c echo.Context) *gorm.DB {
+	return h.DB.
+		WithContext(c.Request().Context()).
+		Scopes(apiserver_lib.QueryScopes(c)...)
+}
+
+// RespondBlockedDelete writes a 409 with blockers rendered as
+// <api-namespace>/<kebab-kind>/<name>, falling back to id when no name resolves.
+func RespondBlockedDelete(c echo.Context, db *gorm.DB, blocked *api_v0.BlockedDeleteError) error {
+	baseType := *blocked.AttachedRefs[0].ObjectType
+	baseID := *blocked.AttachedRefs[0].ObjectID
+	idsByType := map[string]map[uint]struct{}{
+		baseType: {baseID: struct{}{}},
+	}
+	for _, ref := range blocked.AttachedRefs {
+		if idsByType[*ref.AttachedObjectType] == nil {
+			idsByType[*ref.AttachedObjectType] = map[uint]struct{}{}
+		}
+		idsByType[*ref.AttachedObjectType][*ref.AttachedObjectID] = struct{}{}
+	}
+
+	// resolve names per object type; on lookup failure, fall back to an
+	// empty map so one bad type doesn't drop every blocker from the response.
+	namesByType := make(map[string]map[uint]string, len(idsByType))
+	for objectType, idSet := range idsByType {
+		ids := make([]uint, 0, len(idSet))
+		for id := range idSet {
+			ids = append(ids, id)
+		}
+		names, err := GetObjectNames(db, objectType, ids, false)
+		if err != nil {
+			names = map[uint]string{}
+		}
+		namesByType[objectType] = names
+	}
+
+	msg := api_v0.FormatBlockedDelete(blocked, namesByType)
+	return apiserver_lib.ResponseStatus409(c, nil, fmt.Errorf("%s", msg), baseType)
 }
 
 // CreateMaterializedView creates a materialized view for a given object type and returns the

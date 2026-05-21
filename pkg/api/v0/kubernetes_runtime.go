@@ -82,7 +82,7 @@ type KubernetesRuntimeInstance struct {
 	DefaultRuntime *bool `json:"DefaultRuntime,omitempty" query:"defaultruntime" gorm:"default:false" validate:"optional"`
 
 	// The kubernetes runtime definition for this instance.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The associated workload instances running on this kubernetes runtime.
 	WorkloadInstances []*WorkloadInstance `json:"WorkloadInstance,omitempty" validate:"optional,association"`
@@ -90,13 +90,10 @@ type KubernetesRuntimeInstance struct {
 	// The associated control plane instances running on this kubernetes runtime instance.
 	ControlPlaneInstances []*ControlPlaneInstance `json:"ControlPlaneInstance,omitempty" validate:"optional,association"`
 
-	// If true, delete the runtime even if there are workloads present.
-	ForceDelete *bool `json:"ForceDelete,omitempty" query:"forcedelete" gorm:"default:false" validate:"optional"`
-
 	// The WorkloadInstanceID of the gateway support service
 	GatewayControllerInstanceID *uint `json:"GatewayWorkloadInstanceID,omitempty" validate:"optional"`
 
-	// The WorkloadInstanceID of the gateway support service
+	// The WorkloadInstanceID of the dns support service
 	DnsControllerInstanceID *uint `json:"DnsControllerInstanceId,omitempty" validate:"optional"`
 
 	// The WorkloadInstanceID of the secrets support service

@@ -29,7 +29,6 @@ type KubernetesRuntimeValues struct {
 	ThreeportControlPlaneHost *bool   `json:"ThreeportControlPlaneHost,omitempty" yaml:"ThreeportControlPlaneHost,omitempty"`
 	DefaultRuntime            *bool   `json:"DefaultRuntime,omitempty" yaml:"DefaultRuntime,omitempty"`
 	ThreeportAgentImage       *string `json:"ThreeportAgentImage,omitempty" yaml:"ThreeportAgentImage,omitempty"`
-	ForceDelete               *bool   `json:"ForceDelete,omitempty" yaml:"ForceDelete,omitempty"`
 	Age                       *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
@@ -268,7 +267,6 @@ func mapToKubernetesRuntimeDefinedInstances(
 						Location:                  inst.KubernetesRuntimeInstance.Location,
 						DefaultRuntime:            inst.KubernetesRuntimeInstance.DefaultRuntime,
 						ThreeportAgentImage:       inst.KubernetesRuntimeInstance.ThreeportAgentImage,
-						ForceDelete:               inst.KubernetesRuntimeInstance.ForceDelete,
 						Age:                       inst.KubernetesRuntimeInstance.Age,
 					},
 				}

@@ -37,87 +37,86 @@ var moduleHTTPClient = func() *http.Client {
 // empty map if the type has no resolver. includeDeleted=true includes
 // soft-deleted rows.
 func GetObjectNames(db *gorm.DB, objectType string, ids []uint, includeDeleted bool) (map[uint]string, error) {
+	// nothing to look up
 	if len(ids) == 0 {
 		return map[uint]string{}, nil
 	}
 
+	// try the core SQL resolver first; most types live in core
 	names, err := GetCoreObjectNamesByIDs(db, objectType, ids, includeDeleted)
 	if err == nil {
 		return names, nil
 	}
+
+	// a non-"unknown core type" error is a real failure; surface it
 	if !errors.Is(err, ErrUnknownCoreType) {
 		return nil, err
 	}
 
+	// core doesn't know this type; look up which module owns it
 	endpoint, path, err := GetModuleRouteForType(db, objectType)
 	if err != nil {
 		return nil, err
 	}
+
+	// no module owns it either; return empty so callers can degrade
+	// gracefully rather than failing the whole response
 	if endpoint == "" {
 		return map[uint]string{}, nil
 	}
 
+	// dispatch to the owning module's CRUD endpoint
 	return getNamesFromModule(endpoint, path, ids, includeDeleted)
 }
 
 // GetObjectIDByName returns the ID of the named object of the given type,
 // dispatching to core SQL or the owning module's API as needed.
 func GetObjectIDByName(db *gorm.DB, objectType, name string) (uint, error) {
+	// try the core SQL resolver first
 	id, err := GetCoreObjectIDByName(db, objectType, name)
 	if err == nil {
 		return id, nil
 	}
+
+	// a non-"unknown core type" error is a real failure; surface it
 	if !errors.Is(err, ErrUnknownCoreType) {
 		return 0, err
 	}
 
+	// core doesn't know this type; look up which module owns it
 	endpoint, path, err := GetModuleRouteForType(db, objectType)
 	if err != nil {
 		return 0, err
 	}
+
+	// no module owns it either; this resolver has no fallback so the
+	// caller needs a hard error rather than a soft empty
 	if endpoint == "" {
 		return 0, fmt.Errorf("object type %q not owned by core or any registered module", objectType)
 	}
 
+	// dispatch to the owning module's CRUD endpoint
 	return getIDFromModuleByName(endpoint, path, objectType, name)
 }
 
-// GetModuleRouteForType returns the upstream endpoint and CRUD path for
-// an ObjectType, dispatching to whichever module registered it. Accepts
-// either the qualified form ("<namespace>/<version>.<TypeName>") or the
-// reflect-derived bare form ("<version>.<TypeName>" produced by
-// util.ObjectTypeName) that the AOR storage uses; bare types are
-// disambiguated by looking up the module in v0_module_objects.
+// GetModuleRouteForType returns the endpoint and CRUD path that the
+// owning module exposes for a given module type. The input must be the
+// qualified form "<api-namespace>/<version>.<TypeName>". Returns empty
+// strings for inputs that don't parse as qualified or don't match a
+// registered module.
+//
+// For an input of "example.com/v0.Widget", returns:
+//   endpoint = "http://widget-api.threeport-control-plane:80"
+//   path     = "/v0/widgets"
 func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, error) {
 	// fresh session to avoid inheriting WHERE clauses from the caller's db
 	db = db.Session(&gorm.Session{NewDB: true})
+
+	// unqualified inputs aren't module types; caller falls through to a
+	// graceful empty result
 	namespace, version, typeName, ok := parseQualifiedType(objectType)
 	if !ok {
-		// bare "<version>.<TypeName>" — look up the namespace via the
-		// registry; ambiguous bare kinds (registered in >1 module) are
-		// surfaced upstream by resolveObjectType, so we return empty
-		// here to keep the resolver flow simple
-		dotIdx := strings.Index(objectType, ".")
-		if dotIdx < 1 || dotIdx == len(objectType)-1 {
-			return "", "", nil
-		}
-		bareVersion := objectType[:dotIdx]
-		bareKind := objectType[dotIdx+1:]
-
-		var ns string
-		// fresh session to avoid inheriting WHERE clauses from the caller's db
-		row := db.Session(&gorm.Session{NewDB: true}).
-			Table("v0_module_objects AS object").
-			Joins("JOIN v0_module_apis AS module_api ON module_api.id = object.module_api_id").
-			Where("object.name = ? AND object.version = ? AND module_api.core = false", bareKind, bareVersion).
-			Select("module_api.api_namespace").
-			Limit(1).
-			Row()
-		if err := row.Scan(&ns); err != nil {
-			// not registered as a module type — caller will fall through to empty result
-			return "", "", nil
-		}
-		namespace, version, typeName = ns, bareVersion, bareKind
+		return "", "", nil
 	}
 
 	// start from the routes table; we'll JOIN outward to filter by
@@ -232,7 +231,7 @@ func resolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
 	return out, nil
 }
 
-// parseQualifiedType splits "<namespace>/<version>.<TypeName>" into its
+// parseQualifiedType splits "<api-namespace>/<version>.<TypeName>" into its
 // three parts. Returns ok=false for unqualified strings (core types).
 //
 // For "example.com/v0.Widget":

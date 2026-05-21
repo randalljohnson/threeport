@@ -73,10 +73,25 @@ func (sd *SecretDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (sd *SecretDefinition) GetFullyQualifiedType() string {
+	return "v0.SecretDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (sd *SecretDefinition) ScheduledForDeletion() *time.Time {
 	return sd.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on SecretDefinition.
+func (s *SecretDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "AwsProviderID",
+		ObjectID:     s.AwsProviderID,
+		ObjectType:   new(AwsProvider).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -133,8 +148,38 @@ func (si *SecretInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (si *SecretInstance) GetFullyQualifiedType() string {
+	return "v0.SecretInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (si *SecretInstance) ScheduledForDeletion() *time.Time {
 	return si.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on SecretInstance.
+func (s *SecretInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "HelmWorkloadInstanceID",
+		ObjectID:     s.HelmWorkloadInstanceID,
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     s.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "SecretDefinitionID",
+		ObjectID:     s.SecretDefinitionID,
+		ObjectType:   new(SecretDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "WorkloadInstanceID",
+		ObjectID:     s.WorkloadInstanceID,
+		ObjectType:   new(WorkloadInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }

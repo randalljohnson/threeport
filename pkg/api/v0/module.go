@@ -42,7 +42,7 @@ type ModuleApiRoute struct {
 	Path *string `json:"Path,omitempty" query:"path" validate:"required" gorm:"not null"`
 
 	// The module API this route belongs to.
-	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null"`
+	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The module object this route serves.
 	ModuleObjects []*ModuleObject `json:"ModuleObjects,omitempty" gorm:"many2many:v0_module_api_routes_module_objects;" validate:"optional,association"`
@@ -62,7 +62,7 @@ type ModuleController struct {
 	DeploymentName *string `json:"DeploymentName,omitempty" query:"deploymentname" validate:"required" gorm:"not null"`
 
 	// The module API this controller is connected to.
-	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null"`
+	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null" relationship:"requires"`
 }
 
 // ModuleObject is an API object that is managed by a module in Threeport.  This provides
@@ -80,11 +80,11 @@ type ModuleObject struct {
 	Description *string `json:"Description,omitempty" query:"description" validate:"optional"`
 
 	// The module API this controller is connected to.
-	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null"`
+	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The controller that reconciles state for this API object, if applicable.  Note: some API objects
 	// do not require reconciliation by a controller - this field will be null in those cases.
-	ModuleControllerID *uint `json:"ModuleControllerID,omitempty" query:"modulecontrollerid" validate:"optional"`
+	ModuleControllerID *uint `json:"ModuleControllerID,omitempty" query:"modulecontrollerid" validate:"optional" relationship:"requires"`
 
 	// The routes that service this module object.
 	ModuleApiRoutes []*ModuleApiRoute `json:"ModuleApiRoutes,omitempty" gorm:"many2many:v0_module_api_routes_module_objects;" validate:"optional,association"`

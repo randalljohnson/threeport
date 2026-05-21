@@ -16,7 +16,7 @@ func outputGetv0KubernetesRuntimesCmd(
 	kubernetesRuntimes *[]config_v0.KubernetesRuntimeConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t KUBERNETES RUNTIME DEFINITION\t KUBERNETES RUNTIME INSTANCE\t INFRA PROVIDER\t HIGH AVAILABILITY\t INFRA PROVIDER ACCOUNT\t LOCATION\t DEFAULT RUNTIME\t FORCE DELETE\t AGE")
+	fmt.Fprintln(writer, "NAME\t KUBERNETES RUNTIME DEFINITION\t KUBERNETES RUNTIME INSTANCE\t INFRA PROVIDER\t HIGH AVAILABILITY\t INFRA PROVIDER ACCOUNT\t LOCATION\t DEFAULT RUNTIME\t AGE")
 	for _, kubernetesRuntime := range *kubernetesRuntimes {
 		infraProviderAcctName := ""
 		if kubernetesRuntime.KubernetesRuntime.InfraProviderAccountName != nil {
@@ -36,7 +36,6 @@ func outputGetv0KubernetesRuntimesCmd(
 			infraProviderAcctName, "\t",
 			*kubernetesRuntime.KubernetesRuntime.Location, "\t",
 			*kubernetesRuntime.KubernetesRuntime.DefaultRuntime, "\t",
-			*kubernetesRuntime.KubernetesRuntime.ForceDelete, "\t",
 			age,
 		)
 	}
@@ -81,7 +80,7 @@ func outputGetv0KubernetesRuntimeInstancesCmd(
 	kubernetesRuntimeInstances *[]config_v0.KubernetesRuntimeInstanceConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t KUBERNETES RUNTIME DEFINITION\t LOCATION\t DEFAULT RUNTIME\t FORCE DELETE\t AGE")
+	fmt.Fprintln(writer, "NAME\t KUBERNETES RUNTIME DEFINITION\t LOCATION\t DEFAULT RUNTIME\t AGE")
 	for _, kubernetesRuntimeInstance := range *kubernetesRuntimeInstances {
 		definitionName := ""
 		if kubernetesRuntimeInstance.KubernetesRuntimeInstance.KubernetesRuntimeDefinition != nil &&
@@ -98,7 +97,6 @@ func outputGetv0KubernetesRuntimeInstancesCmd(
 			definitionName, "\t",
 			*kubernetesRuntimeInstance.KubernetesRuntimeInstance.Location, "\t",
 			*kubernetesRuntimeInstance.KubernetesRuntimeInstance.DefaultRuntime, "\t",
-			*kubernetesRuntimeInstance.KubernetesRuntimeInstance.ForceDelete, "\t",
 			age,
 		)
 	}

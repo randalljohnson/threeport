@@ -1,7 +1,7 @@
 ApiDocs:
   Title: "Threeport RESTful API"
   Description: "Core API server for the Threeport application orchestration control plane."
-  ContactUrl: "https://threerport.io"
+  ContactUrl: "https://threeport.io"
 ApiObjectGroups:
 - Name: secret
   Objects:

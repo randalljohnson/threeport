@@ -52,14 +52,14 @@ type ControlPlaneInstance struct {
 	ClientKey *string `json:"ClientKey,omitempty" query:"clientkey" validate:"optional"`
 
 	// the kubernetes runtime instance the control plane is running on
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// These are pointers to the parent and children of the current control plane
 	// This is useful to map out the topology between control planes being managed by one another
-	ParentControlPlaneInstanceID *uint                   `json:"ParentControlPlaneInstanceID,omitempty" validate:"optional"`
+	ParentControlPlaneInstanceID *uint                   `json:"ParentControlPlaneInstanceID,omitempty" validate:"optional" relationship:"requires;type:ControlPlaneInstance"`
 	Parent                       *ControlPlaneInstance   `json:"Parent,omitempty" gorm:"foreignKey:ParentControlPlaneInstanceID" validate:"optional,association"`
 	Children                     *[]ControlPlaneInstance `json:"Children,omitempty" gorm:"foreignKey:ParentControlPlaneInstanceID" validate:"optional,association"`
 
 	// The definition used to configure the control plane instance.
-	ControlPlaneDefinitionID *uint `json:"ControlPlaneDefinitionID,omitempty" query:"controlplanedefinitionid" gorm:"not null" validate:"required"`
+	ControlPlaneDefinitionID *uint `json:"ControlPlaneDefinitionID,omitempty" query:"controlplanedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 }

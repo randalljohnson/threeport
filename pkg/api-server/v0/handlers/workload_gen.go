@@ -65,7 +65,7 @@ func (h Handler) AddWorkloadDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingWorkloadDefinition api_v0.WorkloadDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", workloadDefinition.Name).First(&existingWorkloadDefinition)
+	result := h.RequestDB(c).Where("name = ?", workloadDefinition.Name).First(&existingWorkloadDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -79,7 +79,7 @@ func (h Handler) AddWorkloadDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&workloadDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&workloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -155,7 +155,7 @@ func (h Handler) GetWorkloadDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.WorkloadDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.WorkloadDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -166,7 +166,7 @@ func (h Handler) GetWorkloadDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -258,8 +258,7 @@ func (h Handler) GetWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadDefinition
 	workloadDefinitionID := c.Param("id")
 	var workloadDefinition api_v0.WorkloadDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&workloadDefinition, workloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -301,7 +300,7 @@ func (h Handler) UpdateWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadDefinition
 	workloadDefinitionID := c.Param("id")
 	var existingWorkloadDefinition api_v0.WorkloadDefinition
-	if result := h.DB.First(&existingWorkloadDefinition, workloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadDefinition, workloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -323,7 +322,7 @@ func (h Handler) UpdateWorkloadDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadDefinition).Updates(&updatedWorkloadDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingWorkloadDefinition).Updates(&updatedWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -383,7 +382,7 @@ func (h Handler) ReplaceWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadDefinition
 	workloadDefinitionID := c.Param("id")
 	var existingWorkloadDefinition api_v0.WorkloadDefinition
-	if result := h.DB.First(&existingWorkloadDefinition, workloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadDefinition, workloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -412,7 +411,7 @@ func (h Handler) ReplaceWorkloadDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadDefinition.ID = existingWorkloadDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -425,7 +424,7 @@ func (h Handler) ReplaceWorkloadDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingWorkloadDefinition, workloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadDefinition, workloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -461,7 +460,7 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadDefinition
 	workloadDefinitionID := c.Param("id")
 	var workloadDefinition api_v0.WorkloadDefinition
-	if result := h.DB.Preload("WorkloadInstances").First(&workloadDefinition, workloadDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("WorkloadInstances").First(&workloadDefinition, workloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -475,6 +474,18 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
+	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &workloadDefinition); checkErr != nil {
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(checkErr, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -487,7 +498,7 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&workloadDefinition).Updates(&scheduledWorkloadDefinition); result.Error != nil {
+		if result := h.RequestDB(c).Model(&workloadDefinition).Updates(&scheduledWorkloadDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -513,8 +524,17 @@ func (h Handler) DeleteWorkloadDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&workloadDefinition); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&workloadDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -586,7 +606,7 @@ func (h Handler) AddWorkloadEvent(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&workloadEvent); result.Error != nil {
+	if result := h.RequestDB(c).Create(&workloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -648,7 +668,7 @@ func (h Handler) GetWorkloadEvents(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.WorkloadEvent{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.WorkloadEvent{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -659,7 +679,7 @@ func (h Handler) GetWorkloadEvents(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -751,8 +771,7 @@ func (h Handler) GetWorkloadEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadEvent
 	workloadEventID := c.Param("id")
 	var workloadEvent api_v0.WorkloadEvent
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&workloadEvent, workloadEventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -794,7 +813,7 @@ func (h Handler) UpdateWorkloadEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadEvent
 	workloadEventID := c.Param("id")
 	var existingWorkloadEvent api_v0.WorkloadEvent
-	if result := h.DB.First(&existingWorkloadEvent, workloadEventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadEvent, workloadEventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -816,7 +835,7 @@ func (h Handler) UpdateWorkloadEvent(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadEvent).Updates(&updatedWorkloadEvent); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingWorkloadEvent).Updates(&updatedWorkloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -862,7 +881,7 @@ func (h Handler) ReplaceWorkloadEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadEvent
 	workloadEventID := c.Param("id")
 	var existingWorkloadEvent api_v0.WorkloadEvent
-	if result := h.DB.First(&existingWorkloadEvent, workloadEventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadEvent, workloadEventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -891,7 +910,7 @@ func (h Handler) ReplaceWorkloadEvent(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadEvent.ID = existingWorkloadEvent.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadEvent); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -904,7 +923,7 @@ func (h Handler) ReplaceWorkloadEvent(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingWorkloadEvent, workloadEventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadEvent, workloadEventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -940,7 +959,7 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadEvent
 	workloadEventID := c.Param("id")
 	var workloadEvent api_v0.WorkloadEvent
-	if result := h.DB.First(&workloadEvent, workloadEventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&workloadEvent, workloadEventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -949,8 +968,17 @@ func (h Handler) DeleteWorkloadEvent(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&workloadEvent); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&workloadEvent); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -1022,7 +1050,7 @@ func (h Handler) AddWorkloadInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingWorkloadInstance api_v0.WorkloadInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", workloadInstance.Name).First(&existingWorkloadInstance)
+	result := h.RequestDB(c).Where("name = ?", workloadInstance.Name).First(&existingWorkloadInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -1036,7 +1064,7 @@ func (h Handler) AddWorkloadInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&workloadInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&workloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1112,7 +1140,7 @@ func (h Handler) GetWorkloadInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.WorkloadInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.WorkloadInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1123,7 +1151,7 @@ func (h Handler) GetWorkloadInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1215,8 +1243,7 @@ func (h Handler) GetWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadInstance
 	workloadInstanceID := c.Param("id")
 	var workloadInstance api_v0.WorkloadInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&workloadInstance, workloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1258,7 +1285,7 @@ func (h Handler) UpdateWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadInstance
 	workloadInstanceID := c.Param("id")
 	var existingWorkloadInstance api_v0.WorkloadInstance
-	if result := h.DB.First(&existingWorkloadInstance, workloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadInstance, workloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1280,7 +1307,7 @@ func (h Handler) UpdateWorkloadInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadInstance).Updates(&updatedWorkloadInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingWorkloadInstance).Updates(&updatedWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1340,7 +1367,7 @@ func (h Handler) ReplaceWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadInstance
 	workloadInstanceID := c.Param("id")
 	var existingWorkloadInstance api_v0.WorkloadInstance
-	if result := h.DB.First(&existingWorkloadInstance, workloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadInstance, workloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1369,7 +1396,7 @@ func (h Handler) ReplaceWorkloadInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadInstance.ID = existingWorkloadInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1382,7 +1409,7 @@ func (h Handler) ReplaceWorkloadInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingWorkloadInstance, workloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadInstance, workloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1418,7 +1445,7 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadInstance
 	workloadInstanceID := c.Param("id")
 	var workloadInstance api_v0.WorkloadInstance
-	if result := h.DB.First(&workloadInstance, workloadInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&workloadInstance, workloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1426,6 +1453,18 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
+	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &workloadInstance); checkErr != nil {
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(checkErr, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -1438,7 +1477,7 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&workloadInstance).Updates(&scheduledWorkloadInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&workloadInstance).Updates(&scheduledWorkloadInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1464,8 +1503,17 @@ func (h Handler) DeleteWorkloadInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&workloadInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&workloadInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1537,7 +1585,7 @@ func (h Handler) AddWorkloadResourceDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&workloadResourceDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&workloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1599,7 +1647,7 @@ func (h Handler) GetWorkloadResourceDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.WorkloadResourceDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.WorkloadResourceDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1610,7 +1658,7 @@ func (h Handler) GetWorkloadResourceDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1702,8 +1750,7 @@ func (h Handler) GetWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceDefinition
 	workloadResourceDefinitionID := c.Param("id")
 	var workloadResourceDefinition api_v0.WorkloadResourceDefinition
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&workloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1745,7 +1792,7 @@ func (h Handler) UpdateWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceDefinition
 	workloadResourceDefinitionID := c.Param("id")
 	var existingWorkloadResourceDefinition api_v0.WorkloadResourceDefinition
-	if result := h.DB.First(&existingWorkloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1767,7 +1814,7 @@ func (h Handler) UpdateWorkloadResourceDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadResourceDefinition).Updates(&updatedWorkloadResourceDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingWorkloadResourceDefinition).Updates(&updatedWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1813,7 +1860,7 @@ func (h Handler) ReplaceWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceDefinition
 	workloadResourceDefinitionID := c.Param("id")
 	var existingWorkloadResourceDefinition api_v0.WorkloadResourceDefinition
-	if result := h.DB.First(&existingWorkloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1842,7 +1889,7 @@ func (h Handler) ReplaceWorkloadResourceDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadResourceDefinition.ID = existingWorkloadResourceDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadResourceDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1855,7 +1902,7 @@ func (h Handler) ReplaceWorkloadResourceDefinition(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingWorkloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1891,7 +1938,7 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceDefinition
 	workloadResourceDefinitionID := c.Param("id")
 	var workloadResourceDefinition api_v0.WorkloadResourceDefinition
-	if result := h.DB.First(&workloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&workloadResourceDefinition, workloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1900,8 +1947,17 @@ func (h Handler) DeleteWorkloadResourceDefinition(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&workloadResourceDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&workloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -1971,7 +2027,7 @@ func (h Handler) AddWorkloadResourceInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&workloadResourceInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&workloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2033,7 +2089,7 @@ func (h Handler) GetWorkloadResourceInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.WorkloadResourceInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.WorkloadResourceInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -2044,7 +2100,7 @@ func (h Handler) GetWorkloadResourceInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -2136,8 +2192,7 @@ func (h Handler) GetWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceInstance
 	workloadResourceInstanceID := c.Param("id")
 	var workloadResourceInstance api_v0.WorkloadResourceInstance
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&workloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -2179,7 +2234,7 @@ func (h Handler) UpdateWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceInstance
 	workloadResourceInstanceID := c.Param("id")
 	var existingWorkloadResourceInstance api_v0.WorkloadResourceInstance
-	if result := h.DB.First(&existingWorkloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2201,7 +2256,7 @@ func (h Handler) UpdateWorkloadResourceInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingWorkloadResourceInstance).Updates(&updatedWorkloadResourceInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingWorkloadResourceInstance).Updates(&updatedWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2247,7 +2302,7 @@ func (h Handler) ReplaceWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceInstance
 	workloadResourceInstanceID := c.Param("id")
 	var existingWorkloadResourceInstance api_v0.WorkloadResourceInstance
-	if result := h.DB.First(&existingWorkloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2276,7 +2331,7 @@ func (h Handler) ReplaceWorkloadResourceInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedWorkloadResourceInstance.ID = existingWorkloadResourceInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadResourceInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2289,7 +2344,7 @@ func (h Handler) ReplaceWorkloadResourceInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingWorkloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingWorkloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2325,7 +2380,7 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeWorkloadResourceInstance
 	workloadResourceInstanceID := c.Param("id")
 	var workloadResourceInstance api_v0.WorkloadResourceInstance
-	if result := h.DB.First(&workloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&workloadResourceInstance, workloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -2334,8 +2389,17 @@ func (h Handler) DeleteWorkloadResourceInstance(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&workloadResourceInstance); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&workloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {

@@ -5,13 +5,17 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
+	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	sdkutil "github.com/threeport/threeport/pkg/sdk/v0/util"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -125,6 +129,11 @@ type ApiObjectGroup struct {
 	// An example of this data model with a WorkloadDefinition is:
 	// map["WorkloadDefinition"]map["YAMLDocument"]map["validate"]"required"
 	StructTags map[string]map[string]map[string]string
+
+	// FieldTypes carries the Go type expression for every field captured
+	// in StructTags, keyed by object name then field name. Tag validators
+	// that need to verify a field's Go type read it here.
+	FieldTypes map[string]map[string]string
 }
 
 // VersionedApiObjectCollection contains all API objects grouped by version and
@@ -505,6 +514,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			// determine which objects must be reconciled and build a map
 			// of struct tags for each object
 			structTags := make(map[string]map[string]map[string]string)
+			fieldTypes := make(map[string]map[string]string)
 
 			// inspect the syntax tree for the object models
 			for _, node := range pf.Decls {
@@ -549,6 +559,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 								}
 
 								structTags[objectName] = make(map[string]map[string]string)
+								fieldTypes[objectName] = make(map[string]string)
 
 								// if so, iterate over the fields
 								for _, field := range structType.Fields.List {
@@ -586,6 +597,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 									}
 									tagMap := util.ParseStructTag(field.Tag.Value)
 									structTags[objectName][fieldName] = tagMap
+									fieldTypes[objectName][fieldName] = types.ExprString(field.Type)
 								}
 							}
 						}
@@ -603,6 +615,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 				TptctlModels:             tptctlModels,
 				TptctlConfigPathModels:   tptctlModelsConfigPath,
 				StructTags:               structTags,
+				FieldTypes:               fieldTypes,
 			}
 
 			// validate model configs
@@ -840,6 +853,205 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 		}
 	}
 	return false
+}
+
+// queryNamePattern matches the lowercase ASCII letters and digits allowed
+// in query tag values.
+var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)
+
+// ValidateTags walks every API object's struct tags and returns a non-nil
+// error if any threeport-specific tag has an invalid value.
+//
+// Validates:
+//   - relationship: kind is recognized; modifier keys are recognized;
+//     the target type (`type:<TypeName>` modifier or the field name minus
+//     its "ID" suffix) names a registered API object; field type is *uint
+//   - encrypt: value matches EncryptTrue
+//   - validate: value matches a recognized validator value
+//   - persist: value matches PersistFalse (true is the default; omit the tag)
+//   - query: value matches queryNamePattern
+func (g *Generator) ValidateTags() error {
+	// build the set of registered API type names so the relationship
+	// validator can verify that any `type:<TypeName>` modifier names a
+	// real type
+	knownTypes := map[string]bool{}
+	for _, group := range g.ApiObjectGroups {
+		for _, obj := range group.ApiObjects {
+			knownTypes[obj.TypeName] = true
+		}
+	}
+
+	// accumulate one human-readable problem string per invalid tag so a
+	// single run reports every issue rather than failing on the first
+	var problems []string
+	for _, group := range g.ApiObjectGroups {
+		for objectName, fieldMap := range group.StructTags {
+			for fieldName, tagMap := range fieldMap {
+				// relationship tags carry sub-structure; delegate to a
+				// helper that splits and validates kind + modifiers
+				if rel, ok := tagMap[string(lib.RelationshipTag)]; ok && rel != "" {
+					fieldType := group.FieldTypes[objectName][fieldName]
+					problems = append(problems,
+						validateRelationshipTag(objectName, fieldName, fieldType, rel, knownTypes, g.Module)...)
+				}
+				// encrypt is a single-value flag; only EncryptTrue is meaningful
+				if enc, ok := tagMap[string(lib.EncryptTag)]; ok && enc != lib.EncryptTrue {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s:%q invalid (only %q allowed)",
+						objectName, fieldName,
+						lib.EncryptTag, enc, lib.EncryptTrue,
+					))
+				}
+				// validate accepts one of three known values; anything else
+				// is a typo or a stale value and must be flagged
+				if val, ok := tagMap[string(lib.ValidateTag)]; ok &&
+					val != string(lib.ValidateRequired) &&
+					val != string(lib.ValidateOptional) &&
+					val != string(lib.ValidateOptionalAssociation) {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s:%q invalid (allowed: %q, %q, %q)",
+						objectName, fieldName,
+						lib.ValidateTag, val,
+						lib.ValidateRequired, lib.ValidateOptional, lib.ValidateOptionalAssociation,
+					))
+				}
+				// persist defaults to true — only PersistFalse opts out;
+				// any other value (including an explicit "true") is noise
+				// and likely indicates a misunderstanding
+				if per, ok := tagMap[string(lib.PersistTag)]; ok && per != lib.PersistFalse {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s:%q invalid (only %q is meaningful; omit the tag for the default)",
+						objectName, fieldName,
+						lib.PersistTag, per, lib.PersistFalse,
+					))
+				}
+				// query feeds URL parameter parsing; restrict to lowercase
+				// alphanumerics so codegen and route matching stay simple
+				if q, ok := tagMap[string(lib.QueryTag)]; ok && !queryNamePattern.MatchString(q) {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s:%q invalid (must match %s)",
+						objectName, fieldName,
+						lib.QueryTag, q, queryNamePattern.String(),
+					))
+				}
+			}
+		}
+	}
+
+	if len(problems) > 0 {
+		// sort so the error output is stable across runs — map iteration
+		// order is otherwise random and would make the message jitter
+		sort.Strings(problems)
+		return fmt.Errorf(
+			"%d invalid tag(s):\n  %s",
+			len(problems), strings.Join(problems, "\n  "),
+		)
+	}
+	return nil
+}
+
+// ParseRelationshipTagValue splits a relationship tag value of the form
+// `<kind>[;<key>:<value>...]` into its kind and modifier key/value pairs,
+// returning any malformed modifier entries separately.
+func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]string, malformed []string) {
+	// the kind is the first `;`-separated segment; everything after it is
+	// a modifier list. Split on `;` rather than parsing greedily so a
+	// missing modifier list (just `<kind>`) still parses cleanly with an
+	// empty modifier slice
+	parts := strings.Split(rel, ";")
+	kind = parts[0]
+	modifiers = make(map[string]string)
+	for _, p := range parts[1:] {
+		// each modifier is `key:value`; preserve malformed entries so the
+		// caller can report them rather than silently dropping garbage
+		k, v, ok := strings.Cut(p, ":")
+		if !ok {
+			malformed = append(malformed, p)
+			continue
+		}
+		modifiers[k] = v
+	}
+	return
+}
+
+// validateRelationshipTag returns one error per problem in a relationship
+// tag value. In module mode, types outside the local set are presumed to
+// be in threeport core (an already-built imported package) and verified
+// when the module compiles.
+func validateRelationshipTag(object, field, fieldType, rel string, knownTypes map[string]bool, module bool) []string {
+	var problems []string
+	kind, modifiers, malformed := ParseRelationshipTagValue(rel)
+
+	// kind anchors the whole tag — flag anything that isn't one of the
+	// recognized values up front so downstream emission can rely on
+	// the value being safe
+	switch api.Relationship(kind) {
+	case api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes, api.RelationshipMarries:
+		// valid
+	default:
+		problems = append(problems, fmt.Sprintf(
+			"%s.%s: invalid relationship kind %q (expected %q, %q, %q, or %q)",
+			object, field, kind,
+			api.RelationshipRequires, api.RelationshipOwns, api.RelationshipDescribes, api.RelationshipMarries,
+		))
+	}
+	// relationship-tagged fields are emitted as *uint foreign keys; a
+	// non-*uint field would produce generated code that fails to compile
+	if fieldType != "*uint" {
+		problems = append(problems, fmt.Sprintf(
+			"%s.%s: relationship tag requires field type *uint, got %q",
+			object, field, fieldType,
+		))
+	}
+	// surface malformed modifier entries (no colon) verbatim; they were
+	// preserved by the parser specifically so the caller can report them
+	for _, m := range malformed {
+		problems = append(problems, fmt.Sprintf(
+			"%s.%s: malformed relationship modifier %q (expected key:value)",
+			object, field, m,
+		))
+	}
+	// only the type modifier is currently meaningful; reject any other key
+	// to catch typos early. When new modifiers are added, extend this
+	// switch rather than letting unknown keys through silently
+	for k, v := range modifiers {
+		switch k {
+		case lib.RelationshipTypeKey:
+			// in module mode, types may live in the imported threeport
+			// core package; the Go compiler verifies them at build time
+			if !knownTypes[v] && !module {
+				problems = append(problems, fmt.Sprintf(
+					"%s.%s: relationship references unknown API type %q",
+					object, field, v,
+				))
+			}
+		default:
+			problems = append(problems, fmt.Sprintf(
+				"%s.%s: unknown relationship modifier key %q (only %q is supported)",
+				object, field, k, lib.RelationshipTypeKey,
+			))
+		}
+	}
+	// when there's no `type:` modifier, the target type is derived by
+	// stripping the field's "ID" suffix. Reject anything the derivation
+	// can't resolve to a registered API type
+	if _, hasTypeModifier := modifiers[lib.RelationshipTypeKey]; !hasTypeModifier {
+		if !strings.HasSuffix(field, "ID") {
+			problems = append(problems, fmt.Sprintf(
+				"%s.%s: relationship-tagged field name must end in %q or include a %q modifier",
+				object, field, "ID", lib.RelationshipTypeKey,
+			))
+		} else {
+			derived := strings.TrimSuffix(field, "ID")
+			if !knownTypes[derived] && !module {
+				problems = append(problems, fmt.Sprintf(
+					"%s.%s: relationship references unknown API type %q (derived from field name; add %q modifier to override)",
+					object, field, derived, lib.RelationshipTypeKey,
+				))
+			}
+		}
+	}
+	return problems
 }
 
 // nameFields returns a list of struct type fields that indicate a struct

@@ -91,10 +91,30 @@ func (ld *LoggingDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ld *LoggingDefinition) GetFullyQualifiedType() string {
+	return "v0.LoggingDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ld *LoggingDefinition) ScheduledForDeletion() *time.Time {
 	return ld.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on LoggingDefinition.
+func (l *LoggingDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "LokiHelmWorkloadDefinitionID",
+		ObjectID:     l.LokiHelmWorkloadDefinitionID,
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "PromtailHelmWorkloadDefinitionID",
+		ObjectID:     l.PromtailHelmWorkloadDefinitionID,
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -151,10 +171,40 @@ func (li *LoggingInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (li *LoggingInstance) GetFullyQualifiedType() string {
+	return "v0.LoggingInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (li *LoggingInstance) ScheduledForDeletion() *time.Time {
 	return li.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on LoggingInstance.
+func (l *LoggingInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     l.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "LoggingDefinitionID",
+		ObjectID:     l.LoggingDefinitionID,
+		ObjectType:   new(LoggingDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "LokiHelmWorkloadInstanceID",
+		ObjectID:     l.LokiHelmWorkloadInstanceID,
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "PromtailHelmWorkloadInstanceID",
+		ObjectID:     l.PromtailHelmWorkloadInstanceID,
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -211,10 +261,25 @@ func (md *MetricsDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (md *MetricsDefinition) GetFullyQualifiedType() string {
+	return "v0.MetricsDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (md *MetricsDefinition) ScheduledForDeletion() *time.Time {
 	return md.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on MetricsDefinition.
+func (m *MetricsDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubePrometheusStackHelmWorkloadDefinitionID",
+		ObjectID:     m.KubePrometheusStackHelmWorkloadDefinitionID,
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -271,10 +336,35 @@ func (mi *MetricsInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mi *MetricsInstance) GetFullyQualifiedType() string {
+	return "v0.MetricsInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (mi *MetricsInstance) ScheduledForDeletion() *time.Time {
 	return mi.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on MetricsInstance.
+func (m *MetricsInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubePrometheusStackHelmWorkloadInstanceID",
+		ObjectID:     m.KubePrometheusStackHelmWorkloadInstanceID,
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     m.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "MetricsDefinitionID",
+		ObjectID:     m.MetricsDefinitionID,
+		ObjectType:   new(MetricsDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -331,10 +421,25 @@ func (odd *ObservabilityDashboardDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (odd *ObservabilityDashboardDefinition) GetFullyQualifiedType() string {
+	return "v0.ObservabilityDashboardDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (odd *ObservabilityDashboardDefinition) ScheduledForDeletion() *time.Time {
 	return odd.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ObservabilityDashboardDefinition.
+func (o *ObservabilityDashboardDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "GrafanaHelmWorkloadDefinitionID",
+		ObjectID:     o.GrafanaHelmWorkloadDefinitionID,
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -391,10 +496,35 @@ func (odi *ObservabilityDashboardInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (odi *ObservabilityDashboardInstance) GetFullyQualifiedType() string {
+	return "v0.ObservabilityDashboardInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (odi *ObservabilityDashboardInstance) ScheduledForDeletion() *time.Time {
 	return odi.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ObservabilityDashboardInstance.
+func (o *ObservabilityDashboardInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "GrafanaHelmWorkloadInstanceID",
+		ObjectID:     o.GrafanaHelmWorkloadInstanceID,
+		ObjectType:   new(HelmWorkloadInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     o.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "ObservabilityDashboardDefinitionID",
+		ObjectID:     o.ObservabilityDashboardDefinitionID,
+		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -451,10 +581,35 @@ func (osd *ObservabilityStackDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (osd *ObservabilityStackDefinition) GetFullyQualifiedType() string {
+	return "v0.ObservabilityStackDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (osd *ObservabilityStackDefinition) ScheduledForDeletion() *time.Time {
 	return osd.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ObservabilityStackDefinition.
+func (o *ObservabilityStackDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "LoggingDefinitionID",
+		ObjectID:     o.LoggingDefinitionID,
+		ObjectType:   new(LoggingDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "MetricsDefinitionID",
+		ObjectID:     o.MetricsDefinitionID,
+		ObjectType:   new(MetricsDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "ObservabilityDashboardDefinitionID",
+		ObjectID:     o.ObservabilityDashboardDefinitionID,
+		ObjectType:   new(ObservabilityDashboardDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -511,8 +666,43 @@ func (osi *ObservabilityStackInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (osi *ObservabilityStackInstance) GetFullyQualifiedType() string {
+	return "v0.ObservabilityStackInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (osi *ObservabilityStackInstance) ScheduledForDeletion() *time.Time {
 	return osi.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ObservabilityStackInstance.
+func (o *ObservabilityStackInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     o.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "LoggingInstanceID",
+		ObjectID:     o.LoggingInstanceID,
+		ObjectType:   new(LoggingInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "MetricsInstanceID",
+		ObjectID:     o.MetricsInstanceID,
+		ObjectType:   new(MetricsInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "ObservabilityDashboardInstanceID",
+		ObjectID:     o.ObservabilityDashboardInstanceID,
+		ObjectType:   new(ObservabilityDashboardInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipOwns,
+	}, {
+		FieldName:    "ObservabilityStackDefinitionID",
+		ObjectID:     o.ObservabilityStackDefinitionID,
+		ObjectType:   new(ObservabilityStackDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }

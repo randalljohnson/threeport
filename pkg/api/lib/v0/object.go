@@ -1,9 +1,14 @@
 package v0
 
 import (
+	"fmt"
+	"reflect"
 	"time"
 
+	"gorm.io/gorm"
+
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // ReconciledThreeportApiObject is the interface each reconciled object in the
@@ -17,6 +22,45 @@ type ReconciledThreeportApiObject interface {
 	DecodeNotifObject(object interface{}) error
 	GetId() uint
 	GetType() string
+	GetFullyQualifiedType() string
 	GetVersion() string
 	ScheduledForDeletion() *time.Time
+}
+
+// FullyQualifiedTypeProvider is implemented by every API object. The
+// returned string is "<version>.<TypeName>" for core types and
+// "<api-namespace>/<version>.<TypeName>" for module types. Used as
+// the identity string in AttachedObjectReference rows so the table
+// is unambiguous across modules.
+type FullyQualifiedTypeProvider interface {
+	GetFullyQualifiedType() string
+}
+
+// NewCleanSession returns a session on the existing transaction that
+// does not inherit clauses (WHERE filters, model targets, etc.) from
+// the parent statement. Use this from GORM hooks when issuing a query
+// that is unrelated to the operation that triggered the hook - without
+// it the surrounding statement's clauses would silently apply to the
+// new query.
+func NewCleanSession(tx *gorm.DB) *gorm.DB {
+	return tx.Session(&gorm.Session{NewDB: true})
+}
+
+// LoadUpdatedObjFromDB returns a newly-allocated instance of obj's concrete
+// type populated from the database by ID. The original obj is not
+// mutated. Use this from GORM hooks that need to read post-write field
+// values while keeping the original as a pre-write snapshot.
+func LoadUpdatedObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
+	// allocate a new instance of obj's concrete type via reflection;
+	// the caller's obj stays untouched while loaded values land here
+	updatedObj := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
+
+	// read the row by primary key into updatedObj
+	if err := NewCleanSession(tx).First(updatedObj, id).Error; err != nil {
+		return nil, fmt.Errorf(
+			"failed to reload %s/%d from database: %w",
+			util.ObjectTypeName(obj), id, err,
+		)
+	}
+	return updatedObj, nil
 }

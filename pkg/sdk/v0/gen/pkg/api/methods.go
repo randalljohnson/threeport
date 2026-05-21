@@ -4,28 +4,53 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"sort"
+	"strings"
 
 	. "github.com/dave/jennifer/jen"
 	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
+	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
-	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	sdkgen "github.com/threeport/threeport/pkg/sdk/v0/gen"
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
 )
 
 // GenApiObjectMethods generates the source code for the API objects constants
 // and methods.
-func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error {
 	pluralize := pluralize.NewClient()
+
+	// flatten StructTags so we can look up an API type's relationship-tagged
+	// fields by TypeName when emitting ForeignKeys methods
+	typeToTags := make(map[string]map[string]map[string]string)
+	for _, group := range gen.ApiObjectGroups {
+		for typeName, tagMap := range group.StructTags {
+			typeToTags[typeName] = tagMap
+		}
+	}
+
+	// types declared locally; relationship targets outside this set are
+	// module-only references into threeport core
+	localTypes := map[string]bool{}
+	for _, group := range gen.ApiObjectGroups {
+		for _, obj := range group.ApiObjects {
+			localTypes[obj.TypeName] = true
+		}
+	}
+
 	for _, objCollection := range gen.VersionedApiObjectCollections {
 		for _, objGroup := range objCollection.VersionedApiObjectGroups {
-			f := NewFile(objCollection.Version)
+			f := NewFilePath(fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version))
 			f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 			f.ImportAlias("github.com/threeport/threeport/pkg/notifications/v0", "notifications")
-			f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "tpv0")
+			f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "api")
+			f.ImportAlias("github.com/threeport/threeport/pkg/api/lib/v0", "lib")
+			f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 
 			// object type constants
 			objectTypes := &Statement{}
@@ -170,21 +195,15 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				).Id("GetId").Params().Uint().Block(
 					Return(Op("*").Id(util.TypeAbbrev(apiObj.TypeName)).Dot("ID")),
 				)
-				// GetType method
-				typeLiteral := apiObj.TypeName
-				if gen.Module {
-					typeLiteral = fmt.Sprintf(
-						"%s/%s.%s",
-						sdkConfig.ApiNamespace,
-						objCollection.Version,
-						apiObj.TypeName,
-					)
-				}
+				// GetType method - bare TypeName, same shape for core
+				// and modules. For the API-namespace-qualified form
+				// (used as the AOR identity string) use
+				// GetFullyQualifiedType instead
 				f.Comment("GetType returns the object type.")
 				f.Func().Params(
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetType").Params().String().Block(
-					Return(Lit(typeLiteral)),
+					Return(Lit(apiObj.TypeName)),
 				)
 				// GetVersion method
 				f.Comment("GetVersion returns the version of the API object.")
@@ -192,6 +211,25 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
 				).Id("GetVersion").Params().String().Block(
 					Return(Lit(objCollection.Version)),
+				)
+				// GetFullyQualifiedType method - returns
+				// "<api-namespace>/<version>.<TypeName>" in module mode,
+				// "<version>.<TypeName>" in core mode. used as the
+				// identity string in AttachedObjectReference rows
+				fullyQualifiedTypeLiteral := fmt.Sprintf("%s.%s", objCollection.Version, apiObj.TypeName)
+				if gen.Module {
+					fullyQualifiedTypeLiteral = fmt.Sprintf(
+						"%s/%s.%s",
+						sdkConfig.ApiNamespace,
+						objCollection.Version,
+						apiObj.TypeName,
+					)
+				}
+				f.Comment("GetFullyQualifiedType returns the API-namespace-qualified type name.")
+				f.Func().Params(
+					Id(util.TypeAbbrev(apiObj.TypeName)).Op("*").Id(apiObj.TypeName),
+				).Id("GetFullyQualifiedType").Params().String().Block(
+					Return(Lit(fullyQualifiedTypeLiteral)),
 				)
 				// ScheduledForDeletion method
 				if apiObj.Reconciler {
@@ -202,6 +240,125 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					).Id("ScheduledForDeletion").Params().Op("*").Qual("time", "Time").Block(
 						Return(Id(util.TypeAbbrev(apiObj.TypeName)).Dot("DeletionScheduled")),
 					)
+				}
+
+				// RelationshipTaggedForeignKeys method emitted for any type
+				// with at least one relationship-tagged FK
+				{
+					type fkEntry struct {
+						fieldName    string
+						objectType   string
+						relationship string
+					}
+					var foreignKeys []fkEntry
+					if tagsForType, ok := typeToTags[apiObj.TypeName]; ok {
+						for fieldName, tagMap := range tagsForType {
+							rel, ok := tagMap[string(lib.RelationshipTag)]
+							if !ok || rel == "" {
+								continue
+							}
+							kind, modifiers, _ := sdkgen.ParseRelationshipTagValue(rel)
+							objectType := strings.TrimSuffix(fieldName, "ID")
+							if v, ok := modifiers[lib.RelationshipTypeKey]; ok {
+								objectType = v
+							}
+							foreignKeys = append(foreignKeys, fkEntry{
+								fieldName:    fieldName,
+								objectType:   objectType,
+								relationship: kind,
+							})
+						}
+						sort.Slice(foreignKeys, func(i, j int) bool {
+							return foreignKeys[i].fieldName < foreignKeys[j].fieldName
+						})
+					}
+					if len(foreignKeys) > 0 {
+						receiver := strings.ToLower(string(apiObj.TypeName[0]))
+						foreignKeyType := Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipTaggedForeignKey")
+						f.Comment(fmt.Sprintf(
+							"RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on %s.",
+							apiObj.TypeName,
+						))
+						f.Func().Params(
+							Id(receiver).Op("*").Id(apiObj.TypeName),
+						).Id("RelationshipTaggedForeignKeys").Params().Index().Add(foreignKeyType).BlockFunc(func(g *Group) {
+							g.Return().Index().Add(foreignKeyType).ValuesFunc(func(vg *Group) {
+								for _, fk := range foreignKeys {
+									var relationshipQual *Statement
+									switch api.Relationship(fk.relationship) {
+									case api.RelationshipOwns:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipOwns")
+									case api.RelationshipDescribes:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipDescribes")
+									case api.RelationshipMarries:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipMarries")
+									default:
+										relationshipQual = Qual("github.com/threeport/threeport/pkg/api/v0", "RelationshipRequires")
+									}
+								// reference the target type either locally or via Qual for
+								// a cross-module ref (which is always to a core type, since
+								// modules can't ref other modules)
+								var targetTypeRef *Statement
+								if gen.Module && !localTypes[fk.objectType] {
+									targetTypeRef = Qual(
+										"github.com/threeport/threeport/pkg/api/v0",
+										fk.objectType,
+									)
+								} else {
+									targetTypeRef = Id(fk.objectType)
+								}
+								vg.Values(Dict{
+									Id("FieldName"): Lit(fk.fieldName),
+									// call GetFullyQualifiedType on the target type
+									// so the call site reads as intent ("identify rows
+									// in the AOR table by qualified type") and the
+									// reader can hop to the method to see the literal
+									Id("ObjectType"): Id("new").Call(targetTypeRef).
+										Dot("GetFullyQualifiedType").Call(),
+									Id("Relationship"): relationshipQual,
+									Id("ObjectID"):     Id(receiver).Dot(fk.fieldName),
+								})
+								}
+							})
+						})
+						f.Line()
+					}
+				}
+
+				// EncryptedFields method emitted for any type with at least
+				// one encrypt-tagged field
+				{
+					var encryptedFields []string
+					if tagsForType, ok := typeToTags[apiObj.TypeName]; ok {
+						for fieldName, tagMap := range tagsForType {
+							if tagMap[string(lib.EncryptTag)] != lib.EncryptTrue {
+								continue
+							}
+							encryptedFields = append(encryptedFields, fieldName)
+						}
+						sort.Strings(encryptedFields)
+					}
+					if len(encryptedFields) > 0 {
+						receiver := strings.ToLower(string(apiObj.TypeName[0]))
+						encryptedFieldType := Qual("github.com/threeport/threeport/pkg/api/lib/v0", "EncryptedField")
+						f.Comment(fmt.Sprintf(
+							"EncryptedFields returns the encrypt-tagged fields on %s.",
+							apiObj.TypeName,
+						))
+						f.Func().Params(
+							Id(receiver).Op("*").Id(apiObj.TypeName),
+						).Id("EncryptedFields").Params().Index().Add(encryptedFieldType).BlockFunc(func(g *Group) {
+							g.Return().Index().Add(encryptedFieldType).ValuesFunc(func(vg *Group) {
+								for _, fieldName := range encryptedFields {
+									vg.Values(Dict{
+										Id("Name"):  Lit(fieldName),
+										Id("Value"): Id(receiver).Dot(fieldName),
+									})
+								}
+							})
+						})
+						f.Line()
+					}
 				}
 			}
 
@@ -226,3 +383,4 @@ func GenApiObjectMethods(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	return nil
 }
+

@@ -89,7 +89,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						} else {
 							s.Id("h")
 						}
-					}).Dot("DB").Dot("Where").Call(
+					}).Dot("RequestDB").Call(Id("c")).Dot("Where").Call(
 						Lit("name = ?"), Id(strcase.ToLowerCamel(apiObject.TypeName)).Dot("Name"),
 					).Dot("First").Call(
 						Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)),
@@ -246,7 +246,9 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					))
 
 					// schedule for deletion
-					deleteObjectExecution = Comment("schedule for deletion if not already scheduled")
+					deleteObjectExecution = &Statement{}
+					emitPreCheckBlockingRefs(deleteObjectExecution, strcase.ToLowerCamel(apiObject.TypeName), gen.Module)
+					deleteObjectExecution.Comment("schedule for deletion if not already scheduled")
 					deleteObjectExecution.Line()
 					deleteObjectExecution.Comment("if scheduled and reconciled, delete object from DB")
 					deleteObjectExecution.Line()
@@ -279,7 +281,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								} else {
 									s.Id("h")
 								}
-							}).Dot("DB").Dot("Model").Call(
+							}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
 								Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)),
 							).Dot("Updates").Call(
 								Op("&").Id(fmt.Sprintf("scheduled%s", apiObject.TypeName)),
@@ -374,7 +376,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									} else {
 										s.Id("h")
 									}
-								}).Dot("DB").Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
+								}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
 								Id("result").Dot("Error").Op("!=").Nil(),
 							).BlockFunc(func(h *Group) {
 								if gen.Module {
@@ -388,6 +390,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
 									)
 								}
+								emitBlockedDeleteCheck(h, gen.Module, blockedDeleteCheckBackstop)
 								h.Comment("check if this is a custom HTTP error with specific status code")
 								h.Var().Id("httpErr").Op("*").Qual(
 									"github.com/threeport/threeport/pkg/util/v0",
@@ -423,7 +426,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
+						}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
 						Id("result").Dot("Error").Op("!=").Nil(),
 					).BlockFunc(func(h *Group) {
 						if gen.Module {
@@ -437,6 +440,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
 							)
 						}
+						emitBlockedDeleteCheck(h, gen.Module, blockedDeleteCheckSole)
 						h.Comment("check if this is a custom HTTP error with specific status code")
 						h.Var().Id("httpErr").Op("*").Qual(
 							"github.com/threeport/threeport/pkg/util/v0",
@@ -475,7 +479,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Preload").Call(
+						}).Dot("RequestDB").Call(Id("c")).Dot("Preload").Call(
 							Lit(instancesName),
 						).Dot("First").Call(Op("&").Id(
 							strcase.ToLowerCamel(apiObject.TypeName),
@@ -538,7 +542,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(
 							strcase.ToLowerCamel(apiObject.TypeName),
 						).Op(",").Id(fmt.Sprintf(
@@ -822,7 +826,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						} else {
 							s.Id("h")
 						}
-					}).Dot("DB").Dot("Create").Call(
+					}).Dot("RequestDB").Call(Id("c")).Dot("Create").Call(
 						Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)),
 					).Op(";").Id("result").Dot("Error").Op("!=").Nil()).BlockFunc(func(h *Group) {
 						if gen.Module {
@@ -1022,7 +1026,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								} else {
 									s.Id("h")
 								}
-							}).Dot("DB").Dot("Model").Call(
+							}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
 								Op("&").Qual(
 									fmt.Sprintf(
 										"%s/pkg/api/%s",
@@ -1063,7 +1067,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										} else {
 											s.Id("h")
 										}
-									}).Dot("DB").Dot("Order").Call(Lit("ID asc")).Dot("Where").Call(Op("&").Id("filter")).Dot("Find").Call(Id("records")),
+									}).Dot("RequestDB").Call(Id("c")).Dot("Order").Call(Lit("ID asc")).Dot("Where").Call(Op("&").Id("filter")).Dot("Find").Call(Id("records")),
 										Id("result").Dot("Error").Op("!=").Nil(),
 									).BlockFunc(func(h *Group) {
 										if gen.Module {
@@ -1340,11 +1344,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Op(".").Line().
-							Id("Scopes").Call(Qual(
-							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"QueryScopes",
-						).Call(Id("c")).Op("...")).Add(dbLoadAssociationStatement).Op(".").Line().
+						}).Dot("RequestDB").Call(Id("c")).Add(dbLoadAssociationStatement).Op(".").Line().
 							Id("First").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
@@ -1499,7 +1499,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
@@ -1638,7 +1638,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Model").Call(
+						}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
 							Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)),
 						).Dot("Updates").Call(
 							Op("&").Id(fmt.Sprintf("updated%s", apiObject.TypeName)),
@@ -1802,7 +1802,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
@@ -1970,7 +1970,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").Dot("Session").Call(
+						}).Dot("RequestDB").Call(Id("c")).Dot("Session").Call(
 							Op("&").Qual(
 								"gorm.io/gorm",
 								"Session",
@@ -2025,7 +2025,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							} else {
 								s.Id("h")
 							}
-						}).Dot("DB").
+						}).Dot("RequestDB").Call(Id("c")).
 							Dot("First").Call(Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Op(",").Id(fmt.Sprintf(
 							"%sID", strcase.ToLowerCamel(apiObject.TypeName),
 						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
@@ -2223,4 +2223,108 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	}
 
 	return nil
+}
+
+// blockedDeleteCheckRole distinguishes the two contexts in which the
+// BlockedDeleteError catch is emitted: the sole blocking check for
+// non-reconciled types, or the backstop after the synchronous pre-check
+// for reconciled types.
+type blockedDeleteCheckRole int
+
+const (
+	blockedDeleteCheckSole blockedDeleteCheckRole = iota
+	blockedDeleteCheckBackstop
+)
+
+// emitBlockedDeleteCheck appends the delete-blocked branch that turns a
+// typed signal from the BeforeDelete hook into a 409 listing blockers.
+func emitBlockedDeleteCheck(h *Group, module bool, role blockedDeleteCheckRole) {
+	switch role {
+	case blockedDeleteCheckSole:
+		h.Comment("surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types")
+	case blockedDeleteCheckBackstop:
+		h.Comment("surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check")
+	}
+	h.Var().Id("blockedErr").Op("*").Qual(
+		"github.com/threeport/threeport/pkg/api/v0",
+		"BlockedDeleteError",
+	)
+	h.If(Qual("errors", "As").Call(Id("result").Dot("Error"), Op("&").Id("blockedErr"))).Block(
+		Return(Do(func(s *Statement) {
+			if module {
+				s.Qual(
+					"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+					"RespondBlockedDelete",
+				)
+			} else {
+				s.Id("RespondBlockedDelete")
+			}
+		}).Call(
+			Line().Id("c"),
+			Line().Do(func(s *Statement) {
+				if module {
+					s.Id("h").Dot("Handler")
+				} else {
+					s.Id("h")
+				}
+			}).Dot("RequestDB").Call(Id("c")),
+			Line().Id("blockedErr"),
+			Line(),
+		)),
+	)
+}
+
+// emitPreCheckBlockingRefs emits a synchronous block check before
+// reconciler-backed deletes are scheduled, so the caller sees the 409
+// immediately rather than the controller looping on BeforeDelete.
+func emitPreCheckBlockingRefs(s *Statement, objVar string, module bool) {
+	requestDB := func(g *Statement) *Statement {
+		return g.Do(func(s *Statement) {
+			if module {
+				s.Id("h").Dot("Handler")
+			} else {
+				s.Id("h")
+			}
+		}).Dot("RequestDB").Call(Id("c"))
+	}
+	respondBlocked := func() *Statement {
+		return Do(func(s *Statement) {
+			if module {
+				s.Qual(
+					"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+					"RespondBlockedDelete",
+				)
+			} else {
+				s.Id("RespondBlockedDelete")
+			}
+		})
+	}
+
+	s.Comment("pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler")
+	s.Line()
+	s.If(
+		Id("checkErr").Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/api/v0",
+			"CheckBlockingAttachedObjectReferences",
+		).Call(requestDB(&Statement{}), Op("&").Id(objVar)),
+		Id("checkErr").Op("!=").Nil(),
+	).Block(
+		Var().Id("blockedErr").Op("*").Qual(
+			"github.com/threeport/threeport/pkg/api/v0",
+			"BlockedDeleteError",
+		),
+		If(Qual("errors", "As").Call(Id("checkErr"), Op("&").Id("blockedErr"))).Block(
+			Return(respondBlocked().Call(
+				Line().Id("c"),
+				Line().Add(requestDB(&Statement{})),
+				Line().Id("blockedErr"),
+				Line(),
+			)),
+		),
+		Return(Qual(
+			"github.com/threeport/threeport/pkg/api-server/lib/v0",
+			"ResponseStatus500",
+		).Call(Id("c"), Nil(), Id("checkErr"), Id("objectType"))),
+	)
+	s.Line()
 }

@@ -31,7 +31,6 @@ type KubernetesRuntimeInstanceValues struct {
 	Location                    *string                            `json:"Location,omitempty" yaml:"Location,omitempty"`
 	ThreeportAgentImage         *string                            `json:"ThreeportAgentImage,omitempty" yaml:"ThreeportAgentImage,omitempty"`
 	KubernetesRuntimeDefinition *KubernetesRuntimeDefinitionValues `json:"KubernetesRuntimeDefinition,omitempty" yaml:"KubernetesRuntimeDefinition,omitempty"`
-	ForceDelete                 *bool                              `json:"ForceDelete,omitempty" yaml:"ForceDelete,omitempty"`
 	Age                         *string                            `json:"Age,omitempty" yaml:"Age,omitempty"`
 }
 
@@ -86,7 +85,6 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 				Location:                    kubernetesRuntimeInstance.Location,
 				ThreeportAgentImage:         kubernetesRuntimeInstance.ThreeportAgentImage,
 				KubernetesRuntimeDefinition: kubernetesRuntimeDefinition,
-				ForceDelete:                 kubernetesRuntimeInstance.ForceDelete,
 				Age:                         util.Ptr(util.GetAgeFormatted(kubernetesRuntimeInstance.CreatedAt)),
 			},
 		}
@@ -149,7 +147,6 @@ func (k *KubernetesRuntimeInstanceConfig) Create(
 			Location:                    createdKubernetesRuntimeInstance.Location,
 			ThreeportAgentImage:         createdKubernetesRuntimeInstance.ThreeportAgentImage,
 			ThreeportControlPlaneHost:   createdKubernetesRuntimeInstance.ThreeportControlPlaneHost,
-			ForceDelete:                 createdKubernetesRuntimeInstance.ForceDelete,
 			KubernetesRuntimeDefinition: kubernetesRuntimeInstanceValues.KubernetesRuntimeDefinition,
 		},
 	}
@@ -227,7 +224,6 @@ func (k *KubernetesRuntimeInstanceConfig) Replace(
 			Location:                  replacedKubernetesRuntimeInstance.Location,
 			ThreeportAgentImage:       replacedKubernetesRuntimeInstance.ThreeportAgentImage,
 			ThreeportControlPlaneHost: replacedKubernetesRuntimeInstance.ThreeportControlPlaneHost,
-			ForceDelete:               replacedKubernetesRuntimeInstance.ForceDelete,
 		},
 	}
 
@@ -277,7 +273,6 @@ func (k *KubernetesRuntimeInstanceConfig) Delete(
 			Location:                  deletedKubernetesRuntimeInstance.Location,
 			ThreeportAgentImage:       deletedKubernetesRuntimeInstance.ThreeportAgentImage,
 			ThreeportControlPlaneHost: deletedKubernetesRuntimeInstance.ThreeportControlPlaneHost,
-			ForceDelete:               deletedKubernetesRuntimeInstance.ForceDelete,
 		},
 	}
 

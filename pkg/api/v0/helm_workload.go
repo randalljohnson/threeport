@@ -46,13 +46,13 @@ type HelmWorkloadInstance struct {
 	ValuesDocument *string `json:"ValuesDocument,omitempty" validate:"optional"`
 
 	// The kubernetes runtime to which the helm workload is deployed.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Namespace to deploy the helm chart to.
 	ReleaseNamespace *string `json:"ReleaseNamespace,omitempty" query:"releasenamespace" validate:"optional"`
 
 	// The definition used to configure the workload instance.
-	HelmWorkloadDefinitionID *uint `json:"HelmWorkloadDefinitionID,omitempty" query:"helmworkloaddefinitionid" gorm:"not null" validate:"required"`
+	HelmWorkloadDefinitionID *uint `json:"HelmWorkloadDefinitionID,omitempty" query:"helmworkloaddefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Complete kubernetes resources that will be appended to the provided
 	// helm chart.

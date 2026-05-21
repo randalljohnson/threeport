@@ -2,7 +2,11 @@
 
 package v0
 
-import gorm "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
+)
 
 // beforeCreate runs before the AttachedObjectReference is created.
 func (a *AttachedObjectReference) beforeCreate(tx *gorm.DB) error {
@@ -11,6 +15,13 @@ func (a *AttachedObjectReference) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the AttachedObjectReference is updated.
 func (a *AttachedObjectReference) beforeUpdate(tx *gorm.DB) error {
+	// Relationship is the lifecycle dial; silently widening or narrowing it
+	// post-create would change blocking behavior of an existing reference
+	if tx.Statement.Changed("Relationship") {
+		return util.NewBadRequestError(
+			"AttachedObjectReference.Relationship is immutable; recreate the reference to change it",
+		)
+	}
 	return nil
 }
 

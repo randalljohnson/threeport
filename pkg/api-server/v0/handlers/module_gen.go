@@ -61,7 +61,7 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 	// check for duplicate names
 	var existingModuleApi api_v0.ModuleApi
 	nameUsed := true
-	result := h.DB.Where("name = ?", moduleApi.Name).First(&existingModuleApi)
+	result := h.RequestDB(c).Where("name = ?", moduleApi.Name).First(&existingModuleApi)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -75,7 +75,7 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&moduleApi); result.Error != nil {
+	if result := h.RequestDB(c).Create(&moduleApi); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -137,7 +137,7 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.ModuleApi{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.ModuleApi{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -148,7 +148,7 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -240,8 +240,7 @@ func (h Handler) GetModuleApi(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApi
 	moduleApiID := c.Param("id")
 	var moduleApi api_v0.ModuleApi
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&moduleApi, moduleApiID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -283,7 +282,7 @@ func (h Handler) UpdateModuleApi(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApi
 	moduleApiID := c.Param("id")
 	var existingModuleApi api_v0.ModuleApi
-	if result := h.DB.First(&existingModuleApi, moduleApiID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleApi, moduleApiID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -305,7 +304,7 @@ func (h Handler) UpdateModuleApi(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingModuleApi).Updates(&updatedModuleApi); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingModuleApi).Updates(&updatedModuleApi); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -351,7 +350,7 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApi
 	moduleApiID := c.Param("id")
 	var existingModuleApi api_v0.ModuleApi
-	if result := h.DB.First(&existingModuleApi, moduleApiID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleApi, moduleApiID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -380,7 +379,7 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleApi.ID = existingModuleApi.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApi); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApi); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -393,7 +392,7 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingModuleApi, moduleApiID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleApi, moduleApiID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -429,7 +428,7 @@ func (h Handler) DeleteModuleApi(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApi
 	moduleApiID := c.Param("id")
 	var moduleApi api_v0.ModuleApi
-	if result := h.DB.First(&moduleApi, moduleApiID); result.Error != nil {
+	if result := h.RequestDB(c).First(&moduleApi, moduleApiID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -438,8 +437,17 @@ func (h Handler) DeleteModuleApi(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&moduleApi); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&moduleApi); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -509,7 +517,7 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&moduleApiRoute); result.Error != nil {
+	if result := h.RequestDB(c).Create(&moduleApiRoute); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -571,7 +579,7 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.ModuleApiRoute{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.ModuleApiRoute{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -582,7 +590,7 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -674,8 +682,7 @@ func (h Handler) GetModuleApiRoute(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApiRoute
 	moduleApiRouteID := c.Param("id")
 	var moduleApiRoute api_v0.ModuleApiRoute
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -717,7 +724,7 @@ func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApiRoute
 	moduleApiRouteID := c.Param("id")
 	var existingModuleApiRoute api_v0.ModuleApiRoute
-	if result := h.DB.First(&existingModuleApiRoute, moduleApiRouteID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleApiRoute, moduleApiRouteID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -739,7 +746,7 @@ func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingModuleApiRoute).Updates(&updatedModuleApiRoute); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingModuleApiRoute).Updates(&updatedModuleApiRoute); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -785,7 +792,7 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApiRoute
 	moduleApiRouteID := c.Param("id")
 	var existingModuleApiRoute api_v0.ModuleApiRoute
-	if result := h.DB.First(&existingModuleApiRoute, moduleApiRouteID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleApiRoute, moduleApiRouteID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -814,7 +821,7 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleApiRoute.ID = existingModuleApiRoute.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApiRoute); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApiRoute); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -827,7 +834,7 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingModuleApiRoute, moduleApiRouteID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleApiRoute, moduleApiRouteID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -863,7 +870,7 @@ func (h Handler) DeleteModuleApiRoute(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApiRoute
 	moduleApiRouteID := c.Param("id")
 	var moduleApiRoute api_v0.ModuleApiRoute
-	if result := h.DB.First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
+	if result := h.RequestDB(c).First(&moduleApiRoute, moduleApiRouteID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -872,8 +879,17 @@ func (h Handler) DeleteModuleApiRoute(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&moduleApiRoute); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&moduleApiRoute); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -945,7 +961,7 @@ func (h Handler) AddModuleController(c echo.Context) error {
 	// check for duplicate names
 	var existingModuleController api_v0.ModuleController
 	nameUsed := true
-	result := h.DB.Where("name = ?", moduleController.Name).First(&existingModuleController)
+	result := h.RequestDB(c).Where("name = ?", moduleController.Name).First(&existingModuleController)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -959,7 +975,7 @@ func (h Handler) AddModuleController(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&moduleController); result.Error != nil {
+	if result := h.RequestDB(c).Create(&moduleController); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1021,7 +1037,7 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.ModuleController{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.ModuleController{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1032,7 +1048,7 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1124,8 +1140,7 @@ func (h Handler) GetModuleController(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleController
 	moduleControllerID := c.Param("id")
 	var moduleController api_v0.ModuleController
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&moduleController, moduleControllerID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1167,7 +1182,7 @@ func (h Handler) UpdateModuleController(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleController
 	moduleControllerID := c.Param("id")
 	var existingModuleController api_v0.ModuleController
-	if result := h.DB.First(&existingModuleController, moduleControllerID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleController, moduleControllerID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1189,7 +1204,7 @@ func (h Handler) UpdateModuleController(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingModuleController).Updates(&updatedModuleController); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingModuleController).Updates(&updatedModuleController); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1235,7 +1250,7 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleController
 	moduleControllerID := c.Param("id")
 	var existingModuleController api_v0.ModuleController
-	if result := h.DB.First(&existingModuleController, moduleControllerID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleController, moduleControllerID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1264,7 +1279,7 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleController.ID = existingModuleController.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleController); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleController); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1277,7 +1292,7 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingModuleController, moduleControllerID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleController, moduleControllerID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1313,7 +1328,7 @@ func (h Handler) DeleteModuleController(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleController
 	moduleControllerID := c.Param("id")
 	var moduleController api_v0.ModuleController
-	if result := h.DB.First(&moduleController, moduleControllerID); result.Error != nil {
+	if result := h.RequestDB(c).First(&moduleController, moduleControllerID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1322,8 +1337,17 @@ func (h Handler) DeleteModuleController(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&moduleController); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&moduleController); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -1393,7 +1417,7 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&moduleObject); result.Error != nil {
+	if result := h.RequestDB(c).Create(&moduleObject); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1455,7 +1479,7 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.ModuleObject{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1466,7 +1490,7 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1558,8 +1582,7 @@ func (h Handler) GetModuleObject(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleObject
 	moduleObjectID := c.Param("id")
 	var moduleObject api_v0.ModuleObject
-	if result := h.DB.
-		Scopes(apiserver_lib.QueryScopes(c)...).
+	if result := h.RequestDB(c).
 		First(&moduleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
@@ -1601,7 +1624,7 @@ func (h Handler) UpdateModuleObject(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleObject
 	moduleObjectID := c.Param("id")
 	var existingModuleObject api_v0.ModuleObject
-	if result := h.DB.First(&existingModuleObject, moduleObjectID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1623,7 +1646,7 @@ func (h Handler) UpdateModuleObject(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingModuleObject).Updates(&updatedModuleObject); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingModuleObject).Updates(&updatedModuleObject); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1669,7 +1692,7 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleObject
 	moduleObjectID := c.Param("id")
 	var existingModuleObject api_v0.ModuleObject
-	if result := h.DB.First(&existingModuleObject, moduleObjectID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1698,7 +1721,7 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleObject.ID = existingModuleObject.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleObject); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleObject); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1711,7 +1734,7 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingModuleObject, moduleObjectID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingModuleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1747,7 +1770,7 @@ func (h Handler) DeleteModuleObject(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleObject
 	moduleObjectID := c.Param("id")
 	var moduleObject api_v0.ModuleObject
-	if result := h.DB.First(&moduleObject, moduleObjectID); result.Error != nil {
+	if result := h.RequestDB(c).First(&moduleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1756,8 +1779,17 @@ func (h Handler) DeleteModuleObject(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&moduleObject); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&moduleObject); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {

@@ -45,10 +45,10 @@ type WorkloadInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The kubernetes runtime to which the workload is deployed.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The definition used to configure the workload instance.
-	WorkloadDefinitionID *uint `json:"WorkloadDefinitionID,omitempty" query:"workloaddefinitionid" gorm:"not null" validate:"required"`
+	WorkloadDefinitionID *uint `json:"WorkloadDefinitionID,omitempty" query:"workloaddefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The associated workload resource definitions that are derived.
 	WorkloadResourceInstances []*WorkloadResourceInstance `json:"WorkloadResourceInstances,omitempty" validate:"optional,association"`
@@ -71,7 +71,7 @@ type WorkloadResourceInstance struct {
 	// management - added.
 	JSONDefinition *datatypes.JSON `json:"JSONDefinition,omitempty" gorm:"not null" validate:"required"`
 
-	// The workload definition this resource belongs to.
+	// The workload instance this resource belongs to.
 	WorkloadInstanceID *uint `json:"WorkloadInstanceID,omitempty" query:"workloadinstanceid" gorm:"not null" validate:"required"`
 
 	// The most recent operation performed on a Kubernete resource in the

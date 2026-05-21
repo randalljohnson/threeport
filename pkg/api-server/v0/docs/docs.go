@@ -10,7 +10,7 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
-            "url": "https://threerport.io"
+            "url": "https://threeport.io"
         },
         "version": "{{.Version}}"
     },
@@ -3142,7 +3142,7 @@ const docTemplate = `{
         },
         "/v0/events-join-attached-object-references": {
             "get": {
-                "description": "Get all events joined with attached object references",
+                "description": "Get all events joined with attached object references from the Threeport database.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3154,8 +3154,20 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "events joined with attached object references search by objectId",
-                        "name": "name",
+                        "description": "filter events by object ID",
+                        "name": "objectid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter events by object kind (with objectname)",
+                        "name": "objecttype",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter events by object name (with objecttype)",
+                        "name": "objectname",
                         "in": "query"
                     }
                 ],
@@ -14957,20 +14969,28 @@ const docTemplate = `{
             ],
             "properties": {
                 "AttachedObjectID": {
-                    "description": "The object ID of the attached object.",
+                    "description": "AttachedObjectID is the database ID of the attaching object.",
                     "type": "integer"
                 },
                 "AttachedObjectType": {
-                    "description": "The object type of the attached object.",
+                    "description": "AttachedObjectType is the kind of the object doing the attaching;\nthe side that can determine the base object's lifecycle.",
                     "type": "string"
                 },
                 "ObjectID": {
-                    "description": "The object ID of the base object.",
+                    "description": "ObjectID is the database ID of the base object.",
                     "type": "integer"
                 },
                 "ObjectType": {
-                    "description": "The object type of the base object.",
+                    "description": "ObjectType is the kind of the base object being attached to. Read\n\"this attached object attaches to that object\": the no-prefix\nObject* fields name the \"that\" (anchor) side. The naming is\ndirectional because the attached object is the side that can\ndetermine the base object's lifecycle, depending on the type of\nrelationship (see below).",
                     "type": "string"
+                },
+                "Relationship": {
+                    "description": "Relationship classifies this reference and drives lifecycle behavior:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base for any caller except the partner's controller.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v0.Relationship"
+                        }
+                    ]
                 }
             }
         },
@@ -15408,7 +15428,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "WorkloadInstanceID": {
-                    "description": "The workload instance this gateway belongs to.",
+                    "description": "The workload instance this domain name belongs to.",
                     "type": "integer"
                 }
             }
@@ -15424,10 +15444,6 @@ const docTemplate = `{
                 "Type"
             ],
             "properties": {
-                "AttachedObjectReferenceID": {
-                    "description": "AttachedObjectReferenceID is a reference to an attached object.\nA foreign key is configured via db migration in cmd/database-migrator/migrations/000010_add_events_foreign_key.go",
-                    "type": "integer"
-                },
                 "Count": {
                     "description": "The number of times this event has occurred.",
                     "type": "integer"
@@ -15442,6 +15458,16 @@ const docTemplate = `{
                 },
                 "Note": {
                     "description": "A human-readable description of the status of this operation.",
+                    "type": "string"
+                },
+                "ObjectID": {
+                    "type": "integer"
+                },
+                "ObjectName": {
+                    "type": "string"
+                },
+                "ObjectType": {
+                    "description": "Enrichment fields populated when events are loaded with their\nattached object reference. gorm:\"-\" keeps them out of normal CRUD.",
                     "type": "string"
                 },
                 "Reason": {
@@ -15610,7 +15636,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GatewayDefinitionID": {
-                    "description": "GatewayDefinitionID is the definition used to configure the workload instance.",
+                    "description": "GatewayDefinitionID is the definition used to configure the gateway instance.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -16138,12 +16164,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DnsControllerInstanceId": {
-                    "description": "The WorkloadInstanceID of the gateway support service",
+                    "description": "The WorkloadInstanceID of the dns support service",
                     "type": "integer"
-                },
-                "ForceDelete": {
-                    "description": "If true, delete the runtime even if there are workloads present.",
-                    "type": "boolean"
                 },
                 "GatewayWorkloadInstanceID": {
                     "description": "The WorkloadInstanceID of the gateway support service",
@@ -16595,6 +16617,10 @@ const docTemplate = `{
                 "Name"
             ],
             "properties": {
+                "ApiNamespace": {
+                    "description": "The reverse-DNS namespace identifying this module API (e.g. \"example.com\").",
+                    "type": "string"
+                },
                 "Core": {
                     "description": "If true, represents the core Threeport API.",
                     "type": "boolean"
@@ -16821,7 +16847,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GrafanaHelmWorkloadInstanceID": {
-                    "description": "The Grafana Helm workload definition that belongs to this resource.",
+                    "description": "The Grafana Helm workload instance that belongs to this resource.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -17258,6 +17284,21 @@ const docTemplate = `{
                 }
             }
         },
+        "v0.Relationship": {
+            "type": "string",
+            "enum": [
+                "describes",
+                "requires",
+                "owns",
+                "marries"
+            ],
+            "x-enum-varnames": [
+                "RelationshipDescribes",
+                "RelationshipRequires",
+                "RelationshipOwns",
+                "RelationshipMarries"
+            ]
+        },
         "v0.Response": {
             "type": "object",
             "properties": {
@@ -17402,7 +17443,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
-                    "description": "The kubernetes runtime to which the helm workload is deployed.",
+                    "description": "The kubernetes runtime to which the secret is deployed.",
                     "type": "integer"
                 },
                 "Name": {
@@ -17849,7 +17890,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "WorkloadInstanceID": {
-                    "description": "The workload definition this resource belongs to.",
+                    "description": "The workload instance this resource belongs to.",
                     "type": "integer"
                 }
             }

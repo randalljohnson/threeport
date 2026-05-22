@@ -17,7 +17,7 @@ import (
 // back for every core API type with a Name field. Used by the events-join
 // handler to enrich responses without a per-type switch in the CLI.
 // Generated only for threeport/threeport (not for modules); module dispatch
-// is handled at runtime by FindModuleRouteForType().
+// is handled at runtime by GetModuleRouteForType().
 func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	for _, collection := range generator.VersionedApiObjectCollections {
 		// collect types with a Name field for this version
@@ -34,7 +34,7 @@ func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		}
 		slices.Sort(namedTypes)
 
-		f := NewFile("handlers")
+		f := NewFile("v0")
 		f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 		apiPkg := fmt.Sprintf("github.com/threeport/threeport/pkg/api/%s", collection.Version)
@@ -69,7 +69,7 @@ func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Id("out").Op(":=").Make(Map(Uint()).String(), Len(Id("ids"))),
 			Switch(Id("objectType")).BlockFunc(func(g *Group) {
 				for _, name := range namedTypes {
-					g.Case(Lit(fmt.Sprintf("%s.%s", collection.Version, name))).Block(
+					g.Case(Lit(fmt.Sprintf("threeport.io/%s.%s", collection.Version, name))).Block(
 						Var().Id("rows").Index().Qual(apiPkg, name),
 						If(
 							Id("err").Op(":=").Id("db").
@@ -101,58 +101,62 @@ func GenObjectLookup(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 		f.Line()
 
-		// GetCoreObjectIDByName
-		f.Comment("GetCoreObjectIDByName returns the ID of the named object of the")
-		f.Comment("given core object type, or ErrUnknownCoreType if the type isn't a")
-		f.Comment("core type.")
-		f.Func().Id("GetCoreObjectIDByName").Params(
+		// GetCoreObjectIDsByName
+		f.Comment("GetCoreObjectIDsByName returns every ID with the given name for")
+		f.Comment("the given core object type, or ErrUnknownCoreType if the type")
+		f.Comment("isn't a core type. Empty result is returned as an empty slice")
+		f.Comment("with no error.")
+		f.Func().Id("GetCoreObjectIDsByName").Params(
 			Id("db").Op("*").Qual("gorm.io/gorm", "DB"),
 			Id("objectType").String(),
 			Id("name").String(),
 		).Params(
-			Uint(),
+			Index().Uint(),
 			Error(),
 		).Block(
 			Switch(Id("objectType")).BlockFunc(func(g *Group) {
 				for _, name := range namedTypes {
-					g.Case(Lit(fmt.Sprintf("%s.%s", collection.Version, name))).Block(
-						Var().Id("obj").Qual(apiPkg, name),
+					g.Case(Lit(fmt.Sprintf("threeport.io/%s.%s", collection.Version, name))).Block(
+						Var().Id("rows").Index().Qual(apiPkg, name),
 						If(
 							Id("err").Op(":=").Id("db").
 								Dot("Select").Call(Lit("id")).
 								Dot("Where").Call(Lit("name = ?"), Id("name")).
-								Dot("First").Call(Op("&").Id("obj")).
+								Dot("Find").Call(Op("&").Id("rows")).
 								Dot("Error"),
 							Id("err").Op("!=").Nil(),
 						).Block(
-							Return(Lit(0), Qual("fmt", "Errorf").Call(
+							Return(Nil(), Qual("fmt", "Errorf").Call(
 								Lit(fmt.Sprintf("failed to look up %s by name: %%w", name)),
 								Id("err"),
 							)),
 						),
-						If(Id("obj").Dot("ID").Op("==").Nil()).Block(
-							Return(Lit(0), Qual("fmt", "Errorf").Call(
-								Lit(fmt.Sprintf("%s %%q has nil ID", name)),
-								Id("name"),
-							)),
+						Id("ids").Op(":=").Make(Index().Uint(), Lit(0), Len(Id("rows"))),
+						For(List(Id("_"), Id("r")).Op(":=").Range().Id("rows")).Block(
+							If(Id("r").Dot("ID").Op("!=").Nil()).Block(
+								Id("ids").Op("=").Append(Id("ids"), Op("*").Id("r").Dot("ID")),
+							),
 						),
-						Return(Op("*").Id("obj").Dot("ID"), Nil()),
+						Return(Id("ids"), Nil()),
 					)
 					g.Line()
 				}
 				g.Default().Block(
-					Return(Lit(0), Id("ErrUnknownCoreType")),
+					Return(Nil(), Id("ErrUnknownCoreType")),
 				)
 			}),
 		)
 		f.Line()
 
-		// write code to file if not excluded by SDK config
+		// write code to file if not excluded by SDK config.
+		// lives in lib/v0 so it can be reused outside the handlers package
+		// and so the broader utility functions that wrap it can also be
+		// kept out of handlers/.
 		genFilepath := filepath.Join(
 			"pkg",
 			"api-server",
+			"lib",
 			collection.Version,
-			"handlers",
 			"object_lookup_gen.go",
 		)
 		if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {

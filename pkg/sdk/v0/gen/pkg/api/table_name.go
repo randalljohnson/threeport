@@ -16,12 +16,24 @@ import (
 )
 
 // GenTableNames generates the Tabler interface and API object methods that
-// specify each object's database table name.
+// specify each object's database table name. For modules it also emits a
+// package-level ApiNamespace const so generated code that needs the
+// namespace value can reference it instead of repeating the literal.
 func GenTableNames(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	pluralize := pluralize.NewClient()
 	for _, version := range gen.GlobalVersionConfig.Versions {
 		f := NewFile(version.VersionName)
 		f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+		// module-local namespace constant; mirrors lib.CoreApiNamespace
+		// on the core side so all FQTN-emitting code can reference a
+		// named value rather than a literal
+		if gen.Module {
+			f.Comment("ApiNamespace is the module's api namespace; used as the")
+			f.Comment("prefix in this module's FQTN form.")
+			f.Const().Id("ApiNamespace").Op("=").Lit(sdkConfig.ApiNamespace)
+			f.Line()
+		}
 
 		f.Comment("Tabler allows custom table names for objects in the Threeport database.")
 		f.Type().Id("Tabler").Interface(

@@ -24,12 +24,8 @@ func GenCoreModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) err
 
 	f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 	f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "api_v0")
+	f.ImportAlias("github.com/threeport/threeport/pkg/api/lib/v0", "apilib")
 	f.ImportAlias("github.com/threeport/threeport/pkg/api-server/v0/routes", "routes")
-
-	f.Const().Defs(
-		Id("coreModuleName").Op("=").Lit("threeport-core-api"),
-	)
-	f.Line()
 
 	f.Comment("RegisterModule registers the module information in the database.")
 	f.Func().Id("RegisterModule").Params(
@@ -82,11 +78,21 @@ func GenCoreModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) err
 			Id("Name"): Qual(
 				"github.com/threeport/threeport/pkg/util/v0",
 				"Ptr",
-			).Call(Id("coreModuleName")),
+			).Call(Qual(
+				"github.com/threeport/threeport/pkg/api/lib/v0",
+				"CoreModuleName",
+			)),
 			Id("Core"): Qual(
 				"github.com/threeport/threeport/pkg/util/v0",
 				"Ptr",
 			).Call(Lit(true)),
+			Id("ApiNamespace"): Qual(
+				"github.com/threeport/threeport/pkg/util/v0",
+				"Ptr",
+			).Call(Qual(
+				"github.com/threeport/threeport/pkg/api/lib/v0",
+				"CoreApiNamespace",
+			)),
 			Id("Endpoint"): Qual(
 				"github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("apiEndpoint")),
 		}),
@@ -593,7 +599,10 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Id("ApiNamespace"): Qual(
 						"github.com/threeport/threeport/pkg/util/v0",
 						"Ptr",
-					).Call(Lit(sdkConfig.ApiNamespace)),
+					).Call(Qual(
+						fmt.Sprintf("%s/pkg/api/v0", gen.ModulePath),
+						"ApiNamespace",
+					)),
 				}),
 				List(Id("createdModApi"), Id("err")).Op(":=").Qual(
 					"github.com/threeport/threeport/pkg/client/v0",

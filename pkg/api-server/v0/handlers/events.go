@@ -50,60 +50,84 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
-	// collect object IDs to filter on, either from a direct objectid
-	// query param or by resolving the object-type filter against the
-	// registry. objecttypename is required; objectversion and
-	// objectnamespace progressively narrow the resolved set.
+	// collect object IDs to filter on. The accepted shapes are:
+	//   - nothing supplied                  -> return every event
+	//   - objecttypename + objectid         -> filter by id under type
+	//   - objecttypename + objectname       -> resolve name to id(s) under type
+	// Any other combination is rejected: type is always required when
+	// filtering, and id+name together is ambiguous.
+	targetTypeName := c.QueryParam("objecttypename")
+	targetVersion := c.QueryParam("objectversion")
+	targetNamespace := c.QueryParam("objectnamespace")
+	targetName := c.QueryParam("objectname")
+	directObjectId := c.QueryParam("objectid")
+
 	var ids []uint
-	if directObjectId := c.QueryParam("objectid"); directObjectId != "" {
+	switch {
+	case targetTypeName == "" && targetName == "" && directObjectId == "":
+		// no filter supplied; fall through to the unfiltered query
+
+	case targetTypeName == "":
+		// caller supplied a name or id but no type. type is the only
+		// disambiguator for a polymorphic lookup, so this is rejected.
+		return apiserver_lib.ResponseStatus400(
+			c, pageParams,
+			errors.New("objecttypename is required when filtering by objectid or objectname"),
+			objectType,
+		)
+
+	case directObjectId != "" && targetName != "":
+		// type + id + name is ambiguous - which filter wins?
+		return apiserver_lib.ResponseStatus400(
+			c, pageParams,
+			errors.New("provide either objectid or objectname, not both"),
+			objectType,
+		)
+
+	case directObjectId != "":
+		// type + id - id is already the row, no name lookup needed
 		parsed, err := strconv.ParseUint(directObjectId, 10, 64)
 		if err != nil {
 			return apiserver_lib.ResponseStatus400(c, pageParams,
 				fmt.Errorf("invalid objectid %q: %w", directObjectId, err), objectType)
 		}
 		ids = []uint{uint(parsed)}
-	}
 
-	targetTypeName := c.QueryParam("objecttypename")
-	targetVersion := c.QueryParam("objectversion")
-	targetNamespace := c.QueryParam("objectnamespace")
-	targetName := c.QueryParam("objectname")
-	switch {
-	case targetTypeName != "" && targetName != "":
-		if len(ids) > 0 {
-			return apiserver_lib.ResponseStatus400(
-				c, pageParams,
-				errors.New("provide either objectid or (objecttypename + objectname), not both"),
-				objectType,
-			)
-		}
-		qualifiedTypes, resolveErr := resolveObjectType(h.DB, targetTypeName)
+	case targetName != "":
+		// type + name - resolve the type name to one or more FQTNs,
+		// then look up the named object under each
+		fullyQualifiedTypes, resolveErr := apiserver_lib.ResolveObjectType(h.DB, targetTypeName)
 		if resolveErr != nil {
 			h.Logger.Error("handler error: error resolving kind", zap.Error(resolveErr))
 			return apiserver_lib.ResponseStatus400(c, pageParams, resolveErr, objectType)
 		}
 		// progressively narrow the resolved set by version and namespace
 		// when those params were supplied
-		qualifiedTypes = filterQualifiedTypes(qualifiedTypes, targetNamespace, targetVersion)
-		if len(qualifiedTypes) == 0 {
-			return apiserver_lib.ResponseStatus400(c, pageParams,
+		fullyQualifiedTypes = apiserver_lib.FilterQualifiedTypes(fullyQualifiedTypes, targetNamespace, targetVersion)
+		if len(fullyQualifiedTypes) == 0 {
+			return apiserver_lib.ResponseStatus404(c, pageParams,
 				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
 		}
-		// look up the named object across every registered version
-		for _, qt := range qualifiedTypes {
-			id, lookupErr := GetObjectIDByName(h.DB, qt, targetName)
+		// look up the named object across every registered version;
+		// each version may yield zero or more ids (duplicates are a
+		// data integrity bug and the resolver returns them all)
+		for _, fqt := range fullyQualifiedTypes {
+			moreIds, lookupErr := GetObjectIDsByName(h.DB, fqt, targetName)
 			if lookupErr == nil {
-				ids = append(ids, id)
+				ids = append(ids, moreIds...)
 			}
 		}
 		if len(ids) == 0 {
-			return apiserver_lib.ResponseStatus400(c, pageParams,
+			return apiserver_lib.ResponseStatus404(c, pageParams,
 				fmt.Errorf("no object found with name %q for kind %q", targetName, targetTypeName), objectType)
 		}
-	case targetTypeName != "" || targetName != "":
+
+	default:
+		// caller supplied type alone (no id, no name) - we don't
+		// support type-only filtering, so report the supported shapes
 		return apiserver_lib.ResponseStatus400(
 			c, pageParams,
-			errors.New("objecttypename and objectname must be provided together"),
+			errors.New("must provide either objecttypename + objectid, or objecttypename + objectname"),
 			objectType,
 		)
 	}
@@ -305,45 +329,6 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
-}
-
-// filterQualifiedTypes narrows the resolved-type list to entries
-// matching the optional namespace and/or version. Empty filter values
-// match anything. FQTNs are "<namespace>/<version>.<TypeName>".
-func filterQualifiedTypes(qualifiedTypes []string, namespace, version string) []string {
-	// no filters supplied - everything passes through unchanged
-	if namespace == "" && version == "" {
-		return qualifiedTypes
-	}
-
-	// allocate a fresh backing array sized for the worst case (all
-	// entries pass); the [:0:0] form keeps cap separate from the
-	// input slice so we don't accidentally overwrite the caller's data
-	out := qualifiedTypes[:0:0]
-
-	for _, qt := range qualifiedTypes {
-		// parse the FQTN into parts so we can match on namespace and
-		// version independently
-		ns, ver, _, ok := parseQualifiedType(qt)
-		if !ok {
-			// malformed FQTN; drop rather than fail the whole query
-			continue
-		}
-
-		// drop entries whose namespace doesn't match the filter (when set)
-		if namespace != "" && ns != namespace {
-			continue
-		}
-
-		// drop entries whose version doesn't match the filter (when set)
-		if version != "" && ver != version {
-			continue
-		}
-
-		// passed all active filters - keep it
-		out = append(out, qt)
-	}
-	return out
 }
 
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName

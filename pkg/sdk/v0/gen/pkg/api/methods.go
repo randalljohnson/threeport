@@ -213,10 +213,10 @@ func GenApiObjectMethods(gen *sdkgen.Generator, sdkConfig *sdk.SdkConfig) error 
 					Return(Lit(objCollection.Version)),
 				)
 				// GetFullyQualifiedType method - returns
-				// "<api-namespace>/<version>.<TypeName>". Core types get
-				// "threeport.io" as the namespace; modules get their
-				// configured ApiNamespace. Used as the identity string
-				// in AttachedObjectReference rows.
+				// "<api-namespace>/<version>.<TypeName>". The namespace
+				// is resolved at gen time (core uses "threeport.io",
+				// modules use their configured ApiNamespace) and baked
+				// into the returned literal.
 				namespace := "threeport.io"
 				if gen.Module {
 					namespace = sdkConfig.ApiNamespace

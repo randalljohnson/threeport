@@ -5,14 +5,11 @@ package v0
 import (
 	"fmt"
 	routes "github.com/threeport/threeport/pkg/api-server/v0/routes"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	gorm "gorm.io/gorm"
 	"os"
-)
-
-const (
-	coreModuleName = "threeport-core-api"
 )
 
 // RegisterModule registers the module information in the database.
@@ -39,9 +36,10 @@ func upsertModuleApi(db *gorm.DB) (*api_v0.ModuleApi, error) {
 	}
 
 	moduleApi := api_v0.ModuleApi{
-		Core:     util.Ptr(true),
-		Endpoint: util.Ptr(apiEndpoint),
-		Name:     util.Ptr(coreModuleName),
+		ApiNamespace: util.Ptr(apilib.CoreApiNamespace),
+		Core:         util.Ptr(true),
+		Endpoint:     util.Ptr(apiEndpoint),
+		Name:         util.Ptr(apilib.CoreModuleName),
 	}
 
 	if result := db.Where(api_v0.ModuleApi{Name: moduleApi.Name}).FirstOrCreate(&moduleApi); result.Error != nil {

@@ -3153,13 +3153,25 @@
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object kind (with objectname)",
-                        "name": "objecttype",
+                        "description": "filter events by object type name (with objectname); CamelCase Go TypeName like 'WorkloadInstance'",
+                        "name": "objecttypename",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object name (with objecttype)",
+                        "description": "narrow objecttypename match to one version (e.g. 'v0')",
+                        "name": "objectversion",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "narrow objecttypename match to one api namespace (e.g. 'threeport.io')",
+                        "name": "objectnamespace",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter events by object name (with objecttypename)",
                         "name": "objectname",
                         "in": "query"
                     }
@@ -14966,7 +14978,7 @@
                     "type": "integer"
                 },
                 "AttachedObjectType": {
-                    "description": "AttachedObjectType is the kind of the object doing the attaching;\nthe side that can determine the base object's lifecycle.",
+                    "description": "AttachedObjectType is the kind of the object doing the attaching;\nthe side that can determine the base object's lifecycle. Stored\nas a fully qualified type name in the form\n\"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
                     "type": "string"
                 },
                 "ObjectID": {
@@ -14974,7 +14986,7 @@
                     "type": "integer"
                 },
                 "ObjectType": {
-                    "description": "ObjectType is the kind of the base object being attached to. Read\n\"this attached object attaches to that object\": the no-prefix\nObject* fields name the \"that\" (anchor) side. The naming is\ndirectional because the attached object is the side that can\ndetermine the base object's lifecycle, depending on the type of\nrelationship (see below).",
+                    "description": "ObjectType is the kind of the base object being attached to. Read\n\"this attached object attaches to that object\": the no-prefix\nObject* fields name the \"that\" (anchor) side. The naming is\ndirectional because the attached object is the side that can\ndetermine the base object's lifecycle, depending on the type of\nrelationship (see below). Stored as a fully qualified type name\nin the form \"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
                     "type": "string"
                 },
                 "Relationship": {
@@ -15460,7 +15472,7 @@
                     "type": "string"
                 },
                 "ObjectType": {
-                    "description": "Enrichment fields giving each event context about its subject -\nwhat the event is about. Every Event row has a matching\nAttachedObjectReference where this event is the attached side\nand the subject object is the base side. Callers that want\nthese fields populated read events via\nGetEventsJoinAttachedObjectReferenceByQueryString, which\nprojects the base object's type, ID, and name into the response.\ngorm:\"-\" keeps them out of normal CRUD writes - they're\npopulated on read, never stored on the Event row.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"\nA consumer like `tptctl get events` uses them to render\n\"machine-runtime-instance/some-host\" in the OBJECT column.",
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (FQTN form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like `tptctl get events` uses them to render\n\"machine-runtime-instance/some-host\" in the OBJECT column.",
                     "type": "string"
                 },
                 "Reason": {

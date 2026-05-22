@@ -5,10 +5,8 @@ const (
 	PathModuleObjectsWithModuleApiRoutes         = "/v0/module-objects-with-module-api-routes"
 )
 
-// ModuleApi represents an API server for a Threeport module.
-//
-// (Name, ApiNamespace) is unique at the DB level via the
-// idx_module_api_identity composite index.
+// ModuleApi represents an API server for a Threeport module. The
+// (Name, ApiNamespace) pair is unique.
 type ModuleApi struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 

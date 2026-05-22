@@ -98,28 +98,41 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 	return nil
 }
 
-// processRelationshipTaggedFieldsBeforeUpdate rejects updates that change
-// a set foreign key, or any update to a row owned or married by another
-// object.
+// processRelationshipTaggedFieldsBeforeUpdate rejects any change to a
+// relationship FK that was previously set (set->different, set->clear),
+// and rejects updates to a row owned or married by another object.
+// Once a relationship FK has been set, the only way to change it is to
+// tear down and recreate the holding object.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
-	// reject reassignment of any relationship FK whose value is already set;
-	// the owns/requires/marries edges are intentionally immutable
-	for _, foreignKey := range relationshipTaggedForeignKeysFor(obj) {
-		if foreignKey.ObjectID != nil && tx.Statement.Changed(string(foreignKey.FieldName)) {
+	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
+	objID := util.ObjectID(obj)
+	if objID == nil {
+		return nil
+	}
+
+	// load the pre-update row so the FK check compares against the
+	// committed state, not the inbound payload. obj alone reflects the
+	// caller's intent, which doesn't tell us whether each FK was
+	// previously set.
+	preUpdateObj, err := lib.LoadUpdatedObjFromDB(tx, obj, *objID)
+	if err != nil {
+		return err
+	}
+
+	// reject any change (set->different OR set->clear) to a relationship
+	// FK that was previously non-nil. the initial clear->set transition
+	// stays allowed; everything after that requires teardown.
+	for _, preUpdateForeignKey := range relationshipTaggedForeignKeysFor(preUpdateObj) {
+		if preUpdateForeignKey.ObjectID != nil && tx.Statement.Changed(string(preUpdateForeignKey.FieldName)) {
 			return util.NewBadRequestError(fmt.Sprintf(
-				"%s is immutable; tear down and recreate the holder to undo this relationship",
-				foreignKey.FieldName,
+				"%s is immutable once set; tear down and recreate the holder to undo this relationship",
+				preUpdateForeignKey.FieldName,
 			))
 		}
 	}
 
 	// look up incoming owns/marries refs to decide whether this row's
 	// non-FK fields can be updated by the caller
-	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
-	objID := util.ObjectID(obj)
-	if objID == nil {
-		return nil
-	}
 	var ownedOrMarriedRefs []AttachedObjectReference
 	if err := tx.
 		Where(

@@ -29,8 +29,8 @@ func GenerateDbCreds(k8sNamespace string) (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		"node",
-		"",
-		"",
+		OrgCore,
+		OUDatabase,
 		"crdb",
 		fmt.Sprintf("crdb.%s", k8sNamespace),
 		fmt.Sprintf("crdb.%s.svc.cluster.local", k8sNamespace),
@@ -46,8 +46,8 @@ func GenerateDbCreds(k8sNamespace string) (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		database.ThreeportDatabaseRootUser,
-		"",
-		"",
+		OrgCore,
+		OUDatabase,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB client certificate: %w", err)
@@ -57,8 +57,8 @@ func GenerateDbCreds(k8sNamespace string) (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		database.ThreeportDatabaseUser,
-		"",
-		"",
+		OrgCore,
+		OUDatabase,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB client certificate: %w", err)

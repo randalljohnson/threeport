@@ -4,6 +4,9 @@ package v0
 // certs.
 const OUControlPlane = "controlplane"
 
+// OUDatabase identifies certs issued for the threeport database.
+const OUDatabase = "database"
+
 // OrgCore identifies core threeport in client certs; modules use their
-// own ApiNamespace.
-const OrgCore = "core"
+// own ApiNamespace. Matches lib.CoreApiNamespace.
+const OrgCore = "threeport.io"

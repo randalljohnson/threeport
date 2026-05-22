@@ -6,17 +6,20 @@ const (
 )
 
 // ModuleApi represents an API server for a Threeport module.
+//
+// (Name, ApiNamespace) is unique at the DB level via the
+// idx_module_api_identity composite index.
 type ModuleApi struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// An arbitrary name for the module API.
-	Name *string `json:"Name,omitempty" query:"name" validate:"required" gorm:"not null"`
+	Name *string `json:"Name,omitempty" query:"name" validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity"`
 
 	// If true, represents the core Threeport API.
 	Core *bool `json:"Core,omitempty" query:"core" validate:"optional" gorm:"default:false"`
 
 	// The reverse-DNS namespace identifying this module API (e.g. "example.com").
-	ApiNamespace *string `json:"ApiNamespace,omitempty" query:"apinamespace" validate:"optional"`
+	ApiNamespace *string `json:"ApiNamespace,omitempty" query:"apinamespace" validate:"optional" gorm:"uniqueIndex:idx_module_api_identity"`
 
 	// The module API server's endpoint to proxy requests to for module
 	// objects.

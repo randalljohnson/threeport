@@ -31,21 +31,23 @@ type Event struct {
 	// Name of the controller that emitted this Event.
 	ReportingController *string `json:"ReportingController,omitempty" query:"reportingcontroller" validate:"required"`
 
-	// Enrichment fields giving each event context about its subject -
-	// what the event is about. Every Event row has a matching
-	// AttachedObjectReference where this event is the attached side
-	// and the subject object is the base side. Callers that want
-	// these fields populated read events via
-	// GetEventsJoinAttachedObjectReferenceByQueryString, which
-	// projects the base object's type, ID, and name into the response.
-	// gorm:"-" keeps them out of normal CRUD writes - they're
-	// populated on read, never stored on the Event row.
+	// Fields carrying the event's subject - the object the event is
+	// about. They flow in both directions:
+	//   - On create: the caller sets ObjectType (FQTN form) + ObjectID
+	//     in the request body. Event.BeforeCreate validates them;
+	//     Event.AfterCreate inserts the matching AttachedObjectReference
+	//     in the same transaction. ObjectName is ignored on write.
+	//   - On read: GetEventsJoinAttachedObjectReferenceByQueryString
+	//     projects the joined AOR's base object back into these
+	//     fields, then resolves ObjectName via the type's name resolver.
+	// gorm:"-" keeps them off the Event row in the schema - the AOR
+	// is the source of truth on disk for the subject linkage.
 	//
 	// For an event describing a script failure on a
 	// MachineRuntimeInstance named "some-host" (id 42), these hold:
 	//   ObjectType = "threeport.io/v0.MachineRuntimeInstance"
 	//   ObjectID   = 42
-	//   ObjectName = "some-host"
+	//   ObjectName = "some-host"   (read only - ignored on create)
 	// A consumer like `tptctl get events` uses them to render
 	// "machine-runtime-instance/some-host" in the OBJECT column.
 	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`

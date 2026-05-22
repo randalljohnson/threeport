@@ -77,27 +77,17 @@ func (r *EventRecorder) RecordEvent(
 		event.EventTime = util.Ptr(time.Now())
 		event.LastObservedTime = util.Ptr(time.Now())
 		event.Count = util.Ptr(uint(1))
-		createdEvent, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event)
-		if err != nil {
-			return fmt.Errorf("failed to create event: %w", err)
-		}
 
-		// link the event to its base object via an attached object
-		// reference. Both type fields use the FQTN form for
-		// consistency with how relationship-hook-written AOR rows
-		// store them.
-		if _, err := client_v0.CreateAttachedObjectReference(
-			r.APIClient,
-			r.APIServer,
-			&api.AttachedObjectReference{
-				ObjectType:         util.Ptr(fullyQualifiedObjectType),
-				ObjectID:           util.Ptr(objectId),
-				AttachedObjectType: util.Ptr((&api.Event{}).GetFullyQualifiedType()),
-				AttachedObjectID:   createdEvent.ID,
-				Relationship:       util.Ptr(api.RelationshipDescribes),
-			},
-		); err != nil {
-			return fmt.Errorf("failed to create attached object reference for event: %w", err)
+		// carry the subject info on the in-memory Event so the API
+		// server's BeforeCreate validates and AfterCreate writes the
+		// matching AttachedObjectReference in the same transaction.
+		// gorm:"-" keeps these fields off the row; the AOR is the on-disk
+		// source of truth for the subject linkage.
+		event.ObjectType = util.Ptr(fullyQualifiedObjectType)
+		event.ObjectID = util.Ptr(objectId)
+
+		if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
+			return fmt.Errorf("failed to create event: %w", err)
 		}
 	case 1:
 		event = &(*events)[0]

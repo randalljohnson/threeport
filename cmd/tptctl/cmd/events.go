@@ -6,18 +6,13 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	strcase "github.com/iancoleman/strcase"
 	cobra "github.com/spf13/cobra"
 
-	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 )
-
-const eventMessageTableMax = 80
 
 var (
 	eventsFor    string
@@ -32,16 +27,21 @@ var GetEventsCmd = &cobra.Command{
 	Example: `  # get all events
   tptctl get events
 
-  # filter to a specific object
-  tptctl get events --for workload-instance/some-workload
-  tptctl get events --for machine-runtime-instance/some-host`,
+  # filter to a specific object (broad: any namespace/version)
+  tptctl get events --for helm-workload-instance/my-app
+
+  # narrow to one version
+  tptctl get events --for v0.helm-workload-instance/my-app
+
+  # narrow to one api namespace + version
+  tptctl get events --for threeport.io/v0.helm-workload-instance/my-app`,
 	Long: `Get events from the system.
 
-Use --for <kind>/<name> to filter events to a specific object. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.
+Use --for [<namespace>/][<version>.]<kind>/<name> to filter events to a specific object. <namespace> and <version> are optional; <kind> and <name> are required. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.
 
 Use --sort to control row order: newest (default) puts the most recent activity at the top; oldest is reverse.
 
-Use --limit N to cap the number of rows shown (after sort). 0 means no cap.
+Use --limit N to cap the number of rows shown (after sort). The default of 0 means no cap.
 
 Full event notes (including captured script stdout/stderr) can be viewed with -o yaml.`,
 	PreRun:  CommandPreRunFunc,
@@ -155,24 +155,24 @@ func init() {
 // parts are supplied:
 //
 //   <kebab-kind>/<name>                                 - broad, any namespace/version
-//   <version>/<kebab-kind>/<name>                       - narrow to one version
-//   <namespace>/<version>/<kebab-kind>/<name>           - exact FQTN match
+//   <version>.<kebab-kind>/<name>                       - narrow to one version
+//   <namespace>/<version>.<kebab-kind>/<name>           - exact FQTN match
 //
-// The flag is split right-to-left so the last segment is always
-// the object name, the second-to-last is always the kebab kind, etc.
-// Empty flag returns empty string so the events list isn't filtered.
+// The kind segment carries the optional version inline as
+// "<version>.<kind>", mirroring the FQTN form. Empty flag returns
+// empty string so the events list isn't filtered.
 func buildEventsQueryString(forFlag string) (string, error) {
 	// no filter requested - return empty so the caller queries every event
 	if forFlag == "" {
 		return "", nil
 	}
 
-	// segments are slash-delimited; parse right-to-left so the
-	// optional namespace and version land in the right slots
+	// split slash-delimited segments. parse right-to-left so the
+	// optional namespace lands in the right slot
 	parts := strings.Split(forFlag, "/")
-	if len(parts) < 2 || len(parts) > 4 {
+	if len(parts) < 2 || len(parts) > 3 {
 		return "", fmt.Errorf(
-			"invalid --for value %q: expected [<namespace>/][<version>/]<kind>/<name>",
+			"invalid --for value %q: expected [<namespace>/][<version>.]<kind>/<name>",
 			forFlag,
 		)
 	}
@@ -186,26 +186,29 @@ func buildEventsQueryString(forFlag string) (string, error) {
 	}
 	q.Set("objectname", name)
 
-	// second-to-last is always the kebab kind; convert to CamelCase
-	// to match the TypeName segment of FQTN ("workload-instance" ->
-	// "WorkloadInstance")
-	kind := parts[len(parts)-2]
-	if kind == "" {
+	// second-to-last is the kind, optionally prefixed by "<version>."
+	// e.g. "workload-instance" or "v0.workload-instance"
+	kindPart := parts[len(parts)-2]
+	if kindPart == "" {
 		return "", fmt.Errorf("invalid --for value %q: empty kind", forFlag)
 	}
-	q.Set("objecttypename", strcase.ToCamel(kind))
-
-	// third-to-last (if present) is the version
-	if len(parts) >= 3 {
-		version := parts[len(parts)-3]
-		if version == "" {
-			return "", fmt.Errorf("invalid --for value %q: empty version", forFlag)
+	kind := kindPart
+	if dotIdx := strings.Index(kindPart, "."); dotIdx >= 0 {
+		// split version off the front
+		version := kindPart[:dotIdx]
+		kind = kindPart[dotIdx+1:]
+		if version == "" || kind == "" {
+			return "", fmt.Errorf("invalid --for value %q: empty version or kind around dot", forFlag)
 		}
 		q.Set("objectversion", version)
 	}
 
-	// fourth-to-last (if present) is the api namespace
-	if len(parts) == 4 {
+	// kebab-case kind -> CamelCase TypeName segment of FQTN
+	// ("workload-instance" -> "WorkloadInstance")
+	q.Set("objecttypename", strcase.ToCamel(kind))
+
+	// third-to-last (if present) is the api namespace
+	if len(parts) == 3 {
 		namespace := parts[0]
 		if namespace == "" {
 			return "", fmt.Errorf("invalid --for value %q: empty namespace", forFlag)
@@ -214,97 +217,4 @@ func buildEventsQueryString(forFlag string) (string, error) {
 	}
 
 	return q.Encode(), nil
-}
-
-// outputEventsTable produces the tabular output for the events list.
-func outputEventsTable(events *[]v0.Event) error {
-	// configure a tabwriter so the columns align regardless of the
-	// width of any individual cell's content
-	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "AGE\t TYPE\t REASON\t OBJECT\t NOTE")
-
-	// track whether any note got truncated so we can hint about -o yaml
-	// at the bottom of the output
-	anyTruncated := false
-	for _, e := range *events {
-		// derive the human-readable cell values per event
-		age := util.GetAgeFormatted(e.EventTime)
-		eventType := util.DerefString(e.Type)
-		reason := util.DerefString(e.Reason)
-
-		// resolve the OBJECT column from the AOR-projected fields
-		// on the event row (see Event.ObjectType/ID/Name)
-		object := formatEventObject(&e)
-
-		// collapse whitespace runs in the note so multi-line script
-		// output renders on one row
-		rawNote := util.DerefString(e.Note)
-		note := strings.Join(strings.Fields(rawNote), " ")
-
-		// truncate over-long notes so a single noisy event doesn't
-		// wreck the table layout
-		if len(note) > eventMessageTableMax {
-			note = util.TruncateString(note, eventMessageTableMax)
-			anyTruncated = true
-		}
-
-		// emit one tab-separated row through the writer; column
-		// alignment is finalized at Flush() below
-		fmt.Fprintln(
-			writer,
-			age, "\t",
-			eventType, "\t",
-			reason, "\t",
-			object, "\t",
-			note,
-		)
-	}
-	writer.Flush()
-
-	// nudge the reader toward -o yaml when at least one note was
-	// shortened so they can see the full content
-	if anyTruncated {
-		fmt.Println("(use -o yaml to see full note)")
-	}
-	return nil
-}
-
-// formatEventObject formats an event's target object as <kebab-kind>/<name>.
-// For an event with ObjectType="example.com/v0.RouterInstance",
-// ObjectID=42, ObjectName="some-router" the result is
-// "router-instance/some-router". Falls back to "<kind>/<id>" if the
-// name wasn't resolved (e.g. lookup failed), or just "<kind>" if the
-// id is nil too.
-func formatEventObject(e *v0.Event) string {
-	// no recorded subject - nothing to render
-	rawType := util.DerefString(e.ObjectType)
-	if rawType == "" {
-		return ""
-	}
-
-	// FQTN is always "<namespace>/<version>.<TypeName>" now.
-	// "example.com/v0.RouterInstance" -> typeName = "RouterInstance"
-	dotIdx := strings.LastIndex(rawType, ".")
-	if dotIdx < 0 {
-		// malformed; surface the raw value so the user can still grep
-		return rawType
-	}
-	typeName := rawType[dotIdx+1:]
-
-	// CamelCase -> kebab so the output matches the --for flag shape.
-	// "RouterInstance" -> kind = "router-instance"
-	kind := strcase.ToKebab(typeName)
-
-	// prefer name when resolved; this is the common case after the
-	// events-join handler enriches the row
-	if name := util.DerefString(e.ObjectName); name != "" {
-		return fmt.Sprintf("%s/%s", kind, name)
-	}
-
-	// name wasn't resolved (lookup failed, deleted subject, etc.);
-	// fall back to id so the user still has something to grep
-	if e.ObjectID != nil {
-		return fmt.Sprintf("%s/%d", kind, *e.ObjectID)
-	}
-	return kind
 }

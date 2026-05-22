@@ -14,6 +14,9 @@ import (
 
 // eventRetention is the time-to-live for event rows and the
 // attached object reference rows that link them to their subject.
+// Enforced by CockroachDB's row-level TTL: the configured
+// ttl_job_cron runs and performs a hard DELETE on expired rows -
+// no soft-delete tombstone, no gorm DeletedAt
 const eventRetention = "7 days"
 
 // init registers the migration with goose at startup.

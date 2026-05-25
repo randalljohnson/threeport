@@ -16102,7 +16102,7 @@ const docTemplate = `{
                     "description": "ConnectionTokenExpiration is the time when a ConnectionToken will expire.\nUsed to ensure a token will not expire before it can be used.",
                     "type": "string"
                 },
-                "ControlPlaneInstance": {
+                "ControlPlaneInstances": {
                     "description": "The associated control plane instances running on this kubernetes runtime instance.",
                     "type": "array",
                     "items": {
@@ -16137,7 +16137,7 @@ const docTemplate = `{
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
-                "DnsControllerInstanceId": {
+                "DnsControllerInstanceID": {
                     "description": "The WorkloadInstanceID of the gateway support service",
                     "type": "integer"
                 },
@@ -16145,7 +16145,7 @@ const docTemplate = `{
                     "description": "If true, delete the runtime even if there are workloads present.",
                     "type": "boolean"
                 },
-                "GatewayWorkloadInstanceID": {
+                "GatewayControllerInstanceID": {
                     "description": "The WorkloadInstanceID of the gateway support service",
                     "type": "integer"
                 },
@@ -16169,7 +16169,7 @@ const docTemplate = `{
                     "description": "Indicates if object is considered to be reconciled by the object's controller.",
                     "type": "boolean"
                 },
-                "SecretsControllerInstanceId": {
+                "SecretsControllerInstanceID": {
                     "description": "The WorkloadInstanceID of the secrets support service",
                     "type": "integer"
                 },
@@ -16185,7 +16185,7 @@ const docTemplate = `{
                     "description": "If true, the Kubernetes cluster is hosting a threeport control plane and\nany controllers that connect to the kube API will use internal cluster\nDNS rather than the external APIEndpoint.",
                     "type": "boolean"
                 },
-                "WorkloadInstance": {
+                "WorkloadInstances": {
                     "description": "The associated workload instances running on this kubernetes runtime.",
                     "type": "array",
                     "items": {

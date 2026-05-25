@@ -34,6 +34,15 @@ jobs:
     - name: Ensure no changes were made by threeport-sdk
       run: git diff --exit-code
 
+    - name: Run unit tests
+      run: |
+        go test -count=1 \
+          ./pkg/api/lib/v0/... \
+          ./pkg/api/v0/... \
+          ./pkg/api-server/lib/v0/... \
+          ./pkg/api-server/v0/handlers/... \
+          ./pkg/event/v0/...
+
     - name: Create local container registry
       run: mage dev:localRegistryUp
 

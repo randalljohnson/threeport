@@ -16,6 +16,7 @@ import (
 
 	"github.com/threeport/threeport/internal/version"
 	"github.com/threeport/threeport/pkg/api-server/v0/database"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
@@ -331,7 +332,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAPITLS(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-api-server",
-			auth.OrgCore,
+			apilib.CoreApiNamespace,
 			auth.OUControlPlane,
 			serverAltNames...,
 		)
@@ -377,7 +378,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 				authConfig.CAConfig,
 				&authConfig.CAPrivateKey,
 				controller.Name,
-				auth.OrgCore,
+				apilib.CoreApiNamespace,
 				auth.OUControlPlane,
 			)
 			if err != nil {
@@ -505,7 +506,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAgent(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-agent",
-			auth.OrgCore,
+			apilib.CoreApiNamespace,
 			auth.OUControlPlane,
 		)
 		if err != nil {

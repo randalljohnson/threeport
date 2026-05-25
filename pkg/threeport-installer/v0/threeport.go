@@ -28,7 +28,9 @@ const (
 	ThreeportTerraformControllerImage         = "threeport-terraform-controller"
 	ThreeportObservabilityControllerImage     = "threeport-observability-controller"
 	ThreeportSecretControllerImage            = "threeport-secret-controller"
-	ThreeportAgentImage                       = "threeport-agent"
+	ThreeportMachineRuntimeControllerImage   = "threeport-machine-runtime-controller"
+	ThreeportMachineWorkloadControllerImage  = "threeport-machine-workload-controller"
+	ThreeportAgentImage                      = "threeport-agent"
 
 	// Name of threeport control plane components
 	ThreeportRestApiName                     = "rest-api"
@@ -43,7 +45,9 @@ const (
 	ThreeportHelmWorkloadControllerName      = "helm-workload-controller"
 	ThreeportTerraformControllerName         = "terraform-controller"
 	ThreeportObservabilityControllerName     = "observability-controller"
-	ThreeportSecretControllerName            = "secret-controller"
+	ThreeportSecretControllerName             = "secret-controller"
+	ThreeportMachineRuntimeControllerName    = "machine-runtime-controller"
+	ThreeportMachineWorkloadControllerName   = "machine-workload-controller"
 	ThreeportAgentName                       = "agent"
 
 	// Endpoint for threeport API when running locally
@@ -178,6 +182,24 @@ var ThreeportControllerList []*v0.ControlPlaneComponent = []*v0.ControlPlaneComp
 		ServiceAccountName: ThreeportSecretControllerName,
 		Enabled:            &enabled,
 	},
+	{
+		Name:               ThreeportMachineRuntimeControllerName,
+		BinaryName:         ThreeportMachineRuntimeControllerName,
+		ImageName:          ThreeportMachineRuntimeControllerImage,
+		ImageNamespace:     ThreeportImageNamespace,
+		ImageTag:           version.GetVersion(),
+		ServiceAccountName: ThreeportMachineRuntimeControllerName,
+		Enabled:            &enabled,
+	},
+	{
+		Name:               ThreeportMachineWorkloadControllerName,
+		BinaryName:         ThreeportMachineWorkloadControllerName,
+		ImageName:          ThreeportMachineWorkloadControllerImage,
+		ImageNamespace:     ThreeportImageNamespace,
+		ImageTag:           version.GetVersion(),
+		ServiceAccountName: ThreeportMachineWorkloadControllerName,
+		Enabled:            &enabled,
+	},
 }
 
 var ThreeportRestApi *v0.ControlPlaneComponent = &v0.ControlPlaneComponent{
@@ -224,7 +246,6 @@ func AllControlPlaneComponents() []*v0.ControlPlaneComponent {
 	allControlPlaneComponents := ThreeportControllerList
 	allControlPlaneComponents = append(allControlPlaneComponents, ThreeportRestApi)
 	allControlPlaneComponents = append(allControlPlaneComponents, ThreeportAgent)
-	allControlPlaneComponents = append(allControlPlaneComponents, DatabaseMigrator)
 	return allControlPlaneComponents
 }
 

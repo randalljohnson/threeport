@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -167,6 +168,87 @@ func IsEncrypted(key, value string) bool {
 // whose incoming value equals this placeholder, so the DB retains its
 // existing ciphertext rather than storing the marker as plaintext.
 const RedactedValuePlaceholder = "[encrypted value redacted]"
+
+// RedactEncryptedValues takes an API object, redacts the value on any
+// encrypted fields and returns the object with encrypted fields redacted.
+func RedactEncryptedValues(obj interface{}) interface{} {
+	objVal := reflect.ValueOf(obj).Elem()
+	objType := objVal.Type()
+	for i := 0; i < objType.NumField(); i++ {
+		field := objType.Field(i)
+		fieldVal := objVal.Field(i)
+		if field.Tag.Get("encrypt") != "true" {
+			continue
+		}
+		switch fieldVal.Kind() {
+		case reflect.Ptr:
+			if fieldVal.IsNil() {
+				continue
+			}
+			fieldVal.Elem().SetString(RedactedValuePlaceholder)
+		case reflect.Slice:
+			for j := 0; j < fieldVal.Len(); j++ {
+				fieldVal.Index(j).SetString(RedactedValuePlaceholder)
+			}
+		}
+	}
+
+	return obj
+}
+
+// DecryptValues takes and API object and the encryption key, decrypts any
+// encrypted fields and returns the object with encrypted values decrypted.
+// Nil pointer fields are left as-is since there is nothing to decrypt. Slice
+// fields are decrypted element-by-element, preserving the KEY= prefix on
+// each entry (only the value after the first `=` is encrypted on write, so
+// only that portion is decrypted on read).
+func DecryptValues(obj interface{}, encryptionKey string) (interface{}, error) {
+	objVal := reflect.ValueOf(obj).Elem()
+	objType := objVal.Type()
+	for i := 0; i < objType.NumField(); i++ {
+		field := objType.Field(i)
+		fieldVal := objVal.Field(i)
+		if field.Tag.Get("encrypt") != "true" {
+			continue
+		}
+		switch fieldVal.Kind() {
+		case reflect.Ptr:
+			if fieldVal.IsNil() {
+				continue
+			}
+			underlyingVal, err := util.GetPtrValue(fieldVal)
+			if err != nil {
+				return obj, fmt.Errorf("failed to get string value for %s: %w", field.Name, err)
+			}
+			decryptedVal, err := Decrypt(encryptionKey, underlyingVal)
+			if err != nil {
+				return obj, fmt.Errorf("failed to decrypt value in field %s: %w", field.Name, err)
+			}
+			fieldVal.Elem().SetString(decryptedVal)
+		case reflect.Slice:
+			if fieldVal.IsNil() || fieldVal.Len() == 0 {
+				continue
+			}
+			slice, ok := fieldVal.Interface().([]string)
+			if !ok {
+				return obj, fmt.Errorf("encrypt tag on non-[]string slice field %s", field.Name)
+			}
+			for j, entry := range slice {
+				parts := strings.SplitN(entry, "=", 2)
+				if len(parts) != 2 {
+					return obj, fmt.Errorf("%s[%d] is not in KEY=VALUE format", field.Name, j)
+				}
+				decValue, err := Decrypt(encryptionKey, parts[1])
+				if err != nil {
+					return obj, fmt.Errorf("failed to decrypt %s[%d]: %w", field.Name, j, err)
+				}
+				fieldVal.Index(j).SetString(parts[0] + "=" + decValue)
+			}
+		}
+	}
+
+	return obj, nil
+}
 
 // EncryptStringMap encrypts a map of strings using AES-GCM.
 func EncryptStringMap(key string, input map[string]string) (map[string]string, error) {

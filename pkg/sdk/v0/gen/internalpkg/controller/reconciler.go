@@ -9,6 +9,7 @@ import (
 	. "github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
 
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	"github.com/threeport/threeport/pkg/sdk/v0/gen"
@@ -250,7 +251,7 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							// If the object has a "Data" field with a "persist" tag set to "false", skip
 							// the retrieval of the latest object. Otherwise, generate the
 							// source code to retrieve the latest object.
-							if !objGroup.CheckStructTagMap(obj.Name, "Data", "persist", "false") {
+							if !objGroup.CheckStructTagMap(obj.Name, "Data", string(lib.PersistTag), lib.PersistFalse) {
 								getLatestObject(g, &obj, gen.ModulePath)
 							}
 
@@ -396,8 +397,7 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									),
 								}),
 								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
-								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetVersion").Call(),
-								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetType").Call(),
+								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
 								Line(),
 							).Op(";").Id("err").Op("!=").Nil().Block(
 								Id("log").Dot("Error").Call(
@@ -592,8 +592,7 @@ func operationCase(
 					),
 				}),
 				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
-				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetVersion").Call(),
-				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetType").Call(),
+				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
 				Line().Id("operationErr"),
 				Line().Op("&").Id("log"),
 				Line(),

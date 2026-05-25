@@ -78,6 +78,11 @@ func (ma *ModuleApi) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ma *ModuleApi) GetFullyQualifiedType() string {
+	return "threeport.io/v0.ModuleApi"
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -130,6 +135,21 @@ func (mar *ModuleApiRoute) GetType() string {
 // GetVersion returns the version of the API object.
 func (mar *ModuleApiRoute) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mar *ModuleApiRoute) GetFullyQualifiedType() string {
+	return "threeport.io/v0.ModuleApiRoute"
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ModuleApiRoute.
+func (m *ModuleApiRoute) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "ModuleApiID",
+		ObjectID:     m.ModuleApiID,
+		ObjectType:   new(ModuleApi).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -186,6 +206,21 @@ func (mc *ModuleController) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mc *ModuleController) GetFullyQualifiedType() string {
+	return "threeport.io/v0.ModuleController"
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ModuleController.
+func (m *ModuleController) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "ModuleApiID",
+		ObjectID:     m.ModuleApiID,
+		ObjectType:   new(ModuleApi).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -238,4 +273,24 @@ func (mo *ModuleObject) GetType() string {
 // GetVersion returns the version of the API object.
 func (mo *ModuleObject) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (mo *ModuleObject) GetFullyQualifiedType() string {
+	return "threeport.io/v0.ModuleObject"
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ModuleObject.
+func (m *ModuleObject) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "ModuleApiID",
+		ObjectID:     m.ModuleApiID,
+		ObjectType:   new(ModuleApi).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "ModuleControllerID",
+		ObjectID:     m.ModuleControllerID,
+		ObjectType:   new(ModuleController).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }

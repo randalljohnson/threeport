@@ -19,6 +19,7 @@ nav:
     - 'Comparisons': 'concepts/comparisons.md'
     - 'Definitions & Instances': 'concepts/definitions-instances.md'
     - 'Custom Modules': 'concepts/extensions.md'
+    - 'Attached Object References': 'concepts/attached-object-reference.md'
   - Install:
     - 'Threeport CLI': 'install/install-tptctl.md'
     - 'Local Threeport': 'install/install-threeport-local.md'

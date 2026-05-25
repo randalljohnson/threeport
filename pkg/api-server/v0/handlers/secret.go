@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	echo "github.com/labstack/echo/v4"
@@ -101,9 +100,9 @@ func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFu
 		}
 
 		// encrypt sensitive values
-		var encryptionKey = os.Getenv("ENCRYPTION_KEY")
-		if encryptionKey == "" {
-			return errors.New("environment variable ENCRYPTION_KEY is not set")
+		encryptionKey, err := encryption.KeyFromEnv()
+		if err != nil {
+			return err
 		}
 
 		// define the secret name and value

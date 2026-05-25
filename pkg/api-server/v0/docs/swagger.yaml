@@ -19,17 +19,46 @@ definitions:
   v0.AttachedObjectReference:
     properties:
       AttachedObjectID:
-        description: The object ID of the attached object.
+        description: AttachedObjectID is the database ID of the attaching object.
         type: integer
       AttachedObjectType:
-        description: The object type of the attached object.
+        description: |-
+          AttachedObjectType is the kind of the object doing the attaching;
+          the side that can determine the base object's lifecycle. Stored
+          as a fully qualified type name in the form
+          "<api-namespace>/<version>.<TypeName>".
         type: string
       ObjectID:
-        description: The object ID of the base object.
+        description: ObjectID is the database ID of the base object.
         type: integer
       ObjectType:
-        description: The object type of the base object.
+        description: |-
+          ObjectType is the kind of the base object being attached to. Read
+          "this attached object attaches to that object": the no-prefix
+          Object* fields name the "that" (anchor) side. The naming is
+          directional because the attached object is the side that can
+          determine the base object's lifecycle, depending on the type of
+          relationship (see below). Stored as a fully qualified type name
+          in the form "<api-namespace>/<version>.<TypeName>".
         type: string
+      Relationship:
+        allOf:
+        - $ref: '#/definitions/v0.Relationship'
+        description: |-
+          Relationship classifies this reference and drives lifecycle behavior
+          via gorm hooks and generated code that reveals information about a
+          type's foreign keys:
+            - "describes": informational; does not block delete or update of the base.
+            - "requires": blocks any caller from deleting the base while this
+              reference exists.
+            - "owns": blocks both delete and update of the base for any caller
+              except the controller registered for the attached object's type,
+              identified by its mTLS peer common name.
+              An owned base has at most one owner (enforced by the partial
+              index idx_aor_owns_base above); an owner may own many bases.
+            - "marries": enforces 1-to-1 cardinality between base and attacher
+              via the partial indexes above; blocks both delete and update of
+              the base for any caller except the partner's controller.
     required:
     - AttachedObjectID
     - AttachedObjectType
@@ -444,7 +473,7 @@ definitions:
           TODO: use a custom type
         type: string
       WorkloadInstanceID:
-        description: The workload instance this gateway belongs to.
+        description: The workload instance this domain name belongs to.
         type: integer
     required:
     - DomainNameDefinitionID
@@ -454,11 +483,6 @@ definitions:
     type: object
   v0.Event:
     properties:
-      AttachedObjectReferenceID:
-        description: |-
-          AttachedObjectReferenceID is a reference to an attached object.
-          A foreign key is configured via db migration in cmd/database-migrator/migrations/000010_add_events_foreign_key.go
-        type: integer
       Count:
         description: The number of times this event has occurred.
         type: integer
@@ -471,6 +495,32 @@ definitions:
         type: string
       Note:
         description: A human-readable description of the status of this operation.
+        type: string
+      ObjectID:
+        type: integer
+      ObjectName:
+        type: string
+      ObjectType:
+        description: |-
+          Fields carrying the event's subject - the object the event is
+          about. They flow in both directions:
+            - On create: the caller sets ObjectType (FQTN form) + ObjectID
+              in the request body. Event.BeforeCreate validates them;
+              Event.AfterCreate inserts the matching AttachedObjectReference
+              in the same transaction. ObjectName is ignored on write.
+            - On read: GetEventsJoinAttachedObjectReferenceByQueryString
+              projects the joined AOR's base object back into these
+              fields, then resolves ObjectName via the type's name resolver.
+          gorm:"-" keeps them off the Event row in the schema - the AOR
+          is the source of truth on disk for the subject linkage.
+
+          For an event describing a script failure on a
+          MachineRuntimeInstance named "some-host" (id 42), these hold:
+            ObjectType = "threeport.io/v0.MachineRuntimeInstance"
+            ObjectID   = 42
+            ObjectName = "some-host"   (read only - ignored on create)
+          A consumer like `tptctl get events` uses them to render
+          "machine-runtime-instance/some-host" in the OBJECT column.
         type: string
       Reason:
         description: A short, machine understandable string that gives the reason
@@ -625,7 +675,7 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       GatewayDefinitionID:
-        description: GatewayDefinitionID is the definition used to configure the workload
+        description: GatewayDefinitionID is the definition used to configure the gateway
           instance.
         type: integer
       InterruptReconciliation:
@@ -1104,7 +1154,7 @@ definitions:
           ConnectionTokenExpiration is the time when a ConnectionToken will expire.
           Used to ensure a token will not expire before it can be used.
         type: string
-      ControlPlaneInstances:
+      ControlPlaneInstance:
         description: The associated control plane instances running on this kubernetes
           runtime instance.
         items:
@@ -1141,13 +1191,10 @@ definitions:
           Used to inform reconcilers that an object is being deleted so they may
           complete delete reconciliation before actually deleting the object from the database.
         type: string
-      DnsControllerInstanceID:
-        description: The WorkloadInstanceID of the gateway support service
+      DnsControllerInstanceId:
+        description: The WorkloadInstanceID of the dns support service
         type: integer
-      ForceDelete:
-        description: If true, delete the runtime even if there are workloads present.
-        type: boolean
-      GatewayControllerInstanceID:
+      GatewayWorkloadInstanceID:
         description: The WorkloadInstanceID of the gateway support service
         type: integer
       InterruptReconciliation:
@@ -1173,7 +1220,7 @@ definitions:
         description: Indicates if object is considered to be reconciled by the object's
           controller.
         type: boolean
-      SecretsControllerInstanceID:
+      SecretsControllerInstanceId:
         description: The WorkloadInstanceID of the secrets support service
         type: integer
       Status:
@@ -1193,7 +1240,7 @@ definitions:
           any controllers that connect to the kube API will use internal cluster
           DNS rather than the external APIEndpoint.
         type: boolean
-      WorkloadInstances:
+      WorkloadInstance:
         description: The associated workload instances running on this kubernetes
           runtime.
         items:
@@ -1585,6 +1632,9 @@ definitions:
     type: object
   v0.ModuleApi:
     properties:
+      ApiNamespace:
+        description: The reverse-DNS namespace identifying this module API (e.g. "example.com").
+        type: string
       Core:
         description: If true, represents the core Threeport API.
         type: boolean
@@ -1792,7 +1842,7 @@ definitions:
           underlying grafana chart.
         type: string
       GrafanaHelmWorkloadInstanceID:
-        description: The Grafana Helm workload definition that belongs to this resource.
+        description: The Grafana Helm workload instance that belongs to this resource.
         type: integer
       InterruptReconciliation:
         description: |-
@@ -2220,6 +2270,18 @@ definitions:
     required:
     - Name
     type: object
+  v0.Relationship:
+    enum:
+    - describes
+    - requires
+    - owns
+    - marries
+    type: string
+    x-enum-varnames:
+    - RelationshipDescribes
+    - RelationshipRequires
+    - RelationshipOwns
+    - RelationshipMarries
   v0.Response:
     properties:
       Data:
@@ -2347,7 +2409,7 @@ definitions:
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
-        description: The kubernetes runtime to which the helm workload is deployed.
+        description: The kubernetes runtime to which the secret is deployed.
         type: integer
       Name:
         description: An arbitrary name the instance
@@ -2769,7 +2831,7 @@ definitions:
         description: Whether another controller has scheduled this resource for deletion
         type: string
       WorkloadInstanceID:
-        description: The workload definition this resource belongs to.
+        description: The workload instance this resource belongs to.
         type: integer
     required:
     - JSONDefinition
@@ -2777,7 +2839,7 @@ definitions:
     type: object
 info:
   contact:
-    url: https://threerport.io
+    url: https://threeport.io
   description: Core API server for the Threeport application orchestration control
     plane.
   title: Threeport RESTful API
@@ -5016,12 +5078,30 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all events joined with attached object references
+      description: Get all events joined with attached object references from the
+        Threeport database.
       operationId: get-v0-events-join-attached-object-references
       parameters:
-      - description: events joined with attached object references search by objectId
+      - description: filter events by object ID
         in: query
-        name: name
+        name: objectid
+        type: string
+      - description: filter events by object type name (with objectname); CamelCase
+          Go TypeName like 'WorkloadInstance'
+        in: query
+        name: objecttypename
+        type: string
+      - description: narrow objecttypename match to one version (e.g. 'v0')
+        in: query
+        name: objectversion
+        type: string
+      - description: narrow objecttypename match to one api namespace (e.g. 'threeport.io')
+        in: query
+        name: objectnamespace
+        type: string
+      - description: filter events by object name (with objecttypename)
+        in: query
+        name: objectname
         type: string
       produces:
       - application/json

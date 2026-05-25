@@ -280,7 +280,13 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 			List(Id("clientCert"), Id("clientKey"), Err()).Op(":=").Qual(
 				"github.com/threeport/threeport/pkg/auth/v0",
 				"GenerateCertificate",
-			).Call(Id("x509CaCert"), Id("rsaCaKey"), Lit(fmt.Sprintf("%s-threeport-module", moduleNameKebab))),
+			).Call(
+				Id("x509CaCert"),
+				Id("rsaCaKey"),
+				Lit(fmt.Sprintf("%s-threeport-module", moduleNameKebab)),
+				Qual("github.com/threeport/threeport/pkg/api/lib/v0", "CoreApiNamespace"),
+				Qual("github.com/threeport/threeport/pkg/auth/v0", "OUControlPlane"),
+			),
 			If(Err().Op("!=").Nil()).Block(
 				Return(Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
 					"failed to generate client cert and key for %s controller: %%w",

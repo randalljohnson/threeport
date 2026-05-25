@@ -5,6 +5,7 @@ package versions
 import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	apiserver_v0 "github.com/threeport/threeport/pkg/api-server/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	"reflect"
 )
@@ -12,16 +13,16 @@ import (
 // AddWorkloadDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddWorkloadDefinitionVersions() {
-	apiserver_v0.WorkloadDefinitionTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.WorkloadDefinitionTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.WorkloadDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -35,7 +36,7 @@ func AddWorkloadDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadDefinitionTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadDefinitionTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -44,16 +45,16 @@ func AddWorkloadDefinitionVersions() {
 // AddWorkloadEventVersions adds field validation info and adds it
 // to the REST API versions.
 func AddWorkloadEventVersions() {
-	apiserver_v0.WorkloadEventTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.WorkloadEventTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.WorkloadEvent)),
 		"",
 		apiserver_lib.Translate,
@@ -67,7 +68,7 @@ func AddWorkloadEventVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadEventTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadEventTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -76,16 +77,16 @@ func AddWorkloadEventVersions() {
 // AddWorkloadInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddWorkloadInstanceVersions() {
-	apiserver_v0.WorkloadInstanceTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.WorkloadInstanceTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.WorkloadInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -99,7 +100,7 @@ func AddWorkloadInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadInstanceTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadInstanceTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -108,16 +109,16 @@ func AddWorkloadInstanceVersions() {
 // AddWorkloadResourceDefinitionVersions adds field validation info and adds it
 // to the REST API versions.
 func AddWorkloadResourceDefinitionVersions() {
-	apiserver_v0.WorkloadResourceDefinitionTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.WorkloadResourceDefinitionTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.WorkloadResourceDefinition)),
 		"",
 		apiserver_lib.Translate,
@@ -131,7 +132,7 @@ func AddWorkloadResourceDefinitionVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadResourceDefinitionTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadResourceDefinitionTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
@@ -140,16 +141,16 @@ func AddWorkloadResourceDefinitionVersions() {
 // AddWorkloadResourceInstanceVersions adds field validation info and adds it
 // to the REST API versions.
 func AddWorkloadResourceInstanceVersions() {
-	apiserver_v0.WorkloadResourceInstanceTaggedFields[apiserver_lib.TagNameValidate] = &apiserver_lib.FieldsByTag{
+	apiserver_v0.WorkloadResourceInstanceTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
 		Optional:             []string{},
 		OptionalAssociations: []string{},
 		Required:             []string{},
-		TagName:              apiserver_lib.TagNameValidate,
+		TagName:              string(api_lib.ValidateTag),
 	}
 
 	// parse struct and populate the FieldsByTag object
 	apiserver_lib.ParseStruct(
-		apiserver_lib.TagNameValidate,
+		string(api_lib.ValidateTag),
 		reflect.ValueOf(new(api_v0.WorkloadResourceInstance)),
 		"",
 		apiserver_lib.Translate,
@@ -163,7 +164,7 @@ func AddWorkloadResourceInstanceVersions() {
 	}
 
 	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadResourceInstanceTaggedFields[apiserver_lib.TagNameValidate]
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.WorkloadResourceInstanceTaggedFields[string(api_lib.ValidateTag)]
 
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)

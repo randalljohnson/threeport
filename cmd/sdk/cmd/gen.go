@@ -52,6 +52,12 @@ See the Threeport SDK docs for more information: https://threeport.io/sdk/sdk-in
 			os.Exit(1)
 		}
 
+		// fail fast on invalid threeport-specific struct tags
+		if err := generator.ValidateTags(); err != nil {
+			cli.Error("invalid tags in API source", err)
+			os.Exit(1)
+		}
+
 		// build source code at root of project
 		if err := root.GenRoot(&generator, sdkConfig); err != nil {
 			cli.Error("failed to generate source code at prject root", err)

@@ -73,6 +73,11 @@ func (cpd *ControlPlaneDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (cpd *ControlPlaneDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.ControlPlaneDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (cpd *ControlPlaneDefinition) ScheduledForDeletion() *time.Time {
@@ -133,8 +138,33 @@ func (cpi *ControlPlaneInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (cpi *ControlPlaneInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.ControlPlaneInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (cpi *ControlPlaneInstance) ScheduledForDeletion() *time.Time {
 	return cpi.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on ControlPlaneInstance.
+func (c *ControlPlaneInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "ControlPlaneDefinitionID",
+		ObjectID:     c.ControlPlaneDefinitionID,
+		ObjectType:   new(ControlPlaneDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     c.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "ParentControlPlaneInstanceID",
+		ObjectID:     c.ParentControlPlaneInstanceID,
+		ObjectType:   new(ControlPlaneInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }

@@ -8,46 +8,46 @@ type ObservabilityStackDefinition struct {
 
 	// Dashboard
 	// The observability dashboard definition that belongs to this resource.
-	ObservabilityDashboardDefinitionID *uint `json:",omitempty" query:"observabilitydashboarddefinitionid" validate:"optional"`
+	ObservabilityDashboardDefinitionID *uint `json:"ObservabilityDashboardDefinitionID,omitempty" query:"observabilitydashboarddefinitionid" validate:"optional" relationship:"owns"`
 
 	// The version of the grafana helm chart to use from the helm repo, e.g. 1.2.3
-	GrafanaHelmChartVersion *string `json:",omitempty" query:"grafanahelmchartversion" validate:"optional"`
+	GrafanaHelmChartVersion *string `json:"GrafanaHelmChartVersion,omitempty" query:"grafanahelmchartversion" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying grafana chart.
-	GrafanaHelmValuesDocument *string `json:",omitempty" query:"grafanahelmvaluesdocument" validate:"optional"`
+	GrafanaHelmValuesDocument *string `json:"GrafanaHelmValuesDocument,omitempty" query:"grafanahelmvaluesdocument" validate:"optional"`
 
 	// Metrics
 	// The metrics definition that belongs to this resource.
-	MetricsDefinitionID *uint `json:",omitempty" query:"metricsdefinitionid" validate:"optional"`
+	MetricsDefinitionID *uint `json:"MetricsDefinitionID,omitempty" query:"metricsdefinitionid" validate:"optional" relationship:"owns"`
 
 	// The version of the kube-prometheus-stack helm chart to use from the helm repo, e.g. 1.2.3
-	KubePrometheusStackHelmChartVersion *string `json:",omitempty" query:"kubeprometheusstackhelmchartversion" validate:"optional"`
+	KubePrometheusStackHelmChartVersion *string `json:"KubePrometheusStackHelmChartVersion,omitempty" query:"kubeprometheusstackhelmchartversion" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying kube-prometheus-stack chart.
-	KubePrometheusStackHelmValuesDocument *string `json:",omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
+	KubePrometheusStackHelmValuesDocument *string `json:"KubePrometheusStackHelmValuesDocument,omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
 
 	// Logging
 	// The logging definition that belongs to this resource.
-	LoggingDefinitionID *uint `json:",omitempty" query:"loggingdefinitionid" validate:"optional"`
+	LoggingDefinitionID *uint `json:"LoggingDefinitionID,omitempty" query:"loggingdefinitionid" validate:"optional" relationship:"owns"`
 
 	// The version of the loki helm chart to use from the helm repo, e.g. 1.2.3
-	LokiHelmChartVersion *string `json:",omitempty" query:"lokihelmchartversion" validate:"optional"`
+	LokiHelmChartVersion *string `json:"LokiHelmChartVersion,omitempty" query:"lokihelmchartversion" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying loki chart.
-	LokiHelmValuesDocument *string `json:",omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
+	LokiHelmValuesDocument *string `json:"LokiHelmValuesDocument,omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
 
 	// The version of the promtail helm chart to use from the helm repo, e.g. 1.2.3
-	PromtailHelmChartVersion *string `json:",omitempty" query:"promtailhelmchartversion" validate:"optional"`
+	PromtailHelmChartVersion *string `json:"PromtailHelmChartVersion,omitempty" query:"promtailhelmchartversion" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying promtail chart.
-	PromtailHelmValuesDocument *string `json:",omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
+	PromtailHelmValuesDocument *string `json:"PromtailHelmValuesDocument,omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
 
 	// The associated observability stack instances that are deployed from this definition.
-	ObservabilityStackInstances []*ObservabilityStackInstance `json:",omitempty" validate:"optional,association"`
+	ObservabilityStackInstances []*ObservabilityStackInstance `json:"ObservabilityStackInstances,omitempty" validate:"optional,association"`
 }
 
 // ObservabilityStackInstance is a deployed instance of an observability stack.
@@ -57,44 +57,44 @@ type ObservabilityStackInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The observability stack definition that belongs to this resource.
-	ObservabilityStackDefinitionID *uint `query:"observabilitystackdefinitionid" gorm:"not null" validate:"required"`
+	ObservabilityStackDefinitionID *uint `json:"ObservabilityStackDefinitionID,omitempty" query:"observabilitystackdefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kubernetes runtime where the observability stack is installed.
-	KubernetesRuntimeInstanceID *uint `query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// If true, metrics will be enabled for the observability stack.
-	MetricsEnabled *bool `json:",omitempty" query:"metricsenabled" gorm:"default:true" validate:"optional"`
+	MetricsEnabled *bool `json:"MetricsEnabled,omitempty" query:"metricsenabled" gorm:"default:true" validate:"optional"`
 
 	// If true, logging will be enabled for the observability stack.
-	LoggingEnabled *bool `json:",omitempty" query:"loggingenabled" gorm:"default:true" validate:"optional"`
+	LoggingEnabled *bool `json:"LoggingEnabled,omitempty" query:"loggingenabled" gorm:"default:true" validate:"optional"`
 
 	// Dashboard
 	// The observability dashboard instance that belongs to this resource.
-	ObservabilityDashboardInstanceID *uint `json:",omitempty" query:"observabilitydashboardinstanceid" validate:"optional"`
+	ObservabilityDashboardInstanceID *uint `json:"ObservabilityDashboardInstanceID,omitempty" query:"observabilitydashboardinstanceid" validate:"optional" relationship:"owns"`
 
 	// Optional Helm workload instance values that can be provided to configure the
 	// underlying grafana chart.
-	GrafanaHelmValuesDocument *string `json:",omitempty" query:"grafanahelmvaluesdocument" validate:"optional"`
+	GrafanaHelmValuesDocument *string `json:"GrafanaHelmValuesDocument,omitempty" query:"grafanahelmvaluesdocument" validate:"optional"`
 
 	// Metrics
 	// The metrics instance that belongs to this resource.
-	MetricsInstanceID *uint `json:",omitempty" query:"metricsinstanceid" validate:"optional"`
+	MetricsInstanceID *uint `json:"MetricsInstanceID,omitempty" query:"metricsinstanceid" validate:"optional" relationship:"owns"`
 
 	// Optional Helm workload instance values that can be provided to configure the
 	// underlying kube-prometheus-stack chart.
-	KubePrometheusStackHelmValuesDocument *string `json:",omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
+	KubePrometheusStackHelmValuesDocument *string `json:"KubePrometheusStackHelmValuesDocument,omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
 
 	// Logging
 	// The logging instance that belongs to this resource.
-	LoggingInstanceID *uint `json:",omitempty" query:"logginginstanceid" validate:"optional"`
+	LoggingInstanceID *uint `json:"LoggingInstanceID,omitempty" query:"logginginstanceid" validate:"optional" relationship:"owns"`
 
 	// Optional Helm workload instance values that can be provided to configure the
 	// underlying loki chart.
-	LokiHelmValuesDocument *string `json:",omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
+	LokiHelmValuesDocument *string `json:"LokiHelmValuesDocument,omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
 
 	// Optional Helm workload Instancehat can be provided to configure the
 	// underlying promtail chart.
-	PromtailHelmValuesDocument *string `json:",omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
+	PromtailHelmValuesDocument *string `json:"PromtailHelmValuesDocument,omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
 }
 
 // ObservabilityDashboardDefinition is the definition of an observability dashboard.
@@ -104,17 +104,17 @@ type ObservabilityDashboardDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The Grafana Helm workload definition that belongs to this resource.
-	GrafanaHelmWorkloadDefinitionID *uint `json:",omitempty" query:"grafanahelmworkloaddefinitionid" validate:"optional"`
+	GrafanaHelmWorkloadDefinitionID *uint `json:"GrafanaHelmWorkloadDefinitionID,omitempty" query:"grafanahelmworkloaddefinitionid" validate:"optional" relationship:"owns;type:HelmWorkloadDefinition"`
 
 	// The version of the grafana helm chart to use from the helm repo, e.g. 1.2.3
-	GrafanaHelmChartVersion *string `json:",omitempty" query:"grafanahelmchartversion" gorm:"default:'7.2.1'" validate:"optional"`
+	GrafanaHelmChartVersion *string `json:"GrafanaHelmChartVersion,omitempty" query:"grafanahelmchartversion" gorm:"default:'7.2.1'" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying grafana chart.
-	GrafanaHelmValuesDocument *string `json:",omitempty" query:"grafanahelmvaluesdocument" validate:"optional"`
+	GrafanaHelmValuesDocument *string `json:"GrafanaHelmValuesDocument,omitempty" query:"grafanahelmvaluesdocument" validate:"optional"`
 
 	// The associated observability dashboard instances that are deployed from this definition.
-	ObservabilityDashboardInstances []*ObservabilityDashboardInstance `json:",omitempty" validate:"optional,association"`
+	ObservabilityDashboardInstances []*ObservabilityDashboardInstance `json:"ObservabilityDashboardInstances,omitempty" validate:"optional,association"`
 }
 
 // ObservabilityDashboardInstances is a deployed instance of an observability dashboard.
@@ -124,17 +124,17 @@ type ObservabilityDashboardInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The observability dashboard definition that belongs to this resource.
-	ObservabilityDashboardDefinitionID *uint `query:"observabilitydashboarddefinitionid" gorm:"not null" validate:"required"`
+	ObservabilityDashboardDefinitionID *uint `json:"ObservabilityDashboardDefinitionID,omitempty" query:"observabilitydashboarddefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kubernetes runtime where the observability dashboard is installed.
-	KubernetesRuntimeInstanceID *uint `query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
-	// The Grafana Helm workload definition that belongs to this resource.
-	GrafanaHelmWorkloadInstanceID *uint `json:",omitempty" query:"grafanahelmworkloadinstanceid" validate:"optional"`
+	// The Grafana Helm workload instance that belongs to this resource.
+	GrafanaHelmWorkloadInstanceID *uint `json:"GrafanaHelmWorkloadInstanceID,omitempty" query:"grafanahelmworkloadinstanceid" validate:"optional" relationship:"owns;type:HelmWorkloadInstance"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying grafana chart.
-	GrafanaHelmValuesDocument *string `json:",omitempty" query:"grafanahelmvaluesdocument" validate:"optional"`
+	GrafanaHelmValuesDocument *string `json:"GrafanaHelmValuesDocument,omitempty" query:"grafanahelmvaluedsdocument" validate:"optional"`
 }
 
 // MetricsDefinition is the definition of a metrics aggregation layer for a workload.
@@ -144,17 +144,17 @@ type MetricsDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The kube-prometheus-stack Helm workload definition that belongs to this resource.
-	KubePrometheusStackHelmWorkloadDefinitionID *uint `json:",omitempty" query:"kubeprometheusstackhelmworkloaddefinitionid" validate:"optional"`
+	KubePrometheusStackHelmWorkloadDefinitionID *uint `json:"KubePrometheusStackHelmWorkloadDefinitionID,omitempty" query:"kubeprometheusstackhelmworkloaddefinitionid" validate:"optional" relationship:"owns;type:HelmWorkloadDefinition"`
 
 	// The version of the kube-prometheus-stack helm chart to use from the helm repo, e.g. 1.2.3
-	KubePrometheusStackHelmChartVersion *string `json:",omitempty" query:"kubeprometheusstackhelmchartversion" gorm:"default:'55.8.1'" validate:"optional"`
+	KubePrometheusStackHelmChartVersion *string `json:"KubePrometheusStackHelmChartVersion,omitempty" query:"kubeprometheusstackhelmchartversion" gorm:"default:'55.8.1'" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying kube-prometheus-stack chart.
-	KubePrometheusStackHelmValuesDocument *string `json:",omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
+	KubePrometheusStackHelmValuesDocument *string `json:"KubePrometheusStackHelmValuesDocument,omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
 
 	// The associated metrics instances that are deployed from this definition.
-	MetricsInstances []*MetricsInstance `json:",omitempty" validate:"optional,association"`
+	MetricsInstances []*MetricsInstance `json:"MetricsInstances,omitempty" validate:"optional,association"`
 }
 
 // MetricsInstances is a deployed instance of a metrics aggregation layer for a workload.
@@ -164,17 +164,17 @@ type MetricsInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The metrics definition that belongs to this resource.
-	MetricsDefinitionID *uint `query:"metricsdefinitionid" gorm:"not null" validate:"required"`
+	MetricsDefinitionID *uint `json:"MetricsDefinitionID,omitempty" query:"metricsdefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kubernetes runtime where the metrics is installed.
-	KubernetesRuntimeInstanceID *uint `query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kube-prometheus-stack helm workload instance that belongs to this resource.
-	KubePrometheusStackHelmWorkloadInstanceID *uint `json:",omitempty" query:"kubeprometheusstackhelmworkloadinstanceid" validate:"optional"`
+	KubePrometheusStackHelmWorkloadInstanceID *uint `json:"KubePrometheusStackHelmWorkloadInstanceID,omitempty" query:"kubeprometheusstackhelmworkloadinstanceid" validate:"optional" relationship:"owns;type:HelmWorkloadInstance"`
 
 	// Optional Helm workload instance values that can be provided to configure the
 	// underlying kube-prometheus-stack chart.
-	KubePrometheusStackHelmValuesDocument *string `json:",omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
+	KubePrometheusStackHelmValuesDocument *string `json:"KubePrometheusStackHelmValuesDocument,omitempty" query:"kubeprometheusstackhelmvaluesdocument" validate:"optional"`
 }
 
 // LoggingDefinition is the definition of a logging implementation for a workload.
@@ -184,27 +184,27 @@ type LoggingDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The loki Helm workload definition that belongs to this resource.
-	LokiHelmWorkloadDefinitionID *uint `json:",omitempty" query:"lokihelmworkloaddefinitionid" validate:"optional"`
+	LokiHelmWorkloadDefinitionID *uint `json:"LokiHelmWorkloadDefinitionID,omitempty" query:"lokihelmworkloaddefinitionid" validate:"optional" relationship:"owns;type:HelmWorkloadDefinition"`
 
 	// The promtail Helm workload definition that belongs to this resource.
-	PromtailHelmWorkloadDefinitionID *uint `json:",omitempty" query:"promtailhelmworkloaddefinitionid" validate:"optional"`
+	PromtailHelmWorkloadDefinitionID *uint `json:"PromtailHelmWorkloadDefinitionID,omitempty" query:"promtailhelmworkloaddefinitionid" validate:"optional" relationship:"owns;type:HelmWorkloadDefinition"`
 
 	// The version of the loki helm chart to use from the helm repo, e.g. 1.2.3
-	LokiHelmChartVersion *string `json:",omitempty" query:"lokihelmchartversion" gorm:"default:'5.41.6'" validate:"optional"`
+	LokiHelmChartVersion *string `json:"LokiHelmChartVersion,omitempty" query:"lokihelmchartversion" gorm:"default:'5.41.6'" validate:"optional"`
 
 	// The version of the promtail helm chart to use from the helm repo, e.g. 1.2.3
-	PromtailHelmChartVersion *string `json:",omitempty" query:"promtailhelmchartversion" gorm:"default:'6.15.3'" validate:"optional"`
+	PromtailHelmChartVersion *string `json:"PromtailHelmChartVersion,omitempty" query:"promtailhelmchartversion" gorm:"default:'6.15.3'" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying loki chart.
-	LokiHelmValuesDocument *string `json:",omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
+	LokiHelmValuesDocument *string `json:"LokiHelmValuesDocument,omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying promtail chart.
-	PromtailHelmValuesDocument *string `json:",omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
+	PromtailHelmValuesDocument *string `json:"PromtailHelmValuesDocument,omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
 
 	// The associated logging instances that are deployed from this definition.
-	LoggingInstances []*LoggingInstance `json:",omitempty" validate:"optional,association"`
+	LoggingInstances []*LoggingInstance `json:"LoggingInstances,omitempty" validate:"optional,association"`
 }
 
 // LoggingInstances is a deployed instance of a logging implementation for a workload.
@@ -214,22 +214,22 @@ type LoggingInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The logging definition that belongs to this resource.
-	LoggingDefinitionID *uint `query:"loggingdefinitionid" gorm:"not null" validate:"required"`
+	LoggingDefinitionID *uint `json:"LoggingDefinitionID,omitempty" query:"loggingdefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kubernetes runtime where the logging is installed.
-	KubernetesRuntimeInstanceID *uint `query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The loki helm workload instance that belongs to this resource.
-	LokiHelmWorkloadInstanceID *uint `json:",omitempty" query:"lokihelmworkloadinstanceid" validate:"optional"`
+	LokiHelmWorkloadInstanceID *uint `json:"LokiHelmWorkloadInstanceID,omitempty" query:"lokihelmworkloadinstanceid" validate:"optional" relationship:"owns;type:HelmWorkloadInstance"`
 
 	// The promtail helm workload instance that belongs to this resource.
-	PromtailHelmWorkloadInstanceID *uint `json:",omitempty" query:"promtailhelmworkloadinstanceid" validate:"optional"`
+	PromtailHelmWorkloadInstanceID *uint `json:"PromtailHelmWorkloadInstanceID,omitempty" query:"promtailhelmworkloadinstanceid" validate:"optional" relationship:"owns;type:HelmWorkloadInstance"`
 
 	// Optional Helm workload instance values that can be provided to configure the
 	// underlying loki chart.
-	LokiHelmValuesDocument *string `json:",omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
+	LokiHelmValuesDocument *string `json:"LokiHelmValuesDocument,omitempty" query:"lokihelmvaluesdocument" validate:"optional"`
 
 	// Optional Helm workload instance values that can be provided to configure the
 	// underlying promtail chart.
-	PromtailHelmValuesDocument *string `json:",omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
+	PromtailHelmValuesDocument *string `json:"PromtailHelmValuesDocument,omitempty" query:"promtailhelmvaluesdocument" validate:"optional"`
 }

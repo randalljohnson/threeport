@@ -16,6 +16,7 @@ import (
 
 	"github.com/threeport/threeport/internal/version"
 	"github.com/threeport/threeport/pkg/api-server/v0/database"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
@@ -331,6 +332,8 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAPITLS(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-api-server",
+			apilib.CoreApiNamespace,
+			auth.OUControlPlane,
 			serverAltNames...,
 		)
 		if err != nil {
@@ -375,6 +378,8 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 				authConfig.CAConfig,
 				&authConfig.CAPrivateKey,
 				controller.Name,
+				apilib.CoreApiNamespace,
+				auth.OUControlPlane,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to generate client certificate and private key for workload controller: %w", err)
@@ -501,6 +506,8 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAgent(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-agent",
+			apilib.CoreApiNamespace,
+			auth.OUControlPlane,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to generate client certificate and private key for threeport agent: %w", err)

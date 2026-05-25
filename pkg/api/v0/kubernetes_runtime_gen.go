@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	"time"
 )
@@ -73,6 +74,11 @@ func (krd *KubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (krd *KubernetesRuntimeDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.KubernetesRuntimeDefinition"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (krd *KubernetesRuntimeDefinition) ScheduledForDeletion() *time.Time {
@@ -133,8 +139,34 @@ func (kri *KubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (kri *KubernetesRuntimeInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.KubernetesRuntimeInstance"
+}
+
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (kri *KubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return kri.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     k.KubernetesRuntimeDefinitionID,
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
+}
+
+// EncryptedFields returns the encrypt-tagged fields on KubernetesRuntimeInstance.
+func (k *KubernetesRuntimeInstance) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
+		Name:  "CertificateKey",
+		Value: k.CertificateKey,
+	}, {
+		Name:  "ConnectionToken",
+		Value: k.ConnectionToken,
+	}}
 }

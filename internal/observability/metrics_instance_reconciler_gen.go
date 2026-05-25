@@ -179,8 +179,7 @@ func MetricsInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						metricsInstance.GetId(),
-						metricsInstance.GetVersion(),
-						metricsInstance.GetType(),
+						metricsInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func MetricsInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						metricsInstance.GetId(),
-						metricsInstance.GetVersion(),
-						metricsInstance.GetType(),
+						metricsInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func MetricsInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						metricsInstance.GetId(),
-						metricsInstance.GetVersion(),
-						metricsInstance.GetType(),
+						metricsInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func MetricsInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				metricsInstance.GetId(),
-				metricsInstance.GetVersion(),
-				metricsInstance.GetType(),
+				metricsInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful metrics instance reconciliation")
 			}

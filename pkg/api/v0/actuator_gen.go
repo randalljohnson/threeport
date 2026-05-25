@@ -72,6 +72,11 @@ func (p *Profile) GetVersion() string {
 	return "v0"
 }
 
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (p *Profile) GetFullyQualifiedType() string {
+	return "threeport.io/v0.Profile"
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -124,4 +129,9 @@ func (t *Tier) GetType() string {
 // GetVersion returns the version of the API object.
 func (t *Tier) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (t *Tier) GetFullyQualifiedType() string {
+	return "threeport.io/v0.Tier"
 }

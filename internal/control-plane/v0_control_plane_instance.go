@@ -358,6 +358,8 @@ func v0ControlPlaneInstanceCreated(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
 			"threeport-owner",
+			"",
+			"",
 		)
 		if err != nil {
 			return 0, fmt.Errorf("failed to generate client certificate and private key: %w", err)

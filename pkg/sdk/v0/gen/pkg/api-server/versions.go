@@ -48,6 +48,12 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 				"tpapi",
 				gen.Module,
 			))
+			f.ImportAlias(util.SetImportAlias(
+				"github.com/threeport/threeport/pkg/api/lib/v0",
+				"api_lib",
+				"tpapi_lib",
+				gen.Module,
+			))
 
 			for _, apiObject := range objGroup.ApiObjects {
 				taggedFieldsMapName := fmt.Sprintf("%sTaggedFields", apiObject.TypeName)
@@ -63,17 +69,17 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 					Qual(
 						fmt.Sprintf("%s/pkg/api-server/%s", gen.ModulePath, objCollection.Version),
 						taggedFieldsMapName,
-					).Index(Qual(
-						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"TagNameValidate",
-					)).Op("=").Op("&").Qual(
+					).Index(Id("string").Call(Qual(
+						"github.com/threeport/threeport/pkg/api/lib/v0",
+						"ValidateTag",
+					))).Op("=").Op("&").Qual(
 						"github.com/threeport/threeport/pkg/api-server/lib/v0",
 						"FieldsByTag",
 					).Values(Dict{
-						Id("TagName"): Qual(
-							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"TagNameValidate",
-						),
+						Id("TagName"): Id("string").Call(Qual(
+							"github.com/threeport/threeport/pkg/api/lib/v0",
+							"ValidateTag",
+						)),
 						Id("Required"):             Index().String().Values(),
 						Id("Optional"):             Index().String().Values(),
 						Id("OptionalAssociations"): Index().String().Values(),
@@ -83,10 +89,10 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 					Qual(
 						"github.com/threeport/threeport/pkg/api-server/lib/v0",
 						"ParseStruct",
-					).Call(Line().Qual(
-						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"TagNameValidate",
-					).Op(",").Line().Qual(
+					).Call(Line().Id("string").Call(Qual(
+						"github.com/threeport/threeport/pkg/api/lib/v0",
+						"ValidateTag",
+					)).Op(",").Line().Qual(
 						"reflect",
 						"ValueOf",
 					).Call(Id("new").Call(Qual(
@@ -120,10 +126,10 @@ func GenObjValidationVersions(gen *gen.Generator, sdkConfig *sdk.SdkConfig) erro
 					).Index(Id("versionObj")).Op("=").Qual(
 						fmt.Sprintf("%s/pkg/api-server/%s", gen.ModulePath, objCollection.Version),
 						taggedFieldsMapName,
-					).Index(Qual(
-						"github.com/threeport/threeport/pkg/api-server/lib/v0",
-						"TagNameValidate",
-					)),
+					).Index(Id("string").Call(Qual(
+						"github.com/threeport/threeport/pkg/api/lib/v0",
+						"ValidateTag",
+					))),
 					Line(),
 					Comment("add the object tagged fields to the rest API version"),
 					Qual(

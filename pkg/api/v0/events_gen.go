@@ -68,3 +68,8 @@ func (e *Event) GetType() string {
 func (e *Event) GetVersion() string {
 	return "v0"
 }
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (e *Event) GetFullyQualifiedType() string {
+	return "threeport.io/v0.Event"
+}

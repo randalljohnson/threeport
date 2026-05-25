@@ -114,29 +114,8 @@ func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates a delete request on a kubernetes runtime instance
-// deletion to ensure deletion is possible.
+// beforeDelete validates the KubernetesRuntimeInstance before delete.
 func (k *KubernetesRuntimeInstance) beforeDelete(tx *gorm.DB) error {
-	// validate that no workloads exist or that ForceDelete is true
-	var workloadInstances []WorkloadInstance
-	if result := tx.Where(
-		&WorkloadInstance{KubernetesRuntimeInstanceID: k.ID},
-	).Find(&workloadInstances); result.Error != nil {
-		return fmt.Errorf(
-			"failed to query workload instances for kubernetes runtime instance %s",
-			*k.Name,
-		)
-	}
-
-	if len(workloadInstances) > 0 {
-		return util.NewBadRequestError(
-			fmt.Sprintf(
-				"kubernetes runtime instance %s cannot be deleted until workloads are removed",
-				*k.Name,
-			),
-		)
-	}
-
 	return nil
 }
 

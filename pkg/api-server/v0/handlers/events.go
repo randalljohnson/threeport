@@ -108,9 +108,9 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			return apiserver_lib.ResponseStatus404(c, pageParams,
 				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
 		}
-		// look up the named object across every registered version;
-		// each version may yield zero or more ids (duplicates are a
-		// data integrity bug and the resolver returns them all)
+		// look up the named object across every matched FQTN; each
+		// FQTN may yield zero or more ids - name uniqueness is not
+		// enforced at the database level
 		for _, fqt := range fullyQualifiedTypes {
 			moreIds, lookupErr := GetObjectIDsByName(h.DB, fqt, targetName)
 			if lookupErr == nil {

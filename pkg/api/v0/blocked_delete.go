@@ -3,7 +3,6 @@ package v0
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/iancoleman/strcase"
@@ -54,25 +53,13 @@ func FormatBlockedDelete(e *BlockedDeleteError, namesByType map[string]map[uint]
 // API-namespace-qualified form ("threeport.io/v0.Foo",
 // "example.com/v0.Bar") that AOR rows store.
 func FormatObjectPath(rawType string, id uint, names map[uint]string) string {
-	// FQTN shape is "<namespace>/<version>.<TypeName>"; locate the two
-	// separators so we can extract the namespace and TypeName segments
-	slashIdx := strings.Index(rawType, "/")
-	dotIdx := strings.LastIndex(rawType, ".")
-
-	// malformed input - missing slash or dot in the wrong position;
-	// emit the raw type alongside the id so the caller still has
+	// parse the FQTN into its parts; malformed input falls back to
+	// emitting the raw type alongside the id so the caller still has
 	// something to grep for
-	if slashIdx < 0 || dotIdx < slashIdx {
+	namespace, _, typeName, ok := lib.ParseQualifiedType(rawType)
+	if !ok {
 		return fmt.Sprintf("%s/%d", rawType, id)
 	}
-
-	// namespace = everything before the first slash.
-	// "example.com/v0.Foo" -> namespace = "example.com"
-	namespace := rawType[:slashIdx]
-
-	// typeName = everything after the last dot.
-	// "example.com/v0.Foo" -> typeName = "Foo"
-	typeName := rawType[dotIdx+1:]
 
 	// CamelCase -> kebab so the rendered path matches user-facing
 	// kebab conventions. "Foo" -> kind = "foo"

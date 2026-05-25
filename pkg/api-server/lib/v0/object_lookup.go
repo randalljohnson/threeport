@@ -2,9 +2,7 @@ package v0
 
 import (
 	"fmt"
-	"strings"
 
-	strcase "github.com/iancoleman/strcase"
 	gorm "gorm.io/gorm"
 
 	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
@@ -118,9 +116,10 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 // modules and the core registry, merged - callers that need to narrow
 // further can pass the result through FilterQualifiedTypes.
 //
-// Cross-namespace ambiguity is surfaced as an error so an unintended
-// match (e.g. core and a module both registering "Widget") doesn't
-// silently resolve to one of them.
+// Cross-namespace duplicates are not surfaced as an error: if "Widget"
+// is registered in both core and a module, the caller gets every
+// matching FQTN and decides how to disambiguate (typically by reading
+// the namespace-qualified form displayed alongside each result).
 func GetObjectTypes(db *gorm.DB, bareKind string) ([]string, error) {
 	out := []string{}
 
@@ -176,27 +175,6 @@ func GetObjectTypes(db *gorm.DB, bareKind string) ([]string, error) {
 		for _, v := range obj.Versions {
 			out = append(out, fmt.Sprintf("%s/%s.%s", apilib.CoreApiNamespace, v, bareKind))
 		}
-	}
-
-	// surface ambiguity across namespaces: if "Widget" is registered in
-	// both example.com (module) and threeport.io (core), the caller must
-	// disambiguate before we can return a meaningful result.
-	namespaces := map[string]bool{}
-	for _, qt := range out {
-		if ns, _, _, ok := apilib.ParseQualifiedType(qt); ok {
-			namespaces[ns] = true
-		}
-	}
-	if len(namespaces) > 1 {
-		kebab := strcase.ToKebab(bareKind)
-		hints := make([]string, 0, len(namespaces))
-		for ns := range namespaces {
-			hints = append(hints, fmt.Sprintf("%s/%s", ns, kebab))
-		}
-		return nil, fmt.Errorf(
-			"kind %q is registered in multiple namespaces; specify one of: %s",
-			kebab, strings.Join(hints, ", "),
-		)
 	}
 
 	return out, nil

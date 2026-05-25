@@ -49,7 +49,8 @@ type Event struct {
 	//   ObjectID   = 42
 	//   ObjectName = "some-host"   (read only - ignored on create)
 	// A consumer like `tptctl get events` uses them to render
-	// "machine-runtime-instance/some-host" in the OBJECT column.
+	// "threeport.io/machine-runtime-instance/some-host" in the OBJECT
+	// column.
 	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`
 	ObjectID   *uint   `json:"ObjectID,omitempty" gorm:"-"`
 	ObjectName *string `json:"ObjectName,omitempty" gorm:"-"`

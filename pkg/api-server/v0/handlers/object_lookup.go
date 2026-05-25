@@ -71,9 +71,8 @@ func GetObjectNames(db *gorm.DB, objectType string, ids []uint, includeDeleted b
 // GetObjectIDsByName returns the IDs of all objects with the given name
 // for the given object type, dispatching to core SQL or the owning
 // module's API as needed. Returns an empty slice if the type has no
-// resolver or no objects match. Names are not globally unique - the
-// schema only enforces uniqueness when a type opts in via a
-// uniqueIndex tag, so a single name can legitimately resolve to
+// resolver or no objects match. Name uniqueness is not enforced at
+// the database level, so a single name can legitimately resolve to
 // multiple ids.
 func GetObjectIDsByName(db *gorm.DB, objectType, name string) ([]uint, error) {
 	// try the core SQL resolver first; return early if the type is core

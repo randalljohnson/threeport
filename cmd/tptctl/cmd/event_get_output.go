@@ -10,6 +10,7 @@ import (
 
 	strcase "github.com/iancoleman/strcase"
 
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -69,12 +70,13 @@ func outputEventsTable(events *[]v0.Event) error {
 	return nil
 }
 
-// formatEventObject formats an event's target object as <kebab-kind>/<name>.
-// For an event with ObjectType="example.com/v0.RouterInstance",
-// ObjectID=42, ObjectName="some-router" the result is
-// "router-instance/some-router". Falls back to "<kind>/<id>" if the
-// name wasn't resolved (e.g. lookup failed), or just "<kind>" if the
-// id is nil too.
+// formatEventObject formats an event's target object as
+// <namespace>/<kebab-kind>/<name>. For an event with
+// ObjectType="example.com/v0.RouterInstance", ObjectID=42,
+// ObjectName="some-router" the result is
+// "example.com/router-instance/some-router". Falls back to
+// "<namespace>/<kind>/<id>" if the name wasn't resolved (e.g. lookup
+// failed), or just "<namespace>/<kind>" if the id is nil too.
 func formatEventObject(e *v0.Event) string {
 	// no recorded subject - nothing to render
 	rawType := util.DerefString(e.ObjectType)
@@ -82,29 +84,32 @@ func formatEventObject(e *v0.Event) string {
 		return ""
 	}
 
-	// FQTN is always "<namespace>/<version>.<TypeName>" now.
-	// "example.com/v0.RouterInstance" -> typeName = "RouterInstance"
-	dotIdx := strings.LastIndex(rawType, ".")
-	if dotIdx < 0 {
-		// malformed; surface the raw value so the user can still grep
+	// parse the FQTN into its parts; malformed values are surfaced
+	// raw so the user can still grep for them
+	namespace, _, typeName, ok := apilib.ParseQualifiedType(rawType)
+	if !ok {
 		return rawType
 	}
-	typeName := rawType[dotIdx+1:]
 
-	// CamelCase -> kebab so the output matches the --for flag shape.
-	// "RouterInstance" -> kind = "router-instance"
+	// CamelCase -> kebab so the kind segment matches the --for flag
+	// shape. "RouterInstance" -> kind = "router-instance"
 	kind := strcase.ToKebab(typeName)
 
 	// prefer name when resolved; this is the common case after the
 	// events-join handler enriches the row
 	if name := util.DerefString(e.ObjectName); name != "" {
-		return fmt.Sprintf("%s/%s", kind, name)
+		return fmt.Sprintf("%s/%s/%s", namespace, kind, name)
 	}
 
 	// name wasn't resolved (lookup failed, deleted subject, etc.);
 	// fall back to id so the user still has something to grep
 	if e.ObjectID != nil {
-		return fmt.Sprintf("%s/%d", kind, *e.ObjectID)
+		return fmt.Sprintf("%s/%s/%d", namespace, kind, *e.ObjectID)
 	}
-	return kind
+
+	// neither name nor id present - the event row had no resolvable
+	// subject (shouldn't happen for events created through RecordEvent
+	// but the projection fields can be nil if the AOR row is missing).
+	// emit the type alone so the column still renders something.
+	return fmt.Sprintf("%s/%s", namespace, kind)
 }

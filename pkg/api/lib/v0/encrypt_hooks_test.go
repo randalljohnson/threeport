@@ -1,0 +1,227 @@
+package v0
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	"github.com/threeport/threeport/pkg/encryption/v0"
+)
+
+// testSecret carries one *string-encrypt and one []string-encrypt
+// field - the two shapes the hook supports. Its gorm hooks call
+// straight into ProcessEncryptTaggedFields so the test exercises
+// the production wiring.
+type testSecret struct {
+	ID    uint `gorm:"primaryKey"`
+	Name  string
+	Token *string  `encrypt:"true"`
+	Env   []string `gorm:"serializer:json" encrypt:"true"`
+}
+
+func (t *testSecret) EncryptedFields() []EncryptedField {
+	return []EncryptedField{
+		{Name: "Token", Value: t.Token},
+		{Name: "Env", Value: t.Env},
+	}
+}
+
+func (t *testSecret) BeforeCreate(tx *gorm.DB) error {
+	return ProcessEncryptTaggedFields(tx, t)
+}
+
+func (t *testSecret) BeforeUpdate(tx *gorm.DB) error {
+	return ProcessEncryptTaggedFields(tx, t)
+}
+
+// setupEncryptTestDB stands up an in-memory sqlite db and plants a
+// fresh encryption key in the env so the hook can read it.
+func setupEncryptTestDB(t *testing.T) (*gorm.DB, string) {
+	t.Helper()
+	key, err := encryption.GenerateKey()
+	require.NoError(t, err)
+	t.Setenv("ENCRYPTION_KEY", key)
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&testSecret{}))
+	return db, key
+}
+
+// testTokenPtr returns a fresh *string. Going through a function
+// keeps the assertion-time local out of the pointer chain so the
+// hook's SetColumn (which writes back via reflect) can't mutate it
+// into ciphertext before the comparison runs.
+func testTokenPtr(s string) *string { return &s }
+
+// TestEncryptHookUpdatesEncryptsFromNil is the regression test for
+// the dest-redirect fix: an update transitioning nil -> value must
+// encrypt the inbound value, not skip because the loaded Model was
+// nil.
+func TestEncryptHookUpdatesEncryptsFromNil(t *testing.T) {
+	db, key := setupEncryptTestDB(t)
+
+	existing := &testSecret{Name: "test"}
+	require.NoError(t, db.Create(existing).Error)
+	require.Nil(t, existing.Token, "Token starts nil")
+
+	var loaded testSecret
+	require.NoError(t, db.First(&loaded, existing.ID).Error)
+
+	inbound := &testSecret{Token: testTokenPtr("first-secret-value")}
+	require.NoError(t, db.Model(&loaded).Updates(inbound).Error)
+
+	var stored testSecret
+	require.NoError(t, db.First(&stored, existing.ID).Error)
+	require.NotNil(t, stored.Token, "Token should be persisted, not nil")
+	assert.NotEqual(t, "first-secret-value", *stored.Token, "Token must not be stored as plaintext after Update")
+
+	decrypted, err := encryption.Decrypt(key, *stored.Token)
+	require.NoError(t, err, "stored Token should be valid ciphertext")
+	assert.Equal(t, "first-secret-value", decrypted, "ciphertext should decrypt to the inbound plaintext")
+}
+
+// TestEncryptHookUpdatesEncryptsValueToOther verifies a value->other
+// update encrypts the inbound value; without the dest redirect the
+// hook would re-encrypt the loaded (stale) value.
+func TestEncryptHookUpdatesEncryptsValueToOther(t *testing.T) {
+	db, key := setupEncryptTestDB(t)
+
+	existing := &testSecret{Name: "test", Token: testTokenPtr("first-secret")}
+	require.NoError(t, db.Create(existing).Error)
+
+	var loaded testSecret
+	require.NoError(t, db.First(&loaded, existing.ID).Error)
+
+	inbound := &testSecret{Token: testTokenPtr("second-secret-value")}
+	require.NoError(t, db.Model(&loaded).Updates(inbound).Error)
+
+	var stored testSecret
+	require.NoError(t, db.First(&stored, existing.ID).Error)
+	require.NotNil(t, stored.Token)
+
+	decrypted, err := encryption.Decrypt(key, *stored.Token)
+	require.NoError(t, err)
+	assert.Equal(t, "second-secret-value", decrypted, "stored value should be ciphertext of inbound, not the prior value")
+	assert.NotEqual(t, "first-secret", decrypted, "must not still have the old value")
+}
+
+// TestEncryptHookCreateEncrypts pins the create path: Model == Dest
+// so the redirect is a no-op and the hook encrypts the inbound value.
+func TestEncryptHookCreateEncrypts(t *testing.T) {
+	db, key := setupEncryptTestDB(t)
+
+	obj := &testSecret{Name: "test", Token: testTokenPtr("create-time-secret")}
+	require.NoError(t, db.Create(obj).Error)
+
+	var stored testSecret
+	require.NoError(t, db.First(&stored, obj.ID).Error)
+	require.NotNil(t, stored.Token)
+	assert.NotEqual(t, "create-time-secret", *stored.Token, "Token must not be stored as plaintext after Create")
+
+	decrypted, err := encryption.Decrypt(key, *stored.Token)
+	require.NoError(t, err)
+	assert.Equal(t, "create-time-secret", decrypted)
+}
+
+// TestEncryptHookUpdatesPreservesNilWhenNotChanged confirms an
+// untouched encrypted field stays nil through an unrelated update.
+func TestEncryptHookUpdatesPreservesNilWhenNotChanged(t *testing.T) {
+	db, _ := setupEncryptTestDB(t)
+
+	existing := &testSecret{Name: "test"}
+	require.NoError(t, db.Create(existing).Error)
+
+	var loaded testSecret
+	require.NoError(t, db.First(&loaded, existing.ID).Error)
+
+	inbound := &testSecret{Name: "renamed"}
+	require.NoError(t, db.Model(&loaded).Updates(inbound).Error)
+
+	var stored testSecret
+	require.NoError(t, db.First(&stored, existing.ID).Error)
+	assert.Equal(t, "renamed", stored.Name)
+	assert.Nil(t, stored.Token, "Token left nil should stay nil when update doesn't touch it")
+}
+
+// TestEncryptHookEncryptsEnvSliceValues exercises the []string
+// KEY=VALUE path: keys stay plaintext, values round-trip through
+// encrypt/decrypt, across both create and update.
+func TestEncryptHookEncryptsEnvSliceValues(t *testing.T) {
+	db, key := setupEncryptTestDB(t)
+
+	plain := []string{"DB_PASSWORD=hunter2", "API_KEY=abc-123"}
+	obj := &testSecret{Name: "test", Env: append([]string{}, plain...)}
+	require.NoError(t, db.Create(obj).Error)
+
+	var stored testSecret
+	require.NoError(t, db.First(&stored, obj.ID).Error)
+	require.Len(t, stored.Env, len(plain))
+	for i, entry := range stored.Env {
+		wantKey, wantValue, _ := strings.Cut(plain[i], "=")
+		gotKey, gotCipher, ok := strings.Cut(entry, "=")
+		require.True(t, ok, "stored entry %d should still be KEY=VALUE shape", i)
+		assert.Equal(t, wantKey, gotKey, "key portion must remain plaintext")
+		assert.NotEqual(t, wantValue, gotCipher, "value portion must be ciphertext, not plaintext")
+
+		decValue, err := encryption.Decrypt(key, gotCipher)
+		require.NoError(t, err, "stored value portion should be valid ciphertext")
+		assert.Equal(t, wantValue, decValue, "ciphertext should decrypt to the inbound plaintext")
+	}
+
+	// replace one entry and confirm the new value round-trips
+	var loaded testSecret
+	require.NoError(t, db.First(&loaded, obj.ID).Error)
+	inbound := &testSecret{Env: []string{"DB_PASSWORD=new-pass", "API_KEY=xyz-789"}}
+	require.NoError(t, db.Model(&loaded).Updates(inbound).Error)
+
+	require.NoError(t, db.First(&stored, obj.ID).Error)
+	require.Len(t, stored.Env, 2)
+	_, dbPass, _ := strings.Cut(stored.Env[0], "=")
+	dec, err := encryption.Decrypt(key, dbPass)
+	require.NoError(t, err)
+	assert.Equal(t, "new-pass", dec, "updated value portion should decrypt to the new plaintext")
+}
+
+// TestEncryptHookRejectsRedactedPlaceholder verifies the hook rejects
+// a payload carrying the redacted-value placeholder. Accepting it
+// would silently store the marker string as plaintext.
+func TestEncryptHookRejectsRedactedPlaceholder(t *testing.T) {
+	db, _ := setupEncryptTestDB(t)
+
+	obj := &testSecret{Name: "test", Token: testTokenPtr(encryption.RedactedValuePlaceholder)}
+	err := db.Create(obj).Error
+	require.Error(t, err, "create with redacted placeholder must fail")
+	assert.Contains(t, err.Error(), "redacted placeholder", "error should explain the placeholder rejection")
+}
+
+// TestEncryptHookSkipsAlreadyEncryptedInbound verifies the
+// IsEncrypted guard: a caller resubmitting ciphertext is not
+// double-encrypted, which would otherwise corrupt the field.
+func TestEncryptHookSkipsAlreadyEncryptedInbound(t *testing.T) {
+	db, key := setupEncryptTestDB(t)
+
+	existing := &testSecret{Name: "test", Token: testTokenPtr("initial-secret")}
+	require.NoError(t, db.Create(existing).Error)
+
+	var afterCreate testSecret
+	require.NoError(t, db.First(&afterCreate, existing.ID).Error)
+	require.NotNil(t, afterCreate.Token)
+	storedCipher := *afterCreate.Token
+
+	var loaded testSecret
+	require.NoError(t, db.First(&loaded, existing.ID).Error)
+	inbound := &testSecret{Token: testTokenPtr(storedCipher)}
+	require.NoError(t, db.Model(&loaded).Updates(inbound).Error)
+
+	var stored testSecret
+	require.NoError(t, db.First(&stored, existing.ID).Error)
+	require.NotNil(t, stored.Token)
+	decrypted, err := encryption.Decrypt(key, *stored.Token)
+	require.NoError(t, err, "stored Token should still be single-layer ciphertext")
+	assert.Equal(t, "initial-secret", decrypted, "ciphertext should still decrypt to the original plaintext")
+}

@@ -439,6 +439,99 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 		assert.Equal(startedEventFound, true, fmt.Sprintf("should have found all container started events in Kubernetes after %d seconds", eventAttemptsMax*eventCheckDurationSeconds))
 
+		// relationship-tag FK transitions on WorkloadInstance.
+		// WorkloadDefinitionID is tagged `relationship:"requires"` and
+		// `validate:"required"`. once set at create, the API must reject
+		// any further state change (clear or reassign). a second
+		// workload definition is created here purely as the "other
+		// value" target for the change-rejection assertion.
+		secondWorkloadDefName := fmt.Sprintf("%s-relationship-target", workloadDefName)
+		secondWorkloadDef := v0.WorkloadDefinition{
+			Definition: v0.Definition{
+				Name: &secondWorkloadDefName,
+			},
+			YAMLDocument: &workloadDefYAML,
+		}
+		createdSecondWorkloadDef, err := client.CreateWorkloadDefinition(
+			apiClient,
+			threeportAPIEndpoint,
+			&secondWorkloadDef,
+		)
+		assert.Nil(err, "should have no error creating second workload definition")
+
+		// value to nil: clearing a requires-tagged FK should be rejected.
+		// the payload sets WorkloadDefinitionID to nil while preserving
+		// the row identity via ID.
+		clearWorkloadDefIDPayload := v0.WorkloadInstance{
+			Common:               v0.Common{ID: createdWorkloadInst.ID},
+			WorkloadDefinitionID: nil,
+		}
+		_, err = client.UpdateWorkloadInstance(apiClient, threeportAPIEndpoint, &clearWorkloadDefIDPayload)
+		assert.NotNil(err, "should reject clearing a requires-tagged FK (WorkloadDefinitionID nil)")
+
+		// value to other: reassigning a requires-tagged FK to a
+		// different valid target should be rejected.
+		changeWorkloadDefIDPayload := v0.WorkloadInstance{
+			Common:               v0.Common{ID: createdWorkloadInst.ID},
+			WorkloadDefinitionID: createdSecondWorkloadDef.ID,
+		}
+		_, err = client.UpdateWorkloadInstance(apiClient, threeportAPIEndpoint, &changeWorkloadDefIDPayload)
+		assert.NotNil(err, "should reject reassigning a requires-tagged FK (WorkloadDefinitionID to a different value)")
+
+		// value to nil on KubernetesRuntimeInstanceID, also
+		// `relationship:"requires"`. tests the same rule on a different
+		// FK on the same row.
+		clearRuntimeIDPayload := v0.WorkloadInstance{
+			Common:                      v0.Common{ID: createdWorkloadInst.ID},
+			KubernetesRuntimeInstanceID: nil,
+		}
+		_, err = client.UpdateWorkloadInstance(apiClient, threeportAPIEndpoint, &clearRuntimeIDPayload)
+		assert.NotNil(err, "should reject clearing a requires-tagged FK (KubernetesRuntimeInstanceID nil)")
+
+		// encrypted-field round-trip on KubernetesRuntimeInstance.
+		// ConnectionToken is tagged `encrypt:"true" validate:"optional"`.
+		// the value should encrypt on write and decrypt on read so the
+		// caller sees the same string back. save and restore the
+		// pre-test value so the live KRI is unaffected.
+		preTestKRI, err := client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *testKubernetesRuntimeInst.ID)
+		require.Nil(t, err, "should have no error reading KRI for encrypted-field test")
+		originalConnectionToken := preTestKRI.ConnectionToken
+
+		setTokenPayload := v0.KubernetesRuntimeInstance{
+			Common:          v0.Common{ID: preTestKRI.ID},
+			ConnectionToken: util.Ptr("encrypted-field-test-value-1"),
+		}
+		_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &setTokenPayload)
+		assert.Nil(err, "should have no error setting encrypted ConnectionToken")
+
+		// fetch back and verify the round-trip; if the encryption hook
+		// dropped or mangled the value, decryption on read would return
+		// something other than what we wrote.
+		readBackKRI, err := client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *preTestKRI.ID)
+		require.Nil(t, err, "should have no error reading back KRI after setting ConnectionToken")
+		assert.Equal("encrypted-field-test-value-1", util.DerefString(readBackKRI.ConnectionToken), "encrypted ConnectionToken should round-trip to the same value")
+
+		// value to other: change the encrypted field again and confirm
+		// the new value round-trips
+		changeTokenPayload := v0.KubernetesRuntimeInstance{
+			Common:          v0.Common{ID: preTestKRI.ID},
+			ConnectionToken: util.Ptr("encrypted-field-test-value-2"),
+		}
+		_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &changeTokenPayload)
+		assert.Nil(err, "should have no error updating encrypted ConnectionToken")
+		readBackKRI, err = client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *preTestKRI.ID)
+		require.Nil(t, err, "should have no error reading back KRI after updating ConnectionToken")
+		assert.Equal("encrypted-field-test-value-2", util.DerefString(readBackKRI.ConnectionToken), "updated encrypted ConnectionToken should round-trip")
+
+		// restore the original value so downstream tests and the live
+		// reconciler see no net change
+		restorePayload := v0.KubernetesRuntimeInstance{
+			Common:          v0.Common{ID: preTestKRI.ID},
+			ConnectionToken: originalConnectionToken,
+		}
+		_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &restorePayload)
+		assert.Nil(err, "should have no error restoring original ConnectionToken")
+
 		// AOR delete-guards: callers must tear down in reverse order.
 		// before any cleanup, assert each definition delete is rejected
 		// while its instance still references it.
@@ -643,6 +736,16 @@ func TestWorkloadIntegration(t *testing.T) {
 			}
 			assert.True(secretDefDeleted, "secret definition should be gone within 30 seconds")
 		}
+
+		// delete the second workload def created earlier for the
+		// fk-transition tests. no instance references it, so the delete
+		// goes through immediately.
+		_, err = client.DeleteWorkloadDefinition(
+			apiClient,
+			threeportAPIEndpoint,
+			*createdSecondWorkloadDef.ID,
+		)
+		assert.Nil(err, "should have no error deleting second workload definition")
 
 		// delete workload definition
 		deletedWorkloadDef, err := client.DeleteWorkloadDefinition(

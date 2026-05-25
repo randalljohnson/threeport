@@ -36,11 +36,17 @@ func encryptedFieldsFor(obj interface{}) []EncryptedField {
 	return p.EncryptedFields()
 }
 
-// ProcessEncryptTaggedFields encrypts struct fields tagged `encrypt:"true"`
-// and rejects the redacted placeholder. checkChanged limits the work to
-// fields the client mutated, and is set on update.
-func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool) error {
-	fields := encryptedFieldsFor(obj)
+// ProcessEncryptTaggedFields encrypts fields tagged `encrypt:"true"`.
+// On update gorm fires the hook on Statement.Model (the loaded row);
+// redirect to Statement.Dest so the inbound plaintext is read instead
+// of stale loaded values. Create paths leave Model == Dest.
+func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}) error {
+	target := obj
+	if dest, ok := tx.Statement.Dest.(EncryptedFieldProvider); ok && dest != obj {
+		target = dest
+	}
+
+	fields := encryptedFieldsFor(target)
 	if len(fields) == 0 {
 		return nil
 	}
@@ -52,11 +58,6 @@ func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}, checkChanged bool)
 	}
 
 	for _, field := range fields {
-		// in BeforeUpdate, leave fields the client didn't modify alone — the
-		// existing DB ciphertext is already correct
-		if checkChanged && !tx.Statement.Changed(string(field.Name)) {
-			continue
-		}
 		switch v := field.Value.(type) {
 		case *string:
 			// nil pointer means the client didn't send the field; nothing to

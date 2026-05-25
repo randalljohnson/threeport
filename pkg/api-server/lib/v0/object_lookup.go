@@ -109,7 +109,7 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	return result.Endpoint, result.Path, nil
 }
 
-// ResolveObjectType returns every FQTN that the given bare kind name
+// GetObjectTypes returns every FQTN that the given bare kind name
 // could refer to. The returned slice contains entries from both
 // modules and the core registry, merged - callers that need to narrow
 // further can pass the result through FilterQualifiedTypes.
@@ -117,7 +117,7 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 // Cross-namespace ambiguity is surfaced as an error so an unintended
 // match (e.g. core and a module both registering "Widget") doesn't
 // silently resolve to one of them.
-func ResolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
+func GetObjectTypes(db *gorm.DB, bareKind string) ([]string, error) {
 	out := []string{}
 
 	// collect module registrations of the bare kind via the type+namespace
@@ -198,9 +198,9 @@ func ResolveObjectType(db *gorm.DB, bareKind string) ([]string, error) {
 	return out, nil
 }
 
-// FilterQualifiedTypes narrows the resolved-type list to entries
-// matching the optional namespace and/or version. Empty filter values
-// match anything. FQTNs are "<namespace>/<version>.<TypeName>".
+// FilterQualifiedTypes narrows the type list to entries matching the
+// optional namespace and/or version. Empty filter values match
+// anything. FQTNs are "<namespace>/<version>.<TypeName>".
 func FilterQualifiedTypes(qualifiedTypes []string, namespace, version string) []string {
 	// no filters supplied - everything passes through unchanged
 	if namespace == "" && version == "" {

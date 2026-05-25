@@ -94,14 +94,14 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		ids = []uint{uint(parsed)}
 
 	case targetName != "":
-		// type + name - resolve the type name to one or more FQTNs,
+		// type + name - look up every FQTN that matches the type name,
 		// then look up the named object under each
-		fullyQualifiedTypes, resolveErr := apiserver_lib.ResolveObjectType(h.DB, targetTypeName)
-		if resolveErr != nil {
-			h.Logger.Error("handler error: error resolving kind", zap.Error(resolveErr))
-			return apiserver_lib.ResponseStatus400(c, pageParams, resolveErr, objectType)
+		fullyQualifiedTypes, lookupErr := apiserver_lib.GetObjectTypes(h.DB, targetTypeName)
+		if lookupErr != nil {
+			h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
+			return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
 		}
-		// progressively narrow the resolved set by version and namespace
+		// progressively narrow the type list by version and namespace
 		// when those params were supplied
 		fullyQualifiedTypes = apiserver_lib.FilterQualifiedTypes(fullyQualifiedTypes, targetNamespace, targetVersion)
 		if len(fullyQualifiedTypes) == 0 {

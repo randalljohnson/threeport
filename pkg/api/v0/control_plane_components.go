@@ -7,10 +7,10 @@ type ControlPlaneComponent struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The control plane instance ID that this component belongs to.
-	ControlPlaneInstanceID *uint `json:"ControlPlaneInstanceID,omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	ControlPlaneInstanceID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Indicate whether the component is enabled to be deployed. Currently only respected by controllers.
-	Enabled *bool `json:"Enabled,omitempty" yaml:"Enabled" validate:"optional"`
+	Enabled *bool `yaml:"Enabled" validate:"optional"`
 
 	// The name of the component.
 	Name string `json:"Name,omitempty" yaml:"Name" query:"name" gorm:"not null" validate:"required"`
@@ -43,11 +43,11 @@ type ControlPlaneComponent struct {
 	ImagePullSecretName string `json:"ImagePullSecretName,omitempty" yaml:"ImagePullSecretName" query:"imagepullsecretname" validate:"optional"`
 
 	// The additional volumes to be added to the deployment spec of the component.
-	AdditionalVolumes *datatypes.JSON `json:"AdditionalVolumes,omitempty" yaml:"AdditionalVolumes" query:"additionalvolumes" validate:"optional"`
+	AdditionalVolumes *datatypes.JSON `yaml:"AdditionalVolumes" query:"additionalvolumes" validate:"optional"`
 
 	// The additional volume mounts to be added to the deployment spec of the component.
-	AdditionalVolumeMounts *datatypes.JSON `json:"AdditionalVolumeMounts,omitempty" yaml:"AdditionalVolumeMounts" query:"additionalvolumemounts" validate:"optional"`
+	AdditionalVolumeMounts *datatypes.JSON `yaml:"AdditionalVolumeMounts" query:"additionalvolumemounts" validate:"optional"`
 
 	// The additional env reference to be added to the environment variables of the component.
-	AdditionalEnvRef *datatypes.JSON `json:"AdditionalEnvRef,omitempty" yaml:"AdditionalEnvRef" query:"additionalenvref" validate:"optional"`
+	AdditionalEnvRef *datatypes.JSON `yaml:"AdditionalEnvRef" query:"additionalenvref" validate:"optional"`
 }

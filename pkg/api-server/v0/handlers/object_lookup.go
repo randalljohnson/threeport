@@ -120,8 +120,9 @@ func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) 
 	// one GET per id; the module API doesn't have a batch by-ids
 	// endpoint, so this is a fan-out of N requests
 	for _, id := range ids {
-		// build the per-id URL.
-		// e.g. "http://widget-api.threeport-control-plane/example-com/v0/widgets/42"
+		// build the per-id URL. e.g.
+		// "threeport-widget-api-server.threeport-control-plane.svc.cluster.local/example-com/v0/widgets/42"
+		// (GetResponse below prepends the http(s):// scheme based on TLS config)
 		url := fmt.Sprintf("%s%s/%d%s", endpoint, path, id, suffix)
 
 		// dispatch via the shared module HTTP client
@@ -161,8 +162,9 @@ func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) 
 // and returns every matching row's ID. An empty result is returned as
 // an empty slice with no error.
 func getIDsFromModuleByName(endpoint, path, objectType, name string) ([]uint, error) {
-	// build the name-filtered list URL.
-	// e.g. "http://widget-api.threeport-control-plane/example-com/v0/widgets?name=my-widget"
+	// build the name-filtered list URL. e.g.
+	// "threeport-widget-api-server.threeport-control-plane.svc.cluster.local/example-com/v0/widgets?name=my-widget"
+	// (GetResponse below prepends the http(s):// scheme based on TLS config)
 	url := fmt.Sprintf("%s%s?name=%s", endpoint, path, name)
 
 	// dispatch via the shared module HTTP client

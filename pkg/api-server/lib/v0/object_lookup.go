@@ -18,8 +18,12 @@ import (
 //
 // For an input of "example.com/v0.Widget", returns:
 //
-//	endpoint = "http://widget-api.threeport-control-plane"
+//	endpoint = "threeport-widget-api-server.threeport-control-plane.svc.cluster.local"
 //	path     = "/example-com/v0/widgets"
+//
+// The endpoint is the bare in-cluster DNS as stored in
+// v0_module_apis.endpoint - the HTTP scheme is prepended by the
+// request client based on TLS configuration.
 func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, error) {
 	// fresh session so accumulated clauses from the caller's db don't
 	// leak into this lookup
@@ -45,11 +49,11 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	//   rows so far: every (route, module_api) pair
 	//   ex. (route.path="/example-com/v0/widgets",
 	//        module_api.api_namespace="example.com",
-	//        module_api.endpoint="http://widget-api.threeport-control-plane",
+	//        module_api.endpoint="threeport-widget-api-server.threeport-control-plane.svc.cluster.local",
 	//        module_api.core=false)
 	//       (route.path="/example-com/widgets/versions",
 	//        module_api.api_namespace="example.com",
-	//        module_api.endpoint="http://widget-api.threeport-control-plane",
+	//        module_api.endpoint="threeport-widget-api-server.threeport-control-plane.svc.cluster.local",
 	//        module_api.core=false)
 	//       ...similarly for any other registered modules
 	q = q.Joins("JOIN v0_module_apis AS module_api ON module_api.id = route.module_api_id")
@@ -58,9 +62,9 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	// (core=false skips the threeport core API itself).
 	//   rows so far: (route, module_api) pairs for "example.com" only
 	//   ex. (route.path="/example-com/v0/widgets",
-	//        module_api.endpoint="http://widget-api.threeport-control-plane")
+	//        module_api.endpoint="threeport-widget-api-server.threeport-control-plane.svc.cluster.local")
 	//       (route.path="/example-com/widgets/versions",
-	//        module_api.endpoint="http://widget-api.threeport-control-plane")
+	//        module_api.endpoint="threeport-widget-api-server.threeport-control-plane.svc.cluster.local")
 	q = q.Where("module_api.api_namespace = ? AND module_api.core = false", namespace)
 
 	// follow the ModuleApiRoute<->ModuleObject junction; the m2m is needed
@@ -93,7 +97,7 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	// discovery one by path suffix.
 	//   rows so far: 1 - the CRUD route for "example.com/v0.Widget"
 	//   ex. (route.path="/example-com/v0/widgets",
-	//        module_api.endpoint="http://widget-api.threeport-control-plane")
+	//        module_api.endpoint="threeport-widget-api-server.threeport-control-plane.svc.cluster.local")
 	q = q.Where("route.path NOT LIKE ?", "%/versions")
 
 	var result struct {

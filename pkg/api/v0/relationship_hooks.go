@@ -169,18 +169,15 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	))
 }
 
-// processRelationshipTaggedFieldsAfterUpdate syncs attached object
-// references with foreign-key transitions. After each successful update
-// the reference table is reconciled against the row's post-update FK
-// values: an FK that just cleared has its reference removed; one that
-// just became set gets a new reference inserted.
+// processRelationshipTaggedFieldsAfterUpdate inserts an attached
+// object reference for each relationship-tagged foreign key whose
+// value lacks one. Foreign-key clears are not handled - the
+// before-update hook rejects set->clear.
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
-	// skip types with no relationship-tagged foreign keys
 	if len(relationshipTaggedForeignKeysFor(obj)) == 0 {
 		return nil
 	}
 
-	// identify the row that was just updated
 	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
 	objID := util.ObjectID(obj)
 	if objID == nil {
@@ -190,36 +187,25 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		)
 	}
 
-	// load post-update row into updatedObj; obj is preserved as the
-	// pre-update snapshot for callers that still need to read it
+	// reload from the database so the foreign-key values reflect the
+	// just-committed update, not the pre-update snapshot still on obj
 	updatedObj, err := lib.LoadUpdatedObjFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
 	}
 
-	// reconcile reference rows against the post-update state: for each
-	// tagged foreign key, a reference exists if updatedObj has it set
 	for _, updatedObjForeignKey := range relationshipTaggedForeignKeysFor(updatedObj) {
-
-		// the where clause matches the unique-by-trio shape of the AOR
-		// table: object_type identifies the base type the foreign key
-		// points at; attached_object_type and attached_object_id pin this
-		// specific row as the attacher. Together they isolate the one
-		// reference (if any) that represents this foreign key's current
-		// state in the table
-		whereClause := "object_type = ? AND attached_object_type = ? AND attached_object_id = ?"
-		whereArgs := []interface{}{
-			updatedObjForeignKey.ObjectType, objType, *objID,
+		if updatedObjForeignKey.ObjectID == nil {
+			continue
 		}
 
-		// count existing references for this base/attacher pair to
-		// decide whether to insert, delete, or leave the table alone.
-		// each query gets its own clean session so an earlier chain's
-		// accumulated clauses don't bleed into a later one
 		var count int64
 		err := lib.NewCleanSession(tx).
 			Model(&AttachedObjectReference{}).
-			Where(whereClause, whereArgs...).
+			Where(
+				"object_type = ? AND object_id = ? AND attached_object_type = ? AND attached_object_id = ?",
+				updatedObjForeignKey.ObjectType, *updatedObjForeignKey.ObjectID, objType, *objID,
+			).
 			Count(&count).Error
 		if err != nil {
 			return fmt.Errorf(
@@ -228,28 +214,10 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 			)
 		}
 
-		switch {
-
-		// foreign key cleared, stale reference remains: delete it
-		case updatedObjForeignKey.ObjectID == nil && count > 0:
-			err := lib.NewCleanSession(tx).
-				Where(whereClause, whereArgs...).
-				Delete(&AttachedObjectReference{}).Error
-			if err != nil {
-				return fmt.Errorf(
-					"failed to remove attached object reference for %s.%s: %w",
-					objType, updatedObjForeignKey.FieldName, err,
-				)
-			}
-
-		// foreign key newly set, no reference yet: insert one
-		case updatedObjForeignKey.ObjectID != nil && count == 0:
+		if count == 0 {
 			if err := insertAttachedObjectReference(tx, updatedObjForeignKey, objType, *objID); err != nil {
 				return err
 			}
-
-		// other states (both empty, or both present) are already
-		// consistent; nothing to do
 		}
 	}
 	return nil

@@ -14,6 +14,23 @@ import (
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 )
 
+// parseRowID extracts a uint ID from a JSON-decoded row's ID field.
+// json.Unmarshal into interface{} produces float64 by default; UseNumber()
+// produces json.Number. Returns recognized=false for any other shape.
+func parseRowID(idValue interface{}) (id uint, recognized bool, err error) {
+	switch v := idValue.(type) {
+	case float64:
+		return uint(v), true, nil
+	case json.Number:
+		i, parseErr := v.Int64()
+		if parseErr != nil {
+			return 0, true, parseErr
+		}
+		return uint(i), true, nil
+	}
+	return 0, false, nil
+}
+
 // moduleHTTPClient is the HTTP client used for module API dispatch.
 // Module api-servers don't currently support server-side TLS, so we
 // always use plain HTTP regardless of threeport-core's auth-enabled
@@ -197,19 +214,12 @@ func getIDsFromModuleByName(endpoint, path, objectType, name string) ([]uint, er
 			continue
 		}
 
-		// extract the ID field. JSON unmarshalling into interface{}
-		// gives us float64 by default; if the response was decoded
-		// with json.Number (UseNumber), we get json.Number instead.
-		// handle both so we don't depend on the caller's decoder.
-		switch v := row["ID"].(type) {
-		case float64:
-			ids = append(ids, uint(v))
-		case json.Number:
-			i, err := v.Int64()
-			if err != nil {
-				return nil, fmt.Errorf("invalid ID for %s: %w", objectType, err)
-			}
-			ids = append(ids, uint(i))
+		id, recognized, err := parseRowID(row["ID"])
+		if err != nil {
+			return nil, fmt.Errorf("invalid ID for %s: %w", objectType, err)
+		}
+		if recognized {
+			ids = append(ids, id)
 		}
 	}
 

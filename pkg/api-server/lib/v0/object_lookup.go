@@ -98,6 +98,11 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	//        module_api.endpoint="threeport-widget-api-server.threeport-control-plane.svc.cluster.local")
 	q = q.Where("route.path NOT LIKE ?", "%/versions")
 
+	// exclude soft-deleted rows on every aliased table; raw .Table()
+	// and .Joins() bypass gorm's automatic deleted_at filter, so the
+	// predicate has to be explicit per alias
+	q = q.Where(LiveRowsFilter("route", "module_api", "object"))
+
 	var result struct {
 		Path     string
 		Endpoint string
@@ -159,6 +164,10 @@ func GetObjectTypes(db *gorm.DB, bareKind string) ([]string, error) {
 	//       (object.name="Widget", object.version="v1",
 	//        module_api.api_namespace="example.com")
 	q = q.Where("object.name = ? AND module_api.core = false", bareKind)
+
+	// exclude soft-deleted rows; raw .Table() / .Joins() bypass gorm's
+	// automatic deleted_at filter, so the predicate is explicit per alias
+	q = q.Where(LiveRowsFilter("object", "module_api"))
 
 	if err := q.Select("module_api.api_namespace AS namespace, object.version AS version").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("failed to resolve object type for %q: %w", bareKind, err)

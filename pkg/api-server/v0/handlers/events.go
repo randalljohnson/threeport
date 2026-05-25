@@ -98,11 +98,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		)
 
 	case directObjectId != "":
-		// type + id. the id is already the row, so no name lookup is
-		// needed, but we still resolve the type to fully qualified types so the AOR
-		// filter can constrain by (object_type, object_id). without
-		// the type constraint, events whose subject happens to share
-		// the same id under a different type would leak in.
+		// type + id. The type still has to resolve so the subject
+		// filter can pin object_type; without it, an unrelated type
+		// that happens to share the id leaks in. Multi-type bare
+		// kinds surface every (resolved type, id) pair - narrow with
+		// objectnamespace / objectversion.
 		parsed, err := strconv.ParseUint(directObjectId, 10, 64)
 		if err != nil {
 			return apiserver_lib.ResponseStatus400(c, pageParams,
@@ -167,12 +167,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	records := &[]v0.Event{}
 	var returnedCount int64
 
-	// apply the AOR subject filter only when ids were supplied; with no
-	// ids the caller wants every event row to come back through the
-	// JOIN to AOR. The filter constrains BOTH object_type and object_id
-	// because AOR ids are PK-unique only within their own type table -
-	// without the type constraint, an event whose subject happens to
-	// share the same id under a different type would leak in.
+	// apply the subject filter only when ids were supplied. The
+	// filter is the Cartesian product (object_type IN types AND
+	// object_id IN ids) - intentional, so a multi-type bare kind
+	// surfaces every (resolved type, id) pair instead of forcing
+	// namespace disambiguation up front.
 	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
 		if len(ids) == 0 {
 			return query
@@ -187,18 +186,18 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// first-page request: no QueryId means the client is asking
 		// for the start of a fresh result set, not a continuation
 
-		// count total number of objects so we can decide whether
-		// pagination is needed at all. The JOIN matches each event row
-		// to its AOR row via AOR.attached_object_type = <event fully qualified type>
-		// AND AOR.attached_object_id = v0_events.id (the polymorphic
-		// FK that AOR uses to point at any kind of attached object).
+		// count total objects to decide whether pagination is needed.
+		// The JOIN matches each event row to its reference row on
+		// attached_object_type + attached_object_id. The soft-delete
+		// predicate is explicit; gorm's automatic deleted_at filter
+		// does not apply to raw .Joins() clauses.
 		var totalCount int64
 		countQuery := h.DB.Model(&v0.Event{}).Joins(
 			`INNER JOIN v0_attached_object_references
 				ON v0_attached_object_references.attached_object_type = ?
 				AND v0_attached_object_references.attached_object_id = v0_events.id`,
 			fullyQualifiedEventType,
-		)
+		).Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
 		if result := applyObjectIdFilter(countQuery).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
@@ -211,14 +210,14 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// small result set: skip the materialized view machinery
-			// and return everything in one shot. Same JOIN shape as
-			// the count query above.
+			// and return everything in one shot. Same JOIN shape and
+			// soft-delete predicate as the count query above.
 			findQuery := h.DB.Order("ID asc").Joins(
 				`INNER JOIN v0_attached_object_references
 					ON v0_attached_object_references.attached_object_type = ?
 					AND v0_attached_object_references.attached_object_id = v0_events.id`,
 				fullyQualifiedEventType,
-			)
+			).Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
 			if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
@@ -231,14 +230,13 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// instead of re-running the join each time
 			viewName, queryId := GenerateMaterializedViewName()
 
-			// add the AOR subject filter when ids were supplied so the
-			// materialized view only contains rows the client cares
-			// about. constrains BOTH object_type and object_id for the
-			// same reason applyObjectIdFilter does above: id alone
-			// would leak in cross-type matches. ids are formatted as
-			// quoted strings to keep the substitution simple.
-			whereClause := ""
+			// base WHERE excludes soft-deleted events and reference
+			// rows; raw SQL doesn't pick up gorm's deleted_at
+			// scoping. Subject filters (when supplied) AND on after.
+			whereClause := " WHERE " + apiserver_lib.LiveRowsFilter("v0_events", "v0_attached_object_references")
 			if len(ids) > 0 {
+				// constrain both object_type and object_id; id alone
+				// would let unrelated types with the same id leak in
 				typeStrs := make([]string, len(fullyQualifiedTypes))
 				for i, t := range fullyQualifiedTypes {
 					typeStrs[i] = fmt.Sprintf("'%s'", t)
@@ -247,8 +245,8 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				for i, id := range ids {
 					idStrs[i] = fmt.Sprintf("'%d'", id)
 				}
-				whereClause = fmt.Sprintf(
-					" WHERE v0_attached_object_references.object_type IN (%s) AND v0_attached_object_references.object_id IN (%s)",
+				whereClause += fmt.Sprintf(
+					" AND v0_attached_object_references.object_type IN (%s) AND v0_attached_object_references.object_id IN (%s)",
 					strings.Join(typeStrs, ", "),
 					strings.Join(idStrs, ", "),
 				)

@@ -17,6 +17,7 @@ import (
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -490,9 +491,10 @@ func TestWorkloadIntegration(t *testing.T) {
 
 		// encrypted-field round-trip on KubernetesRuntimeInstance.
 		// ConnectionToken is tagged `encrypt:"true" validate:"optional"`.
-		// the value should encrypt on write and decrypt on read so the
-		// caller sees the same string back. save and restore the
-		// pre-test value so the live KRI is unaffected.
+		// the API encrypts on write but does not auto-decrypt on read;
+		// GET returns ciphertext. the test verifies the round-trip by
+		// decrypting the response with the shared encryption key
+		// (already loaded above) and comparing against what was written.
 		preTestKRI, err := client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *testKubernetesRuntimeInst.ID)
 		require.Nil(t, err, "should have no error reading KRI for encrypted-field test")
 		originalConnectionToken := preTestKRI.ConnectionToken
@@ -504,15 +506,17 @@ func TestWorkloadIntegration(t *testing.T) {
 		_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &setTokenPayload)
 		assert.Nil(err, "should have no error setting encrypted ConnectionToken")
 
-		// fetch back and verify the round-trip; if the encryption hook
-		// dropped or mangled the value, decryption on read would return
-		// something other than what we wrote.
+		// fetch back, expect ciphertext, decrypt with the shared key,
+		// and verify it equals what we wrote
 		readBackKRI, err := client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *preTestKRI.ID)
 		require.Nil(t, err, "should have no error reading back KRI after setting ConnectionToken")
-		assert.Equal("encrypted-field-test-value-1", util.DerefString(readBackKRI.ConnectionToken), "encrypted ConnectionToken should round-trip to the same value")
+		require.NotNil(t, readBackKRI.ConnectionToken, "ConnectionToken should be non-nil on read after set")
+		decryptedFirst, err := encryption.Decrypt(encryptionKey, *readBackKRI.ConnectionToken)
+		require.Nil(t, err, "should have no error decrypting ConnectionToken after first update")
+		assert.Equal("encrypted-field-test-value-1", decryptedFirst, "decrypted ConnectionToken should equal the value we wrote")
 
-		// value to other: change the encrypted field again and confirm
-		// the new value round-trips
+		// value to other: change the encrypted field again, decrypt,
+		// and verify the new value round-trips
 		changeTokenPayload := v0.KubernetesRuntimeInstance{
 			Common:          v0.Common{ID: preTestKRI.ID},
 			ConnectionToken: util.Ptr("encrypted-field-test-value-2"),
@@ -521,16 +525,23 @@ func TestWorkloadIntegration(t *testing.T) {
 		assert.Nil(err, "should have no error updating encrypted ConnectionToken")
 		readBackKRI, err = client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *preTestKRI.ID)
 		require.Nil(t, err, "should have no error reading back KRI after updating ConnectionToken")
-		assert.Equal("encrypted-field-test-value-2", util.DerefString(readBackKRI.ConnectionToken), "updated encrypted ConnectionToken should round-trip")
+		require.NotNil(t, readBackKRI.ConnectionToken, "ConnectionToken should be non-nil on read after update")
+		decryptedSecond, err := encryption.Decrypt(encryptionKey, *readBackKRI.ConnectionToken)
+		require.Nil(t, err, "should have no error decrypting ConnectionToken after second update")
+		assert.Equal("encrypted-field-test-value-2", decryptedSecond, "decrypted ConnectionToken should equal the updated value")
 
 		// restore the original value so downstream tests and the live
-		// reconciler see no net change
-		restorePayload := v0.KubernetesRuntimeInstance{
-			Common:          v0.Common{ID: preTestKRI.ID},
-			ConnectionToken: originalConnectionToken,
+		// reconciler see no net change. skip the restore call entirely
+		// when the pre-test value was nil; the API rejects an empty
+		// payload, and there is nothing to restore anyway.
+		if originalConnectionToken != nil && *originalConnectionToken != "" {
+			restorePayload := v0.KubernetesRuntimeInstance{
+				Common:          v0.Common{ID: preTestKRI.ID},
+				ConnectionToken: originalConnectionToken,
+			}
+			_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &restorePayload)
+			assert.Nil(err, "should have no error restoring original ConnectionToken")
 		}
-		_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &restorePayload)
-		assert.Nil(err, "should have no error restoring original ConnectionToken")
 
 		// AOR delete-guards: callers must tear down in reverse order.
 		// before any cleanup, assert each definition delete is rejected

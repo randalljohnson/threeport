@@ -82,6 +82,8 @@ control planes if they are used to create or are created by another control plan
 			cliArgs.CreateRootDomain,
 			cliArgs.AuthEnabled,
 			cliArgs.KindPortMappings,
+			cliArgs.ControlPlaneOnly,
+			cliArgs.ClusterName,
 		); err != nil {
 			cli.Error("flag validation failed:", err)
 			os.Exit(1)
@@ -194,6 +196,10 @@ func init() {
 	UpCmd.Flags().BoolVar(
 		&cliArgs.ControlPlaneOnly,
 		"control-plane-only", false, "Deploy the control plane on an existing runtime. Defaults to false.",
+	)
+	UpCmd.Flags().StringVar(
+		&cliArgs.ClusterName,
+		"cluster-name", "", "Name of the existing kubernetes cluster to install the control plane on. Required with --control-plane-only.",
 	)
 	UpCmd.Flags().BoolVar(
 		&cliArgs.InfraOnly,

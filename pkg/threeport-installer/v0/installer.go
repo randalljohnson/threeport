@@ -122,6 +122,11 @@ type Options struct {
 	// If true, infrastructure is not provisioned, control plane is installed on existing infra.
 	ControlPlaneOnly bool
 
+	// Name of an existing kubernetes cluster to install the control plane on.
+	// Required when ControlPlaneOnly is true. Used as-is for cloud-provider
+	// cluster lookup with no naming convention applied.
+	ClusterName string
+
 	// If true, only infrastructure is provisioned.
 	InfraOnly bool
 

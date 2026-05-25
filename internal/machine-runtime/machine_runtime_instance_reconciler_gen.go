@@ -179,8 +179,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						machineRuntimeInstance.GetId(),
-						machineRuntimeInstance.GetVersion(),
-						machineRuntimeInstance.GetType(),
+						machineRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						machineRuntimeInstance.GetId(),
-						machineRuntimeInstance.GetVersion(),
-						machineRuntimeInstance.GetType(),
+						machineRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						machineRuntimeInstance.GetId(),
-						machineRuntimeInstance.GetVersion(),
-						machineRuntimeInstance.GetType(),
+						machineRuntimeInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				machineRuntimeInstance.GetId(),
-				machineRuntimeInstance.GetVersion(),
-				machineRuntimeInstance.GetType(),
+				machineRuntimeInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful machine runtime instance reconciliation")
 			}

@@ -33,8 +33,7 @@ func v0MachineRuntimeInstanceCreated(
 				Note:   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)),
 			},
 			*machineRuntimeInstance.ID,
-			"v0",
-			machineRuntimeInstance.GetType(),
+			machineRuntimeInstance.GetFullyQualifiedType(),
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
@@ -58,8 +57,7 @@ func v0MachineRuntimeInstanceCreated(
 				Note:   util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
 			},
 			*machineRuntimeInstance.ID,
-			"v0",
-			machineRuntimeInstance.GetType(),
+			machineRuntimeInstance.GetFullyQualifiedType(),
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for host key capture")
 		}
@@ -74,8 +72,7 @@ func v0MachineRuntimeInstanceCreated(
 				Note:   util.Ptr(fmt.Sprintf("failed to ping machine runtime instance: %s", err)),
 			},
 			*machineRuntimeInstance.ID,
-			"v0",
-			machineRuntimeInstance.GetType(),
+			machineRuntimeInstance.GetFullyQualifiedType(),
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh ping error")
 		}
@@ -90,8 +87,7 @@ func v0MachineRuntimeInstanceCreated(
 			Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s is reachable via ssh", *machineRuntimeInstance.Name)),
 		},
 		*machineRuntimeInstance.ID,
-		"v0",
-		machineRuntimeInstance.GetType(),
+		machineRuntimeInstance.GetFullyQualifiedType(),
 	); eventErr != nil {
 		log.Error(eventErr, "failed to record event for ssh reachable")
 	}

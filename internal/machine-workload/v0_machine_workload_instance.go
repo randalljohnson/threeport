@@ -160,8 +160,7 @@ func runScript(
 				Note:   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance: %s", err)),
 			},
 			*mwi.ID,
-			"v0",
-			mwi.GetType(),
+			mwi.GetFullyQualifiedType(),
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
@@ -233,8 +232,7 @@ func runScript(
 			Note:   util.Ptr(truncateMessage(message)),
 		},
 		*mwi.ID,
-		"v0",
-		mwi.GetType(),
+		mwi.GetFullyQualifiedType(),
 	); eventErr != nil {
 		log.Error(eventErr, "failed to record event")
 	}

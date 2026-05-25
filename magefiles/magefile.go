@@ -170,11 +170,22 @@ func (Build) Tptctl() error {
 	return nil
 }
 
-// Tptctl installs the tptctl binary at the provided path.
-func (Install) Tptctl(path string) error {
+// Tptctl installs the tptctl binary at $GOPATH/bin/tptctl, matching
+// install:sdk. Override with TPTCTL_INSTALL_PATH for a different
+// destination.
+func (Install) Tptctl() error {
 	build := Build{}
 	if err := build.Tptctl(); err != nil {
 		return fmt.Errorf("failed to build tptctl: %w", err)
+	}
+
+	path := os.Getenv("TPTCTL_INSTALL_PATH")
+	if path == "" {
+		goPath := os.Getenv("GOPATH")
+		if goPath == "" {
+			return fmt.Errorf("TPTCTL_INSTALL_PATH not set and GOPATH is not set")
+		}
+		path = filepath.Join(goPath, "bin", "tptctl")
 	}
 
 	installTptctlCmd := exec.Command(

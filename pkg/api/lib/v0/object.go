@@ -13,7 +13,7 @@ import (
 )
 
 // CoreApiNamespace is the api namespace used for core threeport types
-// in the FQTN form "<api-namespace>/<version>.<TypeName>" and in any
+// in the fully qualified type form "<api-namespace>/<version>.<TypeName>" and in any
 // other context that needs a stable identifier for core.
 const CoreApiNamespace = "threeport.io"
 
@@ -77,7 +77,7 @@ func LoadUpdatedObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, e
 
 // ParseQualifiedType splits "<api-namespace>/<version>.<TypeName>" into
 // its three parts. Returns ok=false for malformed inputs (every API
-// type stores its FQTN in this shape - core types use the
+// type stores its fully qualified type in this shape - core types use the
 // "threeport.io" namespace, modules use their own).
 //
 // For "example.com/v0.Widget":

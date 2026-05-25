@@ -53,7 +53,7 @@ func FormatBlockedDelete(e *BlockedDeleteError, namesByType map[string]map[uint]
 // API-namespace-qualified form ("threeport.io/v0.Foo",
 // "example.com/v0.Bar") that AOR rows store.
 func FormatObjectPath(rawType string, id uint, names map[uint]string) string {
-	// parse the FQTN into its parts; malformed input falls back to
+	// parse the fully qualified type into its parts; malformed input falls back to
 	// emitting the raw type alongside the id so the caller still has
 	// something to grep for
 	namespace, _, typeName, ok := lib.ParseQualifiedType(rawType)

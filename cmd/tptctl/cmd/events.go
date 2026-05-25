@@ -156,10 +156,10 @@ func init() {
 //
 //   <kebab-kind>/<name>                                 - broad, any namespace/version
 //   <version>.<kebab-kind>/<name>                       - narrow to one version
-//   <namespace>/<version>.<kebab-kind>/<name>           - exact FQTN match
+//   <namespace>/<version>.<kebab-kind>/<name>           - exact fully qualified type match
 //
 // The kind segment carries the optional version inline as
-// "<version>.<kind>", mirroring the FQTN form. Empty flag returns
+// "<version>.<kind>", mirroring the fully qualified type form. Empty flag returns
 // empty string so the events list isn't filtered.
 func buildEventsQueryString(forFlag string) (string, error) {
 	// no filter requested - return empty so the caller queries every event
@@ -203,7 +203,7 @@ func buildEventsQueryString(forFlag string) (string, error) {
 		q.Set("objectversion", version)
 	}
 
-	// kebab-case kind -> CamelCase TypeName segment of FQTN
+	// kebab-case kind -> CamelCase TypeName segment of fully qualified type
 	// ("workload-instance" -> "WorkloadInstance")
 	q.Set("objecttypename", strcase.ToCamel(kind))
 

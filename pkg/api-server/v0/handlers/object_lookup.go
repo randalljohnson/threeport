@@ -141,9 +141,13 @@ func getNamesFromModule(endpoint, path string, ids []uint, includeDeleted bool) 
 			continue
 		}
 
-		// the module response wraps the row in a Data array; pluck
-		// the first (and typically only) row as a generic map
-		row, ok := getFirstRow(resp)
+		// the module response wraps the row in a Data array. the
+		// lookup is by id (primary key) so there is at most one row,
+		// picked out here as a generic map.
+		if resp == nil || len(resp.Data) == 0 {
+			continue
+		}
+		row, ok := resp.Data[0].(map[string]interface{})
 		if !ok {
 			continue
 		}
@@ -210,20 +214,4 @@ func getIDsFromModuleByName(endpoint, path, objectType, name string) ([]uint, er
 	}
 
 	return ids, nil
-}
-
-// getFirstRow returns the first object in the response's Data array as
-// a generic JSON map, or false if there isn't one.
-func getFirstRow(resp *apiserver_lib.Response) (map[string]interface{}, bool) {
-	if resp == nil {
-		return nil, false
-	}
-	if len(resp.Data) == 0 {
-		return nil, false
-	}
-	row, ok := resp.Data[0].(map[string]interface{})
-	if !ok {
-		return nil, false
-	}
-	return row, true
 }

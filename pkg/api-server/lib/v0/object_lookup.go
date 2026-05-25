@@ -111,14 +111,14 @@ func GetModuleRouteForType(db *gorm.DB, objectType string) (string, string, erro
 	return result.Endpoint, result.Path, nil
 }
 
-// GetObjectTypes returns every FQTN that the given bare kind name
+// GetObjectTypes returns every fully qualified type that the given bare kind name
 // could refer to. The returned slice contains entries from both
 // modules and the core registry, merged - callers that need to narrow
 // further can pass the result through FilterQualifiedTypes.
 //
 // Cross-namespace duplicates are not surfaced as an error: if "Widget"
 // is registered in both core and a module, the caller gets every
-// matching FQTN and decides how to disambiguate (typically by reading
+// matching fully qualified type and decides how to disambiguate (typically by reading
 // the namespace-qualified form displayed alongside each result).
 func GetObjectTypes(db *gorm.DB, bareKind string) ([]string, error) {
 	out := []string{}
@@ -164,7 +164,7 @@ func GetObjectTypes(db *gorm.DB, bareKind string) ([]string, error) {
 		return nil, fmt.Errorf("failed to resolve object type for %q: %w", bareKind, err)
 	}
 
-	// build the FQTN for each module registration and aggregate into out
+	// build the fully qualified type for each module registration and aggregate into out
 	for _, r := range rows {
 		out = append(out, fmt.Sprintf("%s/%s.%s", r.Namespace, r.Version, bareKind))
 	}
@@ -182,7 +182,7 @@ func GetObjectTypes(db *gorm.DB, bareKind string) ([]string, error) {
 
 // FilterQualifiedTypes narrows the type list to entries matching the
 // optional namespace and/or version. Empty filter values match
-// anything. FQTNs are "<namespace>/<version>.<TypeName>".
+// anything. fully qualified types are "<namespace>/<version>.<TypeName>".
 func FilterQualifiedTypes(qualifiedTypes []string, namespace, version string) []string {
 	// no filters supplied - everything passes through unchanged
 	if namespace == "" && version == "" {
@@ -195,11 +195,11 @@ func FilterQualifiedTypes(qualifiedTypes []string, namespace, version string) []
 	out := qualifiedTypes[:0:0]
 
 	for _, qt := range qualifiedTypes {
-		// parse the FQTN into parts so we can match on namespace and
+		// parse the fully qualified type into parts so we can match on namespace and
 		// version independently
 		ns, ver, _, ok := apilib.ParseQualifiedType(qt)
 		if !ok {
-			// malformed FQTN; drop rather than fail the whole query
+			// malformed fully qualified type; drop rather than fail the whole query
 			continue
 		}
 

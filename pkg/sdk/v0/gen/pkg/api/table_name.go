@@ -26,11 +26,11 @@ func GenTableNames(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 		// module-local namespace constant; mirrors lib.CoreApiNamespace
-		// on the core side so all FQTN-emitting code can reference a
+		// on the core side so all fully qualified type-emitting code can reference a
 		// named value rather than a literal
 		if gen.Module {
 			f.Comment("ApiNamespace is the module's api namespace; used as the")
-			f.Comment("prefix in this module's FQTN form.")
+			f.Comment("prefix in this module's fully qualified type form.")
 			f.Const().Id("ApiNamespace").Op("=").Lit(sdkConfig.ApiNamespace)
 			f.Line()
 		}

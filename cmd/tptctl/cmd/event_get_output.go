@@ -84,7 +84,7 @@ func formatEventObject(e *v0.Event) string {
 		return ""
 	}
 
-	// parse the FQTN into its parts; malformed values are surfaced
+	// parse the fully qualified type into its parts; malformed values are surfaced
 	// raw so the user can still grep for them
 	namespace, _, typeName, ok := apilib.ParseQualifiedType(rawType)
 	if !ok {

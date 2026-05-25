@@ -32,7 +32,7 @@ import (
 func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	objectType := v0.ObjectTypeEvent
 
-	// FQTN of Event - written to AOR.AttachedObjectType when an event
+	// fully qualified type of Event - written to AOR.AttachedObjectType when an event
 	// is recorded, and used here as the join key between v0_events
 	// and v0_attached_object_references
 	fullyQualifiedEventType := (&v0.Event{}).GetFullyQualifiedType()
@@ -63,6 +63,19 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	directObjectId := c.QueryParam("objectid")
 
 	var ids []uint
+	var fullyQualifiedTypes []string
+
+	// resolveQualifiedTypes turns the targetTypeName into the set of
+	// fully qualified types that match it, optionally narrowed by namespace/version.
+	// shared by the type+id and type+name branches below so both
+	// constrain the AOR subject filter to the right type set.
+	resolveQualifiedTypes := func() ([]string, error) {
+		types, err := apiserver_lib.GetObjectTypes(h.DB, targetTypeName)
+		if err != nil {
+			return nil, err
+		}
+		return apiserver_lib.FilterQualifiedTypes(types, targetNamespace, targetVersion), nil
+	}
 	switch {
 	case targetTypeName == "" && targetName == "" && directObjectId == "":
 		// no filter supplied; fall through to the unfiltered query
@@ -85,7 +98,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		)
 
 	case directObjectId != "":
-		// type + id - id is already the row, no name lookup needed
+		// type + id. the id is already the row, so no name lookup is
+		// needed, but we still resolve the type to fully qualified types so the AOR
+		// filter can constrain by (object_type, object_id). without
+		// the type constraint, events whose subject happens to share
+		// the same id under a different type would leak in.
 		parsed, err := strconv.ParseUint(directObjectId, 10, 64)
 		if err != nil {
 			return apiserver_lib.ResponseStatus400(c, pageParams,
@@ -93,23 +110,33 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 		ids = []uint{uint(parsed)}
 
-	case targetName != "":
-		// type + name - look up every FQTN that matches the type name,
-		// then look up the named object under each
-		fullyQualifiedTypes, lookupErr := apiserver_lib.GetObjectTypes(h.DB, targetTypeName)
+		types, lookupErr := resolveQualifiedTypes()
 		if lookupErr != nil {
 			h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
 			return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
 		}
-		// progressively narrow the type list by version and namespace
-		// when those params were supplied
-		fullyQualifiedTypes = apiserver_lib.FilterQualifiedTypes(fullyQualifiedTypes, targetNamespace, targetVersion)
-		if len(fullyQualifiedTypes) == 0 {
+		if len(types) == 0 {
 			return apiserver_lib.ResponseStatus404(c, pageParams,
 				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
 		}
-		// look up the named object across every matched FQTN; each
-		// FQTN may yield zero or more ids - name uniqueness is not
+		fullyQualifiedTypes = types
+
+	case targetName != "":
+		// type + name - look up every fully qualified type that matches the type name,
+		// then look up the named object under each
+		types, lookupErr := resolveQualifiedTypes()
+		if lookupErr != nil {
+			h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
+			return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
+		}
+		if len(types) == 0 {
+			return apiserver_lib.ResponseStatus404(c, pageParams,
+				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
+		}
+		fullyQualifiedTypes = types
+
+		// look up the named object across every matched fully qualified type; each
+		// fully qualified type may yield zero or more ids - name uniqueness is not
 		// enforced at the database level
 		for _, fqt := range fullyQualifiedTypes {
 			moreIds, lookupErr := GetObjectIDsByName(h.DB, fqt, targetName)
@@ -140,14 +167,19 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	records := &[]v0.Event{}
 	var returnedCount int64
 
-	// apply the object id filter only when ids were supplied; with no
+	// apply the AOR subject filter only when ids were supplied; with no
 	// ids the caller wants every event row to come back through the
-	// JOIN to AOR
+	// JOIN to AOR. The filter constrains BOTH object_type and object_id
+	// because AOR ids are PK-unique only within their own type table -
+	// without the type constraint, an event whose subject happens to
+	// share the same id under a different type would leak in.
 	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
 		if len(ids) == 0 {
 			return query
 		}
-		return query.Where("v0_attached_object_references.object_id IN ?", ids)
+		return query.
+			Where("v0_attached_object_references.object_type IN ?", fullyQualifiedTypes).
+			Where("v0_attached_object_references.object_id IN ?", ids)
 	}
 
 	switch {
@@ -157,7 +189,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 		// count total number of objects so we can decide whether
 		// pagination is needed at all. The JOIN matches each event row
-		// to its AOR row via AOR.attached_object_type = <event FQTN>
+		// to its AOR row via AOR.attached_object_type = <event fully qualified type>
 		// AND AOR.attached_object_id = v0_events.id (the polymorphic
 		// FK that AOR uses to point at any kind of attached object).
 		var totalCount int64
@@ -199,17 +231,27 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// instead of re-running the join each time
 			viewName, queryId := GenerateMaterializedViewName()
 
-			// add the object id filter when ids were supplied so the
+			// add the AOR subject filter when ids were supplied so the
 			// materialized view only contains rows the client cares
-			// about. ids are formatted as quoted strings to keep the
-			// substitution simple even though they're uints
+			// about. constrains BOTH object_type and object_id for the
+			// same reason applyObjectIdFilter does above: id alone
+			// would leak in cross-type matches. ids are formatted as
+			// quoted strings to keep the substitution simple.
 			whereClause := ""
 			if len(ids) > 0 {
+				typeStrs := make([]string, len(fullyQualifiedTypes))
+				for i, t := range fullyQualifiedTypes {
+					typeStrs[i] = fmt.Sprintf("'%s'", t)
+				}
 				idStrs := make([]string, len(ids))
 				for i, id := range ids {
 					idStrs[i] = fmt.Sprintf("'%d'", id)
 				}
-				whereClause = fmt.Sprintf(" WHERE v0_attached_object_references.object_id IN (%s)", strings.Join(idStrs, ", "))
+				whereClause = fmt.Sprintf(
+					" WHERE v0_attached_object_references.object_type IN (%s) AND v0_attached_object_references.object_id IN (%s)",
+					strings.Join(typeStrs, ", "),
+					strings.Join(idStrs, ", "),
+				)
 			}
 
 			// build and execute the CREATE MATERIALIZED VIEW. Same

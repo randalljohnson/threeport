@@ -33,7 +33,7 @@ type Event struct {
 
 	// Fields carrying the event's subject - the object the event is
 	// about. They flow in both directions:
-	//   - On create: the caller sets ObjectType (FQTN form) + ObjectID
+	//   - On create: the caller sets ObjectType (fully qualified type form) + ObjectID
 	//     in the request body. Event.BeforeCreate validates them;
 	//     Event.AfterCreate inserts the matching AttachedObjectReference
 	//     in the same transaction. ObjectName is ignored on write.

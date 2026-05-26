@@ -54,12 +54,12 @@ The following table illustrates the relationship type for each example.
 
 | Base Object | Attached Object | Relationship |
 |-------------|-----------------|--------------|
-| `HelmWorkloadDefinition` | `HelmWorkloadInstance` | `requires` |
-| `LoggingDefinition`      | `HelmWorkloadDefinition` | `owns` |
-| `HelmWorkloadInstance`   | `Event`                | `describes` |
+| `HelmWorkloadDefinition`      | `HelmWorkloadInstance`              | `requires` |
+| `LoggingDefinition`           | `HelmWorkloadDefinition`            | `owns` |
+| `KubernetesRuntimeDefinition` | `AwsEksKubernetesRuntimeDefinition` | `marries` |
+| `HelmWorkloadInstance`        | `Event`                             | `describes` |
 
-<!-- TODO: add diagram showing the base / attached / relationship triangle.
-     Drop the .drawio.svg in docs/docs/img/ and reference it here. -->
+![Attached Object References](../img/AttachedObjects.drawio.svg)
 
 
 ## Attachment

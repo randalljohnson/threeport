@@ -186,6 +186,36 @@ func TestRecordEvent_QueryEscaping(t *testing.T) {
 		"objectid is rendered as a bare integer, not escaped")
 }
 
+// TestRecordEvent_DedupQueryIncludesSubjectType pins the dedup-lookup
+// query shape against the events handler's subject filter. The handler
+// rejects requests that supply objectid without objecttypename, so
+// RecordEvent must split the fully qualified type and send all three
+// parts (typename / namespace / version) alongside objectid.
+func TestRecordEvent_DedupQueryIncludesSubjectType(t *testing.T) {
+	rec, mock, cleanup := newRecorderForTest(t, nil)
+	defer cleanup()
+
+	require.NoError(t, rec.RecordEvent(baseEvent(), 42, "threeport.io/v0.WorkloadInstance"))
+
+	get := findRequest(t, mock, http.MethodGet, "/v0/events-join-attached-object-references")
+	assert.Equal(t, "WorkloadInstance", get.query.Get("objecttypename"))
+	assert.Equal(t, "threeport.io", get.query.Get("objectnamespace"))
+	assert.Equal(t, "v0", get.query.Get("objectversion"))
+	assert.Equal(t, "42", get.query.Get("objectid"))
+}
+
+// TestRecordEvent_RejectsMalformedQualifiedType returns a clear error
+// when the caller hands a string that doesn't parse as a fully
+// qualified type. The dedup query would otherwise be silently broken.
+func TestRecordEvent_RejectsMalformedQualifiedType(t *testing.T) {
+	rec, _, cleanup := newRecorderForTest(t, nil)
+	defer cleanup()
+
+	err := rec.RecordEvent(baseEvent(), 42, "WorkloadInstance")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid fully qualified object type")
+}
+
 // TestRecordEvent_BumpsCountWhenOneExists exercises the 1-existing
 // branch: an event matching (reason, note, type, objectid) already
 // exists, so RecordEvent must PATCH it with Count+1 and clear the

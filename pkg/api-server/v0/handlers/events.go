@@ -15,6 +15,25 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// eventAttachedObjectReferenceJoinClause is the inner join from
+// v0_events to v0_attached_object_references on the polymorphic
+// columns the reference table uses to point at events. The `?`
+// placeholder stands in for the event's fully qualified type. Used
+// directly by gorm .Joins() chains; raw-SQL paths substitute the
+// literal in via strings.Replace.
+const eventAttachedObjectReferenceJoinClause = `INNER JOIN v0_attached_object_references
+	ON v0_attached_object_references.attached_object_type = ?
+	AND v0_attached_object_references.attached_object_id = v0_events.id`
+
+// JoinEventsToAttachedObjectReferences chains the join above plus the
+// soft-delete predicate on the reference rows, so live events and live
+// references come back together.
+func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventType string) *gorm.DB {
+	return query.
+		Joins(eventAttachedObjectReferenceJoinClause, fullyQualifiedEventType).
+		Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
+}
+
 // @Summary gets all events joined with attached object references.
 // @Description Get all events joined with attached object references from the Threeport database.
 // @ID get-v0-events-join-attached-object-references
@@ -192,12 +211,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// predicate is explicit; gorm's automatic deleted_at filter
 		// does not apply to raw .Joins() clauses.
 		var totalCount int64
-		countQuery := h.DB.Model(&v0.Event{}).Joins(
-			`INNER JOIN v0_attached_object_references
-				ON v0_attached_object_references.attached_object_type = ?
-				AND v0_attached_object_references.attached_object_id = v0_events.id`,
+		countQuery := JoinEventsToAttachedObjectReferences(
+			h.DB.Model(&v0.Event{}),
 			fullyQualifiedEventType,
-		).Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
+		)
 		if result := applyObjectIdFilter(countQuery).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
@@ -212,12 +229,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// small result set: skip the materialized view machinery
 			// and return everything in one shot. Same JOIN shape and
 			// soft-delete predicate as the count query above.
-			findQuery := h.DB.Order("ID asc").Joins(
-				`INNER JOIN v0_attached_object_references
-					ON v0_attached_object_references.attached_object_type = ?
-					AND v0_attached_object_references.attached_object_id = v0_events.id`,
+			findQuery := JoinEventsToAttachedObjectReferences(
+				h.DB.Order("ID asc"),
 				fullyQualifiedEventType,
-			).Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
+			)
 			if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
@@ -252,21 +267,25 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				)
 			}
 
-			// build and execute the CREATE MATERIALIZED VIEW. Same
-			// JOIN shape as the count/find queries above, embedded
-			// inline since the view definition is raw SQL.
+			// build and execute the CREATE MATERIALIZED VIEW. Raw SQL,
+			// so substitute the literal type into the shared join
+			// clause instead of binding via a gorm placeholder.
+			joinClause := strings.Replace(
+				eventAttachedObjectReferenceJoinClause,
+				"?",
+				fmt.Sprintf("'%s'", fullyQualifiedEventType),
+				1,
+			)
 			createView := fmt.Sprintf(`
 				CREATE MATERIALIZED VIEW %s AS
 				SELECT v0_events.*
 				FROM v0_events
-				INNER JOIN v0_attached_object_references
-					ON v0_attached_object_references.attached_object_type = '%s'
-					AND v0_attached_object_references.attached_object_id = v0_events.id
+				%s
 				%s
 				ORDER BY v0_events.id ASC
 			`,
 				viewName,
-				fullyQualifiedEventType,
+				joinClause,
 				whereClause,
 			)
 			if result := h.DB.Exec(createView); result.Error != nil {

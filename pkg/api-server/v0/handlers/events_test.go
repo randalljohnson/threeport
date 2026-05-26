@@ -10,7 +10,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	api "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -68,12 +67,10 @@ func TestEventsJoin_ExcludesSoftDeletedAOR(t *testing.T) {
 	// soft-deleted.
 	runJoin := func() []api.Event {
 		var rows []api.Event
-		require.NoError(t, db.Model(&api.Event{}).Joins(
-			`INNER JOIN v0_attached_object_references
-				ON v0_attached_object_references.attached_object_type = ?
-				AND v0_attached_object_references.attached_object_id = v0_events.id`,
+		require.NoError(t, JoinEventsToAttachedObjectReferences(
+			db.Model(&api.Event{}),
 			fullyQualifiedEventType,
-		).Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references")).Find(&rows).Error)
+		).Find(&rows).Error)
 		return rows
 	}
 	require.Len(t, runJoin(), 2, "baseline: both events visible with their live AORs")
@@ -131,13 +128,10 @@ func TestEventsJoin_CrossTypeFilterSurfacesAllMatches(t *testing.T) {
 	ids := []uint{42, 99}
 
 	var rows []api.Event
-	require.NoError(t, db.Model(&api.Event{}).Joins(
-		`INNER JOIN v0_attached_object_references
-			ON v0_attached_object_references.attached_object_type = ?
-			AND v0_attached_object_references.attached_object_id = v0_events.id`,
+	require.NoError(t, JoinEventsToAttachedObjectReferences(
+		db.Model(&api.Event{}),
 		fullyQualifiedEventType,
 	).
-		Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references")).
 		Where("v0_attached_object_references.object_type IN ?", types).
 		Where("v0_attached_object_references.object_id IN ?", ids).
 		Find(&rows).Error)

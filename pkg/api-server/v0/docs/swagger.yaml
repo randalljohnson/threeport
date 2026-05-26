@@ -511,6 +511,7 @@ definitions:
             - On read: GetEventsJoinAttachedObjectReferenceByQueryString
               projects the joined AOR's base object back into these
               fields, then resolves ObjectName via the type's name resolver.
+
           gorm:"-" keeps them off the Event row in the schema - the AOR
           is the source of truth on disk for the subject linkage.
 
@@ -1155,7 +1156,7 @@ definitions:
           ConnectionTokenExpiration is the time when a ConnectionToken will expire.
           Used to ensure a token will not expire before it can be used.
         type: string
-      ControlPlaneInstance:
+      ControlPlaneInstances:
         description: The associated control plane instances running on this kubernetes
           runtime instance.
         items:
@@ -1192,10 +1193,10 @@ definitions:
           Used to inform reconcilers that an object is being deleted so they may
           complete delete reconciliation before actually deleting the object from the database.
         type: string
-      DnsControllerInstanceId:
+      DnsControllerInstanceID:
         description: The WorkloadInstanceID of the dns support service
         type: integer
-      GatewayWorkloadInstanceID:
+      GatewayControllerInstanceID:
         description: The WorkloadInstanceID of the gateway support service
         type: integer
       InterruptReconciliation:
@@ -1221,7 +1222,7 @@ definitions:
         description: Indicates if object is considered to be reconciled by the object's
           controller.
         type: boolean
-      SecretsControllerInstanceId:
+      SecretsControllerInstanceID:
         description: The WorkloadInstanceID of the secrets support service
         type: integer
       Status:
@@ -1241,7 +1242,7 @@ definitions:
           any controllers that connect to the kube API will use internal cluster
           DNS rather than the external APIEndpoint.
         type: boolean
-      WorkloadInstance:
+      WorkloadInstances:
         description: The associated workload instances running on this kubernetes
           runtime.
         items:
@@ -2684,6 +2685,9 @@ definitions:
       HelmWorkloadInstanceID:
         description: The related helm workload instance.
         type: integer
+      MachineWorkloadInstanceID:
+        description: The related machine workload instance.
+        type: integer
       Message:
         description: The message associated with the event.
         type: string
@@ -2692,17 +2696,19 @@ definitions:
         type: string
       RuntimeEventUID:
         description: |-
-          A unique ID for de-duplicating purposes.  It is one of two thing:
+          A unique ID for de-duplicating purposes.  It is one of:
           * The Kubernetes Event resource UID: when the WorkloadEvent is derived
           directly from a Kubernetes Event.
           * The workload controller ID: when the WorkloadEvent is emitted by the
           workload controller.
+          * The machine workload controller ID: when the WorkloadEvent is emitted
+          by the machine workload controller.
         type: string
       Timestamp:
-        description: The timestamp for the event in the kubernetes runtime.
+        description: The timestamp for the event.
         type: string
       Type:
-        description: The type of event that occurred in Kubernetes.
+        description: The type of event that occurred (e.g. Normal, Warning).
         type: string
       WorkloadInstanceID:
         description: The related workload instance.

@@ -54,13 +54,21 @@ func (r *EventRecorder) RecordEvent(
 	objectId uint,
 	fullyQualifiedObjectType string,
 ) error {
-	// the events-join-attached-object-references endpoint requires
-	// objecttypename when filtering by objectid; split the qualified
-	// type into its parts and pass all three alongside the id
+	// dedup-then-act: query for an existing event with the same
+	// content + subject. 0 matches means a new event to create;
+	// 1 match means a repeat where we bump Count and LastObservedTime
+	// on the existing row.
+
+	// the list endpoint requires the type split into its parts when
+	// filtering by id, so unpack the qualified form first.
 	namespace, version, typeName, ok := apilib.ParseQualifiedType(fullyQualifiedObjectType)
 	if !ok {
 		return fmt.Errorf("invalid fully qualified object type %q", fullyQualifiedObjectType)
 	}
+
+	// the five fields below form the dedup key: reason+note+type
+	// identify the event content; objectid plus the type triple
+	// identify the subject.
 	query := fmt.Sprintf(
 		"reason=%s&note=%s&type=%s&objectid=%d&objecttypename=%s&objectnamespace=%s&objectversion=%s",
 		url.QueryEscape(*event.Reason),
@@ -82,6 +90,8 @@ func (r *EventRecorder) RecordEvent(
 
 	switch len(*events) {
 	case 0:
+		// first occurrence: stamp timestamps and count=1, attach the
+		// subject info on the in-memory event, and create the row.
 		event.ReportingController = &r.ReportingController
 		event.EventTime = util.Ptr(time.Now())
 		event.LastObservedTime = util.Ptr(time.Now())
@@ -99,6 +109,8 @@ func (r *EventRecorder) RecordEvent(
 			return fmt.Errorf("failed to create event: %w", err)
 		}
 	case 1:
+		// repeat: load the existing row, bump Count, and refresh
+		// LastObservedTime so the dedup window keeps advancing.
 		event = &(*events)[0]
 		event.Count = util.Ptr(uint((*event.Count + 1)))
 		event.LastObservedTime = util.Ptr(time.Now())

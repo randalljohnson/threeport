@@ -537,15 +537,10 @@ func (c *testCollider) AfterUpdate(tx *gorm.DB) error {
 }
 
 // TestRelationshipHooks_AfterUpdate_SharedTargetTypeCollision verifies
-// that two relationship-tagged FKs on the same struct sharing an
-// ObjectType each get their own AOR row. Before the fix to include
-// object_id in the AfterUpdate sync's count query, the second FK's
-// transition (nil -> value) saw count > 0 from the first FK's row and
-// skipped its own insert.
-//
-// Affects ObservabilityStackDefinition / ObservabilityStackInstance,
-// each carrying multiple owns-tagged FKs at the same target
-// (HelmWorkloadDefinition / HelmWorkloadInstance).
+// that two relationship-tagged foreign keys on the same struct that
+// share a target type each get their own reference row. The
+// after-update sync's count must filter by object_id so it doesn't
+// conflate the foreign keys.
 func TestRelationshipHooks_AfterUpdate_SharedTargetTypeCollision(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)

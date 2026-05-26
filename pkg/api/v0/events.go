@@ -51,7 +51,7 @@ type Event struct {
 	// A consumer like `tptctl get events` uses them to render
 	// "threeport.io/machine-runtime-instance/some-host" in the OBJECT
 	// column.
-	ObjectType *string `json:"ObjectType,omitempty" gorm:"-"`
-	ObjectID   *uint   `json:"ObjectID,omitempty" gorm:"-"`
-	ObjectName *string `json:"ObjectName,omitempty" gorm:"-"`
+	ObjectType *string `json:",omitempty" gorm:"-" validate:"optional"`
+	ObjectID   *uint   `json:",omitempty" gorm:"-" validate:"optional"`
+	ObjectName *string `json:",omitempty" gorm:"-" validate:"optional"`
 }

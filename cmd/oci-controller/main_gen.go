@@ -110,17 +110,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// check to ensure oci stream has been created by API
-	ociStreamNameFound := false
-	for stream := range js.StreamNames() {
-		if stream == notif.OciStreamName {
-			ociStreamNameFound = true
-		}
-	}
-	if !ociStreamNameFound {
-		log.Error(errors.New("JetStream stream not found"), "failed to find stream with oci stream name", "ociStreamName", notif.OciStreamName)
-		os.Exit(1)
-	}
+	controller.WaitForStream(js, notif.OciStreamName, log)
 
 	// create a channel and wait group used for graceful shut downs
 	var shutdownChans []chan bool

@@ -115,17 +115,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// check to ensure workload stream has been created by API
-	workloadStreamNameFound := false
-	for stream := range js.StreamNames() {
-		if stream == notif.WorkloadStreamName {
-			workloadStreamNameFound = true
-		}
-	}
-	if !workloadStreamNameFound {
-		log.Error(errors.New("JetStream stream not found"), "failed to find stream with workload stream name", "workloadStreamName", notif.WorkloadStreamName)
-		os.Exit(1)
-	}
+	controller.WaitForStream(js, notif.WorkloadStreamName, log)
 
 	// create a channel and wait group used for graceful shut downs
 	var shutdownChans []chan bool

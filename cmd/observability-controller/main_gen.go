@@ -145,17 +145,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// check to ensure observability stream has been created by API
-	observabilityStreamNameFound := false
-	for stream := range js.StreamNames() {
-		if stream == notif.ObservabilityStreamName {
-			observabilityStreamNameFound = true
-		}
-	}
-	if !observabilityStreamNameFound {
-		log.Error(errors.New("JetStream stream not found"), "failed to find stream with observability stream name", "observabilityStreamName", notif.ObservabilityStreamName)
-		os.Exit(1)
-	}
+	controller.WaitForStream(js, notif.ObservabilityStreamName, log)
 
 	// create a channel and wait group used for graceful shut downs
 	var shutdownChans []chan bool

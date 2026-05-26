@@ -161,12 +161,10 @@ func GetRestConfig(
 		kubeAPIEndpoint = "kubernetes.default.svc.cluster.local"
 	}
 
-	// For OKE clusters with no stored ConnectionToken (threeport-provisioned
-	// runtimes), mint a fresh OCI token per request - tokens are cheap (local
-	// RSA signature) and short-lived. BYO OKE clusters store a ConnectionToken
-	// directly on the runtime instance and fall through to the common path
-	// below.
-	if runtime.KubernetesRuntimeDefinitionID != nil && runtime.ConnectionToken == nil {
+	// OKE tokens are cheap (local RSA signature) and short-lived, so always
+	// mint a fresh one per request rather than maintaining a stored
+	// ConnectionToken.
+	if runtime.KubernetesRuntimeDefinitionID != nil {
 		definition, err := client.GetKubernetesRuntimeDefinitionByID(
 			threeportAPIClient,
 			threeportAPIEndpoint,

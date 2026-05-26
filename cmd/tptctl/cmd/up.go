@@ -75,6 +75,12 @@ control planes if they are used to create or are created by another control plan
 			os.Exit(1)
 		}
 
+		// default --cluster-name to --name in control-plane-only mode when not
+		// supplied; the existing cluster usually matches the control-plane name
+		if cliArgs.ControlPlaneOnly && cliArgs.ClusterName == "" {
+			cliArgs.ClusterName = cliArgs.ControlPlaneName
+		}
+
 		// flag validation
 		if err := cli.ValidateCreateGenesisControlPlaneFlags(
 			cliArgs.ControlPlaneName,

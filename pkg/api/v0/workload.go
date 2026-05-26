@@ -21,10 +21,10 @@ type WorkloadDefinition struct {
 	YAMLDocument *string `gorm:"not null" validate:"required"`
 
 	// The associated workload resource definitions that are derived.
-	WorkloadResourceDefinitions []*WorkloadResourceDefinition `json:"WorkloadResourceDefinitions,omitempty" validate:"optional,association"`
+	WorkloadResourceDefinitions []*WorkloadResourceDefinition `json:",omitempty" validate:"optional,association"`
 
 	// The associated workload instances that are deployed from this definition.
-	WorkloadInstances []*WorkloadInstance `json:"WorkloadInstances,omitempty" validate:"optional,association"`
+	WorkloadInstances []*WorkloadInstance `json:",omitempty" validate:"optional,association"`
 }
 
 // WorkloadResourceDefinition is an individual Kubernetes resource manifest.
@@ -35,7 +35,7 @@ type WorkloadResourceDefinition struct {
 	JSONDefinition *datatypes.JSON `gorm:"not null" validate:"required"`
 
 	// The workload definition this resource belongs to.
-	WorkloadDefinitionID *uint `query:"workloaddefinitionid" gorm:"not null" validate:"required"`
+	WorkloadDefinitionID *uint `gorm:"not null" validate:"required"`
 }
 
 // WorkloadInstance is a deployed instance of a workload.
@@ -45,20 +45,20 @@ type WorkloadInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The kubernetes runtime to which the workload is deployed.
-	KubernetesRuntimeInstanceID *uint `query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The definition used to configure the workload instance.
-	WorkloadDefinitionID *uint `query:"workloaddefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	WorkloadDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The associated workload resource definitions that are derived.
-	WorkloadResourceInstances []*WorkloadResourceInstance `json:"WorkloadResourceInstances,omitempty" validate:"optional,association"`
+	WorkloadResourceInstances []*WorkloadResourceInstance `json:",omitempty" validate:"optional,association"`
 
 	// The latest status of a workload instance.
-	Status *string `query:"status" validate:"optional"`
+	Status *string `json:",omitempty" validate:"optional"`
 
 	// All events generated for the workload instance that aren't related to a
 	// particular workload resource instance.
-	Events []*WorkloadEvent `json:"Events,omitempty" query:"events" validate:"optional"`
+	Events []*WorkloadEvent `json:",omitempty" validate:"optional"`
 }
 
 // WorkloadResourceInstance is a Kubernetes resource instance.
@@ -72,24 +72,24 @@ type WorkloadResourceInstance struct {
 	JSONDefinition *datatypes.JSON `gorm:"not null" validate:"required"`
 
 	// The workload instance this resource belongs to.
-	WorkloadInstanceID *uint `query:"workloadinstanceid" gorm:"not null" validate:"required"`
+	WorkloadInstanceID *uint `gorm:"not null" validate:"required"`
 
 	// The most recent operation performed on a Kubernete resource in the
 	// kubernetes runtime.
-	LastOperation *string `query:"lastoperation" validate:"optional"`
+	LastOperation *string `json:",omitempty" validate:"optional"`
 
 	// Indicates if object is considered to be reconciled by workload controller.
-	Reconciled *bool `query:"reconciled" gorm:"default:false" validate:"optional"`
+	Reconciled *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// The JSON definition of a Kubernetes resource as stored in etcd in the
 	// kubernetes runtime.
-	RuntimeDefinition *datatypes.JSON `query:"runtimedefinition" validate:"optional"`
+	RuntimeDefinition *datatypes.JSON `json:",omitempty" validate:"optional"`
 
 	// All events that have occured related to this object.
-	Events []*WorkloadEvent `json:"Events,omitempty" query:"events" validate:"optional"`
+	Events []*WorkloadEvent `json:",omitempty" validate:"optional"`
 
 	// Whether another controller has scheduled this resource for deletion
-	ScheduledForDeletion *time.Time `query:"scheduledfordeletion" validate:"optional"`
+	ScheduledForDeletion *time.Time `json:",omitempty" validate:"optional"`
 }
 
 // WorkloadEvent is a summary of an event associated with a workload instance.
@@ -103,29 +103,29 @@ type WorkloadEvent struct {
 	// workload controller.
 	// * The machine workload controller ID: when the WorkloadEvent is emitted
 	// by the machine workload controller.
-	RuntimeEventUID *string `query:"runtimeeventuid" gorm:"not null" validate:"required"`
+	RuntimeEventUID *string `gorm:"not null" validate:"required"`
 
 	// The type of event that occurred (e.g. Normal, Warning).
-	Type *string `query:"type" gorm:"not null" validate:"required"`
+	Type *string `gorm:"not null" validate:"required"`
 
 	// The reason for the event.
-	Reason *string `query:"reason" gorm:"not null" validate:"required"`
+	Reason *string `gorm:"not null" validate:"required"`
 
 	// The message associated with the event.
-	Message *string `query:"message" gorm:"not null" validate:"required"`
+	Message *string `gorm:"not null" validate:"required"`
 
 	// The timestamp for the event.
-	Timestamp *time.Time `query:"timestamp" gorm:"not null" validate:"required"`
+	Timestamp *time.Time `gorm:"not null" validate:"required"`
 
 	// The related workload instance.
-	WorkloadInstanceID *uint `query:"workloadinstanceid" validate:"optional"`
+	WorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
 
 	// The related workload resource instance.
-	WorkloadResourceInstanceID *uint `query:"workloadresourceinstanceid" validate:"optional"`
+	WorkloadResourceInstanceID *uint `json:",omitempty" validate:"optional"`
 
 	// The related helm workload instance.
-	HelmWorkloadInstanceID *uint `query:"helmworkloadinstanceid" validate:"optional"`
+	HelmWorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
 
 	// The related machine workload instance.
-	MachineWorkloadInstanceID *uint `query:"machineworkloadinstanceid" validate:"optional"`
+	MachineWorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
 }

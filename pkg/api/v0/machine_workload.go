@@ -7,29 +7,29 @@ type MachineWorkloadDefinition struct {
 	Definition `mapstructure:",squash"`
 
 	// The shell script to run when a machine workload instance is created.
-	CreateScript *string `json:"CreateScript,omitempty" gorm:"not null" validate:"required"`
+	CreateScript *string `gorm:"not null" validate:"required"`
 
 	// The shell script to run when a machine workload instance is updated.
-	UpdateScript *string `json:"UpdateScript,omitempty" validate:"optional"`
+	UpdateScript *string `json:",omitempty" validate:"optional"`
 
 	// The shell script to run when a machine workload instance is deleted.
-	DeleteScript *string `json:"DeleteScript,omitempty" gorm:"not null" validate:"required"`
+	DeleteScript *string `gorm:"not null" validate:"required"`
 
 	// The shell to use for script execution.
-	Shell *string `json:"Shell,omitempty" gorm:"default:/bin/bash" validate:"optional"`
+	Shell *string `json:",omitempty" gorm:"default:/bin/bash" validate:"optional"`
 
 	// The working directory for script execution.
-	WorkingDir *string `json:"WorkingDir,omitempty" validate:"optional"`
+	WorkingDir *string `json:",omitempty" validate:"optional"`
 
 	// The timeout in seconds for script execution.
-	Timeout *int `json:"Timeout,omitempty" validate:"optional"`
+	Timeout *int `json:",omitempty" validate:"optional"`
 
 	// The environment variables to set for the workload in KEY=VALUE format.
-	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
+	Env []string `json:",omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
 
 	// The associated machine workload instances that are deployed from this
 	// definition.
-	MachineWorkloadInstances []*MachineWorkloadInstance `json:"MachineWorkloadInstances,omitempty" validate:"optional,association"`
+	MachineWorkloadInstances []*MachineWorkloadInstance `json:",omitempty" validate:"optional,association"`
 }
 
 // MachineWorkloadInstance is a deployed instance of a workload running on a
@@ -40,17 +40,17 @@ type MachineWorkloadInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The machine runtime on which the workload is deployed.
-	MachineRuntimeInstanceID *uint `json:"MachineRuntimeInstanceID,omitempty" query:"machineruntimeinstanceid" gorm:"not null" validate:"required"`
+	MachineRuntimeInstanceID *uint `gorm:"not null" validate:"required"`
 
 	// The definition used to configure the machine workload instance.
-	MachineWorkloadDefinitionID *uint `json:"MachineWorkloadDefinitionID,omitempty" query:"machineworkloaddefinitionid" gorm:"not null" validate:"required"`
+	MachineWorkloadDefinitionID *uint `gorm:"not null" validate:"required"`
 
 	// The latest status of the workload instance.
-	Status *string `json:"Status,omitempty" query:"status" validate:"optional"`
+	Status *string `json:",omitempty" validate:"optional"`
 
 	// All events generated for the machine workload instance.
-	Events []*WorkloadEvent `json:"Events,omitempty" query:"events" validate:"optional"`
+	Events []*WorkloadEvent `json:",omitempty" validate:"optional"`
 
 	// The environment variables set for the workload in KEY=VALUE format.
-	Env []string `json:"Env,omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
+	Env []string `json:",omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
 }

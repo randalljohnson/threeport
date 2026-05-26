@@ -11,7 +11,7 @@ type TerraformDefinition struct {
 	ConfigDir *string `gorm:"not null" validate:"required"`
 
 	// The associated terraform instances that are deployed from this definition.
-	TerraformInstances []*TerraformInstance `json:"TerraformInstances,omitempty" validate:"optional,association"`
+	TerraformInstances []*TerraformInstance `json:",omitempty" validate:"optional,association"`
 }
 
 // TerraformInstance is the deployed instances of terraform resources defined in
@@ -23,22 +23,22 @@ type TerraformInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The AWS provider in which the resources will be provisioned.
-	AwsProviderID *uint `query:"awsproviderid" gorm:"not null" validate:"required" relationship:"requires"`
+	AwsProviderID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The .tfvars document that contains runtime parameters for an instance of
 	// some terraform resources.
-	VarsDocument *string `validate:"optional" encrypt:"true"`
+	VarsDocument *string `json:",omitempty" validate:"optional" encrypt:"true"`
 
 	// The terraform state json object that stores the inventory of
 	// infrastructure being managed by terraform.  The terraform state is stored
 	// in JSON format but is a string type to support encryption.
-	StateDocument *string `validate:"optional" encrypt:"true"`
+	StateDocument *string `json:",omitempty" validate:"optional" encrypt:"true"`
 
 	// The outputs defined in the terraform config that are collected from
 	// Terraform.  The terraform outputs are stored in JSON format but is a
 	// string typt to support encryption.
-	Outputs *string `validate:"optional" encrypt:"true"`
+	Outputs *string `json:",omitempty" validate:"optional" encrypt:"true"`
 
 	// The definition used to configure the terraform resources.
-	TerraformDefinitionID *uint `query:"terraformdefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	TerraformDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 }

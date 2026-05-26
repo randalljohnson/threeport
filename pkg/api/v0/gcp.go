@@ -7,16 +7,16 @@ type GcpProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The unique name of a GCP provider.
-	Name *string `query:"name" gorm:"not null" validate:"required"`
+	Name *string `gorm:"not null" validate:"required"`
 
 	// The GCP project ID for the Google Cloud account.
-	ProjectID *string `query:"projectid" gorm:"not null" validate:"required"`
+	ProjectID *string `gorm:"not null" validate:"required"`
 
 	// If true, is the GCP provider used when none specified for an instance.
-	DefaultProvider *bool `json:",omitempty" query:"defaultprovider" gorm:"default:false" validate:"optional"`
+	DefaultProvider *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// The region to use for GCP managed services if not specified.
-	DefaultRegion *string `query:"defaultregion" gorm:"not null" validate:"required"`
+	DefaultRegion *string `gorm:"not null" validate:"required"`
 
 	// The service account key JSON for authenticating to GCP from outside GCP.
 	// This is the contents of a service account key file exported from GCP Console.
@@ -37,25 +37,25 @@ type GcpGkeKubernetesRuntimeDefinition struct {
 	// RegionsForbidden
 
 	// The number of zones the cluster should span for availability.
-	ZoneCount *int `query:"zonecount" gorm:"not null" validate:"required"`
+	ZoneCount *int `gorm:"not null" validate:"required"`
 
 	// The GCP instance type for the default initial node group.
-	DefaultNodeGroupInstanceType *string `query:"defaultnodegroupinstancetype" gorm:"not null" validate:"required"`
+	DefaultNodeGroupInstanceType *string `gorm:"not null" validate:"required"`
 
 	// The number of nodes in the default initial node group.
-	DefaultNodeGroupInitialSize *int `query:"defaultnodegroupinitialsize" gorm:"not null" validate:"required"`
+	DefaultNodeGroupInitialSize *int `gorm:"not null" validate:"required"`
 
 	// The minimum number of nodes the default initial node group should have.
-	DefaultNodeGroupMinimumSize *int `query:"defaultnodegroupminimumsize" gorm:"not null" validate:"required"`
+	DefaultNodeGroupMinimumSize *int `gorm:"not null" validate:"required"`
 
 	// The maximum number of nodes the default initial node group should have.
-	DefaultNodeGroupMaximumSize *int `query:"defaultnodegroupmaximumsize" gorm:"not null" validate:"required"`
+	DefaultNodeGroupMaximumSize *int `gorm:"not null" validate:"required"`
 
 	// The GCP GKE kubernetes runtime instances derived from this definition.
 	GcpGkeKubernetesRuntimeInstances []*GcpGkeKubernetesRuntimeInstance `json:",omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for a GKE cluster in GCP.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"marries"`
 }
 
 // GcpGkeKubernetesRuntimeInstance is a deployed instance of a GKE cluster.
@@ -65,16 +65,16 @@ type GcpGkeKubernetesRuntimeInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The GCP provider in which the GKE cluster is provisioned.
-	GcpProviderID *uint `json:"GcpProviderID,omitempty" query:"gcpproviderid" gorm:"not null" validate:"required" relationship:"requires"`
+	GcpProviderID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The GCP region in which the cluster is provisioned.
-	Region *string `json:",omitempty" query:"region" validate:"optional"`
+	Region *string `json:",omitempty" validate:"optional"`
 
 	// The definition that configures this instance.
-	GcpGkeKubernetesRuntimeDefinitionID *uint `json:"GcpGkeKubernetesRuntimeDefinitionID,omitempty" query:"gcpgkekubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	GcpGkeKubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kubernetes runtime instance associated with the GKE cluster.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"marries"`
 
 	// An inventory of all GCP resources for the GKE cluster.
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`

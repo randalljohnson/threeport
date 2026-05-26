@@ -121,9 +121,6 @@ func createNewApiFile(
 						"%sID,omitempty",
 						definitionName,
 					),
-					"query": fmt.Sprintf(
-						"%sid", strings.ToLower(definitionName),
-					),
 					"gorm":     "not null",
 					"validate": "required",
 				}),

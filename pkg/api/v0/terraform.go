@@ -23,7 +23,7 @@ type TerraformInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The AWS provider in which the resources will be provisioned.
-	AwsProviderID *uint `query:"awsproviderid" gorm:"not null" validate:"required" relationship:"requires"`
+	AwsProviderID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The .tfvars document that contains runtime parameters for an instance of
 	// some terraform resources.
@@ -40,5 +40,5 @@ type TerraformInstance struct {
 	Outputs *string `json:",omitempty" validate:"optional" encrypt:"true"`
 
 	// The definition used to configure the terraform resources.
-	TerraformDefinitionID *uint `query:"terraformdefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	TerraformDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 }

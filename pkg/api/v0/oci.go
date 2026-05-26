@@ -9,22 +9,22 @@ type OciProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The unique name of an OCI provider.
-	Name *string `query:"name" gorm:"not null" validate:"required"`
+	Name *string `gorm:"not null" validate:"required"`
 
 	// The user OCID credentials for the OCI provider.
-	UserOCID *string `query:"userocid" gorm:"not null" validate:"required"`
+	UserOCID *string `gorm:"not null" validate:"required"`
 
 	// The tenancy OCID for the OCI provider account.
-	TenancyOCID *string `query:"tenancyocid" gorm:"not null" validate:"required"`
+	TenancyOCID *string `gorm:"not null" validate:"required"`
 
 	// The compartment OCID for the OCI provider.
-	CompartmentOCID *string `query:"compartmentocid" gorm:"not null" validate:"required"`
+	CompartmentOCID *string `gorm:"not null" validate:"required"`
 
 	// If true is the OCI provider used if none specified in an instance.
-	DefaultProvider *bool `json:",omitempty" query:"defaultprovider" gorm:"default:false" validate:"optional"`
+	DefaultProvider *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// The region to use for OCI managed services if not specified.
-	DefaultRegion *string `query:"defaultregion" gorm:"not null" validate:"required"`
+	DefaultRegion *string `gorm:"not null" validate:"required"`
 
 	// The fingerprint of the API key for the OCI provider.
 	KeyFingerprint *string `gorm:"not null" validate:"required"`
@@ -42,16 +42,16 @@ type OciOkeKubernetesRuntimeDefinition struct {
 	Definition `mapstructure:",squash"`
 
 	// The OCI shape for the worker nodes.
-	WorkerNodeShape *string `query:"workernodeshape" gorm:"not null" validate:"required"`
+	WorkerNodeShape *string `gorm:"not null" validate:"required"`
 
 	// The number of nodes in the worker node pool.
-	WorkerNodeInitialCount *int32 `query:"workernodeinitialcount" gorm:"not null" validate:"required"`
+	WorkerNodeInitialCount *int32 `gorm:"not null" validate:"required"`
 
 	// The OCI OKE kubernetes runtime instances derived from this definition.
 	OciOkeKubernetesRuntimeInstances []*OciOkeKubernetesRuntimeInstance `json:",omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for an OKE cluster in OCI.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"marries"`
 }
 
 // OciOkeKubernetesRuntimeInstance is a deployed instance of an OKE cluster.
@@ -61,22 +61,22 @@ type OciOkeKubernetesRuntimeInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The OCI provider used to provision this instance.
-	OciProviderID *uint `json:"OciProviderID,omitempty" query:"ociproviderid" gorm:"not null" validate:"required" relationship:"requires"`
+	OciProviderID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The OCI Region in which the cluster is provisioned. This field is
 	// stored in the instance (as well as definition) since a change to the
 	// definition will not move a cluster.
-	Region *string `json:",omitempty" query:"region" validate:"optional"`
+	Region *string `json:",omitempty" validate:"optional"`
 
 	// The definition that configures this instance.
-	OciOkeKubernetesRuntimeDefinitionID *uint `json:"OciOkeKubernetesRuntimeDefinitionID,omitempty" query:"ociokekubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	OciOkeKubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// An inventory of all OCI resources for the OKE cluster.
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 
 	// The kubernetes runtime instance associated with the OCI OKE cluster.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"marries"`
 
 	// The OCID for the OKE cluster. Populated by the controller after cluster creation.
-	ClusterOCID *string `json:",omitempty" query:"clusterocid" validate:"optional"`
+	ClusterOCID *string `json:",omitempty" validate:"optional"`
 }

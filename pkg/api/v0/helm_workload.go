@@ -12,13 +12,13 @@ type HelmWorkloadDefinition struct {
 	// The helm repo URL to pull the helm workload's chart from
 	// e.g. oci://registry-1.docker.io/bitnamicharts
 	// e.g. https://grafana.github.io/helm-charts
-	Repo *string `query:"repo" gorm:"not null" validate:"required"`
+	Repo *string `gorm:"not null" validate:"required"`
 
 	// The name of the helm chart to use from the helm repo, e.g. wordpress
-	Chart *string `query:"chart" gorm:"not null" validate:"required"`
+	Chart *string `gorm:"not null" validate:"required"`
 
 	// The version of the helm chart to use from the helm repo, e.g. 1.2.3
-	ChartVersion *string `json:",omitempty" query:"chartversion" validate:"optional"`
+	ChartVersion *string `json:",omitempty" validate:"optional"`
 
 	// The helm values that override the defaults from the helm chart.  These
 	// will be inherited by each helm workload instance derived from this
@@ -46,13 +46,13 @@ type HelmWorkloadInstance struct {
 	ValuesDocument *string `json:",omitempty" validate:"optional"`
 
 	// The kubernetes runtime to which the helm workload is deployed.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Namespace to deploy the helm chart to.
-	ReleaseNamespace *string `json:",omitempty" query:"releasenamespace" validate:"optional"`
+	ReleaseNamespace *string `json:",omitempty" validate:"optional"`
 
 	// The definition used to configure the workload instance.
-	HelmWorkloadDefinitionID *uint `json:"HelmWorkloadDefinitionID,omitempty" query:"helmworkloaddefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	HelmWorkloadDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Complete kubernetes resources that will be appended to the provided
 	// helm chart.

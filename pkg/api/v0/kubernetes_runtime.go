@@ -10,26 +10,26 @@ type KubernetesRuntimeDefinition struct {
 
 	// The infrastructure provider running the compute infrastructure for the
 	// cluster.
-	InfraProvider *string `query:"infraprovider" gorm:"not null" validate:"required"`
+	InfraProvider *string `gorm:"not null" validate:"required"`
 
 	// The infra provider account name.  Determines which account the infra is
 	// deployed on.
-	InfraProviderAccountName *string `json:",omitempty" query:"infraprovideraccountname" validate:"optional"`
+	InfraProviderAccountName *string `json:",omitempty" validate:"optional"`
 
 	// If true, will be deployed in a highly available configuration across
 	// multiple zones within a region and with multiple replicas of Kubernetes
 	// control plane components.
-	HighAvailability *bool `json:",omitempty" query:"highavailability" gorm:"default:false" validate:"optional"`
+	HighAvailability *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// Sets the compute capacity of the machine type for the default node group.
-	NodeSize *string `json:",omitempty" query:"nodesize" gorm:"default:Medium" validate:"optional"`
+	NodeSize *string `json:",omitempty" gorm:"default:Medium" validate:"optional"`
 
 	// Sets the CPU:memory ration of the machine type for the default node
 	// group.
-	NodeProfile *string `json:",omitempty" query:"nodeprofile" gorm:"default:Balanced" validate:"optional"`
+	NodeProfile *string `json:",omitempty" gorm:"default:Balanced" validate:"optional"`
 
 	// Sets the maximum number of nodes for the default node group.
-	NodeMaximum *int `json:",omitempty" query:"nodemaximum" gorm:"default:250" validate:"optional"`
+	NodeMaximum *int `json:",omitempty" gorm:"default:250" validate:"optional"`
 
 	// TODO: add fields for location limitations
 	// LocationsAllowed
@@ -49,12 +49,12 @@ type KubernetesRuntimeInstance struct {
 	// The geographical location for the runtime cluster.  This is an
 	// abstraction for the cloud provider regions that is mapped into the
 	// regions used by providers.
-	Location *string `query:"location" gorm:"not null" validate:"required"`
+	Location *string `gorm:"not null" validate:"required"`
 
 	// If true, the Kubernetes cluster is hosting a threeport control plane and
 	// any controllers that connect to the kube API will use internal cluster
 	// DNS rather than the external APIEndpoint.
-	ThreeportControlPlaneHost *bool `json:",omitempty" query:"threeportcontrolplanehost" gorm:"default:false" validate:"optional"`
+	ThreeportControlPlaneHost *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// The network endpoint at which to reach the kube-api.
 	APIEndpoint *string `json:",omitempty" validate:"optional"`
@@ -79,19 +79,16 @@ type KubernetesRuntimeInstance struct {
 
 	// If true, this Kubernetes cluster will be used for all workloads if not
 	// otherwise assigned.
-	DefaultRuntime *bool `json:",omitempty" query:"defaultruntime" gorm:"default:false" validate:"optional"`
+	DefaultRuntime *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// The kubernetes runtime definition for this instance.
-	KubernetesRuntimeDefinitionID *uint `query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The associated workload instances running on this kubernetes runtime.
 	WorkloadInstances []*WorkloadInstance `json:",omitempty" validate:"optional,association"`
 
 	// The associated control plane instances running on this kubernetes runtime instance.
 	ControlPlaneInstances []*ControlPlaneInstance `json:",omitempty" validate:"optional,association"`
-
-	// If true, delete the runtime even if there are workloads present.
-	ForceDelete *bool `json:",omitempty" query:"forcedelete" gorm:"default:false" validate:"optional"`
 
 	// The WorkloadInstanceID of the gateway support service
 	GatewayControllerInstanceID *uint `json:",omitempty" validate:"optional"`

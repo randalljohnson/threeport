@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
@@ -53,15 +54,23 @@ func (r *EventRecorder) RecordEvent(
 	objectId uint,
 	fullyQualifiedObjectType string,
 ) error {
-	formatString := "reason=%s&note=%s&type=%s&objectid=%d"
-	formatArgs := []any{
+	// the events-join-attached-object-references endpoint requires
+	// objecttypename when filtering by objectid; split the qualified
+	// type into its parts and pass all three alongside the id
+	namespace, version, typeName, ok := apilib.ParseQualifiedType(fullyQualifiedObjectType)
+	if !ok {
+		return fmt.Errorf("invalid fully qualified object type %q", fullyQualifiedObjectType)
+	}
+	query := fmt.Sprintf(
+		"reason=%s&note=%s&type=%s&objectid=%d&objecttypename=%s&objectnamespace=%s&objectversion=%s",
 		url.QueryEscape(*event.Reason),
 		url.QueryEscape(*event.Note),
 		url.QueryEscape(*event.Type),
 		objectId,
-	}
-
-	query := fmt.Sprintf(formatString, formatArgs...)
+		url.QueryEscape(typeName),
+		url.QueryEscape(namespace),
+		url.QueryEscape(version),
+	)
 	events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(
 		r.APIClient,
 		r.APIServer,

@@ -59,7 +59,9 @@ The following table illustrates the relationship type for each example.
 | `KubernetesRuntimeDefinition` | `AwsEksKubernetesRuntimeDefinition` | `marries` |
 | `HelmWorkloadInstance`        | `Event`                             | `describes` |
 
-![Attached Object References](../img/AttachedObjects.drawio.svg)
+
+<br>![Attached Object References](../img/AttachedObjects.drawio.svg)<br>
+*Each row in `v0_attached_object_references` ties one base object to one attached object through a relationship.*
 
 
 ## Attachment

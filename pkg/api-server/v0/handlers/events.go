@@ -15,13 +15,13 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// eventAttachedObjectReferenceJoinClause is the inner join from
+// eventJoinAttachedObjectReferenceClause is the inner join from
 // v0_events to v0_attached_object_references on the polymorphic
 // columns the reference table uses to point at events. The `?`
 // placeholder stands in for the event's fully qualified type. Used
 // directly by gorm .Joins() chains; raw-SQL paths substitute the
 // literal in via strings.Replace.
-const eventAttachedObjectReferenceJoinClause = `INNER JOIN v0_attached_object_references
+const eventJoinAttachedObjectReferenceClause = `INNER JOIN v0_attached_object_references
 	ON v0_attached_object_references.attached_object_type = ?
 	AND v0_attached_object_references.attached_object_id = v0_events.id`
 
@@ -30,7 +30,7 @@ const eventAttachedObjectReferenceJoinClause = `INNER JOIN v0_attached_object_re
 // references come back together.
 func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventType string) *gorm.DB {
 	return query.
-		Joins(eventAttachedObjectReferenceJoinClause, fullyQualifiedEventType).
+		Joins(eventJoinAttachedObjectReferenceClause, fullyQualifiedEventType).
 		Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
 }
 
@@ -271,7 +271,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// so substitute the literal type into the shared join
 			// clause instead of binding via a gorm placeholder.
 			joinClause := strings.Replace(
-				eventAttachedObjectReferenceJoinClause,
+				eventJoinAttachedObjectReferenceClause,
 				"?",
 				fmt.Sprintf("'%s'", fullyQualifiedEventType),
 				1,

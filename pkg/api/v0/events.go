@@ -40,6 +40,7 @@ type Event struct {
 	//   - On read: GetEventsJoinAttachedObjectReferenceByQueryString
 	//     projects the joined AOR's base object back into these
 	//     fields, then resolves ObjectName via the type's name resolver.
+	//
 	// gorm:"-" keeps them off the Event row in the schema - the AOR
 	// is the source of truth on disk for the subject linkage.
 	//

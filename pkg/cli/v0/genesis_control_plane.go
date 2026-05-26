@@ -748,51 +748,49 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	}
 
 	// configure control plane with provider-specific details by adding the
-	// infra provider-specific objects to the Threeport API. skipped when
-	// running as a guest on an existing cluster (--control-plane-only) so the
-	// control plane has no awareness of, or influence over, the cluster's
-	// lifecycle
-	if !cpi.Opts.ControlPlaneOnly {
-		switch controlPlane.InfraProvider {
-		case v0.KubernetesRuntimeInfraProviderEKS:
-			if err := ConfigureControlPlaneWithEksConfig(
-				cpi,
-				uninstaller,
-				&awsConfigUser,
-				callerIdentity,
-				awsConfigResourceManager,
-				apiClient,
-				threeportAPIEndpoint,
-				&kubernetesRuntimeInfra,
-				kubernetesRuntimeDefResult,
-				kubernetesRuntimeInstResult,
-			); err != nil {
-				return uninstaller.cleanOnCreateError("failed to add AWS objects to Threeport API", err)
-			}
-		case v0.KubernetesRuntimeInfraProviderOKE:
-			if err := ConfigureControlPlaneWithOkeConfig(
-				cpi,
-				uninstaller,
-				apiClient,
-				threeportAPIEndpoint,
-				kubernetesRuntimeDefResult,
-				kubernetesRuntimeInstResult,
-				&kubernetesRuntimeInfra,
-			); err != nil {
-				return uninstaller.cleanOnCreateError("failed to add OCI objects to Threeport API", err)
-			}
-		case v0.KubernetesRuntimeInfraProviderGKE:
-			if err := ConfigureControlPlaneWithGkeConfig(
-				cpi,
-				uninstaller,
-				apiClient,
-				threeportAPIEndpoint,
-				kubernetesRuntimeDefResult,
-				kubernetesRuntimeInstResult,
-				&kubernetesRuntimeInfra,
-			); err != nil {
-				return uninstaller.cleanOnCreateError("failed to add GCP objects to Threeport API", err)
-			}
+	// infra provider-specific objects to the Threeport API. Populated in
+	// BYO mode too - the destroy path guards against deleting clusters
+	// without stored Pulumi state, so storing provider creds + cluster
+	// references is safe and unlocks per-request token mint for OKE.
+	switch controlPlane.InfraProvider {
+	case v0.KubernetesRuntimeInfraProviderEKS:
+		if err := ConfigureControlPlaneWithEksConfig(
+			cpi,
+			uninstaller,
+			&awsConfigUser,
+			callerIdentity,
+			awsConfigResourceManager,
+			apiClient,
+			threeportAPIEndpoint,
+			&kubernetesRuntimeInfra,
+			kubernetesRuntimeDefResult,
+			kubernetesRuntimeInstResult,
+		); err != nil {
+			return uninstaller.cleanOnCreateError("failed to add AWS objects to Threeport API", err)
+		}
+	case v0.KubernetesRuntimeInfraProviderOKE:
+		if err := ConfigureControlPlaneWithOkeConfig(
+			cpi,
+			uninstaller,
+			apiClient,
+			threeportAPIEndpoint,
+			kubernetesRuntimeDefResult,
+			kubernetesRuntimeInstResult,
+			&kubernetesRuntimeInfra,
+		); err != nil {
+			return uninstaller.cleanOnCreateError("failed to add OCI objects to Threeport API", err)
+		}
+	case v0.KubernetesRuntimeInfraProviderGKE:
+		if err := ConfigureControlPlaneWithGkeConfig(
+			cpi,
+			uninstaller,
+			apiClient,
+			threeportAPIEndpoint,
+			kubernetesRuntimeDefResult,
+			kubernetesRuntimeInstResult,
+			&kubernetesRuntimeInfra,
+		); err != nil {
+			return uninstaller.cleanOnCreateError("failed to add GCP objects to Threeport API", err)
 		}
 	}
 

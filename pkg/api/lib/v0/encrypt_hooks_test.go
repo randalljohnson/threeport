@@ -58,10 +58,10 @@ func setupEncryptTestDB(t *testing.T) (*gorm.DB, string) {
 // into ciphertext before the comparison runs.
 func testTokenPtr(s string) *string { return &s }
 
-// TestEncryptHookUpdatesEncryptsFromNil is the regression test for
-// the dest-redirect fix: an update transitioning nil -> value must
-// encrypt the inbound value, not skip because the loaded Model was
-// nil.
+// TestEncryptHookUpdatesEncryptsFromNil covers the nil -> value
+// update transition: gorm fires the hook on Statement.Model (the
+// loaded row, nil here), so the dest redirect must steer the hook
+// at the inbound payload instead.
 func TestEncryptHookUpdatesEncryptsFromNil(t *testing.T) {
 	db, key := setupEncryptTestDB(t)
 

@@ -376,8 +376,7 @@ func TestGetModuleRouteForType_ExcludesSoftDeleted(t *testing.T) {
 }
 
 // TestModuleApi_NameNamespaceUnique verifies the composite unique
-// index (added in this PR via `feat: composite unique index on module
-// api`) rejects two ModuleApi rows with the same (Name, ApiNamespace).
+// index on (Name, ApiNamespace) rejects duplicate ModuleApi rows.
 func TestModuleApi_NameNamespaceUnique(t *testing.T) {
 	db := setupLookupTestDB(t)
 	tx := db.Session(&gorm.Session{SkipHooks: true})

@@ -911,28 +911,47 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// build and push all images
 	buildAllImagesFuncName := "AllImages"
 	f.Comment(fmt.Sprintf("%s builds and pushes images for all components.", buildAllImagesFuncName))
+	f.Comment("Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImages docker.io/foo v1 amd64 4`).")
 	f.Func().Params(Id("Build")).Id(buildAllImagesFuncName).Params(
 		Line().Id("imageRepo").String(),
 		Line().Id("imageTag").String(),
 		Line().Id("arch").String(),
+		Line().Id("parallel").Int(),
 		Line(),
 	).Error().BlockFunc(func(g *Group) {
 		g.Id("build").Op(":=").Id("Build").Values()
-		for _, funcName := range buildImageFuncNames {
-			g.If(Err().Op(":=").Id("build").Dot(funcName).Call(
-				Id("imageRepo"),
-				Id("imageTag"),
-				Id("arch"),
-			).Op(";").Err().Op("!=").Nil()).Block(
-				Return().Qual("fmt", "Errorf").Call(
-					Lit("failed to build and push image: %w"),
-					Err(),
-				),
-			)
-			g.Line()
-		}
 
-		g.Return().Nil()
+		// wrap adapts a per-image function (which takes imageRepo,
+		// imageTag, arch) to the func() error shape RunParallel needs.
+		// closing over the args once keeps each task entry below to a
+		// single line: wrap(build.XImage) rather than an inline
+		// func() error { return build.XImage(imageRepo, ...) }.
+		g.Comment("wrap adapts a per-image function to RunParallel's func() error shape")
+		g.Comment("by closing over the imageRepo, imageTag, and arch args. Lets each")
+		g.Comment("task entry below stay a single line: wrap(build.XImage).")
+		g.Id("wrap").Op(":=").Func().Params(
+			Id("fn").Func().Params(String(), String(), String()).Error(),
+		).Func().Params().Error().Block(
+			Return().Func().Params().Error().Block(
+				Return().Id("fn").Call(Id("imageRepo"), Id("imageTag"), Id("arch")),
+			),
+		)
+
+		// one entry per per-image function; RunParallel dispatches the
+		// whole slice across parallel workers.
+		g.Comment("one task per per-image function; RunParallel below dispatches them")
+		g.Comment("across `parallel` workers, each running build then push for its image.")
+		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
+			for _, funcName := range buildImageFuncNames {
+				v.Line().Id("wrap").Call(Id("build").Dot(funcName))
+			}
+			v.Line()
+		})
+
+		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
+			Id("parallel"),
+			Id("tasks"),
+		)
 	})
 
 	// build and push all dev images

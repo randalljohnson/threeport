@@ -1811,69 +1811,41 @@ func (Build) AllBinsRelease() error {
 }
 
 // AllImages builds and pushes images for all components.
+// Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImages docker.io/foo v1 amd64 4`).
 func (Build) AllImages(
 	imageRepo string,
 	imageTag string,
 	arch string,
+	parallel int,
 ) error {
 	build := Build{}
-	if err := build.ApiImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+	// wrap adapts a per-image function to RunParallel's func() error shape
+	// by closing over the imageRepo, imageTag, and arch args. Lets each
+	// task entry below stay a single line: wrap(build.XImage).
+	wrap := func(fn func(string, string, string) error) func() error {
+		return func() error {
+			return fn(imageRepo, imageTag, arch)
+		}
 	}
-
-	if err := build.DbMigratorImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+	// one task per per-image function; RunParallel below dispatches them
+	// across `parallel` workers, each running build then push for its image.
+	tasks := []func() error{
+		wrap(build.ApiImage),
+		wrap(build.DbMigratorImage),
+		wrap(build.AgentImage),
+		wrap(build.SecretControllerImage),
+		wrap(build.AwsControllerImage),
+		wrap(build.OciControllerImage),
+		wrap(build.GcpControllerImage),
+		wrap(build.ControlPlaneControllerImage),
+		wrap(build.GatewayControllerImage),
+		wrap(build.HelmWorkloadControllerImage),
+		wrap(build.KubernetesRuntimeControllerImage),
+		wrap(build.ObservabilityControllerImage),
+		wrap(build.TerraformControllerImage),
+		wrap(build.WorkloadControllerImage),
 	}
-
-	if err := build.AgentImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.SecretControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.AwsControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.OciControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GcpControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ControlPlaneControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GatewayControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.HelmWorkloadControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.KubernetesRuntimeControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ObservabilityControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.TerraformControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.WorkloadControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	return nil
+	return util.RunParallel(parallel, tasks)
 }
 
 // AllImagesDev builds and pushes development images for all components.

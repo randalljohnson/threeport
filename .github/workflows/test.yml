@@ -40,8 +40,13 @@ jobs:
     - name: Create local container registry
       run: mage dev:localRegistryUp
 
+    - name: Build tptdev
+      run: mage build:tptdev
+
     - name: Build and push control plane component images
-      run: mage build:allImagesDev
+      run: |
+        VERSION=$(tr -d '\n' < internal/version/version.txt)
+        ./bin/tptdev build --push -r localhost:5001 -t "$VERSION" --parallel 4
 
     - name: Build tptctl
       run: mage build:tptctl

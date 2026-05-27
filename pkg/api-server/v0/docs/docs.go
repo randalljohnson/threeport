@@ -16675,7 +16675,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ObjectType": {
-                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
                     "type": "string"
                 },
                 "Reason": {
@@ -17336,7 +17336,7 @@ const docTemplate = `{
                     "description": "ConnectionTokenExpiration is the time when a ConnectionToken will expire.\nUsed to ensure a token will not expire before it can be used.",
                     "type": "string"
                 },
-                "ControlPlaneInstance": {
+                "ControlPlaneInstances": {
                     "description": "The associated control plane instances running on this kubernetes runtime instance.",
                     "type": "array",
                     "items": {
@@ -17371,11 +17371,11 @@ const docTemplate = `{
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
-                "DnsControllerInstanceId": {
+                "DnsControllerInstanceID": {
                     "description": "The WorkloadInstanceID of the dns support service",
                     "type": "integer"
                 },
-                "GatewayWorkloadInstanceID": {
+                "GatewayControllerInstanceID": {
                     "description": "The WorkloadInstanceID of the gateway support service",
                     "type": "integer"
                 },
@@ -17399,7 +17399,7 @@ const docTemplate = `{
                     "description": "Indicates if object is considered to be reconciled by the object's controller.",
                     "type": "boolean"
                 },
-                "SecretsControllerInstanceId": {
+                "SecretsControllerInstanceID": {
                     "description": "The WorkloadInstanceID of the secrets support service",
                     "type": "integer"
                 },
@@ -17415,7 +17415,7 @@ const docTemplate = `{
                     "description": "If true, the Kubernetes cluster is hosting a threeport control plane and\nany controllers that connect to the kube API will use internal cluster\nDNS rather than the external APIEndpoint.",
                     "type": "boolean"
                 },
-                "WorkloadInstance": {
+                "WorkloadInstances": {
                     "description": "The associated workload instances running on this kubernetes runtime.",
                     "type": "array",
                     "items": {

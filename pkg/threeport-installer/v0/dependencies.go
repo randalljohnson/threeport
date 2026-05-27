@@ -65,7 +65,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 			},
 		},
 	}
-
+	setPersistent(encryptionSecret)
 	if err := cpi.CreateOrUpdateKubeResource(encryptionSecret, kubeClient, mapper); err != nil {
 		return fmt.Errorf("failed to create API server secret: %w", err)
 	}
@@ -546,33 +546,39 @@ store_dir: /data
 		},
 	}
 
+	setPersistent(natsStatefulSet)
 	if err := cpi.CreateOrUpdateKubeResource(natsStatefulSet, kubeClient, mapper); err != nil {
 		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
 	}
 
-	// asdf
-	var dbCertsSecret = &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "v1",
-			"kind":       "Secret",
-			"metadata": map[string]interface{}{
-				"name":      dbCredsSecretName,
-				"namespace": cpi.Opts.Namespace,
+	// dbCreds is nil on reinstall - constructing the secret would
+	// panic dereferencing dbCreds.AuthConfig. CreateOrUpdate's
+	// persistent-skip catches existing values too late (after
+	// construction), so guard at the call site.
+	if dbCreds != nil {
+		var dbCertsSecret = &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"metadata": map[string]interface{}{
+					"name":      dbCredsSecretName,
+					"namespace": cpi.Opts.Namespace,
+				},
+				"stringData": map[string]interface{}{
+					"ca.crt":               dbCreds.AuthConfig.CAPemEncoded,
+					"node.crt":             dbCreds.NodeCert,
+					"node.key":             dbCreds.NodeKey,
+					"client.root.crt":      dbCreds.RootCert,
+					"client.root.key":      dbCreds.RootKey,
+					"client.threeport.crt": dbCreds.ThreeportCert,
+					"client.threeport.key": dbCreds.ThreeportKey,
+				},
 			},
-			"stringData": map[string]interface{}{
-				"ca.crt":               dbCreds.AuthConfig.CAPemEncoded,
-				"node.crt":             dbCreds.NodeCert,
-				"node.key":             dbCreds.NodeKey,
-				"client.root.crt":      dbCreds.RootCert,
-				"client.root.key":      dbCreds.RootKey,
-				"client.threeport.crt": dbCreds.ThreeportCert,
-				"client.threeport.key": dbCreds.ThreeportKey,
-			},
-		},
-	}
-
-	if err := cpi.CreateOrUpdateKubeResource(dbCertsSecret, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create DB certs secret: %w", err)
+		}
+		setPersistent(dbCertsSecret)
+		if err := cpi.CreateOrUpdateKubeResource(dbCertsSecret, kubeClient, mapper); err != nil {
+			return fmt.Errorf("failed to create DB certs secret: %w", err)
+		}
 	}
 
 	var crdbPDB = &unstructured.Unstructured{
@@ -843,6 +849,7 @@ store_dir: /data
 		},
 	}
 
+	setPersistent(crdbStatefulSet)
 	if err := cpi.CreateOrUpdateKubeResource(crdbStatefulSet, kubeClient, mapper); err != nil {
 		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
 	}
@@ -880,6 +887,7 @@ store_dir: /data
 			},
 		},
 	}
+	setPersistent(apiService)
 	if err := cpi.CreateOrUpdateKubeResource(apiService, kubeClient, mapper); err != nil {
 		return fmt.Errorf("failed to create/update API server service: %w", err)
 	}

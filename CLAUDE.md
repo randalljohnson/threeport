@@ -390,6 +390,24 @@ sshConfig := MachineRuntimeInstanceValues{
 }
 ```
 
+### API Struct Tag Convention
+
+Enforced at codegen time by `pkg/sdk/v0/gen/generator.go::ValidateTags`. Every field on an api/v0 type carrying a `validate:` tag must follow:
+
+- **json**: `json:",omitempty"` on every `validate:"required"`, `validate:"optional"`, and `validate:"optional,association"` field. The field-name part is dropped (Go's `encoding/json` defaults to the Go field name). The `omitempty` is non-negotiable: without it, nil-pointer required fields serialize as JSON null on partial PATCH bodies, and the `PayloadCheck()` null-on-required guard rejects the request.
+- **yaml** (where present): keep the explicit field name (`yaml:"Name,omitempty"`). yaml's library lowercases the field name by default, so dropping the name part would change the wire format and break existing yaml configs.
+- **query**: forbidden. The `QueryBinder` in `pkg/api-server/lib/v0/binder.go` derives keys from `strings.ToLower(field.Name)`. An explicit query tag is noise at best and a silent rename hazard at worst.
+
+Tag order convention (hand-written types): `json:",omitempty"` first, then `gorm:"..."`, then `validate:"..."`, then any others (`encrypt`, `relationship`, `persist`). Example:
+
+```go
+WorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+```
+
+The codegen emits via jen which sorts tag keys alphabetically (json sorts before validate and yaml), so generated types naturally land json-first when the same convention applies.
+
+Why per-field rather than a global toggle: Go's `encoding/json` doesn't support "omitempty by default" as a marshaler option. The experimental `encoding/json/v2` proposal ([#71497](https://github.com/golang/go/issues/71497), in Go 1.25) redefines what "empty" means but still requires per-field tagging.
+
 ### Nil Checks on API Type Pointer Fields
 - **Do not add defensive nil checks for fields that are guaranteed non-nil by GORM constraints** — if a field has `gorm:"not null"` and `validate:"required"`, it cannot be nil when read from the database
 - Reconcilers and other code that receives API objects from the database or notification payloads can dereference these fields directly without a nil guard

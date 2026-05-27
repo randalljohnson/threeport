@@ -28,11 +28,11 @@ type WorkloadInstanceConfig struct {
 // WorkloadInstanceValues contains all the attributes needed to manage
 // the WorkloadInstance API object.
 type WorkloadInstanceValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:"KubernetesRuntimeInstance,omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	WorkloadDefinition        *WorkloadDefinitionValues        `json:"WorkloadDefinition,omitempty" yaml:"WorkloadDefinition,omitempty"`
-	Status                    *string                          `json:"Status,omitempty" yaml:"Status,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	WorkloadDefinition        *WorkloadDefinitionValues        `json:",omitempty" yaml:"WorkloadDefinition,omitempty"`
+	Status                    *string                          `json:",omitempty" yaml:"Status,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets workload instances from the Threeport API.

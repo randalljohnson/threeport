@@ -12,10 +12,10 @@ type HelmWorkloadDefinition struct {
 	// The helm repo URL to pull the helm workload's chart from
 	// e.g. oci://registry-1.docker.io/bitnamicharts
 	// e.g. https://grafana.github.io/helm-charts
-	Repo *string `gorm:"not null" validate:"required"`
+	Repo *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The name of the helm chart to use from the helm repo, e.g. wordpress
-	Chart *string `gorm:"not null" validate:"required"`
+	Chart *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The version of the helm chart to use from the helm repo, e.g. 1.2.3
 	ChartVersion *string `json:",omitempty" validate:"optional"`
@@ -46,13 +46,13 @@ type HelmWorkloadInstance struct {
 	ValuesDocument *string `json:",omitempty" validate:"optional"`
 
 	// The kubernetes runtime to which the helm workload is deployed.
-	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Namespace to deploy the helm chart to.
 	ReleaseNamespace *string `json:",omitempty" validate:"optional"`
 
 	// The definition used to configure the workload instance.
-	HelmWorkloadDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	HelmWorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Complete kubernetes resources that will be appended to the provided
 	// helm chart.

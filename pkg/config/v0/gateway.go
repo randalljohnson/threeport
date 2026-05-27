@@ -21,15 +21,15 @@ type GatewayConfig struct {
 // GatewayDefinition and GatewayInstance API objects
 // together with a single operation.
 type GatewayValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	HttpPorts                 *[]GatewayHttpPortValues         `json:"HttpPorts,omitempty" yaml:"HttpPorts,omitempty"`
-	TcpPorts                  *[]GatewayTcpPortValues          `json:"TcpPorts,omitempty" yaml:"TcpPorts,omitempty"`
-	ServiceName               *string                          `json:"ServiceName,omitempty" yaml:"ServiceName,omitempty"`
-	SubDomain                 *string                          `json:"SubDomain,omitempty" yaml:"SubDomain,omitempty"`
-	DomainNameDefinition      *DomainNameDefinitionValues      `json:"DomainNameDefinition,omitempty" yaml:"DomainNameDefinition,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:"KubernetesRuntimeInstance,omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	WorkloadInstance          *WorkloadInstanceValues          `json:"WorkloadInstance,omitempty" yaml:"WorkloadInstance,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	HttpPorts                 *[]GatewayHttpPortValues         `json:",omitempty" yaml:"HttpPorts,omitempty"`
+	TcpPorts                  *[]GatewayTcpPortValues          `json:",omitempty" yaml:"TcpPorts,omitempty"`
+	ServiceName               *string                          `json:",omitempty" yaml:"ServiceName,omitempty"`
+	SubDomain                 *string                          `json:",omitempty" yaml:"SubDomain,omitempty"`
+	DomainNameDefinition      *DomainNameDefinitionValues      `json:",omitempty" yaml:"DomainNameDefinition,omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	WorkloadInstance          *WorkloadInstanceValues          `json:",omitempty" yaml:"WorkloadInstance,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a gateway definition and instance from the Threeport API.

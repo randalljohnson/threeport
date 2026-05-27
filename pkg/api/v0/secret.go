@@ -12,7 +12,7 @@ type SecretDefinition struct {
 	AwsProviderID *uint `json:",omitempty" validate:"optional" relationship:"requires"`
 
 	// The secret value to be stored in the provider.
-	Data *datatypes.JSON `validate:"required" persist:"false"`
+	Data *datatypes.JSON `json:",omitempty" validate:"required" persist:"false"`
 
 	// The associated secret instances that are deployed from this definition.
 	SecretInstances []*SecretInstance `json:",omitempty" validate:"optional,association"`
@@ -25,10 +25,10 @@ type SecretInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The kubernetes runtime to which the secret is deployed.
-	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The SecretDefinition that the secret instance is derived from.
-	SecretDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	SecretDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The workload instance that the secret is associated with.
 	WorkloadInstanceID *uint `json:",omitempty" validate:"optional" relationship:"requires"`

@@ -21,15 +21,15 @@ type WorkloadConfig struct {
 // WorkloadDefinition and WorkloadInstance API objects
 // together with a single operation.
 type WorkloadValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	YAMLDocument              *string                          `json:"YAMLDocument,omitempty" yaml:"YAMLDocument,omitempty"`
-	WorkloadConfigPath        *string                          `json:"WorkloadConfigPath,omitempty" yaml:"WorkloadConfigPath,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:"KubernetesRuntimeInstance,omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	DomainName                *DomainNameDefinitionValues      `json:"DomainName,omitempty" yaml:"DomainName,omitempty"`
-	Gateway                   *GatewayDefinitionValues         `json:"Gateway,omitempty" yaml:"Gateway,omitempty"`
-	Secret                    *SecretValues                    `json:"Secret,omitempty" yaml:"Secret,omitempty"`
-	Status                    *string                          `json:"Status,omitempty" yaml:"Status,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	YAMLDocument              *string                          `json:",omitempty" yaml:"YAMLDocument,omitempty"`
+	WorkloadConfigPath        *string                          `json:",omitempty" yaml:"WorkloadConfigPath,omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	DomainName                *DomainNameDefinitionValues      `json:",omitempty" yaml:"DomainName,omitempty"`
+	Gateway                   *GatewayDefinitionValues         `json:",omitempty" yaml:"Gateway,omitempty"`
+	Secret                    *SecretValues                    `json:",omitempty" yaml:"Secret,omitempty"`
+	Status                    *string                          `json:",omitempty" yaml:"Status,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a workload definition and instance from the Threeport API.

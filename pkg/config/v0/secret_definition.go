@@ -25,11 +25,11 @@ type SecretDefinitionConfig struct {
 // SecretDefinitionValues contains all the attributes needed to manage
 // the SecretDefinition API object.
 type SecretDefinitionValues struct {
-	Name             *string            `json:"Name,omitempty" yaml:"Name,omitempty"`
-	AwsProviderName  *string            `json:"AwsProviderName,omitempty" yaml:"AwsProviderName,omitempty"`
-	Data             *map[string]string `json:"Data,omitempty" yaml:"Data,omitempty"`
-	SecretConfigPath *string            `json:"SecretConfigPath,omitempty" yaml:"SecretConfigPath,omitempty"`
-	Age              *string            `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name             *string            `json:",omitempty" yaml:"Name,omitempty"`
+	AwsProviderName  *string            `json:",omitempty" yaml:"AwsProviderName,omitempty"`
+	Data             *map[string]string `json:",omitempty" yaml:"Data,omitempty"`
+	SecretConfigPath *string            `json:",omitempty" yaml:"SecretConfigPath,omitempty"`
+	Age              *string            `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets secret definitions from the Threeport API.

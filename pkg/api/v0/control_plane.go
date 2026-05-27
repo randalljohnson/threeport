@@ -25,7 +25,7 @@ type ControlPlaneInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The namespace to deploy the control plane in
-	Namespace *string `gorm:"not null" validate:"required"`
+	Namespace *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// When true, indicates the control plane instance represents the control plane in which it's stored
 	IsSelf *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
@@ -52,7 +52,7 @@ type ControlPlaneInstance struct {
 	ClientKey *string `json:",omitempty" validate:"optional"`
 
 	// the kubernetes runtime instance the control plane is running on
-	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// These are pointers to the parent and children of the current control plane
 	// This is useful to map out the topology between control planes being managed by one another
@@ -61,5 +61,5 @@ type ControlPlaneInstance struct {
 	Children                     *[]ControlPlaneInstance `json:",omitempty" gorm:"foreignKey:ParentControlPlaneInstanceID" validate:"optional,association"`
 
 	// The definition used to configure the control plane instance.
-	ControlPlaneDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	ControlPlaneDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 }

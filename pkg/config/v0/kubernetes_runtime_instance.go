@@ -25,13 +25,13 @@ type KubernetesRuntimeInstanceConfig struct {
 // KubernetesRuntimeInstanceValues contains all the attributes needed to manage
 // the KubernetesRuntimeInstance API object.
 type KubernetesRuntimeInstanceValues struct {
-	Name                        *string                            `json:"Name,omitempty" yaml:"Name,omitempty"`
-	ThreeportControlPlaneHost   *bool                              `json:"ThreeportControlPlaneHost,omitempty" yaml:"ThreeportControlPlaneHost,omitempty"`
-	DefaultRuntime              *bool                              `json:"DefaultRuntime,omitempty" yaml:"DefaultRuntime,omitempty"`
-	Location                    *string                            `json:"Location,omitempty" yaml:"Location,omitempty"`
-	ThreeportAgentImage         *string                            `json:"ThreeportAgentImage,omitempty" yaml:"ThreeportAgentImage,omitempty"`
-	KubernetesRuntimeDefinition *KubernetesRuntimeDefinitionValues `json:"KubernetesRuntimeDefinition,omitempty" yaml:"KubernetesRuntimeDefinition,omitempty"`
-	Age                         *string                            `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                        *string                            `json:",omitempty" yaml:"Name,omitempty"`
+	ThreeportControlPlaneHost   *bool                              `json:",omitempty" yaml:"ThreeportControlPlaneHost,omitempty"`
+	DefaultRuntime              *bool                              `json:",omitempty" yaml:"DefaultRuntime,omitempty"`
+	Location                    *string                            `json:",omitempty" yaml:"Location,omitempty"`
+	ThreeportAgentImage         *string                            `json:",omitempty" yaml:"ThreeportAgentImage,omitempty"`
+	KubernetesRuntimeDefinition *KubernetesRuntimeDefinitionValues `json:",omitempty" yaml:"KubernetesRuntimeDefinition,omitempty"`
+	Age                         *string                            `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets kubernetes runtime instances from the Threeport API.

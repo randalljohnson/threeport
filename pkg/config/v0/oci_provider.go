@@ -24,14 +24,14 @@ type OciProviderConfig struct {
 // OciProviderValues contains all the attributes needed to manage
 // the OciProvider API object.
 type OciProviderValues struct {
-	Name            *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	UserOCID        *string `json:"UserOCID,omitempty" yaml:"UserOCID,omitempty"`
-	CompartmentOCID *string `json:"CompartmentOCID,omitempty" yaml:"CompartmentOCID,omitempty"`
-	DefaultProvider *bool   `json:"DefaultProvider,omitempty" yaml:"DefaultProvider,omitempty"`
-	DefaultRegion   *string `json:"DefaultRegion,omitempty" yaml:"DefaultRegion,omitempty"`
-	KeyFingerprint  *string `json:"KeyFingerprint,omitempty" yaml:"KeyFingerprint,omitempty"`
-	PrivateKey      *string `json:"PrivateKey,omitempty" yaml:"PrivateKey,omitempty"`
-	Age             *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name            *string `json:",omitempty" yaml:"Name,omitempty"`
+	UserOCID        *string `json:",omitempty" yaml:"UserOCID,omitempty"`
+	CompartmentOCID *string `json:",omitempty" yaml:"CompartmentOCID,omitempty"`
+	DefaultProvider *bool   `json:",omitempty" yaml:"DefaultProvider,omitempty"`
+	DefaultRegion   *string `json:",omitempty" yaml:"DefaultRegion,omitempty"`
+	KeyFingerprint  *string `json:",omitempty" yaml:"KeyFingerprint,omitempty"`
+	PrivateKey      *string `json:",omitempty" yaml:"PrivateKey,omitempty"`
+	Age             *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets oci providers from the Threeport API.

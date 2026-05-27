@@ -26,10 +26,10 @@ type WorkloadDefinitionConfig struct {
 // WorkloadDefinitionValues contains all the attributes needed to manage
 // the WorkloadDefinition API object.
 type WorkloadDefinitionValues struct {
-	Name               *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	YAMLDocument       *string `json:"YAMLDocument,omitempty" yaml:"YAMLDocument,omitempty"`
-	WorkloadConfigPath *string `json:"WorkloadConfigPath,omitempty" yaml:"WorkloadConfigPath,omitempty"`
-	Age                *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name               *string `json:",omitempty" yaml:"Name,omitempty"`
+	YAMLDocument       *string `json:",omitempty" yaml:"YAMLDocument,omitempty"`
+	WorkloadConfigPath *string `json:",omitempty" yaml:"WorkloadConfigPath,omitempty"`
+	Age                *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets workload definitions from the Threeport API.

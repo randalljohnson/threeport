@@ -23,11 +23,11 @@ type DomainNameDefinitionConfig struct {
 // DomainNameDefinitionValues contains all the attributes needed to manage
 // the DomainNameDefinition API object.
 type DomainNameDefinitionValues struct {
-	Name       *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Domain     *string `json:"Domain,omitempty" yaml:"Domain,omitempty"`
-	Zone       *string `json:"Zone,omitempty" yaml:"Zone,omitempty"`
-	AdminEmail *string `json:"AdminEmail,omitempty" yaml:"AdminEmail,omitempty"`
-	Age        *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name       *string `json:",omitempty" yaml:"Name,omitempty"`
+	Domain     *string `json:",omitempty" yaml:"Domain,omitempty"`
+	Zone       *string `json:",omitempty" yaml:"Zone,omitempty"`
+	AdminEmail *string `json:",omitempty" yaml:"AdminEmail,omitempty"`
+	Age        *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets domain name definitions from the Threeport API.

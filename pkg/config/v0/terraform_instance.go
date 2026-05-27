@@ -26,15 +26,15 @@ type TerraformInstanceConfig struct {
 // TerraformInstanceValues contains all the attributes needed to manage
 // the TerraformInstance API object.
 type TerraformInstanceValues struct {
-	Name                *string                    `json:"Name,omitempty" yaml:"Name,omitempty"`
-	AwsProvider         *AwsProviderValues         `json:"AwsProvider,omitempty" yaml:"AwsProvider,omitempty"`
-	VarsDocument        *string                    `json:"VarsDocument,omitempty" yaml:"VarsDocument,omitempty"`
-	StateDocument       *string                    `json:"StateDocument,omitempty" yaml:"StateDocument,omitempty"`
-	Outputs             *string                    `json:"Outputs,omitempty" yaml:"Outputs,omitempty"`
-	TerraformDefinition *TerraformDefinitionValues `json:"TerraformDefinition,omitempty" yaml:"TerraformDefinition,omitempty"`
-	TerraformConfigPath *string                    `json:"TerraformConfigPath,omitempty" yaml:"TerraformConfigPath,omitempty"`
-	Status              *string                    `json:"Status,omitempty" yaml:"Status,omitempty"`
-	Age                 *string                    `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                *string                    `json:",omitempty" yaml:"Name,omitempty"`
+	AwsProvider         *AwsProviderValues         `json:",omitempty" yaml:"AwsProvider,omitempty"`
+	VarsDocument        *string                    `json:",omitempty" yaml:"VarsDocument,omitempty"`
+	StateDocument       *string                    `json:",omitempty" yaml:"StateDocument,omitempty"`
+	Outputs             *string                    `json:",omitempty" yaml:"Outputs,omitempty"`
+	TerraformDefinition *TerraformDefinitionValues `json:",omitempty" yaml:"TerraformDefinition,omitempty"`
+	TerraformConfigPath *string                    `json:",omitempty" yaml:"TerraformConfigPath,omitempty"`
+	Status              *string                    `json:",omitempty" yaml:"Status,omitempty"`
+	Age                 *string                    `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets terraform instances from the Threeport API.

@@ -25,15 +25,15 @@ type HelmWorkloadInstanceConfig struct {
 // HelmWorkloadInstanceValues contains all the attributes needed to manage
 // the HelmWorkloadInstance API object.
 type HelmWorkloadInstanceValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Values                    *string                          `json:"Values,omitempty" yaml:"Values,omitempty"`
-	ValuesDocument            *string                          `json:"ValuesDocument,omitempty" yaml:"ValuesDocument,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:"KubernetesRuntimeInstance,omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	ReleaseNamespace          *string                          `json:"ReleaseNamespace,omitempty" yaml:"ReleaseNamespace,omitempty"`
-	HelmWorkloadDefinition    *HelmWorkloadDefinitionValues    `json:"HelmWorkloadDefinition,omitempty" yaml:"HelmWorkloadDefinition,omitempty"`
-	HelmWorkloadConfigPath    *string                          `json:"HelmWorkloadConfigPath,omitempty" yaml:"HelmWorkloadConfigPath,omitempty"`
-	Status                    *string                          `json:"Status,omitempty" yaml:"Status,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	Values                    *string                          `json:",omitempty" yaml:"Values,omitempty"`
+	ValuesDocument            *string                          `json:",omitempty" yaml:"ValuesDocument,omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	ReleaseNamespace          *string                          `json:",omitempty" yaml:"ReleaseNamespace,omitempty"`
+	HelmWorkloadDefinition    *HelmWorkloadDefinitionValues    `json:",omitempty" yaml:"HelmWorkloadDefinition,omitempty"`
+	HelmWorkloadConfigPath    *string                          `json:",omitempty" yaml:"HelmWorkloadConfigPath,omitempty"`
+	Status                    *string                          `json:",omitempty" yaml:"Status,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets helm workload instances from the Threeport API.

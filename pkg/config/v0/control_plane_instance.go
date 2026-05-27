@@ -25,13 +25,13 @@ type ControlPlaneInstanceConfig struct {
 // ControlPlaneInstanceValues contains all the attributes needed to manage
 // the ControlPlaneInstance API object.
 type ControlPlaneInstanceValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Namespace                 *string                          `json:"Namespace,omitempty" yaml:"Namespace,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:"KubernetesRuntimeInstance,omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	ControlPlaneDefinition    *ControlPlaneDefinitionValues    `json:"ControlPlaneDefinition,omitempty" yaml:"ControlPlaneDefinition,omitempty"`
-	CustomComponentInfo       []*api_v0.ControlPlaneComponent  `json:"CustomComponentInfo,omitempty" yaml:"CustomComponentInfo,omitempty"`
-	Genesis                   *bool                            `json:"Genesis,omitempty" yaml:"Genesis,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	Namespace                 *string                          `json:",omitempty" yaml:"Namespace,omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	ControlPlaneDefinition    *ControlPlaneDefinitionValues    `json:",omitempty" yaml:"ControlPlaneDefinition,omitempty"`
+	CustomComponentInfo       []*api_v0.ControlPlaneComponent  `json:",omitempty" yaml:"CustomComponentInfo,omitempty"`
+	Genesis                   *bool                            `json:",omitempty" yaml:"Genesis,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets control plane instances from the Threeport API.

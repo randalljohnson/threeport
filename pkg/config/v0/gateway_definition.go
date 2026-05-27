@@ -23,29 +23,29 @@ type GatewayDefinitionConfig struct {
 // GatewayDefinitionValues contains all the attributes needed to manage
 // the GatewayDefinition API object.
 type GatewayDefinitionValues struct {
-	Name                 *string                     `json:"Name,omitempty" yaml:"Name,omitempty"`
-	HttpPorts            *[]GatewayHttpPortValues    `json:"HttpPorts,omitempty" yaml:"HttpPorts,omitempty"`
-	TcpPorts             *[]GatewayTcpPortValues     `json:"TcpPorts,omitempty" yaml:"TcpPorts,omitempty"`
-	ServiceName          *string                     `json:"ServiceName,omitempty" yaml:"ServiceName,omitempty"`
-	SubDomain            *string                     `json:"SubDomain,omitempty" yaml:"SubDomain,omitempty"`
-	DomainNameDefinition *DomainNameDefinitionValues `json:"DomainNameDefinition,omitempty" yaml:"DomainNameDefinition,omitempty"`
-	Age                  *string                     `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                 *string                     `json:",omitempty" yaml:"Name,omitempty"`
+	HttpPorts            *[]GatewayHttpPortValues    `json:",omitempty" yaml:"HttpPorts,omitempty"`
+	TcpPorts             *[]GatewayTcpPortValues     `json:",omitempty" yaml:"TcpPorts,omitempty"`
+	ServiceName          *string                     `json:",omitempty" yaml:"ServiceName,omitempty"`
+	SubDomain            *string                     `json:",omitempty" yaml:"SubDomain,omitempty"`
+	DomainNameDefinition *DomainNameDefinitionValues `json:",omitempty" yaml:"DomainNameDefinition,omitempty"`
+	Age                  *string                     `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // GatewayHttpPortValues contains the attributes needed to manage a gateway
 // http port.
 type GatewayHttpPortValues struct {
-	Port          *int    `json:"Port,omitempty" yaml:"Port,omitempty"`
-	Path          *string `json:"Path,omitempty" yaml:"Path,omitempty"`
-	TLSEnabled    *bool   `json:"TLSEnabled,omitempty" yaml:"TLSEnabled,omitempty"`
-	HTTPSRedirect *bool   `json:"HTTPSRedirect,omitempty" yaml:"HTTPSRedirect,omitempty"`
+	Port          *int    `json:",omitempty" yaml:"Port,omitempty"`
+	Path          *string `json:",omitempty" yaml:"Path,omitempty"`
+	TLSEnabled    *bool   `json:",omitempty" yaml:"TLSEnabled,omitempty"`
+	HTTPSRedirect *bool   `json:",omitempty" yaml:"HTTPSRedirect,omitempty"`
 }
 
 // GatewayTcpPortValues contains the attributes needed to manage a gateway
 // tcp port.
 type GatewayTcpPortValues struct {
-	Port       *int  `json:"Port,omitempty" yaml:"Port,omitempty"`
-	TLSEnabled *bool `json:"TLSEnabled,omitempty" yaml:"TLSEnabled,omitempty"`
+	Port       *int  `json:",omitempty" yaml:"Port,omitempty"`
+	TLSEnabled *bool `json:",omitempty" yaml:"TLSEnabled,omitempty"`
 }
 
 // Get gets gateway definitions from the Threeport API.

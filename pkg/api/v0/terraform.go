@@ -8,7 +8,7 @@ type TerraformDefinition struct {
 
 	// Path to the directory containing terraform configs with '.tf' file
 	// extension.
-	ConfigDir *string `gorm:"not null" validate:"required"`
+	ConfigDir *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The associated terraform instances that are deployed from this definition.
 	TerraformInstances []*TerraformInstance `json:",omitempty" validate:"optional,association"`
@@ -23,7 +23,7 @@ type TerraformInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The AWS provider in which the resources will be provisioned.
-	AwsProviderID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	AwsProviderID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The .tfvars document that contains runtime parameters for an instance of
 	// some terraform resources.
@@ -40,5 +40,5 @@ type TerraformInstance struct {
 	Outputs *string `json:",omitempty" validate:"optional" encrypt:"true"`
 
 	// The definition used to configure the terraform resources.
-	TerraformDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	TerraformDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 }

@@ -213,9 +213,13 @@ func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	// a literal table.
 
 	t.Run("RequiresFK", func(t *testing.T) {
+		// run the shared transition matrix against the RequiresFK field
 		runFKMatrix(t, "RequiresFK",
+			// setter: write v into RequiresFK; lets runFKMatrix populate the field generically
 			func(h *testHolder, v *uint) { h.RequiresFK = v },
+			// getter: read RequiresFK back; lets runFKMatrix verify post-update state generically
 			func(h *testHolder) *uint { return h.RequiresFK },
+			// immutable=true: relationship-tagged FK, so set->other transitions must be rejected
 			true,
 		)
 	})

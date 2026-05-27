@@ -41,6 +41,8 @@ jobs:
       run: mage dev:localRegistryUp
 
     - name: Build and push control plane component images
+      env:
+        PARALLEL: "2"
       run: mage build:allImagesDev
 
     - name: Build tptctl

@@ -120,7 +120,7 @@ func (cpi *ControlPlaneInstaller) Reinstall(
 	// existing CA. existing cert secrets survive the sweep and are
 	// reused as-is - install functions check existence before
 	// re-issuing.
-	fmt.Println("Info: reapplying threeport api tls assets")
+	fmt.Println("Info: ensuring threeport api tls assets")
 	if err := cpi.InstallThreeportAPITLS(kubeClient, mapper, authConfig); err != nil {
 		return fmt.Errorf("failed to reapply threeport api tls assets: %w", err)
 	}

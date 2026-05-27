@@ -18,10 +18,10 @@ type MachineRuntimeInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The hostname or IP address used to reach the machine.
-	Hostname *string `gorm:"not null" validate:"required"`
+	Hostname *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The SSH username for authenticating to the machine.
-	SSHUser *string `gorm:"not null" validate:"required"`
+	SSHUser *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The SSH private key for authenticating to the machine.
 	SSHKey *string `json:",omitempty" validate:"optional" encrypt:"true"`

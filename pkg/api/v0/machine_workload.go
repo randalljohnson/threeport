@@ -7,13 +7,13 @@ type MachineWorkloadDefinition struct {
 	Definition `mapstructure:",squash"`
 
 	// The shell script to run when a machine workload instance is created.
-	CreateScript *string `gorm:"not null" validate:"required"`
+	CreateScript *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The shell script to run when a machine workload instance is updated.
 	UpdateScript *string `json:",omitempty" validate:"optional"`
 
 	// The shell script to run when a machine workload instance is deleted.
-	DeleteScript *string `gorm:"not null" validate:"required"`
+	DeleteScript *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The shell to use for script execution.
 	Shell *string `json:",omitempty" gorm:"default:/bin/bash" validate:"optional"`
@@ -40,10 +40,10 @@ type MachineWorkloadInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The machine runtime on which the workload is deployed.
-	MachineRuntimeInstanceID *uint `gorm:"not null" validate:"required"`
+	MachineRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The definition used to configure the machine workload instance.
-	MachineWorkloadDefinitionID *uint `gorm:"not null" validate:"required"`
+	MachineWorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The latest status of the workload instance.
 	Status *string `json:",omitempty" validate:"optional"`

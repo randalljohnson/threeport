@@ -23,8 +23,8 @@ type MachineRuntimeDefinitionConfig struct {
 // the MachineRuntimeDefinition API object.
 type MachineRuntimeDefinitionValues struct {
 	// TODO: add config abstraction fields needed for user to manage a MachineRuntimeDefinition
-	Name *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Age  *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name *string `json:",omitempty" yaml:"Name,omitempty"`
+	Age  *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets machine runtime definitions from the Threeport API.

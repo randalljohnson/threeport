@@ -23,12 +23,12 @@ type MachineWorkloadInstanceConfig struct {
 // MachineWorkloadInstanceValues contains all the attributes needed to manage
 // the MachineWorkloadInstance API object.
 type MachineWorkloadInstanceValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	MachineWorkloadDefinition *MachineWorkloadDefinitionValues `json:"MachineWorkloadDefinition,omitempty" yaml:"MachineWorkloadDefinition,omitempty"`
-	MachineRuntimeInstance    *MachineRuntimeInstanceValues    `json:"MachineRuntimeInstance,omitempty" yaml:"MachineRuntimeInstance,omitempty"`
-	Env                       []string                         `json:"Env,omitempty" yaml:"Env,omitempty"`
-	Status                    *string                          `json:"Status,omitempty" yaml:"Status,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	MachineWorkloadDefinition *MachineWorkloadDefinitionValues `json:",omitempty" yaml:"MachineWorkloadDefinition,omitempty"`
+	MachineRuntimeInstance    *MachineRuntimeInstanceValues    `json:",omitempty" yaml:"MachineRuntimeInstance,omitempty"`
+	Env                       []string                         `json:",omitempty" yaml:"Env,omitempty"`
+	Status                    *string                          `json:",omitempty" yaml:"Status,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets machine workload instances from the Threeport API.

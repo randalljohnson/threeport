@@ -23,15 +23,15 @@ type MachineWorkloadDefinitionConfig struct {
 // MachineWorkloadDefinitionValues contains all the attributes needed to manage
 // the MachineWorkloadDefinition API object.
 type MachineWorkloadDefinitionValues struct {
-	Name         *string  `json:"Name,omitempty" yaml:"Name,omitempty"`
-	CreateScript *string  `json:"CreateScript,omitempty" yaml:"CreateScript,omitempty"`
-	UpdateScript *string  `json:"UpdateScript,omitempty" yaml:"UpdateScript,omitempty"`
-	DeleteScript *string  `json:"DeleteScript,omitempty" yaml:"DeleteScript,omitempty"`
-	Shell        *string  `json:"Shell,omitempty" yaml:"Shell,omitempty"`
-	WorkingDir   *string  `json:"WorkingDir,omitempty" yaml:"WorkingDir,omitempty"`
-	Timeout      *int     `json:"Timeout,omitempty" yaml:"Timeout,omitempty"`
-	Env          []string `json:"Env,omitempty" yaml:"Env,omitempty"`
-	Age          *string  `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name         *string  `json:",omitempty" yaml:"Name,omitempty"`
+	CreateScript *string  `json:",omitempty" yaml:"CreateScript,omitempty"`
+	UpdateScript *string  `json:",omitempty" yaml:"UpdateScript,omitempty"`
+	DeleteScript *string  `json:",omitempty" yaml:"DeleteScript,omitempty"`
+	Shell        *string  `json:",omitempty" yaml:"Shell,omitempty"`
+	WorkingDir   *string  `json:",omitempty" yaml:"WorkingDir,omitempty"`
+	Timeout      *int     `json:",omitempty" yaml:"Timeout,omitempty"`
+	Env          []string `json:",omitempty" yaml:"Env,omitempty"`
+	Age          *string  `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets machine workload definitions from the Threeport API.

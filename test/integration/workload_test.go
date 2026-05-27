@@ -101,6 +101,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			domainNameDefinition,
 		)
 		assert.Nil(err, "should have no error creating domain name definition")
+		defer func() {
+			_, _ = client.DeleteDomainNameDefinition(apiClient, threeportAPIEndpoint, *createdDomainNameDefinition.ID)
+		}()
 
 		// configure gateway definition object
 		gatewayDefinition := &v0.GatewayDefinition{
@@ -127,12 +130,33 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 
 		// create gateway definition
-		_, err = client.CreateGatewayDefinition(
+		createdGatewayDef, err := client.CreateGatewayDefinition(
 			apiClient,
 			threeportAPIEndpoint,
 			gatewayDefinition,
 		)
 		assert.Nil(err, "should have no error creating gateway definition")
+		defer func() {
+			_, _ = client.DeleteGatewayDefinition(apiClient, threeportAPIEndpoint, *createdGatewayDef.ID)
+		}()
+
+		// wait for the gateway controller to finish reconciling the new
+		// definition before issuing the update. without this, the
+		// controller's reconcile transaction (which sets Reconciled=true
+		// on the row) races with the test's UPDATE transaction and
+		// CockroachDB's serializable isolation rejects one of them with
+		// a write-too-old error.
+		err = util.Retry(30, 1, func() error {
+			def, err := client.GetGatewayDefinitionByID(apiClient, threeportAPIEndpoint, *createdGatewayDef.ID)
+			if err != nil {
+				return err
+			}
+			if def.Reconciled == nil || !*def.Reconciled {
+				return fmt.Errorf("gateway definition not yet reconciled")
+			}
+			return nil
+		})
+		assert.Nil(err, "gateway definition should be reconciled before update")
 
 		// update gateway definition
 		gatewayDefinition.HttpPorts = []*v0.GatewayHttpPort{
@@ -167,6 +191,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			},
 		)
 		assert.Nil(err, "should have no error creating secret definition")
+		defer func() {
+			_, _ = client.DeleteSecretDefinition(apiClient, threeportAPIEndpoint, *createdSecretDefinition.ID)
+		}()
 
 		// create test workload definition
 		createdWorkloadDef, err := client.CreateWorkloadDefinition(
@@ -175,6 +202,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			&workloadDef,
 		)
 		assert.Nil(err, "should have no error creating workload definition")
+		defer func() {
+			_, _ = client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdWorkloadDef.ID)
+		}()
 
 		// ensure duplicate workload name throws error
 		_, err = client.CreateWorkloadDefinition(
@@ -193,28 +223,21 @@ func TestWorkloadIntegration(t *testing.T) {
 			assert.Equal(*createdWorkloadDef.Reconciled, false, "created workload definition should not be reconciled at creation time")
 		}
 
-		// check to make sure workload definition gets reconciled by workload
-		// controller
-		workloadDefChecks := 0
-		workloadDefMaxChecks := 600
-		workloadDefCheckDurationSeconds := 1
-		reconciled := false
-		var existingWorkloadDef *v0.WorkloadDefinition
-		for workloadDefChecks < workloadDefMaxChecks && !reconciled {
-			existingWorkloadDef, err = client.GetWorkloadDefinitionByID(
-				apiClient,
-				threeportAPIEndpoint,
-				*createdWorkloadDef.ID,
-			)
-			assert.Nil(err, "should have no error getting workload definition by ID")
-			if *existingWorkloadDef.Reconciled {
-				reconciled = true
-				break
+		// wait for the workload controller to finish reconciling the new
+		// definition. workload reconciliation takes longer than gateway
+		// because the controller actually deploys resources to the
+		// runtime, hence the 600s cap vs the shorter waits elsewhere.
+		err = util.Retry(600, 1, func() error {
+			def, err := client.GetWorkloadDefinitionByID(apiClient, threeportAPIEndpoint, *createdWorkloadDef.ID)
+			if err != nil {
+				return err
 			}
-			workloadDefChecks += 1
-			time.Sleep(time.Second * time.Duration(workloadDefCheckDurationSeconds))
-		}
-		assert.Equal(*existingWorkloadDef.Reconciled, true, fmt.Sprintf("created workload definition should be reconciled by workload controller after %d seconds", workloadDefMaxChecks*workloadDefCheckDurationSeconds))
+			if def.Reconciled == nil || !*def.Reconciled {
+				return fmt.Errorf("workload definition not yet reconciled")
+			}
+			return nil
+		})
+		assert.Nil(err, "workload definition should be reconciled by workload controller")
 
 		// check workload resource definitions
 		workloadResourceDefs, err := client.GetWorkloadResourceDefinitionsByWorkloadDefinitionID(
@@ -271,6 +294,9 @@ func TestWorkloadIntegration(t *testing.T) {
 		)
 		assert.Nil(err, "should have no error creating workload instance")
 		assert.NotNil(createdWorkloadInst, "should have a workload instance returned")
+		defer func() {
+			_, _ = client.DeleteWorkloadInstance(apiClient, threeportAPIEndpoint, *createdWorkloadInst.ID)
+		}()
 
 		// create a duplicate workload instance
 		duplicateWorkloadInst := v0.WorkloadInstance{
@@ -320,6 +346,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			domainNameInstance,
 		)
 		assert.Nil(err, "should have no error creating domain name instance")
+		defer func() {
+			_, _ = client.DeleteDomainNameInstance(apiClient, threeportAPIEndpoint, *createdDomainNameInstance.ID)
+		}()
 
 		// create a gateway instance
 		gatewayInstance := &v0.GatewayInstance{
@@ -336,6 +365,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			gatewayInstance,
 		)
 		assert.Nil(err, "should have no error creating gateway instance")
+		defer func() {
+			_, _ = client.DeleteGatewayInstance(apiClient, threeportAPIEndpoint, *createdGatewayInstance.ID)
+		}()
 
 		// get the kubernetes runtime instance from the threeport API so we can connect to it
 		kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
@@ -459,6 +491,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			&secondWorkloadDef,
 		)
 		assert.Nil(err, "should have no error creating second workload definition")
+		defer func() {
+			_, _ = client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdSecondWorkloadDef.ID)
+		}()
 
 		// value to nil: clearing a requires-tagged FK should be rejected.
 		// the payload sets WorkloadDefinitionID to nil while preserving
@@ -495,12 +530,57 @@ func TestWorkloadIntegration(t *testing.T) {
 		// GET returns ciphertext. the test verifies the round-trip by
 		// decrypting the response with the shared encryption key
 		// (already loaded above) and comparing against what was written.
-		preTestKRI, err := client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *testKubernetesRuntimeInst.ID)
-		require.Nil(t, err, "should have no error reading KRI for encrypted-field test")
-		originalConnectionToken := preTestKRI.ConnectionToken
+		//
+		// Use a standalone runtime created here rather than the
+		// control-plane host runtime. Provider-managed environments
+		// (OCI/AWS/GCP) have a provider-side instance that holds an
+		// `owns` AOR pointing at the host runtime, which the AOR
+		// ownership guard correctly rejects external updates against.
+		// A standalone runtime nothing else references stays free of
+		// incoming AORs and is safe to mutate from a test client.
+		// Names include the workload iteration so multiple iterations of
+		// this loop don't collide on the unique-name constraint. Defers
+		// fire at function return, not iteration end, so resources from
+		// earlier iterations are still in the database when later
+		// iterations run their create calls.
+		encDefName := fmt.Sprintf("encrypted-field-test-runtime-def-%s", testWorkload.Name)
+		encInstName := fmt.Sprintf("encrypted-field-test-runtime-%s", testWorkload.Name)
+
+		encDef, err := client.CreateKubernetesRuntimeDefinition(
+			apiClient,
+			threeportAPIEndpoint,
+			&v0.KubernetesRuntimeDefinition{
+				Definition:    v0.Definition{Name: util.Ptr(encDefName)},
+				InfraProvider: util.Ptr("kind"),
+			},
+		)
+		require.Nil(t, err, "should have no error creating runtime definition for encrypted-field test")
+		defer func() {
+			_, _ = client.DeleteKubernetesRuntimeDefinition(apiClient, threeportAPIEndpoint, *encDef.ID)
+		}()
+
+		// Reconciled is pre-set so the kubernetes-runtime-controller
+		// skips this fixture instead of trying to provision a real
+		// kind cluster on top of the test host. The encrypted-field
+		// round-trip only needs a row in the database that nothing
+		// else owns or writes to.
+		encInst, err := client.CreateKubernetesRuntimeInstance(
+			apiClient,
+			threeportAPIEndpoint,
+			&v0.KubernetesRuntimeInstance{
+				Instance:                      v0.Instance{Name: util.Ptr(encInstName)},
+				Reconciliation:                v0.Reconciliation{Reconciled: util.Ptr(true)},
+				Location:                      util.Ptr("Local"),
+				KubernetesRuntimeDefinitionID: encDef.ID,
+			},
+		)
+		require.Nil(t, err, "should have no error creating runtime instance for encrypted-field test")
+		defer func() {
+			_, _ = client.DeleteKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, *encInst.ID)
+		}()
 
 		setTokenPayload := v0.KubernetesRuntimeInstance{
-			Common:          v0.Common{ID: preTestKRI.ID},
+			Common:          v0.Common{ID: encInst.ID},
 			ConnectionToken: util.Ptr("encrypted-field-test-value-1"),
 		}
 		_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &setTokenPayload)
@@ -508,7 +588,7 @@ func TestWorkloadIntegration(t *testing.T) {
 
 		// fetch back, expect ciphertext, decrypt with the shared key,
 		// and verify it equals what we wrote
-		readBackKRI, err := client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *preTestKRI.ID)
+		readBackKRI, err := client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *encInst.ID)
 		require.Nil(t, err, "should have no error reading back KRI after setting ConnectionToken")
 		require.NotNil(t, readBackKRI.ConnectionToken, "ConnectionToken should be non-nil on read after set")
 		decryptedFirst, err := encryption.Decrypt(encryptionKey, *readBackKRI.ConnectionToken)
@@ -518,30 +598,17 @@ func TestWorkloadIntegration(t *testing.T) {
 		// value to other: change the encrypted field again, decrypt,
 		// and verify the new value round-trips
 		changeTokenPayload := v0.KubernetesRuntimeInstance{
-			Common:          v0.Common{ID: preTestKRI.ID},
+			Common:          v0.Common{ID: encInst.ID},
 			ConnectionToken: util.Ptr("encrypted-field-test-value-2"),
 		}
 		_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &changeTokenPayload)
 		assert.Nil(err, "should have no error updating encrypted ConnectionToken")
-		readBackKRI, err = client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *preTestKRI.ID)
+		readBackKRI, err = client.GetKubernetesRuntimeInstanceByID(apiClient, threeportAPIEndpoint, *encInst.ID)
 		require.Nil(t, err, "should have no error reading back KRI after updating ConnectionToken")
 		require.NotNil(t, readBackKRI.ConnectionToken, "ConnectionToken should be non-nil on read after update")
 		decryptedSecond, err := encryption.Decrypt(encryptionKey, *readBackKRI.ConnectionToken)
 		require.Nil(t, err, "should have no error decrypting ConnectionToken after second update")
 		assert.Equal("encrypted-field-test-value-2", decryptedSecond, "decrypted ConnectionToken should equal the updated value")
-
-		// restore the original value so downstream tests and the live
-		// reconciler see no net change. skip the restore call entirely
-		// when the pre-test value was nil; the API rejects an empty
-		// payload, and there is nothing to restore anyway.
-		if originalConnectionToken != nil && *originalConnectionToken != "" {
-			restorePayload := v0.KubernetesRuntimeInstance{
-				Common:          v0.Common{ID: preTestKRI.ID},
-				ConnectionToken: originalConnectionToken,
-			}
-			_, err = client.UpdateKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, &restorePayload)
-			assert.Nil(err, "should have no error restoring original ConnectionToken")
-		}
 
 		// AOR delete-guards: callers must tear down in reverse order.
 		// before any cleanup, assert each definition delete is rejected

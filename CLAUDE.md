@@ -135,6 +135,8 @@ Before digging into code to understand the API, refer to the Swagger API spec fi
 
 Flat prose, no headers, no checkboxes. For comment-only or docs-only PRs, one or two sentences is enough. Lead with what changed and why; skip the test-plan boilerplate unless the PR genuinely needs verification steps. Match the style the user already writes in: terse, no marketing tone, no AI flourishes.
 
+Do not hard-wrap lines inside paragraphs. Write each paragraph as one logical line and let the browser reflow it on render. Hard-wrapped 70-char lines render as a narrow column in GitHub's editor and preview panes even though markdown collapses the breaks in the final view. Use newlines only between paragraphs and inside fenced code blocks.
+
 # Branch Names
 
 Branch names use conventional-commits prefixes mirroring the commit-subject types: `feat-`, `fix-`, `refactor-`, `docs-`, `chore-`. Prefix is followed by a hyphen, then a kebab-case description. The description follows the same rules as commit subjects (lowercase, plain English, no CamelCase type names, no stage markers).

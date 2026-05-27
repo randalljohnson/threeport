@@ -196,11 +196,15 @@ func TestRelationshipHooks_AfterCreate_AllFourRelationships(t *testing.T) {
 }
 
 // TestRelationshipHooks_BeforeUpdate_FKImmutability walks every
-// relationship FK through every transition kind. Production behavior:
-// the initial nil->set is allowed; any subsequent change (set->other
-// or set->clear) is rejected with a bad-request error. Untouched FKs
-// stay legal regardless of state. The untagged FK is a negative
-// control - it must remain freely mutable.
+// relationship FK through every transition kind reachable at the gorm
+// layer: nil->set (allowed) and set->other (rejected on tagged FKs).
+// Untouched FKs stay legal regardless of state. The untagged FK is a
+// negative control - it must remain freely mutable.
+//
+// The set->nil (set->clear) transition is rejected one layer up by
+// PayloadCheck before any gorm call runs, because gorm.Updates(struct)
+// silently drops nil pointer fields. See
+// pkg/api-server/lib/v0/context_test.go::TestNullValuedRequiredFields.
 func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	type transition struct {
 		name        string
@@ -231,24 +235,29 @@ func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	_ = transition{}
 }
 
-// runFKMatrix exercises the four transitions for one FK field:
+// runFKMatrix exercises the transitions for one FK field that are
+// reachable through gorm.Updates(struct):
 //   - nil -> set:  allowed
 //   - set -> other: rejected (only for relationship-tagged FKs)
-//   - set -> nil:   rejected (only for relationship-tagged FKs)
 //   - nil -> nil (untouched, non-FK field changes): allowed
+//   - set -> same (untouched, non-FK field changes): allowed
 //
 // For an untagged FK (immutable=false), every transition is allowed.
+//
+// The set -> nil case is intentionally absent: gorm.Updates skips nil
+// pointer fields so the SET clause never carries them, and the
+// BeforeUpdate hook's Changed check never fires. That transition is
+// rejected one layer up by PayloadCheck on the raw HTTP body.
 func runFKMatrix(t *testing.T, fkName string, setFK func(*testHolder, *uint), immutable bool) {
 	cases := []struct {
-		name        string
-		preFK       *uint
-		inboundFK   *uint
-		changeName  bool
+		name         string
+		preFK        *uint
+		inboundFK    *uint
+		changeName   bool
 		wantRejected bool
 	}{
 		{name: "nil_to_set", preFK: nil, inboundFK: uintPtr(99), wantRejected: false},
 		{name: "set_to_other", preFK: uintPtr(99), inboundFK: uintPtr(100), wantRejected: immutable},
-		{name: "set_to_nil", preFK: uintPtr(99), inboundFK: nil, wantRejected: immutable},
 		{name: "untouched_with_name_change", preFK: uintPtr(99), inboundFK: uintPtr(99), changeName: true, wantRejected: false},
 		{name: "nil_untouched_with_name_change", preFK: nil, inboundFK: nil, changeName: true, wantRejected: false},
 	}
@@ -292,16 +301,7 @@ func runFKMatrix(t *testing.T, fkName string, setFK func(*testHolder, *uint), im
 				inbound.Name = strPtr("renamed")
 			}
 
-			// gorm's Updates(&struct) skips zero-valued pointer fields, so
-			// the SET clause wouldn't include a nil-cleared FK. Force the
-			// field into the SET via Select for the set_to_nil case so the
-			// hook's Changed check fires and exercises the defensive
-			// rejection branch.
-			updater := db.Model(&loaded)
-			if tc.name == "set_to_nil" {
-				updater = updater.Select(fkName)
-			}
-			err := updater.Updates(inbound).Error
+			err := db.Model(&loaded).Updates(inbound).Error
 
 			if tc.wantRejected {
 				require.Error(t, err, "FK %s transition %s should be rejected", fkName, tc.name)

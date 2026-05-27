@@ -96,13 +96,17 @@ func InitArgs(args *GenesisControlPlaneCLIArgs) {
 		args.ProviderConfigDir = providerConf
 	}
 
-	// kubeconfig
-	defaultKubeconfig, err := kube.DefaultKubeconfig()
-	if err != nil {
-		Error("failed to get path to default kubeconfig", err)
-		os.Exit(1)
+	// kubeconfig - only fill in the default if the user didn't pass --kubeconfig.
+	// cobra parses flags before this hook runs, so a non-empty value here
+	// means the user supplied one explicitly and we must honor it.
+	if args.KubeconfigPath == "" {
+		defaultKubeconfig, err := kube.DefaultKubeconfig()
+		if err != nil {
+			Error("failed to get path to default kubeconfig", err)
+			os.Exit(1)
+		}
+		args.KubeconfigPath = defaultKubeconfig
 	}
-	args.KubeconfigPath = defaultKubeconfig
 
 	// set default threeport repo path if not provided
 	// this is needed to map the container path to the host path for live

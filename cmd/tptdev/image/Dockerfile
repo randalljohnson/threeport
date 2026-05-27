@@ -3,7 +3,7 @@
 # not for the tptdev cli tool itself.
 
 # base target
-FROM golang:1.22-alpine AS base
+FROM golang:1.24-alpine AS base
 RUN mkdir /threeport
 RUN go install github.com/go-delve/delve/cmd/dlv@latest && \
     mv /go/bin/dlv /usr/local/bin

@@ -26,12 +26,12 @@ type OciOkeKubernetesRuntimeInstanceConfig struct {
 // OciOkeKubernetesRuntimeInstanceValues contains all the attributes needed to manage
 // the OciOkeKubernetesRuntimeInstance API object.
 type OciOkeKubernetesRuntimeInstanceValues struct {
-	Name                              *string                                  `json:"Name,omitempty" yaml:"Name,omitempty"`
-	OciProviderName                   *string                                  `json:"OciProviderName,omitempty" yaml:"OciProviderName,omitempty"`
-	Region                            *string                                  `json:"Region,omitempty" yaml:"Region,omitempty"`
-	OciOkeKubernetesRuntimeDefinition *OciOkeKubernetesRuntimeDefinitionValues `json:"OciOkeKubernetesRuntimeDefinition,omitempty" yaml:"OciOkeKubernetesRuntimeDefinition,omitempty"`
-	Status                            *string                                  `json:"Status,omitempty" yaml:"Status,omitempty"`
-	Age                               *string                                  `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                              *string                                  `json:",omitempty" yaml:"Name,omitempty"`
+	OciProviderName                   *string                                  `json:",omitempty" yaml:"OciProviderName,omitempty"`
+	Region                            *string                                  `json:",omitempty" yaml:"Region,omitempty"`
+	OciOkeKubernetesRuntimeDefinition *OciOkeKubernetesRuntimeDefinitionValues `json:",omitempty" yaml:"OciOkeKubernetesRuntimeDefinition,omitempty"`
+	Status                            *string                                  `json:",omitempty" yaml:"Status,omitempty"`
+	Age                               *string                                  `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets oci oke kubernetes runtime instances from the Threeport API.

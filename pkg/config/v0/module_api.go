@@ -22,9 +22,9 @@ type ModuleApiConfig struct {
 // ModuleApiValues contains all the attributes needed to manage
 // the ModuleApi API object.
 type ModuleApiValues struct {
-	Name *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Core *bool   `json:"Core,omitempty" yaml:"Core,omitempty"`
-	Age  *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name *string `json:",omitempty" yaml:"Name,omitempty"`
+	Core *bool   `json:",omitempty" yaml:"Core,omitempty"`
+	Age  *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets module apis from the Threeport API.

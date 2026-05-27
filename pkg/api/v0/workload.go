@@ -18,7 +18,7 @@ type WorkloadDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The yaml manifests that define the workload configuration.
-	YAMLDocument *string `gorm:"not null" validate:"required"`
+	YAMLDocument *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The associated workload resource definitions that are derived.
 	WorkloadResourceDefinitions []*WorkloadResourceDefinition `json:",omitempty" validate:"optional,association"`
@@ -32,10 +32,10 @@ type WorkloadResourceDefinition struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The individual manifest in JSON format.
-	JSONDefinition *datatypes.JSON `gorm:"not null" validate:"required"`
+	JSONDefinition *datatypes.JSON `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The workload definition this resource belongs to.
-	WorkloadDefinitionID *uint `gorm:"not null" validate:"required"`
+	WorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required"`
 }
 
 // WorkloadInstance is a deployed instance of a workload.
@@ -45,10 +45,10 @@ type WorkloadInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The kubernetes runtime to which the workload is deployed.
-	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The definition used to configure the workload instance.
-	WorkloadDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	WorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The associated workload resource definitions that are derived.
 	WorkloadResourceInstances []*WorkloadResourceInstance `json:",omitempty" validate:"optional,association"`
@@ -69,10 +69,10 @@ type WorkloadResourceInstance struct {
 	// WorkloadResourceDefinition.JSONDefinition in that it has namespace
 	// management and other configuration - such as resource allocation
 	// management - added.
-	JSONDefinition *datatypes.JSON `gorm:"not null" validate:"required"`
+	JSONDefinition *datatypes.JSON `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The workload instance this resource belongs to.
-	WorkloadInstanceID *uint `gorm:"not null" validate:"required"`
+	WorkloadInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The most recent operation performed on a Kubernete resource in the
 	// kubernetes runtime.
@@ -103,19 +103,19 @@ type WorkloadEvent struct {
 	// workload controller.
 	// * The machine workload controller ID: when the WorkloadEvent is emitted
 	// by the machine workload controller.
-	RuntimeEventUID *string `gorm:"not null" validate:"required"`
+	RuntimeEventUID *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The type of event that occurred (e.g. Normal, Warning).
-	Type *string `gorm:"not null" validate:"required"`
+	Type *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The reason for the event.
-	Reason *string `gorm:"not null" validate:"required"`
+	Reason *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The message associated with the event.
-	Message *string `gorm:"not null" validate:"required"`
+	Message *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The timestamp for the event.
-	Timestamp *time.Time `gorm:"not null" validate:"required"`
+	Timestamp *time.Time `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The related workload instance.
 	WorkloadInstanceID *uint `json:",omitempty" validate:"optional"`

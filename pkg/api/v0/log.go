@@ -5,10 +5,10 @@ type LogBackend struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The unique name of a logging back end.
-	Name *string `gorm:"not null" validate:"required"`
+	Name *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The network address to connect to for storing log messages.
-	Destination *string `gorm:"not null" validate:"required"`
+	Destination *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The storage definitions using the log backend for log storage.
 	LogStorageDefinitions []*LogStorageDefinition `json:",omitempty" gorm:"many2many:v0_log_backends_v0_log_storage_definitions;" validate:"optional,association"`

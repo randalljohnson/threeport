@@ -26,17 +26,17 @@ type AwsProviderConfig struct {
 // AwsProviderValues contains all the attributes needed to manage
 // the AwsProvider API object.
 type AwsProviderValues struct {
-	Name             *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	AccountID        *string `json:"AccountID,omitempty" yaml:"AccountID,omitempty"`
-	DefaultProvider  *bool   `json:"DefaultProvider,omitempty" yaml:"DefaultProvider,omitempty"`
-	DefaultRegion    *string `json:"DefaultRegion,omitempty" yaml:"DefaultRegion,omitempty"`
-	AccessKeyID      *string `json:"AccessKeyID,omitempty" yaml:"AccessKeyID,omitempty"`
-	SecretAccessKey  *string `json:"SecretAccessKey,omitempty" yaml:"SecretAccessKey,omitempty"`
-	RoleArn          *string `json:"RoleArn,omitempty" yaml:"RoleArn,omitempty"`
-	LocalConfig      *string `json:"LocalConfig,omitempty" yaml:"LocalConfig,omitempty"`
-	LocalCredentials *string `json:"LocalCredentials,omitempty" yaml:"LocalCredentials,omitempty"`
-	LocalProfile     *string `json:"LocalProfile,omitempty" yaml:"LocalProfile,omitempty"`
-	Age              *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name             *string `json:",omitempty" yaml:"Name,omitempty"`
+	AccountID        *string `json:",omitempty" yaml:"AccountID,omitempty"`
+	DefaultProvider  *bool   `json:",omitempty" yaml:"DefaultProvider,omitempty"`
+	DefaultRegion    *string `json:",omitempty" yaml:"DefaultRegion,omitempty"`
+	AccessKeyID      *string `json:",omitempty" yaml:"AccessKeyID,omitempty"`
+	SecretAccessKey  *string `json:",omitempty" yaml:"SecretAccessKey,omitempty"`
+	RoleArn          *string `json:",omitempty" yaml:"RoleArn,omitempty"`
+	LocalConfig      *string `json:",omitempty" yaml:"LocalConfig,omitempty"`
+	LocalCredentials *string `json:",omitempty" yaml:"LocalCredentials,omitempty"`
+	LocalProfile     *string `json:",omitempty" yaml:"LocalProfile,omitempty"`
+	Age              *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets aws providers from the Threeport API.

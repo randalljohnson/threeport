@@ -22,14 +22,14 @@ type ControlPlaneConfig struct {
 // ControlPlaneDefinition and ControlPlaneInstance API objects
 // together with a single operation.
 type ControlPlaneValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Namespace                 *string                          `json:"Namespace,omitempty" yaml:"Namespace,omitempty"`
-	AuthEnabled               *bool                            `json:"AuthEnabled,omitempty" yaml:"AuthEnabled,omitempty"`
-	OnboardParent             *bool                            `json:"OnboardParent,omitempty" yaml:"OnboardParent,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:"KubernetesRuntimeInstance,omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	CustomComponentInfo       []*api_v0.ControlPlaneComponent  `json:"CustomComponentInfo,omitempty" yaml:"CustomComponentInfo,omitempty"`
-	Genesis                   *bool                            `json:"Genesis,omitempty" yaml:"Genesis,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	Namespace                 *string                          `json:",omitempty" yaml:"Namespace,omitempty"`
+	AuthEnabled               *bool                            `json:",omitempty" yaml:"AuthEnabled,omitempty"`
+	OnboardParent             *bool                            `json:",omitempty" yaml:"OnboardParent,omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	CustomComponentInfo       []*api_v0.ControlPlaneComponent  `json:",omitempty" yaml:"CustomComponentInfo,omitempty"`
+	Genesis                   *bool                            `json:",omitempty" yaml:"Genesis,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a control plane definition and instance from the Threeport API.

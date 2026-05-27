@@ -10,7 +10,7 @@ type KubernetesRuntimeDefinition struct {
 
 	// The infrastructure provider running the compute infrastructure for the
 	// cluster.
-	InfraProvider *string `gorm:"not null" validate:"required"`
+	InfraProvider *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The infra provider account name.  Determines which account the infra is
 	// deployed on.
@@ -49,7 +49,7 @@ type KubernetesRuntimeInstance struct {
 	// The geographical location for the runtime cluster.  This is an
 	// abstraction for the cloud provider regions that is mapped into the
 	// regions used by providers.
-	Location *string `gorm:"not null" validate:"required"`
+	Location *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// If true, the Kubernetes cluster is hosting a threeport control plane and
 	// any controllers that connect to the kube API will use internal cluster
@@ -82,7 +82,7 @@ type KubernetesRuntimeInstance struct {
 	DefaultRuntime *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// The kubernetes runtime definition for this instance.
-	KubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The associated workload instances running on this kubernetes runtime.
 	WorkloadInstances []*WorkloadInstance `json:",omitempty" validate:"optional,association"`

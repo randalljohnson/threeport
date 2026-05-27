@@ -23,9 +23,9 @@ type ModuleControllerConfig struct {
 // the ModuleController API object.
 type ModuleControllerValues struct {
 	// TODO: add config abstraction fields needed for user to manage a ModuleController
-	Name      *string          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	ModuleApi *ModuleApiValues `json:"ModuleApi,omitempty" yaml:"ModuleApi,omitempty"`
-	Age       *string          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name      *string          `json:",omitempty" yaml:"Name,omitempty"`
+	ModuleApi *ModuleApiValues `json:",omitempty" yaml:"ModuleApi,omitempty"`
+	Age       *string          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets module controllers from the Threeport API.

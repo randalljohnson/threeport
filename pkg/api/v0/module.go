@@ -11,7 +11,7 @@ type ModuleApi struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// An arbitrary name for the module API.
-	Name *string `validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity"`
 
 	// If true, represents the core Threeport API.
 	Core *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
@@ -21,7 +21,7 @@ type ModuleApi struct {
 
 	// The module API server's endpoint to proxy requests to for module
 	// objects.
-	Endpoint *string `validate:"required" gorm:"not null"`
+	Endpoint *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The routes as URL paths to proxy requests to the API server's endpoint.
 	// All supported routes for an module API should be added so that it is
@@ -40,10 +40,10 @@ type ModuleApiRoute struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The URL path supported by the module API.
-	Path *string `validate:"required" gorm:"not null"`
+	Path *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The module API this route belongs to.
-	ModuleApiID *uint `validate:"required" gorm:"not null" relationship:"requires"`
+	ModuleApiID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The module object this route serves.
 	ModuleObjects []*ModuleObject `json:",omitempty" gorm:"many2many:v0_module_api_routes_module_objects;" validate:"optional,association"`
@@ -54,16 +54,16 @@ type ModuleController struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The name of the controller.
-	Name *string `validate:"required" gorm:"not null"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The K8s deployment name for the controller.  This allows actions to be executed against the
 	// the controller workload.  Examples:
 	// * disable a controller altogether when the API objects it manages are not in use.
 	// * allow the Threeport agent to watch and scale-to-zero the controller.
-	DeploymentName *string `validate:"required" gorm:"not null"`
+	DeploymentName *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The module API this controller is connected to.
-	ModuleApiID *uint `validate:"required" gorm:"not null" relationship:"requires"`
+	ModuleApiID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 }
 
 // ModuleObject is an API object that is managed by a module in Threeport.  This provides
@@ -72,16 +72,16 @@ type ModuleObject struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The name of the API object.
-	Name *string `validate:"required" gorm:"not null"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The version of the API object, expressed as `v0`, `v1`, `v2`, etc.
-	Version *string `validate:"required" gorm:"not null"`
+	Version *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// A description of the API object.
 	Description *string `json:",omitempty" validate:"optional"`
 
 	// The module API this controller is connected to.
-	ModuleApiID *uint `validate:"required" gorm:"not null" relationship:"requires"`
+	ModuleApiID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The controller that reconciles state for this API object, if applicable.  Note: some API objects
 	// do not require reconciliation by a controller - this field will be null in those cases.

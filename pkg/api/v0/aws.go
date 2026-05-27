@@ -9,16 +9,16 @@ type AwsProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The unique name of an AWS provider.
-	Name *string `gorm:"not null" validate:"required"`
+	Name *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The account ID for the AWS account.
-	AccountID *string `gorm:"not null" validate:"required"`
+	AccountID *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// If true is the AWS provider used if none specified in a definition.
 	DefaultProvider *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// The region to use for AWS managed services if not specified.
-	DefaultRegion *string `gorm:"not null" validate:"required"`
+	DefaultRegion *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// See pkg/api/v0/aws_validate.go for validation logic
 	// of the AccessKeyID and SecretAccessKey fields.
@@ -50,25 +50,25 @@ type AwsEksKubernetesRuntimeDefinition struct {
 	// RegionsForbidden
 
 	// The number of zones the cluster should span for availability.
-	ZoneCount *int `gorm:"not null" validate:"required"`
+	ZoneCount *int `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The AWS instance type for the default initial node group.
-	DefaultNodeGroupInstanceType *string `gorm:"not null" validate:"required"`
+	DefaultNodeGroupInstanceType *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The number of nodes in the default initial node group.
-	DefaultNodeGroupInitialSize *int `gorm:"not null" validate:"required"`
+	DefaultNodeGroupInitialSize *int `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The minimum number of nodes the default initial node group should have.
-	DefaultNodeGroupMinimumSize *int `gorm:"not null" validate:"required"`
+	DefaultNodeGroupMinimumSize *int `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The maximum number of nodes the default initial node group should have.
-	DefaultNodeGroupMaximumSize *int `gorm:"not null" validate:"required"`
+	DefaultNodeGroupMaximumSize *int `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// The AWS EKS kubernetes runtime instances derived from this definition.
 	AwsEksKubernetesRuntimeInstances []*AwsEksKubernetesRuntimeInstance `json:",omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for an EKS cluster in AWS.
-	KubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"marries"`
 }
 
 // AwsEksKubernetesRuntimeInstance is a deployed instance of an EKS cluster.
@@ -78,17 +78,17 @@ type AwsEksKubernetesRuntimeInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The AWS provider in which the EKS cluster is provisioned.
-	AwsProviderID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	AwsProviderID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The AWS region in which the cluster is provisioned.
 	Region *string `json:",omitempty" validate:"optional"`
 
 	// The definition that configures this instance.
-	AwsEksKubernetesRuntimeDefinitionID *uint `gorm:"not null" validate:"required" relationship:"requires"`
+	AwsEksKubernetesRuntimeDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// An inventory of all AWS resources for the EKS cluster.
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 
 	// The kubernetes runtime instance associated with the AWS EKS cluster.
-	KubernetesRuntimeInstanceID *uint `gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"marries"`
 }

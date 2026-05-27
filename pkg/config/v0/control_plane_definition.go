@@ -23,10 +23,10 @@ type ControlPlaneDefinitionConfig struct {
 // ControlPlaneDefinitionValues contains all the attributes needed to manage
 // the ControlPlaneDefinition API object.
 type ControlPlaneDefinitionValues struct {
-	Name          *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	AuthEnabled   *bool   `json:"AuthEnabled,omitempty" yaml:"AuthEnabled,omitempty"`
-	OnboardParent *bool   `json:"OnboardParent,omitempty" yaml:"OnboardParent,omitempty"`
-	Age           *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name          *string `json:",omitempty" yaml:"Name,omitempty"`
+	AuthEnabled   *bool   `json:",omitempty" yaml:"AuthEnabled,omitempty"`
+	OnboardParent *bool   `json:",omitempty" yaml:"OnboardParent,omitempty"`
+	Age           *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets control plane definitions from the Threeport API.

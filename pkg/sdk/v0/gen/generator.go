@@ -915,35 +915,17 @@ func (g *Generator) ValidateTags() error {
 						lib.ValidateRequired, lib.ValidateOptional, lib.ValidateOptionalAssociation,
 					))
 				}
-				// required fields must carry no json or query tag: the
-				// json field name defaults to the Go name (which is the
-				// canonical wire form post tag-normalization) and the
-				// custom QueryBinder derives the query key from the
-				// lowercased field name, so an explicit tag is noise at
-				// best and a silent rename hazard at worst
+				// every validate-tagged field must carry json:",omitempty".
+				// the field-name part is dropped (Go default is the field
+				// name itself); the omitempty matters for partial PATCH
+				// payloads. Without it, a nil-pointer required field would
+				// serialize as JSON null and the PayloadCheck null-on-required
+				// guard would reject the request, even when the caller never
+				// meant to touch that field. Required, optional, and
+				// optional-association all follow the same rule.
 				validateValue := tagMap[string(lib.ValidateTag)]
-				if validateValue == string(lib.ValidateRequired) {
-					if _, ok := tagMap[string(lib.JsonTag)]; ok {
-						problems = append(problems, fmt.Sprintf(
-							"%s.%s: %s tag forbidden on %s:%q field (defaults to Go field name)",
-							objectName, fieldName,
-							lib.JsonTag, lib.ValidateTag, lib.ValidateRequired,
-						))
-					}
-					if _, ok := tagMap[string(lib.QueryTag)]; ok {
-						problems = append(problems, fmt.Sprintf(
-							"%s.%s: %s tag forbidden on %s:%q field (QueryBinder derives the key from the field name)",
-							objectName, fieldName,
-							lib.QueryTag, lib.ValidateTag, lib.ValidateRequired,
-						))
-					}
-				}
-				// optional fields must carry json:",omitempty" so absent
-				// values drop from serialized payloads. without omitempty
-				// a nil pointer would serialize as JSON null and a zero
-				// scalar would serialize as 0/"" — both wrong for an
-				// "optional, not provided" semantics
-				if validateValue == string(lib.ValidateOptional) ||
+				if validateValue == string(lib.ValidateRequired) ||
+					validateValue == string(lib.ValidateOptional) ||
 					validateValue == string(lib.ValidateOptionalAssociation) {
 					j, ok := tagMap[string(lib.JsonTag)]
 					if !ok || !strings.Contains(j, lib.JsonOmitempty) {
@@ -953,6 +935,15 @@ func (g *Generator) ValidateTags() error {
 							lib.ValidateTag, validateValue, ","+lib.JsonOmitempty,
 						))
 					}
+				}
+				// query tag is still forbidden on every field - QueryBinder
+				// derives the key from the lowercased Go field name and an
+				// explicit tag is noise.
+				if _, ok := tagMap[string(lib.QueryTag)]; ok {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s: %s tag forbidden (QueryBinder derives the key from the field name)",
+						objectName, fieldName, lib.QueryTag,
+					))
 				}
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise

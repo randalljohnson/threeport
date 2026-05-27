@@ -23,13 +23,13 @@ type SecretInstanceConfig struct {
 // SecretInstanceValues contains all the attributes needed to manage
 // the SecretInstance API object.
 type SecretInstanceValues struct {
-	Name                      *string                          `json:"Name,omitempty" yaml:"Name,omitempty"`
-	SecretDefinition          *SecretDefinitionValues          `json:"SecretDefinition,omitempty" yaml:"SecretDefinition,omitempty"`
-	WorkloadInstance          *WorkloadInstanceValues          `json:"WorkloadInstance,omitempty" yaml:"WorkloadInstance,omitempty"`
-	HelmWorkloadInstance      *HelmWorkloadInstanceValues      `json:"HelmWorkloadInstance,omitempty" yaml:"HelmWorkloadInstance,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:"KubernetesRuntimeInstance,omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	SecretConfigPath          *string                          `json:"SecretConfigPath,omitempty" yaml:"SecretConfigPath,omitempty"`
-	Age                       *string                          `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
+	SecretDefinition          *SecretDefinitionValues          `json:",omitempty" yaml:"SecretDefinition,omitempty"`
+	WorkloadInstance          *WorkloadInstanceValues          `json:",omitempty" yaml:"WorkloadInstance,omitempty"`
+	HelmWorkloadInstance      *HelmWorkloadInstanceValues      `json:",omitempty" yaml:"HelmWorkloadInstance,omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	SecretConfigPath          *string                          `json:",omitempty" yaml:"SecretConfigPath,omitempty"`
+	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets secret instances from the Threeport API.

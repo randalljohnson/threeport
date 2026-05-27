@@ -23,8 +23,8 @@ type ProfileConfig struct {
 // ProfileValues contains all the attributes needed to manage
 // the Profile API object.
 type ProfileValues struct {
-	Name *string `json:"Name,omitempty" yaml:"Name,omitempty"`
-	Age  *string `json:"Age,omitempty" yaml:"Age,omitempty"`
+	Name *string `json:",omitempty" yaml:"Name,omitempty"`
+	Age  *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets profiles from the Threeport API.

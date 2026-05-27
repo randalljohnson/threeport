@@ -196,15 +196,10 @@ func TestRelationshipHooks_AfterCreate_AllFourRelationships(t *testing.T) {
 }
 
 // TestRelationshipHooks_BeforeUpdate_FKImmutability walks every
-// relationship FK through every transition kind reachable at the gorm
-// layer: nil->set (allowed) and set->other (rejected on tagged FKs).
-// Untouched FKs stay legal regardless of state. The untagged FK is a
-// negative control - it must remain freely mutable.
-//
-// The set->nil (set->clear) transition is rejected one layer up by
-// PayloadCheck before any gorm call runs, because gorm.Updates(struct)
-// silently drops nil pointer fields. See
-// pkg/api-server/lib/v0/context_test.go::TestNullValuedRequiredFields.
+// relationship FK through gorm-reachable transitions: nil->set
+// allowed, set->other rejected on tagged FKs, set->nil silently
+// dropped by gorm so the FK stays at its pre value. The untagged
+// FK is a negative control, freely mutable.
 func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	type transition struct {
 		name        string
@@ -218,46 +213,68 @@ func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	// a literal table.
 
 	t.Run("RequiresFK", func(t *testing.T) {
-		runFKMatrix(t, "RequiresFK", func(h *testHolder, v *uint) { h.RequiresFK = v }, true)
+		runFKMatrix(t, "RequiresFK",
+			func(h *testHolder, v *uint) { h.RequiresFK = v },
+			func(h *testHolder) *uint { return h.RequiresFK },
+			true,
+		)
 	})
 	t.Run("OwnsFK", func(t *testing.T) {
-		runFKMatrix(t, "OwnsFK", func(h *testHolder, v *uint) { h.OwnsFK = v }, true)
+		runFKMatrix(t, "OwnsFK",
+			func(h *testHolder, v *uint) { h.OwnsFK = v },
+			func(h *testHolder) *uint { return h.OwnsFK },
+			true,
+		)
 	})
 	t.Run("MarriesFK", func(t *testing.T) {
-		runFKMatrix(t, "MarriesFK", func(h *testHolder, v *uint) { h.MarriesFK = v }, true)
+		runFKMatrix(t, "MarriesFK",
+			func(h *testHolder, v *uint) { h.MarriesFK = v },
+			func(h *testHolder) *uint { return h.MarriesFK },
+			true,
+		)
 	})
 	t.Run("DescribesFK", func(t *testing.T) {
-		runFKMatrix(t, "DescribesFK", func(h *testHolder, v *uint) { h.DescribesFK = v }, true)
+		runFKMatrix(t, "DescribesFK",
+			func(h *testHolder, v *uint) { h.DescribesFK = v },
+			func(h *testHolder) *uint { return h.DescribesFK },
+			true,
+		)
 	})
 	t.Run("UntaggedFK_freelyMutable", func(t *testing.T) {
-		runFKMatrix(t, "UntaggedFK", func(h *testHolder, v *uint) { h.UntaggedFK = v }, false)
+		runFKMatrix(t, "UntaggedFK",
+			func(h *testHolder, v *uint) { h.UntaggedFK = v },
+			func(h *testHolder) *uint { return h.UntaggedFK },
+			false,
+		)
 	})
 	_ = transition{}
 }
 
-// runFKMatrix exercises the transitions for one FK field that are
-// reachable through gorm.Updates(struct):
-//   - nil -> set:  allowed
-//   - set -> other: rejected (only for relationship-tagged FKs)
-//   - nil -> nil (untouched, non-FK field changes): allowed
-//   - set -> same (untouched, non-FK field changes): allowed
+// runFKMatrix exercises gorm.Updates(struct) transitions for one FK:
+//   - nil -> set:    allowed
+//   - set -> other:  rejected on tagged FKs
+//   - set -> nil:    gorm drops the nil; FK preserved at pre value
+//   - untouched FKs: allowed regardless of state
 //
-// For an untagged FK (immutable=false), every transition is allowed.
-//
-// The set -> nil case is intentionally absent: gorm.Updates skips nil
-// pointer fields so the SET clause never carries them, and the
-// BeforeUpdate hook's Changed check never fires. That transition is
-// rejected one layer up by PayloadCheck on the raw HTTP body.
-func runFKMatrix(t *testing.T, fkName string, setFK func(*testHolder, *uint), immutable bool) {
+// For an untagged FK (immutable=false), set -> other is allowed too.
+func runFKMatrix(
+	t *testing.T,
+	fkName string,
+	setFK func(*testHolder, *uint),
+	getFK func(*testHolder) *uint,
+	immutable bool,
+) {
 	cases := []struct {
-		name         string
-		preFK        *uint
-		inboundFK    *uint
-		changeName   bool
-		wantRejected bool
+		name            string
+		preFK           *uint
+		inboundFK       *uint
+		changeName      bool
+		wantRejected    bool
+		wantPreservedFK bool
 	}{
 		{name: "nil_to_set", preFK: nil, inboundFK: uintPtr(99), wantRejected: false},
 		{name: "set_to_other", preFK: uintPtr(99), inboundFK: uintPtr(100), wantRejected: immutable},
+		{name: "set_to_nil_gorm_drops_silently", preFK: uintPtr(99), inboundFK: nil, changeName: true, wantRejected: false, wantPreservedFK: true},
 		{name: "untouched_with_name_change", preFK: uintPtr(99), inboundFK: uintPtr(99), changeName: true, wantRejected: false},
 		{name: "nil_untouched_with_name_change", preFK: nil, inboundFK: nil, changeName: true, wantRejected: false},
 	}
@@ -306,8 +323,18 @@ func runFKMatrix(t *testing.T, fkName string, setFK func(*testHolder, *uint), im
 			if tc.wantRejected {
 				require.Error(t, err, "FK %s transition %s should be rejected", fkName, tc.name)
 				assert.Contains(t, err.Error(), "immutable once set", "rejection should cite immutability")
-			} else {
-				require.NoError(t, err, "FK %s transition %s should be allowed", fkName, tc.name)
+				return
+			}
+			require.NoError(t, err, "FK %s transition %s should be allowed", fkName, tc.name)
+
+			// confirm gorm silently dropped the nil from the SET clause
+			// by reloading and checking the FK is unchanged
+			if tc.wantPreservedFK {
+				var post testHolder
+				require.NoError(t, db.First(&post, *existing.ID).Error)
+				postFK := getFK(&post)
+				require.NotNil(t, postFK, "gorm should have dropped nil from SET, leaving FK unchanged")
+				assert.Equal(t, *pre, *postFK, "FK should remain at pre-update value")
 			}
 		})
 	}

@@ -6,10 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// payloadCheckTestObject mirrors a typical threeport api type: required
-// pointer FKs without `json:` tags (post tag-normalization) plus an
-// optional pointer. NullableOptional is required but uses a `json:`
-// alias so the helper's alias-lookup path is exercised too.
+// payloadCheckTestObject covers the field shapes the helper must
+// handle: required pointer by Go name, optional pointer, and required
+// pointer carrying a json tag alias.
 type payloadCheckTestObject struct {
 	ID              *uint
 	WorkloadDefID   *uint
@@ -17,12 +16,8 @@ type payloadCheckTestObject struct {
 	NullableAliased *string `json:"nullable_aliased"`
 }
 
-// TestNullValuedRequiredFields covers the three states the helper
-// needs to distinguish on an update payload: a required field with an
-// explicit null value (rejected), a required field omitted from the
-// payload entirely (allowed - gorm just skips it), and a required
-// field whose payload key is the `json:` alias rather than the Go
-// field name (rejected, with the Go field name returned).
+// TestNullValuedRequiredFields exercises the payload shapes the
+// helper must distinguish, asserting which trigger rejection.
 func TestNullValuedRequiredFields(t *testing.T) {
 	required := []string{"WorkloadDefID", "NullableAliased"}
 	obj := payloadCheckTestObject{}

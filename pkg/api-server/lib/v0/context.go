@@ -189,6 +189,14 @@ func checkPayloadObject(apiVer string, payloadObject map[string]interface{}, obj
 	optionalFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].Optional
 	optionalAssociationsFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].OptionalAssociations
 	requiredFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].Required
+
+	// reject explicit null on a required field; gorm.Updates drops nil
+	// pointer fields silently so the violation is invisible downstream.
+	nulledRequiredFields := nullValuedRequiredFields(payloadObject, *requiredFields, objectStruct)
+	if len(nulledRequiredFields) > 0 {
+		return 400, errors.New(ErrMsgRequiredFieldsCannotBeNull + " : " + strings.Join(nulledRequiredFields, ","))
+	}
+
 	for k, _ := range payloadObject {
 		// check the field k form the payload
 		if !util.StringSliceContains(*optionalFields, k, false) &&
@@ -227,6 +235,33 @@ func readBody(c echo.Context) []byte {
 	bodyBytes, _ := io.ReadAll(c.Request().Body)
 	c.Request().Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	return bodyBytes
+}
+
+// nullValuedRequiredFields returns Go field names of required fields
+// present in the payload with a JSON null value.
+func nullValuedRequiredFields(
+	payloadObject map[string]interface{},
+	requiredFields []string,
+	objectStruct interface{},
+) []string {
+	var nulled []string
+	for k, v := range payloadObject {
+		// only null values can violate the required contract
+		if v != nil {
+			continue
+		}
+		// payload key matches a required Go field name directly
+		if util.StringSliceContains(requiredFields, k, false) {
+			nulled = append(nulled, k)
+			continue
+		}
+		// payload key may be a json tag alias; resolve to the Go field name
+		alias := getFieldNameByJsonTag(k, "json", objectStruct)
+		if alias != "" && util.StringSliceContains(requiredFields, alias, false) {
+			nulled = append(nulled, alias)
+		}
+	}
+	return nulled
 }
 
 // getFieldNameByJsonTag returns the field name of the struct by the given tag and key.

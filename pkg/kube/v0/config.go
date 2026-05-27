@@ -22,10 +22,18 @@ type KubeConnectionInfo struct {
 }
 
 // DefaultKubeconfig returns the path to the user's default kubeconfig.
+// $KUBECONFIG takes precedence over ~/.kube/config so wrappers that
+// materialize a kubeconfig per-environment (direnv-driven dev setups,
+// the 1Password wrapper, etc) flow through to threeport tooling
+// without needing to pass --kubeconfig everywhere.
 func DefaultKubeconfig() (string, error) {
+	if env := os.Getenv("KUBECONFIG"); env != "" {
+		return env, nil
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to user's home directory: %w", err)
+		return "", fmt.Errorf("failed to get user's home directory: %w", err)
 	}
 
 	return filepath.Join(homeDir, ".kube", "config"), nil

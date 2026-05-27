@@ -11,73 +11,56 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// QueryBinder overrides echo's default request binder so threeport api
-// types don't need `query:"..."` struct tags. Each settable struct
-// field is bound from the query param keyed by strings.ToLower of the
-// field name: a field named `WorkloadInstanceID` binds the
-// `workloadinstanceid` param.
+// QueryBinder overrides echo's default binder so api types don't need
+// `query:"..."` struct tags. Each settable struct field is bound from
+// the query param keyed by strings.ToLower of the field name. A field
+// named WorkloadInstanceID binds the workloadinstanceid param.
 //
-// Path-parameter binding, body binding, and the GET/DELETE/HEAD method
-// branch are delegated to echo.DefaultBinder unchanged - we only
-// replace the lookup rule for query params. This file is the source of
-// truth for the override.
+// Path params and body binding fall through to echo.DefaultBinder.
+// Query binding fires on GET, DELETE, and HEAD, matching the default
+// binder's method branching.
 //
-// Echo default binder behavior we mirror:
-//   - Bind dispatches: path params, then query (on GET/DELETE/HEAD) or
-//     body (on other methods).
-//   - Validate is left to the registered echo.Validator; we don't
-//     touch it.
-//
-// Echo default binder features we DON'T support (intentional cuts to
-// match what threeport actually uses today - if you add a new api
-// type that needs one of these, extend the binder rather than work
-// around it):
-//   - `query:"-"` opt-out: every exported field is bindable, no escape
-//     hatch. Mitigated by the lowercased-name convention being so
-//     specific it's hard to collide.
-//   - Repeated params (?foo=1&foo=2): we take raw[0] and drop the
-//     rest. Echo's default binds to a slice field via the `query` tag.
-//   - time.Time, time.Duration, custom UnmarshalParam: not handled.
-//     Only primitive kinds (string, bool, int*, uint*, float*).
-//     Unsupported kinds error rather than silently skip so type drift
-//     surfaces loudly.
-//   - `form:"..."` tags on GET-like methods: not handled. Threeport
-//     doesn't use form encoding for read endpoints.
-//   - Non-anonymous embedded fields: only Anonymous embeds are
-//     recursed into. Threeport's embedded types (Common, Definition,
-//     Instance, Reconciliation) are all anonymous, so the limitation
-//     is invisible in practice.
+// Behavior we don't carry over from the default binder, because no
+// current api type needs it:
+//   - `query:"-"` opt-out. Every exported field is bindable.
+//   - Repeated params like ?foo=1&foo=2. We take raw[0] and drop the
+//     rest. The default binder reads a slice via the query tag.
+//   - time.Time, time.Duration, custom UnmarshalParam. Only string,
+//     bool, int*, uint*, and float* are supported. Other kinds return
+//     an error rather than skip silently.
+//   - `form:"..."` tags on GET-like methods. Threeport doesn't use
+//     form encoding for read endpoints.
+//   - Non-anonymous embedded fields. Only anonymous embeds (Common,
+//     Definition, Instance, Reconciliation) are recursed into.
 //
 // References:
-//   - echo.DefaultBinder source: https://github.com/labstack/echo/blob/master/bind.go
-//   - echo binding docs: https://echo.labstack.com/docs/binding
+//
+//	echo source:  https://github.com/labstack/echo/blob/master/bind.go
+//	echo binding: https://echo.labstack.com/docs/binding
 //
 // Gotchas:
-//   - Renaming an exported field on a bound type silently renames the
-//     query-param wire name; no `query:` tag pins it. Treat field
-//     renames on api types as API-breaking.
-//   - All exported field names must produce distinct lowercased
-//     strings. Two fields named `ID` and `Id` would both want `id` -
-//     don't do that. (Go style already prevents this; documented as
-//     belt-and-suspenders.)
-//   - Tests in binder_test.go pin the primitive-kind contract; extend
-//     them when you add a kind to setFieldFromString.
+//   - Renaming an exported field renames the wire-level query key
+//     too. Treat field renames on api types as breaking changes.
+//   - Two fields whose lowercased names would collide is not
+//     supported. Go style prevents this in practice.
 type QueryBinder struct {
 	fallback echo.DefaultBinder
 }
 
-// NewQueryBinder returns a QueryBinder ready to register on an Echo
-// instance via e.Binder = NewQueryBinder().
+// NewQueryBinder returns a binder ready to register via
+// e.Binder = NewQueryBinder().
 func NewQueryBinder() *QueryBinder { return &QueryBinder{} }
 
-// Bind dispatches to the same three stages as echo.DefaultBinder.Bind:
-// path params, then query (read methods) or body (write methods).
-// Only the query stage is overridden; the rest delegates to the
-// default binder.
+// Bind runs the three-stage dispatch: path params, then query or body
+// depending on HTTP method.
 func (b *QueryBinder) Bind(i interface{}, c echo.Context) error {
+	// stage 1: path params via the default binder
 	if err := b.fallback.BindPathParams(c, i); err != nil {
 		return err
 	}
+
+	// stage 2: read methods take input from the URL query, write
+	// methods from the body. Matches echo.DefaultBinder.Bind.
 	method := c.Request().Method
 	if method == http.MethodGet || method == http.MethodDelete || method == http.MethodHead {
 		return b.bindQueryParams(c.QueryParams(), i)
@@ -85,38 +68,41 @@ func (b *QueryBinder) Bind(i interface{}, c echo.Context) error {
 	return b.fallback.BindBody(c, i)
 }
 
-// bindQueryParams resolves the target struct from i, then walks its
-// fields setting each from the query param keyed by its lowercased
-// name. Non-struct targets (a pointer to a slice, map, primitive) are
-// no-ops because they don't carry per-field query semantics.
+// bindQueryParams unwraps the target pointer and dispatches to the
+// per-field walk when it points at a struct.
 func (b *QueryBinder) bindQueryParams(qp url.Values, i interface{}) error {
+	// no params in the URL means no bind work to do
 	if len(qp) == 0 {
 		return nil
 	}
+
+	// echo always passes a non-nil pointer; surface a misuse loudly
+	// rather than silently no-op
 	v := reflect.ValueOf(i)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
 		return fmt.Errorf("QueryBinder: target must be a non-nil pointer, got %T", i)
 	}
 	v = v.Elem()
+
+	// only structs carry per-field query semantics; a pointer to a
+	// slice/map/primitive has nothing to walk
 	if v.Kind() != reflect.Struct {
 		return nil
 	}
 	return bindStructFields(qp, v)
 }
 
-// bindStructFields walks v's fields and assigns each from the query
-// param keyed by strings.ToLower(field.Name). Anonymous embedded
-// structs are recursed into so their fields participate as if
-// declared on the outer type - this is how Common, Definition,
-// Instance, and Reconciliation fields become bindable on the wrapping
-// api types.
+// bindStructFields assigns each settable field of v from the query
+// param matching its lowercased name. Recurses into anonymous embeds
+// (Common, Definition, Instance, Reconciliation) so their fields
+// participate as if declared on the outer type.
 func bindStructFields(qp url.Values, v reflect.Value) error {
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		fv := v.Field(i)
 
-		// flatten anonymous embeds so their fields look like the outer's
+		// anonymous embed: descend so its fields look like the outer's
 		if field.Anonymous && fv.Kind() == reflect.Struct {
 			if err := bindStructFields(qp, fv); err != nil {
 				return err
@@ -124,31 +110,37 @@ func bindStructFields(qp url.Values, v reflect.Value) error {
 			continue
 		}
 
-		// skip unexported or otherwise un-settable fields
+		// skip unexported / un-settable fields (reflect won't let us
+		// write to them anyway, and they aren't part of the API surface)
 		if !fv.CanSet() {
 			continue
 		}
 
-		// skip fields with no matching param so we don't zero existing values
-		raw, ok := qp[strings.ToLower(field.Name)]
+		// look up the URL param by lowercased field name; missing
+		// param means leave the field at its incoming value (do not
+		// zero a pre-populated default)
+		paramName := strings.ToLower(field.Name)
+		raw, ok := qp[paramName]
 		if !ok || len(raw) == 0 {
 			continue
 		}
 
+		// matched: convert the raw string into the field's actual type
 		if err := setFieldFromString(fv, raw[0]); err != nil {
-			return fmt.Errorf("QueryBinder: failed to bind %s=%q: %w", strings.ToLower(field.Name), raw[0], err)
+			return fmt.Errorf("QueryBinder: failed to bind %s=%q: %w", paramName, raw[0], err)
 		}
 	}
 	return nil
 }
 
-// setFieldFromString writes val into fv, allocating a backing value
-// for pointer fields so callers don't have to pre-initialize. The
-// recursion through reflect.Ptr is one level deep (pointer to
-// scalar); the scalar path returns directly. Unsupported kinds error
-// rather than silently no-op - that's load-bearing for catching the
-// next "we added a time.Time query param" surprise loudly.
+// setFieldFromString parses val into fv. Pointer fields are allocated
+// first so callers don't have to pre-initialize. Unsupported kinds
+// return an error rather than skip silently, so type drift surfaces
+// at the first request.
 func setFieldFromString(fv reflect.Value, val string) error {
+	// pointer field: allocate a new T, recurse to set its element,
+	// then point fv at it. Recursion is exactly one level - the inner
+	// type is always a scalar by the time we land in the switch below.
 	if fv.Kind() == reflect.Ptr {
 		ev := reflect.New(fv.Type().Elem())
 		if err := setFieldFromString(ev.Elem(), val); err != nil {
@@ -157,6 +149,8 @@ func setFieldFromString(fv reflect.Value, val string) error {
 		fv.Set(ev)
 		return nil
 	}
+
+	// scalar field: parse + set based on the field's kind
 	switch fv.Kind() {
 	case reflect.String:
 		fv.SetString(val)

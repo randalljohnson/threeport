@@ -55,7 +55,7 @@ type GcpGkeKubernetesRuntimeDefinition struct {
 	GcpGkeKubernetesRuntimeInstances []*GcpGkeKubernetesRuntimeInstance `json:"GcpGkeKubernetesRuntimeInstances,omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for a GKE cluster in GCP.
-	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"marries"`
 }
 
 // GcpGkeKubernetesRuntimeInstance is a deployed instance of a GKE cluster.
@@ -65,16 +65,16 @@ type GcpGkeKubernetesRuntimeInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The GCP provider in which the GKE cluster is provisioned.
-	GcpProviderID *uint `json:"GcpProviderID,omitempty" query:"gcpproviderid" gorm:"not null" validate:"required"`
+	GcpProviderID *uint `json:"GcpProviderID,omitempty" query:"gcpproviderid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The GCP region in which the cluster is provisioned.
 	Region *string `json:"Region,omitempty" query:"region" validate:"optional"`
 
 	// The definition that configures this instance.
-	GcpGkeKubernetesRuntimeDefinitionID *uint `json:"GcpGkeKubernetesRuntimeDefinitionID,omitempty" query:"gcpgkekubernetesruntimedefinitionid" gorm:"not null" validate:"required"`
+	GcpGkeKubernetesRuntimeDefinitionID *uint `json:"GcpGkeKubernetesRuntimeDefinitionID,omitempty" query:"gcpgkekubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The kubernetes runtime instance associated with the GKE cluster.
-	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"marries"`
 
 	// An inventory of all GCP resources for the GKE cluster.
 	ResourceInventory *datatypes.JSON `json:"ResourceInventory,omitempty" validate:"optional"`

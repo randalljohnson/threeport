@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	"time"
 )
@@ -66,14 +67,29 @@ func (aekrd *AwsEksKubernetesRuntimeDefinition) GetId() uint {
 	return *aekrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetType() string {
 	return "AwsEksKubernetesRuntimeDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (aekrd *AwsEksKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (aekrd *AwsEksKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.AwsEksKubernetesRuntimeDefinition"
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeDefinition.
+func (a *AwsEksKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     a.KubernetesRuntimeDefinitionID,
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -120,20 +136,45 @@ func (aekri *AwsEksKubernetesRuntimeInstance) GetId() uint {
 	return *aekri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetType() string {
 	return "AwsEksKubernetesRuntimeInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (aekri *AwsEksKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (aekri *AwsEksKubernetesRuntimeInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.AwsEksKubernetesRuntimeInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (aekri *AwsEksKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return aekri.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on AwsEksKubernetesRuntimeInstance.
+func (a *AwsEksKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "AwsEksKubernetesRuntimeDefinitionID",
+		ObjectID:     a.AwsEksKubernetesRuntimeDefinitionID,
+		ObjectType:   new(AwsEksKubernetesRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "AwsProviderID",
+		ObjectID:     a.AwsProviderID,
+		ObjectType:   new(AwsProvider).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     a.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -180,12 +221,28 @@ func (ap *AwsProvider) GetId() uint {
 	return *ap.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (ap *AwsProvider) GetType() string {
 	return "AwsProvider"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (ap *AwsProvider) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ap *AwsProvider) GetFullyQualifiedType() string {
+	return "threeport.io/v0.AwsProvider"
+}
+
+// EncryptedFields returns the encrypt-tagged fields on AwsProvider.
+func (a *AwsProvider) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
+		Name:  "AccessKeyID",
+		Value: a.AccessKeyID,
+	}, {
+		Name:  "SecretAccessKey",
+		Value: a.SecretAccessKey,
+	}}
 }

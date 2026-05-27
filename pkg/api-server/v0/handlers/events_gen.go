@@ -59,7 +59,7 @@ func (h Handler) AddEvent(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&event); result.Error != nil {
+	if result := h.RequestDB(c).Create(&event); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -121,7 +121,7 @@ func (h Handler) GetEvents(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.Event{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.Event{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -132,7 +132,7 @@ func (h Handler) GetEvents(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -224,7 +224,8 @@ func (h Handler) GetEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeEvent
 	eventID := c.Param("id")
 	var event api_v0.Event
-	if result := h.DB.First(&event, eventID); result.Error != nil {
+	if result := h.RequestDB(c).
+		First(&event, eventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -265,7 +266,7 @@ func (h Handler) UpdateEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeEvent
 	eventID := c.Param("id")
 	var existingEvent api_v0.Event
-	if result := h.DB.First(&existingEvent, eventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingEvent, eventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -287,7 +288,7 @@ func (h Handler) UpdateEvent(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingEvent).Updates(&updatedEvent); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingEvent).Updates(&updatedEvent); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -333,7 +334,7 @@ func (h Handler) ReplaceEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeEvent
 	eventID := c.Param("id")
 	var existingEvent api_v0.Event
-	if result := h.DB.First(&existingEvent, eventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingEvent, eventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -362,7 +363,7 @@ func (h Handler) ReplaceEvent(c echo.Context) error {
 
 	// persist provided data
 	updatedEvent.ID = existingEvent.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedEvent); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedEvent); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -375,7 +376,7 @@ func (h Handler) ReplaceEvent(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingEvent, eventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingEvent, eventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -411,7 +412,7 @@ func (h Handler) DeleteEvent(c echo.Context) error {
 	objectType := api_v0.ObjectTypeEvent
 	eventID := c.Param("id")
 	var event api_v0.Event
-	if result := h.DB.First(&event, eventID); result.Error != nil {
+	if result := h.RequestDB(c).First(&event, eventID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -420,8 +421,17 @@ func (h Handler) DeleteEvent(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&event); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&event); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {

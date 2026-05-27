@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	"github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -47,7 +47,7 @@ func (t *TerraformInstanceConfig) Get(
 ) (*[]TerraformInstanceConfig, error) {
 	terraformInstanceValues := t.TerraformInstance
 	// get API objects
-	var terraformInstances *[]api_v0.TerraformInstance
+	var terraformInstances *[]api.TerraformInstance
 	switch {
 	// if name is provided, get terraform instance by name
 	case terraformInstanceValues.Name != nil:
@@ -55,7 +55,7 @@ func (t *TerraformInstanceConfig) Get(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get terraform instance with name %s: %w", *terraformInstanceValues.Name, err)
 		}
-		terraformInstances = &[]api_v0.TerraformInstance{*terraformInstance}
+		terraformInstances = &[]api.TerraformInstance{*terraformInstance}
 	// get all terraform instances
 	default:
 		allTerraformInstances, err := client_v0.GetTerraformInstances(apiClient, apiEndpoint)
@@ -70,14 +70,14 @@ func (t *TerraformInstanceConfig) Get(
 	for _, terraformInstance := range *terraformInstances {
 		// handle encryption if needed
 		if encryptionKey != "" {
-			a, err := encryption.DecryptValues(&terraformInstance, encryptionKey)
+			a, err := lib.DecryptValues(&terraformInstance, encryptionKey)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt terraform instance secret values: %w", err)
 			}
-			terraformInstance = *(a.(*api_v0.TerraformInstance))
+			terraformInstance = *(a.(*api.TerraformInstance))
 		} else {
-			a := encryption.RedactEncryptedValues(&terraformInstance)
-			terraformInstance = *(a.(*api_v0.TerraformInstance))
+			a := lib.RedactEncryptedValues(&terraformInstance)
+			terraformInstance = *(a.(*api.TerraformInstance))
 		}
 
 		// related objects
@@ -161,8 +161,8 @@ func (t *TerraformInstanceConfig) Create(
 	}
 
 	// construct terraform instance object
-	terraformInstance := api_v0.TerraformInstance{
-		Instance: api_v0.Instance{
+	terraformInstance := api.TerraformInstance{
+		Instance: api.Instance{
 			Name: terraformInstanceValues.Name,
 		},
 		AwsProviderID:         awsProvider.ID,
@@ -256,11 +256,11 @@ func (t *TerraformInstanceConfig) Replace(
 	}
 
 	// construct updated terraform instance object
-	updatedTerraformInstance := &api_v0.TerraformInstance{
-		Common: api_v0.Common{
+	updatedTerraformInstance := &api.TerraformInstance{
+		Common: api.Common{
 			ID: existingTerraformInstance.ID,
 		},
-		Instance: api_v0.Instance{
+		Instance: api.Instance{
 			Name: terraformInstanceValues.Name,
 		},
 		AwsProviderID:         awsProvider.ID,

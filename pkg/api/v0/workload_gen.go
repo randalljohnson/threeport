@@ -72,14 +72,19 @@ func (wd *WorkloadDefinition) GetId() uint {
 	return *wd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wd *WorkloadDefinition) GetType() string {
 	return "WorkloadDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wd *WorkloadDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wd *WorkloadDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.WorkloadDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -132,14 +137,19 @@ func (we *WorkloadEvent) GetId() uint {
 	return *we.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (we *WorkloadEvent) GetType() string {
 	return "WorkloadEvent"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (we *WorkloadEvent) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (we *WorkloadEvent) GetFullyQualifiedType() string {
+	return "threeport.io/v0.WorkloadEvent"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -186,20 +196,40 @@ func (wi *WorkloadInstance) GetId() uint {
 	return *wi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wi *WorkloadInstance) GetType() string {
 	return "WorkloadInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wi *WorkloadInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wi *WorkloadInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.WorkloadInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (wi *WorkloadInstance) ScheduledForDeletion() *time.Time {
 	return wi.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on WorkloadInstance.
+func (w *WorkloadInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     w.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "WorkloadDefinitionID",
+		ObjectID:     w.WorkloadDefinitionID,
+		ObjectType:   new(WorkloadDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -246,14 +276,19 @@ func (wrd *WorkloadResourceDefinition) GetId() uint {
 	return *wrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wrd *WorkloadResourceDefinition) GetType() string {
 	return "WorkloadResourceDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wrd *WorkloadResourceDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wrd *WorkloadResourceDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.WorkloadResourceDefinition"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -300,12 +335,17 @@ func (wri *WorkloadResourceInstance) GetId() uint {
 	return *wri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (wri *WorkloadResourceInstance) GetType() string {
 	return "WorkloadResourceInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (wri *WorkloadResourceInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (wri *WorkloadResourceInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.WorkloadResourceInstance"
 }

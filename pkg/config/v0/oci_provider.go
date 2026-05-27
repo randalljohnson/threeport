@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"net/http"
 
-	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	"github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -44,7 +44,7 @@ func (o *OciProviderConfig) Get(
 ) (*[]OciProviderConfig, error) {
 	ociProviderValues := o.OciProvider
 	// get API objects
-	var ociProviders *[]api_v0.OciProvider
+	var ociProviders *[]api.OciProvider
 	switch {
 	// if name is provided, get oci provider by name
 	case ociProviderValues.Name != nil:
@@ -52,7 +52,7 @@ func (o *OciProviderConfig) Get(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get oci provider with name %s: %w", *ociProviderValues.Name, err)
 		}
-		ociProviders = &[]api_v0.OciProvider{*ociProvider}
+		ociProviders = &[]api.OciProvider{*ociProvider}
 	// get all oci providers
 	default:
 		allOciProviders, err := client_v0.GetOciProviders(apiClient, apiEndpoint)
@@ -67,14 +67,14 @@ func (o *OciProviderConfig) Get(
 	for _, ociProvider := range *ociProviders {
 		// handle encryption if needed
 		if encryptionKey != "" {
-			a, err := encryption.DecryptValues(&ociProvider, encryptionKey)
+			a, err := lib.DecryptValues(&ociProvider, encryptionKey)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt oci provider secret values: %w", err)
 			}
-			ociProvider = *(a.(*api_v0.OciProvider))
+			ociProvider = *(a.(*api.OciProvider))
 		} else {
-			a := encryption.RedactEncryptedValues(&ociProvider)
-			ociProvider = *(a.(*api_v0.OciProvider))
+			a := lib.RedactEncryptedValues(&ociProvider)
+			ociProvider = *(a.(*api.OciProvider))
 		}
 
 		ociProviderConfig := OciProviderConfig{
@@ -107,7 +107,7 @@ func (o *OciProviderConfig) Create(
 	}
 
 	// construct oci provider object
-	ociProvider := api_v0.OciProvider{
+	ociProvider := api.OciProvider{
 		Name:            ociProviderValues.Name,
 		UserOCID:        ociProviderValues.UserOCID,
 		CompartmentOCID: ociProviderValues.CompartmentOCID,
@@ -170,8 +170,8 @@ func (o *OciProviderConfig) Replace(
 	}
 
 	// construct updated oci provider object
-	updatedOciProvider := &api_v0.OciProvider{
-		Common: api_v0.Common{
+	updatedOciProvider := &api.OciProvider{
+		Common: api.Common{
 			ID: existingOciProvider.ID,
 		},
 		Name:            ociProviderValues.Name,

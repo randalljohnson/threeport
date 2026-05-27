@@ -1,9 +1,9 @@
 package v0
 
-import "reflect"
+import (
+	"reflect"
 
-const (
-	TagNameValidate = "validate"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 type FieldsByTag struct {
@@ -25,7 +25,7 @@ func Translate(tagName string, v reflect.Value, tag reflect.StructTag) {
 	if !v.CanSet() {
 		return
 	}
-	val := tag.Get(TagNameValidate)
+	val := tag.Get(string(api_lib.ValidateTag))
 	if val == "" {
 		return
 	}
@@ -46,11 +46,11 @@ func ParseStruct(
 		t := v.Type()
 		for i := 0; i < t.NumField(); i++ {
 			switch t.Field(i).Tag.Get(tagName) {
-			case REQUIRED:
+			case string(api_lib.ValidateRequired):
 				tf[tagName].Required = append(tf[tagName].Required, t.Field(i).Name)
-			case OPTIONAL:
+			case string(api_lib.ValidateOptional):
 				tf[tagName].Optional = append(tf[tagName].Optional, t.Field(i).Name)
-			case OPTIONAL_ASSOCIATION:
+			case string(api_lib.ValidateOptionalAssociation):
 				tf[tagName].OptionalAssociations = append(tf[tagName].OptionalAssociations, t.Field(i).Name)
 			}
 			ParseStruct(tagName, v.Field(i), t.Field(i).Tag, fn, tf)

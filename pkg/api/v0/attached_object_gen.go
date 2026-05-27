@@ -59,12 +59,17 @@ func (aor *AttachedObjectReference) GetId() uint {
 	return *aor.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (aor *AttachedObjectReference) GetType() string {
 	return "AttachedObjectReference"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (aor *AttachedObjectReference) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (aor *AttachedObjectReference) GetFullyQualifiedType() string {
+	return "threeport.io/v0.AttachedObjectReference"
 }

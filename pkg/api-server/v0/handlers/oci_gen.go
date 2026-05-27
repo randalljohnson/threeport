@@ -65,7 +65,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	// check for duplicate names
 	var existingOciOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
 	nameUsed := true
-	result := h.DB.Where("name = ?", ociOkeKubernetesRuntimeDefinition.Name).First(&existingOciOkeKubernetesRuntimeDefinition)
+	result := h.RequestDB(c).Where("name = ?", ociOkeKubernetesRuntimeDefinition.Name).First(&existingOciOkeKubernetesRuntimeDefinition)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -79,7 +79,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&ociOkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Create(&ociOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -141,7 +141,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeDefinitions(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.OciOkeKubernetesRuntimeDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.OciOkeKubernetesRuntimeDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -152,7 +152,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeDefinitions(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -244,7 +244,8 @@ func (h Handler) GetOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeDefinition
 	ociOkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var ociOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
-	if result := h.DB.First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).
+		First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -285,7 +286,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeDefinition
 	ociOkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var existingOciOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
-	if result := h.DB.First(&existingOciOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -307,7 +308,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingOciOkeKubernetesRuntimeDefinition).Updates(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingOciOkeKubernetesRuntimeDefinition).Updates(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -353,7 +354,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeDefinition
 	ociOkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var existingOciOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
-	if result := h.DB.First(&existingOciOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -382,7 +383,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeDefinition.ID = existingOciOkeKubernetesRuntimeDefinition.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -395,7 +396,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingOciOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -431,7 +432,7 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeDefinition
 	ociOkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var ociOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
-	if result := h.DB.Preload("OciOkeKubernetesRuntimeInstances").First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
+	if result := h.RequestDB(c).Preload("OciOkeKubernetesRuntimeInstances").First(&ociOkeKubernetesRuntimeDefinition, ociOkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -446,8 +447,17 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&ociOkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&ociOkeKubernetesRuntimeDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
@@ -519,7 +529,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	// check for duplicate names
 	var existingOciOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
 	nameUsed := true
-	result := h.DB.Where("name = ?", ociOkeKubernetesRuntimeInstance.Name).First(&existingOciOkeKubernetesRuntimeInstance)
+	result := h.RequestDB(c).Where("name = ?", ociOkeKubernetesRuntimeInstance.Name).First(&existingOciOkeKubernetesRuntimeInstance)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -533,7 +543,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&ociOkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.RequestDB(c).Create(&ociOkeKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -609,7 +619,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeInstances(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.OciOkeKubernetesRuntimeInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.OciOkeKubernetesRuntimeInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -620,7 +630,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeInstances(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -712,7 +722,8 @@ func (h Handler) GetOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeInstance
 	ociOkeKubernetesRuntimeInstanceID := c.Param("id")
 	var ociOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
-	if result := h.DB.First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).
+		First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -753,7 +764,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeInstance
 	ociOkeKubernetesRuntimeInstanceID := c.Param("id")
 	var existingOciOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
-	if result := h.DB.First(&existingOciOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -775,7 +786,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingOciOkeKubernetesRuntimeInstance).Updates(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingOciOkeKubernetesRuntimeInstance).Updates(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -835,7 +846,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeInstance
 	ociOkeKubernetesRuntimeInstanceID := c.Param("id")
 	var existingOciOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
-	if result := h.DB.First(&existingOciOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -864,7 +875,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeInstance.ID = existingOciOkeKubernetesRuntimeInstance.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -877,7 +888,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingOciOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -913,7 +924,7 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeInstance
 	ociOkeKubernetesRuntimeInstanceID := c.Param("id")
 	var ociOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
-	if result := h.DB.First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
+	if result := h.RequestDB(c).First(&ociOkeKubernetesRuntimeInstance, ociOkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -921,6 +932,18 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
+	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &ociOkeKubernetesRuntimeInstance); checkErr != nil {
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(checkErr, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
 	// if scheduled but not reconciled, return 409 (controller is working on it)
@@ -933,7 +956,7 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.DB.Model(&ociOkeKubernetesRuntimeInstance).Updates(&scheduledOciOkeKubernetesRuntimeInstance); result.Error != nil {
+		if result := h.RequestDB(c).Model(&ociOkeKubernetesRuntimeInstance).Updates(&scheduledOciOkeKubernetesRuntimeInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -959,8 +982,17 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.DB.Delete(&ociOkeKubernetesRuntimeInstance); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&ociOkeKubernetesRuntimeInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
 				// check if this is a custom HTTP error with specific status code
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
@@ -1034,7 +1066,7 @@ func (h Handler) AddOciProvider(c echo.Context) error {
 	// check for duplicate names
 	var existingOciProvider api_v0.OciProvider
 	nameUsed := true
-	result := h.DB.Where("name = ?", ociProvider.Name).First(&existingOciProvider)
+	result := h.RequestDB(c).Where("name = ?", ociProvider.Name).First(&existingOciProvider)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			nameUsed = false
@@ -1048,7 +1080,7 @@ func (h Handler) AddOciProvider(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.DB.Create(&ociProvider); result.Error != nil {
+	if result := h.RequestDB(c).Create(&ociProvider); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1110,7 +1142,7 @@ func (h Handler) GetOciProviders(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.OciProvider{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.OciProvider{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -1121,7 +1153,7 @@ func (h Handler) GetOciProviders(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
@@ -1213,7 +1245,8 @@ func (h Handler) GetOciProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciProvider
 	ociProviderID := c.Param("id")
 	var ociProvider api_v0.OciProvider
-	if result := h.DB.First(&ociProvider, ociProviderID); result.Error != nil {
+	if result := h.RequestDB(c).
+		First(&ociProvider, ociProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1254,7 +1287,7 @@ func (h Handler) UpdateOciProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciProvider
 	ociProviderID := c.Param("id")
 	var existingOciProvider api_v0.OciProvider
-	if result := h.DB.First(&existingOciProvider, ociProviderID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciProvider, ociProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1276,7 +1309,7 @@ func (h Handler) UpdateOciProvider(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.DB.Model(&existingOciProvider).Updates(&updatedOciProvider); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingOciProvider).Updates(&updatedOciProvider); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1322,7 +1355,7 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciProvider
 	ociProviderID := c.Param("id")
 	var existingOciProvider api_v0.OciProvider
-	if result := h.DB.First(&existingOciProvider, ociProviderID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciProvider, ociProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1351,7 +1384,7 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 
 	// persist provided data
 	updatedOciProvider.ID = existingOciProvider.ID
-	if result := h.DB.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciProvider); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciProvider); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1364,7 +1397,7 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 	}
 
 	// reload updated data from DB
-	if result := h.DB.First(&existingOciProvider, ociProviderID); result.Error != nil {
+	if result := h.RequestDB(c).First(&existingOciProvider, ociProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1400,7 +1433,7 @@ func (h Handler) DeleteOciProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeOciProvider
 	ociProviderID := c.Param("id")
 	var ociProvider api_v0.OciProvider
-	if result := h.DB.First(&ociProvider, ociProviderID); result.Error != nil {
+	if result := h.RequestDB(c).First(&ociProvider, ociProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
@@ -1409,8 +1442,17 @@ func (h Handler) DeleteOciProvider(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.DB.Delete(&ociProvider); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&ociProvider); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(result.Error, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {

@@ -10,7 +10,7 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
-            "url": "https://threerport.io"
+            "url": "https://threeport.io"
         },
         "version": "{{.Version}}"
     },
@@ -3142,7 +3142,7 @@ const docTemplate = `{
         },
         "/v0/events-join-attached-object-references": {
             "get": {
-                "description": "Get all events joined with attached object references",
+                "description": "Get all events joined with attached object references from the Threeport database.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3154,8 +3154,32 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "events joined with attached object references search by objectId",
-                        "name": "name",
+                        "description": "filter events by object ID",
+                        "name": "objectid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter events by object type name (with objectname); CamelCase Go TypeName like 'WorkloadInstance'",
+                        "name": "objecttypename",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "narrow objecttypename match to one version (e.g. 'v0')",
+                        "name": "objectversion",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "narrow objecttypename match to one api namespace (e.g. 'threeport.io')",
+                        "name": "objectnamespace",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter events by object name (with objecttypename)",
+                        "name": "objectname",
                         "in": "query"
                     }
                 ],
@@ -14957,20 +14981,28 @@ const docTemplate = `{
             ],
             "properties": {
                 "AttachedObjectID": {
-                    "description": "The object ID of the attached object.",
+                    "description": "AttachedObjectID is the database ID of the attaching object.",
                     "type": "integer"
                 },
                 "AttachedObjectType": {
-                    "description": "The object type of the attached object.",
+                    "description": "AttachedObjectType is the kind of the object doing the attaching;\nthe side that can determine the base object's lifecycle. Stored\nas a fully qualified type name in the form\n\"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
                     "type": "string"
                 },
                 "ObjectID": {
-                    "description": "The object ID of the base object.",
+                    "description": "ObjectID is the database ID of the base object.",
                     "type": "integer"
                 },
                 "ObjectType": {
-                    "description": "The object type of the base object.",
+                    "description": "ObjectType is the kind of the base object being attached to. Read\n\"this attached object attaches to that object\": the no-prefix\nObject* fields name the \"that\" (anchor) side. The naming is\ndirectional because the attached object is the side that can\ndetermine the base object's lifecycle, depending on the type of\nrelationship (see below). Stored as a fully qualified type name\nin the form \"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
                     "type": "string"
+                },
+                "Relationship": {
+                    "description": "Relationship classifies this reference and drives lifecycle behavior\nvia gorm hooks and generated code that reveals information about a\ntype's foreign keys:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.\n    An owned base has at most one owner (enforced by the partial\n    index idx_aor_owns_base above); an owner may own many bases.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base for any caller except the partner's controller.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v0.Relationship"
+                        }
+                    ]
                 }
             }
         },
@@ -15408,7 +15440,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "WorkloadInstanceID": {
-                    "description": "The workload instance this gateway belongs to.",
+                    "description": "The workload instance this domain name belongs to.",
                     "type": "integer"
                 }
             }
@@ -15424,10 +15456,6 @@ const docTemplate = `{
                 "Type"
             ],
             "properties": {
-                "AttachedObjectReferenceID": {
-                    "description": "AttachedObjectReferenceID is a reference to an attached object.\nA foreign key is configured via db migration in cmd/database-migrator/migrations/000010_add_events_foreign_key.go",
-                    "type": "integer"
-                },
                 "Count": {
                     "description": "The number of times this event has occurred.",
                     "type": "integer"
@@ -15442,6 +15470,16 @@ const docTemplate = `{
                 },
                 "Note": {
                     "description": "A human-readable description of the status of this operation.",
+                    "type": "string"
+                },
+                "ObjectID": {
+                    "type": "integer"
+                },
+                "ObjectName": {
+                    "type": "string"
+                },
+                "ObjectType": {
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
                     "type": "string"
                 },
                 "Reason": {
@@ -15610,7 +15648,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GatewayDefinitionID": {
-                    "description": "GatewayDefinitionID is the definition used to configure the workload instance.",
+                    "description": "GatewayDefinitionID is the definition used to configure the gateway instance.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -16138,12 +16176,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DnsControllerInstanceId": {
-                    "description": "The WorkloadInstanceID of the gateway support service",
+                    "description": "The WorkloadInstanceID of the dns support service",
                     "type": "integer"
-                },
-                "ForceDelete": {
-                    "description": "If true, delete the runtime even if there are workloads present.",
-                    "type": "boolean"
                 },
                 "GatewayWorkloadInstanceID": {
                     "description": "The WorkloadInstanceID of the gateway support service",
@@ -16595,6 +16629,10 @@ const docTemplate = `{
                 "Name"
             ],
             "properties": {
+                "ApiNamespace": {
+                    "description": "The reverse-DNS namespace identifying this module API (e.g. \"example.com\").",
+                    "type": "string"
+                },
                 "Core": {
                     "description": "If true, represents the core Threeport API.",
                     "type": "boolean"
@@ -16821,7 +16859,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GrafanaHelmWorkloadInstanceID": {
-                    "description": "The Grafana Helm workload definition that belongs to this resource.",
+                    "description": "The Grafana Helm workload instance that belongs to this resource.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -17258,6 +17296,21 @@ const docTemplate = `{
                 }
             }
         },
+        "v0.Relationship": {
+            "type": "string",
+            "enum": [
+                "describes",
+                "requires",
+                "owns",
+                "marries"
+            ],
+            "x-enum-varnames": [
+                "RelationshipDescribes",
+                "RelationshipRequires",
+                "RelationshipOwns",
+                "RelationshipMarries"
+            ]
+        },
         "v0.Response": {
             "type": "object",
             "properties": {
@@ -17402,7 +17455,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
-                    "description": "The kubernetes runtime to which the helm workload is deployed.",
+                    "description": "The kubernetes runtime to which the secret is deployed.",
                     "type": "integer"
                 },
                 "Name": {
@@ -17849,7 +17902,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "WorkloadInstanceID": {
-                    "description": "The workload definition this resource belongs to.",
+                    "description": "The workload instance this resource belongs to.",
                     "type": "integer"
                 }
             }

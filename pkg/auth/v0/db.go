@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/threeport/threeport/pkg/api-server/v0/database"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // DbCreds contains the DB client connection credentials.
@@ -29,6 +30,8 @@ func GenerateDbCreds(k8sNamespace string) (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		"node",
+		apilib.CoreApiNamespace,
+		OUDatabase,
 		"crdb",
 		fmt.Sprintf("crdb.%s", k8sNamespace),
 		fmt.Sprintf("crdb.%s.svc.cluster.local", k8sNamespace),
@@ -44,6 +47,8 @@ func GenerateDbCreds(k8sNamespace string) (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		database.ThreeportDatabaseRootUser,
+		apilib.CoreApiNamespace,
+		OUDatabase,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB client certificate: %w", err)
@@ -53,6 +58,8 @@ func GenerateDbCreds(k8sNamespace string) (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		database.ThreeportDatabaseUser,
+		apilib.CoreApiNamespace,
+		OUDatabase,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB client certificate: %w", err)

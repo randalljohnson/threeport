@@ -179,8 +179,7 @@ func KubernetesRuntimeDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						kubernetesRuntimeDefinition.GetId(),
-						kubernetesRuntimeDefinition.GetVersion(),
-						kubernetesRuntimeDefinition.GetType(),
+						kubernetesRuntimeDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func KubernetesRuntimeDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						kubernetesRuntimeDefinition.GetId(),
-						kubernetesRuntimeDefinition.GetVersion(),
-						kubernetesRuntimeDefinition.GetType(),
+						kubernetesRuntimeDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func KubernetesRuntimeDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						kubernetesRuntimeDefinition.GetId(),
-						kubernetesRuntimeDefinition.GetVersion(),
-						kubernetesRuntimeDefinition.GetType(),
+						kubernetesRuntimeDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func KubernetesRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				kubernetesRuntimeDefinition.GetId(),
-				kubernetesRuntimeDefinition.GetVersion(),
-				kubernetesRuntimeDefinition.GetType(),
+				kubernetesRuntimeDefinition.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful kubernetes runtime definition reconciliation")
 			}

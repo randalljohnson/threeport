@@ -190,11 +190,10 @@ func checkPayloadObject(apiVer string, payloadObject map[string]interface{}, obj
 	optionalAssociationsFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].OptionalAssociations
 	requiredFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].Required
 
-	// reject explicit null on a required field. gorm.Updates(struct)
-	// silently drops nil pointer fields, so the BeforeUpdate relationship
-	// hook never sees the set->nil transition. catching it here enforces
-	// the required contract uniformly across create and update.
-	if nulledRequiredFields := nullValuedRequiredFields(payloadObject, *requiredFields, objectStruct); len(nulledRequiredFields) > 0 {
+	// reject explicit null on a required field; gorm.Updates drops nil
+	// pointer fields silently so the violation is invisible downstream.
+	nulledRequiredFields := nullValuedRequiredFields(payloadObject, *requiredFields, objectStruct)
+	if len(nulledRequiredFields) > 0 {
 		return 400, errors.New(ErrMsgRequiredFieldsCannotBeNull + " : " + strings.Join(nulledRequiredFields, ","))
 	}
 
@@ -238,24 +237,28 @@ func readBody(c echo.Context) []byte {
 	return bodyBytes
 }
 
-// nullValuedRequiredFields returns the Go field names of any required
-// fields that appear in the payload with a JSON null value. Payload
-// keys are matched directly against required field names, or via the
-// `json:` tag alias on the target struct.
-func nullValuedRequiredFields(payloadObject map[string]interface{}, requiredFields []string, objectStruct interface{}) []string {
+// nullValuedRequiredFields returns Go field names of required fields
+// present in the payload with a JSON null value.
+func nullValuedRequiredFields(
+	payloadObject map[string]interface{},
+	requiredFields []string,
+	objectStruct interface{},
+) []string {
 	var nulled []string
 	for k, v := range payloadObject {
+		// only null values can violate the required contract
 		if v != nil {
 			continue
 		}
+		// payload key matches a required Go field name directly
 		if util.StringSliceContains(requiredFields, k, false) {
 			nulled = append(nulled, k)
 			continue
 		}
-		if alias := getFieldNameByJsonTag(k, "json", objectStruct); alias != "" {
-			if util.StringSliceContains(requiredFields, alias, false) {
-				nulled = append(nulled, alias)
-			}
+		// payload key may be a json tag alias; resolve to the Go field name
+		alias := getFieldNameByJsonTag(k, "json", objectStruct)
+		if alias != "" && util.StringSliceContains(requiredFields, alias, false) {
+			nulled = append(nulled, alias)
 		}
 	}
 	return nulled

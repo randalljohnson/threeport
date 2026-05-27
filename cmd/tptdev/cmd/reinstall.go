@@ -58,6 +58,7 @@ change.`,
 			os.Exit(1)
 		}
 		cpi.Opts.Namespace = installer.ControlPlaneNamespace
+		cpi.Opts.Debug = cliArgs.Debug
 
 		kubeClient, mapper, err := client_lib.GetKubeDynamicClientAndMapper(cliArgs.KubeconfigPath)
 		if err != nil {
@@ -109,5 +110,9 @@ func init() {
 	reinstallCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneImageTag,
 		"control-plane-image-tag", "t", "", "Image tag for threeport control plane images. Defaults to the current git branch name.",
+	)
+	reinstallCmd.Flags().BoolVar(
+		&cliArgs.Debug,
+		"debug", false, "If true, pod imagePullPolicy is set to Always so each rollout re-pulls the tag.",
 	)
 }

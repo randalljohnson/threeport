@@ -938,37 +938,37 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// build and push all dev images
 	buildAllDevImagesFuncName := "AllImagesDev"
 	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllDevImagesFuncName))
-	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
+	f.Comment("Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImagesDev 4`).")
+	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params(Id("parallel").Int()).Error().BlockFunc(func(g *Group) {
 		g.Id("build").Op(":=").Id("Build").Values()
-		for _, funcName := range buildDevImageFuncNames {
-			g.If(Err().Op(":=").Id("build").Dot(funcName).Call().Op(";").Err().Op("!=").Nil()).Block(
-				Return().Qual("fmt", "Errorf").Call(
-					Lit("failed to build and push image: %w"),
-					Err(),
-				),
-			)
-			g.Line()
-		}
-
-		g.Return().Nil()
+		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
+			for _, funcName := range buildDevImageFuncNames {
+				v.Line().Id("build").Dot(funcName)
+			}
+			v.Line()
+		})
+		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
+			Id("parallel"),
+			Id("tasks"),
+		)
 	})
 
 	// build and push all release images
 	buildAllReleaseImagesFuncName := "AllImagesRelease"
-	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllReleaseImagesFuncName))
-	f.Func().Params(Id("Build")).Id(buildAllReleaseImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
+	f.Comment(fmt.Sprintf("%s builds and pushes release images for all components.", buildAllReleaseImagesFuncName))
+	f.Comment("Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImagesRelease 4`).")
+	f.Func().Params(Id("Build")).Id(buildAllReleaseImagesFuncName).Params(Id("parallel").Int()).Error().BlockFunc(func(g *Group) {
 		g.Id("build").Op(":=").Id("Build").Values()
-		for _, funcName := range buildReleaseImageFuncNames {
-			g.If(Err().Op(":=").Id("build").Dot(funcName).Call().Op(";").Err().Op("!=").Nil()).Block(
-				Return().Qual("fmt", "Errorf").Call(
-					Lit("failed to build and push image: %w"),
-					Err(),
-				),
-			)
-			g.Line()
-		}
-
-		g.Return().Nil()
+		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
+			for _, funcName := range buildReleaseImageFuncNames {
+				v.Line().Id("build").Dot(funcName)
+			}
+			v.Line()
+		})
+		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
+			Id("parallel"),
+			Id("tasks"),
+		)
 	})
 
 	// dev image loads to kind clusters

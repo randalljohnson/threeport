@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 )
 
 const releaseArch = "amd64"
@@ -2103,8 +2104,8 @@ func (Build) AllImages(
 }
 
 // AllImagesDev builds and pushes development images for all components.
-// Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImagesDev 4`).
-func (Build) AllImagesDev(parallel int) error {
+// Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesDev`).
+func (Build) AllImagesDev() error {
 	build := Build{}
 	tasks := []func() error{
 		build.ApiImageDev,
@@ -2124,12 +2125,12 @@ func (Build) AllImagesDev(parallel int) error {
 		build.TerraformControllerImageDev,
 		build.WorkloadControllerImageDev,
 	}
-	return util.RunParallel(parallel, tasks)
+	return util.RunParallel(parallelFromEnv(), tasks)
 }
 
 // AllImagesRelease builds and pushes release images for all components.
-// Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImagesRelease 4`).
-func (Build) AllImagesRelease(parallel int) error {
+// Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesRelease`).
+func (Build) AllImagesRelease() error {
 	build := Build{}
 	tasks := []func() error{
 		build.ApiImageRelease,
@@ -2149,7 +2150,20 @@ func (Build) AllImagesRelease(parallel int) error {
 		build.TerraformControllerImageRelease,
 		build.WorkloadControllerImageRelease,
 	}
-	return util.RunParallel(parallel, tasks)
+	return util.RunParallel(parallelFromEnv(), tasks)
+}
+
+// parallelFromEnv returns the PARALLEL env var as an int, defaulting to 1.
+func parallelFromEnv() int {
+	v := os.Getenv("PARALLEL")
+	if v == "" {
+		return 1
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		return 1
+	}
+	return n
 }
 
 // LoadImage builds and loads an image to the provided kind cluster.

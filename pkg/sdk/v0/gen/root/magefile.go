@@ -957,8 +957,8 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// build and push all dev images
 	buildAllDevImagesFuncName := "AllImagesDev"
 	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllDevImagesFuncName))
-	f.Comment("Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImagesDev 4`).")
-	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params(Id("parallel").Int()).Error().BlockFunc(func(g *Group) {
+	f.Comment("Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesDev`).")
+	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
 		g.Id("build").Op(":=").Id("Build").Values()
 		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
 			for _, funcName := range buildDevImageFuncNames {
@@ -967,7 +967,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			v.Line()
 		})
 		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
-			Id("parallel"),
+			Id("parallelFromEnv").Call(),
 			Id("tasks"),
 		)
 	})
@@ -975,8 +975,8 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// build and push all release images
 	buildAllReleaseImagesFuncName := "AllImagesRelease"
 	f.Comment(fmt.Sprintf("%s builds and pushes release images for all components.", buildAllReleaseImagesFuncName))
-	f.Comment("Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImagesRelease 4`).")
-	f.Func().Params(Id("Build")).Id(buildAllReleaseImagesFuncName).Params(Id("parallel").Int()).Error().BlockFunc(func(g *Group) {
+	f.Comment("Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesRelease`).")
+	f.Func().Params(Id("Build")).Id(buildAllReleaseImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
 		g.Id("build").Op(":=").Id("Build").Values()
 		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
 			for _, funcName := range buildReleaseImageFuncNames {
@@ -985,9 +985,23 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			v.Line()
 		})
 		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
-			Id("parallel"),
+			Id("parallelFromEnv").Call(),
 			Id("tasks"),
 		)
+	})
+
+	// helper: parse the PARALLEL env var, default to 1
+	f.Comment("parallelFromEnv returns the PARALLEL env var as an int, defaulting to 1.")
+	f.Func().Id("parallelFromEnv").Params().Int().BlockFunc(func(g *Group) {
+		g.Id("v").Op(":=").Qual("os", "Getenv").Call(Lit("PARALLEL"))
+		g.If(Id("v").Op("==").Lit("")).Block(
+			Return(Lit(1)),
+		)
+		g.List(Id("n"), Err()).Op(":=").Qual("strconv", "Atoi").Call(Id("v"))
+		g.If(Err().Op("!=").Nil().Op("||").Id("n").Op("<").Lit(1)).Block(
+			Return(Lit(1)),
+		)
+		g.Return(Id("n"))
 	})
 
 	// dev image loads to kind clusters

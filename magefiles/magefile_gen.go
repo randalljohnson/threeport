@@ -315,7 +315,7 @@ func (Build) AgentImage(
 		"Dockerfile",
 		"release",
 		arch,
-		map[string]string{"MAIN": "cmd/agent/main_gen.go"},
+		map[string]string{"MAIN": "cmd/agent/main.go"},
 		imageRepo,
 		"threeport-agent",
 		imageTag,

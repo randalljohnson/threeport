@@ -523,7 +523,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				Line().Lit("Dockerfile"),
 				Line().Lit("release"),
 				Line().Id("arch"),
-				Line().Map(String()).String().Values(Dict{Lit("MAIN"): Lit("cmd/agent/main_gen.go")}),
+				Line().Map(String()).String().Values(Dict{Lit("MAIN"): Lit("cmd/agent/main.go")}),
 				Line().Id("imageRepo"),
 				Line().Lit(dbMigratorImageName),
 				Line().Id("imageTag"),

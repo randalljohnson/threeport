@@ -88,15 +88,12 @@ func (Build) ApiImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.ApiBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/rest-api/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/rest-api/main_gen.go"},
 		imageRepo,
 		"threeport-rest-api",
 		imageTag,
@@ -202,15 +199,12 @@ func (Build) DbMigratorImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.DbMigratorBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/database-migrator/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/database-migrator/main_gen.go"},
 		imageRepo,
 		"threeport-database-migrator",
 		imageTag,
@@ -316,15 +310,12 @@ func (Build) AgentImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.AgentBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/agent/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/agent/main_gen.go"},
 		imageRepo,
 		"threeport-agent",
 		imageTag,
@@ -430,15 +421,12 @@ func (Build) SecretControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.SecretControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/secret-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/secret-controller/main_gen.go"},
 		imageRepo,
 		"threeport-secret-controller",
 		imageTag,
@@ -544,15 +532,12 @@ func (Build) AwsControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.AwsControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/aws-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/aws-controller/main_gen.go"},
 		imageRepo,
 		"threeport-aws-controller",
 		imageTag,
@@ -658,15 +643,12 @@ func (Build) OciControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.OciControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/oci-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/oci-controller/main_gen.go"},
 		imageRepo,
 		"threeport-oci-controller",
 		imageTag,
@@ -772,15 +754,12 @@ func (Build) GcpControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.GcpControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/gcp-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/gcp-controller/main_gen.go"},
 		imageRepo,
 		"threeport-gcp-controller",
 		imageTag,
@@ -886,15 +865,12 @@ func (Build) ControlPlaneControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.ControlPlaneControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/control-plane-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/control-plane-controller/main_gen.go"},
 		imageRepo,
 		"threeport-control-plane-controller",
 		imageTag,
@@ -1000,15 +976,12 @@ func (Build) GatewayControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.GatewayControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/gateway-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/gateway-controller/main_gen.go"},
 		imageRepo,
 		"threeport-gateway-controller",
 		imageTag,
@@ -1114,15 +1087,12 @@ func (Build) HelmWorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.HelmWorkloadControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/helm-workload-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/helm-workload-controller/main_gen.go"},
 		imageRepo,
 		"threeport-helm-workload-controller",
 		imageTag,
@@ -1228,15 +1198,12 @@ func (Build) KubernetesRuntimeControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.KubernetesRuntimeControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/kubernetes-runtime-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/kubernetes-runtime-controller/main_gen.go"},
 		imageRepo,
 		"threeport-kubernetes-runtime-controller",
 		imageTag,
@@ -1342,15 +1309,12 @@ func (Build) ObservabilityControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.ObservabilityControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/observability-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/observability-controller/main_gen.go"},
 		imageRepo,
 		"threeport-observability-controller",
 		imageTag,
@@ -1456,15 +1420,12 @@ func (Build) TerraformControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.TerraformControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/terraform-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/terraform-controller/main_gen.go"},
 		imageRepo,
 		"threeport-terraform-controller",
 		imageTag,
@@ -1570,15 +1531,12 @@ func (Build) WorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.WorkloadControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/workload-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/workload-controller/main_gen.go"},
 		imageRepo,
 		"threeport-workload-controller",
 		imageTag,
@@ -1919,8 +1877,10 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 
 	if err := util.BuildImage(
 		workingDir,
-		fmt.Sprintf("cmd/%s/image/Dockerfile-alpine", component),
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": fmt.Sprintf("cmd/%s/main_gen.go", component)},
 		installer.DevImageNamespace,
 		imageName,
 		version.GetVersion(),

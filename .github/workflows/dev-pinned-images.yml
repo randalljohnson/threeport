@@ -1,4 +1,4 @@
-name: Dev-Pinned Images (personal)
+name: Dev-Pinned Images
 
 on:
   pull_request:
@@ -6,14 +6,19 @@ on:
   push:
     branches: [dev-pinned]
 
+env:
+  REGISTRY_NAMESPACE: docker.io/rj9317
+
 jobs:
-  controller-images:
+  build:
     if: github.repository == 'randalljohnson/threeport'
+    environment: development
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        include:
+        platform: [linux/amd64, linux/arm64]
+        component:
           - { name: rest-api,                      main: cmd/rest-api/main_gen.go }
           - { name: database-migrator,             main: cmd/database-migrator/main_gen.go }
           - { name: agent,                         main: cmd/agent/main.go }
@@ -41,30 +46,99 @@ jobs:
         username: rj9317
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Prepare platform tag
+      id: platform
+      run: echo "tag=$(echo '${{ matrix.platform }}' | tr / -)" >> "$GITHUB_OUTPUT"
+
+    - name: Build and push by digest
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: Dockerfile
+        target: release
+        platforms: ${{ matrix.platform }}
+        build-args: |
+          MAIN=${{ matrix.component.main }}
+        cache-from: type=gha,scope=dev-pinned-${{ matrix.component.name }}-${{ steps.platform.outputs.tag }}
+        cache-to: type=gha,scope=dev-pinned-${{ matrix.component.name }}-${{ steps.platform.outputs.tag }},mode=max
+        outputs: type=image,name=${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.component.name }},push-by-digest=true,name-canonical=true,push=true
+
+    - name: Export digest
+      run: |
+        mkdir -p /tmp/digests/${{ matrix.component.name }}
+        digest='${{ steps.build.outputs.digest }}'
+        echo "${digest#sha256:}" > /tmp/digests/${{ matrix.component.name }}/${{ steps.platform.outputs.tag }}
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: digests-${{ matrix.component.name }}-${{ steps.platform.outputs.tag }}
+        path: /tmp/digests/${{ matrix.component.name }}/*
+        retention-days: 1
+
+  merge:
+    if: github.repository == 'randalljohnson/threeport'
+    environment: development
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - rest-api
+          - database-migrator
+          - agent
+          - workload-controller
+          - kubernetes-runtime-controller
+          - aws-controller
+          - gcp-controller
+          - oci-controller
+          - gateway-controller
+          - control-plane-controller
+          - helm-workload-controller
+          - terraform-controller
+          - observability-controller
+          - secret-controller
+          - machine-runtime-controller
+          - machine-workload-controller
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: digests-${{ matrix.name }}-*
+        path: /tmp/digests
+        merge-multiple: true
+
+    - uses: docker/setup-buildx-action@v3
+
+    - uses: docker/login-action@v3
+      with:
+        registry: docker.io
+        username: rj9317
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     - name: Determine tags
       id: tags
       run: |
         {
           echo "list<<EOF"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "docker.io/rj9317/threeport-${{ matrix.name }}:dev-pinned-pr-${{ github.event.pull_request.number }}"
+            echo "${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.name }}:dev-pinned-pr-${{ github.event.pull_request.number }}"
           else
-            echo "docker.io/rj9317/threeport-${{ matrix.name }}:dev-pinned"
-            echo "docker.io/rj9317/threeport-${{ matrix.name }}:dev-pinned-${{ github.sha }}"
+            echo "${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.name }}:dev-pinned"
+            echo "${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.name }}:dev-pinned-${{ github.sha }}"
           fi
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: Dockerfile
-        target: release
-        platforms: linux/amd64,linux/arm64
-        push: true
-        build-args: |
-          MAIN=${{ matrix.main }}
-        cache-from: type=gha,scope=dev-pinned-${{ matrix.name }}
-        cache-to: type=gha,scope=dev-pinned-${{ matrix.name }},mode=max
-        tags: ${{ steps.tags.outputs.list }}
+    - name: Create manifest list
+      run: |
+        cd /tmp/digests
+        digests=()
+        for f in *; do
+          digests+=("${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.name }}@sha256:$(cat "$f")")
+        done
+        tags=()
+        while IFS= read -r tag; do
+          [[ -n "$tag" ]] && tags+=("--tag" "$tag")
+        done <<< '${{ steps.tags.outputs.list }}'
+        docker buildx imagetools create "${tags[@]}" "${digests[@]}"

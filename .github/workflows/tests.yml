@@ -105,8 +105,12 @@ jobs:
 
     - name: Build and push control plane component images
       env:
-        PARALLEL: "1"
-        GOMEMLIMIT: 8GiB
+        # 2 x 6 GiB = 12 GiB, leaving 2 GiB headroom on the runner's
+        # ~14 GiB usable budget (15.6 GiB total minus the docker daemon,
+        # buildx, and system overhead). Bumping either lever further
+        # risks OOM when two large-SDK components compile concurrently.
+        PARALLEL: "2"
+        GOMEMLIMIT: 6GiB
         BUILDX_CACHE_FROM: type=gha,scope=test-{component}
         BUILDX_CACHE_TO: type=gha,scope=test-{component},mode=max
       run: mage build:allImagesDev

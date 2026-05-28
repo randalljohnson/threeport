@@ -122,12 +122,12 @@ jobs:
 
     # Native compile via mage (uses the warm Go cache restored above),
     # then PARALLEL workers package images. BUILDX_CACHE_FROM/TO only
-    # covers the COPY+alpine tail; the compile cache lives in actions/cache.
+    # covers the COPY+distroless tail; the compile cache lives in actions/cache.
     - name: Build and push control plane component images
       env:
         PARALLEL: "4"
-        BUILDX_CACHE_FROM: type=gha,scope=test-{component}
-        BUILDX_CACHE_TO: type=gha,scope=test-{component},mode=max
+        BUILDX_CACHE_FROM: type=gha,scope=dev-{component}
+        BUILDX_CACHE_TO: type=gha,scope=dev-{component},mode=max
       run: mage build:allImagesDev
 
     - name: Build tptctl

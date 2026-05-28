@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 )
 
 const releaseArch = "amd64"
@@ -87,15 +88,12 @@ func (Build) ApiImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.ApiBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/rest-api/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/rest-api/main_gen.go"},
 		imageRepo,
 		"threeport-rest-api",
 		imageTag,
@@ -201,15 +199,12 @@ func (Build) DbMigratorImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.DbMigratorBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/database-migrator/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/database-migrator/main_gen.go"},
 		imageRepo,
 		"threeport-database-migrator",
 		imageTag,
@@ -315,15 +310,12 @@ func (Build) AgentImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.AgentBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/agent/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/agent/main_gen.go"},
 		imageRepo,
 		"threeport-agent",
 		imageTag,
@@ -429,15 +421,12 @@ func (Build) SecretControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.SecretControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/secret-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/secret-controller/main_gen.go"},
 		imageRepo,
 		"threeport-secret-controller",
 		imageTag,
@@ -543,15 +532,12 @@ func (Build) AwsControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.AwsControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/aws-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/aws-controller/main_gen.go"},
 		imageRepo,
 		"threeport-aws-controller",
 		imageTag,
@@ -657,15 +643,12 @@ func (Build) OciControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.OciControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/oci-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/oci-controller/main_gen.go"},
 		imageRepo,
 		"threeport-oci-controller",
 		imageTag,
@@ -771,15 +754,12 @@ func (Build) GcpControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.GcpControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/gcp-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/gcp-controller/main_gen.go"},
 		imageRepo,
 		"threeport-gcp-controller",
 		imageTag,
@@ -885,15 +865,12 @@ func (Build) ControlPlaneControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.ControlPlaneControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/control-plane-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/control-plane-controller/main_gen.go"},
 		imageRepo,
 		"threeport-control-plane-controller",
 		imageTag,
@@ -999,15 +976,12 @@ func (Build) GatewayControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.GatewayControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/gateway-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/gateway-controller/main_gen.go"},
 		imageRepo,
 		"threeport-gateway-controller",
 		imageTag,
@@ -1113,15 +1087,12 @@ func (Build) HelmWorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.HelmWorkloadControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/helm-workload-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/helm-workload-controller/main_gen.go"},
 		imageRepo,
 		"threeport-helm-workload-controller",
 		imageTag,
@@ -1163,6 +1134,228 @@ func (Build) HelmWorkloadControllerImageRelease() error {
 		releaseArch,
 	); err != nil {
 		return fmt.Errorf("failed to build and push release helm-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerBin builds the binary for the machine-runtime-controller.
+func (Build) MachineRuntimeControllerBin(arch string) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	if err := util.BuildBinary(
+		workingDir,
+		arch,
+		"machine-runtime-controller",
+		"cmd/machine-runtime-controller/main_gen.go",
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to build machine-runtime-controller binary: %w", err)
+	}
+
+	fmt.Println("binary built and available at bin/machine-runtime-controller")
+
+	return nil
+}
+
+// MachineRuntimeControllerBinDev builds the machine-runtime-controller binary for the architcture of the machine
+// where it is built.
+func (Build) MachineRuntimeControllerBinDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineRuntimeControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build dev machine-runtime-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerBinRelease builds the machine-runtime-controller binary for release architecture.
+func (Build) MachineRuntimeControllerBinRelease() error {
+	build := Build{}
+	if err := build.MachineRuntimeControllerBin(releaseArch); err != nil {
+		return fmt.Errorf("failed to build release machine-runtime-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerImage builds and pushes the container image for the machine-runtime-controller.
+func (Build) MachineRuntimeControllerImage(
+	imageRepo string,
+	imageTag string,
+	arch string,
+) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		map[string]string{"MAIN": "cmd/machine-runtime-controller/main_gen.go"},
+		imageRepo,
+		"threeport-machine-runtime-controller",
+		imageTag,
+		true,
+		false,
+		"",
+	); err != nil {
+		return fmt.Errorf("failed to build and push machine-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerImageDev builds and pushes a development machine-runtime-controller container image.
+func (Build) MachineRuntimeControllerImageDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineRuntimeControllerImage(
+		installer.DevImageNamespace,
+		version.GetVersion(),
+		arch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push dev machine-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerImageRelease builds and pushes a release machine-runtime-controller container image.
+func (Build) MachineRuntimeControllerImageRelease() error {
+	build := Build{}
+	if err := build.MachineRuntimeControllerImage(
+		installer.ThreeportImageNamespace,
+		version.GetVersion(),
+		releaseArch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push release machine-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerBin builds the binary for the machine-workload-controller.
+func (Build) MachineWorkloadControllerBin(arch string) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	if err := util.BuildBinary(
+		workingDir,
+		arch,
+		"machine-workload-controller",
+		"cmd/machine-workload-controller/main_gen.go",
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to build machine-workload-controller binary: %w", err)
+	}
+
+	fmt.Println("binary built and available at bin/machine-workload-controller")
+
+	return nil
+}
+
+// MachineWorkloadControllerBinDev builds the machine-workload-controller binary for the architcture of the machine
+// where it is built.
+func (Build) MachineWorkloadControllerBinDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineWorkloadControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build dev machine-workload-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerBinRelease builds the machine-workload-controller binary for release architecture.
+func (Build) MachineWorkloadControllerBinRelease() error {
+	build := Build{}
+	if err := build.MachineWorkloadControllerBin(releaseArch); err != nil {
+		return fmt.Errorf("failed to build release machine-workload-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerImage builds and pushes the container image for the machine-workload-controller.
+func (Build) MachineWorkloadControllerImage(
+	imageRepo string,
+	imageTag string,
+	arch string,
+) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		map[string]string{"MAIN": "cmd/machine-workload-controller/main_gen.go"},
+		imageRepo,
+		"threeport-machine-workload-controller",
+		imageTag,
+		true,
+		false,
+		"",
+	); err != nil {
+		return fmt.Errorf("failed to build and push machine-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerImageDev builds and pushes a development machine-workload-controller container image.
+func (Build) MachineWorkloadControllerImageDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineWorkloadControllerImage(
+		installer.DevImageNamespace,
+		version.GetVersion(),
+		arch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push dev machine-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerImageRelease builds and pushes a release machine-workload-controller container image.
+func (Build) MachineWorkloadControllerImageRelease() error {
+	build := Build{}
+	if err := build.MachineWorkloadControllerImage(
+		installer.ThreeportImageNamespace,
+		version.GetVersion(),
+		releaseArch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push release machine-workload-controller image: %w", err)
 	}
 
 	return nil
@@ -1227,15 +1420,12 @@ func (Build) KubernetesRuntimeControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.KubernetesRuntimeControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/kubernetes-runtime-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/kubernetes-runtime-controller/main_gen.go"},
 		imageRepo,
 		"threeport-kubernetes-runtime-controller",
 		imageTag,
@@ -1341,15 +1531,12 @@ func (Build) ObservabilityControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.ObservabilityControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/observability-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/observability-controller/main_gen.go"},
 		imageRepo,
 		"threeport-observability-controller",
 		imageTag,
@@ -1455,15 +1642,12 @@ func (Build) TerraformControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.TerraformControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/terraform-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/terraform-controller/main_gen.go"},
 		imageRepo,
 		"threeport-terraform-controller",
 		imageTag,
@@ -1569,15 +1753,12 @@ func (Build) WorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.WorkloadControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/workload-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/workload-controller/main_gen.go"},
 		imageRepo,
 		"threeport-workload-controller",
 		imageTag,
@@ -1667,6 +1848,14 @@ func (Build) AllBins(arch string) error {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
 
+	if err := build.MachineRuntimeControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineWorkloadControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
 	if err := build.KubernetesRuntimeControllerBin(arch); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
@@ -1726,6 +1915,14 @@ func (Build) AllBinsDev() error {
 	}
 
 	if err := build.HelmWorkloadControllerBinDev(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineRuntimeControllerBinDev(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineWorkloadControllerBinDev(); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
 
@@ -1791,6 +1988,14 @@ func (Build) AllBinsRelease() error {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
 
+	if err := build.MachineRuntimeControllerBinRelease(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineWorkloadControllerBinRelease(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
 	if err := build.KubernetesRuntimeControllerBinRelease(); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
@@ -1811,193 +2016,106 @@ func (Build) AllBinsRelease() error {
 }
 
 // AllImages builds and pushes images for all components.
+// Pass parallel >= 1 to control worker concurrency (e.g. `mage build:allImages docker.io/foo v1 amd64 4`).
 func (Build) AllImages(
 	imageRepo string,
 	imageTag string,
 	arch string,
+	parallel int,
 ) error {
 	build := Build{}
-	if err := build.ApiImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+	// wrap adapts a per-image function to RunParallel's func() error shape
+	// by closing over the imageRepo, imageTag, and arch args. Lets each
+	// task entry below stay a single line: wrap(build.XImage).
+	wrap := func(fn func(string, string, string) error) func() error {
+		return func() error {
+			return fn(imageRepo, imageTag, arch)
+		}
 	}
-
-	if err := build.DbMigratorImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+	// one task per per-image function; RunParallel below dispatches them
+	// across `parallel` workers, each running build then push for its image.
+	tasks := []func() error{
+		wrap(build.ApiImage),
+		wrap(build.DbMigratorImage),
+		wrap(build.AgentImage),
+		wrap(build.SecretControllerImage),
+		wrap(build.AwsControllerImage),
+		wrap(build.OciControllerImage),
+		wrap(build.GcpControllerImage),
+		wrap(build.ControlPlaneControllerImage),
+		wrap(build.GatewayControllerImage),
+		wrap(build.HelmWorkloadControllerImage),
+		wrap(build.MachineRuntimeControllerImage),
+		wrap(build.MachineWorkloadControllerImage),
+		wrap(build.KubernetesRuntimeControllerImage),
+		wrap(build.ObservabilityControllerImage),
+		wrap(build.TerraformControllerImage),
+		wrap(build.WorkloadControllerImage),
 	}
-
-	if err := build.AgentImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.SecretControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.AwsControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.OciControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GcpControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ControlPlaneControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GatewayControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.HelmWorkloadControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.KubernetesRuntimeControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ObservabilityControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.TerraformControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.WorkloadControllerImage(imageRepo, imageTag, arch); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	return nil
+	return util.RunParallel(parallel, tasks)
 }
 
 // AllImagesDev builds and pushes development images for all components.
+// Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesDev`).
 func (Build) AllImagesDev() error {
 	build := Build{}
-	if err := build.ApiImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+	tasks := []func() error{
+		build.ApiImageDev,
+		build.DbMigratorImageDev,
+		build.AgentImageDev,
+		build.SecretControllerImageDev,
+		build.AwsControllerImageDev,
+		build.OciControllerImageDev,
+		build.GcpControllerImageDev,
+		build.ControlPlaneControllerImageDev,
+		build.GatewayControllerImageDev,
+		build.HelmWorkloadControllerImageDev,
+		build.MachineRuntimeControllerImageDev,
+		build.MachineWorkloadControllerImageDev,
+		build.KubernetesRuntimeControllerImageDev,
+		build.ObservabilityControllerImageDev,
+		build.TerraformControllerImageDev,
+		build.WorkloadControllerImageDev,
 	}
-
-	if err := build.DbMigratorImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.AgentImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.SecretControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.AwsControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.OciControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GcpControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ControlPlaneControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GatewayControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.HelmWorkloadControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.KubernetesRuntimeControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ObservabilityControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.TerraformControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.WorkloadControllerImageDev(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	return nil
+	return util.RunParallel(parallelFromEnv(), tasks)
 }
 
-// AllImagesRelease builds and pushes development images for all components.
+// AllImagesRelease builds and pushes release images for all components.
+// Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesRelease`).
 func (Build) AllImagesRelease() error {
 	build := Build{}
-	if err := build.ApiImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+	tasks := []func() error{
+		build.ApiImageRelease,
+		build.DbMigratorImageRelease,
+		build.AgentImageRelease,
+		build.SecretControllerImageRelease,
+		build.AwsControllerImageRelease,
+		build.OciControllerImageRelease,
+		build.GcpControllerImageRelease,
+		build.ControlPlaneControllerImageRelease,
+		build.GatewayControllerImageRelease,
+		build.HelmWorkloadControllerImageRelease,
+		build.MachineRuntimeControllerImageRelease,
+		build.MachineWorkloadControllerImageRelease,
+		build.KubernetesRuntimeControllerImageRelease,
+		build.ObservabilityControllerImageRelease,
+		build.TerraformControllerImageRelease,
+		build.WorkloadControllerImageRelease,
 	}
+	return util.RunParallel(parallelFromEnv(), tasks)
+}
 
-	if err := build.DbMigratorImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+// parallelFromEnv returns the PARALLEL env var as an int, defaulting to 1.
+func parallelFromEnv() int {
+	v := os.Getenv("PARALLEL")
+	if v == "" {
+		return 1
 	}
-
-	if err := build.AgentImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		return 1
 	}
-
-	if err := build.SecretControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.AwsControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.OciControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GcpControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ControlPlaneControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.GatewayControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.HelmWorkloadControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.KubernetesRuntimeControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.ObservabilityControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.TerraformControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	if err := build.WorkloadControllerImageRelease(); err != nil {
-		return fmt.Errorf("failed to build and push image: %w", err)
-	}
-
-	return nil
+	return n
 }
 
 // LoadImage builds and loads an image to the provided kind cluster.
@@ -2011,8 +2129,10 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 
 	if err := util.BuildImage(
 		workingDir,
-		fmt.Sprintf("cmd/%s/image/Dockerfile-alpine", component),
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": fmt.Sprintf("cmd/%s/main_gen.go", component)},
 		installer.DevImageNamespace,
 		imageName,
 		version.GetVersion(),

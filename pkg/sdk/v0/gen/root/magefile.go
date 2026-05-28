@@ -168,19 +168,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
-		Id("build").Op(":=").Id("Build").Values(),
-		If(Err().Op(":=").Id("build").Dot(buildApiFuncName).Call(Id("arch"))).Op(";").Err().Op("!=").Nil().Block(
-			Return().Qual("fmt", "Errorf").Call(Lit("failed to build binary for image build: %w"), Err()),
-		),
-		Line(),
-
 		If(Err().Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"BuildImage",
 		).Call(
 			Line().Id("workingDir"),
-			Line().Lit("cmd/rest-api/image/Dockerfile-alpine"),
+			Line().Lit("Dockerfile"),
+			Line().Lit("release"),
 			Line().Id("arch"),
+			Line().Map(String()).String().Values(Dict{Lit("MAIN"): Lit("cmd/rest-api/main_gen.go")}),
 			Line().Id("imageRepo"),
 			Line().Lit(apiImageName),
 			Line().Id("imageTag"),
@@ -341,19 +337,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
-		Id("build").Op(":=").Id("Build").Values(),
-		If(Err().Op(":=").Id("build").Dot(buildDbMigratorFuncName).Call(Id("arch"))).Op(";").Err().Op("!=").Nil().Block(
-			Return().Qual("fmt", "Errorf").Call(Lit("failed to build binary for image build: %w"), Err()),
-		),
-		Line(),
-
 		If(Err().Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"BuildImage",
 		).Call(
 			Line().Id("workingDir"),
-			Line().Lit("cmd/database-migrator/image/Dockerfile-alpine"),
+			Line().Lit("Dockerfile"),
+			Line().Lit("release"),
 			Line().Id("arch"),
+			Line().Map(String()).String().Values(Dict{Lit("MAIN"): Lit("cmd/database-migrator/main_gen.go")}),
 			Line().Id("imageRepo"),
 			Line().Lit(dbMigratorImageName),
 			Line().Id("imageTag"),
@@ -523,19 +515,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			),
 			Line(),
 
-			Id("build").Op(":=").Id("Build").Values(),
-			If(Err().Op(":=").Id("build").Dot(buildAgentFuncName).Call(Id("arch"))).Op(";").Err().Op("!=").Nil().Block(
-				Return().Qual("fmt", "Errorf").Call(Lit("failed to build binary for image build: %w"), Err()),
-			),
-			Line(),
-
 			If(Err().Op(":=").Qual(
 				"github.com/threeport/threeport/pkg/util/v0",
 				"BuildImage",
 			).Call(
 				Line().Id("workingDir"),
-				Line().Lit("cmd/agent/image/Dockerfile-alpine"),
+				Line().Lit("Dockerfile"),
+				Line().Lit("release"),
 				Line().Id("arch"),
+				Line().Map(String()).String().Values(Dict{Lit("MAIN"): Lit("cmd/agent/main_gen.go")}),
 				Line().Id("imageRepo"),
 				Line().Lit(dbMigratorImageName),
 				Line().Id("imageTag"),
@@ -742,19 +730,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				),
 				Line(),
 
-				Id("build").Op(":=").Id("Build").Values(),
-				If(Err().Op(":=").Id("build").Dot(buildFuncName).Call(Id("arch"))).Op(";").Err().Op("!=").Nil().Block(
-					Return().Qual("fmt", "Errorf").Call(Lit("failed to build binary for image build: %w"), Err()),
-				),
-				Line(),
-
 				If(Err().Op(":=").Qual(
 					"github.com/threeport/threeport/pkg/util/v0",
 					"BuildImage",
 				).Call(
 					Line().Id("workingDir"),
-					Line().Lit(fmt.Sprintf("cmd/%s/image/Dockerfile-alpine", objGroup.ControllerName)),
+					Line().Lit("Dockerfile"),
+					Line().Lit("release"),
 					Line().Id("arch"),
+					Line().Map(String()).String().Values(Dict{Lit("MAIN"): Lit(fmt.Sprintf("cmd/%s/main_gen.go", objGroup.ControllerName))}),
 					Line().Id("imageRepo"),
 					Line().Lit(imageName),
 					Line().Id("imageTag"),
@@ -999,8 +983,10 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			"BuildImage",
 		).Call(
 			Line().Id("workingDir"),
-			Line().Qual("fmt", "Sprintf").Call(Lit("cmd/%s/image/Dockerfile-alpine"), Id("component")),
+			Line().Lit("Dockerfile"),
+			Line().Lit("release"),
 			Line().Id("arch"),
+			Line().Map(String()).String().Values(Dict{Lit("MAIN"): Qual("fmt", "Sprintf").Call(Lit("cmd/%s/main_gen.go"), Id("component"))}),
 			Line().Qual(
 				installerPkg,
 				"DevImageNamespace",

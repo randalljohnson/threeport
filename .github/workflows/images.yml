@@ -71,25 +71,28 @@ jobs:
       id: sha
       run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
 
+    # dev-pinned-pr-<sha> on PR push (open PRs), dev-pinned-<sha> on
+    # merge to the dev-pinned branch (closed PRs). Including the sha
+    # keeps tags immutable per commit so rollbacks pin exactly.
     - name: Determine tag
       id: tag
       run: |
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          # PR to dev-pinned: tag with the source branch (dev) + sha; each
-          # push to dev produces a uniquely-tagged preview image.
-          echo "value=dev-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
+          echo "value=dev-pinned-pr-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
         else
-          # push to dev-pinned (the merge) is the customer-deployment tag.
           echo "value=dev-pinned-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
         fi
 
     # Native compile via mage (uses the warm Go cache above), then
-    # parallel buildx pushes per component. BUILDX_CACHE_FROM/TO covers
-    # only the tail; the compile cache is the actions/cache step above.
-    # {component} gives each image its own GHA cache key.
+    # parallel buildx pushes per component. GOMEMLIMIT is per process;
+    # tuned for 2-arch builds on a 16 GiB runner (2 × 6 GiB = 12 GiB +
+    # ~2-3 GiB runner overhead). Multiply by # arches if you change the
+    # arch list below. BUILDX_CACHE_FROM/TO covers only the tail (COPY
+    # + distroless); {component} gives each image its own GHA cache key.
     - name: Build and push multi-arch images
       env:
         PARALLEL: "4"
+        GOMEMLIMIT: 6GiB
         BUILDX_CACHE_FROM: type=gha,scope=dev-{component}
         BUILDX_CACHE_TO: type=gha,scope=dev-{component},mode=max
       run: |

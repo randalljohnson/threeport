@@ -71,6 +71,8 @@ type prefixWriter struct {
 }
 
 // Write splits incoming bytes into lines and writes each with the prefix.
+// Skips lines that are only whitespace so buildx's section-separator blanks
+// don't produce naked-prefix noise in the output.
 func (p *prefixWriter) Write(data []byte) (int, error) {
 	p.buf.Write(data)
 	for {
@@ -79,6 +81,9 @@ func (p *prefixWriter) Write(data []byte) (int, error) {
 			p.buf.Reset()
 			p.buf.Write(line)
 			return len(data), nil
+		}
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
 		}
 		if _, err := fmt.Fprintf(p.out, "%s %s", p.prefix, line); err != nil {
 			return len(data), err

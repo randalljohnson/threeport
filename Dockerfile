@@ -24,7 +24,11 @@
 # `--platform=linux/amd64,linux/arm64` on the buildx invocation.
 
 # ----- builder: cross-compile MAIN at native host arch -----
-FROM --platform=$BUILDPLATFORM golang:1.24 AS builder
+# mirror.gcr.io is Google's free pull-through mirror of Docker Hub. We pull
+# golang:1.24 from there to avoid Docker Hub's per-user pull rate limit
+# (200/6h on Free Personal), which gets exhausted quickly when 32 matrix
+# jobs all cold-pull the base image on every workflow run.
+FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.24 AS builder
 ARG TARGETARCH
 ARG MAIN
 ARG GCFLAGS=""
@@ -55,7 +59,7 @@ USER 65532:65532
 ENTRYPOINT ["/app"]
 
 # ----- dev-base: alpine with delve, shared by dev variants -----
-FROM golang:1.24-alpine AS dev-base
+FROM mirror.gcr.io/library/golang:1.24-alpine AS dev-base
 ARG DELVE_VERSION=1.26.3
 RUN apk add --no-cache ca-certificates
 RUN go install github.com/go-delve/delve/cmd/dlv@v${DELVE_VERSION} && \

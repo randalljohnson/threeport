@@ -5,6 +5,11 @@
 # Build args:
 #   MAIN              Go source file to compile (path to a main package).
 #   GCFLAGS           Optional gcflags string for the Go build.
+#   GO_BUILD_FLAGS    Optional GOFLAGS string passed to `go build`. Local
+#                     builds leave this empty (use full host parallelism);
+#                     CI sets it to `-p=2` to cap peak memory on the
+#                     free-tier 16 GB runners when both archs build in
+#                     parallel on large-SDK components (aws, gcp, oci).
 #   TERRAFORM_VERSION Terraform release used by the dev-terraform target.
 #   PULUMI_VERSION    Pulumi release used by the dev-pulumi target.
 #
@@ -23,6 +28,7 @@ FROM --platform=$BUILDPLATFORM golang:1.24 AS builder
 ARG TARGETARCH
 ARG MAIN
 ARG GCFLAGS=""
+ARG GO_BUILD_FLAGS=""
 
 WORKDIR /src
 
@@ -31,9 +37,15 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 COPY . .
+# GO_BUILD_FLAGS lets CI pass `-p=2` to cap Go's compile parallelism.
+# Multi-arch buildx runs amd64 and arm64 builders concurrently on the
+# same runner; without the cap, two `go build` invocations of a
+# large-SDK component (aws, gcp, oci) can drive peak memory past the
+# free GHA runner's 16 GB budget and trigger an OOM kill. Local builds
+# leave it empty so the host's full parallelism is used.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
+    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} GOFLAGS="${GO_BUILD_FLAGS}" \
     go build -gcflags="${GCFLAGS}" -o /out/app ${MAIN}
 
 # ----- release: minimal distroless image with the compiled binary -----

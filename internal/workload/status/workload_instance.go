@@ -45,7 +45,7 @@ type WorkloadInstanceStatusDetail struct {
 	Status WorkloadInstanceStatus
 	Reason string
 	Error  error
-	Events []v0.WorkloadEvent
+	Events []v0.Event
 }
 
 // GetWorkloadInstanceStatus inspects a workload instance and returns the status
@@ -59,33 +59,16 @@ func GetWorkloadInstanceStatus(
 ) *WorkloadInstanceStatusDetail {
 	var workloadInstanceStatusDetail WorkloadInstanceStatusDetail
 
-	// retrieve events for workload instance
-	var workloadEvents *[]v0.WorkloadEvent
+	// retrieve events for the workload instance via the AOR join,
+	// filtering on the subject (object type + id). Events are stored in
+	// the Event table; the per-instance linkage lives on the
+	// AttachedObjectReference.
+	var subjectType string
 	switch workloadInstanceType {
 	case agent.WorkloadInstanceType:
-		we, err := client.GetWorkloadEventsByQueryString(
-			apiClient,
-			apiEndpoint,
-			fmt.Sprintf("workloadinstanceid=%d", workloadInstanceId),
-		)
-		if err != nil {
-			workloadInstanceStatusDetail.Status = WorkloadInstanceStatusError
-			workloadInstanceStatusDetail.Error = fmt.Errorf("failed to get workload events from API: %w", err)
-			return &workloadInstanceStatusDetail
-		}
-		workloadEvents = we
+		subjectType = "WorkloadInstance"
 	case agent.HelmWorkloadInstanceType:
-		we, err := client.GetWorkloadEventsByQueryString(
-			apiClient,
-			apiEndpoint,
-			fmt.Sprintf("helmworkloadinstanceid=%d", workloadInstanceId),
-		)
-		if err != nil {
-			workloadInstanceStatusDetail.Status = WorkloadInstanceStatusError
-			workloadInstanceStatusDetail.Error = fmt.Errorf("failed to get workload events from API: %w", err)
-			return &workloadInstanceStatusDetail
-		}
-		workloadEvents = we
+		subjectType = "HelmWorkloadInstance"
 	default:
 		workloadInstanceStatusDetail.Status = WorkloadInstanceStatusError
 		workloadInstanceStatusDetail.Error = fmt.Errorf(
@@ -97,6 +80,20 @@ func GetWorkloadInstanceStatus(
 		return &workloadInstanceStatusDetail
 	}
 
+	workloadEvents, err := client.GetEventsJoinAttachedObjectReferenceByQueryString(
+		apiClient,
+		apiEndpoint,
+		fmt.Sprintf(
+			"objectid=%d&objecttypename=%s&objectnamespace=threeport.io&objectversion=v0",
+			workloadInstanceId, subjectType,
+		),
+	)
+	if err != nil {
+		workloadInstanceStatusDetail.Status = WorkloadInstanceStatusError
+		workloadInstanceStatusDetail.Error = fmt.Errorf("failed to get events from API: %w", err)
+		return &workloadInstanceStatusDetail
+	}
+
 	// return status "Reconciling" until we begin to get events that indicate
 	// the Kubernetes resources are being created
 	if len(*workloadEvents) == 0 {
@@ -104,20 +101,22 @@ func GetWorkloadInstanceStatus(
 		return &workloadInstanceStatusDetail
 	}
 
-	// collect any events of type Warning or Failed
-	var alertEvents []v0.WorkloadEvent
-	for _, event := range *workloadEvents {
-		if *event.Type == "Warning" || *event.Type == "Failed" {
+	// collect any events of type Warning (Event type only emits Normal
+	// and Warning; the legacy "Failed" WorkloadEvent type no longer
+	// exists).
+	var alertEvents []v0.Event
+	for _, evt := range *workloadEvents {
+		if *evt.Type == "Warning" {
 			// capture event if we haven't already
 			eventCaptured := false
 			for _, ae := range alertEvents {
-				if *ae.Message == *event.Message {
+				if *ae.Note == *evt.Note {
 					eventCaptured = true
 					break
 				}
 			}
 			if !eventCaptured {
-				alertEvents = append(alertEvents, event)
+				alertEvents = append(alertEvents, evt)
 			}
 		}
 	}

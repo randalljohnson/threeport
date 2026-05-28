@@ -132,7 +132,6 @@ func dbInterfaces000001() []interface{} {
 		&v0.TerraformInstance{},
 		&v0.Tier{},
 		&v0.WorkloadDefinition{},
-		&v0.WorkloadEvent{},
 		&v0.WorkloadInstance{},
 		&v0.WorkloadResourceDefinition{},
 		&v0.WorkloadResourceInstance{},

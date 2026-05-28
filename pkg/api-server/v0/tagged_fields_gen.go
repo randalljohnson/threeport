@@ -53,7 +53,6 @@ var (
 	TerraformInstanceTaggedFields                 = make(map[string]*apiserver_lib.FieldsByTag)
 	TierTaggedFields                              = make(map[string]*apiserver_lib.FieldsByTag)
 	WorkloadDefinitionTaggedFields                = make(map[string]*apiserver_lib.FieldsByTag)
-	WorkloadEventTaggedFields                     = make(map[string]*apiserver_lib.FieldsByTag)
 	WorkloadInstanceTaggedFields                  = make(map[string]*apiserver_lib.FieldsByTag)
 	WorkloadResourceDefinitionTaggedFields        = make(map[string]*apiserver_lib.FieldsByTag)
 	WorkloadResourceInstanceTaggedFields          = make(map[string]*apiserver_lib.FieldsByTag)

@@ -247,11 +247,6 @@ func (WorkloadDefinition) TableName() string {
 	return "v0_workload_definitions"
 }
 
-// TableName sets the name of the table for the WorkloadEvent objects in the database.
-func (WorkloadEvent) TableName() string {
-	return "v0_workload_events"
-}
-
 // TableName sets the name of the table for the WorkloadInstance objects in the database.
 func (WorkloadInstance) TableName() string {
 	return "v0_workload_instances"

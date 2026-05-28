@@ -414,20 +414,23 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 		assert.Equal(allResourcesFound, true, fmt.Sprintf("should have found all resources in Kubernetes after %d seconds", findAttemptsMax*findCheckDurationSeconds))
 
-		// check threeport API for expected WorkloadEvents
+		// check threeport API for expected Events on this WorkloadInstance
 		startedEventFound := false
 		eventAttempts := 0
 		eventAttemptsMax := 300
 		eventCheckDurationSeconds := 1
 		for eventAttempts < eventAttemptsMax {
-			workloadEvents, err := client.GetWorkloadEventsByQueryString(
+			events, err := client.GetEventsJoinAttachedObjectReferenceByQueryString(
 				apiClient,
 				threeportAPIEndpoint,
-				fmt.Sprintf("workloadinstanceid=%d", *createdWorkloadInst.ID),
+				fmt.Sprintf(
+					"objectid=%d&objecttypename=WorkloadInstance&objectnamespace=threeport.io&objectversion=v0",
+					*createdWorkloadInst.ID,
+				),
 			)
-			assert.Nil(err, "should have no error returned when trying to retrieve workload events for workload instance")
-			for _, event := range *workloadEvents {
-				if *event.Type == "Normal" && *event.Reason == "Started" {
+			assert.Nil(err, "should have no error returned when trying to retrieve events for workload instance")
+			for _, evt := range *events {
+				if *evt.Type == "Normal" && *evt.Reason == "Started" {
 					startedEventFound = true
 					break
 				}

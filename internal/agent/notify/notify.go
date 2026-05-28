@@ -11,6 +11,8 @@ import (
 	tpapi "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	tpclient "github.com/threeport/threeport/pkg/client/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"gorm.io/datatypes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -84,7 +86,7 @@ func Notify(
 	// create slices to serve as payload info store accumluated notification
 	// info received from notif channel
 	var workloadResourceInstances []tpapi.WorkloadResourceInstance
-	var workloadEvents []tpapi.WorkloadEvent
+	var pendingEvents []tpapi.Event
 
 	for {
 		select {
@@ -93,14 +95,14 @@ func Notify(
 				// the channel has been closed - send any pending updates to
 				// threeport API and return
 				log.Info("notification channel closed")
-				if len(workloadResourceInstances) > 0 || len(workloadEvents) > 0 {
+				if len(workloadResourceInstances) > 0 || len(pendingEvents) > 0 {
 					// send final notifications - no point capturing any returned
 					// unsent objects since this reciever is being stopped
 					_, _ = sendThreeportUpdates(
 						threeportAPIServer,
 						threeportAPIClient,
 						&workloadResourceInstances,
-						&workloadEvents,
+						&pendingEvents,
 					)
 					log.Info("final notifications sent")
 				}
@@ -128,52 +130,48 @@ func Notify(
 			}
 			// add events for a resource if applicable
 			if notif.Event != nil {
-				var workloadEvent tpapi.WorkloadEvent
+				var evt tpapi.Event
 				switch {
 				case notif.Event.WorkloadResourceInstanceID != 0:
-					workloadEvent = tpapi.WorkloadEvent{
-						RuntimeEventUID:            &notif.Event.EventUID,
-						WorkloadInstanceID:         &notif.Event.WorkloadInstanceID,
-						WorkloadResourceInstanceID: &notif.Event.WorkloadResourceInstanceID,
-						Type:                       &notif.Event.Type,
-						Reason:                     &notif.Event.Reason,
-						Message:                    &notif.Event.Message,
-						Timestamp:                  &notif.Event.Timestamp.Time,
+					evt = tpapi.Event{
+						Type:       util.Ptr(notif.Event.Type),
+						Reason:     util.Ptr(notif.Event.Reason),
+						Note:       util.Ptr(notif.Event.Message),
+						ObjectType: util.Ptr("threeport.io/v0.WorkloadResourceInstance"),
+						ObjectID:   util.Ptr(notif.Event.WorkloadResourceInstanceID),
 					}
 				case notif.Event.WorkloadType == agent.WorkloadInstanceType:
-					workloadEvent = tpapi.WorkloadEvent{
-						RuntimeEventUID:    &notif.Event.EventUID,
-						WorkloadInstanceID: &notif.Event.WorkloadInstanceID,
-						Type:               &notif.Event.Type,
-						Reason:             &notif.Event.Reason,
-						Message:            &notif.Event.Message,
-						Timestamp:          &notif.Event.Timestamp.Time,
+					evt = tpapi.Event{
+						Type:       util.Ptr(notif.Event.Type),
+						Reason:     util.Ptr(notif.Event.Reason),
+						Note:       util.Ptr(notif.Event.Message),
+						ObjectType: util.Ptr("threeport.io/v0.WorkloadInstance"),
+						ObjectID:   util.Ptr(notif.Event.WorkloadInstanceID),
 					}
 				case notif.Event.WorkloadType == agent.HelmWorkloadInstanceType:
-					workloadEvent = tpapi.WorkloadEvent{
-						RuntimeEventUID:        &notif.Event.EventUID,
-						HelmWorkloadInstanceID: &notif.Event.WorkloadInstanceID,
-						Type:                   &notif.Event.Type,
-						Reason:                 &notif.Event.Reason,
-						Message:                &notif.Event.Message,
-						Timestamp:              &notif.Event.Timestamp.Time,
+					evt = tpapi.Event{
+						Type:       util.Ptr(notif.Event.Type),
+						Reason:     util.Ptr(notif.Event.Reason),
+						Note:       util.Ptr(notif.Event.Message),
+						ObjectType: util.Ptr("threeport.io/v0.HelmWorkloadInstance"),
+						ObjectID:   util.Ptr(notif.Event.WorkloadInstanceID),
 					}
 				}
-				workloadEvents = append(workloadEvents, workloadEvent)
+				pendingEvents = append(pendingEvents, evt)
 			}
 		default:
-			if len(workloadResourceInstances) > 0 || len(workloadEvents) > 0 {
+			if len(workloadResourceInstances) > 0 || len(pendingEvents) > 0 {
 				// we have data to update in threeport API - send the updates
-				// and get back any workload resource instances or workload
-				// events that were not sent so they can be retried later
-				wris, wes := sendThreeportUpdates(
+				// and get back any workload resource instances or events
+				// that were not sent so they can be retried later
+				wris, evts := sendThreeportUpdates(
 					threeportAPIServer,
 					threeportAPIClient,
 					&workloadResourceInstances,
-					&workloadEvents,
+					&pendingEvents,
 				)
 				workloadResourceInstances = *wris
-				workloadEvents = *wes
+				pendingEvents = *evts
 			}
 			// wait 10 seconds before checking notif channel again
 			time.Sleep(time.Second * 10)
@@ -190,10 +188,10 @@ func sendThreeportUpdates(
 	tpAPIServer string,
 	tpAPIClient *http.Client,
 	workloadResourceInstances *[]tpapi.WorkloadResourceInstance,
-	workloadEvents *[]tpapi.WorkloadEvent,
-) (*[]tpapi.WorkloadResourceInstance, *[]tpapi.WorkloadEvent) {
+	pendingEvents *[]tpapi.Event,
+) (*[]tpapi.WorkloadResourceInstance, *[]tpapi.Event) {
 	var unsentWRIs []tpapi.WorkloadResourceInstance
-	var unsentWEs []tpapi.WorkloadEvent
+	var unsentEvents []tpapi.Event
 
 	// update workload resource instances
 	for _, wri := range *workloadResourceInstances {
@@ -208,19 +206,27 @@ func sendThreeportUpdates(
 		}
 	}
 
-	// add workload events
-	for _, we := range *workloadEvents {
-		_, err := tpclient.CreateWorkloadEvent(
-			tpAPIClient,
-			tpAPIServer,
-			&we,
-		)
-		if err != nil {
-			unsentWEs = append(unsentWEs, we)
+	// record events via the EventsRecorder so dedup-by-content happens
+	// server-side: same content + same subject bumps Count rather than
+	// creating duplicate rows.
+	recorder := &event.EventRecorder{
+		APIClient:           tpAPIClient,
+		APIServer:           tpAPIServer,
+		ReportingController: "agent",
+	}
+	for _, evt := range *pendingEvents {
+		// skip events that did not match any of the recognized subject
+		// types in the caller's switch; ObjectType/ObjectID are required
+		// to attach the AttachedObjectReference on create.
+		if evt.ObjectType == nil || evt.ObjectID == nil {
+			continue
+		}
+		if err := recorder.RecordEvent(&evt, *evt.ObjectID, *evt.ObjectType); err != nil {
+			unsentEvents = append(unsentEvents, evt)
 		}
 	}
 
-	return &unsentWRIs, &unsentWEs
+	return &unsentWRIs, &unsentEvents
 }
 
 // appendUniqueWRI looks for a workload resource instance with a matching ID

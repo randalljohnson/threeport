@@ -34,36 +34,6 @@ func (w *WorkloadDefinition) afterDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeCreate runs before the WorkloadEvent is created.
-func (w *WorkloadEvent) beforeCreate(tx *gorm.DB) error {
-	return nil
-}
-
-// beforeUpdate runs before the WorkloadEvent is updated.
-func (w *WorkloadEvent) beforeUpdate(tx *gorm.DB) error {
-	return nil
-}
-
-// beforeDelete runs before the WorkloadEvent is deleted.
-func (w *WorkloadEvent) beforeDelete(tx *gorm.DB) error {
-	return nil
-}
-
-// afterCreate runs after the WorkloadEvent is created.
-func (w *WorkloadEvent) afterCreate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterUpdate runs after the WorkloadEvent is updated.
-func (w *WorkloadEvent) afterUpdate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterDelete runs after the WorkloadEvent is deleted.
-func (w *WorkloadEvent) afterDelete(tx *gorm.DB) error {
-	return nil
-}
-
 // beforeCreate runs before the WorkloadInstance is created.
 func (w *WorkloadInstance) beforeCreate(tx *gorm.DB) error {
 	return nil

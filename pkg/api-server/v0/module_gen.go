@@ -2015,50 +2015,6 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		return fmt.Errorf("failed to register object route for WorkloadDefinition: %w", result.Error)
 	}
 
-	// registering object WorkloadEvent
-	object = api_v0.ModuleObject{
-		Description: util.Ptr("WorkloadEvent is a summary of an event associated with a workload instance."),
-		ModuleApiID: moduleApi.ID,
-		Name:        util.Ptr("WorkloadEvent"),
-		Version:     util.Ptr("v0"),
-	}
-	result = db.Where(api_v0.ModuleObject{
-		ModuleApiID: moduleApi.ID,
-		Name:        object.Name,
-		Version:     object.Version,
-	}).FirstOrCreate(&object)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register WorkloadEvent: %w", result.Error)
-	}
-
-	// registering routes for WorkloadEvent
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadEventVersions),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register version route for WorkloadEvent: %w", result.Error)
-	}
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadEvents),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register object route for WorkloadEvent: %w", result.Error)
-	}
-
 	// registering object WorkloadInstance
 	object = api_v0.ModuleObject{
 		Description:        util.Ptr("WorkloadInstance is a deployed instance of a workload."),

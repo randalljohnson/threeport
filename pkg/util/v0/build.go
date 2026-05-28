@@ -192,6 +192,12 @@ func BuildImage(
 	for _, k := range keys {
 		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
 	}
+	// honor GOMEMLIMIT from env as a build-arg so CI can soft-cap the
+	// Go runtime's heap during large-SDK compiles without callers
+	// having to thread the value through their buildArgs map.
+	if v := os.Getenv("GOMEMLIMIT"); v != "" {
+		args = append(args, "--build-arg", fmt.Sprintf("GOMEMLIMIT=%s", v))
+	}
 	// short, prefix-trimmed component name used for both stdout prefixing
 	// (see below) and {component} substitution in BUILDX_CACHE_FROM/TO
 	// (see immediately following).

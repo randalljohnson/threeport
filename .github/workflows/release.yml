@@ -78,6 +78,8 @@ jobs:
         push: true
         build-args: |
           MAIN=${{ matrix.main }}
+        cache-from: type=gha,scope=threeport-${{ matrix.name }}
+        cache-to: type=gha,scope=threeport-${{ matrix.name }},mode=max
         tags: |
           ghcr.io/threeport/threeport-${{ matrix.name }}:${{ steps.version.outputs.tag }}
           ghcr.io/threeport/threeport-${{ matrix.name }}:latest

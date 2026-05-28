@@ -1,4 +1,4 @@
-name: Test
+name: CI
 
 on:
   pull_request:
@@ -8,26 +8,31 @@ on:
       - synchronize
       - reopened
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  compile:
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
     steps:
-    - name: Check out code
-      uses: actions/checkout@v6
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v6.4.0
       with:
         go-version: '1.24'
-        # the explicit actions/cache step below handles module + build cache.
-        # leave setup-go's built-in cache off so the two don't both restore
-        # into the same path and tar-clobber each other on extraction.
         cache: false
 
     - name: Cache Go build + module cache
-      uses: actions/cache@v5
+      uses: actions/cache@v5.0.5
       with:
         path: |
           ~/.cache/go-build
@@ -37,42 +42,39 @@ jobs:
           go-${{ runner.os }}-
 
     - name: Install mage
-      run: go install github.com/magefile/mage@latest
+      run: go install github.com/magefile/mage@v1.17.2
 
     - name: Install threeport-sdk
       run: mage install:sdk
 
     - name: Run threeport-sdk
-      run: $(go env GOPATH)/bin/threeport-sdk gen --config sdk-config.yaml
+      run: ${{ env.GOPATH }}/bin/threeport-sdk gen --config sdk-config.yaml
 
-    - name: Ensure no changes were made by threeport-sdk
+    - name: Verify codegen is idempotent
       run: git diff --exit-code
 
-    - name: Run unit tests
+    - name: Unit tests
       run: go test -count=1 ./pkg/... ./internal/... ./cmd/...
 
-  integration:
-    # must be an amd64 runner: the image-build step uses runtime.GOARCH and
-    # the integration suite runs on the same runner, so the host arch is
-    # both what we build for and what we test on.
+  integration-tests:
+    name: Integration Tests
+    # image builds and integration tests run on the same runner; both
+    # inherit its arch. pin to amd64.
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
     steps:
-    - name: Check out code
-      uses: actions/checkout@v6
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v6.4.0
       with:
         go-version: '1.24'
-        # the explicit actions/cache step below handles module + build cache.
-        # leave setup-go's built-in cache off so the two don't both restore
-        # into the same path and tar-clobber each other on extraction.
         cache: false
 
     - name: Cache Go build + module cache
-      uses: actions/cache@v5
+      uses: actions/cache@v5.0.5
       with:
         path: |
           ~/.cache/go-build
@@ -82,15 +84,13 @@ jobs:
           go-${{ runner.os }}-
 
     - name: Install mage
-      run: go install github.com/magefile/mage@latest
+      run: go install github.com/magefile/mage@v1.17.2
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4
+      uses: docker/setup-buildx-action@v4.1.0
       with:
-        # share the host network so buildx (docker-container driver) can
-        # push to the local registry at localhost:5001 set up in the next
-        # step. without this the builder runs in its own network namespace
-        # and localhost resolves to the builder container itself.
+        # share host network so buildx reaches the local registry in the
+        # next step.
         driver-opts: network=host
 
     - name: Create local container registry
@@ -99,7 +99,7 @@ jobs:
     - name: Assert amd64 runner
       run: |
         if [ "$(uname -m)" != "x86_64" ]; then
-          echo "::error::test.yml requires an amd64 runner; got $(uname -m)"
+          echo "::error::ci.yml requires an amd64 runner; got $(uname -m)"
           exit 1
         fi
 
@@ -116,5 +116,5 @@ jobs:
     - name: Create test control plane
       run: mage test:up
 
-    - name: Run tests
+    - name: Integration tests
       run: mage test:integration

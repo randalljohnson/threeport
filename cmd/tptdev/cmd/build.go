@@ -19,12 +19,36 @@ import (
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
-	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 )
+
+// devBuildTarget returns the unified-Dockerfile target name for a component.
+// Most controllers use `dev`; controllers with extra tooling in the image use
+// the corresponding specialized target.
+func devBuildTarget(componentName string) string {
+	switch componentName {
+	case installer.ThreeportTerraformControllerName:
+		return "dev-terraform"
+	case installer.ThreeportOciControllerName:
+		return "dev-pulumi"
+	default:
+		return "dev"
+	}
+}
+
+// componentMainPath returns the path to the Go main file for a component.
+// The agent is hand-written and lives at main.go; everything else is generated
+// and lives at main_gen.go.
+func componentMainPath(componentName string) string {
+	if componentName == "agent" {
+		return fmt.Sprintf("cmd/%s/main.go", componentName)
+	}
+	return fmt.Sprintf("cmd/%s/main_gen.go", componentName)
+}
 
 var noCache bool
 var push bool
@@ -85,65 +109,50 @@ var buildCmd = &cobra.Command{
 			cli.Error("failed to create threeport control plane installer", err)
 		}
 
+		// resolve the kind cluster name once for --load, before fanning out
+		var kindClusterName string
+		if load {
+			_, requestedControlPlane, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config", err)
+				os.Exit(1)
+			}
+			kindClusterName = provider.ThreeportRuntimeName(requestedControlPlane)
+		}
+
 		// start build workers
 		for i := 1; i <= parallel; i++ {
 			waitGroup.Add(1)
 			go func() {
 				defer waitGroup.Done()
 				for component := range jobs {
-					// build go binary
-					if err := tptdev.BuildGoBinary(
-						cpi.Opts.ThreeportPath,
-						arch,
-						component,
-						noCache,
-					); err != nil {
-						cli.Error("failed to build go binary:", err)
-						os.Exit(1)
+					if !(push || load) {
+						continue
 					}
 
-					// configure image tag
-					tag := fmt.Sprintf(
-						"%s/%s:%s",
+					gcflags := ""
+					if cpi.Opts.Debug {
+						gcflags = "all=-N -l"
+					}
+
+					if err := util.BuildImage(
+						cpi.Opts.ThreeportPath,
+						"Dockerfile",
+						devBuildTarget(component.Name),
+						arch,
+						map[string]string{
+							"MAIN":    componentMainPath(component.Name),
+							"GCFLAGS": gcflags,
+						},
 						cliArgs.ControlPlaneImageRepo,
 						component.ImageName,
 						cliArgs.ControlPlaneImageTag,
-					)
-
-					// build docker image
-					if push || load {
-						if err := tptdev.DockerBuildxImage(
-							cpi.Opts.ThreeportPath,
-							"cmd/tptdev/image/Dockerfile",
-							tag,
-							arch,
-							component,
-						); err != nil {
-							cli.Error("failed to build docker image:", err)
-							os.Exit(1)
-						}
-					}
-
-					switch {
-					case push:
-						// push docker image
-						if err := tptdev.PushDockerImage(tag); err != nil {
-							cli.Error("failed to push docker image:", err)
-							os.Exit(1)
-						}
-					case load:
-						// get threeport config and extract threeport API endpoint
-						_, requestedControlPlane, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
-						if err != nil {
-							cli.Error("failed to get threeport config", err)
-							os.Exit(1)
-						}
-
-						// load docker image into kind
-						if err = tptdev.LoadDevImage(provider.ThreeportRuntimeName(requestedControlPlane), tag); err != nil {
-							cli.Error("failed to load docker image into kind:", err)
-							os.Exit(1)
-						}
+						push,
+						load,
+						kindClusterName,
+					); err != nil {
+						cli.Error("failed to build image:", err)
+						os.Exit(1)
 					}
 
 					// restart pods with debug mode enabled

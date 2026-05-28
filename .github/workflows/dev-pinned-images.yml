@@ -11,7 +11,7 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.component.name }} (${{ matrix.platform }})
+    name: ${{ matrix.component.name }} - ${{ matrix.platform }}
     if: github.repository == 'randalljohnson/threeport'
     environment: development
     runs-on: ubuntu-24.04
@@ -78,7 +78,7 @@ jobs:
         retention-days: 1
 
   merge:
-    name: manifest (${{ matrix.name }})
+    name: manifest - ${{ matrix.name }}
     if: github.repository == 'randalljohnson/threeport'
     environment: development
     needs: build

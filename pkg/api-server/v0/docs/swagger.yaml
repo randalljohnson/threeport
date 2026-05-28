@@ -496,22 +496,11 @@ definitions:
       Note:
         description: A human-readable description of the status of this operation.
         type: string
-      Reason:
-        description: A short, machine understandable string that gives the reason
-          for the event being generated.
-        type: string
-      ReportingController:
-        description: Name of the controller that emitted this Event.
-        type: string
-      Type:
-        description: Type of this event (Normal, Warning), new types could be added
-          in the future.
-        type: string
-      objectID:
+      ObjectID:
         type: integer
-      objectName:
+      ObjectName:
         type: string
-      objectType:
+      ObjectType:
         description: |-
           Fields carrying the event's subject - the object the event is
           about. They flow in both directions:
@@ -534,6 +523,17 @@ definitions:
           A consumer like `tptctl get events` uses them to render
           "threeport.io/machine-runtime-instance/some-host" in the OBJECT
           column.
+        type: string
+      Reason:
+        description: A short, machine understandable string that gives the reason
+          for the event being generated.
+        type: string
+      ReportingController:
+        description: Name of the controller that emitted this Event.
+        type: string
+      Type:
+        description: Type of this event (Normal, Warning), new types could be added
+          in the future.
         type: string
     required:
     - Count
@@ -1670,11 +1670,6 @@ definitions:
         description: The environment variables set for the workload in KEY=VALUE format.
         items:
           type: string
-        type: array
-      Events:
-        description: All events generated for the machine workload instance.
-        items:
-          $ref: '#/definitions/v0.WorkloadEvent'
         type: array
       InterruptReconciliation:
         description: |-
@@ -2905,49 +2900,6 @@ definitions:
     - Name
     - YAMLDocument
     type: object
-  v0.WorkloadEvent:
-    properties:
-      HelmWorkloadInstanceID:
-        description: The related helm workload instance.
-        type: integer
-      MachineWorkloadInstanceID:
-        description: The related machine workload instance.
-        type: integer
-      Message:
-        description: The message associated with the event.
-        type: string
-      Reason:
-        description: The reason for the event.
-        type: string
-      RuntimeEventUID:
-        description: |-
-          A unique ID for de-duplicating purposes.  It is one of:
-          * The Kubernetes Event resource UID: when the WorkloadEvent is derived
-          directly from a Kubernetes Event.
-          * The workload controller ID: when the WorkloadEvent is emitted by the
-          workload controller.
-          * The machine workload controller ID: when the WorkloadEvent is emitted
-          by the machine workload controller.
-        type: string
-      Timestamp:
-        description: The timestamp for the event.
-        type: string
-      Type:
-        description: The type of event that occurred (e.g. Normal, Warning).
-        type: string
-      WorkloadInstanceID:
-        description: The related workload instance.
-        type: integer
-      WorkloadResourceInstanceID:
-        description: The related workload resource instance.
-        type: integer
-    required:
-    - Message
-    - Reason
-    - RuntimeEventUID
-    - Timestamp
-    - Type
-    type: object
   v0.WorkloadInstance:
     properties:
       CreationAcknowledged:
@@ -2976,13 +2928,6 @@ definitions:
           Used to inform reconcilers that an object is being deleted so they may
           complete delete reconciliation before actually deleting the object from the database.
         type: string
-      Events:
-        description: |-
-          All events generated for the workload instance that aren't related to a
-          particular workload resource instance.
-        items:
-          $ref: '#/definitions/v0.WorkloadEvent'
-        type: array
       InterruptReconciliation:
         description: |-
           InterruptReconciliation is used by the controller to indicated that future
@@ -3031,11 +2976,6 @@ definitions:
     type: object
   v0.WorkloadResourceInstance:
     properties:
-      Events:
-        description: All events that have occured related to this object.
-        items:
-          $ref: '#/definitions/v0.WorkloadEvent'
-        type: array
       JSONDefinition:
         allOf:
         - $ref: '#/definitions/datatypes.JSON'
@@ -13629,231 +13569,6 @@ paths:
           schema:
             $ref: '#/definitions/v0.Response'
       summary: updates an existing workload definition by replacing the entire object.
-  /v0/workload-events:
-    delete:
-      consumes:
-      - application/json
-      description: Deletes workload events by query parameter from the database.
-      operationId: delete-workloadEvents
-      parameters:
-      - description: workload event search by name
-        in: query
-        name: name
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: deletes workload events by query parameter.
-    get:
-      consumes:
-      - application/json
-      description: Get all workload events from the Threeport database.
-      operationId: get-v0-workloadEvents
-      parameters:
-      - description: workload event search by name
-        in: query
-        name: name
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets all workload events.
-    post:
-      consumes:
-      - application/json
-      description: Add a new workload event to the Threeport database.
-      operationId: add-v0-workloadEvent
-      parameters:
-      - description: WorkloadEvent object
-        in: body
-        name: workloadEvent
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadEvent'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: adds a new workload event.
-  /v0/workload-events/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a workload event by ID from the database.
-      operationId: delete-v0-workloadEvent
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: deletes a workload event.
-    get:
-      consumes:
-      - application/json
-      description: Get a particular workload event from the database.
-      operationId: get-v0-workloadEvent
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets a workload event.
-    patch:
-      consumes:
-      - application/json
-      description: |-
-        Update a workload event in the database.  Provide one or more fields to update.
-        Note: This API endpint is for updating workload event objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: update-v0-workloadEvent
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadEvent object
-        in: body
-        name: workloadEvent
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadEvent'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates specific fields for an existing workload event.
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Replace a workload event in the database.  All required fields must be provided.
-        If any optional fields are not provided, they will be null post-update.
-        Note: This API endpint is for updating workload event objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: replace-v0-workloadEvent
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadEvent object
-        in: body
-        name: workloadEvent
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadEvent'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates an existing workload event by replacing the entire object.
   /v0/workload-instances:
     get:
       consumes:
@@ -14498,19 +14213,6 @@ paths:
             $ref: '#/definitions/v0.ApiObjectVersions'
       summary: GetWorkloadDefinitionVersions gets the supported versions for the workload
         definition API.
-  /workload-events/versions:
-    get:
-      description: Get the supported API versions for workload events.
-      operationId: workloadEvent-get-versions
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.ApiObjectVersions'
-      summary: GetWorkloadEventVersions gets the supported versions for the workload
-        event API.
   /workload-instances/versions:
     get:
       description: Get the supported API versions for workload instances.

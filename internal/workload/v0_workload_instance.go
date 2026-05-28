@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/go-logr/logr"
 	kubeerr "k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +17,9 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // v0WorkloadInstanceCreated performs reconciliation when a v0 WorkloadInstance
@@ -165,27 +166,17 @@ func v0WorkloadInstanceCreated(
 		// create kube resource
 		_, err = kube.CreateResource(kubeObject, dynamicKubeClient, *mapper)
 		if err != nil {
-			// add a WorkloadEvent to surface the problem
-			eventRuntimeUID := r.ControllerID.String()
-			eventType := "Failed"
-			eventReason := "CreateResourceError"
-			eventMessage := fmt.Sprintf("failed to create Kubernetes resource for workload instance: %s", err)
-			timestamp := time.Now()
-			createEvent := v0.WorkloadEvent{
-				RuntimeEventUID:    &eventRuntimeUID,
-				Type:               &eventType,
-				Reason:             &eventReason,
-				Message:            &eventMessage,
-				Timestamp:          &timestamp,
-				WorkloadInstanceID: workloadInstance.ID,
-			}
-			_, eventErr := client.CreateWorkloadEvent(
-				r.APIClient,
-				r.APIServer,
-				&createEvent,
-			)
-			if eventErr != nil {
-				log.Error(err, "failed to create workload event for Kubernetes resource creation error")
+			// surface the create failure via an event on the workload instance
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeWarning),
+					Reason: util.Ptr("CreateResourceError"),
+					Note:   util.Ptr(fmt.Sprintf("failed to create Kubernetes resource for workload instance: %s", err)),
+				},
+				*workloadInstance.ID,
+				workloadInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for Kubernetes resource creation error")
 			}
 			return 0, fmt.Errorf("failed to create Kubernetes resource: %w", err)
 		}
@@ -465,20 +456,6 @@ func v0WorkloadInstanceDeleted(
 			"workloadResourceInstanceID", wri.ID,
 		)
 	}
-
-	// delete workload events related to workload instance
-	_, err = client.DeleteWorkloadEventsByQueryString(
-		r.APIClient,
-		r.APIServer,
-		fmt.Sprintf("workloadinstanceid=%d", *workloadInstance.ID),
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to delete workload events for workload instance with ID %d: %w", workloadInstance.ID, err)
-	}
-	log.V(1).Info(
-		"workload events deleted",
-		"workloadInstanceID", workloadInstance.ID,
-	)
 
 	// delete the ThreeportWorkload resource to inform the threeport-agent the
 	// resources are gone

@@ -48,9 +48,6 @@ type MachineWorkloadInstance struct {
 	// The latest status of the workload instance.
 	Status *string `json:",omitempty" validate:"optional"`
 
-	// All events generated for the machine workload instance.
-	Events []*WorkloadEvent `json:",omitempty" validate:"optional"`
-
 	// The environment variables set for the workload in KEY=VALUE format.
 	Env []string `json:",omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
 }

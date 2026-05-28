@@ -11,15 +11,12 @@ import (
 
 const (
 	ObjectTypeWorkloadDefinition         string = "WorkloadDefinition"
-	ObjectTypeWorkloadEvent              string = "WorkloadEvent"
 	ObjectTypeWorkloadInstance           string = "WorkloadInstance"
 	ObjectTypeWorkloadResourceDefinition string = "WorkloadResourceDefinition"
 	ObjectTypeWorkloadResourceInstance   string = "WorkloadResourceInstance"
 
 	PathWorkloadDefinitionVersions         = "/workload-definitions/versions"
 	PathWorkloadDefinitions                = "/v0/workload-definitions"
-	PathWorkloadEventVersions              = "/workload-events/versions"
-	PathWorkloadEvents                     = "/v0/workload-events"
 	PathWorkloadInstanceVersions           = "/workload-instances/versions"
 	PathWorkloadInstances                  = "/v0/workload-instances"
 	PathWorkloadResourceDefinitionVersions = "/workload-resource-definitions/versions"
@@ -91,65 +88,6 @@ func (wd *WorkloadDefinition) GetFullyQualifiedType() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (wd *WorkloadDefinition) ScheduledForDeletion() *time.Time {
 	return wd.DeletionScheduled
-}
-
-// NotificationPayload returns the notification payload that is delivered to the
-// controller when a change is made.  It includes the object as presented by the
-// client when the change was made.
-func (we *WorkloadEvent) NotificationPayload(
-	operation notifications.NotificationOperation,
-	requeue bool,
-	creationTime int64,
-) (*[]byte, error) {
-	notif := notifications.Notification{
-		CreationTime:  &creationTime,
-		Object:        we,
-		ObjectVersion: we.GetVersion(),
-		Operation:     operation,
-	}
-
-	payload, err := json.Marshal(notif)
-	if err != nil {
-		return &payload, fmt.Errorf("failed to marshal notification payload %+v: %w", we, err)
-	}
-
-	return &payload, nil
-}
-
-// DecodeNotifObject takes the threeport object in the form of a
-// map[string]interface and returns the typed object by marshalling into JSON
-// and then unmarshalling into the typed object.  We are not using the
-// mapstructure library here as that requires custom decode hooks to manage
-// fields with non-native go types.
-func (we *WorkloadEvent) DecodeNotifObject(object interface{}) error {
-	jsonObject, err := json.Marshal(object)
-	if err != nil {
-		return fmt.Errorf("failed to marshal object map from consumed notification message: %w", err)
-	}
-	if err := json.Unmarshal(jsonObject, &we); err != nil {
-		return fmt.Errorf("failed to unmarshal json object to typed object: %w", err)
-	}
-	return nil
-}
-
-// GetId returns the unique ID for the object.
-func (we *WorkloadEvent) GetId() uint {
-	return *we.ID
-}
-
-// GetType returns the object type.
-func (we *WorkloadEvent) GetType() string {
-	return "WorkloadEvent"
-}
-
-// GetVersion returns the version of the API object.
-func (we *WorkloadEvent) GetVersion() string {
-	return "v0"
-}
-
-// GetFullyQualifiedType returns the API-namespace-qualified type name.
-func (we *WorkloadEvent) GetFullyQualifiedType() string {
-	return "threeport.io/v0.WorkloadEvent"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the

@@ -256,11 +256,6 @@ func DeleteObjectByTypeAndID(apiClient *http.Client, apiAddr string, objectType 
 			return fmt.Errorf("failed to delete WorkloadDefinition: %w", err)
 		}
 
-	case "v0.WorkloadEvent":
-		if _, err := DeleteWorkloadEvent(apiClient, apiAddr, id); err != nil {
-			return fmt.Errorf("failed to delete WorkloadEvent: %w", err)
-		}
-
 	case "v0.WorkloadInstance":
 		if _, err := DeleteWorkloadInstance(apiClient, apiAddr, id); err != nil {
 			return fmt.Errorf("failed to delete WorkloadInstance: %w", err)

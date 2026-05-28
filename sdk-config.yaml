@@ -300,9 +300,6 @@ ApiObjectGroups:
       Reconcilable: true
       Tptctl:
         Enabled: true
-    - Name: WorkloadEvent
-      Versions:
-        - v0
 - Name: attached_object
   Objects:
     - Name: AttachedObjectReference

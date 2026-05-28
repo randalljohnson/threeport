@@ -22,8 +22,8 @@ const (
 	// defaultShell is used when the MachineWorkloadDefinition does not specify a shell.
 	defaultShell = "/bin/bash"
 
-	// maxEventMessageChars caps the size of a WorkloadEvent message so we
-	// don't write arbitrarily large rows to the DB when a script emits
+	// maxEventMessageChars caps the size of an Event Note so we don't
+	// write arbitrarily large rows to the DB when a script emits
 	// megabytes of output.
 	maxEventMessageChars = 32768
 )
@@ -138,8 +138,8 @@ func v0MachineWorkloadInstanceDeleted(
 }
 
 // runScript establishes an SSH connection to the machine runtime, executes the
-// given script, and records WorkloadEvent records for the captured output and
-// exit status.  Returns the derived workload instance status.
+// given script, and records Events for the captured output and exit status.
+// Returns the derived workload instance status.
 func runScript(
 	r *controller.Reconciler,
 	mwi *v0.MachineWorkloadInstance,

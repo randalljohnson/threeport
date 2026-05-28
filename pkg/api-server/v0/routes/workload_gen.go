@@ -20,18 +20,6 @@ func WorkloadDefinitionRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.DELETE(v0.PathWorkloadDefinitions+"/:id", h.DeleteWorkloadDefinition)
 }
 
-// WorkloadEventRoutes sets up all routes for the WorkloadEvent handlers.
-func WorkloadEventRoutes(e *echo.Echo, h *handlers.Handler) {
-	e.GET(v0.PathWorkloadEventVersions, h.GetWorkloadEventVersions)
-
-	e.POST(v0.PathWorkloadEvents, h.AddWorkloadEvent)
-	e.GET(v0.PathWorkloadEvents, h.GetWorkloadEvents)
-	e.GET(v0.PathWorkloadEvents+"/:id", h.GetWorkloadEvent)
-	e.PATCH(v0.PathWorkloadEvents+"/:id", h.UpdateWorkloadEvent)
-	e.PUT(v0.PathWorkloadEvents+"/:id", h.ReplaceWorkloadEvent)
-	e.DELETE(v0.PathWorkloadEvents+"/:id", h.DeleteWorkloadEvent)
-}
-
 // WorkloadInstanceRoutes sets up all routes for the WorkloadInstance handlers.
 func WorkloadInstanceRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.GET(v0.PathWorkloadInstanceVersions, h.GetWorkloadInstanceVersions)

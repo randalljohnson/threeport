@@ -55,10 +55,6 @@ type WorkloadInstance struct {
 
 	// The latest status of a workload instance.
 	Status *string `json:",omitempty" validate:"optional"`
-
-	// All events generated for the workload instance that aren't related to a
-	// particular workload resource instance.
-	Events []*WorkloadEvent `json:",omitempty" validate:"optional"`
 }
 
 // WorkloadResourceInstance is a Kubernetes resource instance.
@@ -85,47 +81,6 @@ type WorkloadResourceInstance struct {
 	// kubernetes runtime.
 	RuntimeDefinition *datatypes.JSON `json:",omitempty" validate:"optional"`
 
-	// All events that have occured related to this object.
-	Events []*WorkloadEvent `json:",omitempty" validate:"optional"`
-
 	// Whether another controller has scheduled this resource for deletion
 	ScheduledForDeletion *time.Time `json:",omitempty" validate:"optional"`
-}
-
-// WorkloadEvent is a summary of an event associated with a workload instance.
-type WorkloadEvent struct {
-	Common `swaggerignore:"true" mapstructure:",squash"`
-
-	// A unique ID for de-duplicating purposes.  It is one of:
-	// * The Kubernetes Event resource UID: when the WorkloadEvent is derived
-	// directly from a Kubernetes Event.
-	// * The workload controller ID: when the WorkloadEvent is emitted by the
-	// workload controller.
-	// * The machine workload controller ID: when the WorkloadEvent is emitted
-	// by the machine workload controller.
-	RuntimeEventUID *string `json:",omitempty" gorm:"not null" validate:"required"`
-
-	// The type of event that occurred (e.g. Normal, Warning).
-	Type *string `json:",omitempty" gorm:"not null" validate:"required"`
-
-	// The reason for the event.
-	Reason *string `json:",omitempty" gorm:"not null" validate:"required"`
-
-	// The message associated with the event.
-	Message *string `json:",omitempty" gorm:"not null" validate:"required"`
-
-	// The timestamp for the event.
-	Timestamp *time.Time `json:",omitempty" gorm:"not null" validate:"required"`
-
-	// The related workload instance.
-	WorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
-
-	// The related workload resource instance.
-	WorkloadResourceInstanceID *uint `json:",omitempty" validate:"optional"`
-
-	// The related helm workload instance.
-	HelmWorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
-
-	// The related machine workload instance.
-	MachineWorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
 }

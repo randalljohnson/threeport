@@ -39,12 +39,14 @@
 # Google's pull-through mirror (no per-user rate limit).
 
 # ----- release: minimal distroless image with the compiled binary -----
+#
+# Binary lands at /${BINARY} so the deployment manifest's
+# /<component-name> command resolves.
 FROM gcr.io/distroless/static:nonroot AS release
 ARG TARGETARCH
 ARG BINARY
-COPY ${TARGETARCH}/${BINARY} /app
+COPY ${TARGETARCH}/${BINARY} /${BINARY}
 USER 65532:65532
-ENTRYPOINT ["/app"]
 
 # ----- dev-base: alpine with delve, shared by dev variants -----
 FROM mirror.gcr.io/library/golang:1.24-alpine AS dev-base
@@ -57,8 +59,7 @@ RUN go install github.com/go-delve/delve/cmd/dlv@v${DELVE_VERSION} && \
 FROM dev-base AS dev
 ARG TARGETARCH
 ARG BINARY
-COPY ${TARGETARCH}/${BINARY} /app
-ENTRYPOINT ["/app"]
+COPY ${TARGETARCH}/${BINARY} /${BINARY}
 
 # ----- live-reload: air watcher; expects source mounted at /threeport -----
 FROM dev-base AS live-reload

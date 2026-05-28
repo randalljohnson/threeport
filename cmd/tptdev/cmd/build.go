@@ -26,18 +26,22 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-// devBuildTarget returns the unified-Dockerfile target name for a component.
-// Most controllers use `dev`; controllers with extra tooling in the image use
-// the corresponding specialized target.
-func devBuildTarget(componentName string) string {
+// imageBuildTarget returns the Dockerfile target for a component.
+// Defaults to the distroless `release` target; --delve switches to the
+// delve-equipped `dev` variant. terraform-controller and oci-controller
+// always use dev-terraform / dev-pulumi (they shell out to those tools
+// at runtime, and we don't have release-target equivalents yet).
+func imageBuildTarget(componentName string, delve bool) string {
 	switch componentName {
 	case installer.ThreeportTerraformControllerName:
 		return "dev-terraform"
 	case installer.ThreeportOciControllerName:
 		return "dev-pulumi"
-	default:
+	}
+	if delve {
 		return "dev"
 	}
+	return "release"
 }
 
 // componentMainPath returns the path to the Go main file for a component.
@@ -50,13 +54,13 @@ func componentMainPath(componentName string) string {
 	return fmt.Sprintf("cmd/%s/main_gen.go", componentName)
 }
 
-var noCache bool
 var push bool
 var load bool
 var buildComponentNames string
 var arch string
 var parallel int
 var restart bool
+var noCache bool
 
 // buildCmd represents the up command
 var buildCmd = &cobra.Command{
@@ -131,7 +135,7 @@ var buildCmd = &cobra.Command{
 			for _, component := range componentList {
 				packageDirs = append(packageDirs, filepath.Dir(componentMainPath(component.Name)))
 			}
-			if err := util.BuildBinaries(cpi.Opts.ThreeportPath, arches, packageDirs); err != nil {
+			if err := util.BuildBinaries(cpi.Opts.ThreeportPath, arches, packageDirs, noCache, delve); err != nil {
 				cli.Error("failed to build binaries:", err)
 				os.Exit(1)
 			}
@@ -154,7 +158,7 @@ var buildCmd = &cobra.Command{
 					if err := util.BuildImage(
 						cpi.Opts.ThreeportPath,
 						"Dockerfile",
-						devBuildTarget(component.Name),
+						imageBuildTarget(component.Name, delve),
 						arch,
 						component.Name,
 						"bin",
@@ -286,10 +290,6 @@ func init() {
 		"parallel", 1, "Number of parallel builds to run.",
 	)
 	buildCmd.Flags().BoolVar(
-		&noCache,
-		"no-cache", false, "Build go binaries without the local go cache.",
-	)
-	buildCmd.Flags().BoolVar(
 		&push,
 		"push", false, "Push docker images.",
 	)
@@ -300,6 +300,14 @@ func init() {
 	buildCmd.Flags().BoolVar(
 		&restart,
 		"restart", false, "Restart pods after pushing or loading images.",
+	)
+	buildCmd.Flags().BoolVar(
+		&delve,
+		"delve", false, "Build delve-equipped dev images instead of the default distroless release images.",
+	)
+	buildCmd.Flags().BoolVar(
+		&noCache,
+		"no-cache", false, "Build go binaries without the local go cache (passes -a to go build).",
 	)
 }
 

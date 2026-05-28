@@ -40,9 +40,9 @@ func main() {
 		t.Fatalf("failed to write main.go: %v", err)
 	}
 
-	err = BuildBinaries(rootDir, []string{"amd64"}, []string{"cmd/tptctl"})
+	err = BuildBinaries(rootDir, []string{"amd64"}, []string{"cmd/tptctl"}, false, false)
 	if err != nil {
-		t.Errorf(`BuildBinaries(rootDir, ["amd64"], ["cmd/tptctl"]) failed: %v`, err)
+		t.Errorf(`BuildBinaries(rootDir, ["amd64"], ["cmd/tptctl"], false, false) failed: %v`, err)
 	}
 
 	if _, err := os.Stat(filepath.Join(rootDir, "bin", "amd64", "tptctl")); err != nil {
@@ -67,8 +67,8 @@ go 1.22
 		t.Fatalf("failed to write go.mod: %v", err)
 	}
 
-	err = BuildBinaries(rootDir, []string{"amd64"}, []string{"cmd/missing"})
+	err = BuildBinaries(rootDir, []string{"amd64"}, []string{"cmd/missing"}, false, false)
 	if err == nil {
-		t.Errorf(`BuildBinaries(rootDir, ["amd64"], ["cmd/missing"]) expected error, got nil`)
+		t.Errorf(`BuildBinaries(rootDir, ["amd64"], ["cmd/missing"], false, false) expected error, got nil`)
 	}
 }

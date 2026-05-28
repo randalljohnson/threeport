@@ -368,6 +368,8 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Line().Id("workingDir"),
 			Line().Index().String().Values(Id("arch")),
 			Line().Index().String().Values(Qual("fmt", "Sprintf").Call(Lit("cmd/%s"), Id("component"))),
+			Line().False(),
+			Line().False(),
 			Line(),
 		).Op(";").Err().Op("!=").Nil()).Block(
 			Return(Qual("fmt", "Errorf").Call(Lit("failed to build binary: %w"), Id("err"))),
@@ -571,6 +573,8 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 			Line().Id("workingDir"),
 			Line().Index().String().Values(Id("arch")),
 			Line().Index().String().Values(Lit(packageDir)),
+			Line().False(),
+			Line().False(),
 			Line(),
 		).Op(";").Err().Op("!=").Nil()).Block(
 			Return().Qual("fmt", "Errorf").Call(
@@ -662,6 +666,8 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, image
 			Line().Id("workingDir"),
 			Line().Id("arches"),
 			Line().Index().String().Values(Lit(packageDir)),
+			Line().False(),
+			Line().False(),
 			Line(),
 		).Op(";").Err().Op("!=").Nil()).Block(
 			Return(Qual("fmt", "Errorf").Call(
@@ -794,6 +800,8 @@ func emitPrebuildBlock(g *Group, components []componentSpec) {
 		Line().Id("workingDir"),
 		Line().Id("arches"),
 		Line().Id("packageDirs"),
+		Line().False(),
+		Line().False(),
 		Line(),
 	).Op(";").Err().Op("!=").Nil()).Block(
 		Return(Qual("fmt", "Errorf").Call(Lit("failed to pre-build binaries: %w"), Err())),

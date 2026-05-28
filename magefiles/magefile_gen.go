@@ -41,6 +41,8 @@ func (Build) ApiBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/rest-api"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build rest-api binary: %w", err)
 	}
@@ -98,6 +100,8 @@ func (Build) ApiImage(
 		workingDir,
 		arches,
 		[]string{"cmd/rest-api"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build rest-api binary: %w", err)
 	}
@@ -167,6 +171,8 @@ func (Build) DbMigratorBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/database-migrator"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build database-migrator binary: %w", err)
 	}
@@ -224,6 +230,8 @@ func (Build) DbMigratorImage(
 		workingDir,
 		arches,
 		[]string{"cmd/database-migrator"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build database-migrator binary: %w", err)
 	}
@@ -293,6 +301,8 @@ func (Build) AgentBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/agent"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build agent binary: %w", err)
 	}
@@ -350,6 +360,8 @@ func (Build) AgentImage(
 		workingDir,
 		arches,
 		[]string{"cmd/agent"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build agent binary: %w", err)
 	}
@@ -419,6 +431,8 @@ func (Build) SecretControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/secret-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build secret-controller binary: %w", err)
 	}
@@ -476,6 +490,8 @@ func (Build) SecretControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/secret-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build secret-controller binary: %w", err)
 	}
@@ -545,6 +561,8 @@ func (Build) AwsControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/aws-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build aws-controller binary: %w", err)
 	}
@@ -602,6 +620,8 @@ func (Build) AwsControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/aws-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build aws-controller binary: %w", err)
 	}
@@ -671,6 +691,8 @@ func (Build) OciControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/oci-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build oci-controller binary: %w", err)
 	}
@@ -728,6 +750,8 @@ func (Build) OciControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/oci-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build oci-controller binary: %w", err)
 	}
@@ -797,6 +821,8 @@ func (Build) GcpControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/gcp-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gcp-controller binary: %w", err)
 	}
@@ -854,6 +880,8 @@ func (Build) GcpControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/gcp-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gcp-controller binary: %w", err)
 	}
@@ -923,6 +951,8 @@ func (Build) ControlPlaneControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/control-plane-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build control-plane-controller binary: %w", err)
 	}
@@ -980,6 +1010,8 @@ func (Build) ControlPlaneControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/control-plane-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build control-plane-controller binary: %w", err)
 	}
@@ -1049,6 +1081,8 @@ func (Build) GatewayControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/gateway-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gateway-controller binary: %w", err)
 	}
@@ -1106,6 +1140,8 @@ func (Build) GatewayControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/gateway-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gateway-controller binary: %w", err)
 	}
@@ -1175,6 +1211,8 @@ func (Build) HelmWorkloadControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/helm-workload-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build helm-workload-controller binary: %w", err)
 	}
@@ -1232,6 +1270,8 @@ func (Build) HelmWorkloadControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/helm-workload-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build helm-workload-controller binary: %w", err)
 	}
@@ -1301,6 +1341,8 @@ func (Build) KubernetesRuntimeControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/kubernetes-runtime-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build kubernetes-runtime-controller binary: %w", err)
 	}
@@ -1358,6 +1400,8 @@ func (Build) KubernetesRuntimeControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/kubernetes-runtime-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build kubernetes-runtime-controller binary: %w", err)
 	}
@@ -1427,6 +1471,8 @@ func (Build) ObservabilityControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/observability-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build observability-controller binary: %w", err)
 	}
@@ -1484,6 +1530,8 @@ func (Build) ObservabilityControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/observability-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build observability-controller binary: %w", err)
 	}
@@ -1553,6 +1601,8 @@ func (Build) TerraformControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/terraform-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build terraform-controller binary: %w", err)
 	}
@@ -1610,6 +1660,8 @@ func (Build) TerraformControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/terraform-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build terraform-controller binary: %w", err)
 	}
@@ -1679,6 +1731,8 @@ func (Build) WorkloadControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/workload-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build workload-controller binary: %w", err)
 	}
@@ -1736,6 +1790,8 @@ func (Build) WorkloadControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/workload-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build workload-controller binary: %w", err)
 	}
@@ -2027,6 +2083,8 @@ func (Build) AllImages(
 		workingDir,
 		arches,
 		packageDirs,
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
 	}
@@ -2125,6 +2183,8 @@ func (Build) AllImagesDev() error {
 		workingDir,
 		arches,
 		packageDirs,
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
 	}
@@ -2192,6 +2252,8 @@ func (Build) AllImagesRelease() error {
 		workingDir,
 		arches,
 		packageDirs,
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
 	}
@@ -2240,6 +2302,8 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 		workingDir,
 		[]string{arch},
 		[]string{fmt.Sprintf("cmd/%s", component)},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}

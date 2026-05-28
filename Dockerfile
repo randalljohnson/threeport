@@ -26,27 +26,33 @@
 # ----- builder: cross-compile MAIN at native host arch -----
 # mirror.gcr.io is Google's free pull-through mirror of Docker Hub; using
 # it for the base image avoids Docker Hub's per-user pull rate limit.
-FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.24 AS builder
+# BASE_IMAGE lets CI swap in a pre-warmed image carrying go mod download
+# and compiled pkg/internal output in regular layers, so the per-component
+# build only has to compile cmd/<name>/main.go.
+ARG BASE_IMAGE=mirror.gcr.io/library/golang:1.24
+FROM --platform=$BUILDPLATFORM ${BASE_IMAGE} AS builder
 ARG TARGETARCH
 ARG MAIN
 ARG GCFLAGS=""
 ARG GO_BUILD_FLAGS=""
 ARG GOMEMLIMIT=""
 
+# pin GOCACHE so derived BASE_IMAGEs that bake a warm build cache and the
+# default golang image land on the same path. cache-mount overlays are
+# intentionally omitted; they hide the base image's layer-baked caches.
+ENV GOCACHE=/root/.cache/go-build
+
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+RUN go mod download
 
 COPY . .
 # GO_BUILD_FLAGS caps Go's compile parallelism (e.g. -p=2). GOMEMLIMIT
 # soft-caps the Go runtime's heap; both are CI-only guardrails against
 # OOM when a large-SDK component (aws, gcp, oci) compiles on a memory-
 # constrained runner. Empty defaults leave local builds unconstrained.
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     GOFLAGS="${GO_BUILD_FLAGS}" GOMEMLIMIT="${GOMEMLIMIT}" \
     go build -gcflags="${GCFLAGS}" -o /out/app ${MAIN}
 

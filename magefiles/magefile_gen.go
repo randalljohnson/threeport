@@ -1198,15 +1198,12 @@ func (Build) MachineRuntimeControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.MachineRuntimeControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/machine-runtime-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/machine-runtime-controller/main_gen.go"},
 		imageRepo,
 		"threeport-machine-runtime-controller",
 		imageTag,
@@ -1312,15 +1309,12 @@ func (Build) MachineWorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	build := Build{}
-	if err := build.MachineWorkloadControllerBin(arch); err != nil {
-		return fmt.Errorf("failed to build binary for image build: %w", err)
-	}
-
 	if err := util.BuildImage(
 		workingDir,
-		"cmd/machine-workload-controller/image/Dockerfile-alpine",
+		"Dockerfile",
+		"release",
 		arch,
+		map[string]string{"MAIN": "cmd/machine-workload-controller/main_gen.go"},
 		imageRepo,
 		"threeport-machine-workload-controller",
 		imageTag,

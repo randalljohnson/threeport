@@ -73,6 +73,7 @@ jobs:
         push: true
         build-args: |
           MAIN=${{ matrix.component.main }}
+          GO_BUILD_FLAGS=-p=2
         cache-from: type=gha,scope=dev-pinned-${{ matrix.component.name }}
         cache-to: type=gha,scope=dev-pinned-${{ matrix.component.name }},mode=max
         tags: ${{ steps.tags.outputs.list }}

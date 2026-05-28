@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.7
+#
+# Pre-warmed Go build base for the threeport component matrix.
+#
+# Bakes `go mod download` output and a compiled $GOCACHE for
+# ./pkg/... ./internal/... into regular image layers (no cache mounts,
+# so the caches survive image push/pull). Consumers FROM this image in
+# the main Dockerfile (via BASE_IMAGE build-arg) only have to compile
+# their own cmd/<component>/main.go.
+#
+# Built per-platform by .github/workflows/build-base.yml and published to
+# ghcr.io/randalljohnson/threeport-build-base.
+
+FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.24
+ARG TARGETARCH
+
+ENV GOCACHE=/root/.cache/go-build
+
+WORKDIR /src
+
+# resolve module graph in its own layer so go.mod/go.sum changes don't
+# invalidate the package-compile layer below unnecessarily.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# pkg/, internal/, and sdk-config.yaml are the inputs to the package
+# pre-compile. cmd/ is intentionally excluded; component main packages
+# compile in the downstream image.
+COPY pkg/ ./pkg/
+COPY internal/ ./internal/
+COPY sdk-config.yaml ./sdk-config.yaml
+
+# pre-warm $GOCACHE for every importable package. Discarding the binary
+# (/dev/null) is fine; we only care about the compiled-package objects
+# left behind in GOCACHE.
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
+    go build -o /dev/null ./pkg/... ./internal/...

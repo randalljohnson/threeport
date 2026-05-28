@@ -1,0 +1,103 @@
+# Native go build + thin Docker layer.
+#
+# Compilation happens via `mage build:allImages` on the runner, NOT
+# inside a Dockerfile RUN. Go's content-addressed build cache
+# (~/.cache/go-build, restored by actions/cache below) invalidates per
+# package, so a single-file edit only recompiles that package. Inside a
+# Dockerfile, the same edit invalidates the whole COPY layer and forces
+# a cold rebuild. The actions/cache step is the primary cache for this
+# workflow; BUILDX_CACHE_FROM/TO only cover the tiny COPY+ENTRYPOINT
+# tail.
+#
+# Cross-compile is pure-Go (CGO_ENABLED=0), so one runner produces both
+# amd64 and arm64 binaries in parallel without QEMU.
+
+name: Images
+
+on:
+  pull_request:
+    branches: [dev-pinned]
+  push:
+    branches: [dev-pinned]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push multi-arch images
+    if: github.repository == 'randalljohnson/threeport'
+    runs-on: ubuntu-24.04
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+
+    - name: Set up Go
+      uses: actions/setup-go@v6.4.0
+      with:
+        go-version: '1.24'
+        cache: false
+
+    # Primary cache for the workflow. Restoring Go's build + module cache
+    # is what makes warm runs fast; the Docker layer cache further down
+    # only covers the cheap COPY+distroless tail.
+    - name: Cache Go build + module cache
+      uses: actions/cache@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-${{ runner.os }}-
+
+    - name: Install mage
+      run: go install github.com/magefile/mage@v1.17.2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4.1.0
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@v4.2.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Compute short SHA
+      id: sha
+      run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+    - name: Determine tag
+      id: tag
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # PR to dev-pinned: tag with the source branch (dev) + sha; each
+          # push to dev produces a uniquely-tagged preview image.
+          echo "value=dev-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
+        else
+          # push to dev-pinned (the merge) is the customer-deployment tag.
+          echo "value=dev-pinned-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Native compile via mage (uses the warm Go cache above), then
+    # parallel buildx pushes per component. BUILDX_CACHE_FROM/TO covers
+    # only the tail; the compile cache is the actions/cache step above.
+    # {component} gives each image its own GHA cache key.
+    - name: Build and push multi-arch images
+      env:
+        PARALLEL: "4"
+        BUILDX_CACHE_FROM: type=gha,scope=dev-{component}
+        BUILDX_CACHE_TO: type=gha,scope=dev-{component},mode=max
+      run: |
+        mage build:allImages \
+            ghcr.io/randalljohnson \
+            ${{ steps.tag.outputs.value }} \
+            amd64,arm64

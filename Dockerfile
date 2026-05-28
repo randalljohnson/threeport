@@ -44,7 +44,7 @@ ENTRYPOINT ["/app"]
 
 # ----- dev-base: alpine with delve, shared by dev variants -----
 FROM golang:1.24-alpine AS dev-base
-ARG DELVE_VERSION=1.23.1
+ARG DELVE_VERSION=1.26.3
 RUN apk add --no-cache ca-certificates
 RUN go install github.com/go-delve/delve/cmd/dlv@v${DELVE_VERSION} && \
     mv /go/bin/dlv /usr/local/bin
@@ -56,7 +56,7 @@ ENTRYPOINT ["/app"]
 
 # ----- live-reload: air watcher; expects source mounted at /threeport -----
 FROM dev-base AS live-reload
-ARG AIR_VERSION=1.61.5
+ARG AIR_VERSION=1.65.3
 RUN apk add --no-cache git
 RUN go install github.com/air-verse/air@v${AIR_VERSION} && \
     mv /go/bin/air /usr/local/bin

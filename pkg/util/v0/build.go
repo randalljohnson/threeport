@@ -192,14 +192,22 @@ func BuildImage(
 	for _, k := range keys {
 		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
 	}
+	// short, prefix-trimmed component name used for both stdout prefixing
+	// (see below) and {component} substitution in BUILDX_CACHE_FROM/TO
+	// (see immediately following).
+	shortName := strings.TrimPrefix(imageName, "threeport-")
+
 	// honor BUILDX_CACHE_FROM / BUILDX_CACHE_TO for CI cache reuse; opt-in
 	// via env so local builds (with hot in-builder BuildKit cache) don't pay
-	// the registry-or-gha round trip.
+	// the registry-or-gha round trip. {component} substitutes to the
+	// per-image short name (e.g. "rest-api") so each component lands in its
+	// own cache scope; one component's go.sum change won't invalidate the
+	// others, and concurrent writes don't race on the same cache ref.
 	if v := os.Getenv("BUILDX_CACHE_FROM"); v != "" {
-		args = append(args, "--cache-from", v)
+		args = append(args, "--cache-from", strings.ReplaceAll(v, "{component}", shortName))
 	}
 	if v := os.Getenv("BUILDX_CACHE_TO"); v != "" {
-		args = append(args, "--cache-to", v)
+		args = append(args, "--cache-to", strings.ReplaceAll(v, "{component}", shortName))
 	}
 	// plain progress keeps output line-oriented so concurrent builds
 	// interleave cleanly when prefixed per component
@@ -212,7 +220,6 @@ func BuildImage(
 	// Arch isn't in the prefix because buildx's own per-step labels
 	// (e.g. "[linux/arm64 builder 6/6]") already identify the platform
 	// for each line.
-	shortName := strings.TrimPrefix(imageName, "threeport-")
 	prefix := fmt.Sprintf("[%s]", shortName)
 	dockerBuildCmd := exec.Command("docker", args...)
 	dockerBuildCmd.Stdout = &prefixWriter{prefix: prefix, out: os.Stdout}

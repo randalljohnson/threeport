@@ -1341,6 +1341,8 @@ func (Build) MachineRuntimeControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/machine-runtime-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-runtime-controller binary: %w", err)
 	}
@@ -1398,6 +1400,8 @@ func (Build) MachineRuntimeControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/machine-runtime-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-runtime-controller binary: %w", err)
 	}
@@ -1467,6 +1471,8 @@ func (Build) MachineWorkloadControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/machine-workload-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-workload-controller binary: %w", err)
 	}
@@ -1524,6 +1530,8 @@ func (Build) MachineWorkloadControllerImage(
 		workingDir,
 		arches,
 		[]string{"cmd/machine-workload-controller"},
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-workload-controller binary: %w", err)
 	}

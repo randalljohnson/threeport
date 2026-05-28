@@ -16,11 +16,15 @@ import (
 
 // componentSpec carries the bits the magefile generator needs to emit a
 // per-component build target: the binary name on disk (used both for the
-// `bin/<arch>/<name>` output path and the `BINARY=<name>` build-arg) and
-// the package dir the Go compiler builds.
+// `bin/<arch>/<name>` output path and the `BINARY=<name>` build-arg), the
+// package dir the Go compiler builds, the container image name, and the
+// name of the generated package-only function that the AllImages* tasks
+// call to skip redundant compile work.
 type componentSpec struct {
-	BinaryName string
-	PackageDir string
+	BinaryName      string
+	PackageDir      string
+	ImageName       string
+	PackageFuncName string
 }
 
 // GenMagefile generates the source code for mage which is a Make-like tool
@@ -72,17 +76,14 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	buildApiImageFuncName := "ApiImage"
 	buildDbMigratorImageFuncName := "DbMigratorImage"
 	buildAgentImageFuncName := "AgentImage"
-	buildImageFuncNames := []string{buildApiImageFuncName, buildDbMigratorImageFuncName}
 
 	buildApiDevImageFuncName := "ApiImageDev"
 	buildDbMigratorDevImageFuncName := "DbMigratorImageDev"
 	buildAgentDevImageFuncName := "AgentImageDev"
-	buildDevImageFuncNames := []string{buildApiDevImageFuncName, buildDbMigratorDevImageFuncName}
 
 	buildApiReleaseImageFuncName := "ApiImageRelease"
 	buildDbMigratorReleaseImageFuncName := "DbMigratorImageRelease"
 	buildAgentReleaseImageFuncName := "AgentImageRelease"
-	buildReleaseImageFuncNames := []string{buildApiReleaseImageFuncName, buildDbMigratorReleaseImageFuncName}
 
 	f.Const().Id("releaseArch").Op("=").Lit("amd64")
 	f.Line()
@@ -108,11 +109,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			strcase.ToKebab(sdkConfig.ModuleName),
 		)
 	}
+	apiPackageFuncName := "restApiImagePackage"
 	allComponents = append(allComponents, componentSpec{
-		BinaryName: "rest-api",
-		PackageDir: "cmd/rest-api",
+		BinaryName:      "rest-api",
+		PackageDir:      "cmd/rest-api",
+		ImageName:       apiImageName,
+		PackageFuncName: apiPackageFuncName,
 	})
-	emitImageFunc(f, buildApiImageFuncName, "REST API", "rest-api", "cmd/rest-api", apiImageName)
+	emitImagePackageFunc(f, apiPackageFuncName, "REST API", "rest-api", apiImageName)
+	emitImageFunc(f, buildApiImageFuncName, "REST API", "rest-api", "cmd/rest-api", apiPackageFuncName)
 	emitImageDevFunc(f, buildApiDevImageFuncName, buildApiImageFuncName, "REST API", "rest-api", installerPkg, gen.ModulePath)
 	emitImageReleaseFunc(f, buildApiReleaseImageFuncName, buildApiImageFuncName, "REST API", "rest-api", installerPkg, releaseImageRepoConst, gen.ModulePath)
 
@@ -128,11 +133,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			strcase.ToKebab(sdkConfig.ModuleName),
 		)
 	}
+	dbMigratorPackageFuncName := "dbMigratorImagePackage"
 	allComponents = append(allComponents, componentSpec{
-		BinaryName: "database-migrator",
-		PackageDir: "cmd/database-migrator",
+		BinaryName:      "database-migrator",
+		PackageDir:      "cmd/database-migrator",
+		ImageName:       dbMigratorImageName,
+		PackageFuncName: dbMigratorPackageFuncName,
 	})
-	emitImageFunc(f, buildDbMigratorImageFuncName, "database migrator", "database-migrator", "cmd/database-migrator", dbMigratorImageName)
+	emitImagePackageFunc(f, dbMigratorPackageFuncName, "database migrator", "database-migrator", dbMigratorImageName)
+	emitImageFunc(f, buildDbMigratorImageFuncName, "database migrator", "database-migrator", "cmd/database-migrator", dbMigratorPackageFuncName)
 	emitImageDevFunc(f, buildDbMigratorDevImageFuncName, buildDbMigratorImageFuncName, "database migrator", "database-migrator", installerPkg, gen.ModulePath)
 	emitImageReleaseFunc(f, buildDbMigratorReleaseImageFuncName, buildDbMigratorImageFuncName, "database migrator", "database-migrator", installerPkg, releaseImageRepoConst, gen.ModulePath)
 
@@ -141,19 +150,20 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		buildFuncNames = append(buildFuncNames, buildAgentFuncName)
 		buildDevFuncNames = append(buildDevFuncNames, buildAgentDevFuncName)
 		buildReleaseFuncNames = append(buildReleaseFuncNames, buildAgentReleaseFuncName)
-		buildImageFuncNames = append(buildImageFuncNames, buildAgentImageFuncName)
-		buildDevImageFuncNames = append(buildDevImageFuncNames, buildAgentDevImageFuncName)
-		buildReleaseImageFuncNames = append(buildReleaseImageFuncNames, buildAgentReleaseImageFuncName)
 
 		emitBinFunc(f, buildAgentFuncName, "agent", "agent", "cmd/agent")
 		emitBinDevFunc(f, buildAgentDevFuncName, buildAgentFuncName, "agent", "agent")
 		emitBinReleaseFunc(f, buildAgentReleaseFuncName, buildAgentFuncName, "agent", "agent")
 
+		agentPackageFuncName := "agentImagePackage"
 		allComponents = append(allComponents, componentSpec{
-			BinaryName: "agent",
-			PackageDir: "cmd/agent",
+			BinaryName:      "agent",
+			PackageDir:      "cmd/agent",
+			ImageName:       "threeport-agent",
+			PackageFuncName: agentPackageFuncName,
 		})
-		emitImageFunc(f, buildAgentImageFuncName, "agent", "agent", "cmd/agent", "threeport-agent")
+		emitImagePackageFunc(f, agentPackageFuncName, "agent", "agent", "threeport-agent")
+		emitImageFunc(f, buildAgentImageFuncName, "agent", "agent", "cmd/agent", agentPackageFuncName)
 		emitImageDevFunc(f, buildAgentDevImageFuncName, buildAgentImageFuncName, "agent", "agent", installerPkg, gen.ModulePath)
 		emitImageReleaseFunc(f, buildAgentReleaseImageFuncName, buildAgentImageFuncName, "agent", "agent", installerPkg, releaseImageRepoConst, gen.ModulePath)
 	}
@@ -172,13 +182,8 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			buildReleaseFuncNames = append(buildReleaseFuncNames, buildReleaseFuncName)
 
 			buildImageFuncName := fmt.Sprintf("%sControllerImage", objGroup.ControllerDomain)
-			buildImageFuncNames = append(buildImageFuncNames, buildImageFuncName)
-
 			buildDevImageFuncName := fmt.Sprintf("%sControllerImageDev", objGroup.ControllerDomain)
-			buildDevImageFuncNames = append(buildDevImageFuncNames, buildDevImageFuncName)
-
 			buildReleaseImageFuncName := fmt.Sprintf("%sControllerImageRelease", objGroup.ControllerDomain)
-			buildReleaseImageFuncNames = append(buildReleaseImageFuncNames, buildReleaseImageFuncName)
 
 			// set image name
 			imageName := fmt.Sprintf("threeport-%s", objGroup.ControllerName)
@@ -191,11 +196,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			emitBinDevFunc(f, buildDevFuncName, buildFuncName, objGroup.ControllerName, objGroup.ControllerName)
 			emitBinReleaseFunc(f, buildReleaseFuncName, buildFuncName, objGroup.ControllerName, objGroup.ControllerName)
 
+			packageFuncName := fmt.Sprintf("%sControllerImagePackage", strcase.ToLowerCamel(objGroup.ControllerDomain))
 			allComponents = append(allComponents, componentSpec{
-				BinaryName: objGroup.ControllerName,
-				PackageDir: packageDir,
+				BinaryName:      objGroup.ControllerName,
+				PackageDir:      packageDir,
+				ImageName:       imageName,
+				PackageFuncName: packageFuncName,
 			})
-			emitImageFunc(f, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir, imageName)
+			emitImagePackageFunc(f, packageFuncName, objGroup.ControllerName, objGroup.ControllerName, imageName)
+			emitImageFunc(f, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir, packageFuncName)
 			emitImageDevFunc(f, buildDevImageFuncName, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, installerPkg, gen.ModulePath)
 			emitImageReleaseFunc(f, buildReleaseImageFuncName, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, installerPkg, releaseImageRepoConst, gen.ModulePath)
 		}
@@ -271,11 +280,10 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		emitPrebuildBlock(g, allComponents)
 
 		g.Id("build").Op(":=").Id("Build").Values()
+		emitWrapHelper(g, Id("imageRepo"), Id("imageTag"))
 		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
-			for _, funcName := range buildImageFuncNames {
-				v.Line().Func().Params().Error().Block(
-					Return().Id("build").Dot(funcName).Call(Id("imageRepo"), Id("imageTag"), Id("arch")),
-				)
+			for _, c := range allComponents {
+				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
 			}
 			v.Line()
 		})
@@ -300,9 +308,13 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		emitPrebuildBlock(g, allComponents)
 
 		g.Id("build").Op(":=").Id("Build").Values()
+		emitWrapHelper(g,
+			Qual(installerPkg, "DevImageNamespace"),
+			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
 		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
-			for _, funcName := range buildDevImageFuncNames {
-				v.Line().Id("build").Dot(funcName)
+			for _, c := range allComponents {
+				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
 			}
 			v.Line()
 		})
@@ -323,9 +335,13 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		emitPrebuildBlock(g, allComponents)
 
 		g.Id("build").Op(":=").Id("Build").Values()
+		emitWrapHelper(g,
+			Qual(installerPkg, releaseImageRepoConst),
+			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
 		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
-			for _, funcName := range buildReleaseImageFuncNames {
-				v.Line().Id("build").Dot(funcName)
+			for _, c := range allComponents {
+				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
 			}
 			v.Line()
 		})
@@ -634,11 +650,11 @@ func emitBinReleaseFunc(f *File, funcName, baseFuncName, displayName, binaryName
 
 // emitImageFunc writes a `func (Build) <ImageFunc>(repo, tag, arch) error`
 // that compiles the binary for every requested arch via BuildBinaries,
-// then packages all platforms in a single buildx invocation. When called
-// from AllImages the BuildBinaries call is a Go cache hit (AllImages
-// pre-compiled the same package earlier); when called standalone it does
-// the actual compile.
-func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, imageName string) {
+// then delegates packaging to the per-component package function. When
+// called from AllImages the BuildBinaries call is a Go cache hit
+// (AllImages pre-compiled the same package earlier); when called
+// standalone it does the actual compile.
+func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packageFuncName string) {
 	f.Comment(fmt.Sprintf("%s builds and pushes a %s container image.", funcName, displayName))
 	f.Func().Params(Id("Build")).Id(funcName).Params(
 		Line().Id("imageRepo").String(),
@@ -677,6 +693,25 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, image
 		),
 		Line(),
 
+		Return(Id("Build").Values().Dot(packageFuncName).Call(Id("workingDir"), Id("imageRepo"), Id("imageTag"), Id("arch"))),
+	)
+	f.Line()
+}
+
+// emitImagePackageFunc writes a private `(Build).<packageFuncName>` method
+// that takes a pre-built binary at bin/<arch>/<binaryName> and packages
+// it into a container image via util.BuildImage. AllImages* call this
+// directly after the upfront BuildBinaries to skip the redundant per-
+// component compile that the public <ImageFunc> wrapper does.
+func emitImagePackageFunc(f *File, packageFuncName, displayName, binaryName, imageName string) {
+	f.Comment(fmt.Sprintf("%s packages a pre-built %s binary into a container image.", packageFuncName, displayName))
+	f.Func().Params(Id("Build")).Id(packageFuncName).Params(
+		Line().Id("workingDir").String(),
+		Line().Id("imageRepo").String(),
+		Line().Id("imageTag").String(),
+		Line().Id("arch").String(),
+		Line(),
+	).Parens(Error()).Block(
 		If(Err().Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"BuildImage",
@@ -807,4 +842,20 @@ func emitPrebuildBlock(g *Group, components []componentSpec) {
 		Return(Qual("fmt", "Errorf").Call(Lit("failed to pre-build binaries: %w"), Err())),
 	)
 	g.Line()
+}
+
+// emitWrapHelper writes a `wrap` closure into the AllImages* function
+// bodies. It captures workingDir + repo + tag + arch from the surrounding
+// scope and adapts each per-component package method (which has a
+// uniform 4-string signature) into the func() error shape RunParallel
+// expects, so the task list reads as `wrap(build.fooImagePackage)` per
+// component instead of an inline closure per entry.
+func emitWrapHelper(g *Group, repo, tag Code) {
+	g.Id("wrap").Op(":=").Func().Params(
+		Id("fn").Func().Params(String(), String(), String(), String()).Error(),
+	).Func().Params().Error().Block(
+		Return().Func().Params().Error().Block(
+			Return().Id("fn").Call(Id("workingDir"), repo, tag, Id("arch")),
+		),
+	)
 }

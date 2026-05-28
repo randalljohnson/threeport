@@ -106,6 +106,7 @@ jobs:
     - name: Build and push control plane component images
       env:
         PARALLEL: "1"
+        GOMEMLIMIT: 8GiB
         BUILDX_CACHE_FROM: type=gha,scope=test-{component}
         BUILDX_CACHE_TO: type=gha,scope=test-{component},mode=max
       run: mage build:allImagesDev

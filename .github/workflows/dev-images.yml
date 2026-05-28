@@ -74,7 +74,7 @@ jobs:
         touch "/tmp/digests/${{ matrix.component.name }}/${digest#sha256:}"
 
     - name: Upload digest
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: digest-${{ matrix.component.name }}-${{ matrix.platform.short }}
         path: /tmp/digests/${{ matrix.component.name }}/*
@@ -116,7 +116,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Download digests
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: /tmp/digests/${{ matrix.component.name }}
         pattern: digest-${{ matrix.component.name }}-*

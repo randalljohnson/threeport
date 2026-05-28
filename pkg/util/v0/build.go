@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // BuildBinaries compiles every binary for every arch with one go build
@@ -125,28 +126,37 @@ func (p *prefixWriter) Write(data []byte) (int, error) {
 // is currently active.
 const multiArchBuilderName = "threeport-multi"
 
+// multiArchBuilder state guards setup so concurrent workers under
+// RunParallel don't race on inspect-then-create against the docker daemon.
+var (
+	multiArchBuilderOnce sync.Once
+	multiArchBuilderErr  error
+)
+
 // ensureMultiArchBuilder makes sure a docker-container builder named
-// multiArchBuilderName exists. It runs `docker buildx inspect` first; if the
-// builder is missing, it creates one with `docker buildx create`. Returns
-// nil if the builder is already present or was just created successfully.
+// multiArchBuilderName exists. sync.Once serializes setup across goroutines
+// in the same process so concurrent parallel image builds don't all race
+// to create the builder and have all but one fail.
 func ensureMultiArchBuilder() error {
-	inspect := exec.Command("docker", "buildx", "inspect", multiArchBuilderName)
-	if err := inspect.Run(); err == nil {
-		return nil
-	}
-	fmt.Printf("creating docker-container buildx builder %q for multi-arch builds...\n", multiArchBuilderName)
-	create := exec.Command(
-		"docker", "buildx", "create",
-		"--name", multiArchBuilderName,
-		"--driver", "docker-container",
-		"--bootstrap",
-	)
-	create.Stdout = os.Stdout
-	create.Stderr = os.Stderr
-	if err := create.Run(); err != nil {
-		return fmt.Errorf("docker buildx create failed: %w", err)
-	}
-	return nil
+	multiArchBuilderOnce.Do(func() {
+		inspect := exec.Command("docker", "buildx", "inspect", multiArchBuilderName)
+		if err := inspect.Run(); err == nil {
+			return
+		}
+		fmt.Printf("creating docker-container buildx builder %q for multi-arch builds...\n", multiArchBuilderName)
+		create := exec.Command(
+			"docker", "buildx", "create",
+			"--name", multiArchBuilderName,
+			"--driver", "docker-container",
+			"--bootstrap",
+		)
+		create.Stdout = os.Stdout
+		create.Stderr = os.Stderr
+		if err := create.Run(); err != nil {
+			multiArchBuilderErr = fmt.Errorf("docker buildx create failed: %w", err)
+		}
+	})
+	return multiArchBuilderErr
 }
 
 // BuildImage packages a pre-built binary into a container image via docker

@@ -60,7 +60,6 @@ jobs:
         push: true
         build-args: |
           MAIN=${{ matrix.component.main }}
-          GO_BUILD_FLAGS=-p=2
         cache-from: type=gha,scope=dev-pinned-${{ matrix.component.name }}-${{ matrix.platform.short }}
         cache-to: type=gha,scope=dev-pinned-${{ matrix.component.name }}-${{ matrix.platform.short }},mode=max
         outputs: type=image,name=${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.component.name }},push-by-digest=true,name-canonical=true,push=true

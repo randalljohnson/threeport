@@ -1,4 +1,4 @@
-name: CI
+name: Tests
 
 on:
   pull_request:
@@ -99,7 +99,7 @@ jobs:
     - name: Assert amd64 runner
       run: |
         if [ "$(uname -m)" != "x86_64" ]; then
-          echo "::error::ci.yml requires an amd64 runner; got $(uname -m)"
+          echo "::error::tests.yml requires an amd64 runner; got $(uname -m)"
           exit 1
         fi
 

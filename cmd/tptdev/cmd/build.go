@@ -99,10 +99,6 @@ var buildCmd = &cobra.Command{
 		// update cli args based on env vars
 		cliArgs.GetControlPlaneEnvVars()
 
-		// configure concurrency for parallel builds
-		jobs := make(chan *v0.ControlPlaneComponent)
-		var waitGroup sync.WaitGroup
-
 		// configure installer
 		cpi, err := cliArgs.CreateInstaller()
 		if err != nil {
@@ -120,6 +116,31 @@ var buildCmd = &cobra.Command{
 			kindClusterName = provider.ThreeportRuntimeName(requestedControlPlane)
 		}
 
+		// pre-compile all binaries in one go build per arch (arches in
+		// parallel) so dependency compilation is shared. Packaging tasks
+		// below then just COPY the pre-built binary.
+		if push || load {
+			arches := []string{}
+			for _, a := range strings.Split(arch, ",") {
+				a = strings.TrimSpace(a)
+				if a != "" {
+					arches = append(arches, a)
+				}
+			}
+			packageDirs := make([]string, 0, len(componentList))
+			for _, component := range componentList {
+				packageDirs = append(packageDirs, filepath.Dir(componentMainPath(component.Name)))
+			}
+			if err := util.BuildBinaries(cpi.Opts.ThreeportPath, arches, packageDirs); err != nil {
+				cli.Error("failed to build binaries:", err)
+				os.Exit(1)
+			}
+		}
+
+		// configure concurrency for parallel packaging
+		jobs := make(chan *v0.ControlPlaneComponent)
+		var waitGroup sync.WaitGroup
+
 		// start build workers
 		for i := 1; i <= parallel; i++ {
 			waitGroup.Add(1)
@@ -130,20 +151,14 @@ var buildCmd = &cobra.Command{
 						continue
 					}
 
-					gcflags := ""
-					if cpi.Opts.Debug {
-						gcflags = "all=-N -l"
-					}
-
 					if err := util.BuildImage(
 						cpi.Opts.ThreeportPath,
 						"Dockerfile",
 						devBuildTarget(component.Name),
 						arch,
-						map[string]string{
-							"MAIN":    componentMainPath(component.Name),
-							"GCFLAGS": gcflags,
-						},
+						component.Name,
+						"bin",
+						nil,
 						cliArgs.ControlPlaneImageRepo,
 						component.ImageName,
 						cliArgs.ControlPlaneImageTag,

@@ -7,54 +7,69 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 )
 
-// BuildBinary builds the go binary for a threeport control plane component.
-func BuildBinary(
+// BuildBinaries compiles every binary for every arch with one go build
+// invocation per arch. Arches run in parallel, and within each arch all
+// binaries are passed to a single go build call so dependency compilation
+// is shared across components. Each package dir under ./cmd/<name>
+// produces bin/<arch>/<name>. CGO is disabled for cross-compile. A
+// single-element packageDirs slice is also valid and produces just that
+// binary; per-image targets use this form for standalone use, and pick up
+// a Go cache hit when AllImages pre-built the same package earlier.
+func BuildBinaries(
 	threeportPath string,
-	arch string,
-	binName string,
-	mainPath string,
-	noCache bool,
+	arches []string,
+	packageDirs []string,
 ) error {
-	// construct build arguments
-	buildArgs := []string{"build"}
+	tasks := make([]func() error, 0, len(arches))
+	for _, a := range arches {
+		arch := strings.TrimSpace(a)
+		if arch == "" {
+			continue
+		}
+		tasks = append(tasks, func() error {
+			return buildArchBinaries(threeportPath, arch, packageDirs)
+		})
+	}
+	return RunParallel(len(tasks), tasks)
+}
 
-	// append build flags
-	buildArgs = append(buildArgs, "-gcflags=\\\"all=-N -l\\\"") // escape quotes and escape char for shell
-
-	// append no cache flag if specified
-	if noCache {
-		buildArgs = append(buildArgs, "-a")
+// buildArchBinaries runs one go build for the given arch that compiles
+// every package dir into bin/<arch>/<name>. Shared dependency compilation
+// within the invocation means a cold build is much faster than running
+// one go build per binary.
+func buildArchBinaries(threeportPath, arch string, packageDirs []string) error {
+	outDir := filepath.Join(threeportPath, "bin", arch)
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
 	}
 
-	// append output flag
-	buildArgs = append(buildArgs, "-o")
+	args := []string{"build", "-buildvcs=false", "-o", filepath.Join("bin", arch) + string(os.PathSeparator)}
+	// prefix each package dir with ./ so go build treats them as local
+	// import paths rather than stdlib lookups.
+	for _, dir := range packageDirs {
+		if !strings.HasPrefix(dir, "./") && !strings.HasPrefix(dir, "/") {
+			dir = "./" + dir
+		}
+		args = append(args, dir)
+	}
 
-	// append binary name
-	buildArgs = append(buildArgs, "bin/"+binName)
+	fmt.Printf("go %s\n", strings.Join(args, " "))
 
-	// append main.go filepath
-	buildArgs = append(buildArgs, mainPath)
-
-	fmt.Printf("go %s \n", strings.Join(buildArgs, " "))
-
-	// construct build command
-	cmd := exec.Command("go", buildArgs...)
-	cmd.Env = os.Environ()
-	goEnv := []string{
+	cmd := exec.Command("go", args...)
+	cmd.Env = append(os.Environ(),
 		"CGO_ENABLED=0",
 		"GOOS=linux",
-		"GOARCH=" + arch,
-	}
-	cmd.Env = append(cmd.Env, goEnv...)
+		"GOARCH="+arch,
+	)
 	cmd.Dir = threeportPath
 
-	// start build command
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to build %s with output '%s': %w", binName, string(output), err)
+		return fmt.Errorf("failed to build %s binaries with output '%s': %w", arch, string(output), err)
 	}
 
 	return nil
@@ -122,21 +137,28 @@ func ensureMultiArchBuilder() error {
 	return nil
 }
 
-// BuildImage builds a container image via docker buildx, optionally pushing
-// to a registry or loading into a kind cluster. Arch is a comma-separated
-// list of architectures (e.g. "amd64" or "amd64,arm64"); each is prefixed
-// with "linux/" to form the buildx --platform value. Multi-arch builds
-// require pushImage because buildx cannot --load multiple platforms into a
-// single docker daemon. pushImage and loadImage are mutually exclusive.
-// When multiple platforms are requested, BuildImage routes the build
-// through a dedicated docker-container buildx builder, creating it on
-// first use if absent.
+// BuildImage packages a pre-built binary into a container image via docker
+// buildx, optionally pushing to a registry or loading into a kind cluster.
+// Binary inputs are expected at <threeportPath>/<binDir>/<arch>/<binary>
+// for each arch listed in `arch`; the build context is set to the binDir
+// root so the Dockerfile's `COPY ${TARGETARCH}/${BINARY}` resolves per
+// platform during multi-arch builds. `arch` is a comma-separated list of
+// architectures (e.g. "amd64" or "amd64,arm64"); each is prefixed with
+// "linux/" to form the buildx --platform value. Multi-arch builds require
+// pushImage because buildx cannot --load multiple platforms into a single
+// docker daemon. pushImage and loadImage are mutually exclusive. When
+// multiple platforms are requested, BuildImage routes the build through a
+// dedicated docker-container buildx builder, creating it on first use if
+// absent. extraBuildArgs are passed through to buildx for per-target args
+// like TERRAFORM_VERSION or PULUMI_VERSION.
 func BuildImage(
 	threeportPath string,
 	dockerfilePath string,
 	target string,
 	arch string,
-	buildArgs map[string]string,
+	binary string,
+	binDir string,
+	extraBuildArgs map[string]string,
 	imageRepo string,
 	imageName string,
 	imageTag string,
@@ -183,32 +205,24 @@ func BuildImage(
 	if target != "" {
 		args = append(args, "--target", target)
 	}
-	// sort build-arg keys for deterministic command output
-	keys := make([]string, 0, len(buildArgs))
-	for k := range buildArgs {
+	args = append(args, "--build-arg", fmt.Sprintf("BINARY=%s", binary))
+	// sort extra build-arg keys for deterministic command output
+	keys := make([]string, 0, len(extraBuildArgs))
+	for k := range extraBuildArgs {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
-	}
-	// honor GOMEMLIMIT from env as a build-arg so CI can soft-cap the
-	// Go runtime's heap during large-SDK compiles without callers
-	// having to thread the value through their buildArgs map.
-	if v := os.Getenv("GOMEMLIMIT"); v != "" {
-		args = append(args, "--build-arg", fmt.Sprintf("GOMEMLIMIT=%s", v))
+		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, extraBuildArgs[k]))
 	}
 	// short, prefix-trimmed component name used for both stdout prefixing
 	// (see below) and {component} substitution in BUILDX_CACHE_FROM/TO
 	// (see immediately following).
 	shortName := strings.TrimPrefix(imageName, "threeport-")
 
-	// honor BUILDX_CACHE_FROM / BUILDX_CACHE_TO for CI cache reuse; opt-in
-	// via env so local builds (with hot in-builder BuildKit cache) don't pay
-	// the registry-or-gha round trip. {component} substitutes to the
-	// per-image short name (e.g. "rest-api") so each component lands in its
-	// own cache scope; one component's go.sum change won't invalidate the
-	// others, and concurrent writes don't race on the same cache ref.
+	// honor BUILDX_CACHE_FROM/TO for CI cache reuse; opt-in via env so
+	// local builds don't pay the registry round trip. {component}
+	// substitutes per image, giving each its own cache scope.
 	if v := os.Getenv("BUILDX_CACHE_FROM"); v != "" {
 		args = append(args, "--cache-from", strings.ReplaceAll(v, "{component}", shortName))
 	}
@@ -218,7 +232,11 @@ func BuildImage(
 	// plain progress keeps output line-oriented so concurrent builds
 	// interleave cleanly when prefixed per component
 	args = append(args, "--progress=plain")
-	args = append(args, "-t", image, "-f", dockerfilePath, threeportPath)
+	// build context is the per-arch bin root; Dockerfile is referenced
+	// from the repo root via -f.
+	contextDir := filepath.Join(threeportPath, binDir)
+	dockerfile := filepath.Join(threeportPath, dockerfilePath)
+	args = append(args, "-t", image, "-f", dockerfile, contextDir)
 
 	// prefix each output line with the short image name so parallel builds
 	// are distinguishable in the combined stdout/stderr stream. The
@@ -247,9 +265,9 @@ func BuildImage(
 	}
 
 	if pushImage {
-		fmt.Printf("%s ✓ built and pushed\n", prefix)
+		fmt.Printf("%s built and pushed\n", prefix)
 	} else {
-		fmt.Printf("%s ✓ built\n", prefix)
+		fmt.Printf("%s built\n", prefix)
 	}
 
 	if loadImage {

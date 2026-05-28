@@ -1,3 +1,17 @@
+# Native go build + thin Docker layer.
+#
+# Compilation happens via `mage build:allImages` on the runner, NOT
+# inside a Dockerfile RUN. Go's content-addressed build cache
+# (~/.cache/go-build, restored by actions/cache below) invalidates per
+# package, so a single-file edit only recompiles that package. Inside a
+# Dockerfile, the same edit invalidates the whole COPY layer and forces
+# a cold rebuild. The actions/cache step is the primary cache for this
+# workflow; BUILDX_CACHE_FROM/TO only cover the tiny COPY+ENTRYPOINT
+# tail.
+#
+# Cross-compile is pure-Go (CGO_ENABLED=0), so one runner produces both
+# amd64 and arm64 binaries in parallel without QEMU.
+
 name: Images
 
 on:
@@ -10,45 +24,43 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  REGISTRY_NAMESPACE: ghcr.io/randalljohnson
-
 permissions:
   contents: read
   packages: write
 
 jobs:
   build:
-    name: ${{ matrix.component.name }}-${{ matrix.platform.short }}
+    name: Build and push multi-arch images
     if: github.repository == 'randalljohnson/threeport'
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        component:
-          - { name: rest-api,                      main: cmd/rest-api/main_gen.go }
-          - { name: database-migrator,             main: cmd/database-migrator/main_gen.go }
-          - { name: agent,                         main: cmd/agent/main.go }
-          - { name: workload-controller,           main: cmd/workload-controller/main_gen.go }
-          - { name: kubernetes-runtime-controller, main: cmd/kubernetes-runtime-controller/main_gen.go }
-          - { name: aws-controller,                main: cmd/aws-controller/main_gen.go }
-          - { name: gcp-controller,                main: cmd/gcp-controller/main_gen.go }
-          - { name: oci-controller,                main: cmd/oci-controller/main_gen.go }
-          - { name: gateway-controller,            main: cmd/gateway-controller/main_gen.go }
-          - { name: control-plane-controller,      main: cmd/control-plane-controller/main_gen.go }
-          - { name: helm-workload-controller,      main: cmd/helm-workload-controller/main_gen.go }
-          - { name: terraform-controller,          main: cmd/terraform-controller/main_gen.go }
-          - { name: observability-controller,      main: cmd/observability-controller/main_gen.go }
-          - { name: secret-controller,             main: cmd/secret-controller/main_gen.go }
-          - { name: machine-runtime-controller,    main: cmd/machine-runtime-controller/main_gen.go }
-          - { name: machine-workload-controller,   main: cmd/machine-workload-controller/main_gen.go }
-        platform:
-          - { value: linux/amd64, short: amd64 }
-          - { value: linux/arm64, short: arm64 }
+    env:
+      GOPATH: /home/runner/go
     steps:
     - name: Checkout
       uses: actions/checkout@v6.0.2
 
+    - name: Set up Go
+      uses: actions/setup-go@v6.4.0
+      with:
+        go-version: '1.24'
+        cache: false
+
+    # Primary cache for the workflow. Restoring Go's build + module cache
+    # is what makes warm runs fast; the Docker layer cache further down
+    # only covers the cheap COPY+distroless tail.
+    - name: Cache Go build + module cache
+      uses: actions/cache@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-${{ runner.os }}-
+
+    - name: Install mage
+      run: go install github.com/magefile/mage@v1.17.2
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4.1.0
 
@@ -58,79 +70,6 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build and push by digest
-      id: build
-      uses: docker/build-push-action@v7.2.0
-      with:
-        context: .
-        file: Dockerfile
-        target: release
-        platforms: ${{ matrix.platform.value }}
-        push: true
-        build-args: |
-          MAIN=${{ matrix.component.main }}
-          GOMEMLIMIT=8GiB
-        cache-from: type=gha,scope=dev-pinned-${{ matrix.component.name }}-${{ matrix.platform.short }}
-        cache-to: type=gha,scope=dev-pinned-${{ matrix.component.name }}-${{ matrix.platform.short }},mode=max
-        outputs: type=image,name=${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.component.name }},push-by-digest=true,name-canonical=true,push=true
-
-    - name: Export digest
-      run: |
-        mkdir -p /tmp/digests/${{ matrix.component.name }}
-        digest="${{ steps.build.outputs.digest }}"
-        touch "/tmp/digests/${{ matrix.component.name }}/${digest#sha256:}"
-
-    - name: Upload digest
-      uses: actions/upload-artifact@v7.0.1
-      with:
-        name: digest-${{ matrix.component.name }}-${{ matrix.platform.short }}
-        path: /tmp/digests/${{ matrix.component.name }}/*
-        if-no-files-found: error
-        retention-days: 1
-
-  merge:
-    name: ${{ matrix.component.name }}-manifest
-    if: github.repository == 'randalljohnson/threeport'
-    runs-on: ubuntu-24.04
-    needs: build
-    strategy:
-      fail-fast: false
-      matrix:
-        component:
-          - { name: rest-api }
-          - { name: database-migrator }
-          - { name: agent }
-          - { name: workload-controller }
-          - { name: kubernetes-runtime-controller }
-          - { name: aws-controller }
-          - { name: gcp-controller }
-          - { name: oci-controller }
-          - { name: gateway-controller }
-          - { name: control-plane-controller }
-          - { name: helm-workload-controller }
-          - { name: terraform-controller }
-          - { name: observability-controller }
-          - { name: secret-controller }
-          - { name: machine-runtime-controller }
-          - { name: machine-workload-controller }
-    steps:
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4.1.0
-
-    - name: Log in to ghcr.io
-      uses: docker/login-action@v4.2.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Download digests
-      uses: actions/download-artifact@v8.0.1
-      with:
-        path: /tmp/digests/${{ matrix.component.name }}
-        pattern: digest-${{ matrix.component.name }}-*
-        merge-multiple: true
 
     - name: Compute short SHA
       id: sha
@@ -140,21 +79,25 @@ jobs:
       id: tag
       run: |
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          # PR to dev-pinned tags with the source branch (dev) + sha; each
+          # PR to dev-pinned: tag with the source branch (dev) + sha; each
           # push to dev produces a uniquely-tagged preview image.
-          echo "value=${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.component.name }}:dev-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
+          echo "value=dev-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
         else
           # push to dev-pinned (the merge) is the customer-deployment tag.
-          echo "value=${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.component.name }}:dev-pinned-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
+          echo "value=dev-pinned-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Create manifest list and push
-      working-directory: /tmp/digests/${{ matrix.component.name }}
+    # Native compile via mage (uses the warm Go cache above), then
+    # parallel buildx pushes per component. BUILDX_CACHE_FROM/TO covers
+    # only the tail; the compile cache is the actions/cache step above.
+    # {component} gives each image its own GHA cache key.
+    - name: Build and push multi-arch images
+      env:
+        PARALLEL: "4"
+        BUILDX_CACHE_FROM: type=gha,scope=dev-{component}
+        BUILDX_CACHE_TO: type=gha,scope=dev-{component},mode=max
       run: |
-        docker buildx imagetools create \
-          --tag "${{ steps.tag.outputs.value }}" \
-          $(printf '${{ env.REGISTRY_NAMESPACE }}/threeport-${{ matrix.component.name }}@sha256:%s ' *)
-
-    - name: Inspect image
-      run: |
-        docker buildx imagetools inspect "${{ steps.tag.outputs.value }}"
+        mage build:allImages \
+            ghcr.io/randalljohnson \
+            ${{ steps.tag.outputs.value }} \
+            amd64,arm64

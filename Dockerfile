@@ -24,10 +24,8 @@
 # `--platform=linux/amd64,linux/arm64` on the buildx invocation.
 
 # ----- builder: cross-compile MAIN at native host arch -----
-# mirror.gcr.io is Google's free pull-through mirror of Docker Hub. We pull
-# golang:1.24 from there to avoid Docker Hub's per-user pull rate limit
-# (200/6h on Free Personal), which gets exhausted quickly when 32 matrix
-# jobs all cold-pull the base image on every workflow run.
+# mirror.gcr.io is Google's free pull-through mirror of Docker Hub; using
+# it for the base image avoids Docker Hub's per-user pull rate limit.
 FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.24 AS builder
 ARG TARGETARCH
 ARG MAIN

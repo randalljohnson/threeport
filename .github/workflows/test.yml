@@ -9,21 +9,28 @@ on:
       - reopened
 
 jobs:
-  test:
-    # must be an amd64 runner: the image-build step uses runtime.GOARCH and
-    # the integration suite runs on the same runner, so the host arch is
-    # both what we build for and what we test on.
+  compile:
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: '1.24'
+
+    - name: Cache Go build + module cache
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-${{ runner.os }}-
 
     - name: Install mage
       run: go install github.com/magefile/mage@latest
@@ -40,8 +47,37 @@ jobs:
     - name: Run unit tests
       run: go test -count=1 ./pkg/... ./internal/... ./cmd/...
 
+  integration:
+    # must be an amd64 runner: the image-build step uses runtime.GOARCH and
+    # the integration suite runs on the same runner, so the host arch is
+    # both what we build for and what we test on.
+    runs-on: ubuntu-24.04
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.24'
+
+    - name: Cache Go build + module cache
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-${{ runner.os }}-
+
+    - name: Install mage
+      run: go install github.com/magefile/mage@latest
+
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
       with:
         # share the host network so buildx (docker-container driver) can
         # push to the local registry at localhost:5001 set up in the next

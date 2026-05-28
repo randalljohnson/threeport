@@ -20,10 +20,15 @@ import (
 // single-element packageDirs slice is also valid and produces just that
 // binary; per-image targets use this form for standalone use, and pick up
 // a Go cache hit when AllImages pre-built the same package earlier.
+// noCache=true passes -a to force a full rebuild ignoring Go's local
+// build cache. debug=true adds -gcflags="all=-N -l" so the binaries
+// are debugger-friendly (no optimization, no inlining).
 func BuildBinaries(
 	threeportPath string,
 	arches []string,
 	packageDirs []string,
+	noCache bool,
+	debug bool,
 ) error {
 	tasks := make([]func() error, 0, len(arches))
 	for _, a := range arches {
@@ -32,7 +37,7 @@ func BuildBinaries(
 			continue
 		}
 		tasks = append(tasks, func() error {
-			return buildArchBinaries(threeportPath, arch, packageDirs)
+			return buildArchBinaries(threeportPath, arch, packageDirs, noCache, debug)
 		})
 	}
 	return RunParallel(len(tasks), tasks)
@@ -42,13 +47,20 @@ func BuildBinaries(
 // every package dir into bin/<arch>/<name>. Shared dependency compilation
 // within the invocation means a cold build is much faster than running
 // one go build per binary.
-func buildArchBinaries(threeportPath, arch string, packageDirs []string) error {
+func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache, debug bool) error {
 	outDir := filepath.Join(threeportPath, "bin", arch)
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
 	}
 
-	args := []string{"build", "-buildvcs=false", "-o", filepath.Join("bin", arch) + string(os.PathSeparator)}
+	args := []string{"build", "-buildvcs=false"}
+	if noCache {
+		args = append(args, "-a")
+	}
+	if debug {
+		args = append(args, `-gcflags=all=-N -l`)
+	}
+	args = append(args, "-o", filepath.Join("bin", arch)+string(os.PathSeparator))
 	// prefix each package dir with ./ so go build treats them as local
 	// import paths rather than stdlib lookups.
 	for _, dir := range packageDirs {

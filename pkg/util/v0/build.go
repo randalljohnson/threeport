@@ -60,6 +60,32 @@ func BuildBinary(
 	return nil
 }
 
+// prefixWriter wraps an io.Writer and prefixes each line with the given
+// string (e.g. "[rest-api]"). Buffers partial lines so the prefix always
+// lands at line start. Line-level atomic on stdout/stderr so parallel
+// builds don't tear individual lines.
+type prefixWriter struct {
+	prefix string
+	out    io.Writer
+	buf    bytes.Buffer
+}
+
+// Write splits incoming bytes into lines and writes each with the prefix.
+func (p *prefixWriter) Write(data []byte) (int, error) {
+	p.buf.Write(data)
+	for {
+		line, err := p.buf.ReadBytes('\n')
+		if err != nil {
+			p.buf.Reset()
+			p.buf.Write(line)
+			return len(data), nil
+		}
+		if _, err := fmt.Fprintf(p.out, "%s %s", p.prefix, line); err != nil {
+			return len(data), err
+		}
+	}
+}
+
 // multiArchBuilderName is the buildx builder created on demand for
 // multi-architecture builds. The default `docker` driver does not support
 // multi-platform output, so multi-arch builds route through a dedicated
@@ -161,14 +187,35 @@ func BuildImage(
 	for _, k := range keys {
 		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
 	}
+	// honor BUILDX_CACHE_FROM / BUILDX_CACHE_TO for CI cache reuse; opt-in
+	// via env so local builds (with hot in-builder BuildKit cache) don't pay
+	// the registry-or-gha round trip.
+	if v := os.Getenv("BUILDX_CACHE_FROM"); v != "" {
+		args = append(args, "--cache-from", v)
+	}
+	if v := os.Getenv("BUILDX_CACHE_TO"); v != "" {
+		args = append(args, "--cache-to", v)
+	}
+	// plain progress keeps output line-oriented so concurrent builds
+	// interleave cleanly when prefixed per component
+	args = append(args, "--progress=plain")
 	args = append(args, "-t", image, "-f", dockerfilePath, threeportPath)
 
+	// prefix each output line with the short image name so parallel builds
+	// are distinguishable in the combined stdout/stderr stream. The
+	// "threeport-" prefix is dropped since every component shares it.
+	// Arch isn't in the prefix because buildx's own per-step labels
+	// (e.g. "[linux/arm64 builder 6/6]") already identify the platform
+	// for each line.
+	shortName := strings.TrimPrefix(imageName, "threeport-")
+	prefix := fmt.Sprintf("[%s]", shortName)
 	dockerBuildCmd := exec.Command("docker", args...)
-	// stream stdout live so multi-component multi-arch builds aren't silent
-	dockerBuildCmd.Stdout = os.Stdout
-	// tee stderr so it both streams live and is captured for error reporting
+	dockerBuildCmd.Stdout = &prefixWriter{prefix: prefix, out: os.Stdout}
 	var stderrBuf bytes.Buffer
-	dockerBuildCmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+	dockerBuildCmd.Stderr = io.MultiWriter(
+		&prefixWriter{prefix: prefix, out: os.Stderr},
+		&stderrBuf,
+	)
 	if err := dockerBuildCmd.Run(); err != nil {
 		stderr := stderrBuf.String()
 		// surface a hint for the most common multi-arch setup gap
@@ -182,9 +229,9 @@ func BuildImage(
 	}
 
 	if pushImage {
-		fmt.Printf("%s image built and pushed\n", image)
+		fmt.Printf("%s ✓ built and pushed\n", prefix)
 	} else {
-		fmt.Printf("%s image built\n", image)
+		fmt.Printf("%s ✓ built\n", prefix)
 	}
 
 	if loadImage {

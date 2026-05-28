@@ -10,6 +10,9 @@ on:
 
 jobs:
   test:
+    # must be an amd64 runner: the image-build step uses runtime.GOARCH and
+    # the integration suite runs on the same runner, so the host arch is
+    # both what we build for and what we test on.
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
@@ -43,11 +46,18 @@ jobs:
     - name: Create local container registry
       run: mage dev:localRegistryUp
 
+    - name: Assert amd64 runner
+      run: |
+        if [ "$(uname -m)" != "x86_64" ]; then
+          echo "::error::test.yml requires an amd64 runner; got $(uname -m)"
+          exit 1
+        fi
+
     - name: Build and push control plane component images
       env:
-        PARALLEL: "2"
-        BUILDX_CACHE_FROM: type=gha,scope=test-images
-        BUILDX_CACHE_TO: type=gha,scope=test-images,mode=max
+        PARALLEL: "4"
+        BUILDX_CACHE_FROM: type=gha,scope=test-{component}
+        BUILDX_CACHE_TO: type=gha,scope=test-{component},mode=max
       run: mage build:allImagesDev
 
     - name: Build tptctl

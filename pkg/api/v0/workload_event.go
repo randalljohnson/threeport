@@ -2,6 +2,8 @@ package v0
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // WorkloadEvent is a summary of a Kubernetes Event that is associated with a
@@ -36,4 +38,34 @@ type WorkloadEvent struct {
 
 	// The related helm workload instance.
 	HelmWorkloadInstanceID *uint `json:"HelmWorkloadInstanceID,omitempty" query:"helmworkloadinstanceid" validate:"optional"`
+}
+
+// beforeCreate is the pre-create validation hook for WorkloadEvent.
+func (w *WorkloadEvent) beforeCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeUpdate is the pre-update validation hook for WorkloadEvent.
+func (w *WorkloadEvent) beforeUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeDelete is the pre-delete validation hook for WorkloadEvent.
+func (w *WorkloadEvent) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate is the post-create hook for WorkloadEvent.
+func (w *WorkloadEvent) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate is the post-update hook for WorkloadEvent.
+func (w *WorkloadEvent) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete is the post-delete hook for WorkloadEvent.
+func (w *WorkloadEvent) afterDelete(tx *gorm.DB) error {
+	return nil
 }

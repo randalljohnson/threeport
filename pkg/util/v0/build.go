@@ -62,7 +62,11 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 		return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
 	}
 
-	args := []string{"build"}
+	// -buildvcs=false sidesteps Go's git probe, which trips on
+	// worktree-shaped checkouts and some symlinked workspace layouts.
+	// EvalSymlinks above helps in the cases where it can; for the rest,
+	// we just skip the stamping.
+	args := []string{"build", "-buildvcs=false"}
 	if noCache {
 		args = append(args, "-a")
 	}

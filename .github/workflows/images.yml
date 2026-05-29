@@ -78,9 +78,17 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    # For pull_request events, github.sha points at GHA's ephemeral
+    # merge commit, which doesn't exist on the source branch. Prefer
+    # github.event.pull_request.head.sha so the tag matches what
+    # `git rev-parse --short=7 HEAD` returns on the developer's worktree.
+    # For push events (merge to dev-pinned) the head.sha context is
+    # unset, so fall back to github.sha.
     - name: Compute short SHA
       id: sha
-      run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+      env:
+        SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
 
     - name: Determine tag
       id: tag

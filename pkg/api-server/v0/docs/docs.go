@@ -16191,6 +16191,13 @@ const docTemplate = `{
                     "description": "The kubernetes runtime definition for this instance.",
                     "type": "integer"
                 },
+                "KubernetesWorkloadInstances": {
+                    "description": "The associated kubernetes workload instances running on this kubernetes runtime.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                    }
+                },
                 "Location": {
                     "description": "The geographical location for the runtime cluster.  This is an\nabstraction for the cloud provider regions that is mapped into the\nregions used by providers.",
                     "type": "string"
@@ -16218,13 +16225,6 @@ const docTemplate = `{
                 "ThreeportControlPlaneHost": {
                     "description": "If true, the Kubernetes cluster is hosting a threeport control plane and\nany controllers that connect to the kube API will use internal cluster\nDNS rather than the external APIEndpoint.",
                     "type": "boolean"
-                },
-                "kubernetesWorkloadInstances": {
-                    "description": "The associated kubernetes workload instances running on this kubernetes runtime.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
-                    }
                 }
             }
         },
@@ -16232,7 +16232,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "Name",
-                "yamldocument"
+                "YAMLDocument"
             ],
             "properties": {
                 "CreationAcknowledged": {
@@ -16262,6 +16262,20 @@ const docTemplate = `{
                 "InterruptReconciliation": {
                     "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
+                },
+                "KubernetesWorkloadInstances": {
+                    "description": "The associated kubernetes workload instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                    }
+                },
+                "KubernetesWorkloadResourceDefinitions": {
+                    "description": "The associated kubernetes workload resource definitions that are derived.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                    }
                 },
                 "Name": {
                     "description": "An arbitrary name for the definition.",
@@ -16279,21 +16293,7 @@ const docTemplate = `{
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
                     "type": "integer"
                 },
-                "kubernetesWorkloadInstances": {
-                    "description": "The associated kubernetes workload instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
-                    }
-                },
-                "kubernetesWorkloadResourceDefinitions": {
-                    "description": "The associated kubernetes workload resource definitions that are derived.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
-                    }
-                },
-                "yamldocument": {
+                "YAMLDocument": {
                     "description": "The yaml manifests that define the workload configuration.",
                     "type": "string"
                 }
@@ -16302,9 +16302,9 @@ const docTemplate = `{
         "v0.KubernetesWorkloadInstance": {
             "type": "object",
             "required": [
-                "Name",
-                "kubernetesRuntimeInstanceID",
-                "kubernetesWorkloadDefinitionID"
+                "KubernetesRuntimeInstanceID",
+                "KubernetesWorkloadDefinitionID",
+                "Name"
             ],
             "properties": {
                 "CreationAcknowledged": {
@@ -16335,6 +16335,21 @@ const docTemplate = `{
                     "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
+                "KubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime to which the workload is deployed.",
+                    "type": "integer"
+                },
+                "KubernetesWorkloadDefinitionID": {
+                    "description": "The definition used to configure the kubernetes workload instance.",
+                    "type": "integer"
+                },
+                "KubernetesWorkloadResourceInstances": {
+                    "description": "The associated kubernetes workload resource instances that are derived.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                    }
+                },
                 "Name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
@@ -16344,25 +16359,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Status": {
-                    "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                },
-                "kubernetesRuntimeInstanceID": {
-                    "description": "The kubernetes runtime to which the workload is deployed.",
-                    "type": "integer"
-                },
-                "kubernetesWorkloadDefinitionID": {
-                    "description": "The definition used to configure the kubernetes workload instance.",
-                    "type": "integer"
-                },
-                "kubernetesWorkloadResourceInstances": {
-                    "description": "The associated kubernetes workload resource instances that are derived.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
-                    }
-                },
-                "status": {
                     "description": "The latest status of a kubernetes workload instance.",
                     "type": "string"
                 }
@@ -16371,11 +16367,11 @@ const docTemplate = `{
         "v0.KubernetesWorkloadResourceDefinition": {
             "type": "object",
             "required": [
-                "jsondefinition",
-                "kubernetesWorkloadDefinitionID"
+                "JSONDefinition",
+                "KubernetesWorkloadDefinitionID"
             ],
             "properties": {
-                "jsondefinition": {
+                "JSONDefinition": {
                     "description": "The individual manifest in JSON format.",
                     "allOf": [
                         {
@@ -16383,7 +16379,7 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "kubernetesWorkloadDefinitionID": {
+                "KubernetesWorkloadDefinitionID": {
                     "description": "The kubernetes workload definition this resource belongs to.",
                     "type": "integer"
                 }
@@ -16392,11 +16388,11 @@ const docTemplate = `{
         "v0.KubernetesWorkloadResourceInstance": {
             "type": "object",
             "required": [
-                "jsondefinition",
-                "kubernetesWorkloadInstanceID"
+                "JSONDefinition",
+                "KubernetesWorkloadInstanceID"
             ],
             "properties": {
-                "jsondefinition": {
+                "JSONDefinition": {
                     "description": "The individual manifest in JSON format.  This field is a superset of\nKubernetesWorkloadResourceDefinition.JSONDefinition in that it has\nnamespace management and other configuration — such as resource\nallocation management — added.",
                     "allOf": [
                         {
@@ -16404,19 +16400,19 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "kubernetesWorkloadInstanceID": {
+                "KubernetesWorkloadInstanceID": {
                     "description": "The kubernetes workload instance this resource belongs to.",
                     "type": "integer"
                 },
-                "lastOperation": {
+                "LastOperation": {
                     "description": "The most recent operation performed on a Kubernetes resource in the\nkubernetes runtime.",
                     "type": "string"
                 },
-                "reconciled": {
+                "Reconciled": {
                     "description": "Indicates if object is considered to be reconciled by kubernetes\nkubernetes workload controller.",
                     "type": "boolean"
                 },
-                "runtimeDefinition": {
+                "RuntimeDefinition": {
                     "description": "The JSON definition of a Kubernetes resource as stored in etcd in the\nkubernetes runtime.",
                     "allOf": [
                         {
@@ -16424,7 +16420,7 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "scheduledForDeletion": {
+                "ScheduledForDeletion": {
                     "description": "Whether another controller has scheduled this resource for deletion",
                     "type": "string"
                 }
@@ -16561,6 +16557,10 @@ const docTemplate = `{
                     "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying loki chart.",
                     "type": "string"
                 },
+                "LokiHelmWorkloadDefinitionID": {
+                    "description": "The loki Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
                 "Name": {
                     "description": "An arbitrary name for the definition.",
                     "type": "string"
@@ -16577,20 +16577,16 @@ const docTemplate = `{
                     "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
+                "PromtailHelmWorkloadDefinitionID": {
+                    "description": "The promtail Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
                 "Reconciled": {
                     "description": "Indicates if object is considered to be reconciled by the object's controller.",
                     "type": "boolean"
                 },
                 "TierID": {
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "lokiHelmWorkloadDefinitionID": {
-                    "description": "The loki Helm workload definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "promtailHelmWorkloadDefinitionID": {
-                    "description": "The promtail Helm workload definition that belongs to this resource.",
                     "type": "integer"
                 }
             }
@@ -16729,6 +16725,10 @@ const docTemplate = `{
                     "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
                     "type": "string"
                 },
+                "KubePrometheusStackHelmWorkloadDefinitionID": {
+                    "description": "The kube-prometheus-stack Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
                 "MetricsInstances": {
                     "description": "The associated metrics instances that are deployed from this definition.",
                     "type": "array",
@@ -16750,10 +16750,6 @@ const docTemplate = `{
                 },
                 "TierID": {
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "kubePrometheusStackHelmWorkloadDefinitionID": {
-                    "description": "The kube-prometheus-stack Helm workload definition that belongs to this resource.",
                     "type": "integer"
                 }
             }
@@ -16991,6 +16987,10 @@ const docTemplate = `{
                     "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
+                "GrafanaHelmWorkloadDefinitionID": {
+                    "description": "The Grafana Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
                 "InterruptReconciliation": {
                     "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
@@ -17016,10 +17016,6 @@ const docTemplate = `{
                 },
                 "TierID": {
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "grafanaHelmWorkloadDefinitionID": {
-                    "description": "The Grafana Helm workload definition that belongs to this resource.",
                     "type": "integer"
                 }
             }
@@ -17060,6 +17056,10 @@ const docTemplate = `{
                     "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
+                "GrafanaHelmWorkloadInstanceID": {
+                    "description": "The Grafana Helm workload instance that belongs to this resource.",
+                    "type": "integer"
+                },
                 "InterruptReconciliation": {
                     "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
@@ -17083,10 +17083,6 @@ const docTemplate = `{
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                },
-                "grafanaHelmWorkloadInstanceID": {
-                    "description": "The Grafana Helm workload instance that belongs to this resource.",
-                    "type": "integer"
                 }
             }
         },

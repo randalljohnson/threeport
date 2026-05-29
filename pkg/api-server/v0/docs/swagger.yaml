@@ -1209,6 +1209,12 @@ definitions:
       KubernetesRuntimeDefinitionID:
         description: The kubernetes runtime definition for this instance.
         type: integer
+      KubernetesWorkloadInstances:
+        description: The associated kubernetes workload instances running on this
+          kubernetes runtime.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
+        type: array
       Location:
         description: |-
           The geographical location for the runtime cluster.  This is an
@@ -1242,12 +1248,6 @@ definitions:
           any controllers that connect to the kube API will use internal cluster
           DNS rather than the external APIEndpoint.
         type: boolean
-      kubernetesWorkloadInstances:
-        description: The associated kubernetes workload instances running on this
-          kubernetes runtime.
-        items:
-          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
-        type: array
     required:
     - KubernetesRuntimeDefinitionID
     - Location
@@ -1288,6 +1288,18 @@ definitions:
           situation where future reconciliation could be descructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
+      KubernetesWorkloadInstances:
+        description: The associated kubernetes workload instances that are deployed
+          from this definition.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
+        type: array
+      KubernetesWorkloadResourceDefinitions:
+        description: The associated kubernetes workload resource definitions that
+          are derived.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceDefinition'
+        type: array
       Name:
         description: An arbitrary name for the definition.
         type: string
@@ -1305,24 +1317,12 @@ definitions:
           The tier to associate with the definition.  Tier is a level of
           criticality for access control.
         type: integer
-      kubernetesWorkloadInstances:
-        description: The associated kubernetes workload instances that are deployed
-          from this definition.
-        items:
-          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
-        type: array
-      kubernetesWorkloadResourceDefinitions:
-        description: The associated kubernetes workload resource definitions that
-          are derived.
-        items:
-          $ref: '#/definitions/v0.KubernetesWorkloadResourceDefinition'
-        type: array
-      yamldocument:
+      YAMLDocument:
         description: The yaml manifests that define the workload configuration.
         type: string
     required:
     - Name
-    - yamldocument
+    - YAMLDocument
     type: object
   v0.KubernetesWorkloadInstance:
     properties:
@@ -1359,6 +1359,18 @@ definitions:
           situation where future reconciliation could be descructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
+      KubernetesRuntimeInstanceID:
+        description: The kubernetes runtime to which the workload is deployed.
+        type: integer
+      KubernetesWorkloadDefinitionID:
+        description: The definition used to configure the kubernetes workload instance.
+        type: integer
+      KubernetesWorkloadResourceInstances:
+        description: The associated kubernetes workload resource instances that are
+          derived.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceInstance'
+        type: array
       Name:
         description: An arbitrary name the instance
         type: string
@@ -1367,46 +1379,29 @@ definitions:
           controller.
         type: boolean
       Status:
-        description: |-
-          The status of the instance.
-          TODO: use a custom type
-        type: string
-      kubernetesRuntimeInstanceID:
-        description: The kubernetes runtime to which the workload is deployed.
-        type: integer
-      kubernetesWorkloadDefinitionID:
-        description: The definition used to configure the kubernetes workload instance.
-        type: integer
-      kubernetesWorkloadResourceInstances:
-        description: The associated kubernetes workload resource instances that are
-          derived.
-        items:
-          $ref: '#/definitions/v0.KubernetesWorkloadResourceInstance'
-        type: array
-      status:
         description: The latest status of a kubernetes workload instance.
         type: string
     required:
+    - KubernetesRuntimeInstanceID
+    - KubernetesWorkloadDefinitionID
     - Name
-    - kubernetesRuntimeInstanceID
-    - kubernetesWorkloadDefinitionID
     type: object
   v0.KubernetesWorkloadResourceDefinition:
     properties:
-      jsondefinition:
+      JSONDefinition:
         allOf:
         - $ref: '#/definitions/datatypes.JSON'
         description: The individual manifest in JSON format.
-      kubernetesWorkloadDefinitionID:
+      KubernetesWorkloadDefinitionID:
         description: The kubernetes workload definition this resource belongs to.
         type: integer
     required:
-    - jsondefinition
-    - kubernetesWorkloadDefinitionID
+    - JSONDefinition
+    - KubernetesWorkloadDefinitionID
     type: object
   v0.KubernetesWorkloadResourceInstance:
     properties:
-      jsondefinition:
+      JSONDefinition:
         allOf:
         - $ref: '#/definitions/datatypes.JSON'
         description: |-
@@ -1414,31 +1409,31 @@ definitions:
           KubernetesWorkloadResourceDefinition.JSONDefinition in that it has
           namespace management and other configuration — such as resource
           allocation management — added.
-      kubernetesWorkloadInstanceID:
+      KubernetesWorkloadInstanceID:
         description: The kubernetes workload instance this resource belongs to.
         type: integer
-      lastOperation:
+      LastOperation:
         description: |-
           The most recent operation performed on a Kubernetes resource in the
           kubernetes runtime.
         type: string
-      reconciled:
+      Reconciled:
         description: |-
           Indicates if object is considered to be reconciled by kubernetes
           kubernetes workload controller.
         type: boolean
-      runtimeDefinition:
+      RuntimeDefinition:
         allOf:
         - $ref: '#/definitions/datatypes.JSON'
         description: |-
           The JSON definition of a Kubernetes resource as stored in etcd in the
           kubernetes runtime.
-      scheduledForDeletion:
+      ScheduledForDeletion:
         description: Whether another controller has scheduled this resource for deletion
         type: string
     required:
-    - jsondefinition
-    - kubernetesWorkloadInstanceID
+    - JSONDefinition
+    - KubernetesWorkloadInstanceID
     type: object
   v0.LogBackend:
     properties:
@@ -1557,6 +1552,9 @@ definitions:
           Optional Helm workload definition values that can be provided to configure the
           underlying loki chart.
         type: string
+      LokiHelmWorkloadDefinitionID:
+        description: The loki Helm workload definition that belongs to this resource.
+        type: integer
       Name:
         description: An arbitrary name for the definition.
         type: string
@@ -1574,6 +1572,9 @@ definitions:
           Optional Helm workload definition values that can be provided to configure the
           underlying promtail chart.
         type: string
+      PromtailHelmWorkloadDefinitionID:
+        description: The promtail Helm workload definition that belongs to this resource.
+        type: integer
       Reconciled:
         description: Indicates if object is considered to be reconciled by the object's
           controller.
@@ -1582,12 +1583,6 @@ definitions:
         description: |-
           The tier to associate with the definition.  Tier is a level of
           criticality for access control.
-        type: integer
-      lokiHelmWorkloadDefinitionID:
-        description: The loki Helm workload definition that belongs to this resource.
-        type: integer
-      promtailHelmWorkloadDefinitionID:
-        description: The promtail Helm workload definition that belongs to this resource.
         type: integer
     required:
     - Name
@@ -1722,6 +1717,10 @@ definitions:
           Optional Helm workload definition values that can be provided to configure the
           underlying kube-prometheus-stack chart.
         type: string
+      KubePrometheusStackHelmWorkloadDefinitionID:
+        description: The kube-prometheus-stack Helm workload definition that belongs
+          to this resource.
+        type: integer
       MetricsInstances:
         description: The associated metrics instances that are deployed from this
           definition.
@@ -1744,10 +1743,6 @@ definitions:
         description: |-
           The tier to associate with the definition.  Tier is a level of
           criticality for access control.
-        type: integer
-      kubePrometheusStackHelmWorkloadDefinitionID:
-        description: The kube-prometheus-stack Helm workload definition that belongs
-          to this resource.
         type: integer
     required:
     - Name
@@ -1961,6 +1956,9 @@ definitions:
           Optional Helm workload definition values that can be provided to configure the
           underlying grafana chart.
         type: string
+      GrafanaHelmWorkloadDefinitionID:
+        description: The Grafana Helm workload definition that belongs to this resource.
+        type: integer
       InterruptReconciliation:
         description: |-
           InterruptReconciliation is used by the controller to indicated that future
@@ -1990,9 +1988,6 @@ definitions:
         description: |-
           The tier to associate with the definition.  Tier is a level of
           criticality for access control.
-        type: integer
-      grafanaHelmWorkloadDefinitionID:
-        description: The Grafana Helm workload definition that belongs to this resource.
         type: integer
     required:
     - Name
@@ -2030,6 +2025,9 @@ definitions:
           Optional Helm workload definition values that can be provided to configure the
           underlying grafana chart.
         type: string
+      GrafanaHelmWorkloadInstanceID:
+        description: The Grafana Helm workload instance that belongs to this resource.
+        type: integer
       InterruptReconciliation:
         description: |-
           InterruptReconciliation is used by the controller to indicated that future
@@ -2055,9 +2053,6 @@ definitions:
           The status of the instance.
           TODO: use a custom type
         type: string
-      grafanaHelmWorkloadInstanceID:
-        description: The Grafana Helm workload instance that belongs to this resource.
-        type: integer
     required:
     - KubernetesRuntimeInstanceID
     - Name

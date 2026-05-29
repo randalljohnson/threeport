@@ -52,10 +52,11 @@ type GatewayInstance struct {
 	// GatewayDefinitionID is the definition used to configure the gateway instance.
 	GatewayDefinitionID *uint `json:"GatewayDefinitionID,omitempty" query:"gatewaydefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
-	// TODO: implement this in the future so we don't need to
-	// query the kubernetes workload instance & search for the workload resource instance
-	// The workload resource instances that belong to this instance.
-	// KubernetesWorkloadResourceInstances *[]KubernetesWorkloadResourceInstance `json:"KubernetesWorkloadResourceInstances,omitempty" query:"kubernetesworkloadresourceinstances" validate:"optional,association"`
+	// TODO: implement this in the future so we don't need to query the
+	// kubernetes workload instance & search for the kubernetes workload resource
+	// instance.
+	// The kubernetes workload resource instances that belong to this instance.
+	// KubernetesWorkloadResourceInstances *[]KubernetesWorkloadResourceInstance `validate:"optional,association"`
 
 	// The kubernetes workload instance this gateway belongs to.
 	KubernetesWorkloadInstanceID *uint `json:"KubernetesWorkloadInstanceID,omitempty" query:"kubernetesworkloadinstanceid" gorm:"not null" validate:"required" relationship:"requires"`

@@ -32,7 +32,7 @@ func v0KubernetesWorkloadInstanceCreated(
 
 	// ensure kubernetes workload definition is reconciled before working on an instance
 	// for it
-	reconciled, err := confirmWorkloadDefReconciled(r, workloadInstance)
+	reconciled, err := confirmKubernetesWorkloadDefReconciled(r, workloadInstance)
 	if err != nil {
 		return 0, fmt.Errorf("failed to determine if kubernetes workload definition is reconciled: %w", err)
 	}
@@ -40,17 +40,17 @@ func v0KubernetesWorkloadInstanceCreated(
 		return 0, errors.New("kubernetes workload definition not reconciled")
 	}
 
-	// use kubernetes workload definition ID to get workload resource definitions
+	// use kubernetes workload definition ID to get kubernetes workload resource definitions
 	workloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
 		r.APIClient,
 		r.APIServer,
 		*workloadInstance.KubernetesWorkloadDefinitionID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get workload resource definitions by kubernetes workload definition ID: %w", err)
+		return 0, fmt.Errorf("failed to get kubernetes workload resource definitions by kubernetes workload definition ID: %w", err)
 	}
 	if len(*workloadResourceDefinitions) == 0 {
-		return 0, errors.New("zero workload resource definitions to deploy")
+		return 0, errors.New("zero kubernetes workload resource definitions to deploy")
 	}
 
 	// get kubernetes workload definition for this instance
@@ -82,11 +82,11 @@ func v0KubernetesWorkloadInstanceCreated(
 		},
 	}
 
-	// construct workload resource instances
+	// construct kubernetes workload resource instances
 	var workloadResourceInstances []v0.KubernetesWorkloadResourceInstance
 	for _, wrd := range *workloadResourceDefinitions {
 		wri := v0.KubernetesWorkloadResourceInstance{
-			JSONDefinition:     wrd.JSONDefinition,
+			JSONDefinition:               wrd.JSONDefinition,
 			KubernetesWorkloadInstanceID: workloadInstance.ID,
 		}
 		workloadResourceInstances = append(workloadResourceInstances, wri)
@@ -99,7 +99,7 @@ func v0KubernetesWorkloadInstanceCreated(
 		*workloadInstance.KubernetesRuntimeInstanceID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get workload kubernetesRuntime instance by ID: %w", err)
+		return 0, fmt.Errorf("failed to get kubernetes runtime instance by ID: %w", err)
 	}
 
 	// get a kube discovery client for the kubernetes runtime
@@ -122,7 +122,7 @@ func v0KubernetesWorkloadInstanceCreated(
 		discoveryClient,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to set namespaces for workload resource instances: %w", err)
+		return 0, fmt.Errorf("failed to set namespaces for kubernetes workload resource instances: %w", err)
 	}
 
 	// create a dynamic client to connect to kube API
@@ -142,7 +142,7 @@ func v0KubernetesWorkloadInstanceCreated(
 		// marshal the resource definition json
 		jsonDefinition, err := wri.JSONDefinition.MarshalJSON()
 		if err != nil {
-			return 0, fmt.Errorf("failed to marshal json for workload resource instance: %w", err)
+			return 0, fmt.Errorf("failed to marshal json for kubernetes workload resource instance: %w", err)
 		}
 
 		// build kube unstructured object from json
@@ -190,7 +190,7 @@ func v0KubernetesWorkloadInstanceCreated(
 			&wri,
 		)
 		if err != nil {
-			return 0, fmt.Errorf("failed to create workload resource instance in threeport: %w", err)
+			return 0, fmt.Errorf("failed to create kubernetes workload resource instance in threeport: %w", err)
 		}
 
 		agentWRI := agentapi.KubernetesWorkloadResourceInstance{
@@ -207,8 +207,8 @@ func v0KubernetesWorkloadInstanceCreated(
 		)
 
 		log.V(1).Info(
-			"workload resource instance created",
-			"workloadResourceInstanceID", wri.ID,
+			"kubernetes workload resource instance created",
+			"kubernetesWorkloadResourceInstanceID", wri.ID,
 		)
 	}
 
@@ -241,22 +241,22 @@ func v0KubernetesWorkloadInstanceUpdated(
 		*workloadInstance.KubernetesRuntimeInstanceID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get workload kubernetes runtime instance by ID: %w", err)
+		return 0, fmt.Errorf("failed to get kubernetes runtime instance by ID: %w", err)
 	}
 
-	// get workload resource instances
+	// get kubernetes workload resource instances
 	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
 		r.APIClient,
 		r.APIServer,
 		*workloadInstance.ID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get workload resource instances by kubernetes workload instance ID: %w", err)
+		return 0, fmt.Errorf("failed to get kubernetes workload resource instances by kubernetes workload instance ID: %w", err)
 	}
 	if len(*workloadResourceInstances) == 0 {
 		log.V(1).Info(
-			"zero workload resource instances to update",
-			"workloadInstanceID", workloadInstance.ID,
+			"zero kubernetes workload resource instances to update",
+			"kubernetesWorkloadInstanceID", workloadInstance.ID,
 		)
 		return 0, nil
 	}
@@ -281,7 +281,7 @@ func v0KubernetesWorkloadInstanceUpdated(
 		discoveryClient,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to set namespaces for workload resource instances: %w", err)
+		return 0, fmt.Errorf("failed to set namespaces for kubernetes workload resource instances: %w", err)
 	}
 
 	// return if namespaceWRI hasn't been created yet
@@ -302,7 +302,7 @@ func v0KubernetesWorkloadInstanceUpdated(
 		return 0, fmt.Errorf("failed to create kube API client object: %w", err)
 	}
 
-	// update each workload resource instance and resource in the target kube cluster
+	// update each kubernetes workload resource instance and resource in the target kube cluster
 	for _, wri := range *processedWRIs {
 
 		// only update resource instances that have not been reconciled
@@ -313,13 +313,13 @@ func v0KubernetesWorkloadInstanceUpdated(
 		// marshal the resource instance json
 		jsonDefinition, err := wri.JSONDefinition.MarshalJSON()
 		if err != nil {
-			return 0, fmt.Errorf("failed to marshal json for workload resource instance with ID %d: %w", wri.ID, err)
+			return 0, fmt.Errorf("failed to marshal json for kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 		}
 
 		// build kube unstructured object from json
 		kubeObject := &unstructured.Unstructured{Object: map[string]interface{}{}}
 		if err := kubeObject.UnmarshalJSON(jsonDefinition); err != nil {
-			return 0, fmt.Errorf("failed to unmarshal json to kubernetes unstructured object workload resource instance with ID %d: %w", wri.ID, err)
+			return 0, fmt.Errorf("failed to unmarshal json to kubernetes unstructured object for kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 		}
 
 		// if the resource instance is scheduled for deletion, delete it
@@ -327,7 +327,7 @@ func v0KubernetesWorkloadInstanceUpdated(
 
 			// delete kube resource
 			if err := kube.DeleteResource(kubeObject, dynamicKubeClient, *mapper); err != nil {
-				return 0, fmt.Errorf("failed to delete Kubernetes resource workload resource instance with ID %d: %w", wri.ID, err)
+				return 0, fmt.Errorf("failed to delete Kubernetes resource for kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 			}
 
 			// delete threeport resource
@@ -337,18 +337,18 @@ func v0KubernetesWorkloadInstanceUpdated(
 				*wri.ID,
 			)
 			if err != nil {
-				return 0, fmt.Errorf("failed to delete workload resource instance with ID %d: %w", wri.ID, err)
+				return 0, fmt.Errorf("failed to delete kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 			}
 			continue
 
 		} else {
 			// otherwise, it needs to be created or updated
 			if _, err := kube.CreateOrUpdateResource(kubeObject, dynamicKubeClient, *mapper); err != nil {
-				return 0, fmt.Errorf("failed to create or update Kubernetes resource workload resource instance with ID %d: %w", wri.ID, err)
+				return 0, fmt.Errorf("failed to create or update Kubernetes resource for kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 			}
 		}
 
-		// update the workload resource instance
+		// update the kubernetes workload resource instance
 		reconciled := true
 		wri.Reconciled = &reconciled
 		_, err = client.UpdateKubernetesWorkloadResourceInstance(
@@ -357,12 +357,12 @@ func v0KubernetesWorkloadInstanceUpdated(
 			&wri,
 		)
 		if err != nil {
-			return 0, fmt.Errorf("failed to update workload resource instance with ID %d: %w", wri.ID, err)
+			return 0, fmt.Errorf("failed to update kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 		}
 
 		log.V(1).Info(
-			"workload resource instance updated",
-			"workloadResourceInstanceID", wri.ID,
+			"kubernetes workload resource instance updated",
+			"kubernetesWorkloadResourceInstanceID", wri.ID,
 		)
 	}
 
@@ -387,17 +387,17 @@ func v0KubernetesWorkloadInstanceDeleted(
 		return 0, nil
 	}
 
-	// get workload resource instances
+	// get kubernetes workload resource instances
 	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
 		r.APIClient,
 		r.APIServer,
 		*workloadInstance.ID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get workload resource instances by kubernetes workload instance ID: %w", err)
+		return 0, fmt.Errorf("failed to get kubernetes workload resource instances by kubernetes workload instance ID: %w", err)
 	}
 	if len(*workloadResourceInstances) == 0 {
-		// no workload resource instances to clean up
+		// no kubernetes workload resource instances to clean up
 		return 0, nil
 	}
 
@@ -427,33 +427,33 @@ func v0KubernetesWorkloadInstanceDeleted(
 		return 0, fmt.Errorf("failed to create kube API client object: %w", err)
 	}
 
-	// delete each workload resource instance and resource in the target kubernetes runtime instance
+	// delete each kubernetes workload resource instance and resource in the target kubernetes runtime instance
 	for _, wri := range *workloadResourceInstances {
 		// marshal the resource instance json
 		jsonDefinition, err := wri.JSONDefinition.MarshalJSON()
 		if err != nil {
-			return 0, fmt.Errorf("failed to marshal json for workload resource instance with ID %d: %w", wri.ID, err)
+			return 0, fmt.Errorf("failed to marshal json for kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 		}
 
 		// build kube unstructured object from json
 		kubeObject := &unstructured.Unstructured{Object: map[string]interface{}{}}
 		if err := kubeObject.UnmarshalJSON(jsonDefinition); err != nil {
-			return 0, fmt.Errorf("failed to unmarshal json to kubernetes unstructured object workload resource instance with ID %d: %w", wri.ID, err)
+			return 0, fmt.Errorf("failed to unmarshal json to kubernetes unstructured object for kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 		}
 
 		// delete kube resource
 		if err := kube.DeleteResource(kubeObject, dynamicKubeClient, *mapper); err != nil {
-			return 0, fmt.Errorf("failed to delete Kubernetes resource workload resource instance with ID %d: %w", wri.ID, err)
+			return 0, fmt.Errorf("failed to delete Kubernetes resource for kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 		}
 
-		// delete each workload resource instance in threeport API
+		// delete each kubernetes workload resource instance in threeport API
 		_, err = client.DeleteKubernetesWorkloadResourceInstance(r.APIClient, r.APIServer, *wri.ID)
 		if err != nil {
-			return 0, fmt.Errorf("failed to delete workload resource instance with ID %d: %w", wri.ID, err)
+			return 0, fmt.Errorf("failed to delete kubernetes workload resource instance with ID %d: %w", wri.ID, err)
 		}
 		log.V(1).Info(
-			"workload resource instance deleted",
-			"workloadResourceInstanceID", wri.ID,
+			"kubernetes workload resource instance deleted",
+			"kubernetesWorkloadResourceInstanceID", wri.ID,
 		)
 	}
 
@@ -478,9 +478,9 @@ func v0KubernetesWorkloadInstanceDeleted(
 	return 0, nil
 }
 
-// confirmWorkloadDefReconciled confirms the kubernetes workload definition related to a
+// confirmKubernetesWorkloadDefReconciled confirms the kubernetes workload definition related to a
 // kubernetes workload instance is reconciled.
-func confirmWorkloadDefReconciled(
+func confirmKubernetesWorkloadDefReconciled(
 	r *controller.Reconciler,
 	workloadInstance *v0.KubernetesWorkloadInstance,
 ) (bool, error) {

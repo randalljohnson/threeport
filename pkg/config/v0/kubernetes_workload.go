@@ -9,10 +9,10 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// KubernetesWorkloadConfig is a container for a Workload which is a config abstraction for
-// the KubernetesWorkloadDefinition and KubernetesWorkloadInstance API objects.
-// This abstraction allows users to manage definitions and instances together with single operations
-// rather than separate operations for each API object.
+// KubernetesWorkloadConfig is a config abstraction for the
+// KubernetesWorkloadDefinition and KubernetesWorkloadInstance API objects.
+// This abstraction allows users to manage definitions and instances together
+// with single operations rather than separate operations for each API object.
 type KubernetesWorkloadConfig struct {
 	Workload KubernetesWorkloadValues `yaml:"Workload"`
 }

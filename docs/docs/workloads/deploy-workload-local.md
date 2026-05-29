@@ -20,7 +20,7 @@ cd threeport-test
 Download a sample workload config as follows:
 
 ```bash
-curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workload/wordpress-workload-local.yaml
+curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/kubernetes-workload/wordpress-kubernetes-workload-local.yaml
 ```
 
 You now have the workload config on your local file system.  If you open the file you'll
@@ -39,7 +39,7 @@ The `YAMLDocument` field refers to another file with the Kubernetes resource
 manifests.  Download that file as well:
 
 ```bash
-curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workload/wordpress-manifest-local.yaml
+curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/kubernetes-workload/wordpress-manifest-local.yaml
 ```
 
 ## Create Workload
@@ -47,7 +47,7 @@ curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workl
 We can now create the workload as follows:
 
 ```bash
-tptctl create workload --config wordpress-workload-local.yaml
+tptctl create workload --config wordpress-kubernetes-workload-local.yaml
 ```
 
 This command calls the Threeport API to create the Workload objects.
@@ -129,7 +129,7 @@ and deploying workloads there.
 
 To delete a workload:
 ```bash
-tptctl delete workload --config wordpress-workload-local.yaml
+tptctl delete workload --config wordpress-kubernetes-workload-local.yaml
 ```
 
 To uninstall the Threeport control plane locally:

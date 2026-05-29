@@ -85,7 +85,7 @@ type KubernetesRuntimeInstance struct {
 	KubernetesRuntimeDefinitionID *uint `json:"KubernetesRuntimeDefinitionID,omitempty" query:"kubernetesruntimedefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The associated kubernetes workload instances running on this kubernetes runtime.
-	KubernetesWorkloadInstances []*KubernetesWorkloadInstance `json:"KubernetesWorkloadInstance,omitempty" validate:"optional,association"`
+	KubernetesWorkloadInstances []*KubernetesWorkloadInstance `json:",omitempty" validate:"optional,association"`
 
 	// The associated control plane instances running on this kubernetes runtime instance.
 	ControlPlaneInstances []*ControlPlaneInstance `json:"ControlPlaneInstance,omitempty" validate:"optional,association"`

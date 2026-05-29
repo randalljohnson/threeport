@@ -164,7 +164,7 @@ func Notify(
 		default:
 			if len(workloadResourceInstances) > 0 || len(workloadEvents) > 0 {
 				// we have data to update in threeport API - send the updates
-				// and get back any workload resource instances or workload
+				// and get back any kubernetes workload resource instances or workload
 				// events that were not sent so they can be retried later
 				wris, wes := sendThreeportUpdates(
 					threeportAPIServer,
@@ -182,10 +182,10 @@ func Notify(
 }
 
 // sendThreeportUpdates makes the call to the threeport API to update the
-// workload objects.  If there is a failure on the update return the failed
-// objects back so they may be retried later.  Note that if a "not found" error
-// occurs on an update to a workload resource instance it is not sent back as it
-// has been deleted.
+// kubernetes workload objects.  If there is a failure on the update return the
+// failed objects back so they may be retried later.  Note that if a "not found"
+// error occurs on an update to a kubernetes workload resource instance it is
+// not sent back as it has been deleted.
 func sendThreeportUpdates(
 	tpAPIServer string,
 	tpAPIClient *http.Client,
@@ -195,7 +195,7 @@ func sendThreeportUpdates(
 	var unsentWRIs []tpapi.KubernetesWorkloadResourceInstance
 	var unsentWEs []tpapi.WorkloadEvent
 
-	// update workload resource instances
+	// update kubernetes workload resource instances
 	for _, wri := range *workloadResourceInstances {
 		wriCopy := wri // ID gets stripped by UpdateWorkloadResourceInstance :/
 		_, err := tpclient.UpdateKubernetesWorkloadResourceInstance(
@@ -223,10 +223,11 @@ func sendThreeportUpdates(
 	return &unsentWRIs, &unsentWEs
 }
 
-// appendUniqueWRI looks for a workload resource instance with a matching ID
-// and, if found, replaces it.  If not found it appends the new workload
-// resource instance to the existing slice.  This ensures the latest operation
-// and resource object definition are the ones sent to the threeport API.
+// appendUniqueWRI looks for a kubernetes workload resource instance with a
+// matching ID and, if found, replaces it.  If not found it appends the new
+// kubernetes workload resource instance to the existing slice.  This ensures
+// the latest operation and resource object definition are the ones sent to
+// the threeport API.
 func appendUniqueWRI(
 	wris []tpapi.KubernetesWorkloadResourceInstance,
 	newWRI tpapi.KubernetesWorkloadResourceInstance,

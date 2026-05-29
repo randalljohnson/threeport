@@ -216,15 +216,15 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 		assert.Equal(*existingWorkloadDef.Reconciled, true, fmt.Sprintf("created workload definition should be reconciled by workload controller after %d seconds", workloadDefMaxChecks*workloadDefCheckDurationSeconds))
 
-		// check workload resource definitions
+		// check kubernetes workload resource definitions
 		workloadResourceDefs, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
 			apiClient,
 			threeportAPIEndpoint,
 			*createdWorkloadDef.ID,
 		)
-		assert.Nil(err, "should have no error getting workload resource definitions")
+		assert.Nil(err, "should have no error getting kubernetes workload resource definitions")
 
-		if assert.NotNil(workloadResourceDefs, "should have an array of workload resource definitions returned") {
+		if assert.NotNil(workloadResourceDefs, "should have an array of kubernetes workload resource definitions returned") {
 			assert.Equal(len(*workloadResourceDefs), len(testWorkload.Resources), "should get back the right number of workload resource definitions")
 			for _, wrd := range *workloadResourceDefs {
 				resourceFound := false
@@ -636,15 +636,15 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 		assert.True(workloadInstanceDeleted, fmt.Sprintf("should have found that workload instance was deleted after %d seconds", deletedCheckAttemptsMax*deletedCheckDurationSeconds))
 
-		// make sure there are zero workload instances in system
+		// make sure there are zero kubernetes workload instances in system
 		workloadInsts, err := client.GetKubernetesWorkloadInstances(
 			apiClient,
 			threeportAPIEndpoint,
 		)
-		assert.Nil(err, "should have no errors geting all workload instances")
-		if assert.NotNil(workloadInsts, "should have an array of workload instances returned") {
+		assert.Nil(err, "should have no errors geting all kubernetes workload instances")
+		if assert.NotNil(workloadInsts, "should have an array of kubernetes workload instances returned") {
 			for _, wi := range *workloadInsts {
-				assert.NotEqual(wi.ID, deletedWorkloadInst.ID, "should not get back deleted workload instance when retrieving all workload instances")
+				assert.NotEqual(wi.ID, deletedWorkloadInst.ID, "should not get back deleted kubernetes workload instance when retrieving all kubernetes workload instances")
 			}
 		}
 

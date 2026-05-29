@@ -14,18 +14,18 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// AddWorkloadResourceDefinitions adds a new  set of workload resource definitions.
-// @Summary adds a new set of workload resource definitions.
-// @Description Add a set of new workload resource definition to the Threeport database.
-// @ID add-workloadResourceDefinitions
+// AddKubernetesWorkloadResourceDefinitions adds a new set of kubernetes workload resource definitions.
+// @Summary adds a new set of kubernetes workload resource definitions.
+// @Description Add a set of new kubernetes workload resource definitions to the Threeport database.
+// @ID add-kubernetesWorkloadResourceDefinitions
 // @Accept  json
 // @Produce  json
-// @Param   workloadResourceDefinitions	body	[]v0.KubernetesWorkloadResourceDefinition	true	"KubernetesWorkloadResourceDefinition object array"
+// @Param   kubernetesWorkloadResourceDefinitions	body	[]v0.KubernetesWorkloadResourceDefinition	true	"KubernetesWorkloadResourceDefinition object array"
 // @Success 201 {object} v0.Response	"Created"
 // @Failure 400 {object} v0.Response	"Bad Request"
 // @Failure 500 {object} v0.Response	"Internal Server Error"
-// @Router /v0/workload-resource-definition-sets [post]
-func (h Handler) AddWorkloadResourceDefinitions(c echo.Context) error {
+// @Router /v0/kubernetes-workload-resource-definition-sets [post]
+func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error {
 	objectType := v0.ObjectTypeKubernetesWorkloadResourceDefinition
 	var workloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
 
@@ -46,7 +46,7 @@ func (h Handler) AddWorkloadResourceDefinitions(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
-	// create all workload resource definitions or none at all
+	// create all kubernetes workload resource definitions or none at all
 	var createdWRDs []v0.KubernetesWorkloadResourceDefinition
 	err := h.DB.Transaction(func(tx *gorm.DB) error {
 		for _, wrd := range workloadResourceDefinitions {
@@ -59,7 +59,7 @@ func (h Handler) AddWorkloadResourceDefinitions(c echo.Context) error {
 		return nil
 	})
 	if err != nil {
-		h.Logger.Error("handler error: error creating workload resource definitions", zap.Error(err))
+		h.Logger.Error("handler error: error creating kubernetes workload resource definitions", zap.Error(err))
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 

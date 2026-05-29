@@ -1,16 +1,7 @@
-# Native go build + thin Docker layer.
-#
-# Compilation happens via `mage build:allImages` on the runner, NOT
-# inside a Dockerfile RUN. Go's content-addressed build cache
-# (~/.cache/go-build, restored by actions/cache below) invalidates per
-# package, so a single-file edit only recompiles that package. Inside a
-# Dockerfile, the same edit invalidates the whole COPY layer and forces
-# a cold rebuild. The actions/cache step is the primary cache for this
-# workflow; BUILDX_CACHE_FROM/TO only cover the tiny COPY+ENTRYPOINT
-# tail.
-#
-# Cross-compile is pure-Go (CGO_ENABLED=0), so one runner produces both
-# amd64 and arm64 binaries in parallel without QEMU.
+# Per-component matrix. Each cell does its own compile + multi-arch
+# buildx push for one component via `mage build:<X>Image`. All cells
+# share the actions/cache key (Go cache is content-addressed, deps
+# overlap across components). Buildx layer cache is per-component.
 
 name: Images
 
@@ -26,9 +17,29 @@ permissions:
 
 jobs:
   build:
-    name: Build and push multi-arch images
+    name: ${{ matrix.component.name }}
     if: github.repository == 'randalljohnson/threeport'
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        component:
+          - { name: rest-api,                      mage: build:apiImage }
+          - { name: database-migrator,             mage: build:dbMigratorImage }
+          - { name: agent,                         mage: build:agentImage }
+          - { name: workload-controller,           mage: build:workloadControllerImage }
+          - { name: kubernetes-runtime-controller, mage: build:kubernetesRuntimeControllerImage }
+          - { name: aws-controller,                mage: build:awsControllerImage }
+          - { name: gcp-controller,                mage: build:gcpControllerImage }
+          - { name: oci-controller,                mage: build:ociControllerImage }
+          - { name: gateway-controller,            mage: build:gatewayControllerImage }
+          - { name: control-plane-controller,      mage: build:controlPlaneControllerImage }
+          - { name: helm-workload-controller,      mage: build:helmWorkloadControllerImage }
+          - { name: terraform-controller,          mage: build:terraformControllerImage }
+          - { name: observability-controller,      mage: build:observabilityControllerImage }
+          - { name: secret-controller,             mage: build:secretControllerImage }
+          - { name: machine-runtime-controller,    mage: build:machineRuntimeControllerImage }
+          - { name: machine-workload-controller,   mage: build:machineWorkloadControllerImage }
     env:
       GOPATH: /home/runner/go
     steps:
@@ -41,9 +52,9 @@ jobs:
         go-version: '1.24'
         cache: false
 
-    # Primary cache for the workflow. Restoring Go's build + module cache
-    # is what makes warm runs fast; the Docker layer cache further down
-    # only covers the cheap COPY+distroless tail.
+    # Shared key across all matrix cells: Go's build cache is
+    # content-addressed and components overlap heavily on dependencies,
+    # so one cache holds the union and every cell restores the same blob.
     - name: Cache Go build + module cache
       uses: actions/cache@v5.0.5
       with:
@@ -71,9 +82,6 @@ jobs:
       id: sha
       run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
 
-    # dev-pinned-pr-<sha> on PR push (open PRs), dev-pinned-<sha> on
-    # merge to the dev-pinned branch (closed PRs). Including the sha
-    # keeps tags immutable per commit so rollbacks pin exactly.
     - name: Determine tag
       id: tag
       run: |
@@ -83,20 +91,13 @@ jobs:
           echo "value=dev-pinned-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
         fi
 
-    # Native compile via mage (uses the warm Go cache above), then
-    # parallel buildx pushes per component. GOMEMLIMIT is per process;
-    # tuned for 2-arch builds on a 16 GiB runner (2 × 6 GiB = 12 GiB +
-    # ~2-3 GiB runner overhead). Multiply by # arches if you change the
-    # arch list below. BUILDX_CACHE_FROM/TO covers only the tail (COPY
-    # + distroless); {component} gives each image its own GHA cache key.
-    - name: Build and push multi-arch images
+    # GOMEMLIMIT caps Go's heap so this cell's go build fits comfortably
+    # on the 16 GiB runner alongside docker daemon + buildx overhead.
+    # Buildx layer cache scope is per-component since the binary differs
+    # per image; the Go compile cache is the shared actions/cache above.
+    - name: Build and push
       env:
-        PARALLEL: "4"
         GOMEMLIMIT: 6GiB
-        BUILDX_CACHE_FROM: type=gha,scope=dev-{component}
-        BUILDX_CACHE_TO: type=gha,scope=dev-{component},mode=max
-      run: |
-        mage build:allImages \
-            ghcr.io/randalljohnson \
-            ${{ steps.tag.outputs.value }} \
-            amd64,arm64
+        BUILDX_CACHE_FROM: type=gha,scope=dev-${{ matrix.component.name }}
+        BUILDX_CACHE_TO: type=gha,scope=dev-${{ matrix.component.name }},mode=max
+      run: mage ${{ matrix.component.mage }} ghcr.io/randalljohnson ${{ steps.tag.outputs.value }} amd64,arm64

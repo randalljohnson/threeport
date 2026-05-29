@@ -23,7 +23,9 @@ import (
 // a Go cache hit when AllImages pre-built the same package earlier.
 // noCache=true passes -a to force a full rebuild ignoring Go's local
 // build cache. debug=true adds -gcflags="all=-N -l" so the binaries
-// are debugger-friendly (no optimization, no inlining).
+// are debugger-friendly (no optimization, no inlining). Symlinks in
+// threeportPath are resolved up front so Go's VCS stamping works from a
+// symlinked workspace.
 func BuildBinaries(
 	threeportPath string,
 	arches []string,
@@ -31,6 +33,12 @@ func BuildBinaries(
 	noCache bool,
 	debug bool,
 ) error {
+	// resolve symlinks so VCS stamping (commit SHA, dirty status) works
+	// from a symlinked workspace; no-op on direct clones.
+	realPath, err := filepath.EvalSymlinks(threeportPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve symlinks in %s: %w", threeportPath, err)
+	}
 	tasks := make([]func() error, 0, len(arches))
 	for _, a := range arches {
 		arch := strings.TrimSpace(a)
@@ -38,7 +46,7 @@ func BuildBinaries(
 			continue
 		}
 		tasks = append(tasks, func() error {
-			return buildArchBinaries(threeportPath, arch, packageDirs, noCache, debug)
+			return buildArchBinaries(realPath, arch, packageDirs, noCache, debug)
 		})
 	}
 	return RunParallel(len(tasks), tasks)
@@ -54,7 +62,7 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 		return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
 	}
 
-	args := []string{"build", "-buildvcs=false"}
+	args := []string{"build"}
 	if noCache {
 		args = append(args, "-a")
 	}

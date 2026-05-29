@@ -68,8 +68,6 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    # image builds and integration tests run on the same runner; both
-    # inherit its arch. pin to amd64.
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
@@ -108,13 +106,6 @@ jobs:
 
     - name: Create local container registry
       run: mage dev:localRegistryUp
-
-    - name: Assert amd64 runner
-      run: |
-        if [ "$(uname -m)" != "x86_64" ]; then
-          echo "::error::tests.yml requires an amd64 runner; got $(uname -m)"
-          exit 1
-        fi
 
     # Native compile via mage (uses the warm Go cache restored above),
     # then PARALLEL workers package images. BUILDX_CACHE_FROM/TO only

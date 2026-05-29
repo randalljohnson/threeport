@@ -22,6 +22,26 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// retryDelete keeps invoking deleteFn until it succeeds, returns
+// ErrObjectNotFound (already gone), or the 60s budget runs out. Test
+// defers use it to ride out async AOR cleanup that runs after instance
+// deletes — without the wait, definition deletes race the cleanup and
+// fail with "still referenced", silently leaving orphans for the next
+// run.
+func retryDelete(t *testing.T, target string, deleteFn func() error) {
+	deadline := time.Now().Add(60 * time.Second)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		err := deleteFn()
+		if err == nil || errors.Is(err, client_lib.ErrObjectNotFound) {
+			return
+		}
+		lastErr = err
+		time.Sleep(time.Second)
+	}
+	t.Logf("cleanup: failed to delete %s within 60s: %v", target, lastErr)
+}
+
 // testWorkload represents a test case for this e2e test.
 type testWorkload struct {
 	Name             string
@@ -101,9 +121,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			domainNameDefinition,
 		)
 		assert.Nil(err, "should have no error creating domain name definition")
-		defer func() {
-			_, _ = client.DeleteDomainNameDefinition(apiClient, threeportAPIEndpoint, *createdDomainNameDefinition.ID)
-		}()
+		defer retryDelete(t, "domain name definition", func() error {
+			_, err := client.DeleteDomainNameDefinition(apiClient, threeportAPIEndpoint, *createdDomainNameDefinition.ID)
+			return err
+		})
 
 		// configure gateway definition object
 		gatewayDefinition := &v0.GatewayDefinition{
@@ -136,9 +157,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			gatewayDefinition,
 		)
 		assert.Nil(err, "should have no error creating gateway definition")
-		defer func() {
-			_, _ = client.DeleteGatewayDefinition(apiClient, threeportAPIEndpoint, *createdGatewayDef.ID)
-		}()
+		defer retryDelete(t, "gateway definition", func() error {
+			_, err := client.DeleteGatewayDefinition(apiClient, threeportAPIEndpoint, *createdGatewayDef.ID)
+			return err
+		})
 
 		// wait for the gateway controller to finish reconciling the new
 		// definition before issuing the update. without this, the
@@ -191,9 +213,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			},
 		)
 		assert.Nil(err, "should have no error creating secret definition")
-		defer func() {
-			_, _ = client.DeleteSecretDefinition(apiClient, threeportAPIEndpoint, *createdSecretDefinition.ID)
-		}()
+		defer retryDelete(t, "secret definition", func() error {
+			_, err := client.DeleteSecretDefinition(apiClient, threeportAPIEndpoint, *createdSecretDefinition.ID)
+			return err
+		})
 
 		// create test workload definition
 		createdWorkloadDef, err := client.CreateWorkloadDefinition(
@@ -202,9 +225,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			&workloadDef,
 		)
 		assert.Nil(err, "should have no error creating workload definition")
-		defer func() {
-			_, _ = client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdWorkloadDef.ID)
-		}()
+		defer retryDelete(t, "workload definition", func() error {
+			_, err := client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdWorkloadDef.ID)
+			return err
+		})
 
 		// ensure duplicate workload name throws error
 		_, err = client.CreateWorkloadDefinition(
@@ -294,9 +318,10 @@ func TestWorkloadIntegration(t *testing.T) {
 		)
 		assert.Nil(err, "should have no error creating workload instance")
 		assert.NotNil(createdWorkloadInst, "should have a workload instance returned")
-		defer func() {
-			_, _ = client.DeleteWorkloadInstance(apiClient, threeportAPIEndpoint, *createdWorkloadInst.ID)
-		}()
+		defer retryDelete(t, "workload instance", func() error {
+			_, err := client.DeleteWorkloadInstance(apiClient, threeportAPIEndpoint, *createdWorkloadInst.ID)
+			return err
+		})
 
 		// create a duplicate workload instance
 		duplicateWorkloadInst := v0.WorkloadInstance{
@@ -346,9 +371,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			domainNameInstance,
 		)
 		assert.Nil(err, "should have no error creating domain name instance")
-		defer func() {
-			_, _ = client.DeleteDomainNameInstance(apiClient, threeportAPIEndpoint, *createdDomainNameInstance.ID)
-		}()
+		defer retryDelete(t, "domain name instance", func() error {
+			_, err := client.DeleteDomainNameInstance(apiClient, threeportAPIEndpoint, *createdDomainNameInstance.ID)
+			return err
+		})
 
 		// create a gateway instance
 		gatewayInstance := &v0.GatewayInstance{
@@ -365,9 +391,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			gatewayInstance,
 		)
 		assert.Nil(err, "should have no error creating gateway instance")
-		defer func() {
-			_, _ = client.DeleteGatewayInstance(apiClient, threeportAPIEndpoint, *createdGatewayInstance.ID)
-		}()
+		defer retryDelete(t, "gateway instance", func() error {
+			_, err := client.DeleteGatewayInstance(apiClient, threeportAPIEndpoint, *createdGatewayInstance.ID)
+			return err
+		})
 
 		// get the kubernetes runtime instance from the threeport API so we can connect to it
 		kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
@@ -491,9 +518,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			&secondWorkloadDef,
 		)
 		assert.Nil(err, "should have no error creating second workload definition")
-		defer func() {
-			_, _ = client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdSecondWorkloadDef.ID)
-		}()
+		defer retryDelete(t, "second workload definition", func() error {
+			_, err := client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdSecondWorkloadDef.ID)
+			return err
+		})
 
 		// value to nil: clearing a requires-tagged FK should be rejected.
 		// the payload sets WorkloadDefinitionID to nil while preserving
@@ -555,9 +583,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			},
 		)
 		require.Nil(t, err, "should have no error creating runtime definition for encrypted-field test")
-		defer func() {
-			_, _ = client.DeleteKubernetesRuntimeDefinition(apiClient, threeportAPIEndpoint, *encDef.ID)
-		}()
+		defer retryDelete(t, "encrypted-field test runtime definition", func() error {
+			_, err := client.DeleteKubernetesRuntimeDefinition(apiClient, threeportAPIEndpoint, *encDef.ID)
+			return err
+		})
 
 		// Reconciled is pre-set so the kubernetes-runtime-controller
 		// skips this fixture instead of trying to provision a real
@@ -575,9 +604,10 @@ func TestWorkloadIntegration(t *testing.T) {
 			},
 		)
 		require.Nil(t, err, "should have no error creating runtime instance for encrypted-field test")
-		defer func() {
-			_, _ = client.DeleteKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, *encInst.ID)
-		}()
+		defer retryDelete(t, "encrypted-field test runtime instance", func() error {
+			_, err := client.DeleteKubernetesRuntimeInstance(apiClient, threeportAPIEndpoint, *encInst.ID)
+			return err
+		})
 
 		setTokenPayload := v0.KubernetesRuntimeInstance{
 			Common:          v0.Common{ID: encInst.ID},

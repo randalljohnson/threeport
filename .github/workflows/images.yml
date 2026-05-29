@@ -91,13 +91,15 @@ jobs:
           echo "value=dev-pinned-${{ steps.sha.outputs.short }}" >> "$GITHUB_OUTPUT"
         fi
 
-    # GOMEMLIMIT caps Go's heap so this cell's go build fits comfortably
-    # on the 16 GiB runner alongside docker daemon + buildx overhead.
-    # Buildx layer cache scope is per-component since the binary differs
-    # per image; the Go compile cache is the shared actions/cache above.
+    # GOMEMLIMIT caps each go build's heap. Two arches compile in
+    # parallel; 2 x 5 GiB = 10 GiB + ~4 GiB runner overhead leaves
+    # headroom on the 16 GiB runner. Heavy-SDK components (aws, oci)
+    # OOMed at 6 GiB. Buildx layer cache is per-component since the
+    # binary differs per image; the Go compile cache is the shared
+    # actions/cache above.
     - name: Build and push
       env:
-        GOMEMLIMIT: 6GiB
+        GOMEMLIMIT: 5GiB
         BUILDX_CACHE_FROM: type=gha,scope=dev-${{ matrix.component.name }}
         BUILDX_CACHE_TO: type=gha,scope=dev-${{ matrix.component.name }},mode=max
       run: mage ${{ matrix.component.mage }} ghcr.io/randalljohnson ${{ steps.tag.outputs.value }} amd64,arm64

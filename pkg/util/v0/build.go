@@ -69,6 +69,13 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 	if debug {
 		args = append(args, `-gcflags=all=-N -l`)
 	}
+	// GO_BUILD_PARALLELISM caps concurrent compile workers per go build
+	// invocation. CI sets it (e.g. 2) to keep memory bounded on small
+	// runners; locally we leave it unset so the Go default (GOMAXPROCS)
+	// uses every available core.
+	if p := os.Getenv("GO_BUILD_PARALLELISM"); p != "" {
+		args = append(args, "-p="+p)
+	}
 	args = append(args, "-o", filepath.Join("bin", arch)+string(os.PathSeparator))
 	// prefix each package dir with ./ so go build treats them as local
 	// import paths rather than stdlib lookups.

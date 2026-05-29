@@ -14,7 +14,7 @@ import (
 // QueryBinder overrides echo's default binder so api types don't need
 // `query:"..."` struct tags. Each settable struct field is bound from
 // the query param keyed by strings.ToLower of the field name. A field
-// named WorkloadInstanceID binds the workloadinstanceid param.
+// named KubernetesWorkloadInstanceID binds the workloadinstanceid param.
 //
 // Path params and body binding fall through to echo.DefaultBinder.
 // Query binding fires on GET, DELETE, and HEAD, matching the default

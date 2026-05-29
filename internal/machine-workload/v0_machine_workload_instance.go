@@ -9,7 +9,7 @@ import (
 
 	logr "github.com/go-logr/logr"
 
-	status "github.com/threeport/threeport/internal/workload/status"
+	status "github.com/threeport/threeport/internal/kubernetes-workload/status"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
@@ -35,7 +35,7 @@ var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07`)
 
 // v0MachineWorkloadInstanceCreated performs reconciliation when a v0
 // MachineWorkloadInstance has been created.  It resolves the related machine
-// runtime and workload definition, opens an SSH connection, executes the
+// runtime and kubernetes workload definition, opens an SSH connection, executes the
 // create script, and records events for the output.
 func v0MachineWorkloadInstanceCreated(
 	r *controller.Reconciler,
@@ -139,7 +139,7 @@ func v0MachineWorkloadInstanceDeleted(
 
 // runScript establishes an SSH connection to the machine runtime, executes the
 // given script, and records Events for the captured output and exit status.
-// Returns the derived workload instance status.
+// Returns the derived kubernetes workload instance status.
 func runScript(
 	r *controller.Reconciler,
 	mwi *v0.MachineWorkloadInstance,

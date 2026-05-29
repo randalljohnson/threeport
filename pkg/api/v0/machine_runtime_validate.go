@@ -49,7 +49,7 @@ func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 // beforeDelete validates the MachineRuntimeInstance before delete.
 //
 // Why: a machine runtime instance may not be removed while any machine
-// workload instance still references it. Mirrors KubernetesRuntimeInstance's
+// kubernetes workload instance still references it. Mirrors KubernetesRuntimeInstance's
 // teardown ordering — workloads first, runtime last.
 func (m *MachineRuntimeInstance) beforeDelete(tx *gorm.DB) error {
 	var machineWorkloadInstances []MachineWorkloadInstance

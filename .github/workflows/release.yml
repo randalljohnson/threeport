@@ -34,22 +34,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: rest-api,                      main: cmd/rest-api/main_gen.go }
-          - { name: database-migrator,             main: cmd/database-migrator/main_gen.go }
-          - { name: agent,                         main: cmd/agent/main.go }
-          - { name: workload-controller,           main: cmd/workload-controller/main_gen.go }
-          - { name: kubernetes-runtime-controller, main: cmd/kubernetes-runtime-controller/main_gen.go }
-          - { name: aws-controller,                main: cmd/aws-controller/main_gen.go }
-          - { name: gcp-controller,                main: cmd/gcp-controller/main_gen.go }
-          - { name: oci-controller,                main: cmd/oci-controller/main_gen.go }
-          - { name: gateway-controller,            main: cmd/gateway-controller/main_gen.go }
-          - { name: control-plane-controller,      main: cmd/control-plane-controller/main_gen.go }
-          - { name: helm-workload-controller,      main: cmd/helm-workload-controller/main_gen.go }
-          - { name: terraform-controller,          main: cmd/terraform-controller/main_gen.go }
-          - { name: observability-controller,      main: cmd/observability-controller/main_gen.go }
-          - { name: secret-controller,             main: cmd/secret-controller/main_gen.go }
-          - { name: machine-runtime-controller,    main: cmd/machine-runtime-controller/main_gen.go }
-          - { name: machine-workload-controller,   main: cmd/machine-workload-controller/main_gen.go }
+          - { name: rest-api,                        main: cmd/rest-api/main_gen.go }
+          - { name: database-migrator,               main: cmd/database-migrator/main_gen.go }
+          - { name: agent,                           main: cmd/agent/main.go }
+          - { name: kubernetes-workload-controller,  main: cmd/kubernetes-workload-controller/main_gen.go }
+          - { name: kubernetes-runtime-controller,   main: cmd/kubernetes-runtime-controller/main_gen.go }
+          - { name: aws-controller,                  main: cmd/aws-controller/main_gen.go }
+          - { name: gcp-controller,                  main: cmd/gcp-controller/main_gen.go }
+          - { name: oci-controller,                  main: cmd/oci-controller/main_gen.go }
+          - { name: gateway-controller,              main: cmd/gateway-controller/main_gen.go }
+          - { name: control-plane-controller,        main: cmd/control-plane-controller/main_gen.go }
+          - { name: helm-workload-controller,        main: cmd/helm-workload-controller/main_gen.go }
+          - { name: terraform-controller,            main: cmd/terraform-controller/main_gen.go }
+          - { name: observability-controller,        main: cmd/observability-controller/main_gen.go }
+          - { name: secret-controller,               main: cmd/secret-controller/main_gen.go }
+          - { name: machine-runtime-controller,      main: cmd/machine-runtime-controller/main_gen.go }
+          - { name: machine-workload-controller,     main: cmd/machine-workload-controller/main_gen.go }
     steps:
     - name: Checkout
       uses: actions/checkout@v4

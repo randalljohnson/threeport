@@ -251,24 +251,24 @@ func DeleteObjectByTypeAndID(apiClient *http.Client, apiAddr string, objectType 
 			return fmt.Errorf("failed to delete Tier: %w", err)
 		}
 
-	case "v0.WorkloadDefinition":
-		if _, err := DeleteWorkloadDefinition(apiClient, apiAddr, id); err != nil {
-			return fmt.Errorf("failed to delete WorkloadDefinition: %w", err)
+	case "v0.KubernetesWorkloadDefinition":
+		if _, err := DeleteKubernetesWorkloadDefinition(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete KubernetesWorkloadDefinition: %w", err)
 		}
 
-	case "v0.WorkloadInstance":
-		if _, err := DeleteWorkloadInstance(apiClient, apiAddr, id); err != nil {
-			return fmt.Errorf("failed to delete WorkloadInstance: %w", err)
+	case "v0.KubernetesWorkloadInstance":
+		if _, err := DeleteKubernetesWorkloadInstance(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete KubernetesWorkloadInstance: %w", err)
 		}
 
-	case "v0.WorkloadResourceDefinition":
-		if _, err := DeleteWorkloadResourceDefinition(apiClient, apiAddr, id); err != nil {
-			return fmt.Errorf("failed to delete WorkloadResourceDefinition: %w", err)
+	case "v0.KubernetesWorkloadResourceDefinition":
+		if _, err := DeleteKubernetesWorkloadResourceDefinition(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete KubernetesWorkloadResourceDefinition: %w", err)
 		}
 
-	case "v0.WorkloadResourceInstance":
-		if _, err := DeleteWorkloadResourceInstance(apiClient, apiAddr, id); err != nil {
-			return fmt.Errorf("failed to delete WorkloadResourceInstance: %w", err)
+	case "v0.KubernetesWorkloadResourceInstance":
+		if _, err := DeleteKubernetesWorkloadResourceInstance(apiClient, apiAddr, id); err != nil {
+			return fmt.Errorf("failed to delete KubernetesWorkloadResourceInstance: %w", err)
 		}
 
 	}

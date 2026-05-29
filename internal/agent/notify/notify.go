@@ -38,7 +38,7 @@ type ResourceOperation struct {
 type EventSummary struct {
 	EventUID                   string
 	WorkloadType               string
-	WorkloadInstanceID         uint
+	KubernetesWorkloadInstanceID         uint
 	WorkloadResourceInstanceID uint
 	ObjectNamespace            string
 	ObjectKind                 string
@@ -59,10 +59,10 @@ type EventSummary struct {
 //
 // Threeport Objects updated:
 //
-// * WorkloadInstance:
+// * KubernetesWorkloadInstance:
 //   - consolidated status
 //
-// * WorkloadResourceInstance:
+// * KubernetesWorkloadResourceInstance:
 //   - all events
 //   - runtime object
 //   - most recent watch operation
@@ -85,7 +85,7 @@ func Notify(
 
 	// create slices to serve as payload info store accumluated notification
 	// info received from notif channel
-	var workloadResourceInstances []tpapi.WorkloadResourceInstance
+	var workloadResourceInstances []tpapi.KubernetesWorkloadResourceInstance
 	var pendingEvents []tpapi.Event
 
 	for {
@@ -112,14 +112,14 @@ func Notify(
 			// notif received on channel
 			// add operation details received from resource watch if
 			// applicable
-			// Note: when the workload instance type is "HelmWorkloadInstance"
+			// Note: when the kubernetes workload instance type is "HelmWorkloadInstance"
 			// we discard this operation since helm workloads have no equivalent
-			// of a WorkloadResourceInstance in which to store this info in
+			// of a KubernetesWorkloadResourceInstance in which to store this info in
 			// Threeport. If we want to capture this info, we'll need to add
 			// that to the Threeport API data model.
 			if notif.Operation != nil && notif.Operation.WorkloadType != agent.HelmWorkloadInstanceType {
 				runtimeDef := datatypes.JSON([]byte(notif.Operation.OperationObject))
-				workloadResourceInst := tpapi.WorkloadResourceInstance{
+				workloadResourceInst := tpapi.KubernetesWorkloadResourceInstance{
 					Common: tpapi.Common{
 						ID: &notif.Operation.WorkloadResourceInstanceID,
 					},
@@ -137,7 +137,7 @@ func Notify(
 						Type:       util.Ptr(notif.Event.Type),
 						Reason:     util.Ptr(notif.Event.Reason),
 						Note:       util.Ptr(notif.Event.Message),
-						ObjectType: util.Ptr("threeport.io/v0.WorkloadResourceInstance"),
+						ObjectType: util.Ptr("threeport.io/v0.KubernetesWorkloadResourceInstance"),
 						ObjectID:   util.Ptr(notif.Event.WorkloadResourceInstanceID),
 					}
 				case notif.Event.WorkloadType == agent.WorkloadInstanceType:
@@ -145,8 +145,8 @@ func Notify(
 						Type:       util.Ptr(notif.Event.Type),
 						Reason:     util.Ptr(notif.Event.Reason),
 						Note:       util.Ptr(notif.Event.Message),
-						ObjectType: util.Ptr("threeport.io/v0.WorkloadInstance"),
-						ObjectID:   util.Ptr(notif.Event.WorkloadInstanceID),
+						ObjectType: util.Ptr("threeport.io/v0.KubernetesWorkloadInstance"),
+						ObjectID:   util.Ptr(notif.Event.KubernetesWorkloadInstanceID),
 					}
 				case notif.Event.WorkloadType == agent.HelmWorkloadInstanceType:
 					evt = tpapi.Event{
@@ -154,7 +154,7 @@ func Notify(
 						Reason:     util.Ptr(notif.Event.Reason),
 						Note:       util.Ptr(notif.Event.Message),
 						ObjectType: util.Ptr("threeport.io/v0.HelmWorkloadInstance"),
-						ObjectID:   util.Ptr(notif.Event.WorkloadInstanceID),
+						ObjectID:   util.Ptr(notif.Event.KubernetesWorkloadInstanceID),
 					}
 				}
 				pendingEvents = append(pendingEvents, evt)
@@ -187,16 +187,16 @@ func Notify(
 func sendThreeportUpdates(
 	tpAPIServer string,
 	tpAPIClient *http.Client,
-	workloadResourceInstances *[]tpapi.WorkloadResourceInstance,
+	workloadResourceInstances *[]tpapi.KubernetesWorkloadResourceInstance,
 	pendingEvents *[]tpapi.Event,
-) (*[]tpapi.WorkloadResourceInstance, *[]tpapi.Event) {
-	var unsentWRIs []tpapi.WorkloadResourceInstance
+) (*[]tpapi.KubernetesWorkloadResourceInstance, *[]tpapi.Event) {
+	var unsentWRIs []tpapi.KubernetesWorkloadResourceInstance
 	var unsentEvents []tpapi.Event
 
 	// update workload resource instances
 	for _, wri := range *workloadResourceInstances {
-		wriCopy := wri // ID gets stripped by UpdateWorkloadResourceInstance :/
-		_, err := tpclient.UpdateWorkloadResourceInstance(
+		wriCopy := wri // ID gets stripped by UpdateKubernetesWorkloadResourceInstance :/
+		_, err := tpclient.UpdateKubernetesWorkloadResourceInstance(
 			tpAPIClient,
 			tpAPIServer,
 			&wri,
@@ -234,9 +234,9 @@ func sendThreeportUpdates(
 // resource instance to the existing slice.  This ensures the latest operation
 // and resource object definition are the ones sent to the threeport API.
 func appendUniqueWRI(
-	wris []tpapi.WorkloadResourceInstance,
-	newWRI tpapi.WorkloadResourceInstance,
-) []tpapi.WorkloadResourceInstance {
+	wris []tpapi.KubernetesWorkloadResourceInstance,
+	newWRI tpapi.KubernetesWorkloadResourceInstance,
+) []tpapi.KubernetesWorkloadResourceInstance {
 	wriFound := false
 	for i, wri := range wris {
 		if wri.ID == newWRI.ID {

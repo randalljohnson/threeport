@@ -204,7 +204,7 @@ func buildEventsQueryString(forFlag string) (string, error) {
 	}
 
 	// kebab-case kind -> CamelCase TypeName segment of fully qualified type
-	// ("workload-instance" -> "WorkloadInstance")
+	// ("workload-instance" -> "KubernetesWorkloadInstance")
 	q.Set("objecttypename", strcase.ToCamel(kind))
 
 	// third-to-last (if present) is the api namespace

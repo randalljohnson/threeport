@@ -28,7 +28,7 @@ type GatewayValues struct {
 	SubDomain                 *string                          `json:",omitempty" yaml:"SubDomain,omitempty"`
 	DomainNameDefinition      *DomainNameDefinitionValues      `json:",omitempty" yaml:"DomainNameDefinition,omitempty"`
 	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	WorkloadInstance          *WorkloadInstanceValues          `json:",omitempty" yaml:"WorkloadInstance,omitempty"`
+	KubernetesWorkloadInstance          *KubernetesWorkloadInstanceValues          `json:",omitempty" yaml:"KubernetesWorkloadInstance,omitempty"`
 	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
@@ -196,7 +196,7 @@ func (g *GatewayConfig) GetOperations(
 		GatewayInstance: GatewayInstanceValues{
 			Name:                      g.Gateway.Name,
 			KubernetesRuntimeInstance: g.Gateway.KubernetesRuntimeInstance,
-			WorkloadInstance:          g.Gateway.WorkloadInstance,
+			KubernetesWorkloadInstance:          g.Gateway.KubernetesWorkloadInstance,
 			GatewayDefinition: &GatewayDefinitionValues{
 				Name: g.Gateway.Name,
 			},
@@ -263,7 +263,7 @@ func mapToGatewayDefinedInstances(
 						SubDomain:                 def.GatewayDefinition.SubDomain,
 						DomainNameDefinition:      def.GatewayDefinition.DomainNameDefinition,
 						KubernetesRuntimeInstance: inst.GatewayInstance.KubernetesRuntimeInstance,
-						WorkloadInstance:          inst.GatewayInstance.WorkloadInstance,
+						KubernetesWorkloadInstance:          inst.GatewayInstance.KubernetesWorkloadInstance,
 						Age:                       inst.GatewayInstance.Age,
 					},
 				}

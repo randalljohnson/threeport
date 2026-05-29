@@ -25,7 +25,7 @@ type SecretValues struct {
 	Data                      *map[string]string               `json:",omitempty" yaml:"Data,omitempty"`
 	AwsProviderName            *string                          `json:",omitempty" yaml:"AwsProviderName,omitempty"`
 	SecretConfigPath          *string                          `json:",omitempty" yaml:"SecretConfigPath,omitempty"`
-	WorkloadInstance          *WorkloadInstanceValues          `json:",omitempty" yaml:"WorkloadInstance,omitempty"`
+	KubernetesWorkloadInstance          *KubernetesWorkloadInstanceValues          `json:",omitempty" yaml:"KubernetesWorkloadInstance,omitempty"`
 	HelmWorkloadInstance      *HelmWorkloadInstanceValues      `json:",omitempty" yaml:"HelmWorkloadInstance,omitempty"`
 	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
 	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
@@ -196,7 +196,7 @@ func (s *SecretConfig) GetOperations(
 		SecretInstance: SecretInstanceValues{
 			Name:                      secretValues.Name,
 			SecretDefinition:          &secretDefinitionConfig.SecretDefinition,
-			WorkloadInstance:          secretValues.WorkloadInstance,
+			KubernetesWorkloadInstance:          secretValues.KubernetesWorkloadInstance,
 			HelmWorkloadInstance:      secretValues.HelmWorkloadInstance,
 			KubernetesRuntimeInstance: secretValues.KubernetesRuntimeInstance,
 			SecretConfigPath:          secretValues.SecretConfigPath,
@@ -260,7 +260,7 @@ func mapToSecretDefinedInstances(
 						Data:                      def.SecretDefinition.Data,
 						AwsProviderName:            def.SecretDefinition.AwsProviderName,
 						SecretConfigPath:          inst.SecretInstance.SecretConfigPath,
-						WorkloadInstance:          inst.SecretInstance.WorkloadInstance,
+						KubernetesWorkloadInstance:          inst.SecretInstance.KubernetesWorkloadInstance,
 						HelmWorkloadInstance:      inst.SecretInstance.HelmWorkloadInstance,
 						KubernetesRuntimeInstance: inst.SecretInstance.KubernetesRuntimeInstance,
 						Age:                       inst.SecretInstance.Age,

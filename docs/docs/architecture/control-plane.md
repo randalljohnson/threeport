@@ -133,7 +133,7 @@ Workload resource to configure the support service for that workload.
 
 ### Helm Workload Controller
 
-The Helm workload controller uses the popular Kubernetes package manager,
+The Helm kubernetes workload controller uses the popular Kubernetes package manager,
 [Helm](https://helm.sh/) to deploy workloads in Kubernetes.  Helm templates have
 drawbacks in complex environments since templating is inherently inferior to
 general purpose programming languages.  More on this topic is discussed in the
@@ -174,7 +174,7 @@ The following components are available to deploy as a part of the stack:
 * [Loki](https://github.com/grafana/loki): log storage.
 * [Grafana](https://github.com/grafana/grafana): observability dashboard.
 
-The observability controller leverages the Helm workload controller to install
+The observability controller leverages the Helm kubernetes workload controller to install
 Helm charts to deploy each of these components.
 
 ### Secrets Controller
@@ -207,9 +207,9 @@ same AWS resources.
 
 > Note: Terraform is only supported for managing AWS resource at this time.
 
-### Workload Controller
+### Kubernetes Workload Controller
 
-The workload controller deploys a defined set of Kubernetes resources to a
+The kubernetes workload controller deploys a defined set of Kubernetes resources to a
 nominated (or default) Kubernetes runtime instance.  This controller is quite
 rudimentary in that the user is required to define the granular detail of all
 Kubernetes resources that constitute their workload.  However, it is useful in

@@ -26,7 +26,7 @@ type DomainNameValues struct {
 	Zone                      *string                          `json:",omitempty" yaml:"Zone,omitempty"`
 	AdminEmail                *string                          `json:",omitempty" yaml:"AdminEmail,omitempty"`
 	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	WorkloadInstance          *WorkloadInstanceValues          `json:",omitempty" yaml:"WorkloadInstance,omitempty"`
+	KubernetesWorkloadInstance          *KubernetesWorkloadInstanceValues          `json:",omitempty" yaml:"KubernetesWorkloadInstance,omitempty"`
 	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
@@ -192,7 +192,7 @@ func (d *DomainNameConfig) GetOperations(
 		DomainNameInstance: DomainNameInstanceValues{
 			Name:                      d.DomainName.Name,
 			KubernetesRuntimeInstance: d.DomainName.KubernetesRuntimeInstance,
-			WorkloadInstance:          d.DomainName.WorkloadInstance,
+			KubernetesWorkloadInstance:          d.DomainName.KubernetesWorkloadInstance,
 			DomainNameDefinition: &DomainNameDefinitionValues{
 				Name: d.DomainName.Name,
 			},
@@ -257,7 +257,7 @@ func mapToDomainNameDefinedInstances(
 						Zone:                      def.DomainNameDefinition.Zone,
 						AdminEmail:                def.DomainNameDefinition.AdminEmail,
 						KubernetesRuntimeInstance: inst.DomainNameInstance.KubernetesRuntimeInstance,
-						WorkloadInstance:          inst.DomainNameInstance.WorkloadInstance,
+						KubernetesWorkloadInstance:          inst.DomainNameInstance.KubernetesWorkloadInstance,
 						Age:                       inst.DomainNameInstance.Age,
 					},
 				}

@@ -135,9 +135,9 @@ func dbInterfaces000001() []interface{} {
 		&v0.TerraformDefinition{},
 		&v0.TerraformInstance{},
 		&v0.Tier{},
-		&v0.WorkloadDefinition{},
-		&v0.WorkloadInstance{},
-		&v0.WorkloadResourceDefinition{},
-		&v0.WorkloadResourceInstance{},
+		&v0.KubernetesWorkloadDefinition{},
+		&v0.KubernetesWorkloadInstance{},
+		&v0.KubernetesWorkloadResourceDefinition{},
+		&v0.KubernetesWorkloadResourceInstance{},
 	}
 }

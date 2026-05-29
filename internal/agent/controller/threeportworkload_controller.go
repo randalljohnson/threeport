@@ -53,7 +53,7 @@ type ThreeportWorkloadReconciler struct {
 }
 
 type InformerStopChannels struct {
-	WorkloadInstanceID uint
+	KubernetesWorkloadInstanceID uint
 	StopChannels       []chan struct{}
 }
 
@@ -63,7 +63,7 @@ type InformerStopChannels struct {
 
 // Reconcile reconciles state for ThreeportWorkload resources.  The configuration
 // of a ThreeportWorkload resource provides a set of resources that constitute a
-// threeport workload instance.  This triggers the reconciler to start watches
+// threeport kubernetes workload instance.  This triggers the reconciler to start watches
 // on all those resources and to watch events related to those resources.  These
 // watches are used to send information back to the threeport API so the control
 // plane can provide data to threeport users and allow threeport controllers to
@@ -77,7 +77,7 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if err := r.Get(ctx, req.NamespacedName, &threeportWorkload); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	logger = logger.WithValues("workloadInstanceID", threeportWorkload.Spec.WorkloadInstanceID)
+	logger = logger.WithValues("workloadInstanceID", threeportWorkload.Spec.KubernetesWorkloadInstanceID)
 	ctx = log.IntoContext(ctx, logger)
 
 	// add finalizer if needed or perform on-deletion operations if
@@ -104,7 +104,7 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// loop over each resource defined, place a watch on each and add informer
 	// event handlers to process K8s events that involve these resources
-	for _, workloadResourceInstance := range threeportWorkload.Spec.WorkloadResourceInstances {
+	for _, workloadResourceInstance := range threeportWorkload.Spec.KubernetesWorkloadResourceInstances {
 		gvk := schema.GroupVersionKind{
 			Group:   workloadResourceInstance.Group,
 			Version: workloadResourceInstance.Version,
@@ -130,12 +130,12 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 		resourceUID := string(unstructuredObj.GetUID())
 
-		// initiate watch on workload instance resource
+		// initiate watch on kubernetes workload instance resource
 		go r.watchResource(
 			ctx,
 			gvr,
 			threeportWorkload.Spec.WorkloadType,
-			threeportWorkload.Spec.WorkloadInstanceID,
+			threeportWorkload.Spec.KubernetesWorkloadInstanceID,
 			workloadResourceInstance.Name,
 			workloadResourceInstance.Namespace,
 			workloadResourceInstance.ThreeportID,
@@ -145,7 +145,7 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// set label selector - this is used to identify pods and replicasets
 	labelSelector := labels.Set(map[string]string{
-		agent.WorkloadInstanceLabelKey: fmt.Sprint(threeportWorkload.Spec.WorkloadInstanceID),
+		agent.WorkloadInstanceLabelKey: fmt.Sprint(threeportWorkload.Spec.KubernetesWorkloadInstanceID),
 	}).AsSelector().String()
 
 	// create pod and replicaset informers, add the their stop channels to the
@@ -153,16 +153,16 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	podInformer, podInformerStopChan := r.createPodInformer(
 		ctx,
 		labelSelector,
-		threeportWorkload.Spec.WorkloadInstanceID,
+		threeportWorkload.Spec.KubernetesWorkloadInstanceID,
 	)
 	r.addInformerStopChannel(
-		threeportWorkload.Spec.WorkloadInstanceID,
+		threeportWorkload.Spec.KubernetesWorkloadInstanceID,
 		podInformerStopChan,
 	)
 	r.addPodEventHandlers(
 		ctx,
 		threeportWorkload.Spec.WorkloadType,
-		threeportWorkload.Spec.WorkloadInstanceID,
+		threeportWorkload.Spec.KubernetesWorkloadInstanceID,
 		podInformer,
 		podInformerStopChan,
 	)
@@ -170,16 +170,16 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	replicasetInformer, replicasetInformerStopChan := r.createReplicaSetInformer(
 		ctx,
 		labelSelector,
-		threeportWorkload.Spec.WorkloadInstanceID,
+		threeportWorkload.Spec.KubernetesWorkloadInstanceID,
 	)
 	r.addInformerStopChannel(
-		threeportWorkload.Spec.WorkloadInstanceID,
+		threeportWorkload.Spec.KubernetesWorkloadInstanceID,
 		replicasetInformerStopChan,
 	)
 	r.addReplicaSetEventHandlers(
 		ctx,
 		threeportWorkload.Spec.WorkloadType,
-		threeportWorkload.Spec.WorkloadInstanceID,
+		threeportWorkload.Spec.KubernetesWorkloadInstanceID,
 		replicasetInformer,
 		replicasetInformerStopChan,
 	)
@@ -215,7 +215,7 @@ func (r *ThreeportWorkloadReconciler) reconcileFinalizer(
 		if controllerutil.ContainsFinalizer(threeportWorkload, agent.ThreeportWorkloadFinalizer) {
 			// our finalizer is present, stop informers for this workload
 			// instance's resources
-			r.stopInformers(ctx, threeportWorkload.Spec.WorkloadInstanceID)
+			r.stopInformers(ctx, threeportWorkload.Spec.KubernetesWorkloadInstanceID)
 
 			// remove our finalizer from the list and update it to allow
 			// deletion of the ThreeportWorkload resource
@@ -230,8 +230,8 @@ func (r *ThreeportWorkloadReconciler) reconcileFinalizer(
 }
 
 // addInformerStopChannel adds an informer stop channel to an existing
-// InformerStopChannels object if one exists for a particular workload instance,
-// otherwise adds a new record for a workload instance with the provided stop
+// InformerStopChannels object if one exists for a particular kubernetes workload instance,
+// otherwise adds a new record for a kubernetes workload instance with the provided stop
 // channel.  These are recorded on the ThreeportWorkloadReconciler object so
 // the informers can be stopped when the ThreeportWorkload resource is deleted.
 func (r *ThreeportWorkloadReconciler) addInformerStopChannel(
@@ -240,7 +240,7 @@ func (r *ThreeportWorkloadReconciler) addInformerStopChannel(
 ) {
 	workloadInstanceIDFound := false
 	for i, informerStopChans := range r.InformerStopChans {
-		if informerStopChans.WorkloadInstanceID == workloadInstanceID {
+		if informerStopChans.KubernetesWorkloadInstanceID == workloadInstanceID {
 			informerStopChans.StopChannels = append(informerStopChans.StopChannels, stopChannel)
 			r.InformerStopChans[i] = informerStopChans
 			workloadInstanceIDFound = true
@@ -250,7 +250,7 @@ func (r *ThreeportWorkloadReconciler) addInformerStopChannel(
 
 	if !workloadInstanceIDFound {
 		informerStopChans := InformerStopChannels{
-			WorkloadInstanceID: workloadInstanceID,
+			KubernetesWorkloadInstanceID: workloadInstanceID,
 			StopChannels:       []chan struct{}{stopChannel},
 		}
 		r.InformerStopChans = append(r.InformerStopChans, informerStopChans)
@@ -265,7 +265,7 @@ func (r *ThreeportWorkloadReconciler) stopInformers(ctx context.Context, workloa
 	logger := log.FromContext(ctx)
 
 	for i, informerStopChans := range r.InformerStopChans {
-		if informerStopChans.WorkloadInstanceID == workloadInstanceID {
+		if informerStopChans.KubernetesWorkloadInstanceID == workloadInstanceID {
 			for _, stopChan := range informerStopChans.StopChannels {
 				if stopChan != nil {
 					logger.Info("ThreeportWorkload resource deleted - stopping informers")

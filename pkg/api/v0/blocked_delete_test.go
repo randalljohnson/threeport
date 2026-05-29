@@ -22,28 +22,28 @@ func TestFormatObjectPath(t *testing.T) {
 	}{
 		{
 			name:    "name resolved",
-			rawType: "threeport.io/v0.WorkloadInstance",
+			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   map[uint]string{42: "my-workload"},
 			want:    "threeport.io/workload-instance/my-workload",
 		},
 		{
 			name:    "missing name falls back to id",
-			rawType: "threeport.io/v0.WorkloadInstance",
+			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   map[uint]string{},
 			want:    "threeport.io/workload-instance/42",
 		},
 		{
 			name:    "empty name in map falls back to id",
-			rawType: "threeport.io/v0.WorkloadInstance",
+			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   map[uint]string{42: ""},
 			want:    "threeport.io/workload-instance/42",
 		},
 		{
 			name:    "nil names map renders id",
-			rawType: "threeport.io/v0.WorkloadInstance",
+			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   nil,
 			want:    "threeport.io/workload-instance/42",
@@ -98,9 +98,9 @@ func makeRef(baseType string, baseID uint, attacherType string, attacherID uint)
 // names. Both paths matter so the table covers them and a few mixed
 // scenarios.
 func TestFormatBlockedDelete(t *testing.T) {
-	const baseType = "threeport.io/v0.WorkloadDefinition"
+	const baseType = "threeport.io/v0.KubernetesWorkloadDefinition"
 	const baseID = uint(5)
-	const attacherType = "threeport.io/v0.WorkloadInstance"
+	const attacherType = "threeport.io/v0.KubernetesWorkloadInstance"
 
 	cases := []struct {
 		name        string
@@ -169,7 +169,7 @@ func TestFormatBlockedDelete(t *testing.T) {
 		{
 			name: "attachers spanning different types each render their own kebab kind",
 			refs: []AttachedObjectReference{
-				makeRef(baseType, baseID, "threeport.io/v0.WorkloadInstance", 11),
+				makeRef(baseType, baseID, "threeport.io/v0.KubernetesWorkloadInstance", 11),
 				makeRef(baseType, baseID, "threeport.io/v0.GatewayInstance", 22),
 			},
 			wantHas: []string{
@@ -201,7 +201,7 @@ func TestFormatBlockedDelete(t *testing.T) {
 func TestBlockedDeleteError_DefaultError(t *testing.T) {
 	err := &BlockedDeleteError{
 		AttachedRefs: []AttachedObjectReference{
-			makeRef("threeport.io/v0.WorkloadDefinition", 5, "threeport.io/v0.WorkloadInstance", 11),
+			makeRef("threeport.io/v0.KubernetesWorkloadDefinition", 5, "threeport.io/v0.KubernetesWorkloadInstance", 11),
 		},
 	}
 	msg := err.Error()

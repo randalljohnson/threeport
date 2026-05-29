@@ -45,7 +45,7 @@ type MachineWorkloadInstance struct {
 	// The definition used to configure the machine workload instance.
 	MachineWorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required"`
 
-	// The latest status of the workload instance.
+	// The latest status of the kubernetes workload instance.
 	Status *string `json:",omitempty" validate:"optional"`
 
 	// The environment variables set for the workload in KEY=VALUE format.

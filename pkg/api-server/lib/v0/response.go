@@ -30,7 +30,7 @@ type Response struct {
 	Meta Meta
 
 	// Type contains ObjectType of returned Data elements.
-	Type string `example:"WorkloadInstance"`
+	Type string `example:"KubernetesWorkloadInstance"`
 
 	// Data contains array of returned Object elements.
 	Data []Object

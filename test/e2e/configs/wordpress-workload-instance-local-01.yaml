@@ -1,4 +1,4 @@
-WorkloadInstance:
+KubernetesWorkloadInstance:
   Name: wordpress-inst-01
-  WorkloadDefinition:
+  KubernetesWorkloadDefinition:
     Name: wordpress-def

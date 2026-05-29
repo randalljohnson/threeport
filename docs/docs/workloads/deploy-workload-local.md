@@ -51,8 +51,8 @@ tptctl create workload --config wordpress-workload-local.yaml
 ```
 
 This command calls the Threeport API to create the Workload objects.
-The API notifies the workload controller via the message broker.  The workload
-controller processes the workload definition and creates the workload instance
+The API notifies the kubernetes workload controller via the message broker.  The workload
+controller processes the kubernetes workload definition and creates the kubernetes workload instance
 by calling the Kubernetes API.
 
 We can use `tptctl` to view deployed workloads:
@@ -109,7 +109,7 @@ control plane on a new Kubernetes cluster.
 
 When we installed the sample app using `tptctl create workload` we called the Threeport
 API to create the workload.  The reconciliation for these objects was carried
-out by the workload controller which created the necessary Kubernetes resources
+out by the kubernetes workload controller which created the necessary Kubernetes resources
 via the Kubernetes control plane.
 
 While this approach doesn't provide any special outcomes that you could not have

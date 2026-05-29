@@ -15,7 +15,7 @@ import (
 
 	runtime "github.com/threeport/threeport/internal/kubernetes-runtime"
 	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
-	workload_util "github.com/threeport/threeport/internal/workload/util"
+	workload_util "github.com/threeport/threeport/internal/kubernetes-workload/util"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
@@ -50,17 +50,17 @@ func v0GatewayInstanceCreated(
 
 	// create workload resource instances
 	for _, workloadResourceInstance := range *workloadResourceInstances {
-		_, err := client.CreateWorkloadResourceInstance(r.APIClient, r.APIServer, &workloadResourceInstance)
+		_, err := client.CreateKubernetesWorkloadResourceInstance(r.APIClient, r.APIServer, &workloadResourceInstance)
 		if err != nil {
 			return 0, fmt.Errorf("failed to create workload resource instance: %w", err)
 		}
 	}
 
-	// trigger a reconciliation of the workload instance
+	// trigger a reconciliation of the kubernetes workload instance
 	workloadInstance.Reconciled = util.Ptr(false)
-	_, err = client.UpdateWorkloadInstance(r.APIClient, r.APIServer, workloadInstance)
+	_, err = client.UpdateKubernetesWorkloadInstance(r.APIClient, r.APIServer, workloadInstance)
 	if err != nil {
-		return 0, fmt.Errorf("failed to update workload instance: %w", err)
+		return 0, fmt.Errorf("failed to update kubernetes workload instance: %w", err)
 	}
 
 	// update gateway instance
@@ -104,7 +104,7 @@ func v0GatewayInstanceUpdated(
 	}
 
 	// get workload resource instances
-	existingWorkloadResourceInstances, err := client.GetWorkloadResourceInstancesByWorkloadInstanceID(r.APIClient, r.APIServer, *gatewayInstance.WorkloadInstanceID)
+	existingWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *gatewayInstance.KubernetesWorkloadInstanceID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get workload resource instances: %w", err)
 	}
@@ -133,18 +133,18 @@ func v0GatewayInstanceUpdated(
 		workloadResourceInstanceReconciled := false
 		existingWorkloadResourceInstance.Reconciled = &workloadResourceInstanceReconciled
 		existingWorkloadResourceInstance.JSONDefinition = updatedWorkloadResourceInstance.JSONDefinition
-		_, err = client.UpdateWorkloadResourceInstance(r.APIClient, r.APIServer, existingWorkloadResourceInstance)
+		_, err = client.UpdateKubernetesWorkloadResourceInstance(r.APIClient, r.APIServer, existingWorkloadResourceInstance)
 		if err != nil {
 			return 0, fmt.Errorf("failed to update workload resource instance: %w", err)
 		}
 	}
 
-	// trigger a reconciliation of the workload instance
+	// trigger a reconciliation of the kubernetes workload instance
 	workloadInstanceReconciled := false
 	workloadInstance.Reconciled = &workloadInstanceReconciled
-	_, err = client.UpdateWorkloadInstance(r.APIClient, r.APIServer, workloadInstance)
+	_, err = client.UpdateKubernetesWorkloadInstance(r.APIClient, r.APIServer, workloadInstance)
 	if err != nil {
-		return 0, fmt.Errorf("failed to update workload instance: %w", err)
+		return 0, fmt.Errorf("failed to update kubernetes workload instance: %w", err)
 	}
 
 	// update gateway instance
@@ -182,10 +182,10 @@ func v0GatewayInstanceDeleted(
 	}
 
 	// get workload resource instances
-	workloadResourceInstances, err := client.GetWorkloadResourceInstancesByWorkloadInstanceID(r.APIClient, r.APIServer, *gatewayInstance.WorkloadInstanceID)
+	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *gatewayInstance.KubernetesWorkloadInstanceID)
 	if err != nil {
 		if errors.Is(err, client_lib.ErrObjectNotFound) {
-			// workload instance has already been deleted
+			// kubernetes workload instance has already been deleted
 			return 0, nil
 		}
 		return 0, fmt.Errorf("failed to get workload resource instances: %w", err)
@@ -195,7 +195,7 @@ func v0GatewayInstanceDeleted(
 	gatewayInstanceObjects, err := getGatewayInstanceObjects(r, gatewayInstance)
 	if err != nil {
 		if errors.Is(err, client_lib.ErrObjectNotFound) {
-			// workload instance has already been deleted
+			// kubernetes workload instance has already been deleted
 			return 0, nil
 		}
 		return 0, fmt.Errorf("failed to get gateway instance objects: %w", err)
@@ -206,17 +206,17 @@ func v0GatewayInstanceDeleted(
 		// get workload resource instance for virtual service
 		workloadResourceInstance, err := workload_util.GetUniqueWorkloadResourceInstance(workloadResourceInstances, resource)
 		if err != nil {
-			// workload instance has already been deleted
+			// kubernetes workload instance has already been deleted
 			return 0, nil
 		}
 
 		// schedule workload resource instance for deletion
-		workloadResourceInstance = &v0.WorkloadResourceInstance{
+		workloadResourceInstance = &v0.KubernetesWorkloadResourceInstance{
 			Common:               v0.Common{ID: workloadResourceInstance.ID},
 			ScheduledForDeletion: util.Ptr(time.Now().UTC()),
 			Reconciled:           util.Ptr(false),
 		}
-		_, err = client.UpdateWorkloadResourceInstance(r.APIClient, r.APIServer, workloadResourceInstance)
+		_, err = client.UpdateKubernetesWorkloadResourceInstance(r.APIClient, r.APIServer, workloadResourceInstance)
 		if err != nil {
 			if errors.Is(err, client_lib.ErrObjectNotFound) {
 				// workload resource instance has already been deleted
@@ -226,17 +226,17 @@ func v0GatewayInstanceDeleted(
 		}
 	}
 
-	// trigger a reconciliation of the workload instance
-	if gatewayInstance.WorkloadInstanceID == nil {
-		return 0, fmt.Errorf("failed to delete workload instance, workloadInstanceID is nil")
+	// trigger a reconciliation of the kubernetes workload instance
+	if gatewayInstance.KubernetesWorkloadInstanceID == nil {
+		return 0, fmt.Errorf("failed to delete kubernetes workload instance, workloadInstanceID is nil")
 	}
-	workloadInstance := &v0.WorkloadInstance{
-		Common:         v0.Common{ID: gatewayInstance.WorkloadInstanceID},
+	workloadInstance := &v0.KubernetesWorkloadInstance{
+		Common:         v0.Common{ID: gatewayInstance.KubernetesWorkloadInstanceID},
 		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(false)},
 	}
-	_, err = client.UpdateWorkloadInstance(r.APIClient, r.APIServer, workloadInstance)
+	_, err = client.UpdateKubernetesWorkloadInstance(r.APIClient, r.APIServer, workloadInstance)
 	if err != nil && !errors.Is(err, client_lib.ErrObjectNotFound) {
-		return 0, fmt.Errorf("failed to update workload instance: %w", err)
+		return 0, fmt.Errorf("failed to update kubernetes workload instance: %w", err)
 	}
 
 	return 0, nil
@@ -247,7 +247,7 @@ func v0GatewayInstanceDeleted(
 func getThreeportObjects(
 	r *controller.Reconciler,
 	gatewayInstance *v0.GatewayInstance,
-) (*v0.KubernetesRuntimeInstance, *v0.GatewayDefinition, *v0.WorkloadInstance, error) {
+) (*v0.KubernetesRuntimeInstance, *v0.GatewayDefinition, *v0.KubernetesWorkloadInstance, error) {
 
 	// get kubernetes runtime instance
 	if gatewayInstance.KubernetesRuntimeInstanceID == nil {
@@ -264,16 +264,16 @@ func getThreeportObjects(
 	}
 	gatewayDefinition, err := client.GetGatewayDefinitionByID(r.APIClient, r.APIServer, *gatewayInstance.GatewayDefinitionID)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get gateway controller workload definition: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get gateway controller kubernetes workload definition: %w", err)
 	}
 
-	// get workload instance
-	if gatewayInstance.WorkloadInstanceID == nil {
-		return nil, nil, nil, fmt.Errorf("workload instance ID is nil")
+	// get kubernetes workload instance
+	if gatewayInstance.KubernetesWorkloadInstanceID == nil {
+		return nil, nil, nil, fmt.Errorf("kubernetes workload instance ID is nil")
 	}
-	workloadInstance, err := client.GetWorkloadInstanceByID(r.APIClient, r.APIServer, *gatewayInstance.WorkloadInstanceID)
+	workloadInstance, err := client.GetKubernetesWorkloadInstanceByID(r.APIClient, r.APIServer, *gatewayInstance.KubernetesWorkloadInstanceID)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get workload instance: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get kubernetes workload instance: %w", err)
 	}
 
 	return kubernetesRuntimeInstance, gatewayDefinition, workloadInstance, nil
@@ -285,30 +285,30 @@ func validateThreeportState(
 	r *controller.Reconciler,
 	gatewayDefinition *v0.GatewayDefinition,
 	gatewayInstance *v0.GatewayInstance,
-	workloadInstance *v0.WorkloadInstance,
+	workloadInstance *v0.KubernetesWorkloadInstance,
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
 	log *logr.Logger,
 ) error {
 
-	// ensure gateway and workload definition are reconciled
+	// ensure gateway and kubernetes workload definition are reconciled
 	definitionsReconciled, err := confirmDefinitionsReconciled(r, gatewayInstance)
 	if err != nil {
-		return fmt.Errorf("failed to determine if workload definition is reconciled: %w", err)
+		return fmt.Errorf("failed to determine if kubernetes workload definition is reconciled: %w", err)
 	}
 	if !definitionsReconciled {
-		return errors.New("workload definition not reconciled")
+		return errors.New("kubernetes workload definition not reconciled")
 	}
 
-	// ensure workload instance is reconciled
-	if gatewayInstance.WorkloadInstanceID == nil {
-		return fmt.Errorf("failed to determine if workload instance is reconciled, workload instance ID is nil")
+	// ensure kubernetes workload instance is reconciled
+	if gatewayInstance.KubernetesWorkloadInstanceID == nil {
+		return fmt.Errorf("failed to determine if kubernetes workload instance is reconciled, kubernetes workload instance ID is nil")
 	}
-	workloadInstanceReconciled, err := confirmWorkloadInstanceReconciled(r, *gatewayInstance.WorkloadInstanceID)
+	workloadInstanceReconciled, err := confirmWorkloadInstanceReconciled(r, *gatewayInstance.KubernetesWorkloadInstanceID)
 	if err != nil {
-		return fmt.Errorf("failed to determine if workload instance is reconciled: %w", err)
+		return fmt.Errorf("failed to determine if kubernetes workload instance is reconciled: %w", err)
 	}
 	if !workloadInstanceReconciled {
-		return errors.New("workload instance not reconciled")
+		return errors.New("kubernetes workload instance not reconciled")
 	}
 
 	// ensure gateway controller is deployed
@@ -351,7 +351,7 @@ func confirmDefinitionsReconciled(
 	}
 	gatewayDefinition, err := client.GetGatewayDefinitionByID(r.APIClient, r.APIServer, *gatewayInstance.GatewayDefinitionID)
 	if err != nil {
-		return false, fmt.Errorf("failed to get gateway definition by workload definition ID: %w", err)
+		return false, fmt.Errorf("failed to get gateway definition by kubernetes workload definition ID: %w", err)
 	}
 
 	// if the gateway definition is not reconciled, return false
@@ -359,16 +359,16 @@ func confirmDefinitionsReconciled(
 		return false, nil
 	}
 
-	// get workload definition
-	if gatewayDefinition.WorkloadDefinitionID == nil {
-		return false, fmt.Errorf("failed to get workload definition from gateway definition, workload definition ID is nil")
+	// get kubernetes workload definition
+	if gatewayDefinition.KubernetesWorkloadDefinitionID == nil {
+		return false, fmt.Errorf("failed to get kubernetes workload definition from gateway definition, kubernetes workload definition ID is nil")
 	}
-	workloadDefinition, err := client.GetWorkloadDefinitionByID(r.APIClient, r.APIServer, *gatewayDefinition.WorkloadDefinitionID)
+	workloadDefinition, err := client.GetKubernetesWorkloadDefinitionByID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
 	if err != nil {
-		return false, fmt.Errorf("failed to get workload definition by workload definition ID: %w", err)
+		return false, fmt.Errorf("failed to get kubernetes workload definition by kubernetes workload definition ID: %w", err)
 	}
 
-	// if the workload definition is not reconciled, return false
+	// if the kubernetes workload definition is not reconciled, return false
 	if workloadDefinition.Reconciled != nil && !*workloadDefinition.Reconciled {
 		return false, nil
 	}
@@ -430,28 +430,28 @@ func confirmGatewayControllerDeployed(
 	// concatenate gloo edge, support services collection, and cert manager manifests
 	manifest := fmt.Sprintf("---\n%s\n---\n%s\n", certManager, glooEdge)
 
-	// create gateway controller workload definition
+	// create gateway controller kubernetes workload definition
 	workloadDefName := fmt.Sprintf("%s-%s", "gloo-edge", *kubernetesRuntimeInstance.Name)
-	glooEdgeWorkloadDefinition := v0.WorkloadDefinition{
+	glooEdgeWorkloadDefinition := v0.KubernetesWorkloadDefinition{
 		Definition:   v0.Definition{Name: &workloadDefName},
 		YAMLDocument: &manifest,
 	}
 
-	// create gateway controller workload definition
-	createdWorkloadDef, err := client.CreateWorkloadDefinition(r.APIClient, r.APIServer, &glooEdgeWorkloadDefinition)
+	// create gateway controller kubernetes workload definition
+	createdWorkloadDef, err := client.CreateKubernetesWorkloadDefinition(r.APIClient, r.APIServer, &glooEdgeWorkloadDefinition)
 	if err != nil {
-		return fmt.Errorf("failed to create gateway controller workload definition: %w", err)
+		return fmt.Errorf("failed to create gateway controller kubernetes workload definition: %w", err)
 	}
 
-	// create gateway workload instance
-	glooEdgeWorkloadInstance := v0.WorkloadInstance{
+	// create gateway kubernetes workload instance
+	glooEdgeWorkloadInstance := v0.KubernetesWorkloadInstance{
 		Instance:                    v0.Instance{Name: &workloadDefName},
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
-		WorkloadDefinitionID:        createdWorkloadDef.ID,
+		KubernetesWorkloadDefinitionID:        createdWorkloadDef.ID,
 	}
-	createdGlooEdgeWorkloadInstance, err := client.CreateWorkloadInstance(r.APIClient, r.APIServer, &glooEdgeWorkloadInstance)
+	createdGlooEdgeWorkloadInstance, err := client.CreateKubernetesWorkloadInstance(r.APIClient, r.APIServer, &glooEdgeWorkloadInstance)
 	if err != nil {
-		return fmt.Errorf("failed to create gateway controller workload instance: %w", err)
+		return fmt.Errorf("failed to create gateway controller kubernetes workload instance: %w", err)
 	}
 
 	// update kubernetes runtime instance with gateway controller instance id
@@ -483,7 +483,7 @@ func confirmGatewayPortsExposed(
 	if kubernetesRuntimeInstance.GatewayControllerInstanceID == nil {
 		return fmt.Errorf("gateway controller instance ID is nil")
 	}
-	workloadResourceInstances, err := client.GetWorkloadResourceInstancesByWorkloadInstanceID(r.APIClient, r.APIServer, *kubernetesRuntimeInstance.GatewayControllerInstanceID)
+	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *kubernetesRuntimeInstance.GatewayControllerInstanceID)
 	if err != nil {
 		return fmt.Errorf("failed to get workload resource instances: %w", err)
 	}
@@ -543,19 +543,19 @@ func confirmGatewayPortsExposed(
 	}
 	glooEdgeObject.Reconciled = util.Ptr(false)
 	glooEdgeObject.JSONDefinition = &jsonDefinition
-	_, err = client.UpdateWorkloadResourceInstance(r.APIClient, r.APIServer, glooEdgeObject)
+	_, err = client.UpdateKubernetesWorkloadResourceInstance(r.APIClient, r.APIServer, glooEdgeObject)
 	if err != nil {
 		return fmt.Errorf("failed to update gloo edge workload resource instance: %w", err)
 	}
 
-	// trigger a reconciliation of the gateway controller workload instance
-	updatedGatewayControllerWorkloadInstance := v0.WorkloadInstance{
+	// trigger a reconciliation of the gateway controller kubernetes workload instance
+	updatedGatewayControllerWorkloadInstance := v0.KubernetesWorkloadInstance{
 		Common:         v0.Common{ID: kubernetesRuntimeInstance.GatewayControllerInstanceID},
 		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(false)},
 	}
-	_, err = client.UpdateWorkloadInstance(r.APIClient, r.APIServer, &updatedGatewayControllerWorkloadInstance)
+	_, err = client.UpdateKubernetesWorkloadInstance(r.APIClient, r.APIServer, &updatedGatewayControllerWorkloadInstance)
 	if err != nil {
-		return fmt.Errorf("failed to update gateway controller workload instance: %w", err)
+		return fmt.Errorf("failed to update gateway controller kubernetes workload instance: %w", err)
 	}
 
 	// log the ports that are exposed
@@ -621,16 +621,16 @@ func ensureGlooEdgePortExists(protocol string, port int, tlsEnabled bool, ports 
 }
 
 // configureGatewayManifests configures a VirtualService custom resource
-// based on the configuration of the gateway workload definition
+// based on the configuration of the gateway kubernetes workload definition
 func configureGatewayManifests(
 	r *controller.Reconciler,
 	gatewayDefinition *v0.GatewayDefinition,
-	workloadInstance *v0.WorkloadInstance,
+	workloadInstance *v0.KubernetesWorkloadInstance,
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
 ) ([]*datatypes.JSON, error) {
 
 	// get workload resource instances
-	workloadResourceInstances, err := client.GetWorkloadResourceInstancesByWorkloadInstanceID(r.APIClient, r.APIServer, *workloadInstance.ID)
+	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *workloadInstance.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workload resource instances: %w", err)
 	}
@@ -663,7 +663,7 @@ func configureGatewayManifests(
 	}
 
 	// get gateway workload resource definitions
-	gatewayWorkloadResourceDefinitions, err := client.GetWorkloadResourceDefinitionsByWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.WorkloadDefinitionID)
+	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gateway workload resource definitions: %w", err)
 	}
@@ -708,9 +708,9 @@ func configureGatewayManifests(
 func configureVirtualServiceRuntimeParameters(
 	r *controller.Reconciler,
 	gatewayDefinition *v0.GatewayDefinition,
-	workloadInstance *v0.WorkloadInstance,
+	workloadInstance *v0.KubernetesWorkloadInstance,
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
-	gatewayWorkloadResourceDefinitions *[]v0.WorkloadResourceDefinition,
+	gatewayWorkloadResourceDefinitions *[]v0.KubernetesWorkloadResourceDefinition,
 	namespace,
 	name string,
 ) ([]*datatypes.JSON, error) {
@@ -832,9 +832,9 @@ func configureVirtualServiceRuntimeParameters(
 func configureTcpGatewayRuntimeParameters(
 	r *controller.Reconciler,
 	gatewayDefinition *v0.GatewayDefinition,
-	workloadInstance *v0.WorkloadInstance,
+	workloadInstance *v0.KubernetesWorkloadInstance,
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
-	gatewayWorkloadResourceDefinitions *[]v0.WorkloadResourceDefinition,
+	gatewayWorkloadResourceDefinitions *[]v0.KubernetesWorkloadResourceDefinition,
 	namespace,
 	name string,
 ) ([]*datatypes.JSON, error) {
@@ -929,13 +929,13 @@ func getSubDomain(gatewayDefinition *v0.GatewayDefinition, domainNameDefinition 
 func configureIssuer(
 	r *controller.Reconciler,
 	gatewayDefinition *v0.GatewayDefinition,
-	workloadInstance *v0.WorkloadInstance,
+	workloadInstance *v0.KubernetesWorkloadInstance,
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
 	domainNameDefinition *v0.DomainNameDefinition,
 ) (*datatypes.JSON, error) {
 
 	// get gateway workload resource definitions
-	gatewayWorkloadResourceDefinitions, err := client.GetWorkloadResourceDefinitionsByWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.WorkloadDefinitionID)
+	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gateway workload resource definitions: %w", err)
 	}
@@ -1010,13 +1010,13 @@ func configureIssuer(
 func configureCertificate(
 	r *controller.Reconciler,
 	gatewayDefinition *v0.GatewayDefinition,
-	workloadInstance *v0.WorkloadInstance,
+	workloadInstance *v0.KubernetesWorkloadInstance,
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
 	domainNameDefinition *v0.DomainNameDefinition,
 ) (*datatypes.JSON, error) {
 
 	// get gateway workload resource definitions
-	gatewayWorkloadResourceDefinitions, err := client.GetWorkloadResourceDefinitionsByWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.WorkloadDefinitionID)
+	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gateway workload resource definitions: %w", err)
 	}
@@ -1089,9 +1089,9 @@ func getGatewayInstanceObjects(r *controller.Reconciler, gatewayInstance *v0.Gat
 func configureGatewayWorkloadResourceInstances(
 	r *controller.Reconciler,
 	gatewayDefinition *v0.GatewayDefinition,
-	workloadInstance *v0.WorkloadInstance,
+	workloadInstance *v0.KubernetesWorkloadInstance,
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
-) (*[]v0.WorkloadResourceInstance, error) {
+) (*[]v0.KubernetesWorkloadResourceInstance, error) {
 
 	var jsonManifests []*datatypes.JSON
 
@@ -1133,11 +1133,11 @@ func configureGatewayWorkloadResourceInstances(
 		jsonManifests = append(jsonManifests, certificateManifest)
 	}
 
-	var workloadResourceInstances []v0.WorkloadResourceInstance
+	var workloadResourceInstances []v0.KubernetesWorkloadResourceInstance
 	for _, jsonManifest := range jsonManifests {
-		workloadResourceInstance := v0.WorkloadResourceInstance{
+		workloadResourceInstance := v0.KubernetesWorkloadResourceInstance{
 			JSONDefinition:     jsonManifest,
-			WorkloadInstanceID: workloadInstance.ID,
+			KubernetesWorkloadInstanceID: workloadInstance.ID,
 			Reconciled:         util.Ptr(false),
 		}
 		workloadResourceInstances = append(workloadResourceInstances, workloadResourceInstance)

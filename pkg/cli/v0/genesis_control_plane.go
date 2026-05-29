@@ -1084,7 +1084,7 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		// check for workload instances on non-kind kubernetes runtimes - halt delete if
 		// any are present
 		if threeportControlPlaneConfig.Provider != v0.KubernetesRuntimeInfraProviderKind {
-			workloadInstances, err := client.GetWorkloadInstances(
+			workloadInstances, err := client.GetKubernetesWorkloadInstances(
 				apiClient,
 				threeportControlPlaneConfig.APIServer,
 			)

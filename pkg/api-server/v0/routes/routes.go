@@ -54,12 +54,12 @@ func CustomRoutes(h *handlers.Handler) *[]CustomRoute {
 	return &[]CustomRoute{
 		// Adds workload resource definitions in bulk.
 		{
-			Path:    v0.PathWorkloadResourceDefinitionSets,
+			Path:    v0.PathKubernetesWorkloadResourceDefinitionSets,
 			Method:  "POST",
 			Handler: util.Ptr(h.AddWorkloadResourceDefinitions),
 			ApiObjects: &[]ApiObject{
 				{
-					Name:    v0.ObjectTypeWorkloadResourceDefinition,
+					Name:    v0.ObjectTypeKubernetesWorkloadResourceDefinition,
 					Version: "v0",
 				},
 			},

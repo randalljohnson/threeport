@@ -83,7 +83,7 @@ func Notify(
 
 	// create slices to serve as payload info store accumluated notification
 	// info received from notif channel
-	var workloadResourceInstances []tpapi.WorkloadResourceInstance
+	var workloadResourceInstances []tpapi.KubernetesWorkloadResourceInstance
 	var workloadEvents []tpapi.WorkloadEvent
 
 	for {
@@ -117,7 +117,7 @@ func Notify(
 			// that to the Threeport API data model.
 			if notif.Operation != nil && notif.Operation.WorkloadType != agent.HelmWorkloadInstanceType {
 				runtimeDef := datatypes.JSON([]byte(notif.Operation.OperationObject))
-				workloadResourceInst := tpapi.WorkloadResourceInstance{
+				workloadResourceInst := tpapi.KubernetesWorkloadResourceInstance{
 					Common: tpapi.Common{
 						ID: &notif.Operation.WorkloadResourceInstanceID,
 					},
@@ -189,16 +189,16 @@ func Notify(
 func sendThreeportUpdates(
 	tpAPIServer string,
 	tpAPIClient *http.Client,
-	workloadResourceInstances *[]tpapi.WorkloadResourceInstance,
+	workloadResourceInstances *[]tpapi.KubernetesWorkloadResourceInstance,
 	workloadEvents *[]tpapi.WorkloadEvent,
-) (*[]tpapi.WorkloadResourceInstance, *[]tpapi.WorkloadEvent) {
-	var unsentWRIs []tpapi.WorkloadResourceInstance
+) (*[]tpapi.KubernetesWorkloadResourceInstance, *[]tpapi.WorkloadEvent) {
+	var unsentWRIs []tpapi.KubernetesWorkloadResourceInstance
 	var unsentWEs []tpapi.WorkloadEvent
 
 	// update workload resource instances
 	for _, wri := range *workloadResourceInstances {
 		wriCopy := wri // ID gets stripped by UpdateWorkloadResourceInstance :/
-		_, err := tpclient.UpdateWorkloadResourceInstance(
+		_, err := tpclient.UpdateKubernetesWorkloadResourceInstance(
 			tpAPIClient,
 			tpAPIServer,
 			&wri,
@@ -228,9 +228,9 @@ func sendThreeportUpdates(
 // resource instance to the existing slice.  This ensures the latest operation
 // and resource object definition are the ones sent to the threeport API.
 func appendUniqueWRI(
-	wris []tpapi.WorkloadResourceInstance,
-	newWRI tpapi.WorkloadResourceInstance,
-) []tpapi.WorkloadResourceInstance {
+	wris []tpapi.KubernetesWorkloadResourceInstance,
+	newWRI tpapi.KubernetesWorkloadResourceInstance,
+) []tpapi.KubernetesWorkloadResourceInstance {
 	wriFound := false
 	for i, wri := range wris {
 		if wri.ID == newWRI.ID {

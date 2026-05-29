@@ -231,7 +231,7 @@ func TestWorkloadIntegration(t *testing.T) {
 				assert.NotNil(wrd.ID, "created workload resource definition should contain unique ID")
 				assert.NotNil(wrd.CreatedAt, "created workload resource definition should contain created timestamp")
 				assert.NotNil(wrd.UpdatedAt, "created workload resource definition should contain updated timestamp")
-				assert.Equal(wrd.WorkloadDefinitionID, createdWorkloadDef.ID, "created workload resource definition should be associated to correct workload definition")
+				assert.Equal(wrd.KubernetesWorkloadDefinitionID, createdWorkloadDef.ID, "created workload resource definition should be associated to correct workload definition")
 				for _, resource := range testWorkload.Resources {
 					if strings.Contains(string(*wrd.JSONDefinition), resource.Kind) {
 						resourceFound = true
@@ -261,8 +261,8 @@ func TestWorkloadIntegration(t *testing.T) {
 			Instance: v0.Instance{
 				Name: &workloadInstName,
 			},
-			KubernetesRuntimeInstanceID: testKubernetesRuntimeInst.ID,
-			WorkloadDefinitionID:        createdWorkloadDef.ID,
+			KubernetesRuntimeInstanceID:    testKubernetesRuntimeInst.ID,
+			KubernetesWorkloadDefinitionID: createdWorkloadDef.ID,
 		}
 		createdWorkloadInst, err := client.CreateKubernetesWorkloadInstance(
 			apiClient,
@@ -277,8 +277,8 @@ func TestWorkloadIntegration(t *testing.T) {
 			Instance: v0.Instance{
 				Name: &workloadInstName,
 			},
-			KubernetesRuntimeInstanceID: testKubernetesRuntimeInst.ID,
-			WorkloadDefinitionID:        createdWorkloadDef.ID,
+			KubernetesRuntimeInstanceID:    testKubernetesRuntimeInst.ID,
+			KubernetesWorkloadDefinitionID: createdWorkloadDef.ID,
 		}
 
 		_, err = client.CreateKubernetesWorkloadInstance(
@@ -308,9 +308,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			Instance: v0.Instance{
 				Name: &workloadInstName,
 			},
-			DomainNameDefinitionID:      domainNameDefinition.ID,
-			WorkloadInstanceID:          createdWorkloadInst.ID,
-			KubernetesRuntimeInstanceID: testKubernetesRuntimeInst.ID,
+			DomainNameDefinitionID:       domainNameDefinition.ID,
+			KubernetesWorkloadInstanceID: createdWorkloadInst.ID,
+			KubernetesRuntimeInstanceID:  testKubernetesRuntimeInst.ID,
 		}
 
 		// create domain name instance
@@ -326,9 +326,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			Instance: v0.Instance{
 				Name: util.Ptr("gatewayInstance"),
 			},
-			KubernetesRuntimeInstanceID: testKubernetesRuntimeInst.ID,
-			GatewayDefinitionID:         gatewayDefinition.ID,
-			WorkloadInstanceID:          createdWorkloadInst.ID,
+			KubernetesRuntimeInstanceID:  testKubernetesRuntimeInst.ID,
+			GatewayDefinitionID:          gatewayDefinition.ID,
+			KubernetesWorkloadInstanceID: createdWorkloadInst.ID,
 		}
 		createdGatewayInstance, err := client.CreateGatewayInstance(
 			apiClient,
@@ -461,23 +461,23 @@ func TestWorkloadIntegration(t *testing.T) {
 		assert.Nil(err, "should have no error creating second workload definition")
 
 		// value to nil: clearing a requires-tagged FK should be rejected.
-		// the payload sets WorkloadDefinitionID to nil while preserving
+		// the payload sets KubernetesWorkloadDefinitionID to nil while preserving
 		// the row identity via ID.
 		clearWorkloadDefIDPayload := v0.KubernetesWorkloadInstance{
-			Common:               v0.Common{ID: createdWorkloadInst.ID},
-			WorkloadDefinitionID: nil,
+			Common:                         v0.Common{ID: createdWorkloadInst.ID},
+			KubernetesWorkloadDefinitionID: nil,
 		}
 		_, err = client.UpdateKubernetesWorkloadInstance(apiClient, threeportAPIEndpoint, &clearWorkloadDefIDPayload)
-		assert.NotNil(err, "should reject clearing a requires-tagged FK (WorkloadDefinitionID nil)")
+		assert.NotNil(err, "should reject clearing a requires-tagged FK (KubernetesWorkloadDefinitionID nil)")
 
 		// value to other: reassigning a requires-tagged FK to a
 		// different valid target should be rejected.
 		changeWorkloadDefIDPayload := v0.KubernetesWorkloadInstance{
-			Common:               v0.Common{ID: createdWorkloadInst.ID},
-			WorkloadDefinitionID: createdSecondWorkloadDef.ID,
+			Common:                         v0.Common{ID: createdWorkloadInst.ID},
+			KubernetesWorkloadDefinitionID: createdSecondWorkloadDef.ID,
 		}
 		_, err = client.UpdateKubernetesWorkloadInstance(apiClient, threeportAPIEndpoint, &changeWorkloadDefIDPayload)
-		assert.NotNil(err, "should reject reassigning a requires-tagged FK (WorkloadDefinitionID to a different value)")
+		assert.NotNil(err, "should reject reassigning a requires-tagged FK (KubernetesWorkloadDefinitionID to a different value)")
 
 		// value to nil on KubernetesRuntimeInstanceID, also
 		// `relationship:"requires"`. tests the same rule on a different

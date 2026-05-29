@@ -34,17 +34,17 @@ type ResourceOperation struct {
 // EventSummary contains information collected from events related to
 // threeport-managed resources.
 type EventSummary struct {
-	EventUID                   string
-	WorkloadType               string
-	WorkloadInstanceID         uint
-	WorkloadResourceInstanceID uint
-	ObjectNamespace            string
-	ObjectKind                 string
-	ObjectName                 string
-	Timestamp                  metav1.Time
-	Type                       string
-	Reason                     string
-	Message                    string
+	EventUID                     string
+	WorkloadType                 string
+	KubernetesWorkloadInstanceID uint
+	WorkloadResourceInstanceID   uint
+	ObjectNamespace              string
+	ObjectKind                   string
+	ObjectName                   string
+	Timestamp                    metav1.Time
+	Type                         string
+	Reason                       string
+	Message                      string
 }
 
 // Notify collects information about all resources being watched and
@@ -133,7 +133,7 @@ func Notify(
 				case notif.Event.WorkloadResourceInstanceID != 0:
 					workloadEvent = tpapi.WorkloadEvent{
 						RuntimeEventUID:            &notif.Event.EventUID,
-						WorkloadInstanceID:         &notif.Event.WorkloadInstanceID,
+						WorkloadInstanceID:         &notif.Event.KubernetesWorkloadInstanceID,
 						WorkloadResourceInstanceID: &notif.Event.WorkloadResourceInstanceID,
 						Type:                       &notif.Event.Type,
 						Reason:                     &notif.Event.Reason,
@@ -143,7 +143,7 @@ func Notify(
 				case notif.Event.WorkloadType == agent.WorkloadInstanceType:
 					workloadEvent = tpapi.WorkloadEvent{
 						RuntimeEventUID:    &notif.Event.EventUID,
-						WorkloadInstanceID: &notif.Event.WorkloadInstanceID,
+						WorkloadInstanceID: &notif.Event.KubernetesWorkloadInstanceID,
 						Type:               &notif.Event.Type,
 						Reason:             &notif.Event.Reason,
 						Message:            &notif.Event.Message,
@@ -152,7 +152,7 @@ func Notify(
 				case notif.Event.WorkloadType == agent.HelmWorkloadInstanceType:
 					workloadEvent = tpapi.WorkloadEvent{
 						RuntimeEventUID:        &notif.Event.EventUID,
-						HelmWorkloadInstanceID: &notif.Event.WorkloadInstanceID,
+						HelmWorkloadInstanceID: &notif.Event.KubernetesWorkloadInstanceID,
 						Type:                   &notif.Event.Type,
 						Reason:                 &notif.Event.Reason,
 						Message:                &notif.Event.Message,

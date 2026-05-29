@@ -25,28 +25,28 @@ func TestFormatObjectPath(t *testing.T) {
 			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   map[uint]string{42: "my-workload"},
-			want:    "threeport.io/workload-instance/my-workload",
+			want:    "threeport.io/kubernetes-workload-instance/my-workload",
 		},
 		{
 			name:    "missing name falls back to id",
 			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   map[uint]string{},
-			want:    "threeport.io/workload-instance/42",
+			want:    "threeport.io/kubernetes-workload-instance/42",
 		},
 		{
 			name:    "empty name in map falls back to id",
 			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   map[uint]string{42: ""},
-			want:    "threeport.io/workload-instance/42",
+			want:    "threeport.io/kubernetes-workload-instance/42",
 		},
 		{
 			name:    "nil names map renders id",
 			rawType: "threeport.io/v0.KubernetesWorkloadInstance",
 			id:      42,
 			names:   nil,
-			want:    "threeport.io/workload-instance/42",
+			want:    "threeport.io/kubernetes-workload-instance/42",
 		},
 		{
 			name:    "module namespace renders with kebab kind",
@@ -115,9 +115,9 @@ func TestFormatBlockedDelete(t *testing.T) {
 				makeRef(baseType, baseID, attacherType, 11),
 			},
 			wantHas: []string{
-				"threeport.io/workload-definition/5",
+				"threeport.io/kubernetes-workload-definition/5",
 				"cannot be deleted while 1 object(s) still reference it",
-				"threeport.io/workload-instance/11",
+				"threeport.io/kubernetes-workload-instance/11",
 				"Remove dependents first.",
 			},
 			wantCount: 1,
@@ -131,9 +131,9 @@ func TestFormatBlockedDelete(t *testing.T) {
 			},
 			wantHas: []string{
 				"cannot be deleted while 3 object(s)",
-				"threeport.io/workload-instance/11",
-				"threeport.io/workload-instance/12",
-				"threeport.io/workload-instance/13",
+				"threeport.io/kubernetes-workload-instance/11",
+				"threeport.io/kubernetes-workload-instance/12",
+				"threeport.io/kubernetes-workload-instance/13",
 			},
 			wantCount: 3,
 		},
@@ -147,8 +147,8 @@ func TestFormatBlockedDelete(t *testing.T) {
 				attacherType: {11: "my-inst"},
 			},
 			wantHas: []string{
-				"threeport.io/workload-definition/my-def",
-				"threeport.io/workload-instance/my-inst",
+				"threeport.io/kubernetes-workload-definition/my-def",
+				"threeport.io/kubernetes-workload-instance/my-inst",
 			},
 			wantCount: 1,
 		},
@@ -161,8 +161,8 @@ func TestFormatBlockedDelete(t *testing.T) {
 				baseType: {baseID: "my-def"},
 			},
 			wantHas: []string{
-				"threeport.io/workload-definition/my-def",
-				"threeport.io/workload-instance/11", // id-only fallback for the attacher
+				"threeport.io/kubernetes-workload-definition/my-def",
+				"threeport.io/kubernetes-workload-instance/11", // id-only fallback for the attacher
 			},
 			wantCount: 1,
 		},
@@ -173,7 +173,7 @@ func TestFormatBlockedDelete(t *testing.T) {
 				makeRef(baseType, baseID, "threeport.io/v0.GatewayInstance", 22),
 			},
 			wantHas: []string{
-				"threeport.io/workload-instance/11",
+				"threeport.io/kubernetes-workload-instance/11",
 				"threeport.io/gateway-instance/22",
 			},
 			wantCount: 2,
@@ -205,7 +205,7 @@ func TestBlockedDeleteError_DefaultError(t *testing.T) {
 		},
 	}
 	msg := err.Error()
-	assert.Contains(t, msg, "threeport.io/workload-definition/5", "base path should be id-only at error.Error() level")
-	assert.Contains(t, msg, "threeport.io/workload-instance/11", "attacher path should be id-only at error.Error() level")
+	assert.Contains(t, msg, "threeport.io/kubernetes-workload-definition/5", "base path should be id-only at error.Error() level")
+	assert.Contains(t, msg, "threeport.io/kubernetes-workload-instance/11", "attacher path should be id-only at error.Error() level")
 	assert.NotContains(t, msg, "my-", "Error() does not get a names map; no resolved name should leak")
 }

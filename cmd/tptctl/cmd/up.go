@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -16,6 +17,10 @@ import (
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 )
+
+// upGroupNames holds the --names flag value: a comma-separated list
+// of sdk-config ApiObjectGroup names whose controllers to install.
+var upGroupNames string
 
 // TODO: will become a variable once production-ready control plane instances are
 // available.
@@ -91,6 +96,29 @@ control planes if they are used to create or are created by another control plan
 		if err != nil {
 			cli.Error("failed to create threeport control plane installer", err)
 			os.Exit(1)
+		}
+
+		// narrow the controller list when --names is set so the install
+		// brings up only the requested groups' controllers alongside the
+		// rest-api and agent.
+		if upGroupNames != "" {
+			selected, err := threeport.SelectControllersByGroup(
+				parseUpGroupNames(upGroupNames),
+				cpi.Opts.ControllerList,
+			)
+			if err != nil {
+				cli.Error("failed to select controllers", err)
+				os.Exit(1)
+			}
+			selectedNames := make([]string, 0, len(selected))
+			for _, controller := range selected {
+				selectedNames = append(selectedNames, controller.Name)
+			}
+			cli.Info(fmt.Sprintf(
+				"limiting install to %d controller(s): %s",
+				len(selected), strings.Join(selectedNames, ", "),
+			))
+			cpi.Opts.ControllerList = selected
 		}
 
 		err = cli.CreateGenesisControlPlane(cpi)
@@ -207,4 +235,29 @@ func init() {
 		&cliArgs.KindPortMappings,
 		"kind-port-mappings", []string{}, "Port mappings for kind provider. Format: <container-port>:<host-port>,<container-port>:<host-port>,...",
 	)
+	UpCmd.Flags().StringVar(
+		&upGroupNames,
+		"names", "",
+		"Comma-separated sdk-config ApiObjectGroup names (e.g. kubernetes_workload,gateway) "+
+			"whose controllers to install. NOT component names. When omitted, installs the "+
+			"full default controller list.",
+	)
+}
+
+// parseUpGroupNames splits the --names flag value on commas and trims
+// whitespace from each entry, dropping empty fragments produced by
+// leading or trailing commas.
+func parseUpGroupNames(value string) []string {
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }

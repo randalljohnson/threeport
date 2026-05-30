@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -15,6 +16,11 @@ import (
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
+
+// reinstallGroupNames holds the --names flag value: a comma-separated
+// list of sdk-config ApiObjectGroup names whose controllers should be
+// reinstalled.
+var reinstallGroupNames string
 
 // reinstallCmd represents the reinstall command. Dev-only: sweeps
 // installer-managed stateless deployments and reapplies the install
@@ -83,6 +89,33 @@ change.`,
 			}
 		}
 
+		// narrow the controller list to either the explicitly requested
+		// groups or, when --names is omitted, whatever's already in the
+		// cluster so iterative dev reinstalls don't re-add controllers
+		// the user previously dropped.
+		selected, selectedNames, detected, err := installer.SelectControllersForReinstall(
+			kubeClient,
+			cpi.Opts.Namespace,
+			parseGroupNames(reinstallGroupNames),
+			cpi.Opts.ControllerList,
+		)
+		if err != nil {
+			cli.Error("failed to select controllers for reinstall", err)
+			os.Exit(1)
+		}
+		if detected {
+			cli.Info(fmt.Sprintf(
+				"auto-detected %d installed controller(s) from cluster: %s",
+				len(selectedNames), strings.Join(selectedNames, ", "),
+			))
+		} else {
+			cli.Info(fmt.Sprintf(
+				"limiting reinstall to %d controller(s): %s",
+				len(selectedNames), strings.Join(selectedNames, ", "),
+			))
+		}
+		cpi.Opts.ControllerList = selected
+
 		if err := cpi.Reinstall(kubeClient, &mapper, authConfig); err != nil {
 			cli.Error("failed to reinstall threeport control plane", err)
 			os.Exit(1)
@@ -115,4 +148,29 @@ func init() {
 		&cliArgs.Debug,
 		"debug", false, "If true, pod imagePullPolicy is set to Always so each rollout re-pulls the tag.",
 	)
+	reinstallCmd.Flags().StringVar(
+		&reinstallGroupNames,
+		"names", "",
+		"Comma-separated sdk-config ApiObjectGroup names (e.g. kubernetes_workload,gateway) "+
+			"whose controllers to reinstall. NOT component names. When omitted, defaults to "+
+			"whatever's currently deployed in the cluster.",
+	)
+}
+
+// parseGroupNames splits the --names flag value on commas and trims
+// whitespace from each entry, dropping empty fragments produced by
+// leading or trailing commas.
+func parseGroupNames(value string) []string {
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }

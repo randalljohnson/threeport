@@ -60,9 +60,9 @@ func GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(ap
 	nextCursor := uint(0)
 	queryId := ""
 	for !allPagesReceived {
-		url := fmt.Sprintf("%s%s?workloaddefinitionid=%d", apiAddr, v0.PathKubernetesWorkloadResourceDefinitions, id)
+		url := fmt.Sprintf("%s%s?kubernetesworkloaddefinitionid=%d", apiAddr, v0.PathKubernetesWorkloadResourceDefinitions, id)
 		if queryId != "" {
-			url = fmt.Sprintf("%s%s?workloaddefinitionid=%d&queryid=%s&cursor=%d", apiAddr, v0.PathKubernetesWorkloadResourceDefinitions, id, queryId, nextCursor)
+			url = fmt.Sprintf("%s%s?kubernetesworkloaddefinitionid=%d&queryid=%s&cursor=%d", apiAddr, v0.PathKubernetesWorkloadResourceDefinitions, id, queryId, nextCursor)
 		}
 
 		response, err := client_lib.GetResponse(
@@ -111,9 +111,9 @@ func GetKubernetesWorkloadInstancesByKubernetesWorkloadDefinitionID(apiClient *h
 	nextCursor := uint(0)
 	queryId := ""
 	for !allPagesReceived {
-		url := fmt.Sprintf("%s%s?workloaddefinitionid=%d", apiAddr, v0.PathKubernetesWorkloadInstances, id)
+		url := fmt.Sprintf("%s%s?kubernetesworkloaddefinitionid=%d", apiAddr, v0.PathKubernetesWorkloadInstances, id)
 		if queryId != "" {
-			url = fmt.Sprintf("%s%s?workloaddefinitionid=%d&queryid=%s&cursor=%d", apiAddr, v0.PathKubernetesWorkloadInstances, id, queryId, nextCursor)
+			url = fmt.Sprintf("%s%s?kubernetesworkloaddefinitionid=%d&queryid=%s&cursor=%d", apiAddr, v0.PathKubernetesWorkloadInstances, id, queryId, nextCursor)
 		}
 
 		response, err := client_lib.GetResponse(
@@ -162,9 +162,9 @@ func GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(apiCli
 	nextCursor := uint(0)
 	queryId := ""
 	for !allPagesReceived {
-		url := fmt.Sprintf("%s%s?workloadinstanceid=%d", apiAddr, v0.PathKubernetesWorkloadResourceInstances, id)
+		url := fmt.Sprintf("%s%s?kubernetesworkloadinstanceid=%d", apiAddr, v0.PathKubernetesWorkloadResourceInstances, id)
 		if queryId != "" {
-			url = fmt.Sprintf("%s%s?workloadinstanceid=%d&queryid=%s&cursor=%d", apiAddr, v0.PathKubernetesWorkloadResourceInstances, id, queryId, nextCursor)
+			url = fmt.Sprintf("%s%s?kubernetesworkloadinstanceid=%d&queryid=%s&cursor=%d", apiAddr, v0.PathKubernetesWorkloadResourceInstances, id, queryId, nextCursor)
 		}
 
 		response, err := client_lib.GetResponse(

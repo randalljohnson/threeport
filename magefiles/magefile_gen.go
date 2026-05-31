@@ -2696,6 +2696,14 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/helm-workload-controller",
 			packageFunc: build.helmWorkloadControllerImagePackage,
 		},
+		"machine_runtime": {
+			packageDir:  "cmd/machine-runtime-controller",
+			packageFunc: build.machineRuntimeControllerImagePackage,
+		},
+		"machine_workload": {
+			packageDir:  "cmd/machine-workload-controller",
+			packageFunc: build.machineWorkloadControllerImagePackage,
+		},
 		"kubernetes_runtime": {
 			packageDir:  "cmd/kubernetes-runtime-controller",
 			packageFunc: build.kubernetesRuntimeControllerImagePackage,
@@ -2708,9 +2716,9 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/terraform-controller",
 			packageFunc: build.terraformControllerImagePackage,
 		},
-		"workload": {
-			packageDir:  "cmd/workload-controller",
-			packageFunc: build.workloadControllerImagePackage,
+		"kubernetes_workload": {
+			packageDir:  "cmd/kubernetes-workload-controller",
+			packageFunc: build.kubernetesWorkloadControllerImagePackage,
 		},
 	}
 
@@ -2840,6 +2848,14 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/helm-workload-controller",
 			packageFunc: build.helmWorkloadControllerImagePackage,
 		},
+		"machine_runtime": {
+			packageDir:  "cmd/machine-runtime-controller",
+			packageFunc: build.machineRuntimeControllerImagePackage,
+		},
+		"machine_workload": {
+			packageDir:  "cmd/machine-workload-controller",
+			packageFunc: build.machineWorkloadControllerImagePackage,
+		},
 		"kubernetes_runtime": {
 			packageDir:  "cmd/kubernetes-runtime-controller",
 			packageFunc: build.kubernetesRuntimeControllerImagePackage,
@@ -2852,9 +2868,9 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/terraform-controller",
 			packageFunc: build.terraformControllerImagePackage,
 		},
-		"workload": {
-			packageDir:  "cmd/workload-controller",
-			packageFunc: build.workloadControllerImagePackage,
+		"kubernetes_workload": {
+			packageDir:  "cmd/kubernetes-workload-controller",
+			packageFunc: build.kubernetesWorkloadControllerImagePackage,
 		},
 	}
 

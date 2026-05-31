@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	logr "github.com/go-logr/logr"
 	zapr "github.com/go-logr/zapr"
@@ -109,7 +110,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	controller.WaitForStream(js, notif.MachineRuntimeStreamName, log)
+	// check to ensure machine-runtime stream has been created by API
+	machineRuntimeStreamNameFound := false
+	for stream := range js.StreamNames() {
+		if stream == notif.MachineRuntimeStreamName {
+			machineRuntimeStreamNameFound = true
+		}
+	}
+	if !machineRuntimeStreamNameFound {
+		log.Error(errors.New("JetStream stream not found"), "failed to find stream with machine-runtime stream name", "machineRuntimeStreamName", notif.MachineRuntimeStreamName)
+		os.Exit(1)
+	}
 
 	// create a channel and wait group used for graceful shut downs
 	var shutdownChans []chan bool

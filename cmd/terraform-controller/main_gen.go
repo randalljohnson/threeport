@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	logr "github.com/go-logr/logr"
 	zapr "github.com/go-logr/zapr"
@@ -114,7 +115,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	controller.WaitForStream(js, notif.TerraformStreamName, log)
+	// check to ensure terraform stream has been created by API
+	terraformStreamNameFound := false
+	for stream := range js.StreamNames() {
+		if stream == notif.TerraformStreamName {
+			terraformStreamNameFound = true
+		}
+	}
+	if !terraformStreamNameFound {
+		log.Error(errors.New("JetStream stream not found"), "failed to find stream with terraform stream name", "terraformStreamName", notif.TerraformStreamName)
+		os.Exit(1)
+	}
 
 	// create a channel and wait group used for graceful shut downs
 	var shutdownChans []chan bool

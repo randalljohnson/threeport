@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	logr "github.com/go-logr/logr"
 	zapr "github.com/go-logr/zapr"
@@ -109,7 +110,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	controller.WaitForStream(js, notif.GcpStreamName, log)
+	// check to ensure gcp stream has been created by API
+	gcpStreamNameFound := false
+	for stream := range js.StreamNames() {
+		if stream == notif.GcpStreamName {
+			gcpStreamNameFound = true
+		}
+	}
+	if !gcpStreamNameFound {
+		log.Error(errors.New("JetStream stream not found"), "failed to find stream with gcp stream name", "gcpStreamName", notif.GcpStreamName)
+		os.Exit(1)
+	}
 
 	// create a channel and wait group used for graceful shut downs
 	var shutdownChans []chan bool

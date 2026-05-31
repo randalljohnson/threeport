@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	logr "github.com/go-logr/logr"
 	zapr "github.com/go-logr/zapr"
@@ -114,7 +115,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	controller.WaitForStream(js, notif.HelmWorkloadStreamName, log)
+	// check to ensure helm-workload stream has been created by API
+	helmWorkloadStreamNameFound := false
+	for stream := range js.StreamNames() {
+		if stream == notif.HelmWorkloadStreamName {
+			helmWorkloadStreamNameFound = true
+		}
+	}
+	if !helmWorkloadStreamNameFound {
+		log.Error(errors.New("JetStream stream not found"), "failed to find stream with helm-workload stream name", "helmWorkloadStreamName", notif.HelmWorkloadStreamName)
+		os.Exit(1)
+	}
 
 	// create a channel and wait group used for graceful shut downs
 	var shutdownChans []chan bool

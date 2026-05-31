@@ -78,7 +78,8 @@ jobs:
         workload,
         kubernetes_runtime,
         gateway,
-        secret
+        secret,
+        agent
     steps:
     - name: Checkout
       uses: actions/checkout@v6.0.2

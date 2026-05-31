@@ -286,9 +286,10 @@ func (Test) Commits() error {
 }
 
 // Up spins up a control plane using tptctl and a local registry for testing.
-func (Test) Up() error {
-	testUp := exec.Command(
-		"./bin/tptctl",
+// apis is a comma-separated list of sdk-config api names passed through as
+// `tptctl up --names`. An empty string installs all controllers.
+func (Test) Up(apis string) error {
+	args := []string{
 		"up",
 		"-r",
 		installer.DevImageNamespace,
@@ -297,7 +298,11 @@ func (Test) Up() error {
 		"-n",
 		"dev-0",
 		"--local-registry",
-	)
+	}
+	if strings.TrimSpace(apis) != "" {
+		args = append(args, "--names", apis)
+	}
+	testUp := exec.Command("./bin/tptctl", args...)
 
 	output, err := testUp.CombinedOutput()
 	if err != nil {

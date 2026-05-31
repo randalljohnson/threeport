@@ -24,22 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         component:
-          - { name: rest-api,                       mage: build:apiImage }
-          - { name: database-migrator,              mage: build:dbMigratorImage }
-          - { name: agent,                          mage: build:agentImage }
-          - { name: kubernetes-workload-controller, mage: build:kubernetesWorkloadControllerImage }
-          - { name: kubernetes-runtime-controller,  mage: build:kubernetesRuntimeControllerImage }
-          - { name: aws-controller,                 mage: build:awsControllerImage }
-          - { name: gcp-controller,                 mage: build:gcpControllerImage }
-          - { name: oci-controller,                 mage: build:ociControllerImage }
-          - { name: gateway-controller,             mage: build:gatewayControllerImage }
-          - { name: control-plane-controller,       mage: build:controlPlaneControllerImage }
-          - { name: helm-workload-controller,       mage: build:helmWorkloadControllerImage }
-          - { name: terraform-controller,           mage: build:terraformControllerImage }
-          - { name: observability-controller,       mage: build:observabilityControllerImage }
-          - { name: secret-controller,              mage: build:secretControllerImage }
-          - { name: machine-runtime-controller,     mage: build:machineRuntimeControllerImage }
-          - { name: machine-workload-controller,    mage: build:machineWorkloadControllerImage }
+          - { name: rest-api,                    mage: build:apiImage }
+          - { name: database-migrator,           mage: build:dbMigratorImage }
+          - { name: machine-runtime-controller,  mage: build:machineRuntimeControllerImage }
+          - { name: machine-workload-controller, mage: build:machineWorkloadControllerImage }
     env:
       GOPATH: /home/runner/go
     steps:
@@ -101,13 +89,9 @@ jobs:
 
     # GO_BUILD_PARALLELISM caps concurrent compile workers per `go build`
     # invocation. 2 archs in parallel x 2 workers each = 4 concurrent
-    # compile workers, matched to the runner's 4 vCPU. We previously
-    # also set GOMEMLIMIT but found it slowed heavy-SDK compiles
-    # (gcp/oci/aws) by forcing wasted GC cycles when their legitimate
-    # live set approached the limit. Leaving it unset lets Go's GC run
-    # at its natural pace; the -p cap alone should keep memory bounded.
-    # Buildx layer cache is per-component since the binary differs per
-    # image; the Go compile cache is the shared actions/cache above.
+    # compile workers, matched to the runner's 4 vCPU. Buildx layer
+    # cache is per-component since the binary differs per image; the Go
+    # compile cache is the shared actions/cache above.
     - name: Build and push
       env:
         GO_BUILD_PARALLELISM: "2"

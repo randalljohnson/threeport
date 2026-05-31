@@ -17,10 +17,10 @@ import (
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
 
-// reinstallGroupNames holds the --names flag value: a comma-separated
+// reinstallApis holds the --apis flag value: a comma-separated
 // list of sdk-config ApiObjectGroup names whose controllers should be
 // reinstalled.
-var reinstallGroupNames string
+var reinstallApis string
 
 // reinstallCmd represents the reinstall command. Dev-only: sweeps
 // installer-managed stateless deployments and reapplies the install
@@ -90,13 +90,13 @@ change.`,
 		}
 
 		// narrow the controller list to either the explicitly requested
-		// groups or, when --names is omitted, whatever's already in the
+		// apis or, when --apis is omitted, whatever's already in the
 		// cluster so iterative dev reinstalls don't re-add controllers
 		// the user previously dropped.
 		selected, selectedNames, detected, err := installer.SelectControllersForReinstall(
 			kubeClient,
 			cpi.Opts.Namespace,
-			parseGroupNames(reinstallGroupNames),
+			parseApis(reinstallApis),
 			cpi.Opts.ControllerList,
 		)
 		if err != nil {
@@ -149,18 +149,18 @@ func init() {
 		"debug", false, "If true, pod imagePullPolicy is set to Always so each rollout re-pulls the tag.",
 	)
 	reinstallCmd.Flags().StringVar(
-		&reinstallGroupNames,
-		"names", "",
-		"Comma-separated sdk-config ApiObjectGroup names (e.g. kubernetes_workload,gateway) "+
+		&reinstallApis,
+		"apis", "",
+		"Comma-separated sdk-config api names (e.g. kubernetes_workload,gateway) "+
 			"whose controllers to reinstall. NOT component names. When omitted, defaults to "+
 			"whatever's currently deployed in the cluster.",
 	)
 }
 
-// parseGroupNames splits the --names flag value on commas and trims
+// parseApis splits the --apis flag value on commas and trims
 // whitespace from each entry, dropping empty fragments produced by
 // leading or trailing commas.
-func parseGroupNames(value string) []string {
+func parseApis(value string) []string {
 	if value == "" {
 		return nil
 	}

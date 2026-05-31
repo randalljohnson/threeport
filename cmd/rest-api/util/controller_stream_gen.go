@@ -11,7 +11,7 @@ import (
 	notif1 "github.com/threeport/threeport/internal/gcp/notif"
 	helmworkload_notif "github.com/threeport/threeport/internal/helm-workload/notif"
 	kubernetesruntime_notif "github.com/threeport/threeport/internal/kubernetes-runtime/notif"
-	notif4 "github.com/threeport/threeport/internal/kubernetes-workload/notif"
+	kubernetesworkload_notif "github.com/threeport/threeport/internal/kubernetes-workload/notif"
 	notif2 "github.com/threeport/threeport/internal/machine-runtime/notif"
 	notif3 "github.com/threeport/threeport/internal/machine-workload/notif"
 	observability_notif "github.com/threeport/threeport/internal/observability/notif"
@@ -125,11 +125,11 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 	}
 
 	_, err = js.AddStream(&nats.StreamConfig{
-		Name:     notif4.KubernetesWorkloadStreamName,
-		Subjects: notif4.GetKubernetesWorkloadSubjects(),
+		Name:     kubernetesworkload_notif.KubernetesWorkloadStreamName,
+		Subjects: kubernetesworkload_notif.GetKubernetesWorkloadSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", notif4.KubernetesWorkloadStreamName, err)
+		return nil, fmt.Errorf("could not add stream %s: %w", kubernetesworkload_notif.KubernetesWorkloadStreamName, err)
 	}
 
 	return &js, nil

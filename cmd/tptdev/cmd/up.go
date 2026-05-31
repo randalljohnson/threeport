@@ -16,9 +16,9 @@ import (
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
 
-// upGroupNames holds the --names flag value: a comma-separated list
+// upApis holds the --apis flag value: a comma-separated list
 // of sdk-config ApiObjectGroup names whose controllers to install.
-var upGroupNames string
+var upApis string
 
 // upCmd represents the up command
 var upCmd = &cobra.Command{
@@ -36,12 +36,12 @@ var upCmd = &cobra.Command{
 		}
 		cpi.Opts.Debug = cliArgs.Debug
 
-		// narrow the controller list when --names is set so the install
-		// brings up only the requested groups' controllers alongside the
+		// narrow the controller list when --apis is set so the install
+		// brings up only the requested apis' controllers alongside the
 		// rest-api and agent.
-		if upGroupNames != "" {
+		if upApis != "" {
 			selected, err := installer.SelectControllersByGroup(
-				parseGroupNames(upGroupNames),
+				parseApis(upApis),
 				cpi.Opts.ControllerList,
 			)
 			if err != nil {
@@ -139,9 +139,9 @@ func init() {
 		"local-registry", false, "Connects a local container registry to Threeport control plane cluster.  Only applicable with provider 'kind'.",
 	)
 	upCmd.Flags().StringVar(
-		&upGroupNames,
-		"names", "",
-		"Comma-separated sdk-config ApiObjectGroup names (e.g. kubernetes_workload,gateway) "+
+		&upApis,
+		"apis", "",
+		"Comma-separated sdk-config api names (e.g. kubernetes_workload,gateway) "+
 			"whose controllers to install. NOT component names. When omitted, installs the "+
 			"full default controller list.",
 	)

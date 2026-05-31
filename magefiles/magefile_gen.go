@@ -2352,10 +2352,6 @@ func (Build) ImagesByApisDev(apis string) error {
 	build := Build{}
 
 	controllersByApi := map[string]controllerEntry{
-		"agent": {
-			packageDir:  "cmd/agent",
-			packageFunc: build.agentImagePackage,
-		},
 		"secret": {
 			packageDir:  "cmd/secret-controller",
 			packageFunc: build.secretControllerImagePackage,
@@ -2439,6 +2435,7 @@ func (Build) ImagesByApisDev(apis string) error {
 	packageDirs := []string{
 		"cmd/rest-api",
 		"cmd/database-migrator",
+		"cmd/agent",
 	}
 	for _, entry := range selectedControllers {
 		packageDirs = append(packageDirs, entry.packageDir)
@@ -2463,6 +2460,7 @@ func (Build) ImagesByApisDev(apis string) error {
 	tasks := []func() error{
 		wrap(build.restApiImagePackage),
 		wrap(build.dbMigratorImagePackage),
+		wrap(build.agentImagePackage),
 	}
 	for _, entry := range selectedControllers {
 		tasks = append(tasks, wrap(entry.packageFunc))
@@ -2473,7 +2471,7 @@ func (Build) ImagesByApisDev(apis string) error {
 
 // ImagesByApis builds and pushes multi-arch container images for the rest-api,
 // database-migrator, and the controllers of the listed sdk-config apis
-// to the given registry under the given tag. The agent is not included
+// to the given registry under the given tag. The rest-api, database-migrator,
 // by default; pass "agent" in the apis list (or use AllImages) if it
 // is needed. Set PARALLEL >= 1 to control worker concurrency. Example:
 // `PARALLEL=2 mage build:imagesByApis machine_workload,machine_runtime ghcr.io/myorg dev-pinned-abc1234 amd64,arm64`.
@@ -2496,10 +2494,6 @@ func (Build) ImagesByApis(
 	build := Build{}
 
 	controllersByApi := map[string]controllerEntry{
-		"agent": {
-			packageDir:  "cmd/agent",
-			packageFunc: build.agentImagePackage,
-		},
 		"secret": {
 			packageDir:  "cmd/secret-controller",
 			packageFunc: build.secretControllerImagePackage,
@@ -2583,6 +2577,7 @@ func (Build) ImagesByApis(
 	packageDirs := []string{
 		"cmd/rest-api",
 		"cmd/database-migrator",
+		"cmd/agent",
 	}
 	for _, entry := range selectedControllers {
 		packageDirs = append(packageDirs, entry.packageDir)
@@ -2607,6 +2602,7 @@ func (Build) ImagesByApis(
 	tasks := []func() error{
 		wrap(build.restApiImagePackage),
 		wrap(build.dbMigratorImagePackage),
+		wrap(build.agentImagePackage),
 	}
 	for _, entry := range selectedControllers {
 		tasks = append(tasks, wrap(entry.packageFunc))

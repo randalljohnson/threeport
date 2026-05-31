@@ -22,8 +22,8 @@ import (
 // name of the generated package-only function that the AllImages* tasks
 // call to skip redundant compile work, and the sdk-config api name.
 // ApiName is empty for the always-included components (rest-api,
-// database-migrator) and "agent" for the agent so callers can opt the
-// agent in by name via ImagesByApisDev.
+// database-migrator). Controllers (and the agent) are listed in the
+// allComponents slice with their ApiName set to the sdk-config api name (empty for always-included).
 type componentSpec struct {
 	BinaryName      string
 	PackageDir      string
@@ -166,7 +166,9 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			PackageDir:      "cmd/agent",
 			ImageName:       "threeport-agent",
 			PackageFuncName: agentPackageFuncName,
-			ApiName:         "agent",
+			// ApiName is empty so the agent is always built alongside
+			// rest-api and database-migrator. tptctl up installs the
+			// agent unconditionally, so the image needs to be present.
 		})
 		emitImagePackageFunc(f, agentPackageFuncName, "agent", "agent", "threeport-agent")
 		emitImageFunc(f, buildAgentImageFuncName, "agent", "agent", "cmd/agent", agentPackageFuncName)
@@ -507,7 +509,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		buildImagesByApisFuncName,
 	))
 	f.Comment("database-migrator, and the controllers of the listed sdk-config apis")
-	f.Comment("to the given registry under the given tag. The agent is not included")
+	f.Comment("to the given registry under the given tag. The rest-api, database-migrator,")
 	f.Comment("by default; pass \"agent\" in the apis list (or use AllImages) if it")
 	f.Comment("is needed. Set PARALLEL >= 1 to control worker concurrency. Example:")
 	f.Comment("`PARALLEL=2 mage build:imagesByApis machine_workload,machine_runtime ghcr.io/myorg dev-pinned-abc1234 amd64,arm64`.")

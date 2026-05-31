@@ -196,11 +196,10 @@ func TestRelationshipHooks_AfterCreate_AllFourRelationships(t *testing.T) {
 }
 
 // TestRelationshipHooks_BeforeUpdate_FKImmutability walks every
-// relationship FK through every transition kind. Production behavior:
-// the initial nil->set is allowed; any subsequent change (set->other
-// or set->clear) is rejected with a bad-request error. Untouched FKs
-// stay legal regardless of state. The untagged FK is a negative
-// control - it must remain freely mutable.
+// relationship FK through gorm-reachable transitions: nil->set
+// allowed, set->other rejected on tagged FKs, set->nil silently
+// dropped by gorm so the FK stays at its pre value. The untagged
+// FK is a negative control, freely mutable.
 func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	type transition struct {
 		name        string
@@ -214,41 +213,72 @@ func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	// a literal table.
 
 	t.Run("RequiresFK", func(t *testing.T) {
-		runFKMatrix(t, "RequiresFK", func(h *testHolder, v *uint) { h.RequiresFK = v }, true)
+		// run the shared transition matrix against the RequiresFK field
+		runFKMatrix(t, "RequiresFK",
+			// setter: write v into RequiresFK; lets runFKMatrix populate the field generically
+			func(h *testHolder, v *uint) { h.RequiresFK = v },
+			// getter: read RequiresFK back; lets runFKMatrix verify post-update state generically
+			func(h *testHolder) *uint { return h.RequiresFK },
+			// immutable=true: relationship-tagged FK, so set->other transitions must be rejected
+			true,
+		)
 	})
 	t.Run("OwnsFK", func(t *testing.T) {
-		runFKMatrix(t, "OwnsFK", func(h *testHolder, v *uint) { h.OwnsFK = v }, true)
+		runFKMatrix(t, "OwnsFK",
+			func(h *testHolder, v *uint) { h.OwnsFK = v },
+			func(h *testHolder) *uint { return h.OwnsFK },
+			true,
+		)
 	})
 	t.Run("MarriesFK", func(t *testing.T) {
-		runFKMatrix(t, "MarriesFK", func(h *testHolder, v *uint) { h.MarriesFK = v }, true)
+		runFKMatrix(t, "MarriesFK",
+			func(h *testHolder, v *uint) { h.MarriesFK = v },
+			func(h *testHolder) *uint { return h.MarriesFK },
+			true,
+		)
 	})
 	t.Run("DescribesFK", func(t *testing.T) {
-		runFKMatrix(t, "DescribesFK", func(h *testHolder, v *uint) { h.DescribesFK = v }, true)
+		runFKMatrix(t, "DescribesFK",
+			func(h *testHolder, v *uint) { h.DescribesFK = v },
+			func(h *testHolder) *uint { return h.DescribesFK },
+			true,
+		)
 	})
 	t.Run("UntaggedFK_freelyMutable", func(t *testing.T) {
-		runFKMatrix(t, "UntaggedFK", func(h *testHolder, v *uint) { h.UntaggedFK = v }, false)
+		runFKMatrix(t, "UntaggedFK",
+			func(h *testHolder, v *uint) { h.UntaggedFK = v },
+			func(h *testHolder) *uint { return h.UntaggedFK },
+			false,
+		)
 	})
 	_ = transition{}
 }
 
-// runFKMatrix exercises the four transitions for one FK field:
-//   - nil -> set:  allowed
-//   - set -> other: rejected (only for relationship-tagged FKs)
-//   - set -> nil:   rejected (only for relationship-tagged FKs)
-//   - nil -> nil (untouched, non-FK field changes): allowed
+// runFKMatrix exercises gorm.Updates(struct) transitions for one FK:
+//   - nil -> set:    allowed
+//   - set -> other:  rejected on tagged FKs
+//   - set -> nil:    gorm drops the nil; FK preserved at pre value
+//   - untouched FKs: allowed regardless of state
 //
-// For an untagged FK (immutable=false), every transition is allowed.
-func runFKMatrix(t *testing.T, fkName string, setFK func(*testHolder, *uint), immutable bool) {
+// For an untagged FK (immutable=false), set -> other is allowed too.
+func runFKMatrix(
+	t *testing.T,
+	fkName string,
+	setFK func(*testHolder, *uint),
+	getFK func(*testHolder) *uint,
+	immutable bool,
+) {
 	cases := []struct {
-		name        string
-		preFK       *uint
-		inboundFK   *uint
-		changeName  bool
-		wantRejected bool
+		name            string
+		preFK           *uint
+		inboundFK       *uint
+		changeName      bool
+		wantRejected    bool
+		wantPreservedFK bool
 	}{
 		{name: "nil_to_set", preFK: nil, inboundFK: uintPtr(99), wantRejected: false},
 		{name: "set_to_other", preFK: uintPtr(99), inboundFK: uintPtr(100), wantRejected: immutable},
-		{name: "set_to_nil", preFK: uintPtr(99), inboundFK: nil, wantRejected: immutable},
+		{name: "set_to_nil_gorm_drops_silently", preFK: uintPtr(99), inboundFK: nil, changeName: true, wantRejected: false, wantPreservedFK: true},
 		{name: "untouched_with_name_change", preFK: uintPtr(99), inboundFK: uintPtr(99), changeName: true, wantRejected: false},
 		{name: "nil_untouched_with_name_change", preFK: nil, inboundFK: nil, changeName: true, wantRejected: false},
 	}
@@ -292,22 +322,23 @@ func runFKMatrix(t *testing.T, fkName string, setFK func(*testHolder, *uint), im
 				inbound.Name = strPtr("renamed")
 			}
 
-			// gorm's Updates(&struct) skips zero-valued pointer fields, so
-			// the SET clause wouldn't include a nil-cleared FK. Force the
-			// field into the SET via Select for the set_to_nil case so the
-			// hook's Changed check fires and exercises the defensive
-			// rejection branch.
-			updater := db.Model(&loaded)
-			if tc.name == "set_to_nil" {
-				updater = updater.Select(fkName)
-			}
-			err := updater.Updates(inbound).Error
+			err := db.Model(&loaded).Updates(inbound).Error
 
 			if tc.wantRejected {
 				require.Error(t, err, "FK %s transition %s should be rejected", fkName, tc.name)
 				assert.Contains(t, err.Error(), "immutable once set", "rejection should cite immutability")
-			} else {
-				require.NoError(t, err, "FK %s transition %s should be allowed", fkName, tc.name)
+				return
+			}
+			require.NoError(t, err, "FK %s transition %s should be allowed", fkName, tc.name)
+
+			// confirm gorm silently dropped the nil from the SET clause
+			// by reloading and checking the FK is unchanged
+			if tc.wantPreservedFK {
+				var post testHolder
+				require.NoError(t, db.First(&post, *existing.ID).Error)
+				postFK := getFK(&post)
+				require.NotNil(t, postFK, "gorm should have dropped nil from SET, leaving FK unchanged")
+				assert.Equal(t, *pre, *postFK, "FK should remain at pre-update value")
 			}
 		})
 	}

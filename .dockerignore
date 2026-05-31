@@ -1,0 +1,19 @@
+# binaries built locally by mage; the builder stage produces its own /out/app
+bin/
+
+# git metadata
+.git/
+
+# editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+
+# build outputs and caches
+*.log
+*.tmp
+*.swp
+
+# coverage and test artifacts
+coverage.out
+*.test

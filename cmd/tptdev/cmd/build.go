@@ -19,20 +19,48 @@ import (
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
-	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 )
 
-var noCache bool
+// imageBuildTarget returns the Dockerfile target for a component.
+// Defaults to the distroless `release` target; --delve switches to the
+// delve-equipped `dev` variant. terraform-controller and oci-controller
+// always use dev-terraform / dev-pulumi (they shell out to those tools
+// at runtime, and we don't have release-target equivalents yet).
+func imageBuildTarget(componentName string, delve bool) string {
+	switch componentName {
+	case installer.ThreeportTerraformControllerName:
+		return "dev-terraform"
+	case installer.ThreeportOciControllerName:
+		return "dev-pulumi"
+	}
+	if delve {
+		return "dev"
+	}
+	return "release"
+}
+
+// componentMainPath returns the path to the Go main file for a component.
+// The agent is hand-written and lives at main.go; everything else is generated
+// and lives at main_gen.go.
+func componentMainPath(componentName string) string {
+	if componentName == "agent" {
+		return fmt.Sprintf("cmd/%s/main.go", componentName)
+	}
+	return fmt.Sprintf("cmd/%s/main_gen.go", componentName)
+}
+
 var push bool
 var load bool
 var buildComponentNames string
 var arch string
 var parallel int
 var restart bool
+var noCache bool
 
 // buildCmd represents the up command
 var buildCmd = &cobra.Command{
@@ -75,15 +103,47 @@ var buildCmd = &cobra.Command{
 		// update cli args based on env vars
 		cliArgs.GetControlPlaneEnvVars()
 
-		// configure concurrency for parallel builds
-		jobs := make(chan *v0.ControlPlaneComponent)
-		var waitGroup sync.WaitGroup
-
 		// configure installer
 		cpi, err := cliArgs.CreateInstaller()
 		if err != nil {
 			cli.Error("failed to create threeport control plane installer", err)
 		}
+
+		// resolve the kind cluster name once for --load, before fanning out
+		var kindClusterName string
+		if load {
+			_, requestedControlPlane, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+			if err != nil {
+				cli.Error("failed to get threeport config", err)
+				os.Exit(1)
+			}
+			kindClusterName = provider.ThreeportRuntimeName(requestedControlPlane)
+		}
+
+		// pre-compile all binaries in one go build per arch (arches in
+		// parallel) so dependency compilation is shared. Packaging tasks
+		// below then just COPY the pre-built binary.
+		if push || load {
+			arches := []string{}
+			for _, a := range strings.Split(arch, ",") {
+				a = strings.TrimSpace(a)
+				if a != "" {
+					arches = append(arches, a)
+				}
+			}
+			packageDirs := make([]string, 0, len(componentList))
+			for _, component := range componentList {
+				packageDirs = append(packageDirs, filepath.Dir(componentMainPath(component.Name)))
+			}
+			if err := util.BuildBinaries(cpi.Opts.ThreeportPath, arches, packageDirs, noCache, delve); err != nil {
+				cli.Error("failed to build binaries:", err)
+				os.Exit(1)
+			}
+		}
+
+		// configure concurrency for parallel packaging
+		jobs := make(chan *v0.ControlPlaneComponent)
+		var waitGroup sync.WaitGroup
 
 		// start build workers
 		for i := 1; i <= parallel; i++ {
@@ -91,59 +151,27 @@ var buildCmd = &cobra.Command{
 			go func() {
 				defer waitGroup.Done()
 				for component := range jobs {
-					// build go binary
-					if err := tptdev.BuildGoBinary(
-						cpi.Opts.ThreeportPath,
-						arch,
-						component,
-						noCache,
-					); err != nil {
-						cli.Error("failed to build go binary:", err)
-						os.Exit(1)
+					if !(push || load) {
+						continue
 					}
 
-					// configure image tag
-					tag := fmt.Sprintf(
-						"%s/%s:%s",
+					if err := util.BuildImage(
+						cpi.Opts.ThreeportPath,
+						"Dockerfile",
+						imageBuildTarget(component.Name, delve),
+						arch,
+						component.Name,
+						"bin",
+						nil,
 						cliArgs.ControlPlaneImageRepo,
 						component.ImageName,
 						cliArgs.ControlPlaneImageTag,
-					)
-
-					// build docker image
-					if push || load {
-						if err := tptdev.DockerBuildxImage(
-							cpi.Opts.ThreeportPath,
-							"cmd/tptdev/image/Dockerfile",
-							tag,
-							arch,
-							component,
-						); err != nil {
-							cli.Error("failed to build docker image:", err)
-							os.Exit(1)
-						}
-					}
-
-					switch {
-					case push:
-						// push docker image
-						if err := tptdev.PushDockerImage(tag); err != nil {
-							cli.Error("failed to push docker image:", err)
-							os.Exit(1)
-						}
-					case load:
-						// get threeport config and extract threeport API endpoint
-						_, requestedControlPlane, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
-						if err != nil {
-							cli.Error("failed to get threeport config", err)
-							os.Exit(1)
-						}
-
-						// load docker image into kind
-						if err = tptdev.LoadDevImage(provider.ThreeportRuntimeName(requestedControlPlane), tag); err != nil {
-							cli.Error("failed to load docker image into kind:", err)
-							os.Exit(1)
-						}
+						push,
+						load,
+						kindClusterName,
+					); err != nil {
+						cli.Error("failed to build image:", err)
+						os.Exit(1)
 					}
 
 					// restart pods with debug mode enabled
@@ -262,10 +290,6 @@ func init() {
 		"parallel", 1, "Number of parallel builds to run.",
 	)
 	buildCmd.Flags().BoolVar(
-		&noCache,
-		"no-cache", false, "Build go binaries without the local go cache.",
-	)
-	buildCmd.Flags().BoolVar(
 		&push,
 		"push", false, "Push docker images.",
 	)
@@ -276,6 +300,14 @@ func init() {
 	buildCmd.Flags().BoolVar(
 		&restart,
 		"restart", false, "Restart pods after pushing or loading images.",
+	)
+	buildCmd.Flags().BoolVar(
+		&delve,
+		"delve", false, "Build delve-equipped dev images instead of the default distroless release images.",
+	)
+	buildCmd.Flags().BoolVar(
+		&noCache,
+		"no-cache", false, "Build go binaries without the local go cache (passes -a to go build).",
 	)
 }
 

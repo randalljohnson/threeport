@@ -17,14 +17,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
-
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GH_ACCESS_TOKEN }}
+        go-version: '1.24'
 
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v5.0.0
@@ -33,3 +26,66 @@ jobs:
         args: release --clean -f ./.goreleaser.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  controller-images:
+    runs-on: ubuntu-24.04
+    needs: goreleaser
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: rest-api,                      main: cmd/rest-api/main_gen.go }
+          - { name: database-migrator,             main: cmd/database-migrator/main_gen.go }
+          - { name: agent,                         main: cmd/agent/main.go }
+          - { name: workload-controller,           main: cmd/workload-controller/main_gen.go }
+          - { name: kubernetes-runtime-controller, main: cmd/kubernetes-runtime-controller/main_gen.go }
+          - { name: aws-controller,                main: cmd/aws-controller/main_gen.go }
+          - { name: gcp-controller,                main: cmd/gcp-controller/main_gen.go }
+          - { name: oci-controller,                main: cmd/oci-controller/main_gen.go }
+          - { name: gateway-controller,            main: cmd/gateway-controller/main_gen.go }
+          - { name: control-plane-controller,      main: cmd/control-plane-controller/main_gen.go }
+          - { name: helm-workload-controller,      main: cmd/helm-workload-controller/main_gen.go }
+          - { name: terraform-controller,          main: cmd/terraform-controller/main_gen.go }
+          - { name: observability-controller,      main: cmd/observability-controller/main_gen.go }
+          - { name: secret-controller,             main: cmd/secret-controller/main_gen.go }
+          - { name: machine-runtime-controller,    main: cmd/machine-runtime-controller/main_gen.go }
+          - { name: machine-workload-controller,   main: cmd/machine-workload-controller/main_gen.go }
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GH_ACCESS_TOKEN }}
+
+    - name: Resolve version
+      id: version
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+    - name: Build and push image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: Dockerfile
+        target: release
+        platforms: linux/amd64,linux/arm64
+        push: true
+        build-args: |
+          MAIN=${{ matrix.main }}
+        cache-from: type=gha,scope=threeport-${{ matrix.name }}
+        cache-to: type=gha,scope=threeport-${{ matrix.name }},mode=max
+        tags: |
+          ghcr.io/threeport/threeport-${{ matrix.name }}:${{ steps.version.outputs.tag }}
+          ghcr.io/threeport/threeport-${{ matrix.name }}:latest
+        labels: |
+          org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          org.opencontainers.image.revision=${{ github.sha }}
+          org.opencontainers.image.version=${{ steps.version.outputs.tag }}
+          org.opencontainers.image.licenses=Apache-2.0

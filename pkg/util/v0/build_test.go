@@ -7,13 +7,12 @@ import (
 	"testing"
 )
 
-// TestBuildBinary tests the BuildBinary function with a valid input.
-func TestBuildBinary(t *testing.T) {
+// TestBuildBinaries tests BuildBinaries with a single package dir.
+func TestBuildBinaries(t *testing.T) {
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Fatalf("go not installed: %v", err)
 	}
 
-	// Create a real temporary Go project.
 	rootDir := t.TempDir()
 
 	err := os.WriteFile(filepath.Join(rootDir, "go.mod"), []byte(`module example.com/test
@@ -41,20 +40,23 @@ func main() {
 		t.Fatalf("failed to write main.go: %v", err)
 	}
 
-	// Call BuildBinary with valid inputs.
-	err = BuildBinary(rootDir, "amd64", "test-binary", "cmd/tptctl/main.go", false)
+	err = BuildBinaries(rootDir, []string{"amd64"}, []string{"cmd/tptctl"}, false, false)
 	if err != nil {
-		t.Errorf(`BuildBinary(rootDir, "amd64", "test-binary", "cmd/tptctl/main.go", false) failed: %v`, err)
+		t.Errorf(`BuildBinaries(rootDir, ["amd64"], ["cmd/tptctl"], false, false) failed: %v`, err)
+	}
+
+	if _, err := os.Stat(filepath.Join(rootDir, "bin", "amd64", "tptctl")); err != nil {
+		t.Errorf("expected binary at bin/amd64/tptctl: %v", err)
 	}
 }
 
-// TestBuildBinary_Failure tests the BuildBinary function with a failing command.
-func TestBuildBinary_Failure(t *testing.T) {
+// TestBuildBinaries_Failure tests that BuildBinaries surfaces a go build
+// error when the package dir doesn't exist.
+func TestBuildBinaries_Failure(t *testing.T) {
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Fatalf("go not installed: %v", err)
 	}
 
-	// Create a real temporary Go project.
 	rootDir := t.TempDir()
 
 	err := os.WriteFile(filepath.Join(rootDir, "go.mod"), []byte(`module example.com/test
@@ -65,10 +67,8 @@ go 1.22
 		t.Fatalf("failed to write go.mod: %v", err)
 	}
 
-	// Call BuildBinary with an invalid main.go path and expect an error.
-	err = BuildBinary(rootDir, "amd64", "test-binary", "cmd/main.go", false)
+	err = BuildBinaries(rootDir, []string{"amd64"}, []string{"cmd/missing"}, false, false)
 	if err == nil {
-		t.Errorf(`BuildBinary(rootDir, "amd64", "test-binary", "cmd/main.go", false) expected error, got nil`)
+		t.Errorf(`BuildBinaries(rootDir, ["amd64"], ["cmd/missing"], false, false) expected error, got nil`)
 	}
 }
-

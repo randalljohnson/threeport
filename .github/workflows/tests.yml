@@ -71,6 +71,14 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
+      # Comma-separated list of sdk-config api names whose controllers
+      # (plus rest-api and database-migrator) get built and deployed for
+      # the integration test.
+      APIS: >-
+        workload,
+        kubernetes_runtime,
+        gateway,
+        secret
     steps:
     - name: Checkout
       uses: actions/checkout@v6.0.2
@@ -107,21 +115,23 @@ jobs:
     - name: Create local container registry
       run: mage dev:localRegistryUp
 
-    # Native compile via mage (uses the warm Go cache restored above),
-    # then PARALLEL workers package images. BUILDX_CACHE_FROM/TO only
-    # covers the COPY+distroless tail; the compile cache lives in actions/cache.
+    # Only build the images the integration test actually exercises.
+    # workload_test.go uses the rest-api, database-migrator, and the
+    # workload, kubernetes-runtime, gateway, and secret controllers.
+    # BUILDX_CACHE_FROM/TO only covers the COPY+distroless tail; the
+    # compile cache lives in actions/cache.
     - name: Build and push control plane component images
       env:
         PARALLEL: "4"
         BUILDX_CACHE_FROM: type=gha,scope=dev-{component}
         BUILDX_CACHE_TO: type=gha,scope=dev-{component},mode=max
-      run: mage build:allImagesDev
+      run: mage build:imagesByApisDev "$APIS"
 
     - name: Build tptctl
       run: mage build:tptctl
 
     - name: Create test control plane
-      run: mage test:up
+      run: mage test:up "$APIS"
 
     - name: Integration tests
       run: mage test:integration

@@ -171,11 +171,22 @@ func (Build) Tptctl() error {
 	return nil
 }
 
-// Tptctl installs the tptctl binary at the provided path.
-func (Install) Tptctl(path string) error {
+// Tptctl installs the tptctl binary at $GOPATH/bin/tptctl, matching
+// install:sdk. Override with TPTCTL_INSTALL_PATH for a different
+// destination.
+func (Install) Tptctl() error {
 	build := Build{}
 	if err := build.Tptctl(); err != nil {
 		return fmt.Errorf("failed to build tptctl: %w", err)
+	}
+
+	path := os.Getenv("TPTCTL_INSTALL_PATH")
+	if path == "" {
+		goPath := os.Getenv("GOPATH")
+		if goPath == "" {
+			return fmt.Errorf("TPTCTL_INSTALL_PATH not set and GOPATH is not set")
+		}
+		path = filepath.Join(goPath, "bin", "tptctl")
 	}
 
 	installTptctlCmd := exec.Command(
@@ -239,6 +250,8 @@ func (Dev) GenerateDocs() error {
 		"--dir",
 		"cmd/rest-api,pkg/api-server/v0,pkg/api-server/v0",
 		"--parseDependency",
+		"--propertyStrategy",
+		"pascalcase",
 		"--generalInfo",
 		"main_gen.go",
 		"--output",
@@ -273,9 +286,10 @@ func (Test) Commits() error {
 }
 
 // Up spins up a control plane using tptctl and a local registry for testing.
-func (Test) Up() error {
-	testUp := exec.Command(
-		"./bin/tptctl",
+// apis is a comma-separated list of sdk-config api names passed through as
+// `tptctl up --names`. An empty string installs all controllers.
+func (Test) Up(apis string) error {
+	args := []string{
 		"up",
 		"-r",
 		installer.DevImageNamespace,
@@ -284,7 +298,11 @@ func (Test) Up() error {
 		"-n",
 		"dev-0",
 		"--local-registry",
-	)
+	}
+	if strings.TrimSpace(apis) != "" {
+		args = append(args, "--names", apis)
+	}
+	testUp := exec.Command("./bin/tptctl", args...)
 
 	output, err := testUp.CombinedOutput()
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -2328,6 +2329,289 @@ func (Build) AllImagesDev() error {
 		wrap(build.terraformControllerImagePackage),
 		wrap(build.workloadControllerImagePackage),
 	}
+	return util.RunParallel(parallelFromEnv(), tasks)
+}
+
+// ImagesByApisDev builds and pushes development images for the rest-api,
+// database-migrator, and the controllers of the listed sdk-config
+// apis. The agent is not included by default; pass "agent" in the
+// apis list (or use AllImagesDev) if it is needed. Set PARALLEL >= 1
+// to control worker concurrency. Example:
+// `PARALLEL=4 mage build:imagesByApisDev kubernetes_workload,gateway,secret`.
+func (Build) ImagesByApisDev(apis string) error {
+	workingDir, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get build values: %w", err)
+	}
+
+	type controllerEntry struct {
+		packageDir  string
+		packageFunc func(string, string, string, string) error
+	}
+
+	build := Build{}
+
+	controllersByApi := map[string]controllerEntry{
+		"agent": {
+			packageDir:  "cmd/agent",
+			packageFunc: build.agentImagePackage,
+		},
+		"secret": {
+			packageDir:  "cmd/secret-controller",
+			packageFunc: build.secretControllerImagePackage,
+		},
+		"aws": {
+			packageDir:  "cmd/aws-controller",
+			packageFunc: build.awsControllerImagePackage,
+		},
+		"oci": {
+			packageDir:  "cmd/oci-controller",
+			packageFunc: build.ociControllerImagePackage,
+		},
+		"gcp": {
+			packageDir:  "cmd/gcp-controller",
+			packageFunc: build.gcpControllerImagePackage,
+		},
+		"control_plane": {
+			packageDir:  "cmd/control-plane-controller",
+			packageFunc: build.controlPlaneControllerImagePackage,
+		},
+		"gateway": {
+			packageDir:  "cmd/gateway-controller",
+			packageFunc: build.gatewayControllerImagePackage,
+		},
+		"helm_workload": {
+			packageDir:  "cmd/helm-workload-controller",
+			packageFunc: build.helmWorkloadControllerImagePackage,
+		},
+		"kubernetes_runtime": {
+			packageDir:  "cmd/kubernetes-runtime-controller",
+			packageFunc: build.kubernetesRuntimeControllerImagePackage,
+		},
+		"observability": {
+			packageDir:  "cmd/observability-controller",
+			packageFunc: build.observabilityControllerImagePackage,
+		},
+		"terraform": {
+			packageDir:  "cmd/terraform-controller",
+			packageFunc: build.terraformControllerImagePackage,
+		},
+		"workload": {
+			packageDir:  "cmd/workload-controller",
+			packageFunc: build.workloadControllerImagePackage,
+		},
+	}
+
+	validApiNames := func() []string {
+		names := make([]string, 0, len(controllersByApi))
+		for name, _ := range controllersByApi {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		return names
+	}()
+
+	requestedApis := []string{}
+	for _, part := range strings.Split(apis, ",") {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			requestedApis = append(requestedApis, trimmed)
+		}
+	}
+
+	selectedControllers := make([]controllerEntry, 0, len(requestedApis))
+	for _, apiName := range requestedApis {
+		entry, ok := controllersByApi[apiName]
+		if !ok {
+			return fmt.Errorf("unknown api %q: valid choices are %s", apiName, strings.Join(validApiNames, ", "))
+		}
+		selectedControllers = append(selectedControllers, entry)
+	}
+
+	arches := []string{}
+	for _, a := range strings.Split(arch, ",") {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			arches = append(arches, a)
+		}
+	}
+
+	packageDirs := []string{
+		"cmd/rest-api",
+		"cmd/database-migrator",
+	}
+	for _, entry := range selectedControllers {
+		packageDirs = append(packageDirs, entry.packageDir)
+	}
+
+	if err := util.BuildBinaries(
+		workingDir,
+		arches,
+		packageDirs,
+		false,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to pre-build binaries: %w", err)
+	}
+
+	wrap := func(fn func(string, string, string, string) error) func() error {
+		return func() error {
+			return fn(workingDir, installer.DevImageNamespace, version.GetVersion(), arch)
+		}
+	}
+
+	tasks := []func() error{
+		wrap(build.restApiImagePackage),
+		wrap(build.dbMigratorImagePackage),
+	}
+	for _, entry := range selectedControllers {
+		tasks = append(tasks, wrap(entry.packageFunc))
+	}
+
+	return util.RunParallel(parallelFromEnv(), tasks)
+}
+
+// ImagesByApis builds and pushes multi-arch container images for the rest-api,
+// database-migrator, and the controllers of the listed sdk-config apis
+// to the given registry under the given tag. The agent is not included
+// by default; pass "agent" in the apis list (or use AllImages) if it
+// is needed. Set PARALLEL >= 1 to control worker concurrency. Example:
+// `PARALLEL=2 mage build:imagesByApis machine_workload,machine_runtime ghcr.io/myorg dev-pinned-abc1234 amd64,arm64`.
+func (Build) ImagesByApis(
+	apis string,
+	imageRepo string,
+	imageTag string,
+	arch string,
+) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get build values: %w", err)
+	}
+
+	type controllerEntry struct {
+		packageDir  string
+		packageFunc func(string, string, string, string) error
+	}
+
+	build := Build{}
+
+	controllersByApi := map[string]controllerEntry{
+		"agent": {
+			packageDir:  "cmd/agent",
+			packageFunc: build.agentImagePackage,
+		},
+		"secret": {
+			packageDir:  "cmd/secret-controller",
+			packageFunc: build.secretControllerImagePackage,
+		},
+		"aws": {
+			packageDir:  "cmd/aws-controller",
+			packageFunc: build.awsControllerImagePackage,
+		},
+		"oci": {
+			packageDir:  "cmd/oci-controller",
+			packageFunc: build.ociControllerImagePackage,
+		},
+		"gcp": {
+			packageDir:  "cmd/gcp-controller",
+			packageFunc: build.gcpControllerImagePackage,
+		},
+		"control_plane": {
+			packageDir:  "cmd/control-plane-controller",
+			packageFunc: build.controlPlaneControllerImagePackage,
+		},
+		"gateway": {
+			packageDir:  "cmd/gateway-controller",
+			packageFunc: build.gatewayControllerImagePackage,
+		},
+		"helm_workload": {
+			packageDir:  "cmd/helm-workload-controller",
+			packageFunc: build.helmWorkloadControllerImagePackage,
+		},
+		"kubernetes_runtime": {
+			packageDir:  "cmd/kubernetes-runtime-controller",
+			packageFunc: build.kubernetesRuntimeControllerImagePackage,
+		},
+		"observability": {
+			packageDir:  "cmd/observability-controller",
+			packageFunc: build.observabilityControllerImagePackage,
+		},
+		"terraform": {
+			packageDir:  "cmd/terraform-controller",
+			packageFunc: build.terraformControllerImagePackage,
+		},
+		"workload": {
+			packageDir:  "cmd/workload-controller",
+			packageFunc: build.workloadControllerImagePackage,
+		},
+	}
+
+	validApiNames := func() []string {
+		names := make([]string, 0, len(controllersByApi))
+		for name, _ := range controllersByApi {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		return names
+	}()
+
+	requestedApis := []string{}
+	for _, part := range strings.Split(apis, ",") {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			requestedApis = append(requestedApis, trimmed)
+		}
+	}
+
+	selectedControllers := make([]controllerEntry, 0, len(requestedApis))
+	for _, apiName := range requestedApis {
+		entry, ok := controllersByApi[apiName]
+		if !ok {
+			return fmt.Errorf("unknown api %q: valid choices are %s", apiName, strings.Join(validApiNames, ", "))
+		}
+		selectedControllers = append(selectedControllers, entry)
+	}
+
+	arches := []string{}
+	for _, a := range strings.Split(arch, ",") {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			arches = append(arches, a)
+		}
+	}
+
+	packageDirs := []string{
+		"cmd/rest-api",
+		"cmd/database-migrator",
+	}
+	for _, entry := range selectedControllers {
+		packageDirs = append(packageDirs, entry.packageDir)
+	}
+
+	if err := util.BuildBinaries(
+		workingDir,
+		arches,
+		packageDirs,
+		false,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to pre-build binaries: %w", err)
+	}
+
+	wrap := func(fn func(string, string, string, string) error) func() error {
+		return func() error {
+			return fn(workingDir, imageRepo, imageTag, arch)
+		}
+	}
+
+	tasks := []func() error{
+		wrap(build.restApiImagePackage),
+		wrap(build.dbMigratorImagePackage),
+	}
+	for _, entry := range selectedControllers {
+		tasks = append(tasks, wrap(entry.packageFunc))
+	}
+
 	return util.RunParallel(parallelFromEnv(), tasks)
 }
 

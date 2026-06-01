@@ -26,13 +26,13 @@ import (
 // has been created.
 func v0KubernetesWorkloadInstanceCreated(
 	r *controller.Reconciler,
-	workloadInstance *v0.KubernetesWorkloadInstance,
+	k8sWorkloadInstance *v0.KubernetesWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
 
 	// ensure kubernetes workload definition is reconciled before working on an instance
 	// for it
-	reconciled, err := confirmKubernetesWorkloadDefReconciled(r, workloadInstance)
+	reconciled, err := confirmK8sWorkloadDefReconciled(r, k8sWorkloadInstance)
 	if err != nil {
 		return 0, fmt.Errorf("failed to determine if kubernetes workload definition is reconciled: %w", err)
 	}
@@ -41,23 +41,23 @@ func v0KubernetesWorkloadInstanceCreated(
 	}
 
 	// use kubernetes workload definition ID to get kubernetes workload resource definitions
-	workloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
+	k8sWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.KubernetesWorkloadDefinitionID,
+		*k8sWorkloadInstance.KubernetesWorkloadDefinitionID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get kubernetes workload resource definitions by kubernetes workload definition ID: %w", err)
 	}
-	if len(*workloadResourceDefinitions) == 0 {
+	if len(*k8sWorkloadResourceDefinitions) == 0 {
 		return 0, errors.New("zero kubernetes workload resource definitions to deploy")
 	}
 
 	// get kubernetes workload definition for this instance
-	workloadDefinition, err := client.GetKubernetesWorkloadDefinitionByID(
+	k8sWorkloadDefinition, err := client.GetKubernetesWorkloadDefinitionByID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.KubernetesWorkloadDefinitionID,
+		*k8sWorkloadInstance.KubernetesWorkloadDefinitionID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get kubernetes workload definition for the instance being deployed: %w", err)
@@ -66,7 +66,7 @@ func v0KubernetesWorkloadInstanceCreated(
 	// construct ThreeportWorkload resource to inform the threeport-agent of
 	// which resources it should watch
 	threeportWorkloadName, err := agent.ThreeportWorkloadName(
-		*workloadInstance.ID,
+		*k8sWorkloadInstance.ID,
 		agent.WorkloadInstanceType,
 	)
 	if err != nil {
@@ -78,25 +78,25 @@ func v0KubernetesWorkloadInstanceCreated(
 		},
 		Spec: agentapi.ThreeportWorkloadSpec{
 			WorkloadType:       agent.WorkloadInstanceType,
-			KubernetesWorkloadInstanceID: *workloadInstance.ID,
+			KubernetesWorkloadInstanceID: *k8sWorkloadInstance.ID,
 		},
 	}
 
 	// construct kubernetes workload resource instances
-	var workloadResourceInstances []v0.KubernetesWorkloadResourceInstance
-	for _, wrd := range *workloadResourceDefinitions {
+	var k8sWorkloadResourceInstances []v0.KubernetesWorkloadResourceInstance
+	for _, wrd := range *k8sWorkloadResourceDefinitions {
 		wri := v0.KubernetesWorkloadResourceInstance{
 			JSONDefinition:               wrd.JSONDefinition,
-			KubernetesWorkloadInstanceID: workloadInstance.ID,
+			KubernetesWorkloadInstanceID: k8sWorkloadInstance.ID,
 		}
-		workloadResourceInstances = append(workloadResourceInstances, wri)
+		k8sWorkloadResourceInstances = append(k8sWorkloadResourceInstances, wri)
 	}
 
 	// get kubernetes runtime instance info
 	kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.KubernetesRuntimeInstanceID,
+		*k8sWorkloadInstance.KubernetesRuntimeInstanceID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get kubernetes runtime instance by ID: %w", err)
@@ -116,9 +116,9 @@ func v0KubernetesWorkloadInstanceCreated(
 
 	// manipulate namespace on kube resources as needed
 	processedWRIs, err := kube.SetNamespaces(
-		&workloadResourceInstances,
-		workloadInstance.Name,
-		workloadInstance.ID,
+		&k8sWorkloadResourceInstances,
+		k8sWorkloadInstance.Name,
+		k8sWorkloadInstance.ID,
 		discoveryClient,
 	)
 	if err != nil {
@@ -154,9 +154,9 @@ func v0KubernetesWorkloadInstanceCreated(
 		// set label metadata on kube object to signal threeport agent
 		kubeObject, err = kube.AddLabels(
 			kubeObject,
-			*workloadDefinition.Name,
-			*workloadInstance.Name,
-			*workloadInstance.ID,
+			*k8sWorkloadDefinition.Name,
+			*k8sWorkloadInstance.Name,
+			*k8sWorkloadInstance.ID,
 			agent.WorkloadInstanceLabelKey,
 		)
 		if err != nil {
@@ -173,8 +173,8 @@ func v0KubernetesWorkloadInstanceCreated(
 					Reason: util.Ptr("CreateResourceError"),
 					Note:   util.Ptr(fmt.Sprintf("failed to create Kubernetes resource for kubernetes workload instance: %s", err)),
 				},
-				*workloadInstance.ID,
-				workloadInstance.GetFullyQualifiedType(),
+				*k8sWorkloadInstance.ID,
+				k8sWorkloadInstance.GetFullyQualifiedType(),
 			); eventErr != nil {
 				log.Error(eventErr, "failed to record event for Kubernetes resource creation error")
 			}
@@ -231,32 +231,32 @@ func v0KubernetesWorkloadInstanceCreated(
 // has been updated.
 func v0KubernetesWorkloadInstanceUpdated(
 	r *controller.Reconciler,
-	workloadInstance *v0.KubernetesWorkloadInstance,
+	k8sWorkloadInstance *v0.KubernetesWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
 	// get kubernetes runtime instance info
 	kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.KubernetesRuntimeInstanceID,
+		*k8sWorkloadInstance.KubernetesRuntimeInstanceID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get kubernetes runtime instance by ID: %w", err)
 	}
 
 	// get kubernetes workload resource instances
-	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
+	k8sWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.ID,
+		*k8sWorkloadInstance.ID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get kubernetes workload resource instances by kubernetes workload instance ID: %w", err)
 	}
-	if len(*workloadResourceInstances) == 0 {
+	if len(*k8sWorkloadResourceInstances) == 0 {
 		log.V(1).Info(
 			"zero kubernetes workload resource instances to update",
-			"kubernetesWorkloadInstanceID", workloadInstance.ID,
+			"kubernetesWorkloadInstanceID", k8sWorkloadInstance.ID,
 		)
 		return 0, nil
 	}
@@ -275,9 +275,9 @@ func v0KubernetesWorkloadInstanceUpdated(
 
 	// manipulate namespace on kube resources as needed
 	processedWRIs, err := kube.SetNamespaces(
-		workloadResourceInstances,
-		workloadInstance.Name,
-		workloadInstance.ID,
+		k8sWorkloadResourceInstances,
+		k8sWorkloadInstance.Name,
+		k8sWorkloadInstance.ID,
 		discoveryClient,
 	)
 	if err != nil {
@@ -373,30 +373,30 @@ func v0KubernetesWorkloadInstanceUpdated(
 // has been deleted.
 func v0KubernetesWorkloadInstanceDeleted(
 	r *controller.Reconciler,
-	workloadInstance *v0.KubernetesWorkloadInstance,
+	k8sWorkloadInstance *v0.KubernetesWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
 	// check that deletion is scheduled - if not there's a problem
-	if workloadInstance.DeletionScheduled == nil {
+	if k8sWorkloadInstance.DeletionScheduled == nil {
 		return 0, errors.New("deletion notification receieved but not scheduled")
 	}
 
 	// check to see if reconciled - it should not be, but if so we should do no
 	// more
-	if workloadInstance.DeletionConfirmed != nil {
+	if k8sWorkloadInstance.DeletionConfirmed != nil {
 		return 0, nil
 	}
 
 	// get kubernetes workload resource instances
-	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
+	k8sWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.ID,
+		*k8sWorkloadInstance.ID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get kubernetes workload resource instances by kubernetes workload instance ID: %w", err)
 	}
-	if len(*workloadResourceInstances) == 0 {
+	if len(*k8sWorkloadResourceInstances) == 0 {
 		// no kubernetes workload resource instances to clean up
 		return 0, nil
 	}
@@ -405,12 +405,12 @@ func v0KubernetesWorkloadInstanceDeleted(
 	kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.KubernetesRuntimeInstanceID,
+		*k8sWorkloadInstance.KubernetesRuntimeInstanceID,
 	)
 	if err != nil {
 		log.Error(
 			errors.New("failed to get kubernetes runtime instance by ID"),
-			"kubernetesRuntimeInstance", *workloadInstance.KubernetesRuntimeInstanceID,
+			"kubernetesRuntimeInstance", *k8sWorkloadInstance.KubernetesRuntimeInstanceID,
 		)
 		return 0, fmt.Errorf("failed to get kubernetes runtime instance by ID: %w", err)
 	}
@@ -428,7 +428,7 @@ func v0KubernetesWorkloadInstanceDeleted(
 	}
 
 	// delete each kubernetes workload resource instance and resource in the target kubernetes runtime instance
-	for _, wri := range *workloadResourceInstances {
+	for _, wri := range *k8sWorkloadResourceInstances {
 		// marshal the resource instance json
 		jsonDefinition, err := wri.JSONDefinition.MarshalJSON()
 		if err != nil {
@@ -461,7 +461,7 @@ func v0KubernetesWorkloadInstanceDeleted(
 	// resources are gone
 	resourceClient := dynamicKubeClient.Resource(agentapi.ThreeportWorkloadGVR)
 	threeportWorkloadName, err := agent.ThreeportWorkloadName(
-		*workloadInstance.ID,
+		*k8sWorkloadInstance.ID,
 		agent.WorkloadInstanceType,
 	)
 	if err != nil {
@@ -478,21 +478,21 @@ func v0KubernetesWorkloadInstanceDeleted(
 	return 0, nil
 }
 
-// confirmKubernetesWorkloadDefReconciled confirms the kubernetes workload definition related to a
+// confirmK8sWorkloadDefReconciled confirms the kubernetes workload definition related to a
 // kubernetes workload instance is reconciled.
-func confirmKubernetesWorkloadDefReconciled(
+func confirmK8sWorkloadDefReconciled(
 	r *controller.Reconciler,
-	workloadInstance *v0.KubernetesWorkloadInstance,
+	k8sWorkloadInstance *v0.KubernetesWorkloadInstance,
 ) (bool, error) {
-	workloadDefinition, err := client.GetKubernetesWorkloadDefinitionByID(
+	k8sWorkloadDefinition, err := client.GetKubernetesWorkloadDefinitionByID(
 		r.APIClient,
 		r.APIServer,
-		*workloadInstance.KubernetesWorkloadDefinitionID,
+		*k8sWorkloadInstance.KubernetesWorkloadDefinitionID,
 	)
 	if err != nil {
 		return false, fmt.Errorf("failed to get kubernetes workload definition by kubernetes workload definition ID: %w", err)
 	}
-	if workloadDefinition.Reconciled != nil && !*workloadDefinition.Reconciled {
+	if k8sWorkloadDefinition.Reconciled != nil && !*k8sWorkloadDefinition.Reconciled {
 		return false, nil
 	}
 

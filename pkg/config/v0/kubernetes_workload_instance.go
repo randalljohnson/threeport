@@ -35,43 +35,43 @@ type KubernetesWorkloadInstanceValues struct {
 	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
 }
 
-// Get gets workload instances from the Threeport API.
+// Get gets kubernetes workload instances from the Threeport API.
 // If the name is set in the KubernetesWorkloadInstanceValues, it will return the kubernetes workload instance with that name.
-// If the name is not set, it will return all workload instances.
+// If the name is not set, it will return all kubernetes workload instances.
 func (w *KubernetesWorkloadInstanceConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*[]KubernetesWorkloadInstanceConfig, error) {
-	workloadInstanceValues := w.KubernetesWorkloadInstance
+	k8sWorkloadInstanceValues := w.KubernetesWorkloadInstance
 	// get API objects
-	var workloadInstances *[]api_v0.KubernetesWorkloadInstance
+	var k8sWorkloadInstances *[]api_v0.KubernetesWorkloadInstance
 	switch {
 	// if name is provided, get kubernetes workload instance by name
-	case workloadInstanceValues.Name != nil:
-		workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *workloadInstanceValues.Name)
+	case k8sWorkloadInstanceValues.Name != nil:
+		k8sWorkloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *k8sWorkloadInstanceValues.Name)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get kubernetes workload instance with name %s: %w", *workloadInstanceValues.Name, err)
+			return nil, fmt.Errorf("failed to get kubernetes workload instance with name %s: %w", *k8sWorkloadInstanceValues.Name, err)
 		}
-		workloadInstances = &[]api_v0.KubernetesWorkloadInstance{*workloadInstance}
-	// get all workload instances
+		k8sWorkloadInstances = &[]api_v0.KubernetesWorkloadInstance{*k8sWorkloadInstance}
+	// get all kubernetes workload instances
 	default:
-		allWorkloadInstances, err := client_v0.GetKubernetesWorkloadInstances(apiClient, apiEndpoint)
+		allK8sWorkloadInstances, err := client_v0.GetKubernetesWorkloadInstances(apiClient, apiEndpoint)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get workload instances from Threeport API: %w", err)
+			return nil, fmt.Errorf("failed to get kubernetes workload instances from Threeport API: %w", err)
 		}
-		workloadInstances = allWorkloadInstances
+		k8sWorkloadInstances = allK8sWorkloadInstances
 	}
 
 	// assemble config objects from API objects
-	var workloadInstanceConfigs []KubernetesWorkloadInstanceConfig
-	for _, workloadInstance := range *workloadInstances {
+	var k8sWorkloadInstanceConfigs []KubernetesWorkloadInstanceConfig
+	for _, k8sWorkloadInstance := range *k8sWorkloadInstances {
 		// related objects
 		var kubernetesRuntimeInstance *KubernetesRuntimeInstanceValues
-		var workloadDefinition *KubernetesWorkloadDefinitionValues
+		var k8sWorkloadDefinition *KubernetesWorkloadDefinitionValues
 
 		// get kubernetes runtime instance
-		if workloadInstance.KubernetesRuntimeInstanceID != nil {
-			kri, err := client_v0.GetKubernetesRuntimeInstanceByID(apiClient, apiEndpoint, *workloadInstance.KubernetesRuntimeInstanceID)
+		if k8sWorkloadInstance.KubernetesRuntimeInstanceID != nil {
+			kri, err := client_v0.GetKubernetesRuntimeInstanceByID(apiClient, apiEndpoint, *k8sWorkloadInstance.KubernetesRuntimeInstanceID)
 			if err == nil {
 				kubernetesRuntimeInstance = &KubernetesRuntimeInstanceValues{
 					Name: kri.Name,
@@ -80,40 +80,40 @@ func (w *KubernetesWorkloadInstanceConfig) Get(
 		}
 
 		// get kubernetes workload definition
-		if workloadInstance.KubernetesWorkloadDefinitionID != nil {
-			wd, err := client_v0.GetKubernetesWorkloadDefinitionByID(apiClient, apiEndpoint, *workloadInstance.KubernetesWorkloadDefinitionID)
+		if k8sWorkloadInstance.KubernetesWorkloadDefinitionID != nil {
+			wd, err := client_v0.GetKubernetesWorkloadDefinitionByID(apiClient, apiEndpoint, *k8sWorkloadInstance.KubernetesWorkloadDefinitionID)
 			if err == nil {
-				workloadDefinition = &KubernetesWorkloadDefinitionValues{
+				k8sWorkloadDefinition = &KubernetesWorkloadDefinitionValues{
 					Name: wd.Name,
 				}
 			}
 		}
 
 		// determine the kubernetes workload instance status
-		instanceStatusDetail := status.GetWorkloadInstanceStatus(
+		instanceStatusDetail := status.GetKubernetesWorkloadInstanceStatus(
 			apiClient,
 			apiEndpoint,
 			agent.WorkloadInstanceType,
-			*workloadInstance.ID,
-			*workloadInstance.Reconciled,
+			*k8sWorkloadInstance.ID,
+			*k8sWorkloadInstance.Reconciled,
 		)
 		if instanceStatusDetail.Error != nil {
 			return nil, fmt.Errorf("failed to get kubernetes workload instance status: %w", instanceStatusDetail.Error)
 		}
 
-		workloadInstanceConfig := KubernetesWorkloadInstanceConfig{
+		k8sWorkloadInstanceConfig := KubernetesWorkloadInstanceConfig{
 			KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-				Name:                      workloadInstance.Name,
+				Name:                      k8sWorkloadInstance.Name,
 				KubernetesRuntimeInstance: kubernetesRuntimeInstance,
-				KubernetesWorkloadDefinition:        workloadDefinition,
+				KubernetesWorkloadDefinition:        k8sWorkloadDefinition,
 				Status:                    util.Ptr(string(instanceStatusDetail.Status)),
-				Age:                       util.Ptr(util.GetAgeFormatted(workloadInstance.CreatedAt)),
+				Age:                       util.Ptr(util.GetAgeFormatted(k8sWorkloadInstance.CreatedAt)),
 			},
 		}
-		workloadInstanceConfigs = append(workloadInstanceConfigs, workloadInstanceConfig)
+		k8sWorkloadInstanceConfigs = append(k8sWorkloadInstanceConfigs, k8sWorkloadInstanceConfig)
 	}
 
-	return &workloadInstanceConfigs, nil
+	return &k8sWorkloadInstanceConfigs, nil
 }
 
 // Create creates a kubernetes workload instance in the Threeport API.
@@ -121,34 +121,34 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*KubernetesWorkloadInstanceConfig, error) {
-	workloadInstanceValues := w.KubernetesWorkloadInstance
+	k8sWorkloadInstanceValues := w.KubernetesWorkloadInstance
 	// validate config
 	if err := w.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate values for kubernetes workload instance with name %s: %w", *workloadInstanceValues.Name, err)
+		return nil, fmt.Errorf("failed to validate values for kubernetes workload instance with name %s: %w", *k8sWorkloadInstanceValues.Name, err)
 	}
 
 	// get kubernetes runtime instance
 	kubernetesRuntimeInstance, err := getKubernetesRuntimeInstanceByNameOrDefault(
 		apiClient,
 		apiEndpoint,
-		workloadInstanceValues.KubernetesRuntimeInstance,
+		k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubernetes runtime instance: %w", err)
 	}
 
 	// get kubernetes workload definition by name
-	workloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
+	k8sWorkloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
 		apiClient,
 		apiEndpoint,
-		*workloadInstanceValues.KubernetesWorkloadDefinition.Name,
+		*k8sWorkloadInstanceValues.KubernetesWorkloadDefinition.Name,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes workload definition by name %s: %w", *workloadInstanceValues.KubernetesWorkloadDefinition.Name, err)
+		return nil, fmt.Errorf("failed to get kubernetes workload definition by name %s: %w", *k8sWorkloadInstanceValues.KubernetesWorkloadDefinition.Name, err)
 	}
 
 	// check to see if threeport is managing namespace
-	jsonObjects, err := kube.GetJsonResourcesFromYamlDoc(*workloadDefinition.YAMLDocument)
+	jsonObjects, err := kube.GetJsonResourcesFromYamlDoc(*k8sWorkloadDefinition.YAMLDocument)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get json resources from yaml document: %w", err)
 	}
@@ -168,13 +168,13 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 		instances, err := client_v0.GetKubernetesWorkloadInstancesByKubernetesWorkloadDefinitionID(
 			apiClient,
 			apiEndpoint,
-			*workloadDefinition.ID,
+			*k8sWorkloadDefinition.ID,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get workload instances by kubernetes workload definition ID %d: %w", *workloadDefinition.ID, err)
+			return nil, fmt.Errorf("failed to get kubernetes workload instances by kubernetes workload definition ID %d: %w", *k8sWorkloadDefinition.ID, err)
 		}
 
-		// if there's already an instance for a workload with client managed
+		// if there's already an instance for a kubernetes workload with client managed
 		// namespace, check clusters
 		var runtimeNames []string
 		for _, inst := range *instances {
@@ -198,36 +198,36 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 	}
 
 	// construct kubernetes workload instance object
-	workloadInstance := api_v0.KubernetesWorkloadInstance{
+	k8sWorkloadInstance := api_v0.KubernetesWorkloadInstance{
 		Instance: api_v0.Instance{
-			Name: workloadInstanceValues.Name,
+			Name: k8sWorkloadInstanceValues.Name,
 		},
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
-		KubernetesWorkloadDefinitionID:        workloadDefinition.ID,
+		KubernetesWorkloadDefinitionID:        k8sWorkloadDefinition.ID,
 	}
 
 	// create kubernetes workload instance
-	createdWorkloadInstance, err := client_v0.CreateKubernetesWorkloadInstance(
+	createdK8sWorkloadInstance, err := client_v0.CreateKubernetesWorkloadInstance(
 		apiClient,
 		apiEndpoint,
-		&workloadInstance,
+		&k8sWorkloadInstance,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubernetes workload instance in threeport API: %w", err)
 	}
 
 	// construct kubernetes workload instance config
-	createdWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
+	createdK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-			Name:                      createdWorkloadInstance.Name,
-			KubernetesRuntimeInstance: workloadInstanceValues.KubernetesRuntimeInstance,
-			KubernetesWorkloadDefinition:        workloadInstanceValues.KubernetesWorkloadDefinition,
-			Status:                    util.Ptr(string(*createdWorkloadInstance.Status)),
-			Age:                       util.Ptr(util.GetAgeFormatted(createdWorkloadInstance.CreatedAt)),
+			Name:                      createdK8sWorkloadInstance.Name,
+			KubernetesRuntimeInstance: k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
+			KubernetesWorkloadDefinition:        k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
+			Status:                    util.Ptr(string(*createdK8sWorkloadInstance.Status)),
+			Age:                       util.Ptr(util.GetAgeFormatted(createdK8sWorkloadInstance.CreatedAt)),
 		},
 	}
 
-	return createdWorkloadInstanceConfig, nil
+	return createdK8sWorkloadInstanceConfig, nil
 }
 
 // Replace updates the entire kubernetes workload instance object in the Threeport API.
@@ -239,14 +239,14 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 	apiEndpoint string,
 	name string,
 ) (*KubernetesWorkloadInstanceConfig, error) {
-	workloadInstanceValues := w.KubernetesWorkloadInstance
+	k8sWorkloadInstanceValues := w.KubernetesWorkloadInstance
 	// validate config
 	if err := w.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid kubernetes workload instance config: %w", err)
 	}
 
 	// get existing kubernetes workload instance by name
-	existingWorkloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
+	existingK8sWorkloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
 		apiClient,
 		apiEndpoint,
 		name,
@@ -255,12 +255,12 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 		return nil, fmt.Errorf("failed to find kubernetes workload instance with name %s: %w", name, err)
 	}
 
-	// ensure user is not trying to move the workload to a different runtime
+	// ensure user is not trying to move the kubernetes workload to a different runtime
 	kubernetesRuntimeInstance, moved, err := getKubernetesRuntimeInstanceAndCheckId(
 		apiClient,
 		apiEndpoint,
-		workloadInstanceValues.KubernetesRuntimeInstance,
-		existingWorkloadInstance.KubernetesRuntimeInstanceID,
+		k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
+		existingK8sWorkloadInstance.KubernetesRuntimeInstanceID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubernetes runtime instance: %w", err)
@@ -273,49 +273,49 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 	}
 
 	// get kubernetes workload definition by name
-	workloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
+	k8sWorkloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
 		apiClient,
 		apiEndpoint,
-		*workloadInstanceValues.KubernetesWorkloadDefinition.Name,
+		*k8sWorkloadInstanceValues.KubernetesWorkloadDefinition.Name,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes workload definition by name %s: %w", *workloadInstanceValues.KubernetesWorkloadDefinition.Name, err)
+		return nil, fmt.Errorf("failed to get kubernetes workload definition by name %s: %w", *k8sWorkloadInstanceValues.KubernetesWorkloadDefinition.Name, err)
 	}
 
 	// construct updated kubernetes workload instance object
-	updatedWorkloadInstance := &api_v0.KubernetesWorkloadInstance{
+	updatedK8sWorkloadInstance := &api_v0.KubernetesWorkloadInstance{
 		Common: api_v0.Common{
-			ID: existingWorkloadInstance.ID,
+			ID: existingK8sWorkloadInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: workloadInstanceValues.Name,
+			Name: k8sWorkloadInstanceValues.Name,
 		},
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
-		KubernetesWorkloadDefinitionID:        workloadDefinition.ID,
+		KubernetesWorkloadDefinitionID:        k8sWorkloadDefinition.ID,
 	}
 
 	// replace kubernetes workload instance
-	replacedWorkloadInstance, err := client_v0.ReplaceKubernetesWorkloadInstance(
+	replacedK8sWorkloadInstance, err := client_v0.ReplaceKubernetesWorkloadInstance(
 		apiClient,
 		apiEndpoint,
-		updatedWorkloadInstance,
+		updatedK8sWorkloadInstance,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to replace kubernetes workload instance in threeport API: %w", err)
 	}
 
 	// construct updated kubernetes workload instance config
-	updatedWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
+	updatedK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-			Name:                      replacedWorkloadInstance.Name,
-			KubernetesRuntimeInstance: workloadInstanceValues.KubernetesRuntimeInstance,
-			KubernetesWorkloadDefinition:        workloadInstanceValues.KubernetesWorkloadDefinition,
-			Status:                    util.Ptr(string(*replacedWorkloadInstance.Status)),
-			Age:                       util.Ptr(util.GetAgeFormatted(replacedWorkloadInstance.CreatedAt)),
+			Name:                      replacedK8sWorkloadInstance.Name,
+			KubernetesRuntimeInstance: k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
+			KubernetesWorkloadDefinition:        k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
+			Status:                    util.Ptr(string(*replacedK8sWorkloadInstance.Status)),
+			Age:                       util.Ptr(util.GetAgeFormatted(replacedK8sWorkloadInstance.CreatedAt)),
 		},
 	}
 
-	return updatedWorkloadInstanceConfig, nil
+	return updatedK8sWorkloadInstanceConfig, nil
 }
 
 // Delete deletes a kubernetes workload instance from the Threeport API.
@@ -323,22 +323,22 @@ func (w *KubernetesWorkloadInstanceConfig) Delete(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*KubernetesWorkloadInstanceConfig, error) {
-	workloadInstanceValues := w.KubernetesWorkloadInstance
+	k8sWorkloadInstanceValues := w.KubernetesWorkloadInstance
 	// get kubernetes workload instance by name
-	workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
+	k8sWorkloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
 		apiClient,
 		apiEndpoint,
-		*workloadInstanceValues.Name,
+		*k8sWorkloadInstanceValues.Name,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find kubernetes workload instance with name %s: %w", *workloadInstanceValues.Name, err)
+		return nil, fmt.Errorf("failed to find kubernetes workload instance with name %s: %w", *k8sWorkloadInstanceValues.Name, err)
 	}
 
 	// delete kubernetes workload instance
-	deletedWorkloadInstance, err := client_v0.DeleteKubernetesWorkloadInstance(
+	deletedK8sWorkloadInstance, err := client_v0.DeleteKubernetesWorkloadInstance(
 		apiClient,
 		apiEndpoint,
-		*workloadInstance.ID,
+		*k8sWorkloadInstance.ID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete kubernetes workload instance from Threeport API: %w", err)
@@ -346,34 +346,34 @@ func (w *KubernetesWorkloadInstanceConfig) Delete(
 
 	// wait for kubernetes workload instance to be deleted
 	util.Retry(60, 1, func() error {
-		if _, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *workloadInstanceValues.Name); err == nil {
+		if _, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *k8sWorkloadInstanceValues.Name); err == nil {
 			return errors.New("kubernetes workload instance not deleted")
 		}
 		return nil
 	})
 
 	// construct deleted kubernetes workload instance config
-	deletedWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
+	deletedK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-			Name: deletedWorkloadInstance.Name,
+			Name: deletedK8sWorkloadInstance.Name,
 		},
 	}
 
-	return deletedWorkloadInstanceConfig, nil
+	return deletedK8sWorkloadInstanceConfig, nil
 }
 
-// Validate validates inputs to create workload instances.
+// Validate validates inputs to create kubernetes workload instances.
 func (w *KubernetesWorkloadInstanceConfig) Validate() error {
-	workloadInstanceValues := w.KubernetesWorkloadInstance
+	k8sWorkloadInstanceValues := w.KubernetesWorkloadInstance
 	multiError := util.MultiError{}
 
 	// ensure name is set
-	if workloadInstanceValues.Name == nil {
+	if k8sWorkloadInstanceValues.Name == nil {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
 	}
 
 	// ensure kubernetes workload definition name is set
-	if workloadInstanceValues.KubernetesWorkloadDefinition == nil || workloadInstanceValues.KubernetesWorkloadDefinition.Name == nil {
+	if k8sWorkloadInstanceValues.KubernetesWorkloadDefinition == nil || k8sWorkloadInstanceValues.KubernetesWorkloadDefinition.Name == nil {
 		multiError.AppendError(errors.New("missing required field in config: KubernetesWorkloadDefinition.Name"))
 	}
 

@@ -14,19 +14,19 @@ import (
 )
 
 var (
-	workloadName       string
-	workloadConfigPath string
-	workloadStdin      bool
-	workloadVersion    string
-	workloadOutput     string
+	k8sWorkloadName       string
+	k8sWorkloadConfigPath string
+	k8sWorkloadStdin      bool
+	k8sWorkloadVersion    string
+	k8sWorkloadOutput     string
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 // Workload
 ///////////////////////////////////////////////////////////////////////////////
 
-// GetWorkloadsCmd represents the command 'tptctl get workloads'
-var GetWorkloadsCmd = &cobra.Command{
+// GetKubernetesWorkloadsCmd represents the command 'tptctl get workloads'
+var GetKubernetesWorkloadsCmd = &cobra.Command{
 	Aliases: []string{"workload"},
 	Example: "  # get all workloads\n  tptctl get workloads\n\n  # get a specific workload\n  tptctl get workload --name some-workload",
 	Long:    "Get workloads from the system. Use --name to get a specific workload. A workload is a unified abstraction of a kubernetes workload definition and kubernetes workload instance.",
@@ -36,8 +36,8 @@ var GetWorkloadsCmd = &cobra.Command{
 
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
-			workloadConfigPath,
-			workloadName,
+			k8sWorkloadConfigPath,
+			k8sWorkloadName,
 			"workload",
 		); err != nil {
 			cli.Error("flag validation failed", err)
@@ -45,37 +45,37 @@ var GetWorkloadsCmd = &cobra.Command{
 		}
 
 		// get workload based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
 			// load workload values
-			workloadConfig := config_v0.KubernetesWorkloadConfig{}
-			if workloadConfigPath != "" {
-				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+			k8sWorkloadConfig := config_v0.KubernetesWorkloadConfig{}
+			if k8sWorkloadConfigPath != "" {
+				configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if err := yaml.UnmarshalStrict(configContent, &workloadConfig); err != nil {
+				if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
 				}
-			} else if workloadName != "" {
-				workloadConfig = config_v0.KubernetesWorkloadConfig{
+			} else if k8sWorkloadName != "" {
+				k8sWorkloadConfig = config_v0.KubernetesWorkloadConfig{
 					Workload: config_v0.KubernetesWorkloadValues{
-						Name: &workloadName,
+						Name: &k8sWorkloadName,
 					},
 				}
 			}
 
 			// get workload
-			workloadConfigs, err := workloadConfig.Get(apiClient, apiEndpoint)
+			k8sWorkloadConfigs, err := k8sWorkloadConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
 				cli.Error("failed to retrieve workload", err)
 				os.Exit(1)
 			}
 
 			// check if workload exists
-			if len(*workloadConfigs) == 0 {
+			if len(*k8sWorkloadConfigs) == 0 {
 				cli.Info(fmt.Sprintf(
 					"no workloads found that are currently managed by %s threeport control plane",
 					requestedControlPlane,
@@ -84,24 +84,24 @@ var GetWorkloadsCmd = &cobra.Command{
 			}
 
 			// write the output
-			switch workloadOutput {
+			switch k8sWorkloadOutput {
 			case "tabular":
-				if err := outputGetv0WorkloadsCmd(workloadConfigs); err != nil {
+				if err := outputGetv0K8sWorkloadsCmd(k8sWorkloadConfigs); err != nil {
 					cli.Error("failed to produce output", err)
 					os.Exit(1)
 				}
 			case "yaml":
-				if err := cli.YamlObjectOutput(*workloadConfigs); err != nil {
+				if err := cli.YamlObjectOutput(*k8sWorkloadConfigs); err != nil {
 					cli.Error("failed to produce YAML output", err)
 					os.Exit(1)
 				}
 			case "json":
-				if err := cli.JsonObjectOutput(*workloadConfigs); err != nil {
+				if err := cli.JsonObjectOutput(*k8sWorkloadConfigs); err != nil {
 					cli.Error("failed to produce JSON output", err)
 					os.Exit(1)
 				}
 			default:
-				cli.Error("", fmt.Errorf("unrecognized output format: %s", workloadOutput))
+				cli.Error("", fmt.Errorf("unrecognized output format: %s", k8sWorkloadOutput))
 				os.Exit(1)
 			}
 		default:
@@ -115,32 +115,32 @@ var GetWorkloadsCmd = &cobra.Command{
 }
 
 func init() {
-	GetCmd.AddCommand(GetWorkloadsCmd)
+	GetCmd.AddCommand(GetKubernetesWorkloadsCmd)
 
-	GetWorkloadsCmd.Flags().StringVarP(
-		&workloadName,
+	GetKubernetesWorkloadsCmd.Flags().StringVarP(
+		&k8sWorkloadName,
 		"name", "n", "", "Name of workload.",
 	)
-	GetWorkloadsCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	GetKubernetesWorkloadsCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with workload config.",
 	)
-	GetWorkloadsCmd.Flags().StringVarP(
-		&workloadVersion,
+	GetKubernetesWorkloadsCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workload objects to retrieve. One of: [v0]",
 	)
-	GetWorkloadsCmd.Flags().StringVarP(
-		&workloadOutput,
+	GetKubernetesWorkloadsCmd.Flags().StringVarP(
+		&k8sWorkloadOutput,
 		"output", "o", "tabular", "Output format for workload objects. One of: [tabular, yaml, json]",
 	)
-	GetWorkloadsCmd.Flags().StringVarP(
+	GetKubernetesWorkloadsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
 }
 
-// CreateWorkloadCmd represents the command 'tptctl create workload'
-var CreateWorkloadCmd = &cobra.Command{
+// CreateKubernetesWorkloadCmd represents the command 'tptctl create workload'
+var CreateKubernetesWorkloadCmd = &cobra.Command{
 	Example: "  # create a new workload using a config file\n  tptctl create workload --config path/to/config.yaml",
 	Long:    "Create a new workload. A workload is a unified abstraction of a kubernetes workload definition and kubernetes workload instance. This command creates both a new kubernetes workload definition and kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
@@ -148,24 +148,24 @@ var CreateWorkloadCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read workload config
-		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+		configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
 
 		// create workload based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadConfig config_v0.KubernetesWorkloadConfig
-			if err := yaml.UnmarshalStrict(configContent, &workloadConfig); err != nil {
+			var k8sWorkloadConfig config_v0.KubernetesWorkloadConfig
+			if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
 				os.Exit(1)
 			}
 
 			// create workload
-			workloadConfig.Workload.WorkloadConfigPath = &workloadConfigPath
-			createdWorkloadSlice, err := workloadConfig.Create(
+			k8sWorkloadConfig.Workload.WorkloadConfigPath = &k8sWorkloadConfigPath
+			createdK8sWorkloadSlice, err := k8sWorkloadConfig.Create(
 				apiClient,
 				apiEndpoint,
 			)
@@ -175,14 +175,14 @@ var CreateWorkloadCmd = &cobra.Command{
 			}
 
 			// check the result of the create
-			if createdWorkloadSlice == nil || len(*createdWorkloadSlice) == 0 {
+			if createdK8sWorkloadSlice == nil || len(*createdK8sWorkloadSlice) == 0 {
 				cli.Error("failed to create workload", errors.New("no workloads received after create"))
 				os.Exit(1)
 			}
-			createdWorkload := (*createdWorkloadSlice)[0]
+			createdK8sWorkload := (*createdK8sWorkloadSlice)[0]
 
-			cli.Info(fmt.Sprintf("kubernetes workload definition and instance with name %s created", *createdWorkload.Workload.Name))
-			cli.Complete(fmt.Sprintf("workload %s created", *createdWorkload.Workload.Name))
+			cli.Info(fmt.Sprintf("kubernetes workload definition and instance with name %s created", *createdK8sWorkload.Workload.Name))
+			cli.Complete(fmt.Sprintf("workload %s created", *createdK8sWorkload.Workload.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -194,28 +194,28 @@ var CreateWorkloadCmd = &cobra.Command{
 }
 
 func init() {
-	CreateCmd.AddCommand(CreateWorkloadCmd)
+	CreateCmd.AddCommand(CreateKubernetesWorkloadCmd)
 
-	CreateWorkloadCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	CreateKubernetesWorkloadCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with workload config.",
 	)
-	CreateWorkloadCmd.Flags().BoolVar(
-		&workloadStdin,
+	CreateKubernetesWorkloadCmd.Flags().BoolVar(
+		&k8sWorkloadStdin,
 		"stdin", false, "Read config from stdin instead of file.",
 	)
-	CreateWorkloadCmd.Flags().StringVarP(
+	CreateKubernetesWorkloadCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	CreateWorkloadCmd.Flags().StringVarP(
-		&workloadVersion,
+	CreateKubernetesWorkloadCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workloads object to create. One of: [v0]",
 	)
 }
 
-// DeleteWorkloadCmd represents the command 'tptctl delete workload'
-var DeleteWorkloadCmd = &cobra.Command{
+// DeleteKubernetesWorkloadCmd represents the command 'tptctl delete workload'
+var DeleteKubernetesWorkloadCmd = &cobra.Command{
 	Example: "  # delete using a config file\n  tptctl delete workload --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete workload --name some-workload",
 	Long:    "Delete an existing workload. This command deletes an existing kubernetes workload definition and kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
@@ -223,37 +223,37 @@ var DeleteWorkloadCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// flag validation
-		if workloadConfigPath == "" {
+		if k8sWorkloadConfigPath == "" {
 			cli.Error("flag validation failed", errors.New("config file path is required"))
 		}
 
 		// read workload config
-		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+		configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
 
 		// delete workload based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadConfig config_v0.KubernetesWorkloadConfig
-			if err := yaml.UnmarshalStrict(configContent, &workloadConfig); err != nil {
+			var k8sWorkloadConfig config_v0.KubernetesWorkloadConfig
+			if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
 				os.Exit(1)
 			}
 
 			// delete workload
-			workloadConfig.Workload.WorkloadConfigPath = &workloadConfigPath
-			_, err = workloadConfig.Delete(apiClient, apiEndpoint)
+			k8sWorkloadConfig.Workload.WorkloadConfigPath = &k8sWorkloadConfigPath
+			_, err = k8sWorkloadConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
 				cli.Error("failed to delete workload", err)
 				os.Exit(1)
 			}
 
-			cli.Info(fmt.Sprintf("kubernetes workload definition %s deleted", *workloadConfig.Workload.Name))
-			cli.Info(fmt.Sprintf("kubernetes workload instance %s deleted", *workloadConfig.Workload.Name))
-			cli.Complete(fmt.Sprintf("workload %s deleted", *workloadConfig.Workload.Name))
+			cli.Info(fmt.Sprintf("kubernetes workload definition %s deleted", *k8sWorkloadConfig.Workload.Name))
+			cli.Info(fmt.Sprintf("kubernetes workload instance %s deleted", *k8sWorkloadConfig.Workload.Name))
+			cli.Complete(fmt.Sprintf("workload %s deleted", *k8sWorkloadConfig.Workload.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -265,18 +265,18 @@ var DeleteWorkloadCmd = &cobra.Command{
 }
 
 func init() {
-	DeleteCmd.AddCommand(DeleteWorkloadCmd)
+	DeleteCmd.AddCommand(DeleteKubernetesWorkloadCmd)
 
-	DeleteWorkloadCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	DeleteKubernetesWorkloadCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with workload config.",
 	)
-	DeleteWorkloadCmd.Flags().StringVarP(
+	DeleteKubernetesWorkloadCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	DeleteWorkloadCmd.Flags().StringVarP(
-		&workloadVersion,
+	DeleteKubernetesWorkloadCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workloads object to delete. One of: [v0]",
 	)
 }
@@ -285,8 +285,8 @@ func init() {
 // KubernetesWorkloadDefinition
 ///////////////////////////////////////////////////////////////////////////////
 
-// GetWorkloadDefinitionsCmd represents the command 'tptctl get workload-definitions'
-var GetWorkloadDefinitionsCmd = &cobra.Command{
+// GetKubernetesWorkloadDefinitionsCmd represents the command 'tptctl get workload-definitions'
+var GetKubernetesWorkloadDefinitionsCmd = &cobra.Command{
 	Aliases: []string{"workload-definition"},
 	Example: "  # get all workload definitions\n  tptctl get workload-definitions\n\n  # get a specific kubernetes workload definition\n  tptctl get workload-definition --name some-workload-definition",
 	Long:    "Get workload definitions from the system. Use --name to get a specific kubernetes workload definition.",
@@ -296,71 +296,71 @@ var GetWorkloadDefinitionsCmd = &cobra.Command{
 
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
-			workloadConfigPath,
-			workloadName,
+			k8sWorkloadConfigPath,
+			k8sWorkloadName,
 			"kubernetes workload definition",
 		); err != nil {
 			cli.Error("flag validation failed", err)
 			os.Exit(1)
 		}
 
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
 			// load values
-			workloadDefinitionConfig := config_v0.KubernetesWorkloadDefinitionConfig{}
-			if workloadConfigPath != "" {
-				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+			k8sWorkloadDefinitionConfig := config_v0.KubernetesWorkloadDefinitionConfig{}
+			if k8sWorkloadConfigPath != "" {
+				configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
+				if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
 				}
-			} else if workloadName != "" {
-				workloadDefinitionConfig = config_v0.KubernetesWorkloadDefinitionConfig{
+			} else if k8sWorkloadName != "" {
+				k8sWorkloadDefinitionConfig = config_v0.KubernetesWorkloadDefinitionConfig{
 					KubernetesWorkloadDefinition: config_v0.KubernetesWorkloadDefinitionValues{
-						Name: &workloadName,
+						Name: &k8sWorkloadName,
 					},
 				}
 			}
 
-			// get workload definitions
-			workloadDefinitions, err := workloadDefinitionConfig.Get(apiClient, apiEndpoint)
+			// get kubernetes workload definitions
+			k8sWorkloadDefinitions, err := k8sWorkloadDefinitionConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
-				cli.Error("failed to retrieve workload definitions", err)
+				cli.Error("failed to retrieve kubernetes workload definitions", err)
 				os.Exit(1)
 			}
 
 			// check if kubernetes workload definition exists
-			if len(*workloadDefinitions) == 0 {
+			if len(*k8sWorkloadDefinitions) == 0 {
 				cli.Info(fmt.Sprintf(
-					"no workload definitions found that are currently managed by %s threeport control plane",
+					"no kubernetes workload definitions found that are currently managed by %s threeport control plane",
 					requestedControlPlane,
 				))
 				os.Exit(0)
 			}
 
 			// write the output
-			switch workloadOutput {
+			switch k8sWorkloadOutput {
 			case "tabular":
-				if err := outputGetv0WorkloadDefinitionsCmd(workloadDefinitions); err != nil {
+				if err := outputGetv0K8sWorkloadDefinitionsCmd(k8sWorkloadDefinitions); err != nil {
 					cli.Error("failed to produce output", err)
 					os.Exit(1)
 				}
 			case "yaml":
-				if err := cli.YamlObjectOutput(*workloadDefinitions); err != nil {
+				if err := cli.YamlObjectOutput(*k8sWorkloadDefinitions); err != nil {
 					cli.Error("failed to produce YAML output", err)
 					os.Exit(1)
 				}
 			case "json":
-				if err := cli.JsonObjectOutput(*workloadDefinitions); err != nil {
+				if err := cli.JsonObjectOutput(*k8sWorkloadDefinitions); err != nil {
 					cli.Error("failed to produce JSON output", err)
 					os.Exit(1)
 				}
 			default:
-				cli.Error("", fmt.Errorf("unrecognized output format: %s", workloadOutput))
+				cli.Error("", fmt.Errorf("unrecognized output format: %s", k8sWorkloadOutput))
 				os.Exit(1)
 			}
 		default:
@@ -374,32 +374,32 @@ var GetWorkloadDefinitionsCmd = &cobra.Command{
 }
 
 func init() {
-	GetCmd.AddCommand(GetWorkloadDefinitionsCmd)
+	GetCmd.AddCommand(GetKubernetesWorkloadDefinitionsCmd)
 
-	GetWorkloadDefinitionsCmd.Flags().StringVarP(
-		&workloadName,
+	GetKubernetesWorkloadDefinitionsCmd.Flags().StringVarP(
+		&k8sWorkloadName,
 		"name", "n", "", "Name of kubernetes workload definition.",
 	)
-	GetWorkloadDefinitionsCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	GetKubernetesWorkloadDefinitionsCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload definition config.",
 	)
-	GetWorkloadDefinitionsCmd.Flags().StringVarP(
-		&workloadVersion,
+	GetKubernetesWorkloadDefinitionsCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of kubernetes workload definition objects to retrieve. One of: [v0]",
 	)
-	GetWorkloadDefinitionsCmd.Flags().StringVarP(
-		&workloadOutput,
+	GetKubernetesWorkloadDefinitionsCmd.Flags().StringVarP(
+		&k8sWorkloadOutput,
 		"output", "o", "tabular", "Output format for kubernetes workload definition objects. One of: [tabular, yaml, json]",
 	)
-	GetWorkloadDefinitionsCmd.Flags().StringVarP(
+	GetKubernetesWorkloadDefinitionsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
 }
 
-// CreateWorkloadDefinitionCmd represents the command 'tptctl create workload-definition'
-var CreateWorkloadDefinitionCmd = &cobra.Command{
+// CreateKubernetesWorkloadDefinitionCmd represents the command 'tptctl create workload-definition'
+var CreateKubernetesWorkloadDefinitionCmd = &cobra.Command{
 	Example: "  # create a new kubernetes workload definition using a config file\n  tptctl create workload-definition --config path/to/config.yaml",
 	Long:    "Create a new kubernetes workload definition.",
 	PreRun:  CommandPreRunFunc,
@@ -407,29 +407,29 @@ var CreateWorkloadDefinitionCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read kubernetes workload definition config
-		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+		configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
 		// create kubernetes workload definition based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadDefinitionConfig config_v0.KubernetesWorkloadDefinitionConfig
-			if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
+			var k8sWorkloadDefinitionConfig config_v0.KubernetesWorkloadDefinitionConfig
+			if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
 				os.Exit(1)
 			}
 
 			// create kubernetes workload definition
-			workloadDefinitionConfig.KubernetesWorkloadDefinition.WorkloadConfigPath = &workloadConfigPath
-			createdWorkloadDefinition, err := workloadDefinitionConfig.Create(apiClient, apiEndpoint)
+			k8sWorkloadDefinitionConfig.KubernetesWorkloadDefinition.WorkloadConfigPath = &k8sWorkloadConfigPath
+			createdK8sWorkloadDefinition, err := k8sWorkloadDefinitionConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
 				cli.Error("failed to create kubernetes workload definition", err)
 				os.Exit(1)
 			}
 
-			cli.Complete(fmt.Sprintf("kubernetes workload definition %s created", *createdWorkloadDefinition.KubernetesWorkloadDefinition.Name))
+			cli.Complete(fmt.Sprintf("kubernetes workload definition %s created", *createdK8sWorkloadDefinition.KubernetesWorkloadDefinition.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -441,28 +441,28 @@ var CreateWorkloadDefinitionCmd = &cobra.Command{
 }
 
 func init() {
-	CreateCmd.AddCommand(CreateWorkloadDefinitionCmd)
+	CreateCmd.AddCommand(CreateKubernetesWorkloadDefinitionCmd)
 
-	CreateWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	CreateKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload definition config.",
 	)
-	CreateWorkloadDefinitionCmd.Flags().BoolVar(
-		&workloadStdin,
+	CreateKubernetesWorkloadDefinitionCmd.Flags().BoolVar(
+		&k8sWorkloadStdin,
 		"stdin", false, "Read config from stdin instead of file.",
 	)
-	CreateWorkloadDefinitionCmd.Flags().StringVarP(
+	CreateKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	CreateWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadVersion,
+	CreateKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workload definitions object to create. One of: [v0]",
 	)
 }
 
-// ReplaceWorkloadDefinitionCmd represents the command 'tptctl replace workload-definition'
-var ReplaceWorkloadDefinitionCmd = &cobra.Command{
+// ReplaceKubernetesWorkloadDefinitionCmd represents the command 'tptctl replace workload-definition'
+var ReplaceKubernetesWorkloadDefinitionCmd = &cobra.Command{
 	Example: "  # replace using a config file\n  tptctl replace workload-definition --config path/to/config.yaml --name some-workload-definition",
 	Long:    "Replace an existing kubernetes workload definition.\n Note that the entire object will replaced with a PUT request.\n All fields must be provided in the config file.",
 	PreRun:  CommandPreRunFunc,
@@ -470,29 +470,29 @@ var ReplaceWorkloadDefinitionCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// replace kubernetes workload definition based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadDefinitionConfig config_v0.KubernetesWorkloadDefinitionConfig
+			var k8sWorkloadDefinitionConfig config_v0.KubernetesWorkloadDefinitionConfig
 			// load kubernetes workload definition config
-			configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+			configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
 			}
-			if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
+			if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadDefinitionConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
 				os.Exit(1)
 			}
 
 			// replace kubernetes workload definition
-			workloadDefinitionConfig.KubernetesWorkloadDefinition.WorkloadConfigPath = &workloadConfigPath
-			updatedWorkloadDefinition, err := workloadDefinitionConfig.Replace(apiClient, apiEndpoint, workloadName)
+			k8sWorkloadDefinitionConfig.KubernetesWorkloadDefinition.WorkloadConfigPath = &k8sWorkloadConfigPath
+			updatedK8sWorkloadDefinition, err := k8sWorkloadDefinitionConfig.Replace(apiClient, apiEndpoint, k8sWorkloadName)
 			if err != nil {
 				cli.Error("failed to update kubernetes workload definition", err)
 				os.Exit(1)
 			}
 
-			cli.Complete(fmt.Sprintf("kubernetes workload definition %s updated", *updatedWorkloadDefinition.KubernetesWorkloadDefinition.Name))
+			cli.Complete(fmt.Sprintf("kubernetes workload definition %s updated", *updatedK8sWorkloadDefinition.KubernetesWorkloadDefinition.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -504,33 +504,33 @@ var ReplaceWorkloadDefinitionCmd = &cobra.Command{
 }
 
 func init() {
-	ReplaceCmd.AddCommand(ReplaceWorkloadDefinitionCmd)
+	ReplaceCmd.AddCommand(ReplaceKubernetesWorkloadDefinitionCmd)
 
-	ReplaceWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	ReplaceKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload definition config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceWorkloadDefinitionCmd.Flags().BoolVar(
-		&workloadStdin,
+	ReplaceKubernetesWorkloadDefinitionCmd.Flags().BoolVar(
+		&k8sWorkloadStdin,
 		"stdin", false, "Read config from stdin instead of file.",
 	)
-	ReplaceWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadName,
+	ReplaceKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadName,
 		"name", "n", "", "Name of existing kubernetes workload definition to replace.  If the name in the kubernetes workload definition config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
 	)
-	ReplaceWorkloadDefinitionCmd.MarkFlagRequired("name")
-	ReplaceWorkloadDefinitionCmd.Flags().StringVarP(
+	ReplaceKubernetesWorkloadDefinitionCmd.MarkFlagRequired("name")
+	ReplaceKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	ReplaceWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadVersion,
+	ReplaceKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workload definitions object to replace. One of: [v0]",
 	)
 }
 
-// DeleteWorkloadDefinitionCmd represents the command 'tptctl delete workload-definition'
-var DeleteWorkloadDefinitionCmd = &cobra.Command{
+// DeleteKubernetesWorkloadDefinitionCmd represents the command 'tptctl delete workload-definition'
+var DeleteKubernetesWorkloadDefinitionCmd = &cobra.Command{
 	Example: "  # delete using a config file\n  tptctl delete workload-definition --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete workload-definition --name some-workload-definition",
 	Long:    "Delete an existing kubernetes workload definition.",
 	PreRun:  CommandPreRunFunc,
@@ -539,8 +539,8 @@ var DeleteWorkloadDefinitionCmd = &cobra.Command{
 
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
-			workloadConfigPath,
-			workloadName,
+			k8sWorkloadConfigPath,
+			k8sWorkloadName,
 			"kubernetes workload definition",
 		); err != nil {
 			cli.Error("flag validation failed", err)
@@ -548,37 +548,37 @@ var DeleteWorkloadDefinitionCmd = &cobra.Command{
 		}
 
 		// delete kubernetes workload definition based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadDefinitionConfig config_v0.KubernetesWorkloadDefinitionConfig
-			if workloadConfigPath != "" {
+			var k8sWorkloadDefinitionConfig config_v0.KubernetesWorkloadDefinitionConfig
+			if k8sWorkloadConfigPath != "" {
 				// load kubernetes workload definition config
-				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+				configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if err := yaml.UnmarshalStrict(configContent, &workloadDefinitionConfig); err != nil {
+				if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadDefinitionConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
 				}
 			} else {
-				workloadDefinitionConfig = config_v0.KubernetesWorkloadDefinitionConfig{
+				k8sWorkloadDefinitionConfig = config_v0.KubernetesWorkloadDefinitionConfig{
 					KubernetesWorkloadDefinition: config_v0.KubernetesWorkloadDefinitionValues{
-						Name: &workloadName,
+						Name: &k8sWorkloadName,
 					},
 				}
 			}
 
 			// delete kubernetes workload definition
-			workloadDefinitionConfig.KubernetesWorkloadDefinition.WorkloadConfigPath = &workloadConfigPath
-			deletedWorkloadDefinition, err := workloadDefinitionConfig.Delete(apiClient, apiEndpoint)
+			k8sWorkloadDefinitionConfig.KubernetesWorkloadDefinition.WorkloadConfigPath = &k8sWorkloadConfigPath
+			deletedK8sWorkloadDefinition, err := k8sWorkloadDefinitionConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
 				cli.Error("failed to delete kubernetes workload definition", err)
 				os.Exit(1)
 			}
 
-			cli.Complete(fmt.Sprintf("kubernetes workload definition %s deleted", *deletedWorkloadDefinition.KubernetesWorkloadDefinition.Name))
+			cli.Complete(fmt.Sprintf("kubernetes workload definition %s deleted", *deletedK8sWorkloadDefinition.KubernetesWorkloadDefinition.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -590,22 +590,22 @@ var DeleteWorkloadDefinitionCmd = &cobra.Command{
 }
 
 func init() {
-	DeleteCmd.AddCommand(DeleteWorkloadDefinitionCmd)
+	DeleteCmd.AddCommand(DeleteKubernetesWorkloadDefinitionCmd)
 
-	DeleteWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	DeleteKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload definition config.",
 	)
-	DeleteWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadName,
+	DeleteKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadName,
 		"name", "n", "", "Name of kubernetes workload definition.",
 	)
-	DeleteWorkloadDefinitionCmd.Flags().StringVarP(
+	DeleteKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	DeleteWorkloadDefinitionCmd.Flags().StringVarP(
-		&workloadVersion,
+	DeleteKubernetesWorkloadDefinitionCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workload definitions object to delete. One of: [v0]",
 	)
 }
@@ -614,8 +614,8 @@ func init() {
 // KubernetesWorkloadInstance
 ///////////////////////////////////////////////////////////////////////////////
 
-// GetWorkloadInstancesCmd represents the command 'tptctl get workload-instances'
-var GetWorkloadInstancesCmd = &cobra.Command{
+// GetKubernetesWorkloadInstancesCmd represents the command 'tptctl get workload-instances'
+var GetKubernetesWorkloadInstancesCmd = &cobra.Command{
 	Aliases: []string{"workload-instance"},
 	Example: "  # get all workload instances\n  tptctl get workload-instances\n\n  # get a specific kubernetes workload instance\n  tptctl get workload-instance --name some-workload-instance",
 	Long:    "Get workload instances from the system. Use --name to get a specific kubernetes workload instance.",
@@ -625,71 +625,71 @@ var GetWorkloadInstancesCmd = &cobra.Command{
 
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
-			workloadConfigPath,
-			workloadName,
+			k8sWorkloadConfigPath,
+			k8sWorkloadName,
 			"kubernetes workload instance",
 		); err != nil {
 			cli.Error("flag validation failed", err)
 			os.Exit(1)
 		}
 
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
 			// load values
-			workloadInstanceConfig := config_v0.KubernetesWorkloadInstanceConfig{}
-			if workloadConfigPath != "" {
-				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+			k8sWorkloadInstanceConfig := config_v0.KubernetesWorkloadInstanceConfig{}
+			if k8sWorkloadConfigPath != "" {
+				configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
+				if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
 				}
-			} else if workloadName != "" {
-				workloadInstanceConfig = config_v0.KubernetesWorkloadInstanceConfig{
+			} else if k8sWorkloadName != "" {
+				k8sWorkloadInstanceConfig = config_v0.KubernetesWorkloadInstanceConfig{
 					KubernetesWorkloadInstance: config_v0.KubernetesWorkloadInstanceValues{
-						Name: &workloadName,
+						Name: &k8sWorkloadName,
 					},
 				}
 			}
 
-			// get workload instances
-			workloadInstances, err := workloadInstanceConfig.Get(apiClient, apiEndpoint)
+			// get kubernetes workload instances
+			k8sWorkloadInstances, err := k8sWorkloadInstanceConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
-				cli.Error("failed to retrieve workload instances", err)
+				cli.Error("failed to retrieve kubernetes workload instances", err)
 				os.Exit(1)
 			}
 
 			// check if kubernetes workload instance exists
-			if len(*workloadInstances) == 0 {
+			if len(*k8sWorkloadInstances) == 0 {
 				cli.Info(fmt.Sprintf(
-					"no workload instances found that are currently managed by %s threeport control plane",
+					"no kubernetes workload instances found that are currently managed by %s threeport control plane",
 					requestedControlPlane,
 				))
 				os.Exit(0)
 			}
 
 			// write the output
-			switch workloadOutput {
+			switch k8sWorkloadOutput {
 			case "tabular":
-				if err := outputGetv0WorkloadInstancesCmd(workloadInstances); err != nil {
+				if err := outputGetv0K8sWorkloadInstancesCmd(k8sWorkloadInstances); err != nil {
 					cli.Error("failed to produce output", err)
 					os.Exit(1)
 				}
 			case "yaml":
-				if err := cli.YamlObjectOutput(*workloadInstances); err != nil {
+				if err := cli.YamlObjectOutput(*k8sWorkloadInstances); err != nil {
 					cli.Error("failed to produce YAML output", err)
 					os.Exit(1)
 				}
 			case "json":
-				if err := cli.JsonObjectOutput(*workloadInstances); err != nil {
+				if err := cli.JsonObjectOutput(*k8sWorkloadInstances); err != nil {
 					cli.Error("failed to produce JSON output", err)
 					os.Exit(1)
 				}
 			default:
-				cli.Error("", fmt.Errorf("unrecognized output format: %s", workloadOutput))
+				cli.Error("", fmt.Errorf("unrecognized output format: %s", k8sWorkloadOutput))
 				os.Exit(1)
 			}
 		default:
@@ -703,32 +703,32 @@ var GetWorkloadInstancesCmd = &cobra.Command{
 }
 
 func init() {
-	GetCmd.AddCommand(GetWorkloadInstancesCmd)
+	GetCmd.AddCommand(GetKubernetesWorkloadInstancesCmd)
 
-	GetWorkloadInstancesCmd.Flags().StringVarP(
-		&workloadName,
+	GetKubernetesWorkloadInstancesCmd.Flags().StringVarP(
+		&k8sWorkloadName,
 		"name", "n", "", "Name of kubernetes workload instance.",
 	)
-	GetWorkloadInstancesCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	GetKubernetesWorkloadInstancesCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload instance config.",
 	)
-	GetWorkloadInstancesCmd.Flags().StringVarP(
-		&workloadVersion,
+	GetKubernetesWorkloadInstancesCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of kubernetes workload instance objects to retrieve. One of: [v0]",
 	)
-	GetWorkloadInstancesCmd.Flags().StringVarP(
-		&workloadOutput,
+	GetKubernetesWorkloadInstancesCmd.Flags().StringVarP(
+		&k8sWorkloadOutput,
 		"output", "o", "tabular", "Output format for kubernetes workload instance objects. One of: [tabular, yaml, json]",
 	)
-	GetWorkloadInstancesCmd.Flags().StringVarP(
+	GetKubernetesWorkloadInstancesCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
 }
 
-// CreateWorkloadInstanceCmd represents the command 'tptctl create workload-instance'
-var CreateWorkloadInstanceCmd = &cobra.Command{
+// CreateKubernetesWorkloadInstanceCmd represents the command 'tptctl create workload-instance'
+var CreateKubernetesWorkloadInstanceCmd = &cobra.Command{
 	Example: "  # create a new kubernetes workload instance using a config file\n  tptctl create workload-instance --config path/to/config.yaml",
 	Long:    "Create a new kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
@@ -736,28 +736,28 @@ var CreateWorkloadInstanceCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// read kubernetes workload instance config
-		configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+		configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 		if err != nil {
 			cli.Error("failed to read config", err)
 			os.Exit(1)
 		}
 		// create kubernetes workload instance based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadInstanceConfig config_v0.KubernetesWorkloadInstanceConfig
-			if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
+			var k8sWorkloadInstanceConfig config_v0.KubernetesWorkloadInstanceConfig
+			if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
 				os.Exit(1)
 			}
 
 			// create kubernetes workload instance
-			createdWorkloadInstance, err := workloadInstanceConfig.Create(apiClient, apiEndpoint)
+			createdK8sWorkloadInstance, err := k8sWorkloadInstanceConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
 				cli.Error("failed to create kubernetes workload instance", err)
 				os.Exit(1)
 			}
 
-			cli.Complete(fmt.Sprintf("kubernetes workload instance %s created", *createdWorkloadInstance.KubernetesWorkloadInstance.Name))
+			cli.Complete(fmt.Sprintf("kubernetes workload instance %s created", *createdK8sWorkloadInstance.KubernetesWorkloadInstance.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -769,28 +769,28 @@ var CreateWorkloadInstanceCmd = &cobra.Command{
 }
 
 func init() {
-	CreateCmd.AddCommand(CreateWorkloadInstanceCmd)
+	CreateCmd.AddCommand(CreateKubernetesWorkloadInstanceCmd)
 
-	CreateWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	CreateKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload instance config.",
 	)
-	CreateWorkloadInstanceCmd.Flags().BoolVar(
-		&workloadStdin,
+	CreateKubernetesWorkloadInstanceCmd.Flags().BoolVar(
+		&k8sWorkloadStdin,
 		"stdin", false, "Read config from stdin instead of file.",
 	)
-	CreateWorkloadInstanceCmd.Flags().StringVarP(
+	CreateKubernetesWorkloadInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	CreateWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadVersion,
+	CreateKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workload instances object to create. One of: [v0]",
 	)
 }
 
-// ReplaceWorkloadInstanceCmd represents the command 'tptctl replace workload-instance'
-var ReplaceWorkloadInstanceCmd = &cobra.Command{
+// ReplaceKubernetesWorkloadInstanceCmd represents the command 'tptctl replace workload-instance'
+var ReplaceKubernetesWorkloadInstanceCmd = &cobra.Command{
 	Example: "  # replace using a config file\n  tptctl replace workload-instance --config path/to/config.yaml --name some-workload-instance",
 	Long:    "Replace an existing kubernetes workload instance.\n Note that the entire object will replaced with a PUT request.\n All fields must be provided in the config file.",
 	PreRun:  CommandPreRunFunc,
@@ -798,28 +798,28 @@ var ReplaceWorkloadInstanceCmd = &cobra.Command{
 		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
 
 		// replace kubernetes workload instance based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadInstanceConfig config_v0.KubernetesWorkloadInstanceConfig
+			var k8sWorkloadInstanceConfig config_v0.KubernetesWorkloadInstanceConfig
 			// load kubernetes workload instance config
-			configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+			configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 			if err != nil {
 				cli.Error("failed to read config", err)
 				os.Exit(1)
 			}
-			if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
+			if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadInstanceConfig); err != nil {
 				cli.Error("failed to unmarshal config file yaml content", err)
 				os.Exit(1)
 			}
 
 			// replace kubernetes workload instance
-			updatedWorkloadInstance, err := workloadInstanceConfig.Replace(apiClient, apiEndpoint, workloadName)
+			updatedK8sWorkloadInstance, err := k8sWorkloadInstanceConfig.Replace(apiClient, apiEndpoint, k8sWorkloadName)
 			if err != nil {
 				cli.Error("failed to update kubernetes workload instance", err)
 				os.Exit(1)
 			}
 
-			cli.Complete(fmt.Sprintf("kubernetes workload instance %s updated", *updatedWorkloadInstance.KubernetesWorkloadInstance.Name))
+			cli.Complete(fmt.Sprintf("kubernetes workload instance %s updated", *updatedK8sWorkloadInstance.KubernetesWorkloadInstance.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -831,33 +831,33 @@ var ReplaceWorkloadInstanceCmd = &cobra.Command{
 }
 
 func init() {
-	ReplaceCmd.AddCommand(ReplaceWorkloadInstanceCmd)
+	ReplaceCmd.AddCommand(ReplaceKubernetesWorkloadInstanceCmd)
 
-	ReplaceWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	ReplaceKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload instance config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
 	)
-	ReplaceWorkloadInstanceCmd.Flags().BoolVar(
-		&workloadStdin,
+	ReplaceKubernetesWorkloadInstanceCmd.Flags().BoolVar(
+		&k8sWorkloadStdin,
 		"stdin", false, "Read config from stdin instead of file.",
 	)
-	ReplaceWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadName,
+	ReplaceKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadName,
 		"name", "n", "", "Name of existing kubernetes workload instance to replace.  If the name in the kubernetes workload instance config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
 	)
-	ReplaceWorkloadInstanceCmd.MarkFlagRequired("name")
-	ReplaceWorkloadInstanceCmd.Flags().StringVarP(
+	ReplaceKubernetesWorkloadInstanceCmd.MarkFlagRequired("name")
+	ReplaceKubernetesWorkloadInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	ReplaceWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadVersion,
+	ReplaceKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workload instances object to replace. One of: [v0]",
 	)
 }
 
-// DeleteWorkloadInstanceCmd represents the command 'tptctl delete workload-instance'
-var DeleteWorkloadInstanceCmd = &cobra.Command{
+// DeleteKubernetesWorkloadInstanceCmd represents the command 'tptctl delete workload-instance'
+var DeleteKubernetesWorkloadInstanceCmd = &cobra.Command{
 	Example: "  # delete using a config file\n  tptctl delete workload-instance --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete workload-instance --name some-workload-instance",
 	Long:    "Delete an existing kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
@@ -866,8 +866,8 @@ var DeleteWorkloadInstanceCmd = &cobra.Command{
 
 		// flag validation
 		if err := cli.ValidateConfigNameFlags(
-			workloadConfigPath,
-			workloadName,
+			k8sWorkloadConfigPath,
+			k8sWorkloadName,
 			"kubernetes workload instance",
 		); err != nil {
 			cli.Error("flag validation failed", err)
@@ -875,36 +875,36 @@ var DeleteWorkloadInstanceCmd = &cobra.Command{
 		}
 
 		// delete kubernetes workload instance based on version
-		switch workloadVersion {
+		switch k8sWorkloadVersion {
 		case "v0":
-			var workloadInstanceConfig config_v0.KubernetesWorkloadInstanceConfig
-			if workloadConfigPath != "" {
+			var k8sWorkloadInstanceConfig config_v0.KubernetesWorkloadInstanceConfig
+			if k8sWorkloadConfigPath != "" {
 				// load kubernetes workload instance config
-				configContent, err := cli.ReadConfigContent(workloadConfigPath, workloadStdin)
+				configContent, err := cli.ReadConfigContent(k8sWorkloadConfigPath, k8sWorkloadStdin)
 				if err != nil {
 					cli.Error("failed to read config", err)
 					os.Exit(1)
 				}
-				if err := yaml.UnmarshalStrict(configContent, &workloadInstanceConfig); err != nil {
+				if err := yaml.UnmarshalStrict(configContent, &k8sWorkloadInstanceConfig); err != nil {
 					cli.Error("failed to unmarshal config file yaml content", err)
 					os.Exit(1)
 				}
 			} else {
-				workloadInstanceConfig = config_v0.KubernetesWorkloadInstanceConfig{
+				k8sWorkloadInstanceConfig = config_v0.KubernetesWorkloadInstanceConfig{
 					KubernetesWorkloadInstance: config_v0.KubernetesWorkloadInstanceValues{
-						Name: &workloadName,
+						Name: &k8sWorkloadName,
 					},
 				}
 			}
 
 			// delete kubernetes workload instance
-			deletedWorkloadInstance, err := workloadInstanceConfig.Delete(apiClient, apiEndpoint)
+			deletedK8sWorkloadInstance, err := k8sWorkloadInstanceConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
 				cli.Error("failed to delete kubernetes workload instance", err)
 				os.Exit(1)
 			}
 
-			cli.Complete(fmt.Sprintf("kubernetes workload instance %s deleted", *deletedWorkloadInstance.KubernetesWorkloadInstance.Name))
+			cli.Complete(fmt.Sprintf("kubernetes workload instance %s deleted", *deletedK8sWorkloadInstance.KubernetesWorkloadInstance.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -916,22 +916,22 @@ var DeleteWorkloadInstanceCmd = &cobra.Command{
 }
 
 func init() {
-	DeleteCmd.AddCommand(DeleteWorkloadInstanceCmd)
+	DeleteCmd.AddCommand(DeleteKubernetesWorkloadInstanceCmd)
 
-	DeleteWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadConfigPath,
+	DeleteKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadConfigPath,
 		"config", "c", "", "Path to file with kubernetes workload instance config.",
 	)
-	DeleteWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadName,
+	DeleteKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadName,
 		"name", "n", "", "Name of kubernetes workload instance.",
 	)
-	DeleteWorkloadInstanceCmd.Flags().StringVarP(
+	DeleteKubernetesWorkloadInstanceCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
 	)
-	DeleteWorkloadInstanceCmd.Flags().StringVarP(
-		&workloadVersion,
+	DeleteKubernetesWorkloadInstanceCmd.Flags().StringVarP(
+		&k8sWorkloadVersion,
 		"version", "v", "v0", "Version of workload instances object to delete. One of: [v0]",
 	)
 }

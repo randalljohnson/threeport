@@ -32,47 +32,47 @@ type KubernetesWorkloadDefinitionValues struct {
 	Age                *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
-// Get gets workload definitions from the Threeport API.
+// Get gets kubernetes workload definitions from the Threeport API.
 // If the name is set in the KubernetesWorkloadDefinitionValues, it will return the kubernetes workload definition with that name.
-// If the name is not set, it will return all workload definitions.
+// If the name is not set, it will return all kubernetes workload definitions.
 func (w *KubernetesWorkloadDefinitionConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*[]KubernetesWorkloadDefinitionConfig, error) {
-	workloadDefinitionValues := w.KubernetesWorkloadDefinition
+	k8sWorkloadDefinitionValues := w.KubernetesWorkloadDefinition
 	// get API objects
-	var workloadDefinitions *[]api_v0.KubernetesWorkloadDefinition
+	var k8sWorkloadDefinitions *[]api_v0.KubernetesWorkloadDefinition
 	switch {
 	// if name is provided, get kubernetes workload definition by name
-	case workloadDefinitionValues.Name != nil:
-		workloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(apiClient, apiEndpoint, *workloadDefinitionValues.Name)
+	case k8sWorkloadDefinitionValues.Name != nil:
+		k8sWorkloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(apiClient, apiEndpoint, *k8sWorkloadDefinitionValues.Name)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get kubernetes workload definition with name %s: %w", *workloadDefinitionValues.Name, err)
+			return nil, fmt.Errorf("failed to get kubernetes workload definition with name %s: %w", *k8sWorkloadDefinitionValues.Name, err)
 		}
-		workloadDefinitions = &[]api_v0.KubernetesWorkloadDefinition{*workloadDefinition}
-	// get all workload definitions
+		k8sWorkloadDefinitions = &[]api_v0.KubernetesWorkloadDefinition{*k8sWorkloadDefinition}
+	// get all kubernetes workload definitions
 	default:
-		allWorkloadDefinitions, err := client_v0.GetKubernetesWorkloadDefinitions(apiClient, apiEndpoint)
+		allK8sWorkloadDefinitions, err := client_v0.GetKubernetesWorkloadDefinitions(apiClient, apiEndpoint)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get workload definitions from Threeport API: %w", err)
+			return nil, fmt.Errorf("failed to get kubernetes workload definitions from Threeport API: %w", err)
 		}
-		workloadDefinitions = allWorkloadDefinitions
+		k8sWorkloadDefinitions = allK8sWorkloadDefinitions
 	}
 
 	// assemble config objects from API objects
-	var workloadDefinitionConfigs []KubernetesWorkloadDefinitionConfig
-	for _, workloadDefinition := range *workloadDefinitions {
-		workloadDefinitionConfig := KubernetesWorkloadDefinitionConfig{
+	var k8sWorkloadDefinitionConfigs []KubernetesWorkloadDefinitionConfig
+	for _, k8sWorkloadDefinition := range *k8sWorkloadDefinitions {
+		k8sWorkloadDefinitionConfig := KubernetesWorkloadDefinitionConfig{
 			KubernetesWorkloadDefinition: KubernetesWorkloadDefinitionValues{
-				Name:         workloadDefinition.Name,
-				YAMLDocument: workloadDefinition.YAMLDocument,
-				Age:          util.Ptr(util.GetAgeFormatted(workloadDefinition.CreatedAt)),
+				Name:         k8sWorkloadDefinition.Name,
+				YAMLDocument: k8sWorkloadDefinition.YAMLDocument,
+				Age:          util.Ptr(util.GetAgeFormatted(k8sWorkloadDefinition.CreatedAt)),
 			},
 		}
-		workloadDefinitionConfigs = append(workloadDefinitionConfigs, workloadDefinitionConfig)
+		k8sWorkloadDefinitionConfigs = append(k8sWorkloadDefinitionConfigs, k8sWorkloadDefinitionConfig)
 	}
 
-	return &workloadDefinitionConfigs, nil
+	return &k8sWorkloadDefinitionConfigs, nil
 }
 
 // Create creates a kubernetes workload definition in the Threeport API.
@@ -80,52 +80,52 @@ func (w *KubernetesWorkloadDefinitionConfig) Create(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*KubernetesWorkloadDefinitionConfig, error) {
-	workloadDefinitionValues := w.KubernetesWorkloadDefinition
+	k8sWorkloadDefinitionValues := w.KubernetesWorkloadDefinition
 	// validate config
 	if err := w.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate values for kubernetes workload definition with name %s: %w", *workloadDefinitionValues.Name, err)
+		return nil, fmt.Errorf("failed to validate values for kubernetes workload definition with name %s: %w", *k8sWorkloadDefinitionValues.Name, err)
 	}
 
 	// build the path to the YAML document relative to the user's working directory
-	configPath, _ := filepath.Split(*workloadDefinitionValues.WorkloadConfigPath)
-	relativeYamlPath := path.Join(configPath, *workloadDefinitionValues.YAMLDocument)
+	configPath, _ := filepath.Split(*k8sWorkloadDefinitionValues.WorkloadConfigPath)
+	relativeYamlPath := path.Join(configPath, *k8sWorkloadDefinitionValues.YAMLDocument)
 
 	// load YAML document
 	definitionContent, err := os.ReadFile(relativeYamlPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read definition YAMLDocument file with name %s: %w", *workloadDefinitionValues.YAMLDocument, err)
+		return nil, fmt.Errorf("failed to read definition YAMLDocument file with name %s: %w", *k8sWorkloadDefinitionValues.YAMLDocument, err)
 	}
 	stringContent := string(definitionContent)
 
 	// construct kubernetes workload definition object
-	workloadDefinition := api_v0.KubernetesWorkloadDefinition{
+	k8sWorkloadDefinition := api_v0.KubernetesWorkloadDefinition{
 		Definition: api_v0.Definition{
-			Name: workloadDefinitionValues.Name,
+			Name: k8sWorkloadDefinitionValues.Name,
 		},
 		YAMLDocument: &stringContent,
 	}
 
 	// create kubernetes workload definition
-	createdWorkloadDefinition, err := client_v0.CreateKubernetesWorkloadDefinition(
+	createdK8sWorkloadDefinition, err := client_v0.CreateKubernetesWorkloadDefinition(
 		apiClient,
 		apiEndpoint,
-		&workloadDefinition,
+		&k8sWorkloadDefinition,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubernetes workload definition in threeport API: %w", err)
 	}
 
 	// construct kubernetes workload definition config
-	createdWorkloadDefinitionConfig := &KubernetesWorkloadDefinitionConfig{
+	createdK8sWorkloadDefinitionConfig := &KubernetesWorkloadDefinitionConfig{
 		KubernetesWorkloadDefinition: KubernetesWorkloadDefinitionValues{
-			Name:               createdWorkloadDefinition.Name,
-			YAMLDocument:       workloadDefinitionValues.YAMLDocument,
-			WorkloadConfigPath: workloadDefinitionValues.WorkloadConfigPath,
-			Age:                util.Ptr(util.GetAgeFormatted(createdWorkloadDefinition.CreatedAt)),
+			Name:               createdK8sWorkloadDefinition.Name,
+			YAMLDocument:       k8sWorkloadDefinitionValues.YAMLDocument,
+			WorkloadConfigPath: k8sWorkloadDefinitionValues.WorkloadConfigPath,
+			Age:                util.Ptr(util.GetAgeFormatted(createdK8sWorkloadDefinition.CreatedAt)),
 		},
 	}
 
-	return createdWorkloadDefinitionConfig, nil
+	return createdK8sWorkloadDefinitionConfig, nil
 }
 
 // Replace updates the entire kubernetes workload definition object in the Threeport API.
@@ -137,14 +137,14 @@ func (w *KubernetesWorkloadDefinitionConfig) Replace(
 	apiEndpoint string,
 	name string,
 ) (*KubernetesWorkloadDefinitionConfig, error) {
-	workloadDefinitionValues := w.KubernetesWorkloadDefinition
+	k8sWorkloadDefinitionValues := w.KubernetesWorkloadDefinition
 	// validate config
 	if err := w.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid kubernetes workload definition config: %w", err)
 	}
 
 	// get existing kubernetes workload definition by name
-	existingWorkloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
+	existingK8sWorkloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
 		apiClient,
 		apiEndpoint,
 		name,
@@ -154,48 +154,48 @@ func (w *KubernetesWorkloadDefinitionConfig) Replace(
 	}
 
 	// build the path to the YAML document relative to the user's working directory
-	configPath, _ := filepath.Split(*workloadDefinitionValues.WorkloadConfigPath)
-	relativeYamlPath := path.Join(configPath, *workloadDefinitionValues.YAMLDocument)
+	configPath, _ := filepath.Split(*k8sWorkloadDefinitionValues.WorkloadConfigPath)
+	relativeYamlPath := path.Join(configPath, *k8sWorkloadDefinitionValues.YAMLDocument)
 
 	// load YAML document
 	definitionContent, err := os.ReadFile(relativeYamlPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read definition YAMLDocument file with name %s: %w", *workloadDefinitionValues.YAMLDocument, err)
+		return nil, fmt.Errorf("failed to read definition YAMLDocument file with name %s: %w", *k8sWorkloadDefinitionValues.YAMLDocument, err)
 	}
 	stringContent := string(definitionContent)
 
 	// construct updated kubernetes workload definition object
-	updatedWorkloadDefinition := &api_v0.KubernetesWorkloadDefinition{
+	updatedK8sWorkloadDefinition := &api_v0.KubernetesWorkloadDefinition{
 		Common: api_v0.Common{
-			ID: existingWorkloadDefinition.ID,
+			ID: existingK8sWorkloadDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Name: workloadDefinitionValues.Name,
+			Name: k8sWorkloadDefinitionValues.Name,
 		},
 		YAMLDocument: &stringContent,
 	}
 
 	// replace kubernetes workload definition
-	replacedWorkloadDefinition, err := client_v0.ReplaceKubernetesWorkloadDefinition(
+	replacedK8sWorkloadDefinition, err := client_v0.ReplaceKubernetesWorkloadDefinition(
 		apiClient,
 		apiEndpoint,
-		updatedWorkloadDefinition,
+		updatedK8sWorkloadDefinition,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to replace kubernetes workload definition in threeport API: %w", err)
 	}
 
 	// construct updated kubernetes workload definition config
-	updatedWorkloadDefinitionConfig := &KubernetesWorkloadDefinitionConfig{
+	updatedK8sWorkloadDefinitionConfig := &KubernetesWorkloadDefinitionConfig{
 		KubernetesWorkloadDefinition: KubernetesWorkloadDefinitionValues{
-			Name:               replacedWorkloadDefinition.Name,
-			YAMLDocument:       workloadDefinitionValues.YAMLDocument,
-			WorkloadConfigPath: workloadDefinitionValues.WorkloadConfigPath,
-			Age:                util.Ptr(util.GetAgeFormatted(replacedWorkloadDefinition.CreatedAt)),
+			Name:               replacedK8sWorkloadDefinition.Name,
+			YAMLDocument:       k8sWorkloadDefinitionValues.YAMLDocument,
+			WorkloadConfigPath: k8sWorkloadDefinitionValues.WorkloadConfigPath,
+			Age:                util.Ptr(util.GetAgeFormatted(replacedK8sWorkloadDefinition.CreatedAt)),
 		},
 	}
 
-	return updatedWorkloadDefinitionConfig, nil
+	return updatedK8sWorkloadDefinitionConfig, nil
 }
 
 // Delete deletes a kubernetes workload definition from the Threeport API.
@@ -203,49 +203,49 @@ func (w *KubernetesWorkloadDefinitionConfig) Delete(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*KubernetesWorkloadDefinitionConfig, error) {
-	workloadDefinitionValues := w.KubernetesWorkloadDefinition
+	k8sWorkloadDefinitionValues := w.KubernetesWorkloadDefinition
 	// get kubernetes workload definition by name
-	workloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
+	k8sWorkloadDefinition, err := client_v0.GetKubernetesWorkloadDefinitionByName(
 		apiClient,
 		apiEndpoint,
-		*workloadDefinitionValues.Name,
+		*k8sWorkloadDefinitionValues.Name,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find kubernetes workload definition with name %s: %w", *workloadDefinitionValues.Name, err)
+		return nil, fmt.Errorf("failed to find kubernetes workload definition with name %s: %w", *k8sWorkloadDefinitionValues.Name, err)
 	}
 
 	// delete kubernetes workload definition
-	deletedWorkloadDefinition, err := client_v0.DeleteKubernetesWorkloadDefinition(
+	deletedK8sWorkloadDefinition, err := client_v0.DeleteKubernetesWorkloadDefinition(
 		apiClient,
 		apiEndpoint,
-		*workloadDefinition.ID,
+		*k8sWorkloadDefinition.ID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete kubernetes workload definition from Threeport API: %w", err)
 	}
 
 	// construct deleted kubernetes workload definition config
-	deletedWorkloadDefinitionConfig := &KubernetesWorkloadDefinitionConfig{
+	deletedK8sWorkloadDefinitionConfig := &KubernetesWorkloadDefinitionConfig{
 		KubernetesWorkloadDefinition: KubernetesWorkloadDefinitionValues{
-			Name: deletedWorkloadDefinition.Name,
+			Name: deletedK8sWorkloadDefinition.Name,
 		},
 	}
 
-	return deletedWorkloadDefinitionConfig, nil
+	return deletedK8sWorkloadDefinitionConfig, nil
 }
 
-// Validate validates inputs to create workload definitions.
+// Validate validates inputs to create kubernetes workload definitions.
 func (w *KubernetesWorkloadDefinitionConfig) Validate() error {
-	workloadDefinitionValues := w.KubernetesWorkloadDefinition
+	k8sWorkloadDefinitionValues := w.KubernetesWorkloadDefinition
 	multiError := util.MultiError{}
 
 	// ensure name is set
-	if workloadDefinitionValues.Name == nil {
+	if k8sWorkloadDefinitionValues.Name == nil {
 		multiError.AppendError(errors.New("missing required field in config: Name"))
 	}
 
 	// ensure YAML document is set
-	if workloadDefinitionValues.YAMLDocument == nil {
+	if k8sWorkloadDefinitionValues.YAMLDocument == nil {
 		multiError.AppendError(errors.New("missing required field in config: YAMLDocument"))
 	}
 

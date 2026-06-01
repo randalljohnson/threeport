@@ -10,9 +10,9 @@ import (
 	config_v0 "github.com/threeport/threeport/pkg/config/v0"
 )
 
-// outputGetv0WorkloadsCmd produces the tabular output for the
+// outputGetv0K8sWorkloadsCmd produces the tabular output for the
 // 'get workloads' command.
-func outputGetv0WorkloadsCmd(
+func outputGetv0K8sWorkloadsCmd(
 	workloads *[]config_v0.KubernetesWorkloadConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
@@ -46,21 +46,21 @@ func outputGetv0WorkloadsCmd(
 	return nil
 }
 
-// outputGetv0WorkloadDefinitionsCmd produces the tabular output for the
+// outputGetv0K8sWorkloadDefinitionsCmd produces the tabular output for the
 // `get workload-definitions` command.
-func outputGetv0WorkloadDefinitionsCmd(
-	workloadDefinitions *[]config_v0.KubernetesWorkloadDefinitionConfig,
+func outputGetv0K8sWorkloadDefinitionsCmd(
+	k8sWorkloadDefinitions *[]config_v0.KubernetesWorkloadDefinitionConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	fmt.Fprintln(writer, "NAME\t AGE")
-	for _, workloadDefinition := range *workloadDefinitions {
+	for _, k8sWorkloadDefinition := range *k8sWorkloadDefinitions {
 		age := ""
-		if workloadDefinition.KubernetesWorkloadDefinition.Age != nil {
-			age = *workloadDefinition.KubernetesWorkloadDefinition.Age
+		if k8sWorkloadDefinition.KubernetesWorkloadDefinition.Age != nil {
+			age = *k8sWorkloadDefinition.KubernetesWorkloadDefinition.Age
 		}
 		fmt.Fprintln(
 			writer,
-			*workloadDefinition.KubernetesWorkloadDefinition.Name, "\t",
+			*k8sWorkloadDefinition.KubernetesWorkloadDefinition.Name, "\t",
 			age,
 		)
 	}
@@ -69,36 +69,36 @@ func outputGetv0WorkloadDefinitionsCmd(
 	return nil
 }
 
-// outputGetv0WorkloadInstancesCmd produces the tabular output for the
+// outputGetv0K8sWorkloadInstancesCmd produces the tabular output for the
 // `get workload-instances` command.
-func outputGetv0WorkloadInstancesCmd(
-	workloadInstances *[]config_v0.KubernetesWorkloadInstanceConfig,
+func outputGetv0K8sWorkloadInstancesCmd(
+	k8sWorkloadInstances *[]config_v0.KubernetesWorkloadInstanceConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	fmt.Fprintln(writer, "NAME\t WORKLOAD DEFINITION\t KUBERNETES RUNTIME INSTANCE\t STATUS\t AGE")
-	for _, workloadInstance := range *workloadInstances {
-		workloadDefinitionName := ""
-		if workloadInstance.KubernetesWorkloadInstance.KubernetesWorkloadDefinition != nil &&
-			workloadInstance.KubernetesWorkloadInstance.KubernetesWorkloadDefinition.Name != nil {
-			workloadDefinitionName = *workloadInstance.KubernetesWorkloadInstance.KubernetesWorkloadDefinition.Name
+	for _, k8sWorkloadInstance := range *k8sWorkloadInstances {
+		k8sWorkloadDefinitionName := ""
+		if k8sWorkloadInstance.KubernetesWorkloadInstance.KubernetesWorkloadDefinition != nil &&
+			k8sWorkloadInstance.KubernetesWorkloadInstance.KubernetesWorkloadDefinition.Name != nil {
+			k8sWorkloadDefinitionName = *k8sWorkloadInstance.KubernetesWorkloadInstance.KubernetesWorkloadDefinition.Name
 		}
 		kubernetesRuntimeInstanceName := ""
-		if workloadInstance.KubernetesWorkloadInstance.KubernetesRuntimeInstance != nil &&
-			workloadInstance.KubernetesWorkloadInstance.KubernetesRuntimeInstance.Name != nil {
-			kubernetesRuntimeInstanceName = *workloadInstance.KubernetesWorkloadInstance.KubernetesRuntimeInstance.Name
+		if k8sWorkloadInstance.KubernetesWorkloadInstance.KubernetesRuntimeInstance != nil &&
+			k8sWorkloadInstance.KubernetesWorkloadInstance.KubernetesRuntimeInstance.Name != nil {
+			kubernetesRuntimeInstanceName = *k8sWorkloadInstance.KubernetesWorkloadInstance.KubernetesRuntimeInstance.Name
 		}
 		status := ""
-		if workloadInstance.KubernetesWorkloadInstance.Status != nil {
-			status = *workloadInstance.KubernetesWorkloadInstance.Status
+		if k8sWorkloadInstance.KubernetesWorkloadInstance.Status != nil {
+			status = *k8sWorkloadInstance.KubernetesWorkloadInstance.Status
 		}
 		age := ""
-		if workloadInstance.KubernetesWorkloadInstance.Age != nil {
-			age = *workloadInstance.KubernetesWorkloadInstance.Age
+		if k8sWorkloadInstance.KubernetesWorkloadInstance.Age != nil {
+			age = *k8sWorkloadInstance.KubernetesWorkloadInstance.Age
 		}
 		fmt.Fprintln(
 			writer,
-			*workloadInstance.KubernetesWorkloadInstance.Name, "\t",
-			workloadDefinitionName, "\t",
+			*k8sWorkloadInstance.KubernetesWorkloadInstance.Name, "\t",
+			k8sWorkloadDefinitionName, "\t",
 			kubernetesRuntimeInstanceName, "\t",
 			status, "\t",
 			age,

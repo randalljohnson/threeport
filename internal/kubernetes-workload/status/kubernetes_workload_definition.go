@@ -14,9 +14,9 @@ type WorkloadDefinitionStatusDetail struct {
 	KubernetesWorkloadInstances *[]v0.KubernetesWorkloadInstance
 }
 
-// GetWorkloadDefinitionStatus inspects a kubernetes workload definition and returns the status
-// detials for it.
-func GetWorkloadDefinitionStatus(
+// GetKubernetesWorkloadDefinitionStatus inspects a kubernetes workload definition and
+// returns the status details for it.
+func GetKubernetesWorkloadDefinitionStatus(
 	apiClient *http.Client,
 	apiEndpoint string,
 	workloadDefinitionId uint,

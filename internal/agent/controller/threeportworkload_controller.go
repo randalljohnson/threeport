@@ -77,7 +77,7 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if err := r.Get(ctx, req.NamespacedName, &threeportWorkload); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	logger = logger.WithValues("workloadInstanceID", threeportWorkload.Spec.KubernetesWorkloadInstanceID)
+	logger = logger.WithValues("kubernetesWorkloadInstanceID", threeportWorkload.Spec.KubernetesWorkloadInstanceID)
 	ctx = log.IntoContext(ctx, logger)
 
 	// add finalizer if needed or perform on-deletion operations if
@@ -104,11 +104,11 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// loop over each resource defined, place a watch on each and add informer
 	// event handlers to process K8s events that involve these resources
-	for _, workloadResourceInstance := range threeportWorkload.Spec.KubernetesWorkloadResourceInstances {
+	for _, k8sWorkloadResourceInstance := range threeportWorkload.Spec.KubernetesWorkloadResourceInstances {
 		gvk := schema.GroupVersionKind{
-			Group:   workloadResourceInstance.Group,
-			Version: workloadResourceInstance.Version,
-			Kind:    workloadResourceInstance.Kind,
+			Group:   k8sWorkloadResourceInstance.Group,
+			Version: k8sWorkloadResourceInstance.Version,
+			Kind:    k8sWorkloadResourceInstance.Kind,
 		}
 
 		// get resource mapping from API
@@ -120,11 +120,11 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 		// get resource unique ID from API
 		nsName := types.NamespacedName{
-			Namespace: workloadResourceInstance.Namespace,
-			Name:      workloadResourceInstance.Name,
+			Namespace: k8sWorkloadResourceInstance.Namespace,
+			Name:      k8sWorkloadResourceInstance.Name,
 		}
 		var unstructuredObj unstructured.Unstructured
-		unstructuredObj.SetGroupVersionKind(gvr.GroupVersion().WithKind(workloadResourceInstance.Kind))
+		unstructuredObj.SetGroupVersionKind(gvr.GroupVersion().WithKind(k8sWorkloadResourceInstance.Kind))
 		if err := r.Get(ctx, nsName, &unstructuredObj); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to get resource from API: %w", err)
 		}
@@ -136,9 +136,9 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			gvr,
 			threeportWorkload.Spec.WorkloadType,
 			threeportWorkload.Spec.KubernetesWorkloadInstanceID,
-			workloadResourceInstance.Name,
-			workloadResourceInstance.Namespace,
-			workloadResourceInstance.ThreeportID,
+			k8sWorkloadResourceInstance.Name,
+			k8sWorkloadResourceInstance.Namespace,
+			k8sWorkloadResourceInstance.ThreeportID,
 			resourceUID,
 		)
 	}
@@ -235,22 +235,22 @@ func (r *ThreeportWorkloadReconciler) reconcileFinalizer(
 // channel.  These are recorded on the ThreeportWorkloadReconciler object so
 // the informers can be stopped when the ThreeportWorkload resource is deleted.
 func (r *ThreeportWorkloadReconciler) addInformerStopChannel(
-	workloadInstanceID uint,
+	k8sWorkloadInstanceID uint,
 	stopChannel chan struct{},
 ) {
-	workloadInstanceIDFound := false
+	k8sWorkloadInstanceIDFound := false
 	for i, informerStopChans := range r.InformerStopChans {
-		if informerStopChans.KubernetesWorkloadInstanceID == workloadInstanceID {
+		if informerStopChans.KubernetesWorkloadInstanceID == k8sWorkloadInstanceID {
 			informerStopChans.StopChannels = append(informerStopChans.StopChannels, stopChannel)
 			r.InformerStopChans[i] = informerStopChans
-			workloadInstanceIDFound = true
+			k8sWorkloadInstanceIDFound = true
 			break
 		}
 	}
 
-	if !workloadInstanceIDFound {
+	if !k8sWorkloadInstanceIDFound {
 		informerStopChans := InformerStopChannels{
-			KubernetesWorkloadInstanceID: workloadInstanceID,
+			KubernetesWorkloadInstanceID: k8sWorkloadInstanceID,
 			StopChannels:       []chan struct{}{stopChannel},
 		}
 		r.InformerStopChans = append(r.InformerStopChans, informerStopChans)
@@ -261,11 +261,11 @@ func (r *ThreeportWorkloadReconciler) addInformerStopChannel(
 // instance ID and stops each of them and then removes that record from the
 // Reconciler.  This function doesn't return an error if no stop channels are
 // found since there's nothing we can do about it at this point.
-func (r *ThreeportWorkloadReconciler) stopInformers(ctx context.Context, workloadInstanceID uint) {
+func (r *ThreeportWorkloadReconciler) stopInformers(ctx context.Context, k8sWorkloadInstanceID uint) {
 	logger := log.FromContext(ctx)
 
 	for i, informerStopChans := range r.InformerStopChans {
-		if informerStopChans.KubernetesWorkloadInstanceID == workloadInstanceID {
+		if informerStopChans.KubernetesWorkloadInstanceID == k8sWorkloadInstanceID {
 			for _, stopChan := range informerStopChans.StopChannels {
 				if stopChan != nil {
 					logger.Info("ThreeportWorkload resource deleted - stopping informers")

@@ -91,7 +91,7 @@ func (h *HelmWorkloadInstanceConfig) Get(
 		}
 
 		// get helm workload status
-		instanceStatusDetail := status.GetWorkloadInstanceStatus(
+		instanceStatusDetail := status.GetKubernetesWorkloadInstanceStatus(
 			apiClient,
 			apiEndpoint,
 			agent.HelmWorkloadInstanceType,

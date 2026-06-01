@@ -24,7 +24,7 @@ import (
 // @Router /v0/workload-resource-definition-sets [post]
 func (h Handler) AddWorkloadResourceDefinitions(c echo.Context) error {
 	objectType := v0.ObjectTypeKubernetesWorkloadResourceDefinition
-	var workloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
+	var k8sWorkloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, v0.KubernetesWorkloadResourceDefinition{}); err != nil {
@@ -32,13 +32,13 @@ func (h Handler) AddWorkloadResourceDefinitions(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
-	if err := c.Bind(&workloadResourceDefinitions); err != nil {
+	if err := c.Bind(&k8sWorkloadResourceDefinitions); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
-	if id, err := apiserver_lib.ValidateBoundData(c, workloadResourceDefinitions, objectType); err != nil {
+	if id, err := apiserver_lib.ValidateBoundData(c, k8sWorkloadResourceDefinitions, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
@@ -46,7 +46,7 @@ func (h Handler) AddWorkloadResourceDefinitions(c echo.Context) error {
 	// create all workload resource definitions or none at all
 	var createdWRDs []v0.KubernetesWorkloadResourceDefinition
 	err := h.DB.Transaction(func(tx *gorm.DB) error {
-		for _, wrd := range workloadResourceDefinitions {
+		for _, wrd := range k8sWorkloadResourceDefinitions {
 			if result := h.DB.Create(&wrd); result.Error != nil {
 				return result.Error
 			}

@@ -17050,7 +17050,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "KubernetesWorkloadInstances": {
-                    "description": "The associated workload instances running on this kubernetes runtime.",
+                    "description": "The associated kubernetes workload instances running on this kubernetes runtime.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.KubernetesWorkloadInstance"

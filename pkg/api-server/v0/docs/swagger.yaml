@@ -1210,8 +1210,8 @@ definitions:
         description: The kubernetes runtime definition for this instance.
         type: integer
       KubernetesWorkloadInstances:
-        description: The associated workload instances running on this kubernetes
-          runtime.
+        description: The associated kubernetes workload instances running on this
+          kubernetes runtime.
         items:
           $ref: '#/definitions/v0.KubernetesWorkloadInstance'
         type: array

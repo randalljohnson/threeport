@@ -18,17 +18,17 @@ import (
 // has been created.
 func v0KubernetesWorkloadDefinitionCreated(
 	r *controller.Reconciler,
-	workloadDefinition *v0.KubernetesWorkloadDefinition,
+	k8sWorkloadDefinition *v0.KubernetesWorkloadDefinition,
 	log *logr.Logger,
 ) (int64, error) {
 	// parse YAMLDocument and get kube objects in JSON
-	jsonObjects, err := kube.GetJsonResourcesFromYamlDoc(*workloadDefinition.YAMLDocument)
+	jsonObjects, err := kube.GetJsonResourcesFromYamlDoc(*k8sWorkloadDefinition.YAMLDocument)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get JSON kube objects from YAML document: %w", err)
 	}
 
-	// create workload resource definition objects
-	var workloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
+	// create kubernetes workload resource definition objects
+	var k8sWorkloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
 	for _, jsonContent := range jsonObjects {
 		// unmarshal the json into the type used by API
 		var jsonDefinition datatypes.JSON
@@ -36,19 +36,19 @@ func v0KubernetesWorkloadDefinitionCreated(
 			return 0, fmt.Errorf("failed to unmarshal json to datatypes.JSON: %w", err)
 		}
 
-		// build the workload resource definition and marshal to json
-		workloadResourceDefinition := v0.KubernetesWorkloadResourceDefinition{
-			JSONDefinition:       &jsonDefinition,
-			KubernetesWorkloadDefinitionID: workloadDefinition.ID,
+		// build the kubernetes workload resource definition and marshal to json
+		k8sWorkloadResourceDefinition := v0.KubernetesWorkloadResourceDefinition{
+			JSONDefinition:                 &jsonDefinition,
+			KubernetesWorkloadDefinitionID: k8sWorkloadDefinition.ID,
 		}
-		workloadResourceDefinitions = append(workloadResourceDefinitions, workloadResourceDefinition)
+		k8sWorkloadResourceDefinitions = append(k8sWorkloadResourceDefinitions, k8sWorkloadResourceDefinition)
 	}
 
 	// create workload resource definitions in API
 	createdWRDs, err := client.CreateWorkloadResourceDefinitions(
 		r.APIClient,
 		r.APIServer,
-		&workloadResourceDefinitions,
+		&k8sWorkloadResourceDefinitions,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create workload resource definitions in API: %w", err)
@@ -68,7 +68,7 @@ func v0KubernetesWorkloadDefinitionCreated(
 // has been updated.
 func v0KubernetesWorkloadDefinitionUpdated(
 	r *controller.Reconciler,
-	workloadDefinition *v0.KubernetesWorkloadDefinition,
+	k8sWorkloadDefinition *v0.KubernetesWorkloadDefinition,
 	log *logr.Logger,
 ) (int64, error) {
 	return 0, nil
@@ -78,32 +78,32 @@ func v0KubernetesWorkloadDefinitionUpdated(
 // has been deleted.
 func v0KubernetesWorkloadDefinitionDeleted(
 	r *controller.Reconciler,
-	workloadDefinition *v0.KubernetesWorkloadDefinition,
+	k8sWorkloadDefinition *v0.KubernetesWorkloadDefinition,
 	log *logr.Logger,
 ) (int64, error) {
 	// check that deletion is scheduled - if not there's a problem
-	if workloadDefinition.DeletionScheduled == nil {
+	if k8sWorkloadDefinition.DeletionScheduled == nil {
 		return 0, errors.New("deletion notification receieved but not scheduled")
 	}
 
 	// check to see if reconciled - it should not be, but if so we should do no
 	// more
-	if workloadDefinition.DeletionConfirmed != nil {
+	if k8sWorkloadDefinition.DeletionConfirmed != nil {
 		return 0, nil
 	}
 
-	// get related workload resource definitions
-	workloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
+	// get related kubernetes workload resource definitions
+	k8sWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
 		r.APIClient,
 		r.APIServer,
-		*workloadDefinition.ID,
+		*k8sWorkloadDefinition.ID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get workload resource definitions by kubernetes workload definition ID: %w", err)
 	}
 
-	// delete each related workload resource definition
-	for _, wrd := range *workloadResourceDefinitions {
+	// delete each related kubernetes workload resource definition
+	for _, wrd := range *k8sWorkloadResourceDefinitions {
 		_, err := client.DeleteKubernetesWorkloadResourceDefinition(r.APIClient, r.APIServer, *wrd.ID)
 		if err != nil {
 			return 0, fmt.Errorf("failed to delete workload resource definition with ID %d: %w", wrd.ID, err)

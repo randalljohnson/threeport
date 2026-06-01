@@ -38,7 +38,7 @@ func (w *KubernetesWorkloadConfig) Get(
 	apiEndpoint string,
 ) (*[]KubernetesWorkloadConfig, error) {
 	// get operations
-	operations, workloadDefinitions, workloadInstances := w.GetOperations(
+	operations, k8sWorkloadDefinitions, k8sWorkloadInstances := w.GetOperations(
 		apiClient,
 		apiEndpoint,
 	)
@@ -52,9 +52,9 @@ func (w *KubernetesWorkloadConfig) Get(
 	}
 
 	// assemble the defined instances
-	workloadConfigs := mapToWorkloadDefinedInstances(workloadDefinitions, workloadInstances)
+	k8sWorkloadConfigs := mapToK8sWorkloadDefinedInstances(k8sWorkloadDefinitions, k8sWorkloadInstances)
 
-	return workloadConfigs, nil
+	return k8sWorkloadConfigs, nil
 }
 
 // Create creates a kubernetes workload definition and instance in the Threeport API.
@@ -62,9 +62,9 @@ func (w *KubernetesWorkloadConfig) Create(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*[]KubernetesWorkloadConfig, error) {
-	workloadValues := w.Workload
+	k8sWorkloadValues := w.Workload
 	// get operations
-	operations, workloadDefinitions, workloadInstances := w.GetOperations(
+	operations, k8sWorkloadDefinitions, k8sWorkloadInstances := w.GetOperations(
 		apiClient,
 		apiEndpoint,
 	)
@@ -73,15 +73,15 @@ func (w *KubernetesWorkloadConfig) Create(
 	if err := operations.Create(); err != nil {
 		return nil, fmt.Errorf(
 			"failed to execute create operations for workload defined instance with name %s: %w",
-			*workloadValues.Name,
+			*k8sWorkloadValues.Name,
 			err,
 		)
 	}
 
 	// assemble the defined instances
-	workloadConfigs := mapToWorkloadDefinedInstances(workloadDefinitions, workloadInstances)
+	k8sWorkloadConfigs := mapToK8sWorkloadDefinedInstances(k8sWorkloadDefinitions, k8sWorkloadInstances)
 
-	return workloadConfigs, nil
+	return k8sWorkloadConfigs, nil
 }
 
 // Replace replaces a kubernetes workload definition and instance in the Threeport API.
@@ -91,7 +91,7 @@ func (w *KubernetesWorkloadConfig) Replace(
 	name string,
 ) (*[]KubernetesWorkloadConfig, error) {
 	// get operations
-	operations, workloadDefinitions, workloadInstances := w.GetOperations(
+	operations, k8sWorkloadDefinitions, k8sWorkloadInstances := w.GetOperations(
 		apiClient,
 		apiEndpoint,
 	)
@@ -106,9 +106,9 @@ func (w *KubernetesWorkloadConfig) Replace(
 	}
 
 	// assemble the defined instances
-	workloadConfigs := mapToWorkloadDefinedInstances(workloadDefinitions, workloadInstances)
+	k8sWorkloadConfigs := mapToK8sWorkloadDefinedInstances(k8sWorkloadDefinitions, k8sWorkloadInstances)
 
-	return workloadConfigs, nil
+	return k8sWorkloadConfigs, nil
 }
 
 // Delete deletes a kubernetes workload definition and instance from the Threeport API.
@@ -116,7 +116,7 @@ func (w *KubernetesWorkloadConfig) Delete(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*[]KubernetesWorkloadConfig, error) {
-	workloadValues := w.Workload
+	k8sWorkloadValues := w.Workload
 	// get operations
 	operations, _, _ := w.GetOperations(
 		apiClient,
@@ -127,7 +127,7 @@ func (w *KubernetesWorkloadConfig) Delete(
 	if err := operations.Delete(); err != nil {
 		return nil, fmt.Errorf(
 			"failed to execute delete operations for workload defined instance with name %s: %w",
-			*workloadValues.Name,
+			*k8sWorkloadValues.Name,
 			err,
 		)
 	}
@@ -141,109 +141,109 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*util.Operations, *[]KubernetesWorkloadDefinitionConfig, *[]KubernetesWorkloadInstanceConfig) {
-	workloadValues := w.Workload
+	k8sWorkloadValues := w.Workload
 	var err error
-	var operatedWorkloadDefinitions []KubernetesWorkloadDefinitionConfig
-	var operatedWorkloadInstances []KubernetesWorkloadInstanceConfig
+	var operatedK8sWorkloadDefinitions []KubernetesWorkloadDefinitionConfig
+	var operatedK8sWorkloadInstances []KubernetesWorkloadInstanceConfig
 
 	operations := util.Operations{}
 
 	// add kubernetes workload definition operation
-	workloadDefinitionConfig := KubernetesWorkloadDefinitionConfig{
+	k8sWorkloadDefinitionConfig := KubernetesWorkloadDefinitionConfig{
 		KubernetesWorkloadDefinition: KubernetesWorkloadDefinitionValues{
-			Name:               workloadValues.Name,
-			YAMLDocument:       workloadValues.YAMLDocument,
-			WorkloadConfigPath: workloadValues.WorkloadConfigPath,
+			Name:               k8sWorkloadValues.Name,
+			YAMLDocument:       k8sWorkloadValues.YAMLDocument,
+			WorkloadConfigPath: k8sWorkloadValues.WorkloadConfigPath,
 		},
 	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
-			workloadDefinition, err := workloadDefinitionConfig.Create(apiClient, apiEndpoint)
+			k8sWorkloadDefinition, err := k8sWorkloadDefinitionConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create kubernetes workload definition with name %s: %w", *workloadValues.Name, err)
+				return fmt.Errorf("failed to create kubernetes workload definition with name %s: %w", *k8sWorkloadValues.Name, err)
 			}
-			operatedWorkloadDefinitions = append(operatedWorkloadDefinitions, *workloadDefinition)
+			operatedK8sWorkloadDefinitions = append(operatedK8sWorkloadDefinitions, *k8sWorkloadDefinition)
 			return nil
 		},
 		Delete: func() error {
-			_, err = workloadDefinitionConfig.Delete(apiClient, apiEndpoint)
+			_, err = k8sWorkloadDefinitionConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete kubernetes workload definition with name %s: %w", *workloadValues.Name, err)
+				return fmt.Errorf("failed to delete kubernetes workload definition with name %s: %w", *k8sWorkloadValues.Name, err)
 			}
 			return nil
 		},
 		Get: func() error {
-			workloadDefinitions, err := workloadDefinitionConfig.Get(apiClient, apiEndpoint)
+			k8sWorkloadDefinitions, err := k8sWorkloadDefinitionConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to get workload definitions: %w", err)
+				return fmt.Errorf("failed to get kubernetes workload definitions: %w", err)
 			}
-			operatedWorkloadDefinitions = append(operatedWorkloadDefinitions, *workloadDefinitions...)
+			operatedK8sWorkloadDefinitions = append(operatedK8sWorkloadDefinitions, *k8sWorkloadDefinitions...)
 			return nil
 		},
 		Name: "kubernetes workload definition",
 		Replace: func(name string) error {
-			workloadDefinition, err := workloadDefinitionConfig.Replace(apiClient, apiEndpoint, name)
+			k8sWorkloadDefinition, err := k8sWorkloadDefinitionConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
 				return fmt.Errorf("failed to replace kubernetes workload definition with name %s: %w", name, err)
 			}
-			operatedWorkloadDefinitions = append(operatedWorkloadDefinitions, *workloadDefinition)
+			operatedK8sWorkloadDefinitions = append(operatedK8sWorkloadDefinitions, *k8sWorkloadDefinition)
 			return nil
 		},
 	})
 
 	// add kubernetes workload instance operation
-	workloadInstanceConfig := KubernetesWorkloadInstanceConfig{
+	k8sWorkloadInstanceConfig := KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-			Name:                      workloadValues.Name,
-			KubernetesRuntimeInstance: workloadValues.KubernetesRuntimeInstance,
-			KubernetesWorkloadDefinition:        &workloadDefinitionConfig.KubernetesWorkloadDefinition,
+			Name:                      k8sWorkloadValues.Name,
+			KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
+			KubernetesWorkloadDefinition:        &k8sWorkloadDefinitionConfig.KubernetesWorkloadDefinition,
 		},
 	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
-			workloadInstance, err := workloadInstanceConfig.Create(apiClient, apiEndpoint)
+			k8sWorkloadInstance, err := k8sWorkloadInstanceConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create kubernetes workload instance with name %s: %w", *workloadValues.Name, err)
+				return fmt.Errorf("failed to create kubernetes workload instance with name %s: %w", *k8sWorkloadValues.Name, err)
 			}
-			operatedWorkloadInstances = append(operatedWorkloadInstances, *workloadInstance)
+			operatedK8sWorkloadInstances = append(operatedK8sWorkloadInstances, *k8sWorkloadInstance)
 			return nil
 		},
 		Delete: func() error {
-			_, err = workloadInstanceConfig.Delete(apiClient, apiEndpoint)
+			_, err = k8sWorkloadInstanceConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete kubernetes workload instance with name %s: %w", *workloadValues.Name, err)
+				return fmt.Errorf("failed to delete kubernetes workload instance with name %s: %w", *k8sWorkloadValues.Name, err)
 			}
 			return nil
 		},
 		Get: func() error {
-			workloadInstance, err := workloadInstanceConfig.Get(apiClient, apiEndpoint)
+			k8sWorkloadInstance, err := k8sWorkloadInstanceConfig.Get(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to get workload instances: %w", err)
+				return fmt.Errorf("failed to get kubernetes workload instances: %w", err)
 			}
-			operatedWorkloadInstances = append(operatedWorkloadInstances, *workloadInstance...)
+			operatedK8sWorkloadInstances = append(operatedK8sWorkloadInstances, *k8sWorkloadInstance...)
 			return nil
 		},
 		Name: "kubernetes workload instance",
 		Replace: func(name string) error {
-			workloadInstance, err := workloadInstanceConfig.Replace(apiClient, apiEndpoint, name)
+			k8sWorkloadInstance, err := k8sWorkloadInstanceConfig.Replace(apiClient, apiEndpoint, name)
 			if err != nil {
 				return fmt.Errorf("failed to replace kubernetes workload definition with name %s: %w", name, err)
 			}
-			operatedWorkloadInstances = append(operatedWorkloadInstances, *workloadInstance)
+			operatedK8sWorkloadInstances = append(operatedK8sWorkloadInstances, *k8sWorkloadInstance)
 			return nil
 		},
 	})
 
 	// add domain name if provided
 	var domainNameDefinitionConfig DomainNameDefinitionConfig
-	if workloadValues.DomainName != nil {
+	if k8sWorkloadValues.DomainName != nil {
 		// add domain name definition operation
 		domainNameDefinitionConfig = DomainNameDefinitionConfig{
 			DomainNameDefinition: DomainNameDefinitionValues{
-				Name:       workloadValues.DomainName.Name,
-				Domain:     workloadValues.DomainName.Domain,
-				Zone:       workloadValues.DomainName.Zone,
-				AdminEmail: workloadValues.DomainName.AdminEmail,
+				Name:       k8sWorkloadValues.DomainName.Name,
+				Domain:     k8sWorkloadValues.DomainName.Domain,
+				Zone:       k8sWorkloadValues.DomainName.Zone,
+				AdminEmail: k8sWorkloadValues.DomainName.AdminEmail,
 			},
 		}
 		operations.AppendOperation(util.Operation{
@@ -251,14 +251,14 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 			Create: func() error {
 				_, err = domainNameDefinitionConfig.Create(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to create domain name definition with name %s: %w", *workloadValues.DomainName.Name, err)
+					return fmt.Errorf("failed to create domain name definition with name %s: %w", *k8sWorkloadValues.DomainName.Name, err)
 				}
 				return nil
 			},
 			Delete: func() error {
 				_, err = domainNameDefinitionConfig.Delete(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to delete domain name definition with name %s: %w", *workloadValues.DomainName.Name, err)
+					return fmt.Errorf("failed to delete domain name definition with name %s: %w", *k8sWorkloadValues.DomainName.Name, err)
 				}
 				return nil
 			},
@@ -279,8 +279,8 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 		domainNameInstanceConfig := DomainNameInstanceConfig{
 			DomainNameInstance: DomainNameInstanceValues{
 				DomainNameDefinition:      &domainNameDefinitionConfig.DomainNameDefinition,
-				KubernetesRuntimeInstance: workloadValues.KubernetesRuntimeInstance,
-				KubernetesWorkloadInstance:          &workloadInstanceConfig.KubernetesWorkloadInstance,
+				KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
+				KubernetesWorkloadInstance:          &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
 			},
 		}
 		operations.AppendOperation(util.Operation{
@@ -288,14 +288,14 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 			Create: func() error {
 				_, err = domainNameInstanceConfig.Create(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to create domain name instance with name %s: %w", *workloadValues.DomainName.Name, err)
+					return fmt.Errorf("failed to create domain name instance with name %s: %w", *k8sWorkloadValues.DomainName.Name, err)
 				}
 				return nil
 			},
 			Delete: func() error {
 				_, err = domainNameInstanceConfig.Delete(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to delete domain name instance with name %s: %w", *workloadValues.DomainName.Name, err)
+					return fmt.Errorf("failed to delete domain name instance with name %s: %w", *k8sWorkloadValues.DomainName.Name, err)
 				}
 				return nil
 			},
@@ -314,15 +314,15 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 	}
 
 	// add gateway if provided
-	if workloadValues.Gateway != nil {
+	if k8sWorkloadValues.Gateway != nil {
 		// add gateway definition operation
 		gatewayDefinitionConfig := GatewayDefinitionConfig{
 			GatewayDefinition: GatewayDefinitionValues{
-				Name:                 workloadValues.Gateway.Name,
-				HttpPorts:            workloadValues.Gateway.HttpPorts,
-				TcpPorts:             workloadValues.Gateway.TcpPorts,
-				ServiceName:          workloadValues.Gateway.ServiceName,
-				SubDomain:            workloadValues.Gateway.SubDomain,
+				Name:                 k8sWorkloadValues.Gateway.Name,
+				HttpPorts:            k8sWorkloadValues.Gateway.HttpPorts,
+				TcpPorts:             k8sWorkloadValues.Gateway.TcpPorts,
+				ServiceName:          k8sWorkloadValues.Gateway.ServiceName,
+				SubDomain:            k8sWorkloadValues.Gateway.SubDomain,
 				DomainNameDefinition: &domainNameDefinitionConfig.DomainNameDefinition,
 			},
 		}
@@ -332,14 +332,14 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 			Create: func() error {
 				_, err = gatewayDefinitionConfig.Create(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to create gateway definition with name %s: %w", *workloadValues.Gateway.Name, err)
+					return fmt.Errorf("failed to create gateway definition with name %s: %w", *k8sWorkloadValues.Gateway.Name, err)
 				}
 				return nil
 			},
 			Delete: func() error {
 				_, err = gatewayDefinitionConfig.Delete(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to delete gateway definition with name %s: %w", *workloadValues.Gateway.Name, err)
+					return fmt.Errorf("failed to delete gateway definition with name %s: %w", *k8sWorkloadValues.Gateway.Name, err)
 				}
 				return nil
 			},
@@ -359,10 +359,10 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 		// add gateway instance operation
 		gatewayInstanceConfig := GatewayInstanceConfig{
 			GatewayInstance: GatewayInstanceValues{
-				Name:                      workloadValues.Gateway.Name,
+				Name:                      k8sWorkloadValues.Gateway.Name,
 				GatewayDefinition:         &gatewayDefinitionConfig.GatewayDefinition,
-				KubernetesRuntimeInstance: workloadValues.KubernetesRuntimeInstance,
-				KubernetesWorkloadInstance:          &workloadInstanceConfig.KubernetesWorkloadInstance,
+				KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
+				KubernetesWorkloadInstance:          &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
 			},
 		}
 		operations.AppendOperation(util.Operation{
@@ -370,14 +370,14 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 			Create: func() error {
 				_, err = gatewayInstanceConfig.Create(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to create gateway instance with name %s: %w", *workloadValues.Gateway.Name, err)
+					return fmt.Errorf("failed to create gateway instance with name %s: %w", *k8sWorkloadValues.Gateway.Name, err)
 				}
 				return nil
 			},
 			Delete: func() error {
 				_, err = gatewayInstanceConfig.Delete(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to delete gateway instance with name %s: %w", *workloadValues.Gateway.Name, err)
+					return fmt.Errorf("failed to delete gateway instance with name %s: %w", *k8sWorkloadValues.Gateway.Name, err)
 				}
 				return nil
 			},
@@ -396,14 +396,14 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 	}
 
 	// add secret operation
-	if workloadValues.Secret != nil {
+	if k8sWorkloadValues.Secret != nil {
 		secretConfig := SecretConfig{
 			Secret: SecretValues{
-				Name:                      workloadValues.Secret.Name,
-				AwsProviderName:           workloadValues.Secret.AwsProviderName,
-				Data:                      workloadValues.Secret.Data,
-				KubernetesRuntimeInstance: workloadValues.KubernetesRuntimeInstance,
-				KubernetesWorkloadInstance:          &workloadInstanceConfig.KubernetesWorkloadInstance,
+				Name:                      k8sWorkloadValues.Secret.Name,
+				AwsProviderName:           k8sWorkloadValues.Secret.AwsProviderName,
+				Data:                      k8sWorkloadValues.Secret.Data,
+				KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
+				KubernetesWorkloadInstance:          &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
 			},
 		}
 		operations.AppendOperation(util.Operation{
@@ -411,14 +411,14 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 			Create: func() error {
 				_, err := secretConfig.Create(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to create secret defined instance with name %s: %w", *workloadValues.Secret.Name, err)
+					return fmt.Errorf("failed to create secret defined instance with name %s: %w", *k8sWorkloadValues.Secret.Name, err)
 				}
 				return nil
 			},
 			Delete: func() error {
 				_, err := secretConfig.Delete(apiClient, apiEndpoint)
 				if err != nil {
-					return fmt.Errorf("failed to delete secret defined instance with name %s: %w", *workloadValues.Secret.Name, err)
+					return fmt.Errorf("failed to delete secret defined instance with name %s: %w", *k8sWorkloadValues.Secret.Name, err)
 				}
 				return nil
 			},
@@ -436,24 +436,24 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 		})
 	}
 
-	return &operations, &operatedWorkloadDefinitions, &operatedWorkloadInstances
+	return &operations, &operatedK8sWorkloadDefinitions, &operatedK8sWorkloadInstances
 }
 
-// mapToWorkloadDefinedInstances maps a slice of kubernetes workload definition and instance configs
-// to a slice of workload config objects
-func mapToWorkloadDefinedInstances(
-	workloadDefinitions *[]KubernetesWorkloadDefinitionConfig,
-	workloadInstances *[]KubernetesWorkloadInstanceConfig,
+// mapToK8sWorkloadDefinedInstances maps a slice of kubernetes workload definition and instance configs
+// to a slice of kubernetes workload config objects.
+func mapToK8sWorkloadDefinedInstances(
+	k8sWorkloadDefinitions *[]KubernetesWorkloadDefinitionConfig,
+	k8sWorkloadInstances *[]KubernetesWorkloadInstanceConfig,
 ) *[]KubernetesWorkloadConfig {
-	var workloadConfigs []KubernetesWorkloadConfig
-	for _, inst := range *workloadInstances {
-		for _, def := range *workloadDefinitions {
+	var k8sWorkloadConfigs []KubernetesWorkloadConfig
+	for _, inst := range *k8sWorkloadInstances {
+		for _, def := range *k8sWorkloadDefinitions {
 			instName := *inst.KubernetesWorkloadInstance.Name
 			defName := *def.KubernetesWorkloadDefinition.Name
 			// a defined instance must have matching names for definition and instance
 			// and the definition must be associated with the instance
 			if instName == defName && *inst.KubernetesWorkloadInstance.KubernetesWorkloadDefinition.Name == *def.KubernetesWorkloadDefinition.Name {
-				workloadConfig := KubernetesWorkloadConfig{
+				k8sWorkloadConfig := KubernetesWorkloadConfig{
 					Workload: KubernetesWorkloadValues{
 						Name:                      inst.KubernetesWorkloadInstance.Name,
 						YAMLDocument:              def.KubernetesWorkloadDefinition.YAMLDocument,
@@ -466,7 +466,7 @@ func mapToWorkloadDefinedInstances(
 						Age:    inst.KubernetesWorkloadInstance.Age,
 					},
 				}
-				workloadConfigs = append(workloadConfigs, workloadConfig)
+				k8sWorkloadConfigs = append(k8sWorkloadConfigs, k8sWorkloadConfig)
 				// an instance can only have one matching definition for a defined instance
 				// we can break out of the loop after finding the first matching definition
 				break
@@ -474,5 +474,5 @@ func mapToWorkloadDefinedInstances(
 		}
 	}
 
-	return &workloadConfigs
+	return &k8sWorkloadConfigs
 }

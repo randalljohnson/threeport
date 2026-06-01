@@ -94,7 +94,7 @@ HelmWorkloadInstance:
     Name: wordpress
 ```
 
-Create the default Helm kubernetes workload instance:
+Create the default Helm workload instance:
 
 ```bash
 tptctl create helm-workload-instance --config wordpress-helm-workload-instance-default.yaml
@@ -131,7 +131,7 @@ wordpress-default-vpmmjfosws   wordpress-default-release-mariadb-0         1/1  
 As you can see, there are two replicas of the WordPress app and one instance of
 its database.
 
-Now let's create another Helm kubernetes workload instance from our definition.  In this
+Now let's create another Helm workload instance from our definition.  In this
 case we'll simulate a dev instance that has some Helm values as runtime
 parameters.  Download the config and values file:
 
@@ -317,7 +317,7 @@ curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/helm/
 curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/helm/wordpress-helm-workload-instance-dev-values.yaml
 ```
 
-Now we can create a Helm kubernetes workload definition and instance with one command:
+Now we can create a Helm workload definition and instance with one command:
 
 ```bash
 tptctl create helm-workload --config wordpress-helm-workload.yaml

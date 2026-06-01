@@ -48,9 +48,9 @@ type WorkloadInstanceStatusDetail struct {
 	Events []v0.Event
 }
 
-// GetWorkloadInstanceStatus inspects a kubernetes workload instance and returns the status
-// detials for it.
-func GetWorkloadInstanceStatus(
+// GetKubernetesWorkloadInstanceStatus inspects a kubernetes workload instance and returns
+// the status details for it.
+func GetKubernetesWorkloadInstanceStatus(
 	apiClient *http.Client,
 	apiEndpoint string,
 	workloadInstanceType string,

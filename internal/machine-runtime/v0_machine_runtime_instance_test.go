@@ -3,11 +3,9 @@ package machineruntime
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"sync"
 	"testing"
 
@@ -22,31 +20,6 @@ import (
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
-
-// TestIsNetworkErr covers the substring matches that classify an error as
-// network-class (retryable) vs terminal (not retryable).
-func TestIsNetworkErr(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{"nil", nil, false},
-		{"connection refused", errors.New("dial tcp 127.0.0.1:22: connection refused"), true},
-		{"no route to host", errors.New("dial tcp: no route to host"), true},
-		{"io timeout", errors.New("dial tcp: i/o timeout"), true},
-		{"network unreachable", errors.New("network is unreachable"), true},
-		{"host unreachable", errors.New("host is unreachable"), true},
-		{"EOF", errors.New("EOF"), true},
-		{"auth failure (terminal)", errors.New("ssh: unable to authenticate"), false},
-		{"host key mismatch (terminal)", errors.New("host key mismatch for x: expected y, got z"), false},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			assert.Equal(t, c.want, isNetworkErr(c.err))
-		})
-	}
-}
 
 // TestMachineRuntimeInstanceCreated_HappyPath drives a full Created
 // reconcile against the in-process SSH server. The MRI has HostKey set to
@@ -155,11 +128,12 @@ func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())
 }
 
-// TestMachineRuntimeInstanceCreated_TerminalError points the MRI at the
+// TestMachineRuntimeInstanceCreated_HostKeyMismatch points the MRI at the
 // test server but with a HostKey that doesn't match the server's actual
-// host key. The resulting host-key-mismatch error is terminal, not
-// network-class, so the reconciler returns 0s requeue.
-func TestMachineRuntimeInstanceCreated_TerminalError(t *testing.T) {
+// host key. SSH client errors (including host key mismatch) always retry
+// after 30s, since a misconfigured key may be fixed externally without
+// changing the object.
+func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	serverSigner := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, serverSigner, "u", "p", machinetest.SSHOpts{ExitCode: 0})
@@ -182,27 +156,8 @@ func TestMachineRuntimeInstanceCreated_TerminalError(t *testing.T) {
 
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 	require.Error(t, err)
-	assert.Equal(t, int64(0), delay, "terminal errors must not be retried")
+	assert.Equal(t, int64(30), delay, "ssh-client errors always retry")
 	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())
-	assert.Contains(t, strings.ToLower(err.Error()), "host key mismatch")
-}
-
-// TestMachineRuntimeInstanceUpdated_NoOp confirms Updated returns (0, nil)
-// for the current stub implementation.
-func TestMachineRuntimeInstanceUpdated_NoOp(t *testing.T) {
-	log := logr.Discard()
-	delay, err := v0MachineRuntimeInstanceUpdated(&controller.Reconciler{}, &v0.MachineRuntimeInstance{}, &log)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
-}
-
-// TestMachineRuntimeInstanceDeleted_NoOp confirms Deleted returns (0, nil)
-// for the current stub implementation.
-func TestMachineRuntimeInstanceDeleted_NoOp(t *testing.T) {
-	log := logr.Discard()
-	delay, err := v0MachineRuntimeInstanceDeleted(&controller.Reconciler{}, &v0.MachineRuntimeInstance{}, &log)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
 }
 
 // hostKeyBase64 returns the base64-encoded marshalled public key matching

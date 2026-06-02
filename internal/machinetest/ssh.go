@@ -28,21 +28,6 @@ func NewSigner(t *testing.T) ssh.Signer {
 	return signer
 }
 
-// DialSSH opens an ssh.Client against addr with insecure host-key
-// verification (test-only) and password authentication.
-func DialSSH(t *testing.T, addr, user, password string) *ssh.Client {
-	t.Helper()
-	cfg := &ssh.ClientConfig{
-		User:            user,
-		Auth:            []ssh.AuthMethod{ssh.Password(password)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         3 * time.Second,
-	}
-	client, err := ssh.Dial("tcp", addr, cfg)
-	require.NoError(t, err)
-	return client
-}
-
 // SSHOpts controls per-test SSH server behavior.
 type SSHOpts struct {
 	// ExitCode is the exit status returned to the client on exec/shell.

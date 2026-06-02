@@ -17652,7 +17652,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Env": {
-                    "description": "The environment variables to set for the workload as KEY=VALUE entries.\nNil distinguishes \"unset\" from \"empty list\".  Values are encrypted at\nrest; keys stay queryable.",
+                    "description": "The environment variables to set for the workload as KEY=VALUE entries.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -17728,7 +17728,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Env": {
-                    "description": "The environment variables set for the workload as KEY=VALUE entries.\nNil falls back to the definition's Env at reconcile time, distinguishing\n\"unset\" from \"empty list\".  Values are encrypted at rest; keys stay\nqueryable.",
+                    "description": "The environment variables set for the workload as KEY=VALUE entries.",
                     "type": "array",
                     "items": {
                         "type": "string"

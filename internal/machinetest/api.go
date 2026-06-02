@@ -26,10 +26,10 @@ type APIStub struct {
 // "http://" scheme stripped because the threeport client helpers prepend a
 // scheme themselves (see client_lib.GetResponse). Client is a bare
 // *http.Client (Transport == nil) so the scheme check in GetResponse falls
-// through to "http://" — srv.Client() returns one whose *http.Transport has
-// TLSClientConfig set (on Go versions that pre-configure it for mixed
-// HTTP/HTTPS test servers), which trips GetResponse into picking "https://"
-// against our HTTP server.
+// through to "http://", since srv.Client() returns one whose *http.Transport
+// has TLSClientConfig set on Go versions that preconfigure it for mixed
+// HTTP and HTTPS test servers, which trips GetResponse into picking
+// "https://" against our HTTP server.
 func NewAPIStub(t *testing.T) *APIStub {
 	t.Helper()
 	mux := http.NewServeMux()

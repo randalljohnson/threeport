@@ -18,6 +18,10 @@ Each script runs through `<shell> -s` (default `/bin/bash`), optionally
 preceded by a `cd <WorkingDir>`.  `Timeout` sets a per-script deadline in
 seconds.
 
+Scripts can be retried by the reconciler on transient failure (e.g. the
+host briefly unreachable), so author them to be idempotent, safe to rerun
+without harm.
+
 The `Env` field is a list of `KEY=VALUE` entries.  Values are encrypted at
 rest.
 

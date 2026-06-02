@@ -4,9 +4,10 @@ package cmd
 
 import (
 	"fmt"
-	config_v0 "github.com/threeport/threeport/pkg/config/v0"
 	"os"
 	"text/tabwriter"
+
+	config_v0 "github.com/threeport/threeport/pkg/config/v0"
 )
 
 // outputGetv0MachineRuntimesCmd produces the tabular output for the
@@ -15,14 +16,23 @@ func outputGetv0MachineRuntimesCmd(
 	machineRuntimes *[]config_v0.MachineRuntimeConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	// TODO: add columns for each field that users should see
-	// TODO: available fields are defined in the MachineRuntimeValues object in pkg/config/v0/machine_runtime.go
-	fmt.Fprintln(writer, "NAME\t AGE")
+	fmt.Fprintln(writer, "NAME\t MACHINE RUNTIME DEFINITION\t MACHINE RUNTIME INSTANCE\t HOSTNAME\t AGE")
 	for _, machineRuntime := range *machineRuntimes {
+		hostname := ""
+		if machineRuntime.MachineRuntime.Hostname != nil {
+			hostname = *machineRuntime.MachineRuntime.Hostname
+		}
+		age := ""
+		if machineRuntime.MachineRuntime.Age != nil {
+			age = *machineRuntime.MachineRuntime.Age
+		}
 		fmt.Fprintln(
 			writer,
 			*machineRuntime.MachineRuntime.Name, "\t",
-			*machineRuntime.MachineRuntime.Age,
+			*machineRuntime.MachineRuntime.Name, "\t",
+			*machineRuntime.MachineRuntime.Name, "\t",
+			hostname, "\t",
+			age,
 		)
 	}
 	writer.Flush()
@@ -36,14 +46,16 @@ func outputGetv0MachineRuntimeDefinitionsCmd(
 	machineRuntimeDefinitions *[]config_v0.MachineRuntimeDefinitionConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	// TODO: add columns for each field that users should see
-	// TODO: available fields are defined in the MachineRuntimeDefinitionValues object in pkg/config/v0/machine_runtime_definition.go
 	fmt.Fprintln(writer, "NAME\t AGE")
 	for _, machineRuntimeDefinition := range *machineRuntimeDefinitions {
+		age := ""
+		if machineRuntimeDefinition.MachineRuntimeDefinition.Age != nil {
+			age = *machineRuntimeDefinition.MachineRuntimeDefinition.Age
+		}
 		fmt.Fprintln(
 			writer,
 			*machineRuntimeDefinition.MachineRuntimeDefinition.Name, "\t",
-			*machineRuntimeDefinition.MachineRuntimeDefinition.Age,
+			age,
 		)
 	}
 	writer.Flush()
@@ -57,14 +69,27 @@ func outputGetv0MachineRuntimeInstancesCmd(
 	machineRuntimeInstances *[]config_v0.MachineRuntimeInstanceConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	// TODO: add columns for each field that users should see
-	// TODO: available fields are defined in the MachineRuntimeInstanceValues object in pkg/config/v0/machine_runtime_instance.go
-	fmt.Fprintln(writer, "NAME\t AGE")
+	fmt.Fprintln(writer, "NAME\t MACHINE RUNTIME DEFINITION\t HOSTNAME\t AGE")
 	for _, machineRuntimeInstance := range *machineRuntimeInstances {
+		machineRuntimeDefinitionName := ""
+		if machineRuntimeInstance.MachineRuntimeInstance.MachineRuntimeDefinition != nil &&
+			machineRuntimeInstance.MachineRuntimeInstance.MachineRuntimeDefinition.Name != nil {
+			machineRuntimeDefinitionName = *machineRuntimeInstance.MachineRuntimeInstance.MachineRuntimeDefinition.Name
+		}
+		hostname := ""
+		if machineRuntimeInstance.MachineRuntimeInstance.Hostname != nil {
+			hostname = *machineRuntimeInstance.MachineRuntimeInstance.Hostname
+		}
+		age := ""
+		if machineRuntimeInstance.MachineRuntimeInstance.Age != nil {
+			age = *machineRuntimeInstance.MachineRuntimeInstance.Age
+		}
 		fmt.Fprintln(
 			writer,
 			*machineRuntimeInstance.MachineRuntimeInstance.Name, "\t",
-			*machineRuntimeInstance.MachineRuntimeInstance.Age,
+			machineRuntimeDefinitionName, "\t",
+			hostname, "\t",
+			age,
 		)
 	}
 	writer.Flush()

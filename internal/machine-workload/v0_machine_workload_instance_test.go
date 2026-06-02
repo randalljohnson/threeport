@@ -13,6 +13,7 @@ import (
 	logr "github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 
 	wlstatus "github.com/threeport/threeport/internal/kubernetes-workload/status"
 	"github.com/threeport/threeport/internal/machinetest"
@@ -21,6 +22,24 @@ import (
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// dialSSH opens an ssh.Client against addr with insecure host key
+// verification (test only) and password auth. Local to the workload test
+// package, since the runtime reconciler tests build their client through
+// machine.GetClient, so this dialer is workload only and lives here
+// rather than in the shared machinetest package.
+func dialSSH(t *testing.T, addr, user, password string) *ssh.Client {
+	t.Helper()
+	cfg := &ssh.ClientConfig{
+		User:            user,
+		Auth:            []ssh.AuthMethod{ssh.Password(password)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         3 * time.Second,
+	}
+	client, err := ssh.Dial("tcp", addr, cfg)
+	require.NoError(t, err)
+	return client
+}
 
 // TestBuildScript covers the script-assembly behavior: set -e prefix, optional
 // cd, export of KEY=VALUE entries with value quoting, and trailing newline
@@ -152,7 +171,7 @@ func TestRunRemoteScript_ConnectionError(t *testing.T) {
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 0})
 	defer stop()
 
-	client := machinetest.DialSSH(t, addr, "u", "p")
+	client := dialSSH(t, addr, "u", "p")
 	require.NoError(t, client.Close(), "manual close to invalidate the client before runRemoteScript")
 
 	stdout, stderr, exitCode, timedOut, err := runRemoteScript(
@@ -177,7 +196,7 @@ func TestRunRemoteScript_HappyPath(t *testing.T) {
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 0})
 	defer stop()
 
-	client := machinetest.DialSSH(t, addr, "u", "p")
+	client := dialSSH(t, addr, "u", "p")
 	defer client.Close()
 
 	_, _, exitCode, timedOut, err := runRemoteScript(client, "echo ok\n", "sh", "", nil, nil)
@@ -193,7 +212,7 @@ func TestRunRemoteScript_ScriptFailed(t *testing.T) {
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 7})
 	defer stop()
 
-	client := machinetest.DialSSH(t, addr, "u", "p")
+	client := dialSSH(t, addr, "u", "p")
 	defer client.Close()
 
 	_, _, exitCode, timedOut, err := runRemoteScript(client, "false\n", "sh", "", nil, nil)
@@ -209,7 +228,7 @@ func TestRunRemoteScript_Timeout(t *testing.T) {
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{HoldSession: 2 * time.Second})
 	defer stop()
 
-	client := machinetest.DialSSH(t, addr, "u", "p")
+	client := dialSSH(t, addr, "u", "p")
 	defer client.Close()
 
 	one := 1

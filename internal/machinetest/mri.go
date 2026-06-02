@@ -21,8 +21,9 @@ func NewEncryptionKey(t *testing.T) string {
 	return key
 }
 
-// EncryptOrFail encrypts plaintext with key and fails the test on error.
-func EncryptOrFail(t *testing.T, key, plaintext string) string {
+// encryptOrFail encrypts plaintext with key and fails the test on error.
+// Unexported because only MRIFromAddr in this package consumes it.
+func encryptOrFail(t *testing.T, key, plaintext string) string {
 	t.Helper()
 	ct, err := encryption.Encrypt(key, plaintext)
 	require.NoError(t, err)
@@ -54,6 +55,6 @@ func MRIFromAddr(
 		SSHUser:  util.Ptr(user),
 		// SSHPassword is stored encrypted at rest; GetClient decrypts it
 		// before building the ssh.AuthMethod.
-		SSHPassword: util.Ptr(EncryptOrFail(t, key, password)),
+		SSHPassword: util.Ptr(encryptOrFail(t, key, password)),
 	}
 }

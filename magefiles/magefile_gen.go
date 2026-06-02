@@ -1430,6 +1430,286 @@ func (Build) HelmWorkloadControllerImageRelease() error {
 	return nil
 }
 
+// MachineRuntimeControllerBin builds the machine-runtime-controller binary.
+func (Build) MachineRuntimeControllerBin(arch string) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	if err := util.BuildBinaries(
+		workingDir,
+		[]string{arch},
+		[]string{"cmd/machine-runtime-controller"},
+		false,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to build machine-runtime-controller binary: %w", err)
+	}
+
+	fmt.Printf("binary built and available at bin/%s/machine-runtime-controller\n", arch)
+
+	return nil
+}
+
+// MachineRuntimeControllerBinDev builds the machine-runtime-controller binary for the architcture of the machine
+// where it is built.
+func (Build) MachineRuntimeControllerBinDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineRuntimeControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build dev machine-runtime-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerBinRelease builds the machine-runtime-controller binary for release architecture.
+func (Build) MachineRuntimeControllerBinRelease() error {
+	build := Build{}
+	if err := build.MachineRuntimeControllerBin(releaseArch); err != nil {
+		return fmt.Errorf("failed to build release machine-runtime-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// machineRuntimeControllerImagePackage packages a pre-built machine-runtime-controller binary into a container image.
+func (Build) machineRuntimeControllerImagePackage(
+	workingDir string,
+	imageRepo string,
+	imageTag string,
+	arch string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"machine-runtime-controller",
+		"bin",
+		nil,
+		imageRepo,
+		"threeport-machine-runtime-controller",
+		imageTag,
+		true,
+		false,
+		"",
+	); err != nil {
+		return fmt.Errorf("failed to build and push machine-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerImage builds and pushes a machine-runtime-controller container image.
+func (Build) MachineRuntimeControllerImage(
+	imageRepo string,
+	imageTag string,
+	arch string,
+) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	arches := []string{}
+	for _, a := range strings.Split(arch, ",") {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			arches = append(arches, a)
+		}
+	}
+	if err := util.BuildBinaries(
+		workingDir,
+		arches,
+		[]string{"cmd/machine-runtime-controller"},
+		false,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to build machine-runtime-controller binary: %w", err)
+	}
+
+	return Build{}.machineRuntimeControllerImagePackage(workingDir, imageRepo, imageTag, arch)
+}
+
+// MachineRuntimeControllerImageDev builds and pushes a development machine-runtime-controller container image.
+func (Build) MachineRuntimeControllerImageDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineRuntimeControllerImage(
+		installer.DevImageNamespace,
+		version.GetVersion(),
+		arch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push dev machine-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineRuntimeControllerImageRelease builds and pushes a release machine-runtime-controller container image.
+func (Build) MachineRuntimeControllerImageRelease() error {
+	build := Build{}
+	if err := build.MachineRuntimeControllerImage(
+		installer.ThreeportImageNamespace,
+		version.GetVersion(),
+		releaseArch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push release machine-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerBin builds the machine-workload-controller binary.
+func (Build) MachineWorkloadControllerBin(arch string) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	if err := util.BuildBinaries(
+		workingDir,
+		[]string{arch},
+		[]string{"cmd/machine-workload-controller"},
+		false,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to build machine-workload-controller binary: %w", err)
+	}
+
+	fmt.Printf("binary built and available at bin/%s/machine-workload-controller\n", arch)
+
+	return nil
+}
+
+// MachineWorkloadControllerBinDev builds the machine-workload-controller binary for the architcture of the machine
+// where it is built.
+func (Build) MachineWorkloadControllerBinDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineWorkloadControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build dev machine-workload-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerBinRelease builds the machine-workload-controller binary for release architecture.
+func (Build) MachineWorkloadControllerBinRelease() error {
+	build := Build{}
+	if err := build.MachineWorkloadControllerBin(releaseArch); err != nil {
+		return fmt.Errorf("failed to build release machine-workload-controller binary: %w", err)
+	}
+
+	return nil
+}
+
+// machineWorkloadControllerImagePackage packages a pre-built machine-workload-controller binary into a container image.
+func (Build) machineWorkloadControllerImagePackage(
+	workingDir string,
+	imageRepo string,
+	imageTag string,
+	arch string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"machine-workload-controller",
+		"bin",
+		nil,
+		imageRepo,
+		"threeport-machine-workload-controller",
+		imageTag,
+		true,
+		false,
+		"",
+	); err != nil {
+		return fmt.Errorf("failed to build and push machine-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerImage builds and pushes a machine-workload-controller container image.
+func (Build) MachineWorkloadControllerImage(
+	imageRepo string,
+	imageTag string,
+	arch string,
+) error {
+	workingDir, _, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	arches := []string{}
+	for _, a := range strings.Split(arch, ",") {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			arches = append(arches, a)
+		}
+	}
+	if err := util.BuildBinaries(
+		workingDir,
+		arches,
+		[]string{"cmd/machine-workload-controller"},
+		false,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to build machine-workload-controller binary: %w", err)
+	}
+
+	return Build{}.machineWorkloadControllerImagePackage(workingDir, imageRepo, imageTag, arch)
+}
+
+// MachineWorkloadControllerImageDev builds and pushes a development machine-workload-controller container image.
+func (Build) MachineWorkloadControllerImageDev() error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	build := Build{}
+	if err := build.MachineWorkloadControllerImage(
+		installer.DevImageNamespace,
+		version.GetVersion(),
+		arch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push dev machine-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// MachineWorkloadControllerImageRelease builds and pushes a release machine-workload-controller container image.
+func (Build) MachineWorkloadControllerImageRelease() error {
+	build := Build{}
+	if err := build.MachineWorkloadControllerImage(
+		installer.ThreeportImageNamespace,
+		version.GetVersion(),
+		releaseArch,
+	); err != nil {
+		return fmt.Errorf("failed to build and push release machine-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
 // KubernetesRuntimeControllerBin builds the kubernetes-runtime-controller binary.
 func (Build) KubernetesRuntimeControllerBin(arch string) error {
 	workingDir, _, err := getBuildVals()
@@ -2033,6 +2313,14 @@ func (Build) AllBins(arch string) error {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
 
+	if err := build.MachineRuntimeControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineWorkloadControllerBin(arch); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
 	if err := build.KubernetesRuntimeControllerBin(arch); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
@@ -2092,6 +2380,14 @@ func (Build) AllBinsDev() error {
 	}
 
 	if err := build.HelmWorkloadControllerBinDev(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineRuntimeControllerBinDev(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineWorkloadControllerBinDev(); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
 
@@ -2157,6 +2453,14 @@ func (Build) AllBinsRelease() error {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
 
+	if err := build.MachineRuntimeControllerBinRelease(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	if err := build.MachineWorkloadControllerBinRelease(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
 	if err := build.KubernetesRuntimeControllerBinRelease(); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)
 	}
@@ -2213,6 +2517,8 @@ func (Build) AllImages(
 		"cmd/control-plane-controller",
 		"cmd/gateway-controller",
 		"cmd/helm-workload-controller",
+		"cmd/machine-runtime-controller",
+		"cmd/machine-workload-controller",
 		"cmd/kubernetes-runtime-controller",
 		"cmd/observability-controller",
 		"cmd/terraform-controller",
@@ -2246,6 +2552,8 @@ func (Build) AllImages(
 		wrap(build.controlPlaneControllerImagePackage),
 		wrap(build.gatewayControllerImagePackage),
 		wrap(build.helmWorkloadControllerImagePackage),
+		wrap(build.machineRuntimeControllerImagePackage),
+		wrap(build.machineWorkloadControllerImagePackage),
 		wrap(build.kubernetesRuntimeControllerImagePackage),
 		wrap(build.observabilityControllerImagePackage),
 		wrap(build.terraformControllerImagePackage),
@@ -2290,6 +2598,8 @@ func (Build) AllImagesDev() error {
 		"cmd/control-plane-controller",
 		"cmd/gateway-controller",
 		"cmd/helm-workload-controller",
+		"cmd/machine-runtime-controller",
+		"cmd/machine-workload-controller",
 		"cmd/kubernetes-runtime-controller",
 		"cmd/observability-controller",
 		"cmd/terraform-controller",
@@ -2323,6 +2633,8 @@ func (Build) AllImagesDev() error {
 		wrap(build.controlPlaneControllerImagePackage),
 		wrap(build.gatewayControllerImagePackage),
 		wrap(build.helmWorkloadControllerImagePackage),
+		wrap(build.machineRuntimeControllerImagePackage),
+		wrap(build.machineWorkloadControllerImagePackage),
 		wrap(build.kubernetesRuntimeControllerImagePackage),
 		wrap(build.observabilityControllerImagePackage),
 		wrap(build.terraformControllerImagePackage),
@@ -2364,6 +2676,8 @@ func (Build) AllImagesRelease() error {
 		"cmd/control-plane-controller",
 		"cmd/gateway-controller",
 		"cmd/helm-workload-controller",
+		"cmd/machine-runtime-controller",
+		"cmd/machine-workload-controller",
 		"cmd/kubernetes-runtime-controller",
 		"cmd/observability-controller",
 		"cmd/terraform-controller",
@@ -2397,6 +2711,8 @@ func (Build) AllImagesRelease() error {
 		wrap(build.controlPlaneControllerImagePackage),
 		wrap(build.gatewayControllerImagePackage),
 		wrap(build.helmWorkloadControllerImagePackage),
+		wrap(build.machineRuntimeControllerImagePackage),
+		wrap(build.machineWorkloadControllerImagePackage),
 		wrap(build.kubernetesRuntimeControllerImagePackage),
 		wrap(build.observabilityControllerImagePackage),
 		wrap(build.terraformControllerImagePackage),

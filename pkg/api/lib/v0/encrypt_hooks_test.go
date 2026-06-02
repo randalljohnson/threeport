@@ -12,15 +12,15 @@ import (
 	"github.com/threeport/threeport/pkg/encryption/v0"
 )
 
-// testSecret carries one *string-encrypt and one []string-encrypt
+// testSecret carries one *string-encrypt and one *[]string-encrypt
 // field - the two shapes the hook supports. Its gorm hooks call
 // straight into ProcessEncryptTaggedFields so the test exercises
 // the production wiring.
 type testSecret struct {
 	ID    uint `gorm:"primaryKey"`
 	Name  string
-	Token *string  `encrypt:"true"`
-	Env   []string `gorm:"serializer:json" encrypt:"true"`
+	Token *string   `encrypt:"true"`
+	Env   *[]string `gorm:"serializer:json" encrypt:"true"`
 }
 
 func (t *testSecret) EncryptedFields() []EncryptedField {
@@ -148,20 +148,22 @@ func TestEncryptHookUpdatesPreservesNilWhenNotChanged(t *testing.T) {
 	assert.Nil(t, stored.Token, "Token left nil should stay nil when update doesn't touch it")
 }
 
-// TestEncryptHookEncryptsEnvSliceValues exercises the []string
+// TestEncryptHookEncryptsEnvSliceValues exercises the *[]string
 // KEY=VALUE path: keys stay plaintext, values round-trip through
 // encrypt/decrypt, across both create and update.
 func TestEncryptHookEncryptsEnvSliceValues(t *testing.T) {
 	db, key := setupEncryptTestDB(t)
 
 	plain := []string{"DB_PASSWORD=hunter2", "API_KEY=abc-123"}
-	obj := &testSecret{Name: "test", Env: append([]string{}, plain...)}
+	plainCopy := append([]string{}, plain...)
+	obj := &testSecret{Name: "test", Env: &plainCopy}
 	require.NoError(t, db.Create(obj).Error)
 
 	var stored testSecret
 	require.NoError(t, db.First(&stored, obj.ID).Error)
-	require.Len(t, stored.Env, len(plain))
-	for i, entry := range stored.Env {
+	require.NotNil(t, stored.Env)
+	require.Len(t, *stored.Env, len(plain))
+	for i, entry := range *stored.Env {
 		wantKey, wantValue, _ := strings.Cut(plain[i], "=")
 		gotKey, gotCipher, ok := strings.Cut(entry, "=")
 		require.True(t, ok, "stored entry %d should still be KEY=VALUE shape", i)
@@ -176,12 +178,14 @@ func TestEncryptHookEncryptsEnvSliceValues(t *testing.T) {
 	// replace one entry and confirm the new value round-trips
 	var loaded testSecret
 	require.NoError(t, db.First(&loaded, obj.ID).Error)
-	inbound := &testSecret{Env: []string{"DB_PASSWORD=new-pass", "API_KEY=xyz-789"}}
+	updateEnv := []string{"DB_PASSWORD=new-pass", "API_KEY=xyz-789"}
+	inbound := &testSecret{Env: &updateEnv}
 	require.NoError(t, db.Model(&loaded).Updates(inbound).Error)
 
 	require.NoError(t, db.First(&stored, obj.ID).Error)
-	require.Len(t, stored.Env, 2)
-	_, dbPass, _ := strings.Cut(stored.Env[0], "=")
+	require.NotNil(t, stored.Env)
+	require.Len(t, *stored.Env, 2)
+	_, dbPass, _ := strings.Cut((*stored.Env)[0], "=")
 	dec, err := encryption.Decrypt(key, dbPass)
 	require.NoError(t, err)
 	assert.Equal(t, "new-pass", dec, "updated value portion should decrypt to the new plaintext")

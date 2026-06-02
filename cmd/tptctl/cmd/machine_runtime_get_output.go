@@ -16,11 +16,15 @@ func outputGetv0MachineRuntimesCmd(
 	machineRuntimes *[]config_v0.MachineRuntimeConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t MACHINE RUNTIME DEFINITION\t MACHINE RUNTIME INSTANCE\t HOSTNAME\t AGE")
+	fmt.Fprintln(writer, "NAME\t MACHINE RUNTIME DEFINITION\t MACHINE RUNTIME INSTANCE\t HOSTNAME\t STATUS\t AGE")
 	for _, machineRuntime := range *machineRuntimes {
 		hostname := ""
 		if machineRuntime.MachineRuntime.Hostname != nil {
 			hostname = *machineRuntime.MachineRuntime.Hostname
+		}
+		status := ""
+		if machineRuntime.MachineRuntime.Status != nil {
+			status = *machineRuntime.MachineRuntime.Status
 		}
 		age := ""
 		if machineRuntime.MachineRuntime.Age != nil {
@@ -32,6 +36,7 @@ func outputGetv0MachineRuntimesCmd(
 			*machineRuntime.MachineRuntime.Name, "\t",
 			*machineRuntime.MachineRuntime.Name, "\t",
 			hostname, "\t",
+			status, "\t",
 			age,
 		)
 	}
@@ -69,7 +74,7 @@ func outputGetv0MachineRuntimeInstancesCmd(
 	machineRuntimeInstances *[]config_v0.MachineRuntimeInstanceConfig,
 ) error {
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "NAME\t MACHINE RUNTIME DEFINITION\t HOSTNAME\t AGE")
+	fmt.Fprintln(writer, "NAME\t MACHINE RUNTIME DEFINITION\t HOSTNAME\t STATUS\t AGE")
 	for _, machineRuntimeInstance := range *machineRuntimeInstances {
 		machineRuntimeDefinitionName := ""
 		if machineRuntimeInstance.MachineRuntimeInstance.MachineRuntimeDefinition != nil &&
@@ -80,6 +85,10 @@ func outputGetv0MachineRuntimeInstancesCmd(
 		if machineRuntimeInstance.MachineRuntimeInstance.Hostname != nil {
 			hostname = *machineRuntimeInstance.MachineRuntimeInstance.Hostname
 		}
+		status := ""
+		if machineRuntimeInstance.MachineRuntimeInstance.Status != nil {
+			status = *machineRuntimeInstance.MachineRuntimeInstance.Status
+		}
 		age := ""
 		if machineRuntimeInstance.MachineRuntimeInstance.Age != nil {
 			age = *machineRuntimeInstance.MachineRuntimeInstance.Age
@@ -89,6 +98,7 @@ func outputGetv0MachineRuntimeInstancesCmd(
 			*machineRuntimeInstance.MachineRuntimeInstance.Name, "\t",
 			machineRuntimeDefinitionName, "\t",
 			hostname, "\t",
+			status, "\t",
 			age,
 		)
 	}

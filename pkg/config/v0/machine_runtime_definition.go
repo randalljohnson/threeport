@@ -22,7 +22,6 @@ type MachineRuntimeDefinitionConfig struct {
 // MachineRuntimeDefinitionValues contains all the attributes needed to manage
 // the MachineRuntimeDefinition API object.
 type MachineRuntimeDefinitionValues struct {
-	// TODO: add config abstraction fields needed for user to manage a MachineRuntimeDefinition
 	Name *string `json:"Name,omitempty" yaml:"Name,omitempty"`
 	Age  *string `json:"Age,omitempty" yaml:"Age,omitempty"`
 }

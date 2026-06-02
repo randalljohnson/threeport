@@ -14607,344 +14607,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/v0/workload-events": {
-            "get": {
-                "description": "Get all workload events from the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets all workload events.",
-                "operationId": "get-v0-workloadEvents",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "workload event search by name",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Add a new workload event to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new workload event.",
-                "operationId": "add-v0-workloadEvent",
-                "parameters": [
-                    {
-                        "description": "WorkloadEvent object",
-                        "name": "workloadEvent",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadEvent"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Deletes workload events by query parameter from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "deletes workload events by query parameter.",
-                "operationId": "delete-workloadEvents",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "workload event search by name",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/workload-events/{id}": {
-            "get": {
-                "description": "Get a particular workload event from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets a workload event.",
-                "operationId": "get-v0-workloadEvent",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Replace a workload event in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating workload event objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates an existing workload event by replacing the entire object.",
-                "operationId": "replace-v0-workloadEvent",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadEvent object",
-                        "name": "workloadEvent",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadEvent"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete a workload event by ID from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "deletes a workload event.",
-                "operationId": "delete-v0-workloadEvent",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update a workload event in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating workload event objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates specific fields for an existing workload event.",
-                "operationId": "update-v0-workloadEvent",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadEvent object",
-                        "name": "workloadEvent",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadEvent"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/workload-events/versions": {
-            "get": {
-                "description": "Get the supported API versions for workload events.",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "GetWorkloadEventVersions gets the supported versions for the workload event API.",
-                "operationId": "workloadEvent-get-versions",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.ApiObjectVersions"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -15472,6 +15134,16 @@ const docTemplate = `{
                     "description": "A human-readable description of the status of this operation.",
                     "type": "string"
                 },
+                "ObjectID": {
+                    "type": "integer"
+                },
+                "ObjectName": {
+                    "type": "string"
+                },
+                "ObjectType": {
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
+                    "type": "string"
+                },
                 "Reason": {
                     "description": "A short, machine understandable string that gives the reason for the event being generated.",
                     "type": "string"
@@ -15482,16 +15154,6 @@ const docTemplate = `{
                 },
                 "Type": {
                     "description": "Type of this event (Normal, Warning), new types could be added in the future.",
-                    "type": "string"
-                },
-                "objectID": {
-                    "type": "integer"
-                },
-                "objectName": {
-                    "type": "string"
-                },
-                "objectType": {
-                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
                     "type": "string"
                 }
             }
@@ -16140,7 +15802,7 @@ const docTemplate = `{
                     "description": "ConnectionTokenExpiration is the time when a ConnectionToken will expire.\nUsed to ensure a token will not expire before it can be used.",
                     "type": "string"
                 },
-                "ControlPlaneInstance": {
+                "ControlPlaneInstances": {
                     "description": "The associated control plane instances running on this kubernetes runtime instance.",
                     "type": "array",
                     "items": {
@@ -16175,11 +15837,11 @@ const docTemplate = `{
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
-                "DnsControllerInstanceId": {
+                "DnsControllerInstanceID": {
                     "description": "The KubernetesWorkloadInstanceID of the dns support service",
                     "type": "integer"
                 },
-                "GatewayKubernetesWorkloadInstanceID": {
+                "GatewayControllerInstanceID": {
                     "description": "The KubernetesWorkloadInstanceID of the gateway support service",
                     "type": "integer"
                 },
@@ -16210,7 +15872,7 @@ const docTemplate = `{
                     "description": "Indicates if object is considered to be reconciled by the object's controller.",
                     "type": "boolean"
                 },
-                "SecretsControllerInstanceId": {
+                "SecretsControllerInstanceID": {
                     "description": "The KubernetesWorkloadInstanceID of the secrets support service",
                     "type": "integer"
                 },
@@ -17846,50 +17508,6 @@ const docTemplate = `{
                 "Name": {
                     "description": "The unique name of a tier.",
                     "type": "string"
-                }
-            }
-        },
-        "v0.WorkloadEvent": {
-            "type": "object",
-            "required": [
-                "Message",
-                "Reason",
-                "RuntimeEventUID",
-                "Timestamp",
-                "Type"
-            ],
-            "properties": {
-                "HelmWorkloadInstanceID": {
-                    "description": "The related helm workload instance.",
-                    "type": "integer"
-                },
-                "Message": {
-                    "description": "The message associated with the event.",
-                    "type": "string"
-                },
-                "Reason": {
-                    "description": "The reason for the event.",
-                    "type": "string"
-                },
-                "RuntimeEventUID": {
-                    "description": "A unique ID for de-duplicating purposes.  It is one of two thing:\n* The Kubernetes Event resource UID: when the WorkloadEvent is derived\ndirectly from a Kubernetes Event.\n* The workload controller ID: when the WorkloadEvent is emitted by the\nworkload controller.",
-                    "type": "string"
-                },
-                "Timestamp": {
-                    "description": "The timestamp for the event in the kubernetes runtime.",
-                    "type": "string"
-                },
-                "Type": {
-                    "description": "The type of event that occurred in Kubernetes.",
-                    "type": "string"
-                },
-                "WorkloadInstanceID": {
-                    "description": "The related workload instance.",
-                    "type": "integer"
-                },
-                "WorkloadResourceInstanceID": {
-                    "description": "The related workload resource instance.",
-                    "type": "integer"
                 }
             }
         }

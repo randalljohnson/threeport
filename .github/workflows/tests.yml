@@ -75,7 +75,7 @@ jobs:
       # (plus rest-api and database-migrator) get built and deployed for
       # the integration test.
       APIS: >-
-        workload,
+        kubernetes_workload,
         kubernetes_runtime,
         gateway,
         secret

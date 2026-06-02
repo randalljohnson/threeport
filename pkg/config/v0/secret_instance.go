@@ -78,7 +78,7 @@ func (s *SecretInstanceConfig) Get(
 			}
 		}
 
-		// get kubernetes workload instance
+		// get workload instance
 		if secretInstance.KubernetesWorkloadInstanceID != nil {
 			workloadInst, err := client_v0.GetKubernetesWorkloadInstanceByID(apiClient, apiEndpoint, *secretInstance.KubernetesWorkloadInstanceID)
 			if err == nil {
@@ -164,7 +164,7 @@ func (s *SecretInstanceConfig) Create(
 		SecretDefinitionID:          secretDefinition.ID,
 	}
 
-	// get kubernetes workload instance
+	// get workload instance
 	switch {
 	case secretInstanceValues.KubernetesWorkloadInstance != nil:
 		workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
@@ -173,7 +173,7 @@ func (s *SecretInstanceConfig) Create(
 			*secretInstanceValues.KubernetesWorkloadInstance.Name,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get kubernetes workload instance by name: %w", err)
+			return nil, fmt.Errorf("failed to get workload instance by name: %w", err)
 		}
 		secretInstance.KubernetesWorkloadInstanceID = workloadInstance.ID
 	case secretInstanceValues.HelmWorkloadInstance != nil:
@@ -277,7 +277,7 @@ func (s *SecretInstanceConfig) Replace(
 		SecretDefinitionID:          secretDefinition.ID,
 	}
 
-	// get kubernetes workload instance
+	// get workload instance
 	switch {
 	case secretInstanceValues.KubernetesWorkloadInstance != nil:
 		workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
@@ -286,7 +286,7 @@ func (s *SecretInstanceConfig) Replace(
 			*secretInstanceValues.KubernetesWorkloadInstance.Name,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get kubernetes workload instance by name: %w", err)
+			return nil, fmt.Errorf("failed to get workload instance by name: %w", err)
 		}
 		updatedSecretInstance.KubernetesWorkloadInstanceID = workloadInstance.ID
 	case secretInstanceValues.HelmWorkloadInstance != nil:
@@ -385,7 +385,7 @@ func (s *SecretInstanceConfig) Validate() error {
 		multiError.AppendError(errors.New("missing required field in config: SecretDefinition"))
 	}
 
-	// ensure kubernetes workload instance or helm workload instance is set
+	// ensure workload instance or helm workload instance is set
 	if secretInstanceValues.KubernetesWorkloadInstance == nil && secretInstanceValues.HelmWorkloadInstance == nil {
 		multiError.AppendError(errors.New("missing required field in config: KubernetesWorkloadInstance or HelmWorkloadInstance"))
 	}

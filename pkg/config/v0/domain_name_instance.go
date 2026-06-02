@@ -87,7 +87,7 @@ func (d *DomainNameInstanceConfig) Get(
 			}
 		}
 
-		// get kubernetes workload instance
+		// get workload instance
 		if domainNameInstance.KubernetesWorkloadInstanceID != nil {
 			wi, err := client_v0.GetKubernetesWorkloadInstanceByID(apiClient, apiEndpoint, *domainNameInstance.KubernetesWorkloadInstanceID)
 			if err == nil {
@@ -134,10 +134,10 @@ func (d *DomainNameInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to get kubernetes runtime instance: %w", err)
 	}
 
-	// get kubernetes workload instance
+	// get workload instance
 	workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *domainNameInstanceValues.KubernetesWorkloadInstance.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes workload instance with name %s: %w", *domainNameInstanceValues.KubernetesWorkloadInstance.Name, err)
+		return nil, fmt.Errorf("failed to get workload instance with name %s: %w", *domainNameInstanceValues.KubernetesWorkloadInstance.Name, err)
 	}
 
 	// get domain name definition
@@ -224,10 +224,10 @@ func (d *DomainNameInstanceConfig) Replace(
 		kubernetesRuntimeInstance = *kubernetesRuntimeInst
 	}
 
-	// get kubernetes workload instance for update
+	// get workload instance for update
 	workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *domainNameInstanceValues.KubernetesWorkloadInstance.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes workload instance with name %s: %w", *domainNameInstanceValues.KubernetesWorkloadInstance.Name, err)
+		return nil, fmt.Errorf("failed to get workload instance with name %s: %w", *domainNameInstanceValues.KubernetesWorkloadInstance.Name, err)
 	}
 
 	// get domain name definition for update

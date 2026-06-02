@@ -46,13 +46,19 @@ func (m *MachineWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 	return validateEnv(m.Env)
 }
 
-// beforeUpdate validates the MachineWorkloadDefinition before update.
-//
-// Reads the incoming values from tx.Statement.Dest because the receiver `m`
-// is the existing row, not the update payload.
+// beforeUpdate validates the MachineWorkloadDefinition before update. On
+// update paths the receiver is the stale loaded row, so redirect to
+// Statement.Dest for the inbound payload. Mirrors the pattern in
+// ProcessEncryptTaggedFields.
 func (m *MachineWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
-	updated := tx.Statement.Dest.(*MachineWorkloadDefinition)
-	return validateEnv(updated.Env)
+	if !tx.Statement.Changed("Env") {
+		return nil
+	}
+	target := m
+	if dest, ok := tx.Statement.Dest.(*MachineWorkloadDefinition); ok && dest != m {
+		target = dest
+	}
+	return validateEnv(target.Env)
 }
 
 // beforeDelete validates the MachineWorkloadDefinition before delete.
@@ -65,10 +71,19 @@ func (m *MachineWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 	return validateEnv(m.Env)
 }
 
-// beforeUpdate validates the MachineWorkloadInstance before update.
+// beforeUpdate validates the MachineWorkloadInstance before update. On
+// update paths the receiver is the stale loaded row, so redirect to
+// Statement.Dest for the inbound payload. Mirrors the pattern in
+// ProcessEncryptTaggedFields.
 func (m *MachineWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
-	updated := tx.Statement.Dest.(*MachineWorkloadInstance)
-	return validateEnv(updated.Env)
+	if !tx.Statement.Changed("Env") {
+		return nil
+	}
+	target := m
+	if dest, ok := tx.Statement.Dest.(*MachineWorkloadInstance); ok && dest != m {
+		target = dest
+	}
+	return validateEnv(target.Env)
 }
 
 // beforeDelete validates the MachineWorkloadInstance before delete.

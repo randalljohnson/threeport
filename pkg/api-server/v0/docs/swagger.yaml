@@ -1596,10 +1596,8 @@ definitions:
         description: The shell script to run when a machine workload instance is deleted.
         type: string
       Env:
-        description: |-
-          The environment variables to set for the workload as KEY=VALUE entries.
-          Nil distinguishes "unset" from "empty list".  Values are encrypted at
-          rest; keys stay queryable.
+        description: The environment variables to set for the workload as KEY=VALUE
+          entries.
         items:
           type: string
         type: array
@@ -1669,11 +1667,7 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       Env:
-        description: |-
-          The environment variables set for the workload as KEY=VALUE entries.
-          Nil falls back to the definition's Env at reconcile time, distinguishing
-          "unset" from "empty list".  Values are encrypted at rest; keys stay
-          queryable.
+        description: The environment variables set for the workload as KEY=VALUE entries.
         items:
           type: string
         type: array

@@ -424,11 +424,11 @@ func TestWorkloadIntegration(t *testing.T) {
 				apiClient,
 				threeportAPIEndpoint,
 				fmt.Sprintf(
-					"objectid=%d&objecttypename=WorkloadInstance&objectnamespace=threeport.io&objectversion=v0",
+					"objectid=%d&objecttypename=KubernetesWorkloadInstance&objectnamespace=threeport.io&objectversion=v0",
 					*createdWorkloadInst.ID,
 				),
 			)
-			assert.Nil(err, "should have no error returned when trying to retrieve events for workload instance")
+			assert.Nil(err, "should have no error returned when trying to retrieve events for kubernetes workload instance")
 			for _, evt := range *events {
 				if *evt.Type == "Normal" && *evt.Reason == "Started" {
 					startedEventFound = true

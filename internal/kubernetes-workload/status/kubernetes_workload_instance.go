@@ -102,7 +102,7 @@ func GetKubernetesWorkloadInstanceStatus(
 	}
 
 	// collect any events of type Warning (Event type only emits Normal
-	// and Warning; the legacy "Failed" WorkloadEvent type no longer
+	// and Warning; the legacy "Failed" event type no longer
 	// exists).
 	var alertEvents []v0.Event
 	for _, evt := range *workloadEvents {

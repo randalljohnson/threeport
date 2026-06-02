@@ -57,5 +57,4 @@ func AddRoutes(e *echo.Echo, h *handlers.Handler) {
 	TerraformDefinitionRoutes(e, h)
 	TerraformInstanceRoutes(e, h)
 	TierRoutes(e, h)
-	WorkloadEventRoutes(e, h)
 }

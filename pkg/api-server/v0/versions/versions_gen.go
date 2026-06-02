@@ -51,5 +51,4 @@ func AddVersions() {
 	AddTerraformDefinitionVersions()
 	AddTerraformInstanceVersions()
 	AddTierVersions()
-	AddWorkloadEventVersions()
 }

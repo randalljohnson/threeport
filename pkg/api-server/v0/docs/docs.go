@@ -539,6 +539,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/machine-runtime-definitions/versions": {
+            "get": {
+                "description": "Get the supported API versions for machine runtime definitions.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetMachineRuntimeDefinitionVersions gets the supported versions for the machine runtime definition API.",
+                "operationId": "machineRuntimeDefinition-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
+        "/machine-runtime-instances/versions": {
+            "get": {
+                "description": "Get the supported API versions for machine runtime instances.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetMachineRuntimeInstanceVersions gets the supported versions for the machine runtime instance API.",
+                "operationId": "machineRuntimeInstance-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
+        "/machine-workload-definitions/versions": {
+            "get": {
+                "description": "Get the supported API versions for machine workload definitions.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetMachineWorkloadDefinitionVersions gets the supported versions for the machine workload definition API.",
+                "operationId": "machineWorkloadDefinition-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
+        "/machine-workload-instances/versions": {
+            "get": {
+                "description": "Get the supported API versions for machine workload instances.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetMachineWorkloadInstanceVersions gets the supported versions for the machine workload instance API.",
+                "operationId": "machineWorkloadInstance-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
         "/metrics-definitions/versions": {
             "get": {
                 "description": "Get the supported API versions for metrics definitions.",
@@ -9142,6 +9214,1130 @@ const docTemplate = `{
                 }
             }
         },
+        "/v0/machine-runtime-definitions": {
+            "get": {
+                "description": "Get all machine runtime definitions from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all machine runtime definitions.",
+                "operationId": "get-v0-machineRuntimeDefinitions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "machine runtime definition search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new machine runtime definition to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new machine runtime definition.",
+                "operationId": "add-v0-machineRuntimeDefinition",
+                "parameters": [
+                    {
+                        "description": "MachineRuntimeDefinition object",
+                        "name": "machineRuntimeDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineRuntimeDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/machine-runtime-definitions/{id}": {
+            "get": {
+                "description": "Get a particular machine runtime definition from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a machine runtime definition.",
+                "operationId": "get-v0-machineRuntimeDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a machine runtime definition in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating machine runtime definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing machine runtime definition by replacing the entire object.",
+                "operationId": "replace-v0-machineRuntimeDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineRuntimeDefinition object",
+                        "name": "machineRuntimeDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineRuntimeDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a machine runtime definition by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a machine runtime definition.",
+                "operationId": "delete-v0-machineRuntimeDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a machine runtime definition in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating machine runtime definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing machine runtime definition.",
+                "operationId": "update-v0-machineRuntimeDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineRuntimeDefinition object",
+                        "name": "machineRuntimeDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineRuntimeDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/machine-runtime-instances": {
+            "get": {
+                "description": "Get all machine runtime instances from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all machine runtime instances.",
+                "operationId": "get-v0-machineRuntimeInstances",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "machine runtime instance search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new machine runtime instance to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new machine runtime instance.",
+                "operationId": "add-v0-machineRuntimeInstance",
+                "parameters": [
+                    {
+                        "description": "MachineRuntimeInstance object",
+                        "name": "machineRuntimeInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/machine-runtime-instances/{id}": {
+            "get": {
+                "description": "Get a particular machine runtime instance from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a machine runtime instance.",
+                "operationId": "get-v0-machineRuntimeInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a machine runtime instance in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating machine runtime instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing machine runtime instance by replacing the entire object.",
+                "operationId": "replace-v0-machineRuntimeInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineRuntimeInstance object",
+                        "name": "machineRuntimeInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a machine runtime instance by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a machine runtime instance.",
+                "operationId": "delete-v0-machineRuntimeInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a machine runtime instance in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating machine runtime instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing machine runtime instance.",
+                "operationId": "update-v0-machineRuntimeInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineRuntimeInstance object",
+                        "name": "machineRuntimeInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/machine-workload-definitions": {
+            "get": {
+                "description": "Get all machine workload definitions from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all machine workload definitions.",
+                "operationId": "get-v0-machineWorkloadDefinitions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "machine workload definition search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new machine workload definition to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new machine workload definition.",
+                "operationId": "add-v0-machineWorkloadDefinition",
+                "parameters": [
+                    {
+                        "description": "MachineWorkloadDefinition object",
+                        "name": "machineWorkloadDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineWorkloadDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/machine-workload-definitions/{id}": {
+            "get": {
+                "description": "Get a particular machine workload definition from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a machine workload definition.",
+                "operationId": "get-v0-machineWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a machine workload definition in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating machine workload definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing machine workload definition by replacing the entire object.",
+                "operationId": "replace-v0-machineWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineWorkloadDefinition object",
+                        "name": "machineWorkloadDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineWorkloadDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a machine workload definition by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a machine workload definition.",
+                "operationId": "delete-v0-machineWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a machine workload definition in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating machine workload definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing machine workload definition.",
+                "operationId": "update-v0-machineWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineWorkloadDefinition object",
+                        "name": "machineWorkloadDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineWorkloadDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/machine-workload-instances": {
+            "get": {
+                "description": "Get all machine workload instances from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all machine workload instances.",
+                "operationId": "get-v0-machineWorkloadInstances",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "machine workload instance search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new machine workload instance to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new machine workload instance.",
+                "operationId": "add-v0-machineWorkloadInstance",
+                "parameters": [
+                    {
+                        "description": "MachineWorkloadInstance object",
+                        "name": "machineWorkloadInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/machine-workload-instances/{id}": {
+            "get": {
+                "description": "Get a particular machine workload instance from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a machine workload instance.",
+                "operationId": "get-v0-machineWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a machine workload instance in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating machine workload instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing machine workload instance by replacing the entire object.",
+                "operationId": "replace-v0-machineWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineWorkloadInstance object",
+                        "name": "machineWorkloadInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a machine workload instance by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a machine workload instance.",
+                "operationId": "delete-v0-machineWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a machine workload instance in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating machine workload instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing machine workload instance.",
+                "operationId": "update-v0-machineWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "MachineWorkloadInstance object",
+                        "name": "machineWorkloadInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v0/metrics-definitions": {
             "get": {
                 "description": "Get all metrics definitions from the Threeport database.",
@@ -16323,6 +17519,243 @@ const docTemplate = `{
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "v0.MachineRuntimeDefinition": {
+            "type": "object",
+            "required": [
+                "Name"
+            ],
+            "properties": {
+                "MachineRuntimeInstances": {
+                    "description": "The associated machine runtime instances that are deployed from this\ndefinition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                    }
+                },
+                "Name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "ProfileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "TierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "v0.MachineRuntimeInstance": {
+            "type": "object",
+            "required": [
+                "Hostname",
+                "Name",
+                "SSHUser"
+            ],
+            "properties": {
+                "CreationAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "CreationConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "CreationFailed": {
+                    "description": "Gets set to true if creation process fails.",
+                    "type": "boolean"
+                },
+                "DeletionAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "DeletionConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "DeletionScheduled": {
+                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "type": "string"
+                },
+                "HostKey": {
+                    "description": "The remote machine's SSH public host key, used to verify identity on\nconnection. If not provided, captured on first connection.",
+                    "type": "string"
+                },
+                "Hostname": {
+                    "description": "The hostname or IP address used to reach the machine.",
+                    "type": "string"
+                },
+                "InterruptReconciliation": {
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "type": "boolean"
+                },
+                "MachineRuntimeDefinitionID": {
+                    "description": "The machine runtime definition for this instance.  Optional because\nimported machines may not have an associated definition.",
+                    "type": "integer"
+                },
+                "MachineWorkloadInstances": {
+                    "description": "The associated machine workload instances running on this machine runtime.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                    }
+                },
+                "Name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "Port": {
+                    "description": "The SSH port on the machine.",
+                    "type": "integer"
+                },
+                "Reconciled": {
+                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "type": "boolean"
+                },
+                "SSHKey": {
+                    "description": "The SSH private key for authenticating to the machine.",
+                    "type": "string"
+                },
+                "SSHPassword": {
+                    "description": "The SSH password for authenticating to the machine.",
+                    "type": "string"
+                },
+                "SSHUser": {
+                    "description": "The SSH username for authenticating to the machine.",
+                    "type": "string"
+                },
+                "Status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "v0.MachineWorkloadDefinition": {
+            "type": "object",
+            "required": [
+                "CreateScript",
+                "DeleteScript",
+                "Name"
+            ],
+            "properties": {
+                "CreateScript": {
+                    "description": "The shell script to run when a machine workload instance is created.",
+                    "type": "string"
+                },
+                "DeleteScript": {
+                    "description": "The shell script to run when a machine workload instance is deleted.",
+                    "type": "string"
+                },
+                "Env": {
+                    "description": "The environment variables to set for the workload as KEY=VALUE entries.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "MachineWorkloadInstances": {
+                    "description": "The associated machine workload instances that are deployed from this\ndefinition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                    }
+                },
+                "Name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "ProfileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "Shell": {
+                    "description": "The shell to use for script execution.",
+                    "type": "string"
+                },
+                "TierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "Timeout": {
+                    "description": "The timeout in seconds for script execution.",
+                    "type": "integer"
+                },
+                "UpdateScript": {
+                    "description": "The shell script to run when a machine workload instance is updated.",
+                    "type": "string"
+                },
+                "WorkingDir": {
+                    "description": "The working directory for script execution.",
+                    "type": "string"
+                }
+            }
+        },
+        "v0.MachineWorkloadInstance": {
+            "type": "object",
+            "required": [
+                "MachineRuntimeInstanceID",
+                "MachineWorkloadDefinitionID",
+                "Name"
+            ],
+            "properties": {
+                "CreationAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "CreationConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "CreationFailed": {
+                    "description": "Gets set to true if creation process fails.",
+                    "type": "boolean"
+                },
+                "DeletionAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "DeletionConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "DeletionScheduled": {
+                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "type": "string"
+                },
+                "Env": {
+                    "description": "The environment variables set for the workload as KEY=VALUE entries.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "InterruptReconciliation": {
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "type": "boolean"
+                },
+                "MachineRuntimeInstanceID": {
+                    "description": "The machine runtime on which the workload is deployed.",
+                    "type": "integer"
+                },
+                "MachineWorkloadDefinitionID": {
+                    "description": "The definition used to configure the machine workload instance.",
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "Reconciled": {
+                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "type": "boolean"
+                },
+                "Status": {
+                    "description": "The latest status of the workload instance as observed by the reconciler\nwhen the most recent script execution completed.",
                     "type": "string"
                 }
             }

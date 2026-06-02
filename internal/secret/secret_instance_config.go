@@ -180,7 +180,7 @@ func (c *SecretInstanceConfig) deleteSecretObjects() error {
 		for _, secretObject := range secretObjects {
 
 			// get workload resource instance for secret object
-			workloadResourceInstance, err := workloadutil.GetUniqueWorkloadResourceInstanceByName(
+			workloadResourceInstance, err := workloadutil.GetUniqueKubernetesWorkloadResourceInstanceByName(
 				workloadResourceInstances,
 				secretObject.GetKind(),
 				secretObject.GetName(),

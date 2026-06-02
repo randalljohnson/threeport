@@ -118,13 +118,13 @@ func v0GatewayInstanceUpdated(
 	for _, resource := range gatewayInstanceObjects {
 
 		// get workload resource instance for virtual service
-		existingWorkloadResourceInstance, err := workload_util.GetUniqueWorkloadResourceInstance(existingWorkloadResourceInstances, resource)
+		existingWorkloadResourceInstance, err := workload_util.GetUniqueKubernetesWorkloadResourceInstance(existingWorkloadResourceInstances, resource)
 		if err != nil {
 			return 0, fmt.Errorf("failed to get workload resource instance: %w", err)
 		}
 
 		// get workload resource instance for virtual service
-		updatedWorkloadResourceInstance, err := workload_util.GetUniqueWorkloadResourceInstance(updatedWorkloadResourceInstances, resource)
+		updatedWorkloadResourceInstance, err := workload_util.GetUniqueKubernetesWorkloadResourceInstance(updatedWorkloadResourceInstances, resource)
 		if err != nil {
 			return 0, fmt.Errorf("failed to get workload resource instance: %w", err)
 		}
@@ -204,7 +204,7 @@ func v0GatewayInstanceDeleted(
 	for _, resource := range gatewayInstanceObjects {
 
 		// get workload resource instance for virtual service
-		workloadResourceInstance, err := workload_util.GetUniqueWorkloadResourceInstance(workloadResourceInstances, resource)
+		workloadResourceInstance, err := workload_util.GetUniqueKubernetesWorkloadResourceInstance(workloadResourceInstances, resource)
 		if err != nil {
 			// kubernetes workload instance has already been deleted
 			return 0, nil
@@ -489,7 +489,7 @@ func confirmGatewayPortsExposed(
 	}
 
 	// unmarshal gloo edge custom resource
-	gateway, err := workload_util.UnmarshalUniqueWorkloadResourceInstance(workloadResourceInstances, "GlooEdge")
+	gateway, err := workload_util.UnmarshalUniqueKubernetesWorkloadResourceInstance(workloadResourceInstances, "GlooEdge")
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal gloo edge workload resource instance: %w", err)
 	}
@@ -537,7 +537,7 @@ func confirmGatewayPortsExposed(
 	}
 
 	// update the gloo edge workload resource object
-	glooEdgeObject, err := workload_util.GetUniqueWorkloadResourceInstance(workloadResourceInstances, "GlooEdge")
+	glooEdgeObject, err := workload_util.GetUniqueKubernetesWorkloadResourceInstance(workloadResourceInstances, "GlooEdge")
 	if err != nil {
 		return fmt.Errorf("failed to get gloo edge workload resource instance: %w", err)
 	}
@@ -639,12 +639,12 @@ func configureGatewayManifests(
 	// otherwise, get the first service
 	var service map[string]interface{}
 	if gatewayDefinition.ServiceName != nil && *gatewayDefinition.ServiceName != "" {
-		service, err = workload_util.UnmarshalWorkloadResourceInstance(workloadResourceInstances, "Service", *gatewayDefinition.ServiceName)
+		service, err = workload_util.UnmarshalKubernetesWorkloadResourceInstance(workloadResourceInstances, "Service", *gatewayDefinition.ServiceName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal service workload resource instance: %w", err)
 		}
 	} else {
-		service, err = workload_util.UnmarshalUniqueWorkloadResourceInstance(workloadResourceInstances, "Service")
+		service, err = workload_util.UnmarshalUniqueKubernetesWorkloadResourceInstance(workloadResourceInstances, "Service")
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal service workload resource instance: %w", err)
 		}
@@ -732,7 +732,7 @@ func configureVirtualServiceRuntimeParameters(
 	for _, httpPort := range *gatewayHttpPorts {
 		// unmarshal virtual service
 
-		virtualService, err := workload_util.UnmarshalUniqueWorkloadResourceDefinitionByName(
+		virtualService, err := workload_util.UnmarshalUniqueKubernetesWorkloadResourceDefinitionByName(
 			gatewayWorkloadResourceDefinitions,
 			"VirtualService",
 			getVirtualServiceName(gatewayDefinition, domain, *httpPort.Port),
@@ -849,7 +849,7 @@ func configureTcpGatewayRuntimeParameters(
 	var tcpGateways []*datatypes.JSON
 	for _, tcpPort := range *gatewayTcpPorts {
 		// unmarshal tcp gateway
-		virtualService, err := workload_util.UnmarshalUniqueWorkloadResourceDefinitionByName(
+		virtualService, err := workload_util.UnmarshalUniqueKubernetesWorkloadResourceDefinitionByName(
 			gatewayWorkloadResourceDefinitions,
 			"Gateway",
 			fmt.Sprintf("%s-%d", *gatewayDefinition.Name, *tcpPort.Port),
@@ -941,7 +941,7 @@ func configureIssuer(
 	}
 
 	// unmarshal virtual service
-	issuer, err := workload_util.UnmarshalUniqueWorkloadResourceDefinition(gatewayWorkloadResourceDefinitions, "Issuer")
+	issuer, err := workload_util.UnmarshalUniqueKubernetesWorkloadResourceDefinition(gatewayWorkloadResourceDefinitions, "Issuer")
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal virtual service workload resource definition: %w", err)
 	}
@@ -1022,7 +1022,7 @@ func configureCertificate(
 	}
 
 	// unmarshal virtual service
-	certificate, err := workload_util.UnmarshalUniqueWorkloadResourceDefinition(gatewayWorkloadResourceDefinitions, "Certificate")
+	certificate, err := workload_util.UnmarshalUniqueKubernetesWorkloadResourceDefinition(gatewayWorkloadResourceDefinitions, "Certificate")
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal virtual service workload resource definition: %w", err)
 	}

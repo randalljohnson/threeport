@@ -125,7 +125,7 @@ func getGlooEdgeNamespace(r *controller.Reconciler, workloadInstanceID *uint) (s
 	}
 
 	// unmarshal gloo edge custom resource
-	glooEdge, err := workloadutil.UnmarshalUniqueWorkloadResourceInstance(glooEdgeWorkloadResourceInstance, "GlooEdge")
+	glooEdge, err := workloadutil.UnmarshalUniqueKubernetesWorkloadResourceInstance(glooEdgeWorkloadResourceInstance, "GlooEdge")
 	if err != nil {
 		return "", fmt.Errorf("failed to unmarshal gloo edge workload resource instance: %w", err)
 	}

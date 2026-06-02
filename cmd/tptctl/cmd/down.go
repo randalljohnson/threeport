@@ -4,7 +4,10 @@ Copyright © 2023 Threeport admin@threeport.io
 package cmd
 
 import (
+	"bufio"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
@@ -19,6 +22,20 @@ var DownCmd = &cobra.Command{
 	PreRun:       CommandPreRunFunc,
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
+		// confirm with user before tearing down
+		if cliArgs.ControlPlaneOnly {
+			fmt.Printf("This will tear down the threeport control plane '%s' (infrastructure will be left intact).\n", cliArgs.ControlPlaneName)
+		} else {
+			fmt.Printf("This will tear down the threeport control plane '%s' and its underlying infrastructure.\n", cliArgs.ControlPlaneName)
+		}
+		fmt.Print("Are you sure? (y/N): ")
+		reader := bufio.NewReader(os.Stdin)
+		response, _ := reader.ReadString('\n')
+		if strings.TrimSpace(strings.ToLower(response)) != "y" {
+			fmt.Println("Aborted.")
+			return
+		}
+
 		cpi, err := cliArgs.CreateInstaller()
 		if err != nil {
 			cli.Error("failed to create threeport control plane installer", err)

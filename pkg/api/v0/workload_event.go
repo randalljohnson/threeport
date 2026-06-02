@@ -38,6 +38,9 @@ type WorkloadEvent struct {
 
 	// The related helm workload instance.
 	HelmWorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
+
+	// The related machine workload instance.
+	MachineWorkloadInstanceID *uint `json:",omitempty" validate:"optional"`
 }
 
 // beforeCreate is the pre-create validation hook for WorkloadEvent.

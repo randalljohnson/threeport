@@ -25,7 +25,7 @@ type SecretInstanceConfig struct {
 type SecretInstanceValues struct {
 	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
 	SecretDefinition          *SecretDefinitionValues          `json:",omitempty" yaml:"SecretDefinition,omitempty"`
-	WorkloadInstance          *WorkloadInstanceValues          `json:",omitempty" yaml:"WorkloadInstance,omitempty"`
+	KubernetesWorkloadInstance          *KubernetesWorkloadInstanceValues          `json:",omitempty" yaml:"KubernetesWorkloadInstance,omitempty"`
 	HelmWorkloadInstance      *HelmWorkloadInstanceValues      `json:",omitempty" yaml:"HelmWorkloadInstance,omitempty"`
 	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
 	SecretConfigPath          *string                          `json:",omitempty" yaml:"SecretConfigPath,omitempty"`
@@ -64,7 +64,7 @@ func (s *SecretInstanceConfig) Get(
 	for _, secretInstance := range *secretInstances {
 		// related objects
 		var secretDefinition *SecretDefinitionValues
-		var workloadInstance *WorkloadInstanceValues
+		var workloadInstance *KubernetesWorkloadInstanceValues
 		var helmWorkloadInstance *HelmWorkloadInstanceValues
 		var kubernetesRuntimeInstance *KubernetesRuntimeInstanceValues
 
@@ -79,10 +79,10 @@ func (s *SecretInstanceConfig) Get(
 		}
 
 		// get workload instance
-		if secretInstance.WorkloadInstanceID != nil {
-			workloadInst, err := client_v0.GetWorkloadInstanceByID(apiClient, apiEndpoint, *secretInstance.WorkloadInstanceID)
+		if secretInstance.KubernetesWorkloadInstanceID != nil {
+			workloadInst, err := client_v0.GetKubernetesWorkloadInstanceByID(apiClient, apiEndpoint, *secretInstance.KubernetesWorkloadInstanceID)
 			if err == nil {
-				workloadInstance = &WorkloadInstanceValues{
+				workloadInstance = &KubernetesWorkloadInstanceValues{
 					Name: workloadInst.Name,
 				}
 			}
@@ -112,7 +112,7 @@ func (s *SecretInstanceConfig) Get(
 			SecretInstance: SecretInstanceValues{
 				Name:                      secretInstance.Name,
 				SecretDefinition:          secretDefinition,
-				WorkloadInstance:          workloadInstance,
+				KubernetesWorkloadInstance:          workloadInstance,
 				HelmWorkloadInstance:      helmWorkloadInstance,
 				KubernetesRuntimeInstance: kubernetesRuntimeInstance,
 				Age:                       util.Ptr(util.GetAgeFormatted(secretInstance.CreatedAt)),
@@ -166,16 +166,16 @@ func (s *SecretInstanceConfig) Create(
 
 	// get workload instance
 	switch {
-	case secretInstanceValues.WorkloadInstance != nil:
-		workloadInstance, err := client_v0.GetWorkloadInstanceByName(
+	case secretInstanceValues.KubernetesWorkloadInstance != nil:
+		workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
 			apiClient,
 			apiEndpoint,
-			*secretInstanceValues.WorkloadInstance.Name,
+			*secretInstanceValues.KubernetesWorkloadInstance.Name,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get workload instance by name: %w", err)
 		}
-		secretInstance.WorkloadInstanceID = workloadInstance.ID
+		secretInstance.KubernetesWorkloadInstanceID = workloadInstance.ID
 	case secretInstanceValues.HelmWorkloadInstance != nil:
 		helmWorkloadInstance, err := client_v0.GetHelmWorkloadInstanceByName(
 			apiClient,
@@ -203,7 +203,7 @@ func (s *SecretInstanceConfig) Create(
 		SecretInstance: SecretInstanceValues{
 			Name:                      createdSecretInstance.Name,
 			SecretDefinition:          secretInstanceValues.SecretDefinition,
-			WorkloadInstance:          secretInstanceValues.WorkloadInstance,
+			KubernetesWorkloadInstance:          secretInstanceValues.KubernetesWorkloadInstance,
 			HelmWorkloadInstance:      secretInstanceValues.HelmWorkloadInstance,
 			KubernetesRuntimeInstance: secretInstanceValues.KubernetesRuntimeInstance,
 			Age:                       util.Ptr(util.GetAgeFormatted(createdSecretInstance.CreatedAt)),
@@ -279,16 +279,16 @@ func (s *SecretInstanceConfig) Replace(
 
 	// get workload instance
 	switch {
-	case secretInstanceValues.WorkloadInstance != nil:
-		workloadInstance, err := client_v0.GetWorkloadInstanceByName(
+	case secretInstanceValues.KubernetesWorkloadInstance != nil:
+		workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(
 			apiClient,
 			apiEndpoint,
-			*secretInstanceValues.WorkloadInstance.Name,
+			*secretInstanceValues.KubernetesWorkloadInstance.Name,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get workload instance by name: %w", err)
 		}
-		updatedSecretInstance.WorkloadInstanceID = workloadInstance.ID
+		updatedSecretInstance.KubernetesWorkloadInstanceID = workloadInstance.ID
 	case secretInstanceValues.HelmWorkloadInstance != nil:
 		helmWorkloadInstance, err := client_v0.GetHelmWorkloadInstanceByName(
 			apiClient,
@@ -316,7 +316,7 @@ func (s *SecretInstanceConfig) Replace(
 		SecretInstance: SecretInstanceValues{
 			Name:                      replacedSecretInstance.Name,
 			SecretDefinition:          secretInstanceValues.SecretDefinition,
-			WorkloadInstance:          secretInstanceValues.WorkloadInstance,
+			KubernetesWorkloadInstance:          secretInstanceValues.KubernetesWorkloadInstance,
 			HelmWorkloadInstance:      secretInstanceValues.HelmWorkloadInstance,
 			KubernetesRuntimeInstance: secretInstanceValues.KubernetesRuntimeInstance,
 			Age:                       util.Ptr(util.GetAgeFormatted(replacedSecretInstance.CreatedAt)),
@@ -386,8 +386,8 @@ func (s *SecretInstanceConfig) Validate() error {
 	}
 
 	// ensure workload instance or helm workload instance is set
-	if secretInstanceValues.WorkloadInstance == nil && secretInstanceValues.HelmWorkloadInstance == nil {
-		multiError.AppendError(errors.New("missing required field in config: WorkloadInstance or HelmWorkloadInstance"))
+	if secretInstanceValues.KubernetesWorkloadInstance == nil && secretInstanceValues.HelmWorkloadInstance == nil {
+		multiError.AppendError(errors.New("missing required field in config: KubernetesWorkloadInstance or HelmWorkloadInstance"))
 	}
 
 	// ensure kubernetes runtime instance is set (name is required if provided)

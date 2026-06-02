@@ -30,7 +30,7 @@ type GatewayDefinition struct {
 	ServiceName *string `json:",omitempty" validate:"optional"`
 
 	// The workload definition that belongs to this resource.
-	WorkloadDefinitionID *uint `json:",omitempty" validate:"optional"`
+	KubernetesWorkloadDefinitionID *uint `json:",omitempty" validate:"optional"`
 
 	// The associated gateway instances that are deployed from this definition.
 	GatewayInstances []*GatewayInstance `json:",omitempty" validate:"optional,association"`
@@ -54,10 +54,10 @@ type GatewayInstance struct {
 	// TODO: implement this in the future so we don't need to
 	// query the workload instance & search for the workload resource instance
 	// The workload resource instances that belong to this instance.
-	// WorkloadResourceInstances *[]WorkloadResourceInstance `validate:"optional,association"`
+	// KubernetesWorkloadResourceInstances *[]KubernetesWorkloadResourceInstance `validate:"optional,association"`
 
 	// The workload instance this gateway belongs to.
-	WorkloadInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesWorkloadInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 }
 
 // GatewayHttpPort is an HTTP port to expose to the outside network.
@@ -121,7 +121,7 @@ type DomainNameDefinition struct {
 	// Type *string `gorm:"default:'A'" // validate:"optional"`
 
 	// // The workload definition that belongs to this resource.
-	// WorkloadDefinitionID *uint `validate:"optional"`
+	// KubernetesWorkloadDefinitionID *uint `validate:"optional"`
 
 	// The associated domain name instances that are deployed from this definition.
 	DomainNameInstances []*DomainNameInstance `json:",omitempty" validate:"optional,association"`
@@ -137,7 +137,7 @@ type DomainNameInstance struct {
 	DomainNameDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The workload instance this domain name belongs to.
-	WorkloadInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesWorkloadInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The cluster where the workload that is using the domain name is running.
 	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`

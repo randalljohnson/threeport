@@ -226,7 +226,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		)
 		assert.Nil(err, "should have no error creating workload definition")
 		defer retryDelete(t, "workload definition", func() error {
-			_, err := client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdWorkloadDef.ID)
+			_, err := client.DeleteKubernetesWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdWorkloadDef.ID)
 			return err
 		})
 
@@ -319,7 +319,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		assert.Nil(err, "should have no error creating workload instance")
 		assert.NotNil(createdWorkloadInst, "should have a workload instance returned")
 		defer retryDelete(t, "workload instance", func() error {
-			_, err := client.DeleteWorkloadInstance(apiClient, threeportAPIEndpoint, *createdWorkloadInst.ID)
+			_, err := client.DeleteKubernetesWorkloadInstance(apiClient, threeportAPIEndpoint, *createdWorkloadInst.ID)
 			return err
 		})
 
@@ -519,7 +519,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		)
 		assert.Nil(err, "should have no error creating second workload definition")
 		defer retryDelete(t, "second workload definition", func() error {
-			_, err := client.DeleteWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdSecondWorkloadDef.ID)
+			_, err := client.DeleteKubernetesWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdSecondWorkloadDef.ID)
 			return err
 		})
 

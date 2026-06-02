@@ -30,6 +30,10 @@ nav:
     - Kubernetes Runtimes:
       - 'Introduction': 'kubernetes-runtime/kubernetes-intro.md'
       - 'Remote Kubernetes Runtime': 'kubernetes-runtime/remote-kubernetes-runtime.md'
+    - Machine Runtimes:
+      - 'Introduction': 'machine/machine-intro.md'
+    - Machine Workloads:
+      - 'Introduction': 'machine/machine-workload-intro.md'
     - Workloads:
       - 'Introduction': 'workloads/workload-intro.md'
       - 'Local Workload': 'workloads/deploy-workload-local.md'

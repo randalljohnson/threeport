@@ -17863,6 +17863,14 @@ const docTemplate = `{
                     "description": "The related helm workload instance.",
                     "type": "integer"
                 },
+                "KubernetesWorkloadInstanceID": {
+                    "description": "The related kubernetes workload instance.",
+                    "type": "integer"
+                },
+                "KubernetesWorkloadResourceInstanceID": {
+                    "description": "The related kubernetes workload resource instance.",
+                    "type": "integer"
+                },
                 "Message": {
                     "description": "The message associated with the event.",
                     "type": "string"
@@ -17882,14 +17890,6 @@ const docTemplate = `{
                 "Type": {
                     "description": "The type of event that occurred in Kubernetes.",
                     "type": "string"
-                },
-                "WorkloadInstanceID": {
-                    "description": "The related workload instance.",
-                    "type": "integer"
-                },
-                "WorkloadResourceInstanceID": {
-                    "description": "The related workload resource instance.",
-                    "type": "integer"
                 }
             }
         }

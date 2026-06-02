@@ -33,7 +33,7 @@ func (cpi *ControlPlaneInstaller) CreateThreeportControlPlaneNamespace(
 		},
 	}
 	if err := cpi.CreateOrUpdateKubeResource(namespace, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	return nil
@@ -96,7 +96,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsPDB, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsServiceAccount = &unstructured.Unstructured{
@@ -115,7 +115,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 		},
 	}
 	if err := cpi.CreateOrUpdateKubeResource(natsServiceAccount, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsConfig = &unstructured.Unstructured{
@@ -162,7 +162,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsConfig, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsService = &unstructured.Unstructured{
@@ -222,7 +222,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsService, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsBoxDeployment = &unstructured.Unstructured{
@@ -279,7 +279,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsBoxDeployment, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsStatefulSet = &unstructured.Unstructured{
@@ -548,7 +548,7 @@ store_dir: /data
 
 	setPersistent(natsStatefulSet)
 	if err := cpi.CreateOrUpdateKubeResource(natsStatefulSet, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	// dbCreds is nil on reinstall - constructing the secret would
@@ -607,7 +607,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(crdbPDB, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var crdbService = &unstructured.Unstructured{
@@ -666,7 +666,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(crdbService, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var crdbStatefulSet = &unstructured.Unstructured{
@@ -851,7 +851,7 @@ store_dir: /data
 
 	setPersistent(crdbStatefulSet)
 	if err := cpi.CreateOrUpdateKubeResource(crdbStatefulSet, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	// configure threeport api service

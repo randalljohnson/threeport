@@ -1,21 +1,28 @@
 # Kubernetes Runtimes
 
-A Kubernetes Runtime is currently the only Threeport-supported runtime environment
-for workloads.  Each instance represents a distinct Kubernetes cluster.  You can
-deploy and utilize as many Kubernetes Runtimes as your needs required.
-
-As such Workloads in Threeport require Kubernetes resource manifests to deploy
-them.
+A Kubernetes Runtime represents a distinct Kubernetes cluster used as a
+runtime environment for workloads.  You can deploy and utilize as many
+Kubernetes Runtimes as your needs require.  Workloads that target a
+Kubernetes Runtime are defined with Kubernetes resource manifests.
 
 For more information about Kubernetes, see the official [Kubernetes
 docs](https://kubernetes.io/docs/home/).
 
+## Machine Runtimes
+
+Threeport also supports Machine Runtimes for SSH-reachable hosts that sit
+outside Kubernetes (VMs, bare-metal servers, edge devices).  See the
+[Machine Runtimes introduction](../machine/machine-intro.md) for the
+runtime model and the [Machine Workloads
+introduction](../machine/machine-workload-intro.md) for the
+create/update/delete script model used to manage workloads on those hosts.
+
 ## Alternative Runtimes
 
-It is possible to add support for alternative runtime environments such as machines, i.e.
-deploying directly to a server using a machine image.
-
-Alternative runtimes are not on the Threeport roadmap but could be incorporated.
+Kubernetes and Machine Runtimes are the runtimes built into threeport
+today.  The runtime model is extensible.  New runtime types can be added
+via the [threeport SDK](https://github.com/threeport/threeport/tree/main/pkg/sdk)
+by defining the API types and the controller that reconciles them.
 
 ## Kubernetes Runtime Definition
 

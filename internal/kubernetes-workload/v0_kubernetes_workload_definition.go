@@ -93,7 +93,7 @@ func v0KubernetesWorkloadDefinitionDeleted(
 	}
 
 	// get related kubernetes workload resource definitions
-	k8sWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
+	k8sWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByID(
 		r.APIClient,
 		r.APIServer,
 		*k8sWorkloadDefinition.ID,

@@ -28,11 +28,11 @@ type KubernetesWorkloadInstanceConfig struct {
 // KubernetesWorkloadInstanceValues contains all the attributes needed to manage
 // the KubernetesWorkloadInstance API object.
 type KubernetesWorkloadInstanceValues struct {
-	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	KubernetesWorkloadDefinition        *KubernetesWorkloadDefinitionValues        `json:",omitempty" yaml:"KubernetesWorkloadDefinition,omitempty"`
-	Status                    *string                          `json:",omitempty" yaml:"Status,omitempty"`
-	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
+	Name                         *string                             `json:",omitempty" yaml:"Name,omitempty"`
+	KubernetesRuntimeInstance    *KubernetesRuntimeInstanceValues    `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	KubernetesWorkloadDefinition *KubernetesWorkloadDefinitionValues `json:",omitempty" yaml:"KubernetesWorkloadDefinition,omitempty"`
+	Status                       *string                             `json:",omitempty" yaml:"Status,omitempty"`
+	Age                          *string                             `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets kubernetes workload instances from the Threeport API.
@@ -103,11 +103,11 @@ func (w *KubernetesWorkloadInstanceConfig) Get(
 
 		k8sWorkloadInstanceConfig := KubernetesWorkloadInstanceConfig{
 			KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-				Name:                      k8sWorkloadInstance.Name,
-				KubernetesRuntimeInstance: kubernetesRuntimeInstance,
-				KubernetesWorkloadDefinition:        k8sWorkloadDefinition,
-				Status:                    util.Ptr(string(instanceStatusDetail.Status)),
-				Age:                       util.Ptr(util.GetAgeFormatted(k8sWorkloadInstance.CreatedAt)),
+				Name:                         k8sWorkloadInstance.Name,
+				KubernetesRuntimeInstance:    kubernetesRuntimeInstance,
+				KubernetesWorkloadDefinition: k8sWorkloadDefinition,
+				Status:                       util.Ptr(string(instanceStatusDetail.Status)),
+				Age:                          util.Ptr(util.GetAgeFormatted(k8sWorkloadInstance.CreatedAt)),
 			},
 		}
 		k8sWorkloadInstanceConfigs = append(k8sWorkloadInstanceConfigs, k8sWorkloadInstanceConfig)
@@ -165,7 +165,7 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 
 	if !threeportManagedNs {
 		// if client managed namespaces, get instances for definition
-		instances, err := client_v0.GetKubernetesWorkloadInstancesByKubernetesWorkloadDefinitionID(
+		instances, err := client_v0.GetKubernetesWorkloadInstancesByID(
 			apiClient,
 			apiEndpoint,
 			*k8sWorkloadDefinition.ID,
@@ -202,8 +202,8 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 		Instance: api_v0.Instance{
 			Name: k8sWorkloadInstanceValues.Name,
 		},
-		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
-		KubernetesWorkloadDefinitionID:        k8sWorkloadDefinition.ID,
+		KubernetesRuntimeInstanceID:    kubernetesRuntimeInstance.ID,
+		KubernetesWorkloadDefinitionID: k8sWorkloadDefinition.ID,
 	}
 
 	// create kubernetes workload instance
@@ -219,11 +219,11 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 	// construct kubernetes workload instance config
 	createdK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-			Name:                      createdK8sWorkloadInstance.Name,
-			KubernetesRuntimeInstance: k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
-			KubernetesWorkloadDefinition:        k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
-			Status:                    util.Ptr(string(*createdK8sWorkloadInstance.Status)),
-			Age:                       util.Ptr(util.GetAgeFormatted(createdK8sWorkloadInstance.CreatedAt)),
+			Name:                         createdK8sWorkloadInstance.Name,
+			KubernetesRuntimeInstance:    k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
+			KubernetesWorkloadDefinition: k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
+			Status:                       util.Ptr(string(*createdK8sWorkloadInstance.Status)),
+			Age:                          util.Ptr(util.GetAgeFormatted(createdK8sWorkloadInstance.CreatedAt)),
 		},
 	}
 
@@ -290,8 +290,8 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 		Instance: api_v0.Instance{
 			Name: k8sWorkloadInstanceValues.Name,
 		},
-		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
-		KubernetesWorkloadDefinitionID:        k8sWorkloadDefinition.ID,
+		KubernetesRuntimeInstanceID:    kubernetesRuntimeInstance.ID,
+		KubernetesWorkloadDefinitionID: k8sWorkloadDefinition.ID,
 	}
 
 	// replace kubernetes workload instance
@@ -307,11 +307,11 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 	// construct updated kubernetes workload instance config
 	updatedK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-			Name:                      replacedK8sWorkloadInstance.Name,
-			KubernetesRuntimeInstance: k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
-			KubernetesWorkloadDefinition:        k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
-			Status:                    util.Ptr(string(*replacedK8sWorkloadInstance.Status)),
-			Age:                       util.Ptr(util.GetAgeFormatted(replacedK8sWorkloadInstance.CreatedAt)),
+			Name:                         replacedK8sWorkloadInstance.Name,
+			KubernetesRuntimeInstance:    k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
+			KubernetesWorkloadDefinition: k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
+			Status:                       util.Ptr(string(*replacedK8sWorkloadInstance.Status)),
+			Age:                          util.Ptr(util.GetAgeFormatted(replacedK8sWorkloadInstance.CreatedAt)),
 		},
 	}
 

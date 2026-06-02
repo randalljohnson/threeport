@@ -217,7 +217,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		assert.Equal(*existingWorkloadDef.Reconciled, true, fmt.Sprintf("created workload definition should be reconciled by workload controller after %d seconds", workloadDefMaxChecks*workloadDefCheckDurationSeconds))
 
 		// check kubernetes workload resource definitions
-		workloadResourceDefs, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
+		workloadResourceDefs, err := client.GetKubernetesWorkloadResourceDefinitionsByID(
 			apiClient,
 			threeportAPIEndpoint,
 			*createdWorkloadDef.ID,

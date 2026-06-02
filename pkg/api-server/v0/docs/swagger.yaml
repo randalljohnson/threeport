@@ -1661,6 +1661,233 @@ definitions:
     - LoggingDefinitionID
     - Name
     type: object
+  v0.MachineRuntimeDefinition:
+    properties:
+      MachineRuntimeInstances:
+        description: |-
+          The associated machine runtime instances that are deployed from this
+          definition.
+        items:
+          $ref: '#/definitions/v0.MachineRuntimeInstance'
+        type: array
+      Name:
+        description: An arbitrary name for the definition.
+        type: string
+      ProfileID:
+        description: |-
+          The profile to associate with the definition.  Profile is a named
+          standard configuration for a definition object.
+        type: integer
+      TierID:
+        description: |-
+          The tier to associate with the definition.  Tier is a level of
+          criticality for access control.
+        type: integer
+    required:
+    - Name
+    type: object
+  v0.MachineRuntimeInstance:
+    properties:
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      HostKey:
+        description: |-
+          The remote machine's SSH public host key, used to verify identity on
+          connection. If not provided, captured on first connection.
+        type: string
+      Hostname:
+        description: The hostname or IP address used to reach the machine.
+        type: string
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      MachineRuntimeDefinitionID:
+        description: |-
+          The machine runtime definition for this instance.  Optional because
+          imported machines may not have an associated definition.
+        type: integer
+      MachineWorkloadInstances:
+        description: The associated machine workload instances running on this machine
+          runtime.
+        items:
+          $ref: '#/definitions/v0.MachineWorkloadInstance'
+        type: array
+      Name:
+        description: An arbitrary name the instance
+        type: string
+      Port:
+        description: The SSH port on the machine.
+        type: integer
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
+      SSHKey:
+        description: The SSH private key for authenticating to the machine.
+        type: string
+      SSHPassword:
+        description: The SSH password for authenticating to the machine.
+        type: string
+      SSHUser:
+        description: The SSH username for authenticating to the machine.
+        type: string
+      Status:
+        description: |-
+          The status of the instance.
+          TODO: use a custom type
+        type: string
+    required:
+    - Hostname
+    - Name
+    - SSHUser
+    type: object
+  v0.MachineWorkloadDefinition:
+    properties:
+      CreateScript:
+        description: The shell script to run when a machine workload instance is created.
+        type: string
+      DeleteScript:
+        description: The shell script to run when a machine workload instance is deleted.
+        type: string
+      Env:
+        description: The environment variables to set for the workload as KEY=VALUE
+          entries.
+        items:
+          type: string
+        type: array
+      MachineWorkloadInstances:
+        description: |-
+          The associated machine workload instances that are deployed from this
+          definition.
+        items:
+          $ref: '#/definitions/v0.MachineWorkloadInstance'
+        type: array
+      Name:
+        description: An arbitrary name for the definition.
+        type: string
+      ProfileID:
+        description: |-
+          The profile to associate with the definition.  Profile is a named
+          standard configuration for a definition object.
+        type: integer
+      Shell:
+        description: The shell to use for script execution.
+        type: string
+      TierID:
+        description: |-
+          The tier to associate with the definition.  Tier is a level of
+          criticality for access control.
+        type: integer
+      Timeout:
+        description: The timeout in seconds for script execution.
+        type: integer
+      UpdateScript:
+        description: The shell script to run when a machine workload instance is updated.
+        type: string
+      WorkingDir:
+        description: The working directory for script execution.
+        type: string
+    required:
+    - CreateScript
+    - DeleteScript
+    - Name
+    type: object
+  v0.MachineWorkloadInstance:
+    properties:
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      Env:
+        description: The environment variables set for the workload as KEY=VALUE entries.
+        items:
+          type: string
+        type: array
+      Events:
+        description: All events generated for the machine workload instance.
+        items:
+          $ref: '#/definitions/v0.WorkloadEvent'
+        type: array
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      MachineRuntimeInstanceID:
+        description: The machine runtime on which the workload is deployed.
+        type: integer
+      MachineWorkloadDefinitionID:
+        description: The definition used to configure the machine workload instance.
+        type: integer
+      Name:
+        description: An arbitrary name the instance
+        type: string
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
+      Status:
+        description: |-
+          The latest status of the workload instance as observed by the reconciler
+          when the most recent script execution completed.
+        type: string
+    required:
+    - MachineRuntimeInstanceID
+    - MachineWorkloadDefinitionID
+    - Name
+    type: object
   v0.Meta:
     properties:
       ObjectCount:
@@ -2798,6 +3025,15 @@ definitions:
       HelmWorkloadInstanceID:
         description: The related helm workload instance.
         type: integer
+      KubernetesWorkloadInstanceID:
+        description: The related kubernetes workload instance.
+        type: integer
+      KubernetesWorkloadResourceInstanceID:
+        description: The related kubernetes workload resource instance.
+        type: integer
+      MachineWorkloadInstanceID:
+        description: The related machine workload instance.
+        type: integer
       Message:
         description: The message associated with the event.
         type: string
@@ -2818,12 +3054,6 @@ definitions:
       Type:
         description: The type of event that occurred in Kubernetes.
         type: string
-      WorkloadInstanceID:
-        description: The related workload instance.
-        type: integer
-      WorkloadResourceInstanceID:
-        description: The related workload resource instance.
-        type: integer
     required:
     - Message
     - Reason
@@ -3217,6 +3447,58 @@ paths:
             $ref: '#/definitions/v0.ApiObjectVersions'
       summary: GetLoggingInstanceVersions gets the supported versions for the logging
         instance API.
+  /machine-runtime-definitions/versions:
+    get:
+      description: Get the supported API versions for machine runtime definitions.
+      operationId: machineRuntimeDefinition-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetMachineRuntimeDefinitionVersions gets the supported versions for
+        the machine runtime definition API.
+  /machine-runtime-instances/versions:
+    get:
+      description: Get the supported API versions for machine runtime instances.
+      operationId: machineRuntimeInstance-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetMachineRuntimeInstanceVersions gets the supported versions for the
+        machine runtime instance API.
+  /machine-workload-definitions/versions:
+    get:
+      description: Get the supported API versions for machine workload definitions.
+      operationId: machineWorkloadDefinition-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetMachineWorkloadDefinitionVersions gets the supported versions for
+        the machine workload definition API.
+  /machine-workload-instances/versions:
+    get:
+      description: Get the supported API versions for machine workload instances.
+      operationId: machineWorkloadInstance-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetMachineWorkloadInstanceVersions gets the supported versions for
+        the machine workload instance API.
   /metrics-definitions/versions:
     get:
       description: Get the supported API versions for metrics definitions.
@@ -9350,6 +9632,806 @@ paths:
           schema:
             $ref: '#/definitions/v0.Response'
       summary: updates an existing logging instance by replacing the entire object.
+  /v0/machine-runtime-definitions:
+    get:
+      consumes:
+      - application/json
+      description: Get all machine runtime definitions from the Threeport database.
+      operationId: get-v0-machineRuntimeDefinitions
+      parameters:
+      - description: machine runtime definition search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all machine runtime definitions.
+    post:
+      consumes:
+      - application/json
+      description: Add a new machine runtime definition to the Threeport database.
+      operationId: add-v0-machineRuntimeDefinition
+      parameters:
+      - description: MachineRuntimeDefinition object
+        in: body
+        name: machineRuntimeDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineRuntimeDefinition'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new machine runtime definition.
+  /v0/machine-runtime-definitions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a machine runtime definition by ID from the database.
+      operationId: delete-v0-machineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a machine runtime definition.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular machine runtime definition from the database.
+      operationId: get-v0-machineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a machine runtime definition.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a machine runtime definition in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating machine runtime definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-machineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineRuntimeDefinition object
+        in: body
+        name: machineRuntimeDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineRuntimeDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing machine runtime definition.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a machine runtime definition in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating machine runtime definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-machineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineRuntimeDefinition object
+        in: body
+        name: machineRuntimeDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineRuntimeDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing machine runtime definition by replacing the entire
+        object.
+  /v0/machine-runtime-instances:
+    get:
+      consumes:
+      - application/json
+      description: Get all machine runtime instances from the Threeport database.
+      operationId: get-v0-machineRuntimeInstances
+      parameters:
+      - description: machine runtime instance search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all machine runtime instances.
+    post:
+      consumes:
+      - application/json
+      description: Add a new machine runtime instance to the Threeport database.
+      operationId: add-v0-machineRuntimeInstance
+      parameters:
+      - description: MachineRuntimeInstance object
+        in: body
+        name: machineRuntimeInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineRuntimeInstance'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new machine runtime instance.
+  /v0/machine-runtime-instances/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a machine runtime instance by ID from the database.
+      operationId: delete-v0-machineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a machine runtime instance.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular machine runtime instance from the database.
+      operationId: get-v0-machineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a machine runtime instance.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a machine runtime instance in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating machine runtime instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-machineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineRuntimeInstance object
+        in: body
+        name: machineRuntimeInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineRuntimeInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing machine runtime instance.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a machine runtime instance in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating machine runtime instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-machineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineRuntimeInstance object
+        in: body
+        name: machineRuntimeInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineRuntimeInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing machine runtime instance by replacing the entire
+        object.
+  /v0/machine-workload-definitions:
+    get:
+      consumes:
+      - application/json
+      description: Get all machine workload definitions from the Threeport database.
+      operationId: get-v0-machineWorkloadDefinitions
+      parameters:
+      - description: machine workload definition search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all machine workload definitions.
+    post:
+      consumes:
+      - application/json
+      description: Add a new machine workload definition to the Threeport database.
+      operationId: add-v0-machineWorkloadDefinition
+      parameters:
+      - description: MachineWorkloadDefinition object
+        in: body
+        name: machineWorkloadDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineWorkloadDefinition'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new machine workload definition.
+  /v0/machine-workload-definitions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a machine workload definition by ID from the database.
+      operationId: delete-v0-machineWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a machine workload definition.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular machine workload definition from the database.
+      operationId: get-v0-machineWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a machine workload definition.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a machine workload definition in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating machine workload definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-machineWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineWorkloadDefinition object
+        in: body
+        name: machineWorkloadDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineWorkloadDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing machine workload definition.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a machine workload definition in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating machine workload definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-machineWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineWorkloadDefinition object
+        in: body
+        name: machineWorkloadDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineWorkloadDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing machine workload definition by replacing the entire
+        object.
+  /v0/machine-workload-instances:
+    get:
+      consumes:
+      - application/json
+      description: Get all machine workload instances from the Threeport database.
+      operationId: get-v0-machineWorkloadInstances
+      parameters:
+      - description: machine workload instance search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all machine workload instances.
+    post:
+      consumes:
+      - application/json
+      description: Add a new machine workload instance to the Threeport database.
+      operationId: add-v0-machineWorkloadInstance
+      parameters:
+      - description: MachineWorkloadInstance object
+        in: body
+        name: machineWorkloadInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineWorkloadInstance'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new machine workload instance.
+  /v0/machine-workload-instances/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a machine workload instance by ID from the database.
+      operationId: delete-v0-machineWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a machine workload instance.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular machine workload instance from the database.
+      operationId: get-v0-machineWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a machine workload instance.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a machine workload instance in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating machine workload instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-machineWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineWorkloadInstance object
+        in: body
+        name: machineWorkloadInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineWorkloadInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing machine workload instance.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a machine workload instance in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating machine workload instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-machineWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: MachineWorkloadInstance object
+        in: body
+        name: machineWorkloadInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.MachineWorkloadInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing machine workload instance by replacing the entire
+        object.
   /v0/metrics-definitions:
     get:
       consumes:

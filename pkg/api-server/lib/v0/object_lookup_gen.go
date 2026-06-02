@@ -278,6 +278,50 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 			}
 		}
 
+	case "threeport.io/v0.MachineRuntimeDefinition":
+		var rows []v0.MachineRuntimeDefinition
+		if err := db.Model(&v0.MachineRuntimeDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineRuntimeDefinition names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "threeport.io/v0.MachineRuntimeInstance":
+		var rows []v0.MachineRuntimeInstance
+		if err := db.Model(&v0.MachineRuntimeInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineRuntimeInstance names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "threeport.io/v0.MachineWorkloadDefinition":
+		var rows []v0.MachineWorkloadDefinition
+		if err := db.Model(&v0.MachineWorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineWorkloadDefinition names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
+	case "threeport.io/v0.MachineWorkloadInstance":
+		var rows []v0.MachineWorkloadInstance
+		if err := db.Model(&v0.MachineWorkloadInstance{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineWorkloadInstance names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
 	case "threeport.io/v0.MetricsDefinition":
 		var rows []v0.MetricsDefinition
 		if err := db.Model(&v0.MetricsDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
@@ -778,6 +822,58 @@ func GetCoreObjectIDsByName(db *gorm.DB, objectType string, name string) ([]uint
 		var rows []v0.LoggingInstance
 		if err := db.Select("id").Where("name = ?", name).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up LoggingInstance by name: %w", err)
+		}
+		ids := make([]uint, 0, len(rows))
+		for _, r := range rows {
+			if r.ID != nil {
+				ids = append(ids, *r.ID)
+			}
+		}
+		return ids, nil
+
+	case "threeport.io/v0.MachineRuntimeDefinition":
+		var rows []v0.MachineRuntimeDefinition
+		if err := db.Select("id").Where("name = ?", name).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineRuntimeDefinition by name: %w", err)
+		}
+		ids := make([]uint, 0, len(rows))
+		for _, r := range rows {
+			if r.ID != nil {
+				ids = append(ids, *r.ID)
+			}
+		}
+		return ids, nil
+
+	case "threeport.io/v0.MachineRuntimeInstance":
+		var rows []v0.MachineRuntimeInstance
+		if err := db.Select("id").Where("name = ?", name).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineRuntimeInstance by name: %w", err)
+		}
+		ids := make([]uint, 0, len(rows))
+		for _, r := range rows {
+			if r.ID != nil {
+				ids = append(ids, *r.ID)
+			}
+		}
+		return ids, nil
+
+	case "threeport.io/v0.MachineWorkloadDefinition":
+		var rows []v0.MachineWorkloadDefinition
+		if err := db.Select("id").Where("name = ?", name).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineWorkloadDefinition by name: %w", err)
+		}
+		ids := make([]uint, 0, len(rows))
+		for _, r := range rows {
+			if r.ID != nil {
+				ids = append(ids, *r.ID)
+			}
+		}
+		return ids, nil
+
+	case "threeport.io/v0.MachineWorkloadInstance":
+		var rows []v0.MachineWorkloadInstance
+		if err := db.Select("id").Where("name = ?", name).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up MachineWorkloadInstance by name: %w", err)
 		}
 		ids := make([]uint, 0, len(rows))
 		for _, r := range rows {

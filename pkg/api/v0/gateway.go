@@ -8,11 +8,12 @@ type GatewayDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// // Allow requests from the public internet.
-	// Public *bool `gorm:"default:true" validate:"optional"`
+	// Public *bool `json:",omitempty" gorm:"default:true" validate:"optional"`
 
 	// // Allow requests from the private network outside the workload cluster but
 	// // not from the public internet.
-	// Private *bool `gorm:"default:false" // validate:"optional"`
+	// Private *bool `json:",omitempty" gorm:"default:false"
+	// validate:"optional"`
 
 	// HttpPorts is a list of HTTP ports to expose to the outside network.
 	HttpPorts []*GatewayHttpPort `json:",omitempty" validate:"optional"`
@@ -46,14 +47,15 @@ type GatewayInstance struct {
 	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The domain name instance to serve requests for.
-	// DomainNameInstanceID *uint `validate:"optional"`
+	// DomainNameInstanceID *uint `json:",omitempty" validate:"optional"`
 
 	// GatewayDefinitionID is the definition used to configure the gateway instance.
 	GatewayDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
-	// TODO: implement this in the future so we don't need to
-	// query the kubernetes workload instance & search for the workload resource instance
-	// The workload resource instances that belong to this instance.
+	// TODO: implement this in the future so we don't need to query the
+	// kubernetes workload instance & search for the kubernetes workload resource
+	// instance.
+	// The kubernetes workload resource instances that belong to this instance.
 	// KubernetesWorkloadResourceInstances *[]KubernetesWorkloadResourceInstance `validate:"optional,association"`
 
 	// The kubernetes workload instance this gateway belongs to.
@@ -112,16 +114,17 @@ type DomainNameDefinition struct {
 	AdminEmail *string `json:",omitempty" gorm:"not null" validate:"required"`
 
 	// Whether or not the domain name is a root domain.
-	// RootDomain *bool `gorm:"default:false" validate:"optional"`
+	// RootDomain *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
 
 	// TTL configuration for this record.
-	// TTL *uint `gorm:"default:300" validate:"optional"`
+	// TTL *uint `json:",omitempty" gorm:"default:300" validate:"optional"`
 
 	// The type of DNS record to create.
-	// Type *string `gorm:"default:'A'" // validate:"optional"`
+	// Type *string `json:",omitempty" gorm:"default:'A'"
+	// validate:"optional"`
 
 	// // The kubernetes workload definition that belongs to this resource.
-	// KubernetesWorkloadDefinitionID *uint `validate:"optional"`
+	// KubernetesWorkloadDefinitionID *uint `json:",omitempty" validate:"optional"`
 
 	// The associated domain name instances that are deployed from this definition.
 	DomainNameInstances []*DomainNameInstance `json:",omitempty" validate:"optional,association"`

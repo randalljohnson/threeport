@@ -17,7 +17,7 @@ import (
 )
 
 // SetNamespaces adds the namespace resource and namespace assignment as needed
-// to an array of workload resource instances.
+// to an array of kubernetes workload resource instances.
 func SetNamespaces(
 	workloadResourceInstances *[]v0.KubernetesWorkloadResourceInstance,
 	workloadInstanceName *string,
@@ -43,7 +43,7 @@ func SetNamespaces(
 	namespace := ""
 	if clientManagedNS == "" {
 		// we are managing namespaces for the client - create namespace and add to
-		// array of processed workload resource instances
+		// array of processed kubernetes workload resource instances
 		namespace = fmt.Sprintf("%s-%s", *workloadInstanceName, util.RandomAlphaNumericString(10))
 	} else {
 		namespace = clientManagedNS
@@ -140,8 +140,8 @@ func IsNamespaced(
 	return apiResource.Namespaced, nil
 }
 
-// CreateNamespaceWorkloadResourceInstance returns a kubernetes workload instance for a
-// Kubernetes namespace resource with the desired name.
+// CreateNamespaceWorkloadResourceInstance returns a kubernetes workload resource
+// instance for a Kubernetes namespace resource with the desired name.
 func CreateNamespaceWorkloadResourceInstance(
 	namespaceName string,
 	workloadInstanceID uint,
@@ -161,7 +161,7 @@ func CreateNamespaceWorkloadResourceInstance(
 		return nil, fmt.Errorf("failed to marshal json for namespace object: %w", err)
 	}
 
-	// construct the workload resource instance
+	// construct the kubernetes workload resource instance
 	var JSONDef datatypes.JSON
 	JSONDef = namespaceJSON
 	reconciled := false

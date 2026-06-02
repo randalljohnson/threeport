@@ -44,20 +44,20 @@ func v0KubernetesWorkloadDefinitionCreated(
 		k8sWorkloadResourceDefinitions = append(k8sWorkloadResourceDefinitions, k8sWorkloadResourceDefinition)
 	}
 
-	// create workload resource definitions in API
-	createdWRDs, err := client.CreateWorkloadResourceDefinitions(
+	// create kubernetes workload resource definitions in API
+	createdWRDs, err := client.CreateKubernetesWorkloadResourceDefinitions(
 		r.APIClient,
 		r.APIServer,
 		&k8sWorkloadResourceDefinitions,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create workload resource definitions in API: %w", err)
+		return 0, fmt.Errorf("failed to create kubernetes workload resource definitions in API: %w", err)
 	}
 
 	for _, wrd := range *createdWRDs {
 		log.V(1).Info(
-			"workload resource definition created",
-			"workloadResourceDefinitionID", wrd.ID,
+			"kubernetes workload resource definition created",
+			"kubernetesWorkloadResourceDefinitionID", wrd.ID,
 		)
 	}
 
@@ -99,18 +99,18 @@ func v0KubernetesWorkloadDefinitionDeleted(
 		*k8sWorkloadDefinition.ID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get workload resource definitions by kubernetes workload definition ID: %w", err)
+		return 0, fmt.Errorf("failed to get kubernetes workload resource definitions by kubernetes workload definition ID: %w", err)
 	}
 
 	// delete each related kubernetes workload resource definition
 	for _, wrd := range *k8sWorkloadResourceDefinitions {
 		_, err := client.DeleteKubernetesWorkloadResourceDefinition(r.APIClient, r.APIServer, *wrd.ID)
 		if err != nil {
-			return 0, fmt.Errorf("failed to delete workload resource definition with ID %d: %w", wrd.ID, err)
+			return 0, fmt.Errorf("failed to delete kubernetes workload resource definition with ID %d: %w", wrd.ID, err)
 		}
 		log.V(1).Info(
-			"workload resource definition deleted",
-			"workloadResourceDefinitionID", wrd.ID,
+			"kubernetes workload resource definition deleted",
+			"kubernetesWorkloadResourceDefinitionID", wrd.ID,
 		)
 	}
 

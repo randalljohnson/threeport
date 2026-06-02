@@ -9,10 +9,10 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// KubernetesWorkloadConfig is a container for a Workload which is a config abstraction for
-// the KubernetesWorkloadDefinition and KubernetesWorkloadInstance API objects.
-// This abstraction allows users to manage definitions and instances together with single operations
-// rather than separate operations for each API object.
+// KubernetesWorkloadConfig is a config abstraction for the
+// KubernetesWorkloadDefinition and KubernetesWorkloadInstance API objects.
+// This abstraction allows users to manage definitions and instances together
+// with single operations rather than separate operations for each API object.
 type KubernetesWorkloadConfig struct {
 	Workload KubernetesWorkloadValues `yaml:"Workload"`
 }
@@ -194,9 +194,9 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 	// add kubernetes workload instance operation
 	k8sWorkloadInstanceConfig := KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
-			Name:                      k8sWorkloadValues.Name,
-			KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
-			KubernetesWorkloadDefinition:        &k8sWorkloadDefinitionConfig.KubernetesWorkloadDefinition,
+			Name:                         k8sWorkloadValues.Name,
+			KubernetesRuntimeInstance:    k8sWorkloadValues.KubernetesRuntimeInstance,
+			KubernetesWorkloadDefinition: &k8sWorkloadDefinitionConfig.KubernetesWorkloadDefinition,
 		},
 	}
 	operations.AppendOperation(util.Operation{
@@ -278,9 +278,9 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 		// add domain name instance operation
 		domainNameInstanceConfig := DomainNameInstanceConfig{
 			DomainNameInstance: DomainNameInstanceValues{
-				DomainNameDefinition:      &domainNameDefinitionConfig.DomainNameDefinition,
-				KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
-				KubernetesWorkloadInstance:          &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
+				DomainNameDefinition:       &domainNameDefinitionConfig.DomainNameDefinition,
+				KubernetesRuntimeInstance:  k8sWorkloadValues.KubernetesRuntimeInstance,
+				KubernetesWorkloadInstance: &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
 			},
 		}
 		operations.AppendOperation(util.Operation{
@@ -359,10 +359,10 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 		// add gateway instance operation
 		gatewayInstanceConfig := GatewayInstanceConfig{
 			GatewayInstance: GatewayInstanceValues{
-				Name:                      k8sWorkloadValues.Gateway.Name,
-				GatewayDefinition:         &gatewayDefinitionConfig.GatewayDefinition,
-				KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
-				KubernetesWorkloadInstance:          &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
+				Name:                       k8sWorkloadValues.Gateway.Name,
+				GatewayDefinition:          &gatewayDefinitionConfig.GatewayDefinition,
+				KubernetesRuntimeInstance:  k8sWorkloadValues.KubernetesRuntimeInstance,
+				KubernetesWorkloadInstance: &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
 			},
 		}
 		operations.AppendOperation(util.Operation{
@@ -399,11 +399,11 @@ func (w *KubernetesWorkloadConfig) GetOperations(
 	if k8sWorkloadValues.Secret != nil {
 		secretConfig := SecretConfig{
 			Secret: SecretValues{
-				Name:                      k8sWorkloadValues.Secret.Name,
-				AwsProviderName:           k8sWorkloadValues.Secret.AwsProviderName,
-				Data:                      k8sWorkloadValues.Secret.Data,
-				KubernetesRuntimeInstance: k8sWorkloadValues.KubernetesRuntimeInstance,
-				KubernetesWorkloadInstance:          &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
+				Name:                       k8sWorkloadValues.Secret.Name,
+				AwsProviderName:            k8sWorkloadValues.Secret.AwsProviderName,
+				Data:                       k8sWorkloadValues.Secret.Data,
+				KubernetesRuntimeInstance:  k8sWorkloadValues.KubernetesRuntimeInstance,
+				KubernetesWorkloadInstance: &k8sWorkloadInstanceConfig.KubernetesWorkloadInstance,
 			},
 		}
 		operations.AppendOperation(util.Operation{

@@ -12,9 +12,9 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// CreateWorkloadResourceDefinitions creates a new set of workload resource
-// definitions.
-func CreateWorkloadResourceDefinitions(
+// CreateKubernetesWorkloadResourceDefinitions creates a new set of kubernetes
+// workload resource definitions.
+func CreateKubernetesWorkloadResourceDefinitions(
 	apiClient *http.Client,
 	apiAddr string,
 	workloadResourceDefinitions *[]v0.KubernetesWorkloadResourceDefinition,
@@ -203,8 +203,9 @@ func GetKubernetesWorkloadResourceInstancesByID(apiClient *http.Client, apiAddr 
 	return &workloadResourceInstances, nil
 }
 
-// GetWorkloadInstancesByKubernetesRuntimeInstanceID
-func GetWorkloadInstancesByKubernetesRuntimeInstanceID(apiClient *http.Client, apiAddr string, kubernetesRuntimeID uint) (*[]v0.KubernetesWorkloadInstance, error) {
+// GetKubernetesWorkloadInstancesByKubernetesRuntimeInstanceID fetches kubernetes
+// workload instances by kubernetes runtime instance ID.
+func GetKubernetesWorkloadInstancesByKubernetesRuntimeInstanceID(apiClient *http.Client, apiAddr string, kubernetesRuntimeID uint) (*[]v0.KubernetesWorkloadInstance, error) {
 	var workloadInstances []v0.KubernetesWorkloadInstance
 
 	allPagesReceived := false

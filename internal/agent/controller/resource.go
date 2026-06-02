@@ -124,7 +124,7 @@ func (r *ThreeportWorkloadReconciler) watchResource(
 		// threeport API gets updated
 		resourceOp := notify.ResourceOperation{
 			WorkloadType:               workloadType,
-			WorkloadResourceInstanceID: threeportID,
+			KubernetesWorkloadResourceInstanceID: threeportID,
 			OperationType:              string(op.Type),
 			OperationObject:            string(objectJSON),
 		}

@@ -21,14 +21,14 @@ type SecretConfig struct {
 // SecretDefinition and SecretInstance API objects
 // together with a single operation.
 type SecretValues struct {
-	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
-	Data                      *map[string]string               `json:",omitempty" yaml:"Data,omitempty"`
-	AwsProviderName            *string                          `json:",omitempty" yaml:"AwsProviderName,omitempty"`
-	SecretConfigPath          *string                          `json:",omitempty" yaml:"SecretConfigPath,omitempty"`
-	KubernetesWorkloadInstance          *KubernetesWorkloadInstanceValues          `json:",omitempty" yaml:"KubernetesWorkloadInstance,omitempty"`
-	HelmWorkloadInstance      *HelmWorkloadInstanceValues      `json:",omitempty" yaml:"HelmWorkloadInstance,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
+	Name                       *string                           `json:",omitempty" yaml:"Name,omitempty"`
+	Data                       *map[string]string                `json:",omitempty" yaml:"Data,omitempty"`
+	AwsProviderName            *string                           `json:",omitempty" yaml:"AwsProviderName,omitempty"`
+	SecretConfigPath           *string                           `json:",omitempty" yaml:"SecretConfigPath,omitempty"`
+	KubernetesWorkloadInstance *KubernetesWorkloadInstanceValues `json:",omitempty" yaml:"KubernetesWorkloadInstance,omitempty"`
+	HelmWorkloadInstance       *HelmWorkloadInstanceValues       `json:",omitempty" yaml:"HelmWorkloadInstance,omitempty"`
+	KubernetesRuntimeInstance  *KubernetesRuntimeInstanceValues  `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
+	Age                        *string                           `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a secret definition and instance from the Threeport API.

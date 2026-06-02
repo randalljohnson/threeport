@@ -30,17 +30,17 @@ func (r *ThreeportWorkloadReconciler) addEventEventHandlers(
 				var eventSummary notify.EventSummary
 				if workloadResourceInstanceID != 0 {
 					eventSummary = notify.EventSummary{
-						EventUID:                   string(event.ObjectMeta.UID),
-						WorkloadType:               workloadType,
+						EventUID:                             string(event.ObjectMeta.UID),
+						WorkloadType:                         workloadType,
 						KubernetesWorkloadInstanceID:         workloadInstanceID,
-						WorkloadResourceInstanceID: workloadResourceInstanceID,
-						ObjectNamespace:            event.InvolvedObject.Namespace,
-						ObjectKind:                 event.InvolvedObject.Kind,
-						ObjectName:                 event.InvolvedObject.Name,
-						Timestamp:                  event.LastTimestamp,
-						Type:                       event.Type,
-						Reason:                     event.Reason,
-						Message:                    event.Message,
+						KubernetesWorkloadResourceInstanceID: workloadResourceInstanceID,
+						ObjectNamespace:                      event.InvolvedObject.Namespace,
+						ObjectKind:                           event.InvolvedObject.Kind,
+						ObjectName:                           event.InvolvedObject.Name,
+						Timestamp:                            event.LastTimestamp,
+						Type:                                 event.Type,
+						Reason:                               event.Reason,
+						Message:                              event.Message,
 					}
 				} else {
 					eventSummary = notify.EventSummary{

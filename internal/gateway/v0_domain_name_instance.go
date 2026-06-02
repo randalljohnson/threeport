@@ -121,19 +121,19 @@ func getGlooEdgeNamespace(r *controller.Reconciler, workloadInstanceID *uint) (s
 	// get gloo edge kubernetes workload resource instance
 	glooEdgeWorkloadResourceInstance, err := client.GetKubernetesWorkloadResourceInstancesByID(r.APIClient, r.APIServer, *workloadInstanceID)
 	if err != nil {
-		return "", fmt.Errorf("failed to get gloo edge workload resource instance: %w", err)
+		return "", fmt.Errorf("failed to get gloo edge kubernetes workload resource instance: %w", err)
 	}
 
 	// unmarshal gloo edge custom resource
 	glooEdge, err := workloadutil.UnmarshalUniqueKubernetesWorkloadResourceInstance(glooEdgeWorkloadResourceInstance, "GlooEdge")
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal gloo edge workload resource instance: %w", err)
+		return "", fmt.Errorf("failed to unmarshal gloo edge kubernetes workload resource instance: %w", err)
 	}
 
 	// get gateway namespace
 	glooEdgeNamespace, found, err := unstructured.NestedString(glooEdge, "spec", "namespace")
 	if err != nil || !found {
-		return "", fmt.Errorf("failed to get namespace from gateway workload resource definition: %w", err)
+		return "", fmt.Errorf("failed to get namespace from gateway kubernetes workload resource definition: %w", err)
 	}
 
 	return glooEdgeNamespace, nil

@@ -5,11 +5,12 @@ package v0
 import (
 	errors "errors"
 	"fmt"
+	"net/http"
+
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	"github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
-	"net/http"
 )
 
 // MachineWorkloadDefinitionConfig is a config abstraction for the MachineWorkloadDefinition API object.
@@ -68,13 +69,13 @@ func (m *MachineWorkloadDefinitionConfig) Get(
 	for _, machineWorkloadDefinition := range *machineWorkloadDefinitions {
 		// handle encryption if needed
 		if encryptionKey != "" {
-			a, err := encryption.DecryptValues(&machineWorkloadDefinition, encryptionKey)
+			a, err := apilib.DecryptValues(&machineWorkloadDefinition, encryptionKey)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt machine workload definition secret values: %w", err)
 			}
 			machineWorkloadDefinition = *(a.(*api_v0.MachineWorkloadDefinition))
 		} else {
-			a := encryption.RedactEncryptedValues(&machineWorkloadDefinition)
+			a := apilib.RedactEncryptedValues(&machineWorkloadDefinition)
 			machineWorkloadDefinition = *(a.(*api_v0.MachineWorkloadDefinition))
 		}
 

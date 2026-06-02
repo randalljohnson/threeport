@@ -73,7 +73,7 @@ func (c *SecretInstanceConfig) createSecretObjects() error {
 			return fmt.Errorf("failed to get kubernetes workload instance: %w", err)
 		}
 
-		// create workload resource instances
+		// create kubernetes workload resource instances
 		for _, secretObject := range secretObjects {
 			jsonDefinition, err := util.UnstructuredToDatatypesJson(secretObject)
 			if err != nil {
@@ -89,7 +89,7 @@ func (c *SecretInstanceConfig) createSecretObjects() error {
 				&workloadResourceInstance,
 			)
 			if err != nil {
-				return fmt.Errorf("failed to create workload resource instance: %w", err)
+				return fmt.Errorf("failed to create kubernetes workload resource instance: %w", err)
 			}
 		}
 
@@ -173,23 +173,23 @@ func (c *SecretInstanceConfig) deleteSecretObjects() error {
 			if errors.Is(err, client_lib.ErrObjectNotFound) {
 				return nil
 			}
-			return fmt.Errorf("failed to get workload resource instances by kubernetes workload instance ID: %w", err)
+			return fmt.Errorf("failed to get kubernetes workload resource instances by kubernetes workload instance ID: %w", err)
 		}
 
-		// remove workload resource instances
+		// remove kubernetes workload resource instances
 		for _, secretObject := range secretObjects {
 
-			// get workload resource instance for secret object
+			// get kubernetes workload resource instance for secret object
 			workloadResourceInstance, err := workloadutil.GetUniqueKubernetesWorkloadResourceInstanceByName(
 				workloadResourceInstances,
 				secretObject.GetKind(),
 				secretObject.GetName(),
 			)
 			if err != nil {
-				return fmt.Errorf("failed to get workload resource instance: %w", err)
+				return fmt.Errorf("failed to get kubernetes workload resource instance: %w", err)
 			}
 
-			// schedule workload resource instance for deletion
+			// schedule kubernetes workload resource instance for deletion
 			workloadResourceInstance = &v0.KubernetesWorkloadResourceInstance{
 				Common:               v0.Common{ID: workloadResourceInstance.ID},
 				ScheduledForDeletion: util.Ptr(time.Now().UTC()),
@@ -202,10 +202,10 @@ func (c *SecretInstanceConfig) deleteSecretObjects() error {
 			)
 			if err != nil {
 				if errors.Is(err, client_lib.ErrObjectNotFound) {
-					// workload resource instance has already been deleted
+					// kubernetes workload resource instance has already been deleted
 					return nil
 				}
-				return fmt.Errorf("failed to update workload resource instance: %w", err)
+				return fmt.Errorf("failed to update kubernetes workload resource instance: %w", err)
 			}
 		}
 

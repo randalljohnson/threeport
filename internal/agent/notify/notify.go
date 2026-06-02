@@ -28,7 +28,7 @@ type ThreeportNotif struct {
 // threeport-managed resources.
 type ResourceOperation struct {
 	WorkloadType               string
-	WorkloadResourceInstanceID uint
+	KubernetesWorkloadResourceInstanceID uint
 	OperationType              string
 	OperationObject            string
 }
@@ -36,17 +36,17 @@ type ResourceOperation struct {
 // EventSummary contains information collected from events related to
 // threeport-managed resources.
 type EventSummary struct {
-	EventUID                   string
-	WorkloadType               string
+	EventUID                             string
+	WorkloadType                         string
 	KubernetesWorkloadInstanceID         uint
-	WorkloadResourceInstanceID uint
-	ObjectNamespace            string
-	ObjectKind                 string
-	ObjectName                 string
-	Timestamp                  metav1.Time
-	Type                       string
-	Reason                     string
-	Message                    string
+	KubernetesWorkloadResourceInstanceID uint
+	ObjectNamespace                      string
+	ObjectKind                           string
+	ObjectName                           string
+	Timestamp                            metav1.Time
+	Type                                 string
+	Reason                               string
+	Message                              string
 }
 
 // Notify collects information about all resources being watched and
@@ -121,7 +121,7 @@ func Notify(
 				runtimeDef := datatypes.JSON([]byte(notif.Operation.OperationObject))
 				workloadResourceInst := tpapi.KubernetesWorkloadResourceInstance{
 					Common: tpapi.Common{
-						ID: &notif.Operation.WorkloadResourceInstanceID,
+						ID: &notif.Operation.KubernetesWorkloadResourceInstanceID,
 					},
 					LastOperation:     &notif.Operation.OperationType,
 					RuntimeDefinition: &runtimeDef,
@@ -132,13 +132,13 @@ func Notify(
 			if notif.Event != nil {
 				var evt tpapi.Event
 				switch {
-				case notif.Event.WorkloadResourceInstanceID != 0:
+				case notif.Event.KubernetesWorkloadResourceInstanceID != 0:
 					evt = tpapi.Event{
 						Type:       util.Ptr(notif.Event.Type),
 						Reason:     util.Ptr(notif.Event.Reason),
 						Note:       util.Ptr(notif.Event.Message),
 						ObjectType: util.Ptr("threeport.io/v0.KubernetesWorkloadResourceInstance"),
-						ObjectID:   util.Ptr(notif.Event.WorkloadResourceInstanceID),
+						ObjectID:   util.Ptr(notif.Event.KubernetesWorkloadResourceInstanceID),
 					}
 				case notif.Event.WorkloadType == agent.WorkloadInstanceType:
 					evt = tpapi.Event{

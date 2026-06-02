@@ -16,13 +16,13 @@ func UnmarshalUniqueKubernetesWorkloadResourceInstance(k8sWorkloadResourceInstan
 	// filter out service objects
 	k8sWorkloadResourceInstance, err := GetUniqueKubernetesWorkloadResourceInstance(k8sWorkloadResourceInstances, kind)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workload resource instances from kubernetes workload instance: %w", err)
+		return nil, fmt.Errorf("failed to get kubernetes workload resource instances from kubernetes workload instance: %w", err)
 	}
 
 	// unmarshal service object
 	service, err := util.UnmarshalJSON(*k8sWorkloadResourceInstance.JSONDefinition)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workload resource instance object: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal kubernetes workload resource instance object: %w", err)
 	}
 
 	return service, nil
@@ -35,13 +35,13 @@ func UnmarshalUniqueKubernetesWorkloadResourceDefinition(k8sWorkloadResourceDefi
 	// filter out service objects
 	k8sWorkloadResourceDefinition, err := GetUniqueKubernetesWorkloadResourceDefinition(k8sWorkloadResourceDefinitions, kind)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workload resource instances from kubernetes workload instance: %w", err)
+		return nil, fmt.Errorf("failed to get kubernetes workload resource definitions from kubernetes workload definition: %w", err)
 	}
 
 	// unmarshal service object
 	service, err := util.UnmarshalJSON(*k8sWorkloadResourceDefinition.JSONDefinition)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workload resource definition object: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal kubernetes workload resource definition object: %w", err)
 	}
 
 	return service, nil
@@ -54,13 +54,13 @@ func UnmarshalUniqueKubernetesWorkloadResourceDefinitionByName(k8sWorkloadResour
 	// filter out service objects
 	k8sWorkloadResourceDefinition, err := GetUniqueKubernetesWorkloadResourceDefinitionByName(k8sWorkloadResourceDefinitions, kind, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workload resource instances from kubernetes workload instance: %w", err)
+		return nil, fmt.Errorf("failed to get kubernetes workload resource definitions from kubernetes workload definition: %w", err)
 	}
 
 	// unmarshal service object
 	service, err := util.UnmarshalJSON(*k8sWorkloadResourceDefinition.JSONDefinition)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workload resource definition object: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal kubernetes workload resource definition object: %w", err)
 	}
 
 	return service, nil
@@ -73,13 +73,13 @@ func UnmarshalKubernetesWorkloadResourceDefinition(k8sWorkloadResourceDefinition
 	// filter out service objects
 	k8sWorkloadResourceDefinition, err := GetKubernetesWorkloadResourceDefinition(k8sWorkloadResourceDefinitions, kind, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workload resource instances from kubernetes workload instance: %w", err)
+		return nil, fmt.Errorf("failed to get kubernetes workload resource definitions from kubernetes workload definition: %w", err)
 	}
 
 	// unmarshal service object
 	service, err := util.UnmarshalJSON(*k8sWorkloadResourceDefinition.JSONDefinition)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workload resource definition object: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal kubernetes workload resource definition object: %w", err)
 	}
 
 	return service, nil
@@ -92,13 +92,13 @@ func UnmarshalKubernetesWorkloadResourceInstance(k8sWorkloadResourceInstances *[
 	// filter out service objects
 	k8sWorkloadResourceInstance, err := GetKubernetesWorkloadResourceInstance(k8sWorkloadResourceInstances, kind, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workload resource instances from kubernetes workload instance: %w", err)
+		return nil, fmt.Errorf("failed to get kubernetes workload resource instances from kubernetes workload instance: %w", err)
 	}
 
 	// unmarshal service object
 	service, err := util.UnmarshalJSON(*k8sWorkloadResourceInstance.JSONDefinition)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workload resource definition object: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal kubernetes workload resource instance object: %w", err)
 	}
 
 	return service, nil
@@ -122,10 +122,10 @@ func GetUniqueKubernetesWorkloadResourceInstance(k8sWorkloadResourceInstances *[
 	}
 
 	if len(objects) == 0 {
-		return nil, fmt.Errorf("workload resource instance not found")
+		return nil, fmt.Errorf("kubernetes workload resource instance not found")
 	}
 	if len(objects) > 1 {
-		return nil, fmt.Errorf("multiple workload resource instances found")
+		return nil, fmt.Errorf("multiple kubernetes workload resource instances found")
 	}
 
 	return &objects[0], nil
@@ -168,10 +168,10 @@ func GetUniqueKubernetesWorkloadResourceInstanceByName(k8sWorkloadResourceInstan
 	}
 
 	if len(objects) == 0 {
-		return nil, fmt.Errorf("workload resource instance not found")
+		return nil, fmt.Errorf("kubernetes workload resource instance not found")
 	}
 	if len(objects) > 1 {
-		return nil, fmt.Errorf("multiple workload resource instances found")
+		return nil, fmt.Errorf("multiple kubernetes workload resource instances found")
 	}
 
 	return &objects[0], nil
@@ -195,10 +195,10 @@ func GetUniqueKubernetesWorkloadResourceDefinition(k8sWorkloadResourceDefinition
 	}
 
 	if len(objects) == 0 {
-		return nil, fmt.Errorf("workload resource definition not found")
+		return nil, fmt.Errorf("kubernetes workload resource definition not found")
 	}
 	if len(objects) > 1 {
-		return nil, fmt.Errorf("multiple workload resource definitions found")
+		return nil, fmt.Errorf("multiple kubernetes workload resource definitions found")
 	}
 
 	return &objects[0], nil
@@ -242,10 +242,10 @@ func GetUniqueKubernetesWorkloadResourceDefinitionByName(k8sWorkloadResourceDefi
 	}
 
 	if len(objects) == 0 {
-		return nil, fmt.Errorf("workload resource definition not found")
+		return nil, fmt.Errorf("kubernetes workload resource definition not found")
 	}
 	if len(objects) > 1 {
-		return nil, fmt.Errorf("multiple workload resource definitions found")
+		return nil, fmt.Errorf("multiple kubernetes workload resource definitions found")
 	}
 
 	return &objects[0], nil
@@ -271,10 +271,10 @@ func GetKubernetesWorkloadResourceDefinition(k8sWorkloadResourceDefinitions *[]v
 	}
 
 	if len(objects) == 0 {
-		return nil, fmt.Errorf("workload resource definition not found")
+		return nil, fmt.Errorf("kubernetes workload resource definition not found")
 	}
 	if len(objects) > 1 {
-		return nil, fmt.Errorf("multiple workload resource definitions found")
+		return nil, fmt.Errorf("multiple kubernetes workload resource definitions found")
 	}
 
 	return &objects[0], nil
@@ -300,10 +300,10 @@ func GetKubernetesWorkloadResourceInstance(k8sWorkloadResourceInstances *[]v0.Ku
 	}
 
 	if len(objects) == 0 {
-		return nil, fmt.Errorf("workload resource instance not found")
+		return nil, fmt.Errorf("kubernetes workload resource instance not found")
 	}
 	if len(objects) > 1 {
-		return nil, fmt.Errorf("multiple workload resource instances found")
+		return nil, fmt.Errorf("multiple kubernetes workload resource instances found")
 	}
 
 	return &objects[0], nil

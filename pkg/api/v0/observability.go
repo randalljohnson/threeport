@@ -92,7 +92,7 @@ type ObservabilityStackInstance struct {
 	// underlying loki chart.
 	LokiHelmValuesDocument *string `json:",omitempty" validate:"optional"`
 
-	// Optional Helm workload Instancehat can be provided to configure the
+	// Optional Helm workload instance values that can be provided to configure the
 	// underlying promtail chart.
 	PromtailHelmValuesDocument *string `json:",omitempty" validate:"optional"`
 }

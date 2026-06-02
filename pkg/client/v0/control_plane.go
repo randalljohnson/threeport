@@ -8,8 +8,8 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// GetKubernetesWorkloadInstancesByKubernetesWorkloadDefinitionID fetches workload instances
-// by kubernetes workload definition ID
+// GetControlPlaneInstancesByControlPlaneDefinitionID fetches control plane
+// instances by control plane definition ID.
 func GetControlPlaneInstancesByControlPlaneDefinitionID(apiClient *http.Client, apiAddr string, id uint) (*[]v0.ControlPlaneInstance, error) {
 	controlPlaneInstances, err := GetControlPlaneInstancesByQueryString(apiClient, apiAddr, fmt.Sprintf("controlplanedefinitionid=%d", id))
 	if err != nil {

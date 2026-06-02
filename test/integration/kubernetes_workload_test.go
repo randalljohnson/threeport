@@ -263,8 +263,8 @@ func TestWorkloadIntegration(t *testing.T) {
 		})
 		assert.Nil(err, "kubernetes workload definition should be reconciled by kubernetes workload controller")
 
-		// check workload resource definitions
-		workloadResourceDefs, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
+		// check kubernetes workload resource definitions
+		workloadResourceDefs, err := client.GetKubernetesWorkloadResourceDefinitionsByID(
 			apiClient,
 			threeportAPIEndpoint,
 			*createdWorkloadDef.ID,

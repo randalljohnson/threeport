@@ -50,9 +50,9 @@ func CreateWorkloadResourceDefinitions(
 	return workloadResourceDefinitions, nil
 }
 
-// GetWorkloadResourceDefinitionsById fetches workload resource definitions
-// by kubernetes workload definition ID
-func GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(apiClient *http.Client, apiAddr string, id uint) (*[]v0.KubernetesWorkloadResourceDefinition, error) {
+// GetKubernetesWorkloadResourceDefinitionsByID fetches kubernetes workload
+// resource definitions by kubernetes workload definition ID.
+func GetKubernetesWorkloadResourceDefinitionsByID(apiClient *http.Client, apiAddr string, id uint) (*[]v0.KubernetesWorkloadResourceDefinition, error) {
 	var workloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
 
 	allPagesReceived := false
@@ -101,9 +101,9 @@ func GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(ap
 	return &workloadResourceDefinitions, nil
 }
 
-// GetKubernetesWorkloadInstancesByKubernetesWorkloadDefinitionID fetches workload instances
-// by kubernetes workload definition ID
-func GetKubernetesWorkloadInstancesByKubernetesWorkloadDefinitionID(apiClient *http.Client, apiAddr string, id uint) (*[]v0.KubernetesWorkloadInstance, error) {
+// GetKubernetesWorkloadInstancesByID fetches kubernetes workload instances
+// by kubernetes workload definition ID.
+func GetKubernetesWorkloadInstancesByID(apiClient *http.Client, apiAddr string, id uint) (*[]v0.KubernetesWorkloadInstance, error) {
 	var workloadInstances []v0.KubernetesWorkloadInstance
 
 	allPagesReceived := false
@@ -152,9 +152,9 @@ func GetKubernetesWorkloadInstancesByKubernetesWorkloadDefinitionID(apiClient *h
 	return &workloadInstances, nil
 }
 
-// GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID fetches a workload resource definition
-// by kubernetes workload definition ID
-func GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(apiClient *http.Client, apiAddr string, id uint) (*[]v0.KubernetesWorkloadResourceInstance, error) {
+// GetKubernetesWorkloadResourceInstancesByID fetches kubernetes workload
+// resource instances by kubernetes workload instance ID.
+func GetKubernetesWorkloadResourceInstancesByID(apiClient *http.Client, apiAddr string, id uint) (*[]v0.KubernetesWorkloadResourceInstance, error) {
 	var workloadResourceInstances []v0.KubernetesWorkloadResourceInstance
 
 	allPagesReceived := false

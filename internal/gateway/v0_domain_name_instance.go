@@ -118,8 +118,8 @@ func validateThreeportStateExternalDns(
 // getGlooEdgeNamespace gets the namespace of the gloo edge instance.
 func getGlooEdgeNamespace(r *controller.Reconciler, workloadInstanceID *uint) (string, error) {
 
-	// get gloo edge workload resource instance
-	glooEdgeWorkloadResourceInstance, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *workloadInstanceID)
+	// get gloo edge kubernetes workload resource instance
+	glooEdgeWorkloadResourceInstance, err := client.GetKubernetesWorkloadResourceInstancesByID(r.APIClient, r.APIServer, *workloadInstanceID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get gloo edge workload resource instance: %w", err)
 	}
@@ -225,9 +225,9 @@ func confirmDnsControllerDeployed(
 
 	// create external dns kubernetes workload instance
 	externalDnsWorkloadInstance := v0.KubernetesWorkloadInstance{
-		Instance:                    v0.Instance{Name: &workloadDefName},
-		KubernetesRuntimeInstanceID: domainNameInstance.KubernetesRuntimeInstanceID,
-		KubernetesWorkloadDefinitionID:        createdWorkloadDef.ID,
+		Instance:                       v0.Instance{Name: &workloadDefName},
+		KubernetesRuntimeInstanceID:    domainNameInstance.KubernetesRuntimeInstanceID,
+		KubernetesWorkloadDefinitionID: createdWorkloadDef.ID,
 	}
 	createdExternalDnsWorkloadInstance, err := client.CreateKubernetesWorkloadInstance(r.APIClient, r.APIServer, &externalDnsWorkloadInstance)
 	if err != nil {

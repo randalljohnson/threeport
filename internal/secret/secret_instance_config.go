@@ -81,7 +81,7 @@ func (c *SecretInstanceConfig) createSecretObjects() error {
 			}
 			workloadResourceInstance := v0.KubernetesWorkloadResourceInstance{
 				KubernetesWorkloadInstanceID: c.workloadInstanceId,
-				JSONDefinition:     &jsonDefinition,
+				JSONDefinition:               &jsonDefinition,
 			}
 			_, err = client.CreateKubernetesWorkloadResourceInstance(
 				c.r.APIClient,
@@ -163,8 +163,8 @@ func (c *SecretInstanceConfig) deleteSecretObjects() error {
 			return fmt.Errorf("failed to get kubernetes workload instance: %w", err)
 		}
 
-		// get workload resource instances
-		workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
+		// get kubernetes workload resource instances
+		workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(
 			c.r.APIClient,
 			c.r.APIServer,
 			*c.workloadInstanceId,
@@ -439,9 +439,9 @@ func (c *SecretInstanceConfig) confirmSecretControllerDeployed() error {
 		c.r.APIClient,
 		c.r.APIServer,
 		&v0.KubernetesWorkloadInstance{
-			Instance:                    v0.Instance{Name: &workloadDefName},
-			KubernetesWorkloadDefinitionID:        createdSecretControllerWorkloadDefinition.ID,
-			KubernetesRuntimeInstanceID: c.kubernetesRuntimeInstance.ID,
+			Instance:                       v0.Instance{Name: &workloadDefName},
+			KubernetesWorkloadDefinitionID: createdSecretControllerWorkloadDefinition.ID,
+			KubernetesRuntimeInstanceID:    c.kubernetesRuntimeInstance.ID,
 		},
 	)
 

@@ -41,7 +41,7 @@ func v0KubernetesWorkloadInstanceCreated(
 	}
 
 	// use kubernetes workload definition ID to get kubernetes workload resource definitions
-	k8sWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(
+	k8sWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByID(
 		r.APIClient,
 		r.APIServer,
 		*k8sWorkloadInstance.KubernetesWorkloadDefinitionID,
@@ -77,7 +77,7 @@ func v0KubernetesWorkloadInstanceCreated(
 			Name: threeportWorkloadName,
 		},
 		Spec: agentapi.ThreeportWorkloadSpec{
-			WorkloadType:       agent.WorkloadInstanceType,
+			WorkloadType:                 agent.WorkloadInstanceType,
 			KubernetesWorkloadInstanceID: *k8sWorkloadInstance.ID,
 		},
 	}
@@ -245,7 +245,7 @@ func v0KubernetesWorkloadInstanceUpdated(
 	}
 
 	// get kubernetes workload resource instances
-	k8sWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
+	k8sWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(
 		r.APIClient,
 		r.APIServer,
 		*k8sWorkloadInstance.ID,
@@ -388,7 +388,7 @@ func v0KubernetesWorkloadInstanceDeleted(
 	}
 
 	// get kubernetes workload resource instances
-	k8sWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
+	k8sWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(
 		r.APIClient,
 		r.APIServer,
 		*k8sWorkloadInstance.ID,

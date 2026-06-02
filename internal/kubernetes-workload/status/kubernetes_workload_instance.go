@@ -130,7 +130,7 @@ func GetKubernetesWorkloadInstanceStatus(
 	}
 
 	// find Deployment or StatefulSet resources and check they are healthy
-	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(
+	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(
 		apiClient,
 		apiEndpoint,
 		workloadInstanceId,

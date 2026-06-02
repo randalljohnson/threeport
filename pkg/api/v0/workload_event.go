@@ -7,7 +7,7 @@ import (
 )
 
 // WorkloadEvent is a summary of a Kubernetes Event that is associated with a
-// WorkloadResourceInstance.
+// kubernetes workload resource instance or a helm workload instance.
 type WorkloadEvent struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
@@ -30,11 +30,11 @@ type WorkloadEvent struct {
 	// The timestamp for the event in the kubernetes runtime.
 	Timestamp *time.Time `json:"Timestamp,omitempty" query:"timestamp" gorm:"not null" validate:"required"`
 
-	// The related workload instance.
-	WorkloadInstanceID *uint `json:"WorkloadInstanceID,omitempty" query:"workloadinstanceid" validate:"optional"`
+	// The related kubernetes workload instance.
+	KubernetesWorkloadInstanceID *uint `json:"KubernetesWorkloadInstanceID,omitempty" query:"kubernetesworkloadinstanceid" validate:"optional"`
 
-	// The related workload resource instance.
-	WorkloadResourceInstanceID *uint `json:"WorkloadResourceInstanceID,omitempty" query:"workloadresourceinstanceid" validate:"optional"`
+	// The related kubernetes workload resource instance.
+	KubernetesWorkloadResourceInstanceID *uint `json:"KubernetesWorkloadResourceInstanceID,omitempty" query:"kubernetesworkloadresourceinstanceid" validate:"optional"`
 
 	// The related helm workload instance.
 	HelmWorkloadInstanceID *uint `json:"HelmWorkloadInstanceID,omitempty" query:"helmworkloadinstanceid" validate:"optional"`

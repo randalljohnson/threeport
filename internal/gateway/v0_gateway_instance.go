@@ -103,8 +103,8 @@ func v0GatewayInstanceUpdated(
 		return 0, fmt.Errorf("failed to configure workload resource instances: %w", err)
 	}
 
-	// get workload resource instances
-	existingWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *gatewayInstance.KubernetesWorkloadInstanceID)
+	// get kubernetes workload resource instances
+	existingWorkloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(r.APIClient, r.APIServer, *gatewayInstance.KubernetesWorkloadInstanceID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get workload resource instances: %w", err)
 	}
@@ -181,8 +181,8 @@ func v0GatewayInstanceDeleted(
 		return 0, nil
 	}
 
-	// get workload resource instances
-	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *gatewayInstance.KubernetesWorkloadInstanceID)
+	// get kubernetes workload resource instances
+	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(r.APIClient, r.APIServer, *gatewayInstance.KubernetesWorkloadInstanceID)
 	if err != nil {
 		if errors.Is(err, client_lib.ErrObjectNotFound) {
 			// kubernetes workload instance has already been deleted
@@ -445,9 +445,9 @@ func confirmGatewayControllerDeployed(
 
 	// create gateway kubernetes workload instance
 	glooEdgeWorkloadInstance := v0.KubernetesWorkloadInstance{
-		Instance:                    v0.Instance{Name: &workloadDefName},
-		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
-		KubernetesWorkloadDefinitionID:        createdWorkloadDef.ID,
+		Instance:                       v0.Instance{Name: &workloadDefName},
+		KubernetesRuntimeInstanceID:    kubernetesRuntimeInstance.ID,
+		KubernetesWorkloadDefinitionID: createdWorkloadDef.ID,
 	}
 	createdGlooEdgeWorkloadInstance, err := client.CreateKubernetesWorkloadInstance(r.APIClient, r.APIServer, &glooEdgeWorkloadInstance)
 	if err != nil {
@@ -483,7 +483,7 @@ func confirmGatewayPortsExposed(
 	if kubernetesRuntimeInstance.GatewayControllerInstanceID == nil {
 		return fmt.Errorf("gateway controller instance ID is nil")
 	}
-	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *kubernetesRuntimeInstance.GatewayControllerInstanceID)
+	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(r.APIClient, r.APIServer, *kubernetesRuntimeInstance.GatewayControllerInstanceID)
 	if err != nil {
 		return fmt.Errorf("failed to get workload resource instances: %w", err)
 	}
@@ -629,8 +629,8 @@ func configureGatewayManifests(
 	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
 ) ([]*datatypes.JSON, error) {
 
-	// get workload resource instances
-	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByKubernetesWorkloadInstanceID(r.APIClient, r.APIServer, *workloadInstance.ID)
+	// get kubernetes workload resource instances
+	workloadResourceInstances, err := client.GetKubernetesWorkloadResourceInstancesByID(r.APIClient, r.APIServer, *workloadInstance.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workload resource instances: %w", err)
 	}
@@ -662,8 +662,8 @@ func configureGatewayManifests(
 		return nil, fmt.Errorf("failed to unmarshal kubernetes service object's name field: %w", err)
 	}
 
-	// get gateway workload resource definitions
-	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
+	// get gateway kubernetes workload resource definitions
+	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gateway workload resource definitions: %w", err)
 	}
@@ -934,8 +934,8 @@ func configureIssuer(
 	domainNameDefinition *v0.DomainNameDefinition,
 ) (*datatypes.JSON, error) {
 
-	// get gateway workload resource definitions
-	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
+	// get gateway kubernetes workload resource definitions
+	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gateway workload resource definitions: %w", err)
 	}
@@ -1015,8 +1015,8 @@ func configureCertificate(
 	domainNameDefinition *v0.DomainNameDefinition,
 ) (*datatypes.JSON, error) {
 
-	// get gateway workload resource definitions
-	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByKubernetesWorkloadDefinitionID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
+	// get gateway kubernetes workload resource definitions
+	gatewayWorkloadResourceDefinitions, err := client.GetKubernetesWorkloadResourceDefinitionsByID(r.APIClient, r.APIServer, *gatewayDefinition.KubernetesWorkloadDefinitionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gateway workload resource definitions: %w", err)
 	}
@@ -1136,9 +1136,9 @@ func configureGatewayWorkloadResourceInstances(
 	var workloadResourceInstances []v0.KubernetesWorkloadResourceInstance
 	for _, jsonManifest := range jsonManifests {
 		workloadResourceInstance := v0.KubernetesWorkloadResourceInstance{
-			JSONDefinition:     jsonManifest,
+			JSONDefinition:               jsonManifest,
 			KubernetesWorkloadInstanceID: workloadInstance.ID,
-			Reconciled:         util.Ptr(false),
+			Reconciled:                   util.Ptr(false),
 		}
 		workloadResourceInstances = append(workloadResourceInstances, workloadResourceInstance)
 	}

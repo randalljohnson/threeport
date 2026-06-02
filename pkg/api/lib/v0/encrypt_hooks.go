@@ -73,15 +73,14 @@ func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}) error {
 				tx.Statement.SetColumn(strcase.ToSnake(field.Name), enc)
 			}
 
-		case []string:
-			// nil/empty slice: nothing to encrypt
-			if len(v) == 0 {
+		case *[]string:
+			// nil pointer: nothing to encrypt, existing DB value preserved
+			if v == nil || len(*v) == 0 {
 				continue
 			}
-			// each entry is KEY=VALUE; encrypt only VALUE so KEYs stay readable
-			// for callers that need to introspect them (e.g. env-var names)
-			encSlice := make([]string, len(v))
-			for j, entry := range v {
+			// same KEY=VALUE handling as []string above; deref and reuse
+			encSlice := make([]string, len(*v))
+			for j, entry := range *v {
 				key, value, ok := strings.Cut(entry, "=")
 				if !ok {
 					return fmt.Errorf("%s[%d] is not in KEY=VALUE format", field.Name, j)
@@ -152,9 +151,12 @@ func RedactEncryptedValues(obj interface{}) interface{} {
 				continue
 			}
 			*v = encryption.RedactedValuePlaceholder
-		case []string:
-			for j := range v {
-				v[j] = encryption.RedactedValuePlaceholder
+		case *[]string:
+			if v == nil {
+				continue
+			}
+			for j := range *v {
+				(*v)[j] = encryption.RedactedValuePlaceholder
 			}
 		}
 	}
@@ -183,12 +185,15 @@ func DecryptValues(obj interface{}, encryptionKey string) (interface{}, error) {
 				return obj, fmt.Errorf("failed to decrypt value in field %s: %w", field.Name, err)
 			}
 			*v = decryptedVal
-		case []string:
-			decrypted, err := encryption.DecryptEnvSlice(v, encryptionKey)
+		case *[]string:
+			if v == nil {
+				continue
+			}
+			decrypted, err := encryption.DecryptEnvSlice(*v, encryptionKey)
 			if err != nil {
 				return obj, fmt.Errorf("field %s: %w", field.Name, err)
 			}
-			copy(v, decrypted)
+			copy(*v, decrypted)
 		}
 	}
 	return obj, nil

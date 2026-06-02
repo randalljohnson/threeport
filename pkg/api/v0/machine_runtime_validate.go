@@ -46,31 +46,8 @@ func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the MachineRuntimeInstance before delete.
-//
-// Why: a machine runtime instance may not be removed while any machine
-// workload instance still references it. Mirrors KubernetesRuntimeInstance's
-// teardown ordering — workloads first, runtime last.
+// beforeDelete is a no-op for MachineRuntimeInstance.
 func (m *MachineRuntimeInstance) beforeDelete(tx *gorm.DB) error {
-	var machineWorkloadInstances []MachineWorkloadInstance
-	if result := tx.Where(
-		&MachineWorkloadInstance{MachineRuntimeInstanceID: m.ID},
-	).Find(&machineWorkloadInstances); result.Error != nil {
-		return fmt.Errorf(
-			"failed to query machine workload instances for machine runtime instance %s: %w",
-			*m.Name, result.Error,
-		)
-	}
-
-	if len(machineWorkloadInstances) > 0 {
-		return util.NewBadRequestError(
-			fmt.Sprintf(
-				"machine runtime instance %s cannot be deleted until machine workload instances are removed",
-				*m.Name,
-			),
-		)
-	}
-
 	return nil
 }
 

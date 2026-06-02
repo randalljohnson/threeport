@@ -13,3 +13,13 @@ func DerefString(s *string) string {
 	}
 	return *s
 }
+
+// Deref returns the value of a pointer or the zero value of T if the
+// pointer is nil. Mirror of Ptr.
+func Deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
+}

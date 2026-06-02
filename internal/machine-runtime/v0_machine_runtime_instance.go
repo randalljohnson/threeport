@@ -4,6 +4,7 @@ package machineruntime
 
 import (
 	"fmt"
+	"strings"
 
 	logr "github.com/go-logr/logr"
 
@@ -14,6 +15,22 @@ import (
 	machine "github.com/threeport/threeport/pkg/machine/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// isNetworkErr returns true when the error string contains markers
+// produced by net.Dial-class transport failures. Auth and host-key
+// failures fall through to the terminal path.
+func isNetworkErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "connection refused") ||
+		strings.Contains(s, "no route to host") ||
+		strings.Contains(s, "i/o timeout") ||
+		strings.Contains(s, "network is unreachable") ||
+		strings.Contains(s, "host is unreachable") ||
+		strings.Contains(s, "EOF")
+}
 
 // v0MachineRuntimeInstanceCreated performs reconciliation when a v0 MachineRuntimeInstance
 // has been created.  It verifies the machine is reachable via SSH and records
@@ -37,17 +54,25 @@ func v0MachineRuntimeInstanceCreated(
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
+		if isNetworkErr(err) {
+			return 30, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+		}
 		return 0, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
 	}
 	defer sshClient.Close()
 
-	// save captured host key if this is the first connection
+	// save captured host key if this is the first connection; set
+	// Reconciled=true on the update so the resulting update
+	// notification does not trigger another reconciliation pass
 	if capturedHostKey != "" {
 		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
 			Common:         v0.Common{ID: machineRuntimeInstance.ID},
 			Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
 			HostKey:        &capturedHostKey,
 		}); err != nil {
+			if isNetworkErr(err) {
+				return 30, fmt.Errorf("failed to save captured host key: %w", err)
+			}
 			return 0, fmt.Errorf("failed to save captured host key: %w", err)
 		}
 		if eventErr := r.EventsRecorder.RecordEvent(
@@ -75,6 +100,9 @@ func v0MachineRuntimeInstanceCreated(
 			machineRuntimeInstance.GetFullyQualifiedType(),
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh ping error")
+		}
+		if isNetworkErr(err) {
+			return 30, fmt.Errorf("failed to ping machine runtime instance: %w", err)
 		}
 		return 0, fmt.Errorf("failed to ping machine runtime instance: %w", err)
 	}

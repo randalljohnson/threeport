@@ -3,11 +3,16 @@
 package machineworkload
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	logr "github.com/go-logr/logr"
+	"golang.org/x/crypto/ssh"
 
 	status "github.com/threeport/threeport/internal/workload/status"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
@@ -79,21 +84,70 @@ func v0MachineWorkloadInstanceCreated(
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
-	// requeue on failure so the script is retried
+	// requeue in 30s on failure so the script is retried
 	if wlStatus != status.WorkloadInstanceStatusHealthy {
-		return 0, fmt.Errorf("create script failed with status %s", wlStatus)
+		return 30, fmt.Errorf("create script failed with status %s", wlStatus)
 	}
 
 	return 0, nil
 }
 
 // v0MachineWorkloadInstanceUpdated performs reconciliation when a v0
-// MachineWorkloadInstance has been updated.
+// MachineWorkloadInstance has been updated.  It resolves the related machine
+// runtime and kubernetes workload definition, opens an SSH connection, executes
+// the update script, and records events for the output.
 func v0MachineWorkloadInstanceUpdated(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// get related machine workload definition
+	mwd, err := client.GetMachineWorkloadDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineWorkloadInstance.MachineWorkloadDefinitionID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
+	}
+
+	// skip when no update script is defined
+	if mwd.UpdateScript == nil {
+		return 0, nil
+	}
+
+	// get related machine runtime instance
+	mri, err := client.GetMachineRuntimeInstanceByID(
+		r.APIClient,
+		r.APIServer,
+		*machineWorkloadInstance.MachineRuntimeInstanceID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
+	}
+
+	// wait for the runtime to be reconciled before running workloads against it
+	if mri.Reconciled == nil || !*mri.Reconciled {
+		return 30, nil
+	}
+
+	// run the update script and record results
+	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.UpdateScript, "update", log)
+
+	// update the instance with the final status
+	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
+		Common:         v0.Common{ID: machineWorkloadInstance.ID},
+		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+		Status:         util.Ptr(string(wlStatus)),
+	}); err != nil {
+		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
+	}
+
+	// requeue in 30s on failure so the script is retried
+	if wlStatus != status.WorkloadInstanceStatusHealthy {
+		return 30, fmt.Errorf("update script failed with status %s", wlStatus)
+	}
+
 	return 0, nil
 }
 
@@ -129,9 +183,9 @@ func v0MachineWorkloadInstanceDeleted(
 	// run the delete script and record results
 	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
 
-	// requeue on failure so the script is retried
+	// requeue in 30s on failure so the script is retried
 	if wlStatus != status.WorkloadInstanceStatusHealthy {
-		return 0, fmt.Errorf("delete script failed with status %s", wlStatus)
+		return 30, fmt.Errorf("delete script failed with status %s", wlStatus)
 	}
 
 	return 0, nil
@@ -191,7 +245,7 @@ func runScript(
 	workDir := util.DerefString(mwd.WorkingDir)
 
 	// run the script on the remote machine
-	stdout, stderr, exitCode, timedOut, runErr := machine.RunScript(
+	stdout, stderr, exitCode, timedOut, connectionErr := runRemoteScript(
 		sshClient,
 		script,
 		shell,
@@ -209,11 +263,11 @@ func runScript(
 		reason = "ScriptTimedOut"
 		eventType = event.TypeWarning
 		message = fmt.Sprintf("%s script timed out (stderr: %s)", scriptName, truncateMessage(sanitizeScriptOutput(stderr)))
-	case runErr != nil:
+	case connectionErr != nil:
 		wlStatus = status.WorkloadInstanceStatusError
-		reason = "ScriptFailed"
+		reason = "ConnectionFailed"
 		eventType = event.TypeWarning
-		message = fmt.Sprintf("%s script transport error: %s", scriptName, runErr.Error())
+		message = fmt.Sprintf("%s script connection error: %s", scriptName, connectionErr.Error())
 	case exitCode == 0:
 		wlStatus = status.WorkloadInstanceStatusHealthy
 		reason = "ScriptSucceeded"
@@ -238,6 +292,125 @@ func runScript(
 	}
 
 	return wlStatus
+}
+
+// runRemoteScript executes the given script on the remote over the existing
+// SSH client, returning captured stdout, stderr, exit code, a timeout flag,
+// and any connection error.
+func runRemoteScript(
+	client *ssh.Client,
+	script string,
+	shell string,
+	workingDir string,
+	env []string,
+	timeout *int,
+) (stdout string, stderr string, exitCode int, timedOut bool, err error) {
+	session, err := client.NewSession()
+	if err != nil {
+		return "", "", -1, false, fmt.Errorf("failed to create ssh session: %w", err)
+	}
+	defer session.Close()
+
+	// assemble the full script: cd + env exports + user script
+	fullScript := buildScript(script, workingDir, env)
+
+	// attach stdout/stderr buffers
+	var stdoutBuf, stderrBuf bytes.Buffer
+	session.Stdout = &stdoutBuf
+	session.Stderr = &stderrBuf
+
+	// attach stdin pipe for the script body
+	stdinPipe, err := session.StdinPipe()
+	if err != nil {
+		return "", "", -1, false, fmt.Errorf("failed to open ssh stdin pipe: %w", err)
+	}
+
+	// build context for timeout handling
+	ctx := context.Background()
+	var cancel context.CancelFunc
+	if timeout != nil && *timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(*timeout)*time.Second)
+		defer cancel()
+	}
+
+	// start `<shell> -s` which reads the script from stdin
+	startCmd := fmt.Sprintf("%s -s", shell)
+	if err := session.Start(startCmd); err != nil {
+		return "", "", -1, false, fmt.Errorf("failed to start ssh command: %w", err)
+	}
+
+	// write script body and close stdin to signal EOF
+	if _, werr := stdinPipe.Write([]byte(fullScript)); werr != nil {
+		return stdoutBuf.String(), stderrBuf.String(), -1, false, fmt.Errorf("failed to write script to ssh stdin: %w", werr)
+	}
+	if cerr := stdinPipe.Close(); cerr != nil {
+		return stdoutBuf.String(), stderrBuf.String(), -1, false, fmt.Errorf("failed to close ssh stdin: %w", cerr)
+	}
+
+	// wait for command to complete, honoring timeout via context
+	waitErr := make(chan error, 1)
+	go func() {
+		waitErr <- session.Wait()
+	}()
+
+	select {
+	case werr := <-waitErr:
+		// command finished on its own
+		stdout = stdoutBuf.String()
+		stderr = stderrBuf.String()
+		if werr == nil {
+			return stdout, stderr, 0, false, nil
+		}
+		// if the error is an ExitError, extract the exit code
+		var exitErr *ssh.ExitError
+		if errors.As(werr, &exitErr) {
+			return stdout, stderr, exitErr.ExitStatus(), false, nil
+		}
+		// other connection error
+		return stdout, stderr, -1, false, fmt.Errorf("ssh command failed: %w", werr)
+	case <-ctx.Done():
+		// timeout expired - kill the session
+		_ = session.Signal(ssh.SIGKILL)
+		_ = session.Close()
+		// drain the wait channel to avoid leaking the goroutine
+		<-waitErr
+		return stdoutBuf.String(), stderrBuf.String(), -1, true, nil
+	}
+}
+
+// buildScript assembles the full script to pipe to the remote shell, prefixing
+// with `cd <workingDir>` when set and `export KEY=VALUE` statements for each
+// entry in env.  The user's script is appended verbatim at the end.
+func buildScript(script string, workingDir string, env []string) string {
+	var b strings.Builder
+	b.WriteString("set -e\n")
+	if workingDir != "" {
+		fmt.Fprintf(&b, "cd %s\n", shellQuote(workingDir))
+	}
+	for _, e := range env {
+		if e == "" {
+			continue
+		}
+		// env entries are KEY=VALUE - split on the first '=' to quote only the value
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) != 2 {
+			// no '=' - export the bare name (unusual but harmless)
+			fmt.Fprintf(&b, "export %s\n", parts[0])
+			continue
+		}
+		fmt.Fprintf(&b, "export %s=%s\n", parts[0], shellQuote(parts[1]))
+	}
+	b.WriteString(script)
+	if !strings.HasSuffix(script, "\n") {
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// shellQuote wraps a string in single quotes, escaping any embedded single
+// quotes so the value is safely interpolated into a shell command.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // truncateMessage caps a message at maxEventMessageChars characters, appending

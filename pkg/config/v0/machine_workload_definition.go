@@ -87,7 +87,7 @@ func (m *MachineWorkloadDefinitionConfig) Get(
 				Shell:        machineWorkloadDefinition.Shell,
 				WorkingDir:   machineWorkloadDefinition.WorkingDir,
 				Timeout:      machineWorkloadDefinition.Timeout,
-				Env:          machineWorkloadDefinition.Env,
+				Env:          util.Deref(machineWorkloadDefinition.Env),
 				Age:          util.Ptr(util.GetAgeFormatted(machineWorkloadDefinition.CreatedAt)),
 			},
 		}
@@ -120,7 +120,7 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 		Shell:        machineWorkloadDefinitionValues.Shell,
 		WorkingDir:   machineWorkloadDefinitionValues.WorkingDir,
 		Timeout:      machineWorkloadDefinitionValues.Timeout,
-		Env:          machineWorkloadDefinitionValues.Env,
+		Env:          &machineWorkloadDefinitionValues.Env,
 	}
 
 	// create machine workload definition
@@ -143,7 +143,7 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 			Shell:        createdMachineWorkloadDefinition.Shell,
 			WorkingDir:   createdMachineWorkloadDefinition.WorkingDir,
 			Timeout:      createdMachineWorkloadDefinition.Timeout,
-			Env:          createdMachineWorkloadDefinition.Env,
+			Env:          util.Deref(createdMachineWorkloadDefinition.Env),
 			Age:          util.Ptr(util.GetAgeFormatted(createdMachineWorkloadDefinition.CreatedAt)),
 		},
 	}
@@ -191,7 +191,7 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 		Shell:        machineWorkloadDefinitionValues.Shell,
 		WorkingDir:   machineWorkloadDefinitionValues.WorkingDir,
 		Timeout:      machineWorkloadDefinitionValues.Timeout,
-		Env:          machineWorkloadDefinitionValues.Env,
+		Env:          &machineWorkloadDefinitionValues.Env,
 	}
 
 	// replace machine workload definition
@@ -214,7 +214,7 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 			Shell:        replacedMachineWorkloadDefinition.Shell,
 			WorkingDir:   replacedMachineWorkloadDefinition.WorkingDir,
 			Timeout:      replacedMachineWorkloadDefinition.Timeout,
-			Env:          replacedMachineWorkloadDefinition.Env,
+			Env:          util.Deref(replacedMachineWorkloadDefinition.Env),
 			Age:          util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadDefinition.CreatedAt)),
 		},
 	}

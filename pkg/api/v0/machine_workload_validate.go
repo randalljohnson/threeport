@@ -16,9 +16,13 @@ import (
 var envKeyRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 // validateEnv checks that each entry in an Env slice is in KEY=VALUE format
-// where KEY matches [a-zA-Z_][a-zA-Z0-9_]*.
-func validateEnv(env []string) error {
-	for _, entry := range env {
+// where KEY matches [a-zA-Z_][a-zA-Z0-9_]*. A nil pointer is treated as no
+// env to validate.
+func validateEnv(env *[]string) error {
+	if env == nil {
+		return nil
+	}
+	for _, entry := range *env {
 		parts := strings.SplitN(entry, "=", 2)
 		if len(parts) != 2 {
 			return util.NewBadRequestError(

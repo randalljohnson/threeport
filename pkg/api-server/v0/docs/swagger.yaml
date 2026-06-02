@@ -1780,8 +1780,10 @@ definitions:
         description: The shell script to run when a machine workload instance is deleted.
         type: string
       Env:
-        description: The environment variables to set for the workload in KEY=VALUE
-          format.
+        description: |-
+          The environment variables to set for the workload as KEY=VALUE entries.
+          Nil distinguishes "unset" from "empty list".  Values are encrypted at
+          rest; keys stay queryable.
         items:
           type: string
         type: array
@@ -1851,9 +1853,18 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       Env:
-        description: The environment variables set for the workload in KEY=VALUE format.
+        description: |-
+          The environment variables set for the workload as KEY=VALUE entries.
+          Nil falls back to the definition's Env at reconcile time, distinguishing
+          "unset" from "empty list".  Values are encrypted at rest; keys stay
+          queryable.
         items:
           type: string
+        type: array
+      Events:
+        description: All events generated for the machine workload instance.
+        items:
+          $ref: '#/definitions/v0.WorkloadEvent'
         type: array
       InterruptReconciliation:
         description: |-
@@ -1876,7 +1887,9 @@ definitions:
           controller.
         type: boolean
       Status:
-        description: The latest status of the kubernetes workload instance.
+        description: |-
+          The latest status of the workload instance as observed by the reconciler
+          when the most recent script execution completed.
         type: string
     required:
     - MachineRuntimeInstanceID
@@ -3016,6 +3029,44 @@ definitions:
     required:
     - Criticality
     - Name
+    type: object
+  v0.WorkloadEvent:
+    properties:
+      HelmWorkloadInstanceID:
+        description: The related helm workload instance.
+        type: integer
+      KubernetesWorkloadInstanceID:
+        description: The related kubernetes workload instance.
+        type: integer
+      KubernetesWorkloadResourceInstanceID:
+        description: The related kubernetes workload resource instance.
+        type: integer
+      Message:
+        description: The message associated with the event.
+        type: string
+      Reason:
+        description: The reason for the event.
+        type: string
+      RuntimeEventUID:
+        description: |-
+          A unique ID for de-duplicating purposes.  It is one of two thing:
+          * The Kubernetes Event resource UID: when the WorkloadEvent is derived
+          directly from a Kubernetes Event.
+          * The workload controller ID: when the WorkloadEvent is emitted by the
+          workload controller.
+        type: string
+      Timestamp:
+        description: The timestamp for the event in the kubernetes runtime.
+        type: string
+      Type:
+        description: The type of event that occurred in Kubernetes.
+        type: string
+    required:
+    - Message
+    - Reason
+    - RuntimeEventUID
+    - Timestamp
+    - Type
     type: object
 info:
   contact:

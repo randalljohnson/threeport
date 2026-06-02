@@ -24,8 +24,10 @@ type MachineWorkloadDefinition struct {
 	// The timeout in seconds for script execution.
 	Timeout *int `json:",omitempty" validate:"optional"`
 
-	// The environment variables to set for the workload in KEY=VALUE format.
-	Env []string `json:",omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
+	// The environment variables to set for the workload as KEY=VALUE entries.
+	// Nil distinguishes "unset" from "empty list".  Values are encrypted at
+	// rest; keys stay queryable.
+	Env *[]string `json:",omitempty" gorm:"type:jsonb;serializer:json" validate:"optional" encrypt:"true"`
 
 	// The associated machine workload instances that are deployed from this
 	// definition.
@@ -40,14 +42,21 @@ type MachineWorkloadInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The machine runtime on which the workload is deployed.
-	MachineRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required"`
+	MachineRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// The definition used to configure the machine workload instance.
 	MachineWorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required"`
 
-	// The latest status of the kubernetes workload instance.
+	// The latest status of the workload instance as observed by the reconciler
+	// when the most recent script execution completed.
 	Status *string `json:",omitempty" validate:"optional"`
 
-	// The environment variables set for the workload in KEY=VALUE format.
-	Env []string `json:",omitempty" gorm:"serializer:json" validate:"optional" encrypt:"true"`
+	// All events generated for the machine workload instance.
+	Events []*WorkloadEvent `json:",omitempty" validate:"optional"`
+
+	// The environment variables set for the workload as KEY=VALUE entries.
+	// Nil falls back to the definition's Env at reconcile time, distinguishing
+	// "unset" from "empty list".  Values are encrypted at rest; keys stay
+	// queryable.
+	Env *[]string `json:",omitempty" gorm:"type:jsonb;serializer:json" validate:"optional" encrypt:"true"`
 }

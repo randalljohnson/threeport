@@ -17645,7 +17645,7 @@
                     "type": "string"
                 },
                 "Env": {
-                    "description": "The environment variables to set for the workload in KEY=VALUE format.",
+                    "description": "The environment variables to set for the workload as KEY=VALUE entries.\nNil distinguishes \"unset\" from \"empty list\".  Values are encrypted at\nrest; keys stay queryable.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -17721,10 +17721,17 @@
                     "type": "string"
                 },
                 "Env": {
-                    "description": "The environment variables set for the workload in KEY=VALUE format.",
+                    "description": "The environment variables set for the workload as KEY=VALUE entries.\nNil falls back to the definition's Env at reconcile time, distinguishing\n\"unset\" from \"empty list\".  Values are encrypted at rest; keys stay\nqueryable.",
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "Events": {
+                    "description": "All events generated for the machine workload instance.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.WorkloadEvent"
                     }
                 },
                 "InterruptReconciliation": {
@@ -17748,7 +17755,7 @@
                     "type": "boolean"
                 },
                 "Status": {
-                    "description": "The latest status of the kubernetes workload instance.",
+                    "description": "The latest status of the workload instance as observed by the reconciler\nwhen the most recent script execution completed.",
                     "type": "string"
                 }
             }
@@ -18933,6 +18940,50 @@
                 },
                 "Name": {
                     "description": "The unique name of a tier.",
+                    "type": "string"
+                }
+            }
+        },
+        "v0.WorkloadEvent": {
+            "type": "object",
+            "required": [
+                "Message",
+                "Reason",
+                "RuntimeEventUID",
+                "Timestamp",
+                "Type"
+            ],
+            "properties": {
+                "HelmWorkloadInstanceID": {
+                    "description": "The related helm workload instance.",
+                    "type": "integer"
+                },
+                "KubernetesWorkloadInstanceID": {
+                    "description": "The related kubernetes workload instance.",
+                    "type": "integer"
+                },
+                "KubernetesWorkloadResourceInstanceID": {
+                    "description": "The related kubernetes workload resource instance.",
+                    "type": "integer"
+                },
+                "Message": {
+                    "description": "The message associated with the event.",
+                    "type": "string"
+                },
+                "Reason": {
+                    "description": "The reason for the event.",
+                    "type": "string"
+                },
+                "RuntimeEventUID": {
+                    "description": "A unique ID for de-duplicating purposes.  It is one of two thing:\n* The Kubernetes Event resource UID: when the WorkloadEvent is derived\ndirectly from a Kubernetes Event.\n* The workload controller ID: when the WorkloadEvent is emitted by the\nworkload controller.",
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "description": "The timestamp for the event in the kubernetes runtime.",
+                    "type": "string"
+                },
+                "Type": {
+                    "description": "The type of event that occurred in Kubernetes.",
                     "type": "string"
                 }
             }

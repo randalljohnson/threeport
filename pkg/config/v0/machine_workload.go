@@ -30,6 +30,7 @@ type MachineWorkloadValues struct {
 	Timeout                *int     `json:",omitempty" yaml:"Timeout,omitempty"`
 	Env                    []string `json:",omitempty" yaml:"Env,omitempty"`
 	MachineRuntimeInstance *string  `json:",omitempty" yaml:"MachineRuntimeInstance,omitempty"`
+	Status                 *string  `json:",omitempty" yaml:"Status,omitempty"`
 	Age                    *string  `json:",omitempty" yaml:"Age,omitempty"`
 }
 
@@ -280,6 +281,7 @@ func mapToMachineWorkloadDefinedInstances(
 						Timeout:                def.MachineWorkloadDefinition.Timeout,
 						Env:                    def.MachineWorkloadDefinition.Env,
 						MachineRuntimeInstance: machineRuntimeInstanceName,
+						Status:                 inst.MachineWorkloadInstance.Status,
 						Age:                    inst.MachineWorkloadInstance.Age,
 					},
 				}

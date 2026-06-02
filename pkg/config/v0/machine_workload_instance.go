@@ -102,7 +102,7 @@ func (m *MachineWorkloadInstanceConfig) Get(
 				Name:                      machineWorkloadInstance.Name,
 				MachineWorkloadDefinition: machineWorkloadDefinition,
 				MachineRuntimeInstance:    machineRuntimeInstance,
-				Env:                       machineWorkloadInstance.Env,
+				Env:                       util.Deref(machineWorkloadInstance.Env),
 				Status:                    machineWorkloadInstance.Status,
 				Age:                       util.Ptr(util.GetAgeFormatted(machineWorkloadInstance.CreatedAt)),
 			},
@@ -152,7 +152,7 @@ func (m *MachineWorkloadInstanceConfig) Create(
 		},
 		MachineWorkloadDefinitionID: machineWorkloadDefinition.ID,
 		MachineRuntimeInstanceID:    machineRuntimeInstance.ID,
-		Env:                         machineWorkloadInstanceValues.Env,
+		Env:                         &machineWorkloadInstanceValues.Env,
 	}
 
 	// create machine workload instance
@@ -169,7 +169,7 @@ func (m *MachineWorkloadInstanceConfig) Create(
 	createdMachineWorkloadInstanceConfig := &MachineWorkloadInstanceConfig{
 		MachineWorkloadInstance: MachineWorkloadInstanceValues{
 			Name: createdMachineWorkloadInstance.Name,
-			Env:  createdMachineWorkloadInstance.Env,
+			Env:  util.Deref(createdMachineWorkloadInstance.Env),
 			Age:  util.Ptr(util.GetAgeFormatted(createdMachineWorkloadInstance.CreatedAt)),
 		},
 	}
@@ -213,7 +213,7 @@ func (m *MachineWorkloadInstanceConfig) Replace(
 		},
 		MachineWorkloadDefinitionID: existingMachineWorkloadInstance.MachineWorkloadDefinitionID,
 		MachineRuntimeInstanceID:    existingMachineWorkloadInstance.MachineRuntimeInstanceID,
-		Env:                         machineWorkloadInstanceValues.Env,
+		Env:                         &machineWorkloadInstanceValues.Env,
 	}
 
 	// replace machine workload instance
@@ -230,7 +230,7 @@ func (m *MachineWorkloadInstanceConfig) Replace(
 	updatedMachineWorkloadInstanceConfig := &MachineWorkloadInstanceConfig{
 		MachineWorkloadInstance: MachineWorkloadInstanceValues{
 			Name: replacedMachineWorkloadInstance.Name,
-			Env:  replacedMachineWorkloadInstance.Env,
+			Env:  util.Deref(replacedMachineWorkloadInstance.Env),
 			Age:  util.Ptr(util.GetAgeFormatted(replacedMachineWorkloadInstance.CreatedAt)),
 		},
 	}

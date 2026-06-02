@@ -152,6 +152,16 @@ func (mwi *MachineWorkloadInstance) ScheduledForDeletion() *time.Time {
 	return mwi.DeletionScheduled
 }
 
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on MachineWorkloadInstance.
+func (m *MachineWorkloadInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "MachineRuntimeInstanceID",
+		ObjectID:     m.MachineRuntimeInstanceID,
+		ObjectType:   new(MachineRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
+}
+
 // EncryptedFields returns the encrypt-tagged fields on MachineWorkloadInstance.
 func (m *MachineWorkloadInstance) EncryptedFields() []lib.EncryptedField {
 	return []lib.EncryptedField{{

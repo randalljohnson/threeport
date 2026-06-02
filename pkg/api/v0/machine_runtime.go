@@ -38,7 +38,7 @@ type MachineRuntimeInstance struct {
 
 	// The machine runtime definition for this instance.  Optional because
 	// imported machines may not have an associated definition.
-	MachineRuntimeDefinitionID *uint `json:",omitempty" validate:"optional"`
+	MachineRuntimeDefinitionID *uint `json:",omitempty" validate:"optional" relationship:"requires"`
 
 	// The associated machine workload instances running on this machine runtime.
 	MachineWorkloadInstances []*MachineWorkloadInstance `json:",omitempty" validate:"optional,association"`

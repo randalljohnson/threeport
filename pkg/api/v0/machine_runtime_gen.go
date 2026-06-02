@@ -144,6 +144,16 @@ func (mri *MachineRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return mri.DeletionScheduled
 }
 
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on MachineRuntimeInstance.
+func (m *MachineRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "MachineRuntimeDefinitionID",
+		ObjectID:     m.MachineRuntimeDefinitionID,
+		ObjectType:   new(MachineRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
+}
+
 // EncryptedFields returns the encrypt-tagged fields on MachineRuntimeInstance.
 func (m *MachineRuntimeInstance) EncryptedFields() []lib.EncryptedField {
 	return []lib.EncryptedField{{

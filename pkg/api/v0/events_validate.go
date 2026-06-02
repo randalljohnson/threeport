@@ -2,10 +2,32 @@
 
 package v0
 
-import gorm "gorm.io/gorm"
+import (
+	"fmt"
 
-// beforeCreate runs before the Event is created.
+	gorm "gorm.io/gorm"
+
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
+)
+
+// beforeCreate runs before the Event is created. Validates that the
+// caller supplied both subject fields (ObjectType + ObjectID) and that
+// ObjectType is in the fully-qualified form. afterCreate consumes
+// these to insert the matching AttachedObjectReference, so missing or
+// malformed values must fail before the Event row is written.
 func (e *Event) beforeCreate(tx *gorm.DB) error {
+	if e.ObjectType == nil || e.ObjectID == nil {
+		return util.NewBadRequestError(
+			"event requires ObjectType (fully qualified form) and ObjectID to identify its subject",
+		)
+	}
+	if _, _, _, ok := apilib.ParseQualifiedType(*e.ObjectType); !ok {
+		return util.NewBadRequestError(fmt.Sprintf(
+			"event ObjectType %q is not a fully qualified type name (expected <api-namespace>/<version>.<TypeName>)",
+			*e.ObjectType,
+		))
+	}
 	return nil
 }
 
@@ -19,9 +41,17 @@ func (e *Event) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// afterCreate runs after the Event is created.
+// afterCreate inserts the AttachedObjectReference linking this event
+// (attached side) to its subject (base side), using ObjectType and
+// ObjectID validated in beforeCreate.
 func (e *Event) afterCreate(tx *gorm.DB) error {
-	return nil
+	return tx.Create(&AttachedObjectReference{
+		ObjectType:         e.ObjectType,
+		ObjectID:           e.ObjectID,
+		AttachedObjectType: util.Ptr(e.GetFullyQualifiedType()),
+		AttachedObjectID:   e.ID,
+		Relationship:       util.Ptr(RelationshipDescribes),
+	}).Error
 }
 
 // afterUpdate runs after the Event is updated.

@@ -65,14 +65,19 @@ func (lb *LogBackend) GetId() uint {
 	return *lb.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (lb *LogBackend) GetType() string {
 	return "LogBackend"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (lb *LogBackend) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (lb *LogBackend) GetFullyQualifiedType() string {
+	return "threeport.io/v0.LogBackend"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -119,14 +124,19 @@ func (lsd *LogStorageDefinition) GetId() uint {
 	return *lsd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (lsd *LogStorageDefinition) GetType() string {
 	return "LogStorageDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (lsd *LogStorageDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (lsd *LogStorageDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.LogStorageDefinition"
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -173,12 +183,27 @@ func (lsi *LogStorageInstance) GetId() uint {
 	return *lsi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (lsi *LogStorageInstance) GetType() string {
 	return "LogStorageInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (lsi *LogStorageInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (lsi *LogStorageInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.LogStorageInstance"
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on LogStorageInstance.
+func (l *LogStorageInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "ClusterID",
+		ObjectID:     l.ClusterID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }

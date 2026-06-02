@@ -9,9 +9,9 @@ import (
 
 	"gopkg.in/ini.v1"
 
-	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	"github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -50,7 +50,7 @@ func (a *AwsProviderConfig) Get(
 ) (*[]AwsProviderConfig, error) {
 	awsProviderValues := a.AwsProvider
 	// get API objects
-	var awsProviders *[]api_v0.AwsProvider
+	var awsProviders *[]api.AwsProvider
 	switch {
 	// if name is provided, get aws provider by name
 	case awsProviderValues.Name != nil:
@@ -58,7 +58,7 @@ func (a *AwsProviderConfig) Get(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get aws provider with name %s: %w", *awsProviderValues.Name, err)
 		}
-		awsProviders = &[]api_v0.AwsProvider{*awsProvider}
+		awsProviders = &[]api.AwsProvider{*awsProvider}
 	// get all aws providers
 	default:
 		allAwsProviders, err := client_v0.GetAwsProviders(apiClient, apiEndpoint)
@@ -73,14 +73,14 @@ func (a *AwsProviderConfig) Get(
 	for _, awsProvider := range *awsProviders {
 		// handle encryption if needed
 		if encryptionKey != "" {
-			a, err := encryption.DecryptValues(&awsProvider, encryptionKey)
+			a, err := lib.DecryptValues(&awsProvider, encryptionKey)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt aws provider secret values: %w", err)
 			}
-			awsProvider = *(a.(*api_v0.AwsProvider))
+			awsProvider = *(a.(*api.AwsProvider))
 		} else {
-			a := encryption.RedactEncryptedValues(&awsProvider)
-			awsProvider = *(a.(*api_v0.AwsProvider))
+			a := lib.RedactEncryptedValues(&awsProvider)
+			awsProvider = *(a.(*api.AwsProvider))
 		}
 
 		awsProviderConfig := AwsProviderConfig{
@@ -166,7 +166,7 @@ func (a *AwsProviderConfig) Create(
 	}
 
 	// construct aws provider object
-	awsProvider := api_v0.AwsProvider{
+	awsProvider := api.AwsProvider{
 		Name:            awsProviderValues.Name,
 		DefaultProvider: awsProviderValues.DefaultProvider,
 		DefaultRegion:   &region,
@@ -228,8 +228,8 @@ func (a *AwsProviderConfig) Replace(
 	}
 
 	// construct updated aws provider object
-	updatedAwsProvider := &api_v0.AwsProvider{
-		Common: api_v0.Common{
+	updatedAwsProvider := &api.AwsProvider{
+		Common: api.Common{
 			ID: existingAwsProvider.ID,
 		},
 		Name:            awsProviderValues.Name,

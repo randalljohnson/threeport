@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	"time"
 )
@@ -66,14 +67,29 @@ func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetId() uint {
 	return *ggkrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetType() string {
 	return "GcpGkeKubernetesRuntimeDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ggkrd *GcpGkeKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.GcpGkeKubernetesRuntimeDefinition"
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeDefinition.
+func (g *GcpGkeKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     g.KubernetesRuntimeDefinitionID,
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -120,20 +136,45 @@ func (ggkri *GcpGkeKubernetesRuntimeInstance) GetId() uint {
 	return *ggkri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (ggkri *GcpGkeKubernetesRuntimeInstance) GetType() string {
 	return "GcpGkeKubernetesRuntimeInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (ggkri *GcpGkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ggkri *GcpGkeKubernetesRuntimeInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.GcpGkeKubernetesRuntimeInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ggkri *GcpGkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return ggkri.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGkeKubernetesRuntimeInstance.
+func (g *GcpGkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "GcpGkeKubernetesRuntimeDefinitionID",
+		ObjectID:     g.GcpGkeKubernetesRuntimeDefinitionID,
+		ObjectType:   new(GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "GcpProviderID",
+		ObjectID:     g.GcpProviderID,
+		ObjectType:   new(GcpProvider).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     g.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -180,12 +221,25 @@ func (gp *GcpProvider) GetId() uint {
 	return *gp.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (gp *GcpProvider) GetType() string {
 	return "GcpProvider"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (gp *GcpProvider) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (gp *GcpProvider) GetFullyQualifiedType() string {
+	return "threeport.io/v0.GcpProvider"
+}
+
+// EncryptedFields returns the encrypt-tagged fields on GcpProvider.
+func (g *GcpProvider) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
+		Name:  "ServiceAccountCredentials",
+		Value: g.ServiceAccountCredentials,
+	}}
 }

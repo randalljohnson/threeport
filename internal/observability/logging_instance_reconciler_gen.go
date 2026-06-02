@@ -179,8 +179,7 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						loggingInstance.GetId(),
-						loggingInstance.GetVersion(),
-						loggingInstance.GetType(),
+						loggingInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						loggingInstance.GetId(),
-						loggingInstance.GetVersion(),
-						loggingInstance.GetType(),
+						loggingInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						loggingInstance.GetId(),
-						loggingInstance.GetVersion(),
-						loggingInstance.GetType(),
+						loggingInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				loggingInstance.GetId(),
-				loggingInstance.GetVersion(),
-				loggingInstance.GetType(),
+				loggingInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful logging instance reconciliation")
 			}

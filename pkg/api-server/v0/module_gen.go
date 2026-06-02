@@ -5,14 +5,11 @@ package v0
 import (
 	"fmt"
 	routes "github.com/threeport/threeport/pkg/api-server/v0/routes"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	gorm "gorm.io/gorm"
 	"os"
-)
-
-const (
-	coreModuleName = "threeport-core-api"
 )
 
 // RegisterModule registers the module information in the database.
@@ -39,9 +36,10 @@ func upsertModuleApi(db *gorm.DB) (*api_v0.ModuleApi, error) {
 	}
 
 	moduleApi := api_v0.ModuleApi{
-		Core:     util.Ptr(true),
-		Endpoint: util.Ptr(apiEndpoint),
-		Name:     util.Ptr(coreModuleName),
+		ApiNamespace: util.Ptr(apilib.CoreApiNamespace),
+		Core:         util.Ptr(true),
+		Endpoint:     util.Ptr(apiEndpoint),
+		Name:         util.Ptr(apilib.CoreModuleName),
 	}
 
 	if result := db.Where(api_v0.ModuleApi{Name: moduleApi.Name}).FirstOrCreate(&moduleApi); result.Error != nil {
@@ -1959,25 +1957,25 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	}
 
 	// /////////////////////////////////////////////////////////////////////////////
-	// registering controllers, objects and routes for Workload object group
+	// registering controllers, objects and routes for KubernetesWorkload object group
 	// /////////////////////////////////////////////////////////////////////////////
-	// registering controller workload-controller
+	// registering controller kubernetes-workload-controller
 	controller = api_v0.ModuleController{
-		DeploymentName: util.Ptr(threeportNamespace + "/threeport-workload-controller"),
+		DeploymentName: util.Ptr(threeportNamespace + "/threeport-kubernetes-workload-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Name:           util.Ptr("workload-controller"),
+		Name:           util.Ptr("kubernetes-workload-controller"),
 	}
 	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
-		return fmt.Errorf("failed to register workload-controller: %w", result.Error)
+		return fmt.Errorf("failed to register kubernetes-workload-controller: %w", result.Error)
 	}
 
-	// registering object WorkloadDefinition
+	// registering object KubernetesWorkloadDefinition
 	object = api_v0.ModuleObject{
-		Description:        util.Ptr("WorkloadDefinition is a collection of Kubernetes manifests that define a distinct workload."),
+		Description:        util.Ptr("KubernetesWorkloadDefinition is a collection of Kubernetes manifests that define a distinct workload."),
 		ModuleApiID:        moduleApi.ID,
 		ModuleControllerID: controller.ID,
-		Name:               util.Ptr("WorkloadDefinition"),
+		Name:               util.Ptr("KubernetesWorkloadDefinition"),
 		Version:            util.Ptr("v0"),
 	}
 	result = db.Where(api_v0.ModuleObject{
@@ -1986,14 +1984,14 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		Version:     object.Version,
 	}).FirstOrCreate(&object)
 	if result.Error != nil {
-		return fmt.Errorf("failed to register WorkloadDefinition: %w", result.Error)
+		return fmt.Errorf("failed to register KubernetesWorkloadDefinition: %w", result.Error)
 	}
 
-	// registering routes for WorkloadDefinition
+	// registering routes for KubernetesWorkloadDefinition
 	route = api_v0.ModuleApiRoute{
 		ModuleApiID:   moduleApi.ID,
 		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadDefinitionVersions),
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadDefinitionVersions),
 	}
 	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
 		ModuleApiID:   moduleApi.ID,
@@ -2001,12 +1999,12 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		Path:          route.Path,
 	}).FirstOrCreate(&route)
 	if result.Error != nil {
-		return fmt.Errorf("failed to register version route for WorkloadDefinition: %w", result.Error)
+		return fmt.Errorf("failed to register version route for KubernetesWorkloadDefinition: %w", result.Error)
 	}
 	route = api_v0.ModuleApiRoute{
 		ModuleApiID:   moduleApi.ID,
 		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadDefinitions),
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadDefinitions),
 	}
 	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
 		ModuleApiID:   moduleApi.ID,
@@ -2014,12 +2012,145 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		Path:          route.Path,
 	}).FirstOrCreate(&route)
 	if result.Error != nil {
-		return fmt.Errorf("failed to register object route for WorkloadDefinition: %w", result.Error)
+		return fmt.Errorf("failed to register object route for KubernetesWorkloadDefinition: %w", result.Error)
+	}
+
+	// registering object KubernetesWorkloadInstance
+	object = api_v0.ModuleObject{
+		Description:        util.Ptr("KubernetesWorkloadInstance is a deployed instance of a kubernetes workload."),
+		ModuleApiID:        moduleApi.ID,
+		ModuleControllerID: controller.ID,
+		Name:               util.Ptr("KubernetesWorkloadInstance"),
+		Version:            util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register KubernetesWorkloadInstance: %w", result.Error)
+	}
+
+	// registering routes for KubernetesWorkloadInstance
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadInstanceVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for KubernetesWorkloadInstance: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadInstances),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for KubernetesWorkloadInstance: %w", result.Error)
+	}
+
+	// registering object KubernetesWorkloadResourceDefinition
+	object = api_v0.ModuleObject{
+		Description: util.Ptr("KubernetesWorkloadResourceDefinition is an individual Kubernetes resource manifest."),
+		ModuleApiID: moduleApi.ID,
+		Name:        util.Ptr("KubernetesWorkloadResourceDefinition"),
+		Version:     util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register KubernetesWorkloadResourceDefinition: %w", result.Error)
+	}
+
+	// registering routes for KubernetesWorkloadResourceDefinition
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadResourceDefinitionVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for KubernetesWorkloadResourceDefinition: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadResourceDefinitions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for KubernetesWorkloadResourceDefinition: %w", result.Error)
+	}
+
+	// registering object KubernetesWorkloadResourceInstance
+	object = api_v0.ModuleObject{
+		Description: util.Ptr("KubernetesWorkloadResourceInstance is a Kubernetes resource instance."),
+		ModuleApiID: moduleApi.ID,
+		Name:        util.Ptr("KubernetesWorkloadResourceInstance"),
+		Version:     util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register KubernetesWorkloadResourceInstance: %w", result.Error)
+	}
+
+	// registering routes for KubernetesWorkloadResourceInstance
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadResourceInstanceVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for KubernetesWorkloadResourceInstance: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathKubernetesWorkloadResourceInstances),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for KubernetesWorkloadResourceInstance: %w", result.Error)
 	}
 
 	// registering object WorkloadEvent
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("WorkloadEvent is a summary of a Kubernetes Event that is associated with a WorkloadResourceInstance."),
+		Description: util.Ptr(""),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("WorkloadEvent"),
 		Version:     util.Ptr("v0"),
@@ -2061,145 +2192,12 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		return fmt.Errorf("failed to register object route for WorkloadEvent: %w", result.Error)
 	}
 
-	// registering object WorkloadInstance
-	object = api_v0.ModuleObject{
-		Description:        util.Ptr("WorkloadInstance is a deployed instance of a workload."),
-		ModuleApiID:        moduleApi.ID,
-		ModuleControllerID: controller.ID,
-		Name:               util.Ptr("WorkloadInstance"),
-		Version:            util.Ptr("v0"),
-	}
-	result = db.Where(api_v0.ModuleObject{
-		ModuleApiID: moduleApi.ID,
-		Name:        object.Name,
-		Version:     object.Version,
-	}).FirstOrCreate(&object)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register WorkloadInstance: %w", result.Error)
-	}
-
-	// registering routes for WorkloadInstance
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadInstanceVersions),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register version route for WorkloadInstance: %w", result.Error)
-	}
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadInstances),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register object route for WorkloadInstance: %w", result.Error)
-	}
-
-	// registering object WorkloadResourceDefinition
-	object = api_v0.ModuleObject{
-		Description: util.Ptr("WorkloadResourceDefinition is an individual Kubernetes resource manifest."),
-		ModuleApiID: moduleApi.ID,
-		Name:        util.Ptr("WorkloadResourceDefinition"),
-		Version:     util.Ptr("v0"),
-	}
-	result = db.Where(api_v0.ModuleObject{
-		ModuleApiID: moduleApi.ID,
-		Name:        object.Name,
-		Version:     object.Version,
-	}).FirstOrCreate(&object)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register WorkloadResourceDefinition: %w", result.Error)
-	}
-
-	// registering routes for WorkloadResourceDefinition
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadResourceDefinitionVersions),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register version route for WorkloadResourceDefinition: %w", result.Error)
-	}
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadResourceDefinitions),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register object route for WorkloadResourceDefinition: %w", result.Error)
-	}
-
-	// registering object WorkloadResourceInstance
-	object = api_v0.ModuleObject{
-		Description: util.Ptr("WorkloadResourceInstance is a Kubernetes resource instance."),
-		ModuleApiID: moduleApi.ID,
-		Name:        util.Ptr("WorkloadResourceInstance"),
-		Version:     util.Ptr("v0"),
-	}
-	result = db.Where(api_v0.ModuleObject{
-		ModuleApiID: moduleApi.ID,
-		Name:        object.Name,
-		Version:     object.Version,
-	}).FirstOrCreate(&object)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register WorkloadResourceInstance: %w", result.Error)
-	}
-
-	// registering routes for WorkloadResourceInstance
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadResourceInstanceVersions),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register version route for WorkloadResourceInstance: %w", result.Error)
-	}
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathWorkloadResourceInstances),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register object route for WorkloadResourceInstance: %w", result.Error)
-	}
-
 	// /////////////////////////////////////////////////////////////////////////////
 	// registering controllers, objects and routes for AttachedObject object group
 	// /////////////////////////////////////////////////////////////////////////////
 	// registering object AttachedObjectReference
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("AttachedObjectReference is a reference to an attached object."),
+		Description: util.Ptr("AttachedObjectReference is a reference to an attached object. Four DB indexes are declared in the GORM tags below: - idx_attached_object_unique: full-table unique composite across (object_type, object_id, attached_object_type, attached_object_id). Enforces that a given (base, attacher) pair appears in at most one row regardless of relationship kind. - idx_aor_marries_base: partial unique composite across (object_type, object_id) where relationship = 'marries' AND deleted_at IS NULL. Enforces that the base side of a marriage appears in at most one *live* marries row (1-to-1 cardinality for the base). The deleted_at predicate keeps soft-deleted rows out of the unique slot so a base can be re-married after teardown. - idx_aor_marries_attached: partial unique composite across (attached_object_type, attached_object_id) where relationship = 'marries' AND deleted_at IS NULL. Same constraint applied to the attacher side. - idx_aor_owns_base: partial unique composite across (object_type, object_id) where relationship = 'owns' AND deleted_at IS NULL. Enforces that an owned base appears in at most one *live* owns row. The attacher side is intentionally unconstrained for owns: an owner may own many bases. Each participating column repeats the index name in its `uniqueIndex:` tag; GORM bundles them by name. The `,where:...` suffix on the partial indexes makes them partial indexes: only rows matching the predicate are indexed. The \"AND deleted_at IS NULL\" half of each predicate matters because attached object references use gorm soft-delete (see Common) - without it, soft-deleted rows would continue to occupy the unique slot and block re-attachment until cockroach eventually hard-deletes them."),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("AttachedObjectReference"),
 		Version:     util.Ptr("v0"),
@@ -2246,7 +2244,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	// /////////////////////////////////////////////////////////////////////////////
 	// registering object ModuleApi
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("ModuleApi represents an API server for a Threeport module."),
+		Description: util.Ptr("ModuleApi represents an API server for a Threeport module. The (Name, ApiNamespace) pair is unique."),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("ModuleApi"),
 		Version:     util.Ptr("v0"),

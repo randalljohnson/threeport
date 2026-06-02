@@ -286,6 +286,14 @@ func GenRestApiMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				)),
 			),
 		)
+		g.Line()
+		g.Comment("capture the request's mTLS peer identity so GORM hooks can read it via")
+		g.Comment("apiserver_lib.Caller(tx.Statement.Context)")
+		g.Id("e").Dot("Use").Call(Qual(
+			"github.com/threeport/threeport/pkg/api-server/lib/v0",
+			"CaptureCaller",
+		))
+		g.Line()
 		g.Id("logger").Op(",").Id("err").Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/log/v0",
 			"NewLogger",

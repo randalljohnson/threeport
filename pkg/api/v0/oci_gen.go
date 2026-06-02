@@ -5,6 +5,7 @@ package v0
 import (
 	"encoding/json"
 	"fmt"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	"time"
 )
@@ -66,14 +67,29 @@ func (ookrd *OciOkeKubernetesRuntimeDefinition) GetId() uint {
 	return *ookrd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (ookrd *OciOkeKubernetesRuntimeDefinition) GetType() string {
 	return "OciOkeKubernetesRuntimeDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (ookrd *OciOkeKubernetesRuntimeDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ookrd *OciOkeKubernetesRuntimeDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.OciOkeKubernetesRuntimeDefinition"
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeDefinition.
+func (o *OciOkeKubernetesRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeDefinitionID",
+		ObjectID:     o.KubernetesRuntimeDefinitionID,
+		ObjectType:   new(KubernetesRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -120,20 +136,45 @@ func (ookri *OciOkeKubernetesRuntimeInstance) GetId() uint {
 	return *ookri.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (ookri *OciOkeKubernetesRuntimeInstance) GetType() string {
 	return "OciOkeKubernetesRuntimeInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (ookri *OciOkeKubernetesRuntimeInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ookri *OciOkeKubernetesRuntimeInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.OciOkeKubernetesRuntimeInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ookri *OciOkeKubernetesRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return ookri.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on OciOkeKubernetesRuntimeInstance.
+func (o *OciOkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     o.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}, {
+		FieldName:    "OciOkeKubernetesRuntimeDefinitionID",
+		ObjectID:     o.OciOkeKubernetesRuntimeDefinitionID,
+		ObjectType:   new(OciOkeKubernetesRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "OciProviderID",
+		ObjectID:     o.OciProviderID,
+		ObjectType:   new(OciProvider).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -180,12 +221,25 @@ func (op *OciProvider) GetId() uint {
 	return *op.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (op *OciProvider) GetType() string {
 	return "OciProvider"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (op *OciProvider) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (op *OciProvider) GetFullyQualifiedType() string {
+	return "threeport.io/v0.OciProvider"
+}
+
+// EncryptedFields returns the encrypt-tagged fields on OciProvider.
+func (o *OciProvider) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
+		Name:  "PrivateKey",
+		Value: o.PrivateKey,
+	}}
 }

@@ -9,6 +9,7 @@ import (
 const (
 	ErrMsgJSONPayloadEmpty                = "JSON payload is empty"
 	ErrMsgMissingRequiredFields           = "Missing required field(s)"
+	ErrMsgRequiredFieldsCannotBeNull      = "Required field(s) cannot be null"
 	ErrMsgAssociationsUpdateNotAllowed    = "Update of associated objects is not allowed. Use PUT for each associated object"
 	ErrMsgGORMModelFieldsUpdateNotAllowed = "Update of GORM Model fields is not allowed"
 	ErrMsgUnsupportedFieldsNotAllowed     = "Unsupported fields are not allowed"
@@ -29,7 +30,7 @@ type Response struct {
 	Meta Meta `json:"Meta"`
 
 	// Type contains ObjectType of returned Data elements.
-	Type string `json:"Type" example:"WorkloadInstance"`
+	Type string `json:"Type" example:"KubernetesWorkloadInstance"`
 
 	// Data contains array of returned Object elements.
 	Data []Object `json:"Data"`

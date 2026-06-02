@@ -37,5 +37,5 @@ type LogStorageInstance struct {
 
 	// The cluster from which log messages are being aggregated to send to a log
 	// back end.
-	ClusterID *uint `json:"ClusterID,omitempty" validate:"optional,association"`
+	ClusterID *uint `json:"ClusterID,omitempty" validate:"optional,association" relationship:"requires;type:KubernetesRuntimeInstance"`
 }

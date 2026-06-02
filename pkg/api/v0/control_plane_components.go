@@ -7,7 +7,7 @@ type ControlPlaneComponent struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The control plane instance ID that this component belongs to.
-	ControlPlaneInstanceID *uint `json:"ControlPlaneInstanceID,omitempty" gorm:"not null" validate:"required"`
+	ControlPlaneInstanceID *uint `json:"ControlPlaneInstanceID,omitempty" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Indicate whether the component is enabled to be deployed. Currently only respected by controllers.
 	Enabled *bool `json:"Enabled,omitempty" yaml:"Enabled" validate:"optional"`

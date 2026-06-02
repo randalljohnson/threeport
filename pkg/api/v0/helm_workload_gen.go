@@ -63,14 +63,19 @@ func (hwd *HelmWorkloadDefinition) GetId() uint {
 	return *hwd.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (hwd *HelmWorkloadDefinition) GetType() string {
 	return "HelmWorkloadDefinition"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (hwd *HelmWorkloadDefinition) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (hwd *HelmWorkloadDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.HelmWorkloadDefinition"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
@@ -123,18 +128,38 @@ func (hwi *HelmWorkloadInstance) GetId() uint {
 	return *hwi.ID
 }
 
-// Type returns the object type.
+// GetType returns the object type.
 func (hwi *HelmWorkloadInstance) GetType() string {
 	return "HelmWorkloadInstance"
 }
 
-// Version returns the version of the API object.
+// GetVersion returns the version of the API object.
 func (hwi *HelmWorkloadInstance) GetVersion() string {
 	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (hwi *HelmWorkloadInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.HelmWorkloadInstance"
 }
 
 // ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (hwi *HelmWorkloadInstance) ScheduledForDeletion() *time.Time {
 	return hwi.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on HelmWorkloadInstance.
+func (h *HelmWorkloadInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "HelmWorkloadDefinitionID",
+		ObjectID:     h.HelmWorkloadDefinitionID,
+		ObjectType:   new(HelmWorkloadDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "KubernetesRuntimeInstanceID",
+		ObjectID:     h.KubernetesRuntimeInstanceID,
+		ObjectType:   new(KubernetesRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
 }

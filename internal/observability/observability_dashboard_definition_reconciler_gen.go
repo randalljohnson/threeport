@@ -179,8 +179,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						observabilityDashboardDefinition.GetId(),
-						observabilityDashboardDefinition.GetVersion(),
-						observabilityDashboardDefinition.GetType(),
+						observabilityDashboardDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						observabilityDashboardDefinition.GetId(),
-						observabilityDashboardDefinition.GetVersion(),
-						observabilityDashboardDefinition.GetType(),
+						observabilityDashboardDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						observabilityDashboardDefinition.GetId(),
-						observabilityDashboardDefinition.GetVersion(),
-						observabilityDashboardDefinition.GetType(),
+						observabilityDashboardDefinition.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				observabilityDashboardDefinition.GetId(),
-				observabilityDashboardDefinition.GetVersion(),
-				observabilityDashboardDefinition.GetType(),
+				observabilityDashboardDefinition.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful observability dashboard definition reconciliation")
 			}

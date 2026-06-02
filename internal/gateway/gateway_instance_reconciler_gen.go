@@ -179,8 +179,7 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayInstance.GetId(),
-						gatewayInstance.GetVersion(),
-						gatewayInstance.GetType(),
+						gatewayInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayInstance.GetId(),
-						gatewayInstance.GetVersion(),
-						gatewayInstance.GetType(),
+						gatewayInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayInstance.GetId(),
-						gatewayInstance.GetVersion(),
-						gatewayInstance.GetType(),
+						gatewayInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				gatewayInstance.GetId(),
-				gatewayInstance.GetVersion(),
-				gatewayInstance.GetType(),
+				gatewayInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful gateway instance reconciliation")
 			}

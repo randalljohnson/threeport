@@ -32,7 +32,7 @@ import (
 // @title Threeport RESTful API
 // @version v0.7.0-dev
 // @description Core API server for the Threeport application orchestration control plane.
-// @contact.url https://threerport.io
+// @contact.url https://threeport.io
 // @BasePath /
 func main() {
 	// flags
@@ -64,6 +64,11 @@ func main() {
 			return next(cc)
 		}
 	})
+
+	// capture the request's mTLS peer identity so GORM hooks can read it via
+	// apiserver_lib.Caller(tx.Statement.Context)
+	e.Use(apiserver_lib.CaptureCaller)
+
 	logger, err := log.NewLogger(verbose)
 	if err != nil {
 		panic(err)

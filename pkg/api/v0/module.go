@@ -5,15 +5,19 @@ const (
 	PathModuleObjectsWithModuleApiRoutes         = "/v0/module-objects-with-module-api-routes"
 )
 
-// ModuleApi represents an API server for a Threeport module.
+// ModuleApi represents an API server for a Threeport module. The
+// (Name, ApiNamespace) pair is unique.
 type ModuleApi struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// An arbitrary name for the module API.
-	Name *string `json:"Name,omitempty" query:"name" validate:"required" gorm:"not null"`
+	Name *string `json:"Name,omitempty" query:"name" validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity"`
 
 	// If true, represents the core Threeport API.
 	Core *bool `json:"Core,omitempty" query:"core" validate:"optional" gorm:"default:false"`
+
+	// The reverse-DNS namespace identifying this module API (e.g. "example.com").
+	ApiNamespace *string `json:"ApiNamespace,omitempty" query:"apinamespace" validate:"optional" gorm:"uniqueIndex:idx_module_api_identity"`
 
 	// The module API server's endpoint to proxy requests to for module
 	// objects.
@@ -39,7 +43,7 @@ type ModuleApiRoute struct {
 	Path *string `json:"Path,omitempty" query:"path" validate:"required" gorm:"not null"`
 
 	// The module API this route belongs to.
-	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null"`
+	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The module object this route serves.
 	ModuleObjects []*ModuleObject `json:"ModuleObjects,omitempty" gorm:"many2many:v0_module_api_routes_module_objects;" validate:"optional,association"`
@@ -59,7 +63,7 @@ type ModuleController struct {
 	DeploymentName *string `json:"DeploymentName,omitempty" query:"deploymentname" validate:"required" gorm:"not null"`
 
 	// The module API this controller is connected to.
-	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null"`
+	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null" relationship:"requires"`
 }
 
 // ModuleObject is an API object that is managed by a module in Threeport.  This provides
@@ -77,11 +81,11 @@ type ModuleObject struct {
 	Description *string `json:"Description,omitempty" query:"description" validate:"optional"`
 
 	// The module API this controller is connected to.
-	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null"`
+	ModuleApiID *uint `json:"ModuleApiID,omitempty" query:"moduleapiid" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The controller that reconciles state for this API object, if applicable.  Note: some API objects
 	// do not require reconciliation by a controller - this field will be null in those cases.
-	ModuleControllerID *uint `json:"ModuleControllerID,omitempty" query:"modulecontrollerid" validate:"optional"`
+	ModuleControllerID *uint `json:"ModuleControllerID,omitempty" query:"modulecontrollerid" validate:"optional" relationship:"requires"`
 
 	// The routes that service this module object.
 	ModuleApiRoutes []*ModuleApiRoute `json:"ModuleApiRoutes,omitempty" gorm:"many2many:v0_module_api_routes_module_objects;" validate:"optional,association"`

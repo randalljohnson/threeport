@@ -179,8 +179,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						domainNameInstance.GetId(),
-						domainNameInstance.GetVersion(),
-						domainNameInstance.GetType(),
+						domainNameInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -227,8 +226,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						domainNameInstance.GetId(),
-						domainNameInstance.GetVersion(),
-						domainNameInstance.GetType(),
+						domainNameInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -275,8 +273,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						domainNameInstance.GetId(),
-						domainNameInstance.GetVersion(),
-						domainNameInstance.GetType(),
+						domainNameInstance.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
@@ -382,8 +379,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				domainNameInstance.GetId(),
-				domainNameInstance.GetVersion(),
-				domainNameInstance.GetType(),
+				domainNameInstance.GetFullyQualifiedType(),
 			); err != nil {
 				log.Error(err, "failed to record event for successful domain name instance reconciliation")
 			}

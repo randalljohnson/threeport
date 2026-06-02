@@ -12,26 +12,26 @@ type HelmWorkloadDefinition struct {
 	// The helm repo URL to pull the helm workload's chart from
 	// e.g. oci://registry-1.docker.io/bitnamicharts
 	// e.g. https://grafana.github.io/helm-charts
-	Repo *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Repo *string `json:"Repo,omitempty" query:"repo" gorm:"not null" validate:"required"`
 
 	// The name of the helm chart to use from the helm repo, e.g. wordpress
-	Chart *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Chart *string `json:"Chart,omitempty" query:"chart" gorm:"not null" validate:"required"`
 
 	// The version of the helm chart to use from the helm repo, e.g. 1.2.3
-	ChartVersion *string `json:",omitempty" validate:"optional"`
+	ChartVersion *string `json:"ChartVersion,omitempty" query:"chartversion" validate:"optional"`
 
 	// The helm values that override the defaults from the helm chart.  These
 	// will be inherited by each helm workload instance derived from this
 	// definition.  The helm values defined here can be further overridden by
 	// values defined on the helm workload instance.
-	ValuesDocument *string `json:",omitempty" validate:"optional"`
+	ValuesDocument *string `json:"ValuesDocument,omitempty" validate:"optional"`
 
 	// The associated helm workload instances that are deployed from this definition.
-	HelmWorkloadInstances []*HelmWorkloadInstance `json:",omitempty" validate:"optional,association"`
+	HelmWorkloadInstances []*HelmWorkloadInstance `json:"HelmWorkloadInstances,omitempty" validate:"optional,association"`
 
 	// Complete kubernetes resources that will be appended to the provided
 	// helm chart.
-	AdditionalResources *datatypes.JSONSlice[datatypes.JSON] `json:",omitempty" validate:"optional"`
+	AdditionalResources *datatypes.JSONSlice[datatypes.JSON] `json:"AdditionalResources,omitempty" validate:"optional"`
 }
 
 // HelmWorkloadInstance is a deployed instance of a helm chart with the runtime
@@ -43,18 +43,18 @@ type HelmWorkloadInstance struct {
 
 	// Filepath to the helm values YAML file that provides runtime parameters to
 	// the helm chart.
-	ValuesDocument *string `json:",omitempty" validate:"optional"`
+	ValuesDocument *string `json:"ValuesDocument,omitempty" validate:"optional"`
 
 	// The kubernetes runtime to which the helm workload is deployed.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:"KubernetesRuntimeInstanceID,omitempty" query:"kubernetesruntimeinstanceid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Namespace to deploy the helm chart to.
-	ReleaseNamespace *string `json:",omitempty" validate:"optional"`
+	ReleaseNamespace *string `json:"ReleaseNamespace,omitempty" query:"releasenamespace" validate:"optional"`
 
-	// The definition used to configure the workload instance.
-	HelmWorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	// The definition used to configure the kubernetes workload instance.
+	HelmWorkloadDefinitionID *uint `json:"HelmWorkloadDefinitionID,omitempty" query:"helmworkloaddefinitionid" gorm:"not null" validate:"required" relationship:"requires"`
 
 	// Complete kubernetes resources that will be appended to the provided
 	// helm chart.
-	AdditionalResources *datatypes.JSONSlice[datatypes.JSON] `json:",omitempty" validate:"optional"`
+	AdditionalResources *datatypes.JSONSlice[datatypes.JSON] `json:"AdditionalResources,omitempty" validate:"optional"`
 }

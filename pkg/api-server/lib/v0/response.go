@@ -27,25 +27,25 @@ type Object interface{}
 // meta information, and the status of the request.
 type Response struct {
 	// Meta contains PageRequestParams (current page and size of current page) and TotalCount (number of returned Object elements)
-	Meta Meta
+	Meta Meta `json:"Meta"`
 
 	// Type contains ObjectType of returned Data elements.
-	Type string `example:"WorkloadInstance"`
+	Type string `json:"Type" example:"KubernetesWorkloadInstance"`
 
 	// Data contains array of returned Object elements.
-	Data []Object
+	Data []Object `json:"Data"`
 
 	// Status represents an error that occurred while handling a request.
-	Status Status
+	Status Status `json:"Status"`
 }
 
 // Meta model info
 type Meta struct {
 	// Pagination contains the pagination information for a paginated response.
-	Pagination Pagination
+	Pagination Pagination `json:"Pagination"`
 
 	// The number of objects returned in the response.
-	ObjectCount int64 `example:"1"`
+	ObjectCount int64 `json:"ObjectCount" example:"1"`
 }
 
 // Pagination contains the pagination information for a paginated response.
@@ -53,17 +53,17 @@ type Pagination struct {
 	// Limit is the maximum number of objects returned.  This is either set in the client's
 	// request or set to a default value by the server.  In any case, this field informs the
 	// client of the maximum number of objects they can expect to receive.
-	Limit int64 `query:"limit" example:"1"`
+	Limit int64 `json:"Limit" query:"limit" example:"1"`
 
 	// NextCursor is the ID of the last object in the previous page of results.
-	NextCursor uint `query:"nextcursor" example:"1234567890"`
+	NextCursor uint `json:"NextCursor" query:"nextcursor" example:"1234567890"`
 
 	// QueryId is the ID of the query that produced the paginated objects.  This must be
 	// referenced by the client to fetch subsequent pages of results.
-	QueryId string `query:"queryid" example:"1234567890-1234567890-1234567890"`
+	QueryId string `json:"QueryId" query:"queryid" example:"1234567890-1234567890-1234567890"`
 
 	// HasMore is a boolean indicating if there are more objects to fetch after the current page.
-	HasMore bool `query:"hasmore" example:"true"`
+	HasMore bool `json:"HasMore" query:"hasmore" example:"true"`
 }
 
 // Status represents the response HTTP status including error messages if

@@ -460,6 +460,9 @@ definitions:
         description: The cluster where the workload that is using the domain name
           is running.
         type: integer
+      KubernetesWorkloadInstanceID:
+        description: The kubernetes workload instance this domain name belongs to.
+        type: integer
       Name:
         description: An arbitrary name the instance
         type: string
@@ -472,14 +475,11 @@ definitions:
           The status of the instance.
           TODO: use a custom type
         type: string
-      WorkloadInstanceID:
-        description: The workload instance this domain name belongs to.
-        type: integer
     required:
     - DomainNameDefinitionID
     - KubernetesRuntimeInstanceID
+    - KubernetesWorkloadInstanceID
     - Name
-    - WorkloadInstanceID
     type: object
   v0.Event:
     properties:
@@ -496,11 +496,22 @@ definitions:
       Note:
         description: A human-readable description of the status of this operation.
         type: string
-      ObjectID:
-        type: integer
-      ObjectName:
+      Reason:
+        description: A short, machine understandable string that gives the reason
+          for the event being generated.
         type: string
-      ObjectType:
+      ReportingController:
+        description: Name of the controller that emitted this Event.
+        type: string
+      Type:
+        description: Type of this event (Normal, Warning), new types could be added
+          in the future.
+        type: string
+      objectID:
+        type: integer
+      objectName:
+        type: string
+      objectType:
         description: |-
           Fields carrying the event's subject - the object the event is
           about. They flow in both directions:
@@ -523,17 +534,6 @@ definitions:
           A consumer like `tptctl get events` uses them to render
           "threeport.io/machine-runtime-instance/some-host" in the OBJECT
           column.
-        type: string
-      Reason:
-        description: A short, machine understandable string that gives the reason
-          for the event being generated.
-        type: string
-      ReportingController:
-        description: Name of the controller that emitted this Event.
-        type: string
-      Type:
-        description: Type of this event (Normal, Warning), new types could be added
-          in the future.
         type: string
     required:
     - Count
@@ -592,6 +592,9 @@ definitions:
           situation where future reconciliation could be descructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
+      KubernetesWorkloadDefinitionID:
+        description: The kubernetes workload definition that belongs to this resource.
+        type: integer
       Name:
         description: An arbitrary name for the definition.
         type: string
@@ -619,9 +622,6 @@ definitions:
         description: |-
           The tier to associate with the definition.  Tier is a level of
           criticality for access control.
-        type: integer
-      WorkloadDefinitionID:
-        description: The workload definition that belongs to this resource.
         type: integer
     required:
     - Name
@@ -690,6 +690,9 @@ definitions:
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime where the ingress layer is installed.
         type: integer
+      KubernetesWorkloadInstanceID:
+        description: The kubernetes workload instance this gateway belongs to.
+        type: integer
       Name:
         description: An arbitrary name the instance
         type: string
@@ -702,14 +705,11 @@ definitions:
           The status of the instance.
           TODO: use a custom type
         type: string
-      WorkloadInstanceID:
-        description: The workload instance this gateway belongs to.
-        type: integer
     required:
     - GatewayDefinitionID
     - KubernetesRuntimeInstanceID
+    - KubernetesWorkloadInstanceID
     - Name
-    - WorkloadInstanceID
     type: object
   v0.GatewayTcpPort:
     properties:
@@ -1002,7 +1002,7 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       HelmWorkloadDefinitionID:
-        description: The definition used to configure the workload instance.
+        description: The definition used to configure the kubernetes workload instance.
         type: integer
       InterruptReconciliation:
         description: |-
@@ -1156,7 +1156,7 @@ definitions:
           ConnectionTokenExpiration is the time when a ConnectionToken will expire.
           Used to ensure a token will not expire before it can be used.
         type: string
-      ControlPlaneInstances:
+      ControlPlaneInstance:
         description: The associated control plane instances running on this kubernetes
           runtime instance.
         items:
@@ -1193,11 +1193,11 @@ definitions:
           Used to inform reconcilers that an object is being deleted so they may
           complete delete reconciliation before actually deleting the object from the database.
         type: string
-      DnsControllerInstanceID:
-        description: The WorkloadInstanceID of the dns support service
+      DnsControllerInstanceId:
+        description: The KubernetesWorkloadInstanceID of the dns support service
         type: integer
-      GatewayControllerInstanceID:
-        description: The WorkloadInstanceID of the gateway support service
+      GatewayKubernetesWorkloadInstanceID:
+        description: The KubernetesWorkloadInstanceID of the gateway support service
         type: integer
       InterruptReconciliation:
         description: |-
@@ -1209,6 +1209,12 @@ definitions:
       KubernetesRuntimeDefinitionID:
         description: The kubernetes runtime definition for this instance.
         type: integer
+      KubernetesWorkloadInstances:
+        description: The associated kubernetes workload instances running on this
+          kubernetes runtime.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
+        type: array
       Location:
         description: |-
           The geographical location for the runtime cluster.  This is an
@@ -1222,8 +1228,8 @@ definitions:
         description: Indicates if object is considered to be reconciled by the object's
           controller.
         type: boolean
-      SecretsControllerInstanceID:
-        description: The WorkloadInstanceID of the secrets support service
+      SecretsControllerInstanceId:
+        description: The KubernetesWorkloadInstanceID of the secrets support service
         type: integer
       Status:
         description: |-
@@ -1242,16 +1248,192 @@ definitions:
           any controllers that connect to the kube API will use internal cluster
           DNS rather than the external APIEndpoint.
         type: boolean
-      WorkloadInstances:
-        description: The associated workload instances running on this kubernetes
-          runtime.
-        items:
-          $ref: '#/definitions/v0.WorkloadInstance'
-        type: array
     required:
     - KubernetesRuntimeDefinitionID
     - Location
     - Name
+    type: object
+  v0.KubernetesWorkloadDefinition:
+    properties:
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      KubernetesWorkloadInstances:
+        description: The associated kubernetes workload instances that are deployed
+          from this definition.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
+        type: array
+      KubernetesWorkloadResourceDefinitions:
+        description: The associated kubernetes workload resource definitions that
+          are derived.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceDefinition'
+        type: array
+      Name:
+        description: An arbitrary name for the definition.
+        type: string
+      ProfileID:
+        description: |-
+          The profile to associate with the definition.  Profile is a named
+          standard configuration for a definition object.
+        type: integer
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
+      TierID:
+        description: |-
+          The tier to associate with the definition.  Tier is a level of
+          criticality for access control.
+        type: integer
+      YAMLDocument:
+        description: The yaml manifests that define the workload configuration.
+        type: string
+    required:
+    - Name
+    - YAMLDocument
+    type: object
+  v0.KubernetesWorkloadInstance:
+    properties:
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      KubernetesRuntimeInstanceID:
+        description: The kubernetes runtime to which the workload is deployed.
+        type: integer
+      KubernetesWorkloadDefinitionID:
+        description: The definition used to configure the kubernetes workload instance.
+        type: integer
+      KubernetesWorkloadResourceInstances:
+        description: The associated kubernetes workload resource instances that are
+          derived.
+        items:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceInstance'
+        type: array
+      Name:
+        description: An arbitrary name the instance
+        type: string
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
+      Status:
+        description: The latest status of a kubernetes workload instance.
+        type: string
+    required:
+    - KubernetesRuntimeInstanceID
+    - KubernetesWorkloadDefinitionID
+    - Name
+    type: object
+  v0.KubernetesWorkloadResourceDefinition:
+    properties:
+      JSONDefinition:
+        allOf:
+        - $ref: '#/definitions/datatypes.JSON'
+        description: The individual manifest in JSON format.
+      KubernetesWorkloadDefinitionID:
+        description: The kubernetes workload definition this resource belongs to.
+        type: integer
+    required:
+    - JSONDefinition
+    - KubernetesWorkloadDefinitionID
+    type: object
+  v0.KubernetesWorkloadResourceInstance:
+    properties:
+      JSONDefinition:
+        allOf:
+        - $ref: '#/definitions/datatypes.JSON'
+        description: |-
+          The individual manifest in JSON format.  This field is a superset of
+          KubernetesWorkloadResourceDefinition.JSONDefinition in that it has
+          namespace management and other configuration — such as resource
+          allocation management — added.
+      KubernetesWorkloadInstanceID:
+        description: The kubernetes workload instance this resource belongs to.
+        type: integer
+      LastOperation:
+        description: |-
+          The most recent operation performed on a Kubernetes resource in the
+          kubernetes runtime.
+        type: string
+      Reconciled:
+        description: |-
+          Indicates if object is considered to be reconciled by kubernetes
+          kubernetes workload controller.
+        type: boolean
+      RuntimeDefinition:
+        allOf:
+        - $ref: '#/definitions/datatypes.JSON'
+        description: |-
+          The JSON definition of a Kubernetes resource as stored in etcd in the
+          kubernetes runtime.
+      ScheduledForDeletion:
+        description: Whether another controller has scheduled this resource for deletion
+        type: string
+    required:
+    - JSONDefinition
+    - KubernetesWorkloadInstanceID
     type: object
   v0.LogBackend:
     properties:
@@ -2070,7 +2252,7 @@ definitions:
         type: integer
       PromtailHelmValuesDocument:
         description: |-
-          Optional Helm workload Instancehat can be provided to configure the
+          Optional Helm workload instance values that can be provided to configure the
           underlying promtail chart.
         type: string
       Reconciled:
@@ -2301,7 +2483,7 @@ definitions:
         description: Status represents an error that occurred while handling a request.
       Type:
         description: Type contains ObjectType of returned Data elements.
-        example: WorkloadInstance
+        example: KubernetesWorkloadInstance
         type: string
     type: object
   v0.SecretDefinition:
@@ -2413,6 +2595,10 @@ definitions:
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime to which the secret is deployed.
         type: integer
+      KubernetesWorkloadInstanceID:
+        description: The kubernetes workload instance that the secret is associated
+          with.
+        type: integer
       Name:
         description: An arbitrary name the instance
         type: string
@@ -2428,9 +2614,6 @@ definitions:
           The status of the instance.
           TODO: use a custom type
         type: string
-      WorkloadInstanceID:
-        description: The workload instance that the secret is associated with.
-        type: integer
     required:
     - KubernetesRuntimeInstanceID
     - Name
@@ -2610,184 +2793,43 @@ definitions:
     - Criticality
     - Name
     type: object
-  v0.WorkloadDefinition:
+  v0.WorkloadEvent:
     properties:
-      CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
-        type: string
-      CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
-        type: string
-      CreationFailed:
-        description: Gets set to true if creation process fails.
-        type: boolean
-      DeletionAcknowledged:
-        description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
-        type: string
-      DeletionConfirmed:
-        description: Used by controllers to confirm deletion of an object.
-        type: string
-      DeletionScheduled:
-        description: |-
-          Used to inform reconcilers that an object is being deleted so they may
-          complete delete reconciliation before actually deleting the object from the database.
-        type: string
-      InterruptReconciliation:
-        description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
-          spinning up more infrastructure when there is a unresolved problem.
-        type: boolean
-      Name:
-        description: An arbitrary name for the definition.
-        type: string
-      ProfileID:
-        description: |-
-          The profile to associate with the definition.  Profile is a named
-          standard configuration for a definition object.
+      HelmWorkloadInstanceID:
+        description: The related helm workload instance.
         type: integer
-      Reconciled:
-        description: Indicates if object is considered to be reconciled by the object's
-          controller.
-        type: boolean
-      TierID:
+      Message:
+        description: The message associated with the event.
+        type: string
+      Reason:
+        description: The reason for the event.
+        type: string
+      RuntimeEventUID:
         description: |-
-          The tier to associate with the definition.  Tier is a level of
-          criticality for access control.
-        type: integer
-      WorkloadInstances:
-        description: The associated workload instances that are deployed from this
-          definition.
-        items:
-          $ref: '#/definitions/v0.WorkloadInstance'
-        type: array
-      WorkloadResourceDefinitions:
-        description: The associated workload resource definitions that are derived.
-        items:
-          $ref: '#/definitions/v0.WorkloadResourceDefinition'
-        type: array
-      YAMLDocument:
-        description: The yaml manifests that define the workload configuration.
+          A unique ID for de-duplicating purposes.  It is one of two thing:
+          * The Kubernetes Event resource UID: when the WorkloadEvent is derived
+          directly from a Kubernetes Event.
+          * The workload controller ID: when the WorkloadEvent is emitted by the
+          workload controller.
         type: string
-    required:
-    - Name
-    - YAMLDocument
-    type: object
-  v0.WorkloadInstance:
-    properties:
-      CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+      Timestamp:
+        description: The timestamp for the event in the kubernetes runtime.
         type: string
-      CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
-        type: string
-      CreationFailed:
-        description: Gets set to true if creation process fails.
-        type: boolean
-      DeletionAcknowledged:
-        description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
-        type: string
-      DeletionConfirmed:
-        description: Used by controllers to confirm deletion of an object.
-        type: string
-      DeletionScheduled:
-        description: |-
-          Used to inform reconcilers that an object is being deleted so they may
-          complete delete reconciliation before actually deleting the object from the database.
-        type: string
-      InterruptReconciliation:
-        description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
-          spinning up more infrastructure when there is a unresolved problem.
-        type: boolean
-      KubernetesRuntimeInstanceID:
-        description: The kubernetes runtime to which the workload is deployed.
-        type: integer
-      Name:
-        description: An arbitrary name the instance
-        type: string
-      Reconciled:
-        description: Indicates if object is considered to be reconciled by the object's
-          controller.
-        type: boolean
-      Status:
-        description: The latest status of a workload instance.
-        type: string
-      WorkloadDefinitionID:
-        description: The definition used to configure the workload instance.
-        type: integer
-      WorkloadResourceInstances:
-        description: The associated workload resource definitions that are derived.
-        items:
-          $ref: '#/definitions/v0.WorkloadResourceInstance'
-        type: array
-    required:
-    - KubernetesRuntimeInstanceID
-    - Name
-    - WorkloadDefinitionID
-    type: object
-  v0.WorkloadResourceDefinition:
-    properties:
-      JSONDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
-        description: The individual manifest in JSON format.
-      WorkloadDefinitionID:
-        description: The workload definition this resource belongs to.
-        type: integer
-    required:
-    - JSONDefinition
-    - WorkloadDefinitionID
-    type: object
-  v0.WorkloadResourceInstance:
-    properties:
-      JSONDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
-        description: |-
-          The individual manifest in JSON format.  This field is a superset of
-          WorkloadResourceDefinition.JSONDefinition in that it has namespace
-          management and other configuration - such as resource allocation
-          management - added.
-      LastOperation:
-        description: |-
-          The most recent operation performed on a Kubernete resource in the
-          kubernetes runtime.
-        type: string
-      Reconciled:
-        description: Indicates if object is considered to be reconciled by workload
-          controller.
-        type: boolean
-      RuntimeDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
-        description: |-
-          The JSON definition of a Kubernetes resource as stored in etcd in the
-          kubernetes runtime.
-      ScheduledForDeletion:
-        description: Whether another controller has scheduled this resource for deletion
+      Type:
+        description: The type of event that occurred in Kubernetes.
         type: string
       WorkloadInstanceID:
-        description: The workload instance this resource belongs to.
+        description: The related workload instance.
+        type: integer
+      WorkloadResourceInstanceID:
+        description: The related workload resource instance.
         type: integer
     required:
-    - JSONDefinition
-    - WorkloadInstanceID
+    - Message
+    - Reason
+    - RuntimeEventUID
+    - Timestamp
+    - Type
     type: object
 info:
   contact:
@@ -3056,6 +3098,60 @@ paths:
             $ref: '#/definitions/v0.ApiObjectVersions'
       summary: GetKubernetesRuntimeInstanceVersions gets the supported versions for
         the kubernetes runtime instance API.
+  /kubernetes-workload-definitions/versions:
+    get:
+      description: Get the supported API versions for kubernetes workload definitions.
+      operationId: kubernetesWorkloadDefinition-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetKubernetesWorkloadDefinitionVersions gets the supported versions
+        for the kubernetes workload definition API.
+  /kubernetes-workload-instances/versions:
+    get:
+      description: Get the supported API versions for kubernetes workload instances.
+      operationId: kubernetesWorkloadInstance-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetKubernetesWorkloadInstanceVersions gets the supported versions for
+        the kubernetes workload instance API.
+  /kubernetes-workload-resource-definitions/versions:
+    get:
+      description: Get the supported API versions for kubernetes workload resource
+        definitions.
+      operationId: kubernetesWorkloadResourceDefinition-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetKubernetesWorkloadResourceDefinitionVersions gets the supported
+        versions for the kubernetes workload resource definition API.
+  /kubernetes-workload-resource-instances/versions:
+    get:
+      description: Get the supported API versions for kubernetes workload resource
+        instances.
+      operationId: kubernetesWorkloadResourceInstance-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetKubernetesWorkloadResourceInstanceVersions gets the supported versions
+        for the kubernetes workload resource instance API.
   /log-backends/versions:
     get:
       description: Get the supported API versions for log backends.
@@ -5039,7 +5135,7 @@ paths:
         name: objectid
         type: string
       - description: filter events by object type name (with objectname); CamelCase
-          Go TypeName like 'WorkloadInstance'
+          Go TypeName like 'KubernetesWorkloadInstance'
         in: query
         name: objecttypename
         type: string
@@ -7417,6 +7513,847 @@ paths:
             $ref: '#/definitions/v0.Response'
       summary: updates an existing kubernetes runtime instance by replacing the entire
         object.
+  /v0/kubernetes-workload-definitions:
+    get:
+      consumes:
+      - application/json
+      description: Get all kubernetes workload definitions from the Threeport database.
+      operationId: get-v0-kubernetesWorkloadDefinitions
+      parameters:
+      - description: kubernetes workload definition search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all kubernetes workload definitions.
+    post:
+      consumes:
+      - application/json
+      description: Add a new kubernetes workload definition to the Threeport database.
+      operationId: add-v0-kubernetesWorkloadDefinition
+      parameters:
+      - description: KubernetesWorkloadDefinition object
+        in: body
+        name: kubernetesWorkloadDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadDefinition'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new kubernetes workload definition.
+  /v0/kubernetes-workload-definitions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a kubernetes workload definition by ID from the database.
+      operationId: delete-v0-kubernetesWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a kubernetes workload definition.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular kubernetes workload definition from the database.
+      operationId: get-v0-kubernetesWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a kubernetes workload definition.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a kubernetes workload definition in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating kubernetes workload definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-kubernetesWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadDefinition object
+        in: body
+        name: kubernetesWorkloadDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing kubernetes workload definition.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a kubernetes workload definition in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating kubernetes workload definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-kubernetesWorkloadDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadDefinition object
+        in: body
+        name: kubernetesWorkloadDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing kubernetes workload definition by replacing the
+        entire object.
+  /v0/kubernetes-workload-instances:
+    get:
+      consumes:
+      - application/json
+      description: Get all kubernetes workload instances from the Threeport database.
+      operationId: get-v0-kubernetesWorkloadInstances
+      parameters:
+      - description: kubernetes workload instance search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all kubernetes workload instances.
+    post:
+      consumes:
+      - application/json
+      description: Add a new kubernetes workload instance to the Threeport database.
+      operationId: add-v0-kubernetesWorkloadInstance
+      parameters:
+      - description: KubernetesWorkloadInstance object
+        in: body
+        name: kubernetesWorkloadInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new kubernetes workload instance.
+  /v0/kubernetes-workload-instances/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a kubernetes workload instance by ID from the database.
+      operationId: delete-v0-kubernetesWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a kubernetes workload instance.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular kubernetes workload instance from the database.
+      operationId: get-v0-kubernetesWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a kubernetes workload instance.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a kubernetes workload instance in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating kubernetes workload instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-kubernetesWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadInstance object
+        in: body
+        name: kubernetesWorkloadInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing kubernetes workload instance.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a kubernetes workload instance in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating kubernetes workload instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-kubernetesWorkloadInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadInstance object
+        in: body
+        name: kubernetesWorkloadInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing kubernetes workload instance by replacing the entire
+        object.
+  /v0/kubernetes-workload-resource-definition-sets:
+    post:
+      consumes:
+      - application/json
+      description: Add a set of new kubernetes workload resource definitions to the
+        Threeport database.
+      operationId: add-kubernetesWorkloadResourceDefinitions
+      parameters:
+      - description: KubernetesWorkloadResourceDefinition object array
+        in: body
+        name: kubernetesWorkloadResourceDefinitions
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/v0.KubernetesWorkloadResourceDefinition'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new set of kubernetes workload resource definitions.
+  /v0/kubernetes-workload-resource-definitions:
+    get:
+      consumes:
+      - application/json
+      description: Get all kubernetes workload resource definitions from the Threeport
+        database.
+      operationId: get-v0-kubernetesWorkloadResourceDefinitions
+      parameters:
+      - description: kubernetes workload resource definition search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all kubernetes workload resource definitions.
+    post:
+      consumes:
+      - application/json
+      description: Add a new kubernetes workload resource definition to the Threeport
+        database.
+      operationId: add-v0-kubernetesWorkloadResourceDefinition
+      parameters:
+      - description: KubernetesWorkloadResourceDefinition object
+        in: body
+        name: kubernetesWorkloadResourceDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceDefinition'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new kubernetes workload resource definition.
+  /v0/kubernetes-workload-resource-definitions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a kubernetes workload resource definition by ID from the
+        database.
+      operationId: delete-v0-kubernetesWorkloadResourceDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a kubernetes workload resource definition.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular kubernetes workload resource definition from the
+        database.
+      operationId: get-v0-kubernetesWorkloadResourceDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a kubernetes workload resource definition.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a kubernetes workload resource definition in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating kubernetes workload resource definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-kubernetesWorkloadResourceDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadResourceDefinition object
+        in: body
+        name: kubernetesWorkloadResourceDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing kubernetes workload resource
+        definition.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a kubernetes workload resource definition in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating kubernetes workload resource definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-kubernetesWorkloadResourceDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadResourceDefinition object
+        in: body
+        name: kubernetesWorkloadResourceDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing kubernetes workload resource definition by replacing
+        the entire object.
+  /v0/kubernetes-workload-resource-instances:
+    get:
+      consumes:
+      - application/json
+      description: Get all kubernetes workload resource instances from the Threeport
+        database.
+      operationId: get-v0-kubernetesWorkloadResourceInstances
+      parameters:
+      - description: kubernetes workload resource instance search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all kubernetes workload resource instances.
+    post:
+      consumes:
+      - application/json
+      description: Add a new kubernetes workload resource instance to the Threeport
+        database.
+      operationId: add-v0-kubernetesWorkloadResourceInstance
+      parameters:
+      - description: KubernetesWorkloadResourceInstance object
+        in: body
+        name: kubernetesWorkloadResourceInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceInstance'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new kubernetes workload resource instance.
+  /v0/kubernetes-workload-resource-instances/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a kubernetes workload resource instance by ID from the database.
+      operationId: delete-v0-kubernetesWorkloadResourceInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a kubernetes workload resource instance.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular kubernetes workload resource instance from the
+        database.
+      operationId: get-v0-kubernetesWorkloadResourceInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a kubernetes workload resource instance.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a kubernetes workload resource instance in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating kubernetes workload resource instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-kubernetesWorkloadResourceInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadResourceInstance object
+        in: body
+        name: kubernetesWorkloadResourceInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing kubernetes workload resource
+        instance.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a kubernetes workload resource instance in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating kubernetes workload resource instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-kubernetesWorkloadResourceInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: KubernetesWorkloadResourceInstance object
+        in: body
+        name: kubernetesWorkloadResourceInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.KubernetesWorkloadResourceInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing kubernetes workload resource instance by replacing
+        the entire object.
   /v0/log-backends:
     get:
       consumes:
@@ -12298,14 +13235,40 @@ paths:
           schema:
             $ref: '#/definitions/v0.Response'
       summary: updates an existing tier by replacing the entire object.
-  /v0/workload-definitions:
+  /v0/workload-events:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes workload events by query parameter from the database.
+      operationId: delete-workloadEvents
+      parameters:
+      - description: workload event search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes workload events by query parameter.
     get:
       consumes:
       - application/json
-      description: Get all workload definitions from the Threeport database.
-      operationId: get-v0-workloadDefinitions
+      description: Get all workload events from the Threeport database.
+      operationId: get-v0-workloadEvents
       parameters:
-      - description: workload definition search by name
+      - description: workload event search by name
         in: query
         name: name
         type: string
@@ -12324,19 +13287,19 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: gets all workload definitions.
+      summary: gets all workload events.
     post:
       consumes:
       - application/json
-      description: Add a new workload definition to the Threeport database.
-      operationId: add-v0-workloadDefinition
+      description: Add a new workload event to the Threeport database.
+      operationId: add-v0-workloadEvent
       parameters:
-      - description: WorkloadDefinition object
+      - description: WorkloadEvent object
         in: body
-        name: workloadDefinition
+        name: workloadEvent
         required: true
         schema:
-          $ref: '#/definitions/v0.WorkloadDefinition'
+          $ref: '#/definitions/v0.WorkloadEvent'
       produces:
       - application/json
       responses:
@@ -12352,13 +13315,13 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: adds a new workload definition.
-  /v0/workload-definitions/{id}:
+      summary: adds a new workload event.
+  /v0/workload-events/{id}:
     delete:
       consumes:
       - application/json
-      description: Delete a workload definition by ID from the database.
-      operationId: delete-v0-workloadDefinition
+      description: Delete a workload event by ID from the database.
+      operationId: delete-v0-workloadEvent
       parameters:
       - description: ID
         in: path
@@ -12384,12 +13347,12 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: deletes a workload definition.
+      summary: deletes a workload event.
     get:
       consumes:
       - application/json
-      description: Get a particular workload definition from the database.
-      operationId: get-v0-workloadDefinition
+      description: Get a particular workload event from the database.
+      operationId: get-v0-workloadEvent
       parameters:
       - description: ID
         in: path
@@ -12411,29 +13374,29 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: gets a workload definition.
+      summary: gets a workload event.
     patch:
       consumes:
       - application/json
       description: |-
-        Update a workload definition in the database.  Provide one or more fields to update.
-        Note: This API endpint is for updating workload definition objects only.
+        Update a workload event in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating workload event objects only.
         Request bodies that include related objects will be accepted, however
         the related objects will not be changed.  Call the patch or put method for
         each particular existing object to change them.
-      operationId: update-v0-workloadDefinition
+      operationId: update-v0-workloadEvent
       parameters:
       - description: ID
         in: path
         name: id
         required: true
         type: integer
-      - description: WorkloadDefinition object
+      - description: WorkloadEvent object
         in: body
-        name: workloadDefinition
+        name: workloadEvent
         required: true
         schema:
-          $ref: '#/definitions/v0.WorkloadDefinition'
+          $ref: '#/definitions/v0.WorkloadEvent'
       produces:
       - application/json
       responses:
@@ -12453,30 +13416,30 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: updates specific fields for an existing workload definition.
+      summary: updates specific fields for an existing workload event.
     put:
       consumes:
       - application/json
       description: |-
-        Replace a workload definition in the database.  All required fields must be provided.
+        Replace a workload event in the database.  All required fields must be provided.
         If any optional fields are not provided, they will be null post-update.
-        Note: This API endpint is for updating workload definition objects only.
+        Note: This API endpint is for updating workload event objects only.
         Request bodies that include related objects will be accepted, however
         the related objects will not be changed.  Call the patch or put method for
         each particular existing object to change them.
-      operationId: replace-v0-workloadDefinition
+      operationId: replace-v0-workloadEvent
       parameters:
       - description: ID
         in: path
         name: id
         required: true
         type: integer
-      - description: WorkloadDefinition object
+      - description: WorkloadEvent object
         in: body
-        name: workloadDefinition
+        name: workloadEvent
         required: true
         schema:
-          $ref: '#/definitions/v0.WorkloadDefinition'
+          $ref: '#/definitions/v0.WorkloadEvent'
       produces:
       - application/json
       responses:
@@ -12496,642 +13459,11 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: updates an existing workload definition by replacing the entire object.
-  /v0/workload-instances:
+      summary: updates an existing workload event by replacing the entire object.
+  /workload-events/versions:
     get:
-      consumes:
-      - application/json
-      description: Get all workload instances from the Threeport database.
-      operationId: get-v0-workloadInstances
-      parameters:
-      - description: workload instance search by name
-        in: query
-        name: name
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets all workload instances.
-    post:
-      consumes:
-      - application/json
-      description: Add a new workload instance to the Threeport database.
-      operationId: add-v0-workloadInstance
-      parameters:
-      - description: WorkloadInstance object
-        in: body
-        name: workloadInstance
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadInstance'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: adds a new workload instance.
-  /v0/workload-instances/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a workload instance by ID from the database.
-      operationId: delete-v0-workloadInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: deletes a workload instance.
-    get:
-      consumes:
-      - application/json
-      description: Get a particular workload instance from the database.
-      operationId: get-v0-workloadInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets a workload instance.
-    patch:
-      consumes:
-      - application/json
-      description: |-
-        Update a workload instance in the database.  Provide one or more fields to update.
-        Note: This API endpint is for updating workload instance objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: update-v0-workloadInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadInstance object
-        in: body
-        name: workloadInstance
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadInstance'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates specific fields for an existing workload instance.
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Replace a workload instance in the database.  All required fields must be provided.
-        If any optional fields are not provided, they will be null post-update.
-        Note: This API endpint is for updating workload instance objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: replace-v0-workloadInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadInstance object
-        in: body
-        name: workloadInstance
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadInstance'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates an existing workload instance by replacing the entire object.
-  /v0/workload-resource-definition-sets:
-    post:
-      consumes:
-      - application/json
-      description: Add a set of new workload resource definition to the Threeport
-        database.
-      operationId: add-workloadResourceDefinitions
-      parameters:
-      - description: WorkloadResourceDefinition object array
-        in: body
-        name: workloadResourceDefinitions
-        required: true
-        schema:
-          items:
-            $ref: '#/definitions/v0.WorkloadResourceDefinition'
-          type: array
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: adds a new set of workload resource definitions.
-  /v0/workload-resource-definitions:
-    get:
-      consumes:
-      - application/json
-      description: Get all workload resource definitions from the Threeport database.
-      operationId: get-v0-workloadResourceDefinitions
-      parameters:
-      - description: workload resource definition search by name
-        in: query
-        name: name
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets all workload resource definitions.
-    post:
-      consumes:
-      - application/json
-      description: Add a new workload resource definition to the Threeport database.
-      operationId: add-v0-workloadResourceDefinition
-      parameters:
-      - description: WorkloadResourceDefinition object
-        in: body
-        name: workloadResourceDefinition
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadResourceDefinition'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: adds a new workload resource definition.
-  /v0/workload-resource-definitions/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a workload resource definition by ID from the database.
-      operationId: delete-v0-workloadResourceDefinition
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: deletes a workload resource definition.
-    get:
-      consumes:
-      - application/json
-      description: Get a particular workload resource definition from the database.
-      operationId: get-v0-workloadResourceDefinition
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets a workload resource definition.
-    patch:
-      consumes:
-      - application/json
-      description: |-
-        Update a workload resource definition in the database.  Provide one or more fields to update.
-        Note: This API endpint is for updating workload resource definition objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: update-v0-workloadResourceDefinition
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadResourceDefinition object
-        in: body
-        name: workloadResourceDefinition
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadResourceDefinition'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates specific fields for an existing workload resource definition.
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Replace a workload resource definition in the database.  All required fields must be provided.
-        If any optional fields are not provided, they will be null post-update.
-        Note: This API endpint is for updating workload resource definition objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: replace-v0-workloadResourceDefinition
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadResourceDefinition object
-        in: body
-        name: workloadResourceDefinition
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadResourceDefinition'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates an existing workload resource definition by replacing the entire
-        object.
-  /v0/workload-resource-instances:
-    get:
-      consumes:
-      - application/json
-      description: Get all workload resource instances from the Threeport database.
-      operationId: get-v0-workloadResourceInstances
-      parameters:
-      - description: workload resource instance search by name
-        in: query
-        name: name
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets all workload resource instances.
-    post:
-      consumes:
-      - application/json
-      description: Add a new workload resource instance to the Threeport database.
-      operationId: add-v0-workloadResourceInstance
-      parameters:
-      - description: WorkloadResourceInstance object
-        in: body
-        name: workloadResourceInstance
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadResourceInstance'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: adds a new workload resource instance.
-  /v0/workload-resource-instances/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a workload resource instance by ID from the database.
-      operationId: delete-v0-workloadResourceInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: deletes a workload resource instance.
-    get:
-      consumes:
-      - application/json
-      description: Get a particular workload resource instance from the database.
-      operationId: get-v0-workloadResourceInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: gets a workload resource instance.
-    patch:
-      consumes:
-      - application/json
-      description: |-
-        Update a workload resource instance in the database.  Provide one or more fields to update.
-        Note: This API endpint is for updating workload resource instance objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: update-v0-workloadResourceInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadResourceInstance object
-        in: body
-        name: workloadResourceInstance
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadResourceInstance'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates specific fields for an existing workload resource instance.
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Replace a workload resource instance in the database.  All required fields must be provided.
-        If any optional fields are not provided, they will be null post-update.
-        Note: This API endpint is for updating workload resource instance objects only.
-        Request bodies that include related objects will be accepted, however
-        the related objects will not be changed.  Call the patch or put method for
-        each particular existing object to change them.
-      operationId: replace-v0-workloadResourceInstance
-      parameters:
-      - description: ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: WorkloadResourceInstance object
-        in: body
-        name: workloadResourceInstance
-        required: true
-        schema:
-          $ref: '#/definitions/v0.WorkloadResourceInstance'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/v0.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/v0.Response'
-      summary: updates an existing workload resource instance by replacing the entire
-        object.
-  /workload-definitions/versions:
-    get:
-      description: Get the supported API versions for workload definitions.
-      operationId: workloadDefinition-get-versions
+      description: Get the supported API versions for workload events.
+      operationId: workloadEvent-get-versions
       produces:
       - application/json
       responses:
@@ -13139,45 +13471,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/v0.ApiObjectVersions'
-      summary: GetWorkloadDefinitionVersions gets the supported versions for the workload
-        definition API.
-  /workload-instances/versions:
-    get:
-      description: Get the supported API versions for workload instances.
-      operationId: workloadInstance-get-versions
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.ApiObjectVersions'
-      summary: GetWorkloadInstanceVersions gets the supported versions for the workload
-        instance API.
-  /workload-resource-definitions/versions:
-    get:
-      description: Get the supported API versions for workload resource definitions.
-      operationId: workloadResourceDefinition-get-versions
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.ApiObjectVersions'
-      summary: GetWorkloadResourceDefinitionVersions gets the supported versions for
-        the workload resource definition API.
-  /workload-resource-instances/versions:
-    get:
-      description: Get the supported API versions for workload resource instances.
-      operationId: workloadResourceInstance-get-versions
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.ApiObjectVersions'
-      summary: GetWorkloadResourceInstanceVersions gets the supported versions for
-        the workload resource instance API.
+      summary: GetWorkloadEventVersions gets the supported versions for the workload
+        event API.
 swagger: "2.0"

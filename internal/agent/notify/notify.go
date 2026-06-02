@@ -11,8 +11,6 @@ import (
 	tpapi "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	tpclient "github.com/threeport/threeport/pkg/client/v0"
-	event "github.com/threeport/threeport/pkg/event/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"gorm.io/datatypes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -36,17 +34,17 @@ type ResourceOperation struct {
 // EventSummary contains information collected from events related to
 // threeport-managed resources.
 type EventSummary struct {
-	EventUID                   string
-	WorkloadType               string
-	WorkloadInstanceID         uint
-	WorkloadResourceInstanceID uint
-	ObjectNamespace            string
-	ObjectKind                 string
-	ObjectName                 string
-	Timestamp                  metav1.Time
-	Type                       string
-	Reason                     string
-	Message                    string
+	EventUID                     string
+	WorkloadType                 string
+	KubernetesWorkloadInstanceID uint
+	WorkloadResourceInstanceID   uint
+	ObjectNamespace              string
+	ObjectKind                   string
+	ObjectName                   string
+	Timestamp                    metav1.Time
+	Type                         string
+	Reason                       string
+	Message                      string
 }
 
 // Notify collects information about all resources being watched and
@@ -85,8 +83,8 @@ func Notify(
 
 	// create slices to serve as payload info store accumluated notification
 	// info received from notif channel
-	var workloadResourceInstances []tpapi.WorkloadResourceInstance
-	var pendingEvents []tpapi.Event
+	var workloadResourceInstances []tpapi.KubernetesWorkloadResourceInstance
+	var workloadEvents []tpapi.WorkloadEvent
 
 	for {
 		select {
@@ -95,14 +93,14 @@ func Notify(
 				// the channel has been closed - send any pending updates to
 				// threeport API and return
 				log.Info("notification channel closed")
-				if len(workloadResourceInstances) > 0 || len(pendingEvents) > 0 {
+				if len(workloadResourceInstances) > 0 || len(workloadEvents) > 0 {
 					// send final notifications - no point capturing any returned
 					// unsent objects since this reciever is being stopped
 					_, _ = sendThreeportUpdates(
 						threeportAPIServer,
 						threeportAPIClient,
 						&workloadResourceInstances,
-						&pendingEvents,
+						&workloadEvents,
 					)
 					log.Info("final notifications sent")
 				}
@@ -119,7 +117,7 @@ func Notify(
 			// that to the Threeport API data model.
 			if notif.Operation != nil && notif.Operation.WorkloadType != agent.HelmWorkloadInstanceType {
 				runtimeDef := datatypes.JSON([]byte(notif.Operation.OperationObject))
-				workloadResourceInst := tpapi.WorkloadResourceInstance{
+				workloadResourceInst := tpapi.KubernetesWorkloadResourceInstance{
 					Common: tpapi.Common{
 						ID: &notif.Operation.WorkloadResourceInstanceID,
 					},
@@ -130,48 +128,52 @@ func Notify(
 			}
 			// add events for a resource if applicable
 			if notif.Event != nil {
-				var evt tpapi.Event
+				var workloadEvent tpapi.WorkloadEvent
 				switch {
 				case notif.Event.WorkloadResourceInstanceID != 0:
-					evt = tpapi.Event{
-						Type:       util.Ptr(notif.Event.Type),
-						Reason:     util.Ptr(notif.Event.Reason),
-						Note:       util.Ptr(notif.Event.Message),
-						ObjectType: util.Ptr("threeport.io/v0.WorkloadResourceInstance"),
-						ObjectID:   util.Ptr(notif.Event.WorkloadResourceInstanceID),
+					workloadEvent = tpapi.WorkloadEvent{
+						RuntimeEventUID:                      &notif.Event.EventUID,
+						KubernetesWorkloadInstanceID:         &notif.Event.KubernetesWorkloadInstanceID,
+						KubernetesWorkloadResourceInstanceID: &notif.Event.WorkloadResourceInstanceID,
+						Type:                                 &notif.Event.Type,
+						Reason:                               &notif.Event.Reason,
+						Message:                              &notif.Event.Message,
+						Timestamp:                            &notif.Event.Timestamp.Time,
 					}
 				case notif.Event.WorkloadType == agent.WorkloadInstanceType:
-					evt = tpapi.Event{
-						Type:       util.Ptr(notif.Event.Type),
-						Reason:     util.Ptr(notif.Event.Reason),
-						Note:       util.Ptr(notif.Event.Message),
-						ObjectType: util.Ptr("threeport.io/v0.WorkloadInstance"),
-						ObjectID:   util.Ptr(notif.Event.WorkloadInstanceID),
+					workloadEvent = tpapi.WorkloadEvent{
+						RuntimeEventUID:              &notif.Event.EventUID,
+						KubernetesWorkloadInstanceID: &notif.Event.KubernetesWorkloadInstanceID,
+						Type:                         &notif.Event.Type,
+						Reason:                       &notif.Event.Reason,
+						Message:                      &notif.Event.Message,
+						Timestamp:                    &notif.Event.Timestamp.Time,
 					}
 				case notif.Event.WorkloadType == agent.HelmWorkloadInstanceType:
-					evt = tpapi.Event{
-						Type:       util.Ptr(notif.Event.Type),
-						Reason:     util.Ptr(notif.Event.Reason),
-						Note:       util.Ptr(notif.Event.Message),
-						ObjectType: util.Ptr("threeport.io/v0.HelmWorkloadInstance"),
-						ObjectID:   util.Ptr(notif.Event.WorkloadInstanceID),
+					workloadEvent = tpapi.WorkloadEvent{
+						RuntimeEventUID:        &notif.Event.EventUID,
+						HelmWorkloadInstanceID: &notif.Event.KubernetesWorkloadInstanceID,
+						Type:                   &notif.Event.Type,
+						Reason:                 &notif.Event.Reason,
+						Message:                &notif.Event.Message,
+						Timestamp:              &notif.Event.Timestamp.Time,
 					}
 				}
-				pendingEvents = append(pendingEvents, evt)
+				workloadEvents = append(workloadEvents, workloadEvent)
 			}
 		default:
-			if len(workloadResourceInstances) > 0 || len(pendingEvents) > 0 {
+			if len(workloadResourceInstances) > 0 || len(workloadEvents) > 0 {
 				// we have data to update in threeport API - send the updates
-				// and get back any workload resource instances or events
-				// that were not sent so they can be retried later
-				wris, evts := sendThreeportUpdates(
+				// and get back any kubernetes workload resource instances or workload
+				// events that were not sent so they can be retried later
+				wris, wes := sendThreeportUpdates(
 					threeportAPIServer,
 					threeportAPIClient,
 					&workloadResourceInstances,
-					&pendingEvents,
+					&workloadEvents,
 				)
 				workloadResourceInstances = *wris
-				pendingEvents = *evts
+				workloadEvents = *wes
 			}
 			// wait 10 seconds before checking notif channel again
 			time.Sleep(time.Second * 10)
@@ -180,23 +182,23 @@ func Notify(
 }
 
 // sendThreeportUpdates makes the call to the threeport API to update the
-// workload objects.  If there is a failure on the update return the failed
-// objects back so they may be retried later.  Note that if a "not found" error
-// occurs on an update to a workload resource instance it is not sent back as it
-// has been deleted.
+// kubernetes workload objects.  If there is a failure on the update return the
+// failed objects back so they may be retried later.  Note that if a "not found"
+// error occurs on an update to a kubernetes workload resource instance it is
+// not sent back as it has been deleted.
 func sendThreeportUpdates(
 	tpAPIServer string,
 	tpAPIClient *http.Client,
-	workloadResourceInstances *[]tpapi.WorkloadResourceInstance,
-	pendingEvents *[]tpapi.Event,
-) (*[]tpapi.WorkloadResourceInstance, *[]tpapi.Event) {
-	var unsentWRIs []tpapi.WorkloadResourceInstance
-	var unsentEvents []tpapi.Event
+	workloadResourceInstances *[]tpapi.KubernetesWorkloadResourceInstance,
+	workloadEvents *[]tpapi.WorkloadEvent,
+) (*[]tpapi.KubernetesWorkloadResourceInstance, *[]tpapi.WorkloadEvent) {
+	var unsentWRIs []tpapi.KubernetesWorkloadResourceInstance
+	var unsentWEs []tpapi.WorkloadEvent
 
-	// update workload resource instances
+	// update kubernetes workload resource instances
 	for _, wri := range *workloadResourceInstances {
 		wriCopy := wri // ID gets stripped by UpdateWorkloadResourceInstance :/
-		_, err := tpclient.UpdateWorkloadResourceInstance(
+		_, err := tpclient.UpdateKubernetesWorkloadResourceInstance(
 			tpAPIClient,
 			tpAPIServer,
 			&wri,
@@ -206,37 +208,30 @@ func sendThreeportUpdates(
 		}
 	}
 
-	// record events via the EventsRecorder so dedup-by-content happens
-	// server-side: same content + same subject bumps Count rather than
-	// creating duplicate rows.
-	recorder := &event.EventRecorder{
-		APIClient:           tpAPIClient,
-		APIServer:           tpAPIServer,
-		ReportingController: "agent",
-	}
-	for _, evt := range *pendingEvents {
-		// skip events that did not match any of the recognized subject
-		// types in the caller's switch; ObjectType/ObjectID are required
-		// to attach the AttachedObjectReference on create.
-		if evt.ObjectType == nil || evt.ObjectID == nil {
-			continue
-		}
-		if err := recorder.RecordEvent(&evt, *evt.ObjectID, *evt.ObjectType); err != nil {
-			unsentEvents = append(unsentEvents, evt)
+	// add workload events
+	for _, we := range *workloadEvents {
+		_, err := tpclient.CreateWorkloadEvent(
+			tpAPIClient,
+			tpAPIServer,
+			&we,
+		)
+		if err != nil {
+			unsentWEs = append(unsentWEs, we)
 		}
 	}
 
-	return &unsentWRIs, &unsentEvents
+	return &unsentWRIs, &unsentWEs
 }
 
-// appendUniqueWRI looks for a workload resource instance with a matching ID
-// and, if found, replaces it.  If not found it appends the new workload
-// resource instance to the existing slice.  This ensures the latest operation
-// and resource object definition are the ones sent to the threeport API.
+// appendUniqueWRI looks for a kubernetes workload resource instance with a
+// matching ID and, if found, replaces it.  If not found it appends the new
+// kubernetes workload resource instance to the existing slice.  This ensures
+// the latest operation and resource object definition are the ones sent to
+// the threeport API.
 func appendUniqueWRI(
-	wris []tpapi.WorkloadResourceInstance,
-	newWRI tpapi.WorkloadResourceInstance,
-) []tpapi.WorkloadResourceInstance {
+	wris []tpapi.KubernetesWorkloadResourceInstance,
+	newWRI tpapi.KubernetesWorkloadResourceInstance,
+) []tpapi.KubernetesWorkloadResourceInstance {
 	wriFound := false
 	for i, wri := range wris {
 		if wri.ID == newWRI.ID {

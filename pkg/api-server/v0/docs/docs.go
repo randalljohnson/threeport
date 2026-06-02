@@ -377,6 +377,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/kubernetes-workload-definitions/versions": {
+            "get": {
+                "description": "Get the supported API versions for kubernetes workload definitions.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetKubernetesWorkloadDefinitionVersions gets the supported versions for the kubernetes workload definition API.",
+                "operationId": "kubernetesWorkloadDefinition-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
+        "/kubernetes-workload-instances/versions": {
+            "get": {
+                "description": "Get the supported API versions for kubernetes workload instances.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetKubernetesWorkloadInstanceVersions gets the supported versions for the kubernetes workload instance API.",
+                "operationId": "kubernetesWorkloadInstance-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
+        "/kubernetes-workload-resource-definitions/versions": {
+            "get": {
+                "description": "Get the supported API versions for kubernetes workload resource definitions.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetKubernetesWorkloadResourceDefinitionVersions gets the supported versions for the kubernetes workload resource definition API.",
+                "operationId": "kubernetesWorkloadResourceDefinition-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
+        "/kubernetes-workload-resource-instances/versions": {
+            "get": {
+                "description": "Get the supported API versions for kubernetes workload resource instances.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "GetKubernetesWorkloadResourceInstanceVersions gets the supported versions for the kubernetes workload resource instance API.",
+                "operationId": "kubernetesWorkloadResourceInstance-get-versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.ApiObjectVersions"
+                        }
+                    }
+                }
+            }
+        },
         "/log-backends/versions": {
             "get": {
                 "description": "Get the supported API versions for log backends.",
@@ -3160,7 +3232,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object type name (with objectname); CamelCase Go TypeName like 'WorkloadInstance'",
+                        "description": "filter events by object type name (with objectname); CamelCase Go TypeName like 'KubernetesWorkloadInstance'",
                         "name": "objecttypename",
                         "in": "query"
                     },
@@ -6463,6 +6535,1177 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/v0.KubernetesRuntimeInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-definitions": {
+            "get": {
+                "description": "Get all kubernetes workload definitions from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all kubernetes workload definitions.",
+                "operationId": "get-v0-kubernetesWorkloadDefinitions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kubernetes workload definition search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new kubernetes workload definition to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new kubernetes workload definition.",
+                "operationId": "add-v0-kubernetesWorkloadDefinition",
+                "parameters": [
+                    {
+                        "description": "KubernetesWorkloadDefinition object",
+                        "name": "kubernetesWorkloadDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-definitions/{id}": {
+            "get": {
+                "description": "Get a particular kubernetes workload definition from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a kubernetes workload definition.",
+                "operationId": "get-v0-kubernetesWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a kubernetes workload definition in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating kubernetes workload definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing kubernetes workload definition by replacing the entire object.",
+                "operationId": "replace-v0-kubernetesWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadDefinition object",
+                        "name": "kubernetesWorkloadDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a kubernetes workload definition by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a kubernetes workload definition.",
+                "operationId": "delete-v0-kubernetesWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a kubernetes workload definition in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating kubernetes workload definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing kubernetes workload definition.",
+                "operationId": "update-v0-kubernetesWorkloadDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadDefinition object",
+                        "name": "kubernetesWorkloadDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-instances": {
+            "get": {
+                "description": "Get all kubernetes workload instances from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all kubernetes workload instances.",
+                "operationId": "get-v0-kubernetesWorkloadInstances",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kubernetes workload instance search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new kubernetes workload instance to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new kubernetes workload instance.",
+                "operationId": "add-v0-kubernetesWorkloadInstance",
+                "parameters": [
+                    {
+                        "description": "KubernetesWorkloadInstance object",
+                        "name": "kubernetesWorkloadInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-instances/{id}": {
+            "get": {
+                "description": "Get a particular kubernetes workload instance from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a kubernetes workload instance.",
+                "operationId": "get-v0-kubernetesWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a kubernetes workload instance in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating kubernetes workload instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing kubernetes workload instance by replacing the entire object.",
+                "operationId": "replace-v0-kubernetesWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadInstance object",
+                        "name": "kubernetesWorkloadInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a kubernetes workload instance by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a kubernetes workload instance.",
+                "operationId": "delete-v0-kubernetesWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a kubernetes workload instance in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating kubernetes workload instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing kubernetes workload instance.",
+                "operationId": "update-v0-kubernetesWorkloadInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadInstance object",
+                        "name": "kubernetesWorkloadInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-resource-definition-sets": {
+            "post": {
+                "description": "Add a set of new kubernetes workload resource definitions to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new set of kubernetes workload resource definitions.",
+                "operationId": "add-kubernetesWorkloadResourceDefinitions",
+                "parameters": [
+                    {
+                        "description": "KubernetesWorkloadResourceDefinition object array",
+                        "name": "kubernetesWorkloadResourceDefinitions",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-resource-definitions": {
+            "get": {
+                "description": "Get all kubernetes workload resource definitions from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all kubernetes workload resource definitions.",
+                "operationId": "get-v0-kubernetesWorkloadResourceDefinitions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kubernetes workload resource definition search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new kubernetes workload resource definition to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new kubernetes workload resource definition.",
+                "operationId": "add-v0-kubernetesWorkloadResourceDefinition",
+                "parameters": [
+                    {
+                        "description": "KubernetesWorkloadResourceDefinition object",
+                        "name": "kubernetesWorkloadResourceDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-resource-definitions/{id}": {
+            "get": {
+                "description": "Get a particular kubernetes workload resource definition from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a kubernetes workload resource definition.",
+                "operationId": "get-v0-kubernetesWorkloadResourceDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a kubernetes workload resource definition in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating kubernetes workload resource definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing kubernetes workload resource definition by replacing the entire object.",
+                "operationId": "replace-v0-kubernetesWorkloadResourceDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadResourceDefinition object",
+                        "name": "kubernetesWorkloadResourceDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a kubernetes workload resource definition by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a kubernetes workload resource definition.",
+                "operationId": "delete-v0-kubernetesWorkloadResourceDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a kubernetes workload resource definition in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating kubernetes workload resource definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing kubernetes workload resource definition.",
+                "operationId": "update-v0-kubernetesWorkloadResourceDefinition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadResourceDefinition object",
+                        "name": "kubernetesWorkloadResourceDefinition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-resource-instances": {
+            "get": {
+                "description": "Get all kubernetes workload resource instances from the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all kubernetes workload resource instances.",
+                "operationId": "get-v0-kubernetesWorkloadResourceInstances",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kubernetes workload resource instance search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new kubernetes workload resource instance to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new kubernetes workload resource instance.",
+                "operationId": "add-v0-kubernetesWorkloadResourceInstance",
+                "parameters": [
+                    {
+                        "description": "KubernetesWorkloadResourceInstance object",
+                        "name": "kubernetesWorkloadResourceInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/kubernetes-workload-resource-instances/{id}": {
+            "get": {
+                "description": "Get a particular kubernetes workload resource instance from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a kubernetes workload resource instance.",
+                "operationId": "get-v0-kubernetesWorkloadResourceInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace a kubernetes workload resource instance in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating kubernetes workload resource instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates an existing kubernetes workload resource instance by replacing the entire object.",
+                "operationId": "replace-v0-kubernetesWorkloadResourceInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadResourceInstance object",
+                        "name": "kubernetesWorkloadResourceInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a kubernetes workload resource instance by ID from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "deletes a kubernetes workload resource instance.",
+                "operationId": "delete-v0-kubernetesWorkloadResourceInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a kubernetes workload resource instance in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating kubernetes workload resource instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "updates specific fields for an existing kubernetes workload resource instance.",
+                "operationId": "update-v0-kubernetesWorkloadResourceInstance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "KubernetesWorkloadResourceInstance object",
+                        "name": "kubernetesWorkloadResourceInstance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
                         }
                     }
                 ],
@@ -13365,21 +14608,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/v0/workload-definitions": {
+        "/v0/workload-events": {
             "get": {
-                "description": "Get all workload definitions from the Threeport database.",
+                "description": "Get all workload events from the Threeport database.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "gets all workload definitions.",
-                "operationId": "get-v0-workloadDefinitions",
+                "summary": "gets all workload events.",
+                "operationId": "get-v0-workloadEvents",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "workload definition search by name",
+                        "description": "workload event search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -13406,23 +14649,23 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Add a new workload definition to the Threeport database.",
+                "description": "Add a new workload event to the Threeport database.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "adds a new workload definition.",
-                "operationId": "add-v0-workloadDefinition",
+                "summary": "adds a new workload event.",
+                "operationId": "add-v0-workloadEvent",
                 "parameters": [
                     {
-                        "description": "WorkloadDefinition object",
-                        "name": "workloadDefinition",
+                        "description": "WorkloadEvent object",
+                        "name": "workloadEvent",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.WorkloadDefinition"
+                            "$ref": "#/definitions/v0.WorkloadEvent"
                         }
                     }
                 ],
@@ -13446,19 +14689,58 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/v0/workload-definitions/{id}": {
-            "get": {
-                "description": "Get a particular workload definition from the database.",
+            },
+            "delete": {
+                "description": "Deletes workload events by query parameter from the database.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "gets a workload definition.",
-                "operationId": "get-v0-workloadDefinition",
+                "summary": "deletes workload events by query parameter.",
+                "operationId": "delete-workloadEvents",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "workload event search by name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v0/workload-events/{id}": {
+            "get": {
+                "description": "Get a particular workload event from the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets a workload event.",
+                "operationId": "get-v0-workloadEvent",
                 "parameters": [
                     {
                         "type": "integer",
@@ -13490,15 +14772,15 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Replace a workload definition in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating workload definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "description": "Replace a workload event in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating workload event objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "updates an existing workload definition by replacing the entire object.",
-                "operationId": "replace-v0-workloadDefinition",
+                "summary": "updates an existing workload event by replacing the entire object.",
+                "operationId": "replace-v0-workloadEvent",
                 "parameters": [
                     {
                         "type": "integer",
@@ -13508,12 +14790,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "WorkloadDefinition object",
-                        "name": "workloadDefinition",
+                        "description": "WorkloadEvent object",
+                        "name": "workloadEvent",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.WorkloadDefinition"
+                            "$ref": "#/definitions/v0.WorkloadEvent"
                         }
                     }
                 ],
@@ -13545,15 +14827,15 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a workload definition by ID from the database.",
+                "description": "Delete a workload event by ID from the database.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "deletes a workload definition.",
-                "operationId": "delete-v0-workloadDefinition",
+                "summary": "deletes a workload event.",
+                "operationId": "delete-v0-workloadEvent",
                 "parameters": [
                     {
                         "type": "integer",
@@ -13591,15 +14873,15 @@ const docTemplate = `{
                 }
             },
             "patch": {
-                "description": "Update a workload definition in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating workload definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
+                "description": "Update a workload event in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating workload event objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "updates specific fields for an existing workload definition.",
-                "operationId": "update-v0-workloadDefinition",
+                "summary": "updates specific fields for an existing workload event.",
+                "operationId": "update-v0-workloadEvent",
                 "parameters": [
                     {
                         "type": "integer",
@@ -13609,12 +14891,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "WorkloadDefinition object",
-                        "name": "workloadDefinition",
+                        "description": "WorkloadEvent object",
+                        "name": "workloadEvent",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.WorkloadDefinition"
+                            "$ref": "#/definitions/v0.WorkloadEvent"
                         }
                     }
                 ],
@@ -13646,958 +14928,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/v0/workload-instances": {
+        "/workload-events/versions": {
             "get": {
-                "description": "Get all workload instances from the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get the supported API versions for workload events.",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "gets all workload instances.",
-                "operationId": "get-v0-workloadInstances",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "workload instance search by name",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Add a new workload instance to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new workload instance.",
-                "operationId": "add-v0-workloadInstance",
-                "parameters": [
-                    {
-                        "description": "WorkloadInstance object",
-                        "name": "workloadInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/workload-instances/{id}": {
-            "get": {
-                "description": "Get a particular workload instance from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets a workload instance.",
-                "operationId": "get-v0-workloadInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Replace a workload instance in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating workload instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates an existing workload instance by replacing the entire object.",
-                "operationId": "replace-v0-workloadInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadInstance object",
-                        "name": "workloadInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete a workload instance by ID from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "deletes a workload instance.",
-                "operationId": "delete-v0-workloadInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update a workload instance in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating workload instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates specific fields for an existing workload instance.",
-                "operationId": "update-v0-workloadInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadInstance object",
-                        "name": "workloadInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/workload-resource-definition-sets": {
-            "post": {
-                "description": "Add a set of new workload resource definition to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new set of workload resource definitions.",
-                "operationId": "add-workloadResourceDefinitions",
-                "parameters": [
-                    {
-                        "description": "WorkloadResourceDefinition object array",
-                        "name": "workloadResourceDefinitions",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/v0.WorkloadResourceDefinition"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/workload-resource-definitions": {
-            "get": {
-                "description": "Get all workload resource definitions from the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets all workload resource definitions.",
-                "operationId": "get-v0-workloadResourceDefinitions",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "workload resource definition search by name",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Add a new workload resource definition to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new workload resource definition.",
-                "operationId": "add-v0-workloadResourceDefinition",
-                "parameters": [
-                    {
-                        "description": "WorkloadResourceDefinition object",
-                        "name": "workloadResourceDefinition",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadResourceDefinition"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/workload-resource-definitions/{id}": {
-            "get": {
-                "description": "Get a particular workload resource definition from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets a workload resource definition.",
-                "operationId": "get-v0-workloadResourceDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Replace a workload resource definition in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating workload resource definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates an existing workload resource definition by replacing the entire object.",
-                "operationId": "replace-v0-workloadResourceDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadResourceDefinition object",
-                        "name": "workloadResourceDefinition",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadResourceDefinition"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete a workload resource definition by ID from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "deletes a workload resource definition.",
-                "operationId": "delete-v0-workloadResourceDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update a workload resource definition in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating workload resource definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates specific fields for an existing workload resource definition.",
-                "operationId": "update-v0-workloadResourceDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadResourceDefinition object",
-                        "name": "workloadResourceDefinition",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadResourceDefinition"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/workload-resource-instances": {
-            "get": {
-                "description": "Get all workload resource instances from the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets all workload resource instances.",
-                "operationId": "get-v0-workloadResourceInstances",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "workload resource instance search by name",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Add a new workload resource instance to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new workload resource instance.",
-                "operationId": "add-v0-workloadResourceInstance",
-                "parameters": [
-                    {
-                        "description": "WorkloadResourceInstance object",
-                        "name": "workloadResourceInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadResourceInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/workload-resource-instances/{id}": {
-            "get": {
-                "description": "Get a particular workload resource instance from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets a workload resource instance.",
-                "operationId": "get-v0-workloadResourceInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Replace a workload resource instance in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating workload resource instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates an existing workload resource instance by replacing the entire object.",
-                "operationId": "replace-v0-workloadResourceInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadResourceInstance object",
-                        "name": "workloadResourceInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadResourceInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete a workload resource instance by ID from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "deletes a workload resource instance.",
-                "operationId": "delete-v0-workloadResourceInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update a workload resource instance in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating workload resource instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates specific fields for an existing workload resource instance.",
-                "operationId": "update-v0-workloadResourceInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "WorkloadResourceInstance object",
-                        "name": "workloadResourceInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.WorkloadResourceInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/workload-definitions/versions": {
-            "get": {
-                "description": "Get the supported API versions for workload definitions.",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "GetWorkloadDefinitionVersions gets the supported versions for the workload definition API.",
-                "operationId": "workloadDefinition-get-versions",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.ApiObjectVersions"
-                        }
-                    }
-                }
-            }
-        },
-        "/workload-instances/versions": {
-            "get": {
-                "description": "Get the supported API versions for workload instances.",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "GetWorkloadInstanceVersions gets the supported versions for the workload instance API.",
-                "operationId": "workloadInstance-get-versions",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.ApiObjectVersions"
-                        }
-                    }
-                }
-            }
-        },
-        "/workload-resource-definitions/versions": {
-            "get": {
-                "description": "Get the supported API versions for workload resource definitions.",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "GetWorkloadResourceDefinitionVersions gets the supported versions for the workload resource definition API.",
-                "operationId": "workloadResourceDefinition-get-versions",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.ApiObjectVersions"
-                        }
-                    }
-                }
-            }
-        },
-        "/workload-resource-instances/versions": {
-            "get": {
-                "description": "Get the supported API versions for workload resource instances.",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "GetWorkloadResourceInstanceVersions gets the supported versions for the workload resource instance API.",
-                "operationId": "workloadResourceInstance-get-versions",
+                "summary": "GetWorkloadEventVersions gets the supported versions for the workload event API.",
+                "operationId": "workloadEvent-get-versions",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -15049,8 +15387,8 @@ const docTemplate = `{
             "required": [
                 "DomainNameDefinitionID",
                 "KubernetesRuntimeInstanceID",
-                "Name",
-                "WorkloadInstanceID"
+                "KubernetesWorkloadInstanceID",
+                "Name"
             ],
             "properties": {
                 "CreationAcknowledged": {
@@ -15089,6 +15427,10 @@ const docTemplate = `{
                     "description": "The cluster where the workload that is using the domain name is running.",
                     "type": "integer"
                 },
+                "KubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance this domain name belongs to.",
+                    "type": "integer"
+                },
                 "Name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
@@ -15100,10 +15442,6 @@ const docTemplate = `{
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                },
-                "WorkloadInstanceID": {
-                    "description": "The workload instance this domain name belongs to.",
-                    "type": "integer"
                 }
             }
         },
@@ -15134,16 +15472,6 @@ const docTemplate = `{
                     "description": "A human-readable description of the status of this operation.",
                     "type": "string"
                 },
-                "ObjectID": {
-                    "type": "integer"
-                },
-                "ObjectName": {
-                    "type": "string"
-                },
-                "ObjectType": {
-                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
-                    "type": "string"
-                },
                 "Reason": {
                     "description": "A short, machine understandable string that gives the reason for the event being generated.",
                     "type": "string"
@@ -15154,6 +15482,16 @@ const docTemplate = `{
                 },
                 "Type": {
                     "description": "Type of this event (Normal, Warning), new types could be added in the future.",
+                    "type": "string"
+                },
+                "objectID": {
+                    "type": "integer"
+                },
+                "objectName": {
+                    "type": "string"
+                },
+                "objectType": {
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
                     "type": "string"
                 }
             }
@@ -15210,6 +15548,10 @@ const docTemplate = `{
                     "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
+                "KubernetesWorkloadDefinitionID": {
+                    "description": "The kubernetes workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
                 "Name": {
                     "description": "An arbitrary name for the definition.",
                     "type": "string"
@@ -15239,10 +15581,6 @@ const docTemplate = `{
                 },
                 "TierID": {
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "WorkloadDefinitionID": {
-                    "description": "The workload definition that belongs to this resource.",
                     "type": "integer"
                 }
             }
@@ -15281,8 +15619,8 @@ const docTemplate = `{
             "required": [
                 "GatewayDefinitionID",
                 "KubernetesRuntimeInstanceID",
-                "Name",
-                "WorkloadInstanceID"
+                "KubernetesWorkloadInstanceID",
+                "Name"
             ],
             "properties": {
                 "CreationAcknowledged": {
@@ -15321,6 +15659,10 @@ const docTemplate = `{
                     "description": "The kubernetes runtime where the ingress layer is installed.",
                     "type": "integer"
                 },
+                "KubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance this gateway belongs to.",
+                    "type": "integer"
+                },
                 "Name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
@@ -15332,10 +15674,6 @@ const docTemplate = `{
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                },
-                "WorkloadInstanceID": {
-                    "description": "The workload instance this gateway belongs to.",
-                    "type": "integer"
                 }
             }
         },
@@ -15653,7 +15991,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "HelmWorkloadDefinitionID": {
-                    "description": "The definition used to configure the workload instance.",
+                    "description": "The definition used to configure the kubernetes workload instance.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -15802,7 +16140,7 @@ const docTemplate = `{
                     "description": "ConnectionTokenExpiration is the time when a ConnectionToken will expire.\nUsed to ensure a token will not expire before it can be used.",
                     "type": "string"
                 },
-                "ControlPlaneInstances": {
+                "ControlPlaneInstance": {
                     "description": "The associated control plane instances running on this kubernetes runtime instance.",
                     "type": "array",
                     "items": {
@@ -15837,12 +16175,12 @@ const docTemplate = `{
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
-                "DnsControllerInstanceID": {
-                    "description": "The WorkloadInstanceID of the dns support service",
+                "DnsControllerInstanceId": {
+                    "description": "The KubernetesWorkloadInstanceID of the dns support service",
                     "type": "integer"
                 },
-                "GatewayControllerInstanceID": {
-                    "description": "The WorkloadInstanceID of the gateway support service",
+                "GatewayKubernetesWorkloadInstanceID": {
+                    "description": "The KubernetesWorkloadInstanceID of the gateway support service",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -15852,6 +16190,13 @@ const docTemplate = `{
                 "KubernetesRuntimeDefinitionID": {
                     "description": "The kubernetes runtime definition for this instance.",
                     "type": "integer"
+                },
+                "KubernetesWorkloadInstances": {
+                    "description": "The associated kubernetes workload instances running on this kubernetes runtime.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                    }
                 },
                 "Location": {
                     "description": "The geographical location for the runtime cluster.  This is an\nabstraction for the cloud provider regions that is mapped into the\nregions used by providers.",
@@ -15865,8 +16210,8 @@ const docTemplate = `{
                     "description": "Indicates if object is considered to be reconciled by the object's controller.",
                     "type": "boolean"
                 },
-                "SecretsControllerInstanceID": {
-                    "description": "The WorkloadInstanceID of the secrets support service",
+                "SecretsControllerInstanceId": {
+                    "description": "The KubernetesWorkloadInstanceID of the secrets support service",
                     "type": "integer"
                 },
                 "Status": {
@@ -15880,13 +16225,204 @@ const docTemplate = `{
                 "ThreeportControlPlaneHost": {
                     "description": "If true, the Kubernetes cluster is hosting a threeport control plane and\nany controllers that connect to the kube API will use internal cluster\nDNS rather than the external APIEndpoint.",
                     "type": "boolean"
+                }
+            }
+        },
+        "v0.KubernetesWorkloadDefinition": {
+            "type": "object",
+            "required": [
+                "Name",
+                "YAMLDocument"
+            ],
+            "properties": {
+                "CreationAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
                 },
-                "WorkloadInstances": {
-                    "description": "The associated workload instances running on this kubernetes runtime.",
+                "CreationConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "CreationFailed": {
+                    "description": "Gets set to true if creation process fails.",
+                    "type": "boolean"
+                },
+                "DeletionAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "DeletionConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "DeletionScheduled": {
+                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "type": "string"
+                },
+                "InterruptReconciliation": {
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "type": "boolean"
+                },
+                "KubernetesWorkloadInstances": {
+                    "description": "The associated kubernetes workload instances that are deployed from this definition.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v0.WorkloadInstance"
+                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
                     }
+                },
+                "KubernetesWorkloadResourceDefinitions": {
+                    "description": "The associated kubernetes workload resource definitions that are derived.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                    }
+                },
+                "Name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "ProfileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "Reconciled": {
+                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "type": "boolean"
+                },
+                "TierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "YAMLDocument": {
+                    "description": "The yaml manifests that define the workload configuration.",
+                    "type": "string"
+                }
+            }
+        },
+        "v0.KubernetesWorkloadInstance": {
+            "type": "object",
+            "required": [
+                "KubernetesRuntimeInstanceID",
+                "KubernetesWorkloadDefinitionID",
+                "Name"
+            ],
+            "properties": {
+                "CreationAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "CreationConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "CreationFailed": {
+                    "description": "Gets set to true if creation process fails.",
+                    "type": "boolean"
+                },
+                "DeletionAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "DeletionConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "DeletionScheduled": {
+                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "type": "string"
+                },
+                "InterruptReconciliation": {
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "type": "boolean"
+                },
+                "KubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime to which the workload is deployed.",
+                    "type": "integer"
+                },
+                "KubernetesWorkloadDefinitionID": {
+                    "description": "The definition used to configure the kubernetes workload instance.",
+                    "type": "integer"
+                },
+                "KubernetesWorkloadResourceInstances": {
+                    "description": "The associated kubernetes workload resource instances that are derived.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                    }
+                },
+                "Name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "Reconciled": {
+                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "type": "boolean"
+                },
+                "Status": {
+                    "description": "The latest status of a kubernetes workload instance.",
+                    "type": "string"
+                }
+            }
+        },
+        "v0.KubernetesWorkloadResourceDefinition": {
+            "type": "object",
+            "required": [
+                "JSONDefinition",
+                "KubernetesWorkloadDefinitionID"
+            ],
+            "properties": {
+                "JSONDefinition": {
+                    "description": "The individual manifest in JSON format.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
+                },
+                "KubernetesWorkloadDefinitionID": {
+                    "description": "The kubernetes workload definition this resource belongs to.",
+                    "type": "integer"
+                }
+            }
+        },
+        "v0.KubernetesWorkloadResourceInstance": {
+            "type": "object",
+            "required": [
+                "JSONDefinition",
+                "KubernetesWorkloadInstanceID"
+            ],
+            "properties": {
+                "JSONDefinition": {
+                    "description": "The individual manifest in JSON format.  This field is a superset of\nKubernetesWorkloadResourceDefinition.JSONDefinition in that it has\nnamespace management and other configuration — such as resource\nallocation management — added.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
+                },
+                "KubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance this resource belongs to.",
+                    "type": "integer"
+                },
+                "LastOperation": {
+                    "description": "The most recent operation performed on a Kubernetes resource in the\nkubernetes runtime.",
+                    "type": "string"
+                },
+                "Reconciled": {
+                    "description": "Indicates if object is considered to be reconciled by kubernetes\nkubernetes workload controller.",
+                    "type": "boolean"
+                },
+                "RuntimeDefinition": {
+                    "description": "The JSON definition of a Kubernetes resource as stored in etcd in the\nkubernetes runtime.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
+                },
+                "ScheduledForDeletion": {
+                    "description": "Whether another controller has scheduled this resource for deletion",
+                    "type": "string"
                 }
             }
         },
@@ -16734,7 +17270,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "PromtailHelmValuesDocument": {
-                    "description": "Optional Helm workload Instancehat can be provided to configure the\nunderlying promtail chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17000,7 +17536,7 @@ const docTemplate = `{
                 "Type": {
                     "description": "Type contains ObjectType of returned Data elements.",
                     "type": "string",
-                    "example": "WorkloadInstance"
+                    "example": "KubernetesWorkloadInstance"
                 }
             }
         },
@@ -17120,6 +17656,10 @@ const docTemplate = `{
                     "description": "The kubernetes runtime to which the secret is deployed.",
                     "type": "integer"
                 },
+                "KubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance that the secret is associated with.",
+                    "type": "integer"
+                },
                 "Name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
@@ -17135,10 +17675,6 @@ const docTemplate = `{
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                },
-                "WorkloadInstanceID": {
-                    "description": "The workload instance that the secret is associated with.",
-                    "type": "integer"
                 }
             }
         },
@@ -17313,200 +17849,46 @@ const docTemplate = `{
                 }
             }
         },
-        "v0.WorkloadDefinition": {
+        "v0.WorkloadEvent": {
             "type": "object",
             "required": [
-                "Name",
-                "YAMLDocument"
+                "Message",
+                "Reason",
+                "RuntimeEventUID",
+                "Timestamp",
+                "Type"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                "HelmWorkloadInstanceID": {
+                    "description": "The related helm workload instance.",
                     "type": "integer"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "WorkloadInstances": {
-                    "description": "The associated workload instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.WorkloadInstance"
-                    }
-                },
-                "WorkloadResourceDefinitions": {
-                    "description": "The associated workload resource definitions that are derived.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.WorkloadResourceDefinition"
-                    }
-                },
-                "YAMLDocument": {
-                    "description": "The yaml manifests that define the workload configuration.",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.WorkloadInstance": {
-            "type": "object",
-            "required": [
-                "KubernetesRuntimeInstanceID",
-                "Name",
-                "WorkloadDefinitionID"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "Message": {
+                    "description": "The message associated with the event.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "Reason": {
+                    "description": "The reason for the event.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "RuntimeEventUID": {
+                    "description": "A unique ID for de-duplicating purposes.  It is one of two thing:\n* The Kubernetes Event resource UID: when the WorkloadEvent is derived\ndirectly from a Kubernetes Event.\n* The workload controller ID: when the WorkloadEvent is emitted by the\nworkload controller.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "Timestamp": {
+                    "description": "The timestamp for the event in the kubernetes runtime.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "KubernetesRuntimeInstanceID": {
-                    "description": "The kubernetes runtime to which the workload is deployed.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name the instance",
-                    "type": "string"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "Status": {
-                    "description": "The latest status of a workload instance.",
-                    "type": "string"
-                },
-                "WorkloadDefinitionID": {
-                    "description": "The definition used to configure the workload instance.",
-                    "type": "integer"
-                },
-                "WorkloadResourceInstances": {
-                    "description": "The associated workload resource definitions that are derived.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.WorkloadResourceInstance"
-                    }
-                }
-            }
-        },
-        "v0.WorkloadResourceDefinition": {
-            "type": "object",
-            "required": [
-                "JSONDefinition",
-                "WorkloadDefinitionID"
-            ],
-            "properties": {
-                "JSONDefinition": {
-                    "description": "The individual manifest in JSON format.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
-                },
-                "WorkloadDefinitionID": {
-                    "description": "The workload definition this resource belongs to.",
-                    "type": "integer"
-                }
-            }
-        },
-        "v0.WorkloadResourceInstance": {
-            "type": "object",
-            "required": [
-                "JSONDefinition",
-                "WorkloadInstanceID"
-            ],
-            "properties": {
-                "JSONDefinition": {
-                    "description": "The individual manifest in JSON format.  This field is a superset of\nWorkloadResourceDefinition.JSONDefinition in that it has namespace\nmanagement and other configuration - such as resource allocation\nmanagement - added.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
-                },
-                "LastOperation": {
-                    "description": "The most recent operation performed on a Kubernete resource in the\nkubernetes runtime.",
-                    "type": "string"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by workload controller.",
-                    "type": "boolean"
-                },
-                "RuntimeDefinition": {
-                    "description": "The JSON definition of a Kubernetes resource as stored in etcd in the\nkubernetes runtime.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
-                },
-                "ScheduledForDeletion": {
-                    "description": "Whether another controller has scheduled this resource for deletion",
+                "Type": {
+                    "description": "The type of event that occurred in Kubernetes.",
                     "type": "string"
                 },
                 "WorkloadInstanceID": {
-                    "description": "The workload instance this resource belongs to.",
+                    "description": "The related workload instance.",
+                    "type": "integer"
+                },
+                "WorkloadResourceInstanceID": {
+                    "description": "The related workload resource instance.",
                     "type": "integer"
                 }
             }

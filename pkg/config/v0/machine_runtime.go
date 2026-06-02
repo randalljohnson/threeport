@@ -28,6 +28,7 @@ type MachineRuntimeValues struct {
 	SSHPassword *string `json:",omitempty" yaml:"SSHPassword,omitempty"`
 	Port        *int    `json:",omitempty" yaml:"Port,omitempty"`
 	HostKey     *string `json:",omitempty" yaml:"HostKey,omitempty"`
+	Status      *string `json:",omitempty" yaml:"Status,omitempty"`
 	Age         *string `json:",omitempty" yaml:"Age,omitempty"`
 }
 
@@ -268,6 +269,7 @@ func mapToMachineRuntimeDefinedInstances(
 						SSHPassword: inst.MachineRuntimeInstance.SSHPassword,
 						Port:        inst.MachineRuntimeInstance.Port,
 						HostKey:     inst.MachineRuntimeInstance.HostKey,
+						Status:      inst.MachineRuntimeInstance.Status,
 						Age:         inst.MachineRuntimeInstance.Age,
 					},
 				}

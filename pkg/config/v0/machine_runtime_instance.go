@@ -38,6 +38,7 @@ type MachineRuntimeInstanceValues struct {
 	Port                     *int                            `json:",omitempty" yaml:"Port,omitempty"`
 	HostKey                  *string                         `json:",omitempty" yaml:"HostKey,omitempty"`
 	MachineRuntimeDefinition *MachineRuntimeDefinitionValues `json:",omitempty" yaml:"MachineRuntimeDefinition,omitempty"`
+	Status                   *string                         `json:",omitempty" yaml:"Status,omitempty"`
 	Age                      *string                         `json:",omitempty" yaml:"Age,omitempty"`
 }
 
@@ -108,6 +109,7 @@ func (m *MachineRuntimeInstanceConfig) Get(
 				Port:                     machineRuntimeInstance.Port,
 				HostKey:                  machineRuntimeInstance.HostKey,
 				MachineRuntimeDefinition: machineRuntimeDefinition,
+				Status:                   machineRuntimeInstance.Status,
 				Age:                      util.Ptr(util.GetAgeFormatted(machineRuntimeInstance.CreatedAt)),
 			},
 		}

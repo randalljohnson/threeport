@@ -32,9 +32,3 @@ instance.  The instance may override the definition's `Env` by setting its
 own.  The instance also records the latest reconciler-observed status from
 the most recent script run.
 
-## Next Steps
-
-Machine Workloads run on Machine Runtime Instances.  See the [Machine
-Runtimes introduction](machine-intro.md) to register a host before
-deploying workloads to it.
-

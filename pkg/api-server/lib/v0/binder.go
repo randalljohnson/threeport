@@ -12,9 +12,12 @@ import (
 )
 
 // QueryBinder overrides echo's default binder so api types don't need
-// `query:"..."` struct tags. Each settable struct field is bound from
-// the query param keyed by strings.ToLower of the field name. A field
-// named WorkloadInstanceID binds the workloadinstanceid param.
+// `query:"..."` struct tags for the common case. Each settable struct
+// field is bound from the query param keyed by strings.ToLower of the
+// field name. A field named KubernetesWorkloadInstanceID binds the
+// kubernetesworkloadinstanceid param.
+//
+// An explicit `query:"name"` tag overrides the default key.
 //
 // Path params and body binding fall through to echo.DefaultBinder.
 // Query binding fires on GET, DELETE, and HEAD, matching the default
@@ -22,7 +25,6 @@ import (
 //
 // Behavior we don't carry over from the default binder, because no
 // current api type needs it:
-//   - `query:"-"` opt-out. Every exported field is bindable.
 //   - Repeated params like ?foo=1&foo=2. We take raw[0] and drop the
 //     rest. The default binder reads a slice via the query tag.
 //   - time.Time, time.Duration, custom UnmarshalParam. Only string,
@@ -39,10 +41,8 @@ import (
 //	echo binding: https://echo.labstack.com/docs/binding
 //
 // Gotchas:
-//   - Renaming an exported field renames the wire-level query key
-//     too. Treat field renames on api types as breaking changes.
-//   - Two fields whose lowercased names would collide is not
-//     supported. Go style prevents this in practice.
+//   - Two fields whose effective query keys (tag override or lowercased
+//     name) collide is not supported.
 type QueryBinder struct {
 	fallback echo.DefaultBinder
 }
@@ -116,10 +116,15 @@ func bindStructFields(qp url.Values, v reflect.Value) error {
 			continue
 		}
 
-		// look up the URL param by lowercased field name; missing
-		// param means leave the field at its incoming value (do not
-		// zero a pre-populated default)
+		// resolve the URL param key: an explicit query tag wins over
+		// the lowercased field name.
 		paramName := strings.ToLower(field.Name)
+		if tag := field.Tag.Get("query"); tag != "" {
+			paramName = tag
+		}
+
+		// missing param means leave the field at its incoming value
+		// (do not zero a pre-populated default)
 		raw, ok := qp[paramName]
 		if !ok || len(raw) == 0 {
 			continue

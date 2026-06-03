@@ -936,15 +936,9 @@ func (g *Generator) ValidateTags() error {
 						))
 					}
 				}
-				// query tag is still forbidden on every field - QueryBinder
-				// derives the key from the lowercased Go field name and an
-				// explicit tag is noise.
-				if _, ok := tagMap[string(lib.QueryTag)]; ok {
-					problems = append(problems, fmt.Sprintf(
-						"%s.%s: %s tag forbidden (QueryBinder derives the key from the field name)",
-						objectName, fieldName, lib.QueryTag,
-					))
-				}
+				// query tag is allowed as an override. QueryBinder uses the
+				// tag value when present and falls back to the lowercased
+				// field name otherwise.
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise
 				// and likely indicates a misunderstanding

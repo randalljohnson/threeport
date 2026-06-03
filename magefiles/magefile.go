@@ -409,19 +409,3 @@ func (Dev) ServeDocs() error {
 
 	return nil
 }
-
-// DevPinnedImages builds and pushes multi-arch images for every controller
-// to imageRepo, tagged dev-pinned-<short-sha> where short-sha is the
-// current git HEAD's 7-char abbreviation. Mirrors the Dev-Pinned Images CI
-// workflow for local invocations: same tag pattern, same platforms. Honor
-// PARALLEL env to cap packaging concurrency; default is 1.
-func (Build) DevPinnedImages(imageRepo string) error {
-	out, err := exec.Command("git", "rev-parse", "--short=7", "HEAD").Output()
-	if err != nil {
-		return fmt.Errorf("failed to read git short SHA: %w", err)
-	}
-	sha := strings.TrimSpace(string(out))
-	tag := "dev-pinned-" + sha
-	fmt.Printf("building %s/threeport-*:%s for linux/amd64,linux/arm64\n", imageRepo, tag)
-	return Build{}.AllImages(imageRepo, tag, "amd64,arm64")
-}

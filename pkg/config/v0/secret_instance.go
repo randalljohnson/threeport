@@ -17,19 +17,19 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type SecretInstanceConfig struct {
-	SecretInstance SecretInstanceValues `yaml:"SecretInstance"`
+	SecretInstance SecretInstanceValues
 }
 
 // SecretInstanceValues contains all the attributes needed to manage
 // the SecretInstance API object.
 type SecretInstanceValues struct {
-	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
-	SecretDefinition          *SecretDefinitionValues          `json:",omitempty" yaml:"SecretDefinition,omitempty"`
-	KubernetesWorkloadInstance          *KubernetesWorkloadInstanceValues          `json:",omitempty" yaml:"KubernetesWorkloadInstance,omitempty"`
-	HelmWorkloadInstance      *HelmWorkloadInstanceValues      `json:",omitempty" yaml:"HelmWorkloadInstance,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	SecretConfigPath          *string                          `json:",omitempty" yaml:"SecretConfigPath,omitempty"`
-	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
+	Name                       *string                           `json:",omitempty"`
+	SecretDefinition           *SecretDefinitionValues           `json:",omitempty"`
+	KubernetesWorkloadInstance *KubernetesWorkloadInstanceValues `json:",omitempty"`
+	HelmWorkloadInstance       *HelmWorkloadInstanceValues       `json:",omitempty"`
+	KubernetesRuntimeInstance  *KubernetesRuntimeInstanceValues  `json:",omitempty"`
+	SecretConfigPath           *string                           `json:",omitempty"`
+	Age                        *string                           `json:",omitempty"`
 }
 
 // Get gets secret instances from the Threeport API.
@@ -110,12 +110,12 @@ func (s *SecretInstanceConfig) Get(
 
 		secretInstanceConfig := SecretInstanceConfig{
 			SecretInstance: SecretInstanceValues{
-				Name:                      secretInstance.Name,
-				SecretDefinition:          secretDefinition,
-				KubernetesWorkloadInstance:          workloadInstance,
-				HelmWorkloadInstance:      helmWorkloadInstance,
-				KubernetesRuntimeInstance: kubernetesRuntimeInstance,
-				Age:                       util.Ptr(util.GetAgeFormatted(secretInstance.CreatedAt)),
+				Name:                       secretInstance.Name,
+				SecretDefinition:           secretDefinition,
+				KubernetesWorkloadInstance: workloadInstance,
+				HelmWorkloadInstance:       helmWorkloadInstance,
+				KubernetesRuntimeInstance:  kubernetesRuntimeInstance,
+				Age:                        util.Ptr(util.GetAgeFormatted(secretInstance.CreatedAt)),
 			},
 		}
 		secretInstanceConfigs = append(secretInstanceConfigs, secretInstanceConfig)
@@ -201,12 +201,12 @@ func (s *SecretInstanceConfig) Create(
 	// construct secret instance config
 	createdSecretInstanceConfig := &SecretInstanceConfig{
 		SecretInstance: SecretInstanceValues{
-			Name:                      createdSecretInstance.Name,
-			SecretDefinition:          secretInstanceValues.SecretDefinition,
-			KubernetesWorkloadInstance:          secretInstanceValues.KubernetesWorkloadInstance,
-			HelmWorkloadInstance:      secretInstanceValues.HelmWorkloadInstance,
-			KubernetesRuntimeInstance: secretInstanceValues.KubernetesRuntimeInstance,
-			Age:                       util.Ptr(util.GetAgeFormatted(createdSecretInstance.CreatedAt)),
+			Name:                       createdSecretInstance.Name,
+			SecretDefinition:           secretInstanceValues.SecretDefinition,
+			KubernetesWorkloadInstance: secretInstanceValues.KubernetesWorkloadInstance,
+			HelmWorkloadInstance:       secretInstanceValues.HelmWorkloadInstance,
+			KubernetesRuntimeInstance:  secretInstanceValues.KubernetesRuntimeInstance,
+			Age:                        util.Ptr(util.GetAgeFormatted(createdSecretInstance.CreatedAt)),
 		},
 	}
 
@@ -314,12 +314,12 @@ func (s *SecretInstanceConfig) Replace(
 	// construct updated secret instance config
 	updatedSecretInstanceConfig := &SecretInstanceConfig{
 		SecretInstance: SecretInstanceValues{
-			Name:                      replacedSecretInstance.Name,
-			SecretDefinition:          secretInstanceValues.SecretDefinition,
-			KubernetesWorkloadInstance:          secretInstanceValues.KubernetesWorkloadInstance,
-			HelmWorkloadInstance:      secretInstanceValues.HelmWorkloadInstance,
-			KubernetesRuntimeInstance: secretInstanceValues.KubernetesRuntimeInstance,
-			Age:                       util.Ptr(util.GetAgeFormatted(replacedSecretInstance.CreatedAt)),
+			Name:                       replacedSecretInstance.Name,
+			SecretDefinition:           secretInstanceValues.SecretDefinition,
+			KubernetesWorkloadInstance: secretInstanceValues.KubernetesWorkloadInstance,
+			HelmWorkloadInstance:       secretInstanceValues.HelmWorkloadInstance,
+			KubernetesRuntimeInstance:  secretInstanceValues.KubernetesRuntimeInstance,
+			Age:                        util.Ptr(util.GetAgeFormatted(replacedSecretInstance.CreatedAt)),
 		},
 	}
 

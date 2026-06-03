@@ -47,6 +47,17 @@ type Generator struct {
 	// All API objects collected together by version in the way the API is
 	// organized in the codebase.
 	VersionedApiObjectCollections []VersionedApiObjectCollection
+
+	// EmbedTypes carries struct-tag info for the shared base types that
+	// model objects anonymously embed (Common, Definition, Instance,
+	// Reconciliation). These types live in non-domain source files
+	// (common.go, class.go) so they don't appear in any ApiObjectGroup's
+	// StructTags, but their fields participate in binding via the
+	// QueryBinder's anonymous-embed recursion. The collision check in
+	// ValidateTags reads from here to flatten embedded fields into the
+	// per-struct effective-key set.
+	// Shape: typeName -> fieldName -> tagKey -> tagValue.
+	EmbedTypes map[string]map[string]map[string]string
 }
 
 // GlobalVersionConfig contains all API versions for which code is being
@@ -134,6 +145,14 @@ type ApiObjectGroup struct {
 	// in StructTags, keyed by object name then field name. Tag validators
 	// that need to verify a field's Go type read it here.
 	FieldTypes map[string]map[string]string
+
+	// StructEmbeds records the anonymous embed type names per struct in
+	// this group. Keyed by the embedding struct's name; the value is the
+	// list of type names embedded anonymously (e.g.
+	// "KubernetesWorkloadInstance" -> ["Common", "Instance", "Reconciliation"]).
+	// The collision check uses this to flatten embedded fields into the
+	// effective-key set.
+	StructEmbeds map[string][]string
 }
 
 // VersionedApiObjectCollection contains all API objects grouped by version and
@@ -365,6 +384,55 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 		)
 	}
 
+	/////////////////// populate Generator.EmbedTypes //////////////////////////
+	// shared base types (Common, Definition, Instance, Reconciliation) live
+	// in non-domain files. Parse them once up front so ValidateTags can
+	// flatten anonymous-embed fields into the per-struct collision check.
+	g.EmbedTypes = map[string]map[string]map[string]string{}
+	for _, embedFile := range []string{"common.go", "class.go"} {
+		embedPath := filepath.Join("pkg", "api", "v0", embedFile)
+		embedFset := token.NewFileSet()
+		embedAST, err := parser.ParseFile(embedFset, embedPath, nil, parser.ParseComments|parser.AllErrors)
+		if err != nil {
+			// missing file is fine on modules that don't carry the shared
+			// types; only a real parse error should fail the run
+			continue
+		}
+		// walk every top-level struct type, record each field's tag map
+		// keyed by struct name. mirrors the per-model-file parser below,
+		// minus the ApiObject wiring (we only need tag info here).
+		for _, decl := range embedAST.Decls {
+			genDecl, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range genDecl.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				structType, ok := typeSpec.Type.(*ast.StructType)
+				if !ok {
+					continue
+				}
+				typeName := typeSpec.Name.Name
+				g.EmbedTypes[typeName] = map[string]map[string]string{}
+				for _, field := range structType.Fields.List {
+					// anon embeds in embed types are unusual; skip if seen
+					if len(field.Names) == 0 {
+						continue
+					}
+					fieldName := field.Names[0].Name
+					if field.Tag == nil {
+						g.EmbedTypes[typeName][fieldName] = map[string]string{}
+						continue
+					}
+					g.EmbedTypes[typeName][fieldName] = util.ParseStructTag(field.Tag.Value)
+				}
+			}
+		}
+	}
+
 	/////////////////// populate Generator.ApiObjectGroups /////////////////////
 	for _, apiObjectGroup := range sdkConfig.ApiObjectConfig.ApiObjectGroups {
 		filename := fmt.Sprintf("%s.go", *apiObjectGroup.Name)
@@ -515,6 +583,9 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			// of struct tags for each object
 			structTags := make(map[string]map[string]map[string]string)
 			fieldTypes := make(map[string]map[string]string)
+			// record anonymous embed type names per struct so ValidateTags
+			// can flatten embedded fields into the collision check
+			structEmbeds := make(map[string][]string)
 
 			// inspect the syntax tree for the object models
 			for _, node := range pf.Decls {
@@ -584,8 +655,17 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 										}
 									}
 
-									// populate the struct tags map
+									// anonymous embed: record the embed type name on
+									// this struct, then move on. The embed's own field
+									// tags live in g.EmbedTypes (parsed once up front).
 									if len(field.Names) == 0 {
+										// anon embed type is either a bare identifier
+										// (e.g. `Common`) or a selector (e.g.
+										// `pkgalias.SomeType`); only the bare-ident case
+										// applies to threeport's in-package embeds
+										if ident, ok := field.Type.(*ast.Ident); ok {
+											structEmbeds[objectName] = append(structEmbeds[objectName], ident.Name)
+										}
 										continue
 									}
 									fieldName := field.Names[0].Name
@@ -614,6 +694,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 				ReconciledApiObjectNames: reconcilerModels,
 				TptctlModels:             tptctlModels,
 				TptctlConfigPathModels:   tptctlModelsConfigPath,
+				StructEmbeds:             structEmbeds,
 				StructTags:               structTags,
 				FieldTypes:               fieldTypes,
 			}
@@ -957,6 +1038,88 @@ func (g *Generator) ValidateTags() error {
 						objectName, fieldName,
 						lib.QueryTag, q, queryNamePattern.String(),
 					))
+				}
+			}
+
+			// per-struct query-key collision check.
+			//
+			// Errors caught (collisions silently misroute requests at
+			// runtime because the binder's last writer wins, so catch
+			// them at codegen):
+			//   - two directly-declared fields with the same effective key
+			//   - a directly-declared override colliding with an embedded
+			//     field's effective key
+			//   - two embedded fields colliding with each other
+			//
+			// Shadow exemption: a directly-declared field whose Go name
+			// matches an embedded field's Go name is the deliberate Go
+			// shadowing pattern. The outer wins at both bind time and
+			// source-level access. That case is allowed silently. Only
+			// non-shadow collisions are flagged.
+
+			// outerKeys: effective keys claimed by the outer struct's own
+			// fields. embed fields whose key matches an outer-claimed key are
+			// shadowed and pass silently.
+			outerKeys := map[string]string{} // key -> outer field name claiming it
+			effective := map[string]string{} // key -> "Type.Field" currently bound
+
+			// addField resolves and records one field's effective key.
+			// emits a problem on collision unless the new field is an embed
+			// being shadowed by an outer field of the same Go name.
+			addField := func(ownerType, fieldName string, tagMap map[string]string, isOuter bool) {
+				// resolve the effective query key the same way QueryBinder
+				// does: explicit `query:` tag wins, else the lowercased
+				// Go field name
+				key := strings.ToLower(fieldName)
+				if q, ok := tagMap[string(lib.QueryTag)]; ok && q != "" {
+					key = q
+				}
+				owner := fmt.Sprintf("%s.%s", ownerType, fieldName)
+
+				// embed field whose Go name matches an outer field's Go name
+				// is the deliberate Go-shadowing pattern; the outer wins at
+				// both bind time and source-level access. don't flag it
+				if !isOuter {
+					if outerName, shadowed := outerKeys[key]; shadowed && outerName == fieldName {
+						return
+					}
+				}
+
+				// first claimant wins; the second seeing the same key emits
+				// a problem naming both fields. sort the pair so the message
+				// is stable across map iteration orders, then the outer
+				// problems sort below produces a deterministic transcript
+				if prior, dup := effective[key]; dup {
+					a, b := prior, owner
+					if a > b {
+						a, b = b, a
+					}
+					problems = append(problems, fmt.Sprintf(
+						"%s and %s: effective query key %q collides",
+						a, b, key,
+					))
+					return
+				}
+				effective[key] = owner
+				if isOuter {
+					outerKeys[key] = fieldName
+				}
+			}
+
+			// outer struct's own fields participate first so embed fields
+			// can be tested for shadowing against them
+			for fieldName, tagMap := range fieldMap {
+				addField(objectName, fieldName, tagMap, true)
+			}
+
+			// then flatten in fields from any anonymous embeds. the QueryBinder
+			// recurses into embeds, so their fields share the outer struct's
+			// effective-key namespace at runtime. walk the embed list (e.g.
+			// Common, Instance, Reconciliation) and look each up in g.EmbedTypes
+			// which was populated during the up-front embed parser pass
+			for _, embedType := range group.StructEmbeds[objectName] {
+				for embedFieldName, embedTagMap := range g.EmbedTypes[embedType] {
+					addField(embedType, embedFieldName, embedTagMap, false)
 				}
 			}
 		}

@@ -29,7 +29,6 @@
 # Targets:
 #   release          Distroless image with the compiled binary.
 #   dev              Alpine + delve + the compiled binary.
-#   live-reload      Alpine + air; expects source mounted at /threeport.
 #   dev-terraform    dev + terraform binary.
 #   dev-pulumi       dev + pulumi CLI.
 #
@@ -60,14 +59,6 @@ FROM dev-base AS dev
 ARG TARGETARCH
 ARG BINARY
 COPY ${TARGETARCH}/${BINARY} /${BINARY}
-
-# ----- live-reload: air watcher; expects source mounted at /threeport -----
-FROM dev-base AS live-reload
-ARG AIR_VERSION=1.65.3
-RUN apk add --no-cache git
-RUN go install github.com/air-verse/air@v${AIR_VERSION} && \
-    mv /go/bin/air /usr/local/bin
-WORKDIR /threeport
 
 # ----- dev-terraform: dev + terraform binary -----
 FROM dev AS dev-terraform

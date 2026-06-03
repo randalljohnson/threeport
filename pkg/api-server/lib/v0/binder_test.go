@@ -204,3 +204,18 @@ func TestQueryBinder_FloatScalars(t *testing.T) {
 	assert.InDelta(t, 0.25, *filter.Threshold, 0.0001)
 	assert.InDelta(t, float32(1.5), filter.Ratio, 0.0001)
 }
+
+// TestQueryBinder_MalformedFloatValue mirrors the malformed-int test for
+// the float branch of setFieldFromString. The query value isn't parseable
+// as a float so strconv.ParseFloat returns an error, which the binder
+// wraps with the param name.
+//
+// Example: ?threshold=not-a-float surfaces an error citing "threshold".
+func TestQueryBinder_MalformedFloatValue(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?threshold=not-a-float", nil)
+	var filter bindTestFloatFilter
+	err := NewQueryBinder().Bind(&filter, c)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "threshold")
+}
+

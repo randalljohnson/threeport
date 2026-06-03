@@ -412,6 +412,35 @@ func TestValidateTags_RelationshipUnknownTypeModifier(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown API type")
 }
 
+// TestValidateTags_RelationshipKnownTypeModifier accepts a relationship
+// `type:` modifier when the named type is in the registered API set. The
+// AOR codegen depends on this happy path: a typo in `type:` should fail
+// validation (covered by the test above), but a valid `type:` must pass
+// so downstream emitters can read it as the source of truth.
+// Example:
+//
+//	type Foo struct {
+//	    SomeID *uint `json:",omitempty" validate:"required" relationship:"requires;type:Bar"`
+//	}
+//	type Bar struct { ... }
+//
+// (Bar IS declared in the fixture so it's in knownTypes.)
+// Expected: no error.
+func TestValidateTags_RelationshipKnownTypeModifier(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {"SomeID": tag("json", ",omitempty", "validate", "required", "relationship", "requires;type:Bar")},
+			"Bar": {"Name": tag("json", ",omitempty", "validate", "required")},
+		},
+		nil,
+		map[string]map[string]string{
+			"Foo": {"SomeID": "*uint"},
+		},
+		nil,
+	)
+	assert.NoError(t, g.ValidateTags())
+}
+
 // TestValidateTags_RelationshipUnknownModifierKey rejects a relationship
 // modifier whose key isn't the supported "type:".
 // Example:

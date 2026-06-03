@@ -465,9 +465,6 @@ tptdev debug
 # Debug specific components only
 tptdev debug --names rest-api,workload-controller
 
-# Enable live-reload (via air) for specific components
-tptdev debug --names rest-api --live-reload
-
 # Enable verbose logging
 tptdev debug --verbose
 
@@ -556,7 +553,7 @@ If any `_gen.go` files show changes, the commit is out of sync — regenerate be
 
 ### Development Image (`cmd/tptdev/image/Dockerfile`)
 - **NOT generated** — manually maintained, multi-target build
-- Targets: `base` (delve + wait-for-tcp), `live-reload` (air), `dev` (standard), `dev-terraform` (+ Terraform binary), `dev-oci` (+ Pulumi CLI)
+- Targets: `base` (delve + wait-for-tcp), `dev` (standard), `dev-terraform` (+ Terraform binary), `dev-oci` (+ Pulumi CLI)
 - `tptdev build` selects target via `--target` flag based on component type
 - Build flow: compile Go binary locally → copy into image via target
 

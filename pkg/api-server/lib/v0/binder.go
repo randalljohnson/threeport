@@ -92,19 +92,19 @@ func (b *QueryBinder) bindQueryParams(qp url.Values, i interface{}) error {
 	return bindStructFields(qp, v)
 }
 
-// bindStructFields assigns each settable field of v from the query
-// param matching its lowercased name. Recurses into anonymous embeds
-// (Common, Definition, Instance, Reconciliation) so their fields
-// participate as if declared on the outer type.
-func bindStructFields(qp url.Values, v reflect.Value) error {
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fv := v.Field(i)
+// bindStructFields assigns each settable field of structValue from the
+// query param matching its lowercased name. Recurses into anonymous
+// embeds (Common, Definition, Instance, Reconciliation) so their
+// fields participate as if declared on the outer type.
+func bindStructFields(qp url.Values, structValue reflect.Value) error {
+	structType := structValue.Type()
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		fieldValue := structValue.Field(i)
 
 		// anonymous embed: descend so its fields look like the outer's
-		if field.Anonymous && fv.Kind() == reflect.Struct {
-			if err := bindStructFields(qp, fv); err != nil {
+		if field.Anonymous && fieldValue.Kind() == reflect.Struct {
+			if err := bindStructFields(qp, fieldValue); err != nil {
 				return err
 			}
 			continue
@@ -112,7 +112,7 @@ func bindStructFields(qp url.Values, v reflect.Value) error {
 
 		// skip unexported / un-settable fields (reflect won't let us
 		// write to them anyway, and they aren't part of the API surface)
-		if !fv.CanSet() {
+		if !fieldValue.CanSet() {
 			continue
 		}
 
@@ -131,60 +131,64 @@ func bindStructFields(qp url.Values, v reflect.Value) error {
 		}
 
 		// matched: convert the raw string into the field's actual type
-		if err := setFieldFromString(fv, raw[0]); err != nil {
+		if err := writeFieldFromString(fieldValue, raw[0]); err != nil {
 			return fmt.Errorf("QueryBinder: failed to bind %s=%q: %w", paramName, raw[0], err)
 		}
 	}
 	return nil
 }
 
-// setFieldFromString parses val into fv. Pointer fields are allocated
-// first so callers don't have to pre-initialize. Unsupported kinds
-// return an error rather than skip silently, so type drift surfaces
-// at the first request.
-func setFieldFromString(fv reflect.Value, val string) error {
-	// pointer field: allocate a new T, recurse to set its element,
-	// then point fv at it. Recursion is exactly one level - the inner
+// writeFieldFromString parses raw and writes the result through
+// fieldValue into the underlying struct field. fieldValue must be
+// settable; reflect.Value passes by value but holds a pointer to the
+// original memory, so the SetString/SetInt/... calls below mutate the
+// caller's struct. Pointer fields are allocated before recursion so
+// callers don't have to pre-initialize. Unsupported kinds return an
+// error rather than skip silently, so type drift surfaces at the first
+// request.
+func writeFieldFromString(fieldValue reflect.Value, raw string) error {
+	// pointer field: allocate a new T, recurse to set its element, then
+	// point fieldValue at it. Recursion is exactly one level. The inner
 	// type is always a scalar by the time we land in the switch below.
-	if fv.Kind() == reflect.Ptr {
-		ev := reflect.New(fv.Type().Elem())
-		if err := setFieldFromString(ev.Elem(), val); err != nil {
+	if fieldValue.Kind() == reflect.Ptr {
+		elemValue := reflect.New(fieldValue.Type().Elem())
+		if err := writeFieldFromString(elemValue.Elem(), raw); err != nil {
 			return err
 		}
-		fv.Set(ev)
+		fieldValue.Set(elemValue)
 		return nil
 	}
 
 	// scalar field: parse + set based on the field's kind
-	switch fv.Kind() {
+	switch fieldValue.Kind() {
 	case reflect.String:
-		fv.SetString(val)
+		fieldValue.SetString(raw)
 	case reflect.Bool:
-		n, err := strconv.ParseBool(val)
+		parsed, err := strconv.ParseBool(raw)
 		if err != nil {
 			return err
 		}
-		fv.SetBool(n)
+		fieldValue.SetBool(parsed)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		n, err := strconv.ParseInt(val, 10, fv.Type().Bits())
+		parsed, err := strconv.ParseInt(raw, 10, fieldValue.Type().Bits())
 		if err != nil {
 			return err
 		}
-		fv.SetInt(n)
+		fieldValue.SetInt(parsed)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		n, err := strconv.ParseUint(val, 10, fv.Type().Bits())
+		parsed, err := strconv.ParseUint(raw, 10, fieldValue.Type().Bits())
 		if err != nil {
 			return err
 		}
-		fv.SetUint(n)
+		fieldValue.SetUint(parsed)
 	case reflect.Float32, reflect.Float64:
-		f, err := strconv.ParseFloat(val, fv.Type().Bits())
+		parsed, err := strconv.ParseFloat(raw, fieldValue.Type().Bits())
 		if err != nil {
 			return err
 		}
-		fv.SetFloat(f)
+		fieldValue.SetFloat(parsed)
 	default:
-		return fmt.Errorf("unsupported field kind: %s", fv.Kind())
+		return fmt.Errorf("unsupported field kind: %s", fieldValue.Kind())
 	}
 	return nil
 }

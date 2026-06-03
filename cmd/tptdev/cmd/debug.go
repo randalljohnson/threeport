@@ -18,7 +18,6 @@ import (
 
 var disable bool
 var delve bool
-var liveReload bool
 var debugComponentNames string
 var kubeconfigPath string
 var controlPlaneNamespace string
@@ -51,7 +50,6 @@ var DebugCmd = &cobra.Command{
 		cpi.Opts.CreateOrUpdateKubeResources = true
 		cpi.Opts.Debug = !disable
 		cpi.Opts.Delve = delve
-		cpi.Opts.LiveReload = liveReload
 		cpi.Opts.DevEnvironment = false
 		cpi.Opts.Namespace = controlPlaneNamespace
 
@@ -122,10 +120,6 @@ func init() {
 	DebugCmd.Flags().BoolVar(
 		&delve,
 		"delve", false, "Enable delve debugger for remote debugging.",
-	)
-	DebugCmd.Flags().BoolVar(
-		&liveReload,
-		"live-reload", false, "Enable live-reload via air.",
 	)
 	DebugCmd.Flags().BoolVar(
 		&cliArgs.Verbose,

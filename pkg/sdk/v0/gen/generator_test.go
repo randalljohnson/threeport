@@ -10,8 +10,9 @@ import (
 // fixture builds a *Generator with the given per-object data populated on a
 // single synthetic ApiObjectGroup. structTags, structEmbeds, and fieldTypes
 // describe the model objects under test; embedTypes describes any base types
-// they embed (e.g. Common, Instance) that the validator needs to flatten in.
-// Only the fields ValidateTags reads are populated.
+// they embed (Common, Definition, Instance, Reconciliation) that the
+// validator needs to flatten in. Only the fields ValidateTags reads are
+// populated.
 func fixture(
 	structTags map[string]map[string]map[string]string,
 	structEmbeds map[string][]string,
@@ -300,36 +301,38 @@ func TestValidateTags_OverrideCollidesWithEmbedDefaultKey(t *testing.T) {
 }
 
 // TestValidateTags_TwoEmbeddedFieldsCollide catches two embedded fields
-// whose effective keys collide.
+// whose effective keys collide. Realistic example from threeport: both
+// Definition and Instance declare a Name field, so a type that embeds
+// both would have an ambiguous "name" key.
 // Example:
 //
-//	type A struct {
-//	    X *string `json:",omitempty" validate:"required"`
+//	type Definition struct {
+//	    Name *string `json:",omitempty" validate:"required"`
 //	}
-//	type B struct {
-//	    X *string `json:",omitempty" validate:"required"`
+//	type Instance struct {
+//	    Name *string `json:",omitempty" validate:"required"`
 //	}
 //	type Foo struct {
-//	    A
-//	    B
+//	    Definition
+//	    Instance
 //	}
 //
-// Expected: collision on key "x".
+// Expected: collision on key "name".
 func TestValidateTags_TwoEmbeddedFieldsCollide(t *testing.T) {
 	g := fixture(
 		map[string]map[string]map[string]string{
 			"Foo": {},
 		},
-		map[string][]string{"Foo": {"A", "B"}},
+		map[string][]string{"Foo": {"Definition", "Instance"}},
 		nil,
 		map[string]map[string]map[string]string{
-			"A": {"X": tag("json", ",omitempty", "validate", "required")},
-			"B": {"X": tag("json", ",omitempty", "validate", "required")},
+			"Definition": {"Name": tag("json", ",omitempty", "validate", "required")},
+			"Instance":   {"Name": tag("json", ",omitempty", "validate", "required")},
 		},
 	)
 	err := g.ValidateTags()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `effective query key "x" collides`)
+	assert.Contains(t, err.Error(), `effective query key "name" collides`)
 }
 
 // TestValidateTags_BogusRelationshipKind rejects relationship-tag values
@@ -355,4 +358,182 @@ func TestValidateTags_BogusRelationshipKind(t *testing.T) {
 	err := g.ValidateTags()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown")
+}
+
+// TestValidateTags_RelationshipNonUintField rejects a relationship tag on a
+// field whose Go type isn't *uint (relationship-tagged fields are emitted as
+// foreign-key columns).
+// Example:
+//
+//	type Foo struct {
+//	    BarName *string `json:",omitempty" validate:"required" relationship:"requires"`
+//	}
+//
+// Expected: error citing the wrong field type.
+func TestValidateTags_RelationshipNonUintField(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {"BarName": tag("json", ",omitempty", "validate", "required", "relationship", "requires")},
+		},
+		nil,
+		map[string]map[string]string{
+			"Foo": {"BarName": "*string"},
+		},
+		nil,
+	)
+	err := g.ValidateTags()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "*uint")
+}
+
+// TestValidateTags_RelationshipUnknownTypeModifier rejects a relationship
+// `type:` modifier pointing to a type not in the registered API set.
+// Example:
+//
+//	type Foo struct {
+//	    BarID *uint `json:",omitempty" validate:"required" relationship:"requires;type:Ghost"`
+//	}
+//
+// (Ghost is not declared anywhere in the fixture.)
+// Expected: error citing "unknown API type".
+func TestValidateTags_RelationshipUnknownTypeModifier(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {"BarID": tag("json", ",omitempty", "validate", "required", "relationship", "requires;type:Ghost")},
+		},
+		nil,
+		map[string]map[string]string{
+			"Foo": {"BarID": "*uint"},
+		},
+		nil,
+	)
+	err := g.ValidateTags()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown API type")
+}
+
+// TestValidateTags_RelationshipUnknownModifierKey rejects a relationship
+// modifier whose key isn't the supported "type:".
+// Example:
+//
+//	type Foo struct {
+//	    BarID *uint `json:",omitempty" validate:"required" relationship:"requires;bogus:Foo"`
+//	}
+//
+// Expected: error citing the unknown modifier key.
+func TestValidateTags_RelationshipUnknownModifierKey(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {"BarID": tag("json", ",omitempty", "validate", "required", "relationship", "requires;bogus:Foo")},
+		},
+		nil,
+		map[string]map[string]string{
+			"Foo": {"BarID": "*uint"},
+		},
+		nil,
+	)
+	err := g.ValidateTags()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown relationship modifier key")
+}
+
+// TestValidateTags_RelationshipMalformedModifier rejects a modifier entry
+// that doesn't follow the key:value form.
+// Example:
+//
+//	type Foo struct {
+//	    BarID *uint `json:",omitempty" validate:"required" relationship:"requires;noColon"`
+//	}
+//
+// Expected: error citing the malformed modifier.
+func TestValidateTags_RelationshipMalformedModifier(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {"BarID": tag("json", ",omitempty", "validate", "required", "relationship", "requires;noColon")},
+		},
+		nil,
+		map[string]map[string]string{
+			"Foo": {"BarID": "*uint"},
+		},
+		nil,
+	)
+	err := g.ValidateTags()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "malformed relationship modifier")
+}
+
+// TestValidateTags_ModuleModeAllowsUnknownType confirms module mode skips
+// the "unknown API type" check for relationship type modifiers. Modules
+// reference types declared in the imported threeport core package, which
+// the Go compiler will verify at build time, so the codegen-side check is
+// intentionally relaxed.
+// Example: same as TestValidateTags_RelationshipUnknownTypeModifier above,
+// but with g.Module = true.
+//
+// Expected: no error.
+func TestValidateTags_ModuleModeAllowsUnknownType(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {"BarID": tag("json", ",omitempty", "validate", "required", "relationship", "requires;type:Ghost")},
+		},
+		nil,
+		map[string]map[string]string{
+			"Foo": {"BarID": "*uint"},
+		},
+		nil,
+	)
+	g.Module = true
+	assert.NoError(t, g.ValidateTags())
+}
+
+// TestValidateTags_StableErrorOrdering verifies the validator's output is
+// deterministic across runs. Map iteration over StructTags and EmbedTypes
+// is randomized by Go; the trailing sort.Strings(problems) normalizes the
+// final message. A regression that removes the sort would surface here.
+// Example: two unrelated validate-tag errors. Running ValidateTags multiple
+// times must produce the same error string.
+func TestValidateTags_StableErrorOrdering(t *testing.T) {
+	build := func() *Generator {
+		return fixture(
+			map[string]map[string]map[string]string{
+				"Alpha": {"X": tag("json", ",omitempty", "validate", "wrong1")},
+				"Beta":  {"Y": tag("json", ",omitempty", "validate", "wrong2")},
+			},
+			nil, nil, nil,
+		)
+	}
+	first := build().ValidateTags().Error()
+	for i := 0; i < 25; i++ {
+		assert.Equal(t, first, build().ValidateTags().Error(),
+			"problem-message ordering must be stable across runs")
+	}
+}
+
+// TestValidateTags_RejectsNonStandardEmbed enforces the api-type embed
+// whitelist. Models may only embed Common, Definition, Instance, or
+// Reconciliation; anything else surfaces an error so model authors and
+// readers can rely on a flat, one-level embed model.
+// Example:
+//
+//	type Random struct { ... }
+//	type Foo struct {
+//	    Random // not in {Common, Definition, Instance, Reconciliation}
+//	}
+//
+// Expected: error citing the disallowed embed.
+func TestValidateTags_RejectsNonStandardEmbed(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {},
+		},
+		map[string][]string{"Foo": {"Random"}},
+		nil,
+		map[string]map[string]map[string]string{
+			"Random": {"X": tag("json", ",omitempty", "validate", "optional")},
+		},
+	)
+	err := g.ValidateTags()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Foo embeds Random")
+	assert.Contains(t, err.Error(), "Common, Definition, Instance, or Reconciliation")
 }

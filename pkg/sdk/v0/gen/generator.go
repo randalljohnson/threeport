@@ -418,7 +418,10 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 				typeName := typeSpec.Name.Name
 				g.EmbedTypes[typeName] = map[string]map[string]string{}
 				for _, field := range structType.Fields.List {
-					// anon embeds in embed types are unusual; skip if seen
+					// anon embeds within an embed type are out of scope;
+					// the only embeds api types are allowed to use are the
+					// flat base types parsed here. The ValidateTags whitelist
+					// check enforces that constraint.
 					if len(field.Names) == 0 {
 						continue
 					}
@@ -940,6 +943,21 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 // in query tag values.
 var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)
 
+// allowedEmbed is the set of base types api models are permitted to embed
+// anonymously. Keeping the set small enforces a flat, one-level mental
+// model: model authors only ever embed one of these, and readers can
+// scan an api type top to bottom without chasing arbitrary embed chains.
+var allowedEmbed = map[string]bool{
+	"Common":         true,
+	"Definition":     true,
+	"Instance":       true,
+	"Reconciliation": true,
+}
+
+// allowedEmbedNames is the human-readable list of allowed embeds for
+// error messages. Kept in sync with allowedEmbed.
+const allowedEmbedNames = "Common, Definition, Instance, or Reconciliation"
+
 // ValidateTags walks every API object's struct tags and returns a non-nil
 // error if any threeport-specific tag has an invalid value.
 //
@@ -1112,14 +1130,28 @@ func (g *Generator) ValidateTags() error {
 				addField(objectName, fieldName, tagMap, true)
 			}
 
-			// then flatten in fields from any anonymous embeds. the QueryBinder
-			// recurses into embeds, so their fields share the outer struct's
-			// effective-key namespace at runtime. walk the embed list (e.g.
-			// Common, Instance, Reconciliation) and look each up in g.EmbedTypes
-			// which was populated during the up-front embed parser pass
+			// flatten in fields from anonymous embeds. api types are only
+			// allowed to embed the flat base types parsed up front (Common,
+			// Definition, Instance, Reconciliation); the whitelist check
+			// below rejects anything else, so a single-level flatten covers
+			// every binder-visible field.
 			for _, embedType := range group.StructEmbeds[objectName] {
 				for embedFieldName, embedTagMap := range g.EmbedTypes[embedType] {
 					addField(embedType, embedFieldName, embedTagMap, false)
+				}
+			}
+
+			// reject api type embeds outside the allowed base-type set.
+			// keeping the allowed set small (Common, Definition, Instance,
+			// Reconciliation) means model authors only have to reason about
+			// one level of embed promotion, and the validator only has to
+			// flatten one level deep.
+			for _, embedType := range group.StructEmbeds[objectName] {
+				if !allowedEmbed[embedType] {
+					problems = append(problems, fmt.Sprintf(
+						"%s embeds %s: api types may only embed %s",
+						objectName, embedType, allowedEmbedNames,
+					))
 				}
 			}
 		}

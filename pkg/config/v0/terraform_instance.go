@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	api "github.com/threeport/threeport/pkg/api/v0"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -20,21 +20,21 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type TerraformInstanceConfig struct {
-	TerraformInstance TerraformInstanceValues `yaml:"TerraformInstance"`
+	TerraformInstance TerraformInstanceValues
 }
 
 // TerraformInstanceValues contains all the attributes needed to manage
 // the TerraformInstance API object.
 type TerraformInstanceValues struct {
-	Name                *string                    `json:",omitempty" yaml:"Name,omitempty"`
-	AwsProvider         *AwsProviderValues         `json:",omitempty" yaml:"AwsProvider,omitempty"`
-	VarsDocument        *string                    `json:",omitempty" yaml:"VarsDocument,omitempty"`
-	StateDocument       *string                    `json:",omitempty" yaml:"StateDocument,omitempty"`
-	Outputs             *string                    `json:",omitempty" yaml:"Outputs,omitempty"`
-	TerraformDefinition *TerraformDefinitionValues `json:",omitempty" yaml:"TerraformDefinition,omitempty"`
-	TerraformConfigPath *string                    `json:",omitempty" yaml:"TerraformConfigPath,omitempty"`
-	Status              *string                    `json:",omitempty" yaml:"Status,omitempty"`
-	Age                 *string                    `json:",omitempty" yaml:"Age,omitempty"`
+	Name                *string                    `json:",omitempty"`
+	AwsProvider         *AwsProviderValues         `json:",omitempty"`
+	VarsDocument        *string                    `json:",omitempty"`
+	StateDocument       *string                    `json:",omitempty"`
+	Outputs             *string                    `json:",omitempty"`
+	TerraformDefinition *TerraformDefinitionValues `json:",omitempty"`
+	TerraformConfigPath *string                    `json:",omitempty"`
+	Status              *string                    `json:",omitempty"`
+	Age                 *string                    `json:",omitempty"`
 }
 
 // Get gets terraform instances from the Threeport API.

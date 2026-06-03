@@ -14,22 +14,22 @@ import (
 // This abstraction allows users to manage definitions and instances together with single operations
 // rather than separate operations for each API object.
 type MachineRuntimeConfig struct {
-	MachineRuntime MachineRuntimeValues `yaml:"MachineRuntime"`
+	MachineRuntime MachineRuntimeValues
 }
 
 // MachineRuntimeValues contains all the attributes needed to manage the
 // MachineRuntimeDefinition and MachineRuntimeInstance API objects
 // together with a single operation.
 type MachineRuntimeValues struct {
-	Name        *string `json:",omitempty" yaml:"Name,omitempty"`
-	Hostname    *string `json:",omitempty" yaml:"Hostname,omitempty"`
-	SSHUser     *string `json:",omitempty" yaml:"SSHUser,omitempty"`
-	SSHKey      *string `json:",omitempty" yaml:"SSHKey,omitempty"`
-	SSHPassword *string `json:",omitempty" yaml:"SSHPassword,omitempty"`
-	Port        *int    `json:",omitempty" yaml:"Port,omitempty"`
-	HostKey     *string `json:",omitempty" yaml:"HostKey,omitempty"`
-	Status      *string `json:",omitempty" yaml:"Status,omitempty"`
-	Age         *string `json:",omitempty" yaml:"Age,omitempty"`
+	Name        *string `json:",omitempty"`
+	Hostname    *string `json:",omitempty"`
+	SSHUser     *string `json:",omitempty"`
+	SSHKey      *string `json:",omitempty"`
+	SSHPassword *string `json:",omitempty"`
+	Port        *int    `json:",omitempty"`
+	HostKey     *string `json:",omitempty"`
+	Status      *string `json:",omitempty"`
+	Age         *string `json:",omitempty"`
 }
 
 // Get gets a machine runtime definition and instance from the Threeport API.

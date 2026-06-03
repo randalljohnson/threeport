@@ -18,28 +18,28 @@ import (
 // This abstraction allows users to manage definitions and instances together with single operations
 // rather than separate operations for each API object.
 type HelmWorkloadConfig struct {
-	HelmWorkload HelmWorkloadValues `yaml:"HelmWorkload"`
+	HelmWorkload HelmWorkloadValues
 }
 
 // HelmWorkloadValues contains all the attributes needed to manage the
 // HelmWorkloadDefinition and HelmWorkloadInstance API objects
 // together with a single operation.
 type HelmWorkloadValues struct {
-	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
-	Repo                      *string                          `json:",omitempty" yaml:"Repo,omitempty"`
-	Chart                     *string                          `json:",omitempty" yaml:"Chart,omitempty"`
-	ChartVersion              *string                          `json:",omitempty" yaml:"ChartVersion,omitempty"`
-	DefinitionValues          *string                          `json:",omitempty" yaml:"DefinitionValues,omitempty"`
-	DefinitionValuesDocument  *string                          `json:",omitempty" yaml:"DefinitionValuesDocument,omitempty"`
-	InstanceValues            *string                          `json:",omitempty" yaml:"InstanceValues,omitempty"`
-	InstanceValuesDocument    *string                          `json:",omitempty" yaml:"InstanceValuesDocument,omitempty"`
-	HelmWorkloadConfigPath    *string                          `json:",omitempty" yaml:"HelmWorkloadConfigPath,omitempty"`
-	ReleaseNamespace          *string                          `json:",omitempty" yaml:"ReleaseNamespace,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	// DomainName                *DomainNameDefinitionValues      `json:",omitempty" yaml:"DomainName,omitempty"`
-	// Gateway                   *GatewayDefinitionValues         `json:",omitempty" yaml:"Gateway,omitempty"`
-	Status *string `json:",omitempty" yaml:"Status,omitempty"`
-	Age    *string `json:",omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty"`
+	Repo                      *string                          `json:",omitempty"`
+	Chart                     *string                          `json:",omitempty"`
+	ChartVersion              *string                          `json:",omitempty"`
+	DefinitionValues          *string                          `json:",omitempty"`
+	DefinitionValuesDocument  *string                          `json:",omitempty"`
+	InstanceValues            *string                          `json:",omitempty"`
+	InstanceValuesDocument    *string                          `json:",omitempty"`
+	HelmWorkloadConfigPath    *string                          `json:",omitempty"`
+	ReleaseNamespace          *string                          `json:",omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty"`
+	// DomainName                *DomainNameDefinitionValues      `json:",omitempty"`
+	// Gateway                   *GatewayDefinitionValues         `json:",omitempty"`
+	Status *string `json:",omitempty"`
+	Age    *string `json:",omitempty"`
 }
 
 // Get gets a helm workload definition and instance from the Threeport API.

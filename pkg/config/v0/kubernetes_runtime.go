@@ -14,22 +14,22 @@ import (
 // This abstraction allows users to manage definitions and instances together with single operations
 // rather than separate operations for each API object.
 type KubernetesRuntimeConfig struct {
-	KubernetesRuntime KubernetesRuntimeValues `yaml:"KubernetesRuntime"`
+	KubernetesRuntime KubernetesRuntimeValues
 }
 
 // KubernetesRuntimeValues contains all the attributes needed to manage the
 // KubernetesRuntimeDefinition and KubernetesRuntimeInstance API objects
 // together with a single operation.
 type KubernetesRuntimeValues struct {
-	Name                      *string `json:",omitempty" yaml:"Name,omitempty"`
-	InfraProvider             *string `json:",omitempty" yaml:"InfraProvider,omitempty"`
-	InfraProviderAccountName  *string `json:",omitempty" yaml:"InfraProviderAccountName,omitempty"`
-	HighAvailability          *bool   `json:",omitempty" yaml:"HighAvailability,omitempty"`
-	Location                  *string `json:",omitempty" yaml:"Location,omitempty"`
-	ThreeportControlPlaneHost *bool   `json:",omitempty" yaml:"ThreeportControlPlaneHost,omitempty"`
-	DefaultRuntime            *bool   `json:",omitempty" yaml:"DefaultRuntime,omitempty"`
-	ThreeportAgentImage       *string `json:",omitempty" yaml:"ThreeportAgentImage,omitempty"`
-	Age                       *string `json:",omitempty" yaml:"Age,omitempty"`
+	Name                      *string `json:",omitempty"`
+	InfraProvider             *string `json:",omitempty"`
+	InfraProviderAccountName  *string `json:",omitempty"`
+	HighAvailability          *bool   `json:",omitempty"`
+	Location                  *string `json:",omitempty"`
+	ThreeportControlPlaneHost *bool   `json:",omitempty"`
+	DefaultRuntime            *bool   `json:",omitempty"`
+	ThreeportAgentImage       *string `json:",omitempty"`
+	Age                       *string `json:",omitempty"`
 }
 
 // Get gets a kubernetes runtime definition and instance from the Threeport API.

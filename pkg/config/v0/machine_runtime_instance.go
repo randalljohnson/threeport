@@ -20,7 +20,7 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type MachineRuntimeInstanceConfig struct {
-	MachineRuntimeInstance MachineRuntimeInstanceValues `yaml:"MachineRuntimeInstance"`
+	MachineRuntimeInstance MachineRuntimeInstanceValues
 }
 
 // MachineRuntimeInstanceValues contains all the attributes needed to manage
@@ -28,18 +28,18 @@ type MachineRuntimeInstanceConfig struct {
 // variants take a path to a file whose contents are loaded into the
 // corresponding inline field at Create time.
 type MachineRuntimeInstanceValues struct {
-	Name                     *string                         `json:",omitempty" yaml:"Name,omitempty"`
-	Hostname                 *string                         `json:",omitempty" yaml:"Hostname,omitempty"`
-	SSHUser                  *string                         `json:",omitempty" yaml:"SSHUser,omitempty"`
-	SSHKey                   *string                         `json:",omitempty" yaml:"SSHKey,omitempty"`
-	SSHKeyFile               *string                         `json:",omitempty" yaml:"SSHKeyFile,omitempty"`
-	SSHPassword              *string                         `json:",omitempty" yaml:"SSHPassword,omitempty"`
-	SSHPasswordFile          *string                         `json:",omitempty" yaml:"SSHPasswordFile,omitempty"`
-	Port                     *int                            `json:",omitempty" yaml:"Port,omitempty"`
-	HostKey                  *string                         `json:",omitempty" yaml:"HostKey,omitempty"`
-	MachineRuntimeDefinition *MachineRuntimeDefinitionValues `json:",omitempty" yaml:"MachineRuntimeDefinition,omitempty"`
-	Status                   *string                         `json:",omitempty" yaml:"Status,omitempty"`
-	Age                      *string                         `json:",omitempty" yaml:"Age,omitempty"`
+	Name                     *string                         `json:",omitempty"`
+	Hostname                 *string                         `json:",omitempty"`
+	SSHUser                  *string                         `json:",omitempty"`
+	SSHKey                   *string                         `json:",omitempty"`
+	SSHKeyFile               *string                         `json:",omitempty"`
+	SSHPassword              *string                         `json:",omitempty"`
+	SSHPasswordFile          *string                         `json:",omitempty"`
+	Port                     *int                            `json:",omitempty"`
+	HostKey                  *string                         `json:",omitempty"`
+	MachineRuntimeDefinition *MachineRuntimeDefinitionValues `json:",omitempty"`
+	Status                   *string                         `json:",omitempty"`
+	Age                      *string                         `json:",omitempty"`
 }
 
 // Get gets machine runtime instances from the Threeport API.

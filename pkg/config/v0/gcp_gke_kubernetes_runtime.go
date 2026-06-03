@@ -14,23 +14,23 @@ import (
 // This abstraction allows users to manage definitions and instances together with single operations
 // rather than separate operations for each API object.
 type GcpGkeKubernetesRuntimeConfig struct {
-	GcpGkeKubernetesRuntime GcpGkeKubernetesRuntimeValues `yaml:"GcpGkeKubernetesRuntime"`
+	GcpGkeKubernetesRuntime GcpGkeKubernetesRuntimeValues
 }
 
 // GcpGkeKubernetesRuntimeValues contains all the attributes needed to manage the
 // GcpGkeKubernetesRuntimeDefinition and GcpGkeKubernetesRuntimeInstance API objects
 // together with a single operation.
 type GcpGkeKubernetesRuntimeValues struct {
-	Name                         *string `json:",omitempty" yaml:"Name,omitempty"`
-	GcpProviderName              *string `json:",omitempty" yaml:"GcpProviderName,omitempty"`
-	ZoneCount                    *int    `json:",omitempty" yaml:"ZoneCount,omitempty"`
-	DefaultNodeGroupInstanceType *string `json:",omitempty" yaml:"DefaultNodeGroupInstanceType,omitempty"`
-	DefaultNodeGroupInitialSize  *int    `json:",omitempty" yaml:"DefaultNodeGroupInitialSize,omitempty"`
-	DefaultNodeGroupMinimumSize  *int    `json:",omitempty" yaml:"DefaultNodeGroupMinimumSize,omitempty"`
-	DefaultNodeGroupMaximumSize  *int    `json:",omitempty" yaml:"DefaultNodeGroupMaximumSize,omitempty"`
-	Region                       *string `json:",omitempty" yaml:"Region,omitempty"`
-	Reconciled                   *bool   `json:",omitempty" yaml:"Reconciled,omitempty"`
-	Age                          *string `json:",omitempty" yaml:"Age,omitempty"`
+	Name                         *string `json:",omitempty"`
+	GcpProviderName              *string `json:",omitempty"`
+	ZoneCount                    *int    `json:",omitempty"`
+	DefaultNodeGroupInstanceType *string `json:",omitempty"`
+	DefaultNodeGroupInitialSize  *int    `json:",omitempty"`
+	DefaultNodeGroupMinimumSize  *int    `json:",omitempty"`
+	DefaultNodeGroupMaximumSize  *int    `json:",omitempty"`
+	Region                       *string `json:",omitempty"`
+	Reconciled                   *bool   `json:",omitempty"`
+	Age                          *string `json:",omitempty"`
 }
 
 // Get gets a gcp gke kubernetes runtime definition and instance from the Threeport API.

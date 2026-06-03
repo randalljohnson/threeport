@@ -18,21 +18,21 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type MachineWorkloadDefinitionConfig struct {
-	MachineWorkloadDefinition MachineWorkloadDefinitionValues `yaml:"MachineWorkloadDefinition"`
+	MachineWorkloadDefinition MachineWorkloadDefinitionValues
 }
 
 // MachineWorkloadDefinitionValues contains all the attributes needed to manage
 // the MachineWorkloadDefinition API object.
 type MachineWorkloadDefinitionValues struct {
-	Name         *string  `json:",omitempty" yaml:"Name,omitempty"`
-	CreateScript *string  `json:",omitempty" yaml:"CreateScript,omitempty"`
-	UpdateScript *string  `json:",omitempty" yaml:"UpdateScript,omitempty"`
-	DeleteScript *string  `json:",omitempty" yaml:"DeleteScript,omitempty"`
-	Shell        *string  `json:",omitempty" yaml:"Shell,omitempty"`
-	WorkingDir   *string  `json:",omitempty" yaml:"WorkingDir,omitempty"`
-	Timeout      *int     `json:",omitempty" yaml:"Timeout,omitempty"`
-	Env          []string `json:",omitempty" yaml:"Env,omitempty"`
-	Age          *string  `json:",omitempty" yaml:"Age,omitempty"`
+	Name         *string  `json:",omitempty"`
+	CreateScript *string  `json:",omitempty"`
+	UpdateScript *string  `json:",omitempty"`
+	DeleteScript *string  `json:",omitempty"`
+	Shell        *string  `json:",omitempty"`
+	WorkingDir   *string  `json:",omitempty"`
+	Timeout      *int     `json:",omitempty"`
+	Env          []string `json:",omitempty"`
+	Age          *string  `json:",omitempty"`
 }
 
 // Get gets machine workload definitions from the Threeport API.

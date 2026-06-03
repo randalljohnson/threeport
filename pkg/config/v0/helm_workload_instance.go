@@ -19,21 +19,21 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type HelmWorkloadInstanceConfig struct {
-	HelmWorkloadInstance HelmWorkloadInstanceValues `yaml:"HelmWorkloadInstance"`
+	HelmWorkloadInstance HelmWorkloadInstanceValues
 }
 
 // HelmWorkloadInstanceValues contains all the attributes needed to manage
 // the HelmWorkloadInstance API object.
 type HelmWorkloadInstanceValues struct {
-	Name                      *string                          `json:",omitempty" yaml:"Name,omitempty"`
-	Values                    *string                          `json:",omitempty" yaml:"Values,omitempty"`
-	ValuesDocument            *string                          `json:",omitempty" yaml:"ValuesDocument,omitempty"`
-	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	ReleaseNamespace          *string                          `json:",omitempty" yaml:"ReleaseNamespace,omitempty"`
-	HelmWorkloadDefinition    *HelmWorkloadDefinitionValues    `json:",omitempty" yaml:"HelmWorkloadDefinition,omitempty"`
-	HelmWorkloadConfigPath    *string                          `json:",omitempty" yaml:"HelmWorkloadConfigPath,omitempty"`
-	Status                    *string                          `json:",omitempty" yaml:"Status,omitempty"`
-	Age                       *string                          `json:",omitempty" yaml:"Age,omitempty"`
+	Name                      *string                          `json:",omitempty"`
+	Values                    *string                          `json:",omitempty"`
+	ValuesDocument            *string                          `json:",omitempty"`
+	KubernetesRuntimeInstance *KubernetesRuntimeInstanceValues `json:",omitempty"`
+	ReleaseNamespace          *string                          `json:",omitempty"`
+	HelmWorkloadDefinition    *HelmWorkloadDefinitionValues    `json:",omitempty"`
+	HelmWorkloadConfigPath    *string                          `json:",omitempty"`
+	Status                    *string                          `json:",omitempty"`
+	Age                       *string                          `json:",omitempty"`
 }
 
 // Get gets helm workload instances from the Threeport API.

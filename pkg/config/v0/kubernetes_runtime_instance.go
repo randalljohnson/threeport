@@ -19,19 +19,19 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type KubernetesRuntimeInstanceConfig struct {
-	KubernetesRuntimeInstance KubernetesRuntimeInstanceValues `yaml:"KubernetesRuntimeInstance"`
+	KubernetesRuntimeInstance KubernetesRuntimeInstanceValues
 }
 
 // KubernetesRuntimeInstanceValues contains all the attributes needed to manage
 // the KubernetesRuntimeInstance API object.
 type KubernetesRuntimeInstanceValues struct {
-	Name                        *string                            `json:",omitempty" yaml:"Name,omitempty"`
-	ThreeportControlPlaneHost   *bool                              `json:",omitempty" yaml:"ThreeportControlPlaneHost,omitempty"`
-	DefaultRuntime              *bool                              `json:",omitempty" yaml:"DefaultRuntime,omitempty"`
-	Location                    *string                            `json:",omitempty" yaml:"Location,omitempty"`
-	ThreeportAgentImage         *string                            `json:",omitempty" yaml:"ThreeportAgentImage,omitempty"`
-	KubernetesRuntimeDefinition *KubernetesRuntimeDefinitionValues `json:",omitempty" yaml:"KubernetesRuntimeDefinition,omitempty"`
-	Age                         *string                            `json:",omitempty" yaml:"Age,omitempty"`
+	Name                        *string                            `json:",omitempty"`
+	ThreeportControlPlaneHost   *bool                              `json:",omitempty"`
+	DefaultRuntime              *bool                              `json:",omitempty"`
+	Location                    *string                            `json:",omitempty"`
+	ThreeportAgentImage         *string                            `json:",omitempty"`
+	KubernetesRuntimeDefinition *KubernetesRuntimeDefinitionValues `json:",omitempty"`
+	Age                         *string                            `json:",omitempty"`
 }
 
 // Get gets kubernetes runtime instances from the Threeport API.

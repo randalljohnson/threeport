@@ -1,0 +1,49 @@
+# Fork-only: builds per-component multi-arch images on push/PR to
+# dev-pinned and pushes them to ghcr.io/randalljohnson, tagged
+# dev-pinned-<short-sha> (or dev-pinned-pr-<short-sha> for PR events).
+# Thin caller over the shared reusable workflow at _build-images.yml.
+
+name: Images
+
+on:
+  pull_request:
+    branches: [dev-pinned]
+  push:
+    branches: [dev-pinned]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.value }}
+    steps:
+      # For pull_request events, github.sha points at GHA's ephemeral
+      # merge commit, which doesn't exist on the source branch. Prefer
+      # github.event.pull_request.head.sha so the tag matches what
+      # `git rev-parse --short=7 HEAD` returns on the developer's
+      # worktree. For push events the head.sha context is unset, so
+      # fall back to github.sha.
+      - name: Determine tag
+        id: tag
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          short="${SHA:0:7}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "value=dev-pinned-pr-$short" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=dev-pinned-$short" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: setup
+    uses: ./.github/workflows/_build-images.yml
+    with:
+      tag: ${{ needs.setup.outputs.tag }}
+      image_repo: ghcr.io/randalljohnson
+      arches: amd64,arm64
+    secrets: inherit

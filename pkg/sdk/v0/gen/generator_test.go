@@ -566,3 +566,54 @@ func TestValidateTags_RejectsNonStandardEmbed(t *testing.T) {
 	assert.Contains(t, err.Error(), "Foo embeds Random")
 	assert.Contains(t, err.Error(), "Common, Definition, Instance, or Reconciliation")
 }
+
+// TestHasFieldWithTagValue_Match returns true when any field on the
+// object carries the requested tag value. Mirrors the persist:"false"
+// case that drives the reconciler's skip-getLatest behavior.
+func TestHasFieldWithTagValue_Match(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {
+				"Name": tag("json", ",omitempty", "validate", "required"),
+				"Data": tag("json", ",omitempty", "validate", "required", "persist", "false"),
+			},
+		},
+		nil, nil, nil,
+	)
+	assert.True(t, g.ApiObjectGroups[0].HasFieldWithTagValue("Foo", "persist", "false"))
+}
+
+// TestHasFieldWithTagValue_FieldNameAgnostic confirms the search is
+// field-name-agnostic: persist:"false" on a non-Data field is still
+// found. This is the behavioral difference from CheckStructTagMap,
+// which required the caller to name the field.
+func TestHasFieldWithTagValue_FieldNameAgnostic(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {
+				"Payload": tag("json", ",omitempty", "validate", "required", "persist", "false"),
+			},
+		},
+		nil, nil, nil,
+	)
+	assert.True(t, g.ApiObjectGroups[0].HasFieldWithTagValue("Foo", "persist", "false"))
+}
+
+// TestHasFieldWithTagValue_NoMatch covers the negative cases: missing
+// object, missing tag, and present tag with a different value all
+// return false.
+func TestHasFieldWithTagValue_NoMatch(t *testing.T) {
+	g := fixture(
+		map[string]map[string]map[string]string{
+			"Foo": {
+				"Name": tag("json", ",omitempty", "validate", "required"),
+				"Data": tag("json", ",omitempty", "validate", "required", "persist", "true"),
+			},
+		},
+		nil, nil, nil,
+	)
+	group := g.ApiObjectGroups[0]
+	assert.False(t, group.HasFieldWithTagValue("Bar", "persist", "false"), "missing object")
+	assert.False(t, group.HasFieldWithTagValue("Foo", "encrypt", "true"), "tag key absent")
+	assert.False(t, group.HasFieldWithTagValue("Foo", "persist", "false"), "tag present with wrong value")
+}

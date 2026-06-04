@@ -939,6 +939,30 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 	return false
 }
 
+// HasFieldWithTagValue reports whether any field on the named object
+// carries a struct tag with the given key set to the expected value.
+// Unlike CheckStructTagMap, which targets a single named field, this
+// search is field-agnostic — useful when codegen behavior is driven by
+// the presence of a tag anywhere on the object (e.g. persist:"false").
+func (a *ApiObjectGroup) HasFieldWithTagValue(
+	object,
+	tagKey,
+	expectedTagValue string,
+) bool {
+	fieldTagMap, objectKeyFound := a.StructTags[object]
+	if !objectKeyFound {
+		return false
+	}
+	for _, tagValueMap := range fieldTagMap {
+		if tagValue, tagKeyFound := tagValueMap[tagKey]; tagKeyFound {
+			if tagValue == expectedTagValue {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // queryNamePattern matches the lowercase ASCII letters and digits allowed
 // in query tag values.
 var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)

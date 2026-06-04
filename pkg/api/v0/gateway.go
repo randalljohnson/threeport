@@ -44,13 +44,13 @@ type GatewayInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The kubernetes runtime where the ingress layer is installed.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The domain name instance to serve requests for.
 	// DomainNameInstanceID *uint `json:",omitempty" validate:"optional"`
 
 	// GatewayDefinitionID is the definition used to configure the gateway instance.
-	GatewayDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	GatewayDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// TODO: implement this in the future so we don't need to query the
 	// kubernetes workload instance & search for the kubernetes workload resource
@@ -59,7 +59,7 @@ type GatewayInstance struct {
 	// KubernetesWorkloadResourceInstances *[]KubernetesWorkloadResourceInstance `validate:"optional,association"`
 
 	// The kubernetes workload instance this gateway belongs to.
-	KubernetesWorkloadInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesWorkloadInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 }
 
 // GatewayHttpPort is an HTTP port to expose to the outside network.
@@ -67,19 +67,19 @@ type GatewayHttpPort struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// GatewayDefinitionID is the definition used to configure the gateway http port.
-	GatewayDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required"`
+	GatewayDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The HTTP port to expose.
-	Port *int `json:",omitempty" gorm:"not null" validate:"required"`
+	Port *int `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The request path to serve requests for.
-	Path *string `json:",omitempty" gorm:"default:'/'" validate:"optional"`
+	Path *string `json:",omitempty" validate:"optional" gorm:"default:'/'"`
 
 	// Indicates if TLS is enabled.
-	TLSEnabled *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	TLSEnabled *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// Redirect all requests to HTTP port to HTTPS.
-	HTTPSRedirect *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	HTTPSRedirect *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 }
 
 // GatewayTcpPort is a TCP port to expose to the outside network.
@@ -87,13 +87,13 @@ type GatewayTcpPort struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// GatewayDefinitionID is the definition used to configure the gateway tcp port.
-	GatewayDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required"`
+	GatewayDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The TCP port to expose.
-	Port *int `json:",omitempty" gorm:"not null" validate:"required"`
+	Port *int `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// Indicates if TLS is enabled.
-	TLSEnabled *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	TLSEnabled *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 }
 
 // DomainNameDefinition is the definition for domain name management for a
@@ -105,13 +105,13 @@ type DomainNameDefinition struct {
 
 	// The base domain upon which the subdomain will be added to give a workload
 	// a unique domain name.
-	Domain *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Domain *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The name of the zone in which the domain is managed.
-	Zone *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Zone *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The email address of the domain administrator.
-	AdminEmail *string `json:",omitempty" gorm:"not null" validate:"required"`
+	AdminEmail *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// Whether or not the domain name is a root domain.
 	// RootDomain *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
@@ -137,11 +137,11 @@ type DomainNameInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The definition used to define the instance.
-	DomainNameDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	DomainNameDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The kubernetes workload instance this domain name belongs to.
-	KubernetesWorkloadInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesWorkloadInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The cluster where the workload that is using the domain name is running.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 }

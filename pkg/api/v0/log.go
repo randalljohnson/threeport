@@ -5,13 +5,13 @@ type LogBackend struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The unique name of a logging back end.
-	Name *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The network address to connect to for storing log messages.
-	Destination *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Destination *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The storage definitions using the log backend for log storage.
-	LogStorageDefinitions []*LogStorageDefinition `json:",omitempty" gorm:"many2many:v0_log_backends_v0_log_storage_definitions;" validate:"optional,association"`
+	LogStorageDefinitions []*LogStorageDefinition `json:",omitempty" validate:"optional,association" gorm:"many2many:v0_log_backends_v0_log_storage_definitions;"`
 }
 
 // LogStorageDefinition provides  configuration for the retention of log output
@@ -21,7 +21,7 @@ type LogStorageDefinition struct {
 	Definition `mapstructure:",squash"`
 
 	// The backend storage mechanisms for retaining logs.
-	LogBackends []*LogBackend `json:",omitempty" gorm:"many2many:v0_log_backends_v0_log_storage_definitions;" validate:"optional,association"`
+	LogBackends []*LogBackend `json:",omitempty" validate:"optional,association" gorm:"many2many:v0_log_backends_v0_log_storage_definitions;"`
 
 	// The associated log storage instances that are derived from this definition.
 	LogStorageInstances []*LogStorageInstance `json:",omitempty" validate:"optional,association"`

@@ -7,12 +7,12 @@ type ControlPlaneDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// Used to indicate whether the control plane is deployed with auth settings
-	AuthEnabled *bool `json:",omitempty" gorm:"default:true" validate:"optional"`
+	AuthEnabled *bool `json:",omitempty" validate:"optional" gorm:"default:true"`
 
 	// When instances of this control plane are deployed, Object representing control plane and its parent are
 	// onboarded as part of deployment, using this we can disable that process and simply spin a new instance with
 	// a clean DB.
-	OnboardParent *bool `json:",omitempty" gorm:"default:true" validate:"optional"`
+	OnboardParent *bool `json:",omitempty" validate:"optional" gorm:"default:true"`
 
 	// The associated control plane instances that are deployed from this definition.
 	ControlPlaneInstances []*ControlPlaneInstance `json:",omitempty" validate:"optional,association"`
@@ -25,10 +25,10 @@ type ControlPlaneInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The namespace to deploy the control plane in
-	Namespace *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Namespace *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// When true, indicates the control plane instance represents the control plane in which it's stored
-	IsSelf *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	IsSelf *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// Passed in information for the different components of the control plane i.e. controller etc
 	// When not provided, the default values will be used. If provided, they will override the default values.
@@ -37,7 +37,7 @@ type ControlPlaneInstance struct {
 	CustomComponentInfo []*ControlPlaneComponent `json:",omitempty" validate:"optional"`
 
 	// Indicates whether this is was the first control plane that was spun up in a control plane group
-	Genesis *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	Genesis *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// Information for connecting to the rest api for the control plane
 	ApiServerEndpoint *string `json:",omitempty" validate:"optional"`
@@ -52,14 +52,14 @@ type ControlPlaneInstance struct {
 	ClientKey *string `json:",omitempty" validate:"optional"`
 
 	// the kubernetes runtime instance the control plane is running on
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// These are pointers to the parent and children of the current control plane
 	// This is useful to map out the topology between control planes being managed by one another
 	ParentControlPlaneInstanceID *uint                   `json:",omitempty" validate:"optional" relationship:"requires;type:ControlPlaneInstance"`
-	Parent                       *ControlPlaneInstance   `json:",omitempty" gorm:"foreignKey:ParentControlPlaneInstanceID" validate:"optional,association"`
-	Children                     *[]ControlPlaneInstance `json:",omitempty" gorm:"foreignKey:ParentControlPlaneInstanceID" validate:"optional,association"`
+	Parent                       *ControlPlaneInstance   `json:",omitempty" validate:"optional,association" gorm:"foreignKey:ParentControlPlaneInstanceID"`
+	Children                     *[]ControlPlaneInstance `json:",omitempty" validate:"optional,association" gorm:"foreignKey:ParentControlPlaneInstanceID"`
 
 	// The definition used to configure the control plane instance.
-	ControlPlaneDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	ControlPlaneDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 }

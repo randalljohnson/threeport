@@ -7,16 +7,16 @@ type GcpProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The unique name of a GCP provider.
-	Name *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The GCP project ID for the Google Cloud account.
-	ProjectID *string `json:",omitempty" gorm:"not null" validate:"required"`
+	ProjectID *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// If true, is the GCP provider used when none specified for an instance.
-	DefaultProvider *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	DefaultProvider *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// The region to use for GCP managed services if not specified.
-	DefaultRegion *string `json:",omitempty" gorm:"not null" validate:"required"`
+	DefaultRegion *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The service account key JSON for authenticating to GCP from outside GCP.
 	// This is the contents of a service account key file exported from GCP Console.
@@ -37,25 +37,25 @@ type GcpGkeKubernetesRuntimeDefinition struct {
 	// RegionsForbidden
 
 	// The number of zones the cluster should span for availability.
-	ZoneCount *int `json:",omitempty" gorm:"not null" validate:"required"`
+	ZoneCount *int `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The GCP instance type for the default initial node group.
-	DefaultNodeGroupInstanceType *string `json:",omitempty" gorm:"not null" validate:"required"`
+	DefaultNodeGroupInstanceType *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The number of nodes in the default initial node group.
-	DefaultNodeGroupInitialSize *int `json:",omitempty" gorm:"not null" validate:"required"`
+	DefaultNodeGroupInitialSize *int `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The minimum number of nodes the default initial node group should have.
-	DefaultNodeGroupMinimumSize *int `json:",omitempty" gorm:"not null" validate:"required"`
+	DefaultNodeGroupMinimumSize *int `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The maximum number of nodes the default initial node group should have.
-	DefaultNodeGroupMaximumSize *int `json:",omitempty" gorm:"not null" validate:"required"`
+	DefaultNodeGroupMaximumSize *int `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The GCP GKE kubernetes runtime instances derived from this definition.
 	GcpGkeKubernetesRuntimeInstances []*GcpGkeKubernetesRuntimeInstance `json:",omitempty" validate:"optional,association"`
 
 	// The kubernetes runtime definition for a GKE cluster in GCP.
-	KubernetesRuntimeDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"marries"`
 }
 
 // GcpGkeKubernetesRuntimeInstance is a deployed instance of a GKE cluster.
@@ -65,16 +65,16 @@ type GcpGkeKubernetesRuntimeInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The GCP provider in which the GKE cluster is provisioned.
-	GcpProviderID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	GcpProviderID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The GCP region in which the cluster is provisioned.
 	Region *string `json:",omitempty" validate:"optional"`
 
 	// The definition that configures this instance.
-	GcpGkeKubernetesRuntimeDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	GcpGkeKubernetesRuntimeDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The kubernetes runtime instance associated with the GKE cluster.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"marries"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"marries"`
 
 	// An inventory of all GCP resources for the GKE cluster.
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`

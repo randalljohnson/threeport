@@ -7,13 +7,13 @@ type ControlPlaneComponent struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The control plane instance ID that this component belongs to.
-	ControlPlaneInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	ControlPlaneInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// Indicate whether the component is enabled to be deployed. Currently only respected by controllers.
 	Enabled *bool `json:",omitempty" validate:"optional"`
 
 	// The name of the component.
-	Name string `json:",omitempty" gorm:"not null" validate:"required"`
+	Name string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The binary name of the component.
 	BinaryName string `json:",omitempty" validate:"optional"`

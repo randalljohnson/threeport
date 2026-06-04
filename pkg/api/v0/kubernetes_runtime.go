@@ -10,7 +10,7 @@ type KubernetesRuntimeDefinition struct {
 
 	// The infrastructure provider running the compute infrastructure for the
 	// cluster.
-	InfraProvider *string `json:",omitempty" gorm:"not null" validate:"required"`
+	InfraProvider *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The infra provider account name.  Determines which account the infra is
 	// deployed on.
@@ -19,17 +19,17 @@ type KubernetesRuntimeDefinition struct {
 	// If true, will be deployed in a highly available configuration across
 	// multiple zones within a region and with multiple replicas of Kubernetes
 	// control plane components.
-	HighAvailability *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	HighAvailability *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// Sets the compute capacity of the machine type for the default node group.
-	NodeSize *string `json:",omitempty" gorm:"default:Medium" validate:"optional"`
+	NodeSize *string `json:",omitempty" validate:"optional" gorm:"default:Medium"`
 
 	// Sets the CPU:memory ration of the machine type for the default node
 	// group.
-	NodeProfile *string `json:",omitempty" gorm:"default:Balanced" validate:"optional"`
+	NodeProfile *string `json:",omitempty" validate:"optional" gorm:"default:Balanced"`
 
 	// Sets the maximum number of nodes for the default node group.
-	NodeMaximum *int `json:",omitempty" gorm:"default:250" validate:"optional"`
+	NodeMaximum *int `json:",omitempty" validate:"optional" gorm:"default:250"`
 
 	// TODO: add fields for location limitations
 	// LocationsAllowed
@@ -49,12 +49,12 @@ type KubernetesRuntimeInstance struct {
 	// The geographical location for the runtime cluster.  This is an
 	// abstraction for the cloud provider regions that is mapped into the
 	// regions used by providers.
-	Location *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Location *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// If true, the Kubernetes cluster is hosting a threeport control plane and
 	// any controllers that connect to the kube API will use internal cluster
 	// DNS rather than the external APIEndpoint.
-	ThreeportControlPlaneHost *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	ThreeportControlPlaneHost *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// The network endpoint at which to reach the kube-api.
 	APIEndpoint *string `json:",omitempty" validate:"optional"`
@@ -79,10 +79,10 @@ type KubernetesRuntimeInstance struct {
 
 	// If true, this Kubernetes cluster will be used for all workloads if not
 	// otherwise assigned.
-	DefaultRuntime *bool `json:",omitempty" gorm:"default:false" validate:"optional"`
+	DefaultRuntime *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// The kubernetes runtime definition for this instance.
-	KubernetesRuntimeDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The associated kubernetes workload instances running on this kubernetes runtime.
 	KubernetesWorkloadInstances []*KubernetesWorkloadInstance `json:",omitempty" validate:"optional,association"`

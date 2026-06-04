@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	version "github.com/threeport/threeport/internal/version"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"

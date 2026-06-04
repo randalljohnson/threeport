@@ -1,0 +1,71 @@
+# Fork-only: produces a snapshot release of tptctl + threeport-sdk on
+# every push to dev-pinned. Synthesizes a SemVer pre-release tag from
+# the commit SHA, then delegates the actual build/publish to the
+# shared _goreleaser.yml so this file stays minimal and any change to
+# the upstream goreleaser config or step pinning flows through here
+# automatically.
+
+name: Dev Release
+
+on:
+  push:
+    branches: [dev-pinned]
+
+permissions:
+  contents: write
+
+jobs:
+  # Synthesize a SemVer pre-release tag like v0.0.0-dev.abc1234 and
+  # push it. The leading v0.0.0 keeps goreleaser's SemVer validation
+  # happy; the -dev.<sha> suffix means it doesn't match release.yml's
+  # v[0-9]+.[0-9]+.[0-9]+ regex, so pushing the tag does not retrigger
+  # the upstream release workflow.
+  tag:
+    runs-on: ubuntu-24.04
+    outputs:
+      value: ${{ steps.tag.outputs.value }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Compute snapshot tag
+      id: tag
+      run: |
+        sha=$(git rev-parse --short=7 HEAD)
+        echo "value=v0.0.0-dev.${sha}" >> "$GITHUB_OUTPUT"
+
+    - name: Tag and push
+      env:
+        TAG: ${{ steps.tag.outputs.value }}
+      run: |
+        git tag "$TAG"
+        git push origin "$TAG"
+
+  goreleaser:
+    needs: tag
+    uses: ./.github/workflows/_goreleaser.yml
+    with:
+      ref: ${{ needs.tag.outputs.value }}
+
+  # Keep the 5 newest dev snapshot releases (and their tags); delete
+  # the rest. Pattern-match on v0.0.0-dev.* so this never touches
+  # real release tags inherited from upstream.
+  cleanup:
+    needs: goreleaser
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Prune old dev snapshots
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release list \
+          --repo ${{ github.repository }} \
+          --limit 100 \
+          --json tagName,createdAt \
+          --jq 'sort_by(.createdAt) | reverse | .[5:] | .[] | .tagName' \
+          | grep -E '^v0\.0\.0-dev\.' \
+          | xargs -I{} gh release delete {} \
+              --repo ${{ github.repository }} \
+              --yes \
+              --cleanup-tag \
+          || true

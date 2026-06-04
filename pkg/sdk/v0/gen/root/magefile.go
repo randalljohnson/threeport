@@ -121,7 +121,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		ImageName:       apiImageName,
 		PackageFuncName: apiPackageFuncName,
 	})
-	emitImagePackageFunc(f, apiPackageFuncName, "REST API", "rest-api", apiImageName)
+	emitImagePackageFunc(f, apiPackageFuncName, "REST API", "release", "rest-api", apiImageName)
 	emitImageFunc(f, buildApiImageFuncName, "REST API", "rest-api", "cmd/rest-api", apiPackageFuncName)
 	emitImageDevFunc(f, buildApiDevImageFuncName, buildApiImageFuncName, "REST API", "rest-api", installerPkg, gen.ModulePath)
 	emitImageReleaseFunc(f, buildApiReleaseImageFuncName, buildApiImageFuncName, "REST API", "rest-api", installerPkg, releaseImageRepoConst, gen.ModulePath)
@@ -145,7 +145,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		ImageName:       dbMigratorImageName,
 		PackageFuncName: dbMigratorPackageFuncName,
 	})
-	emitImagePackageFunc(f, dbMigratorPackageFuncName, "database migrator", "database-migrator", dbMigratorImageName)
+	emitImagePackageFunc(f, dbMigratorPackageFuncName, "database migrator", "release", "database-migrator", dbMigratorImageName)
 	emitImageFunc(f, buildDbMigratorImageFuncName, "database migrator", "database-migrator", "cmd/database-migrator", dbMigratorPackageFuncName)
 	emitImageDevFunc(f, buildDbMigratorDevImageFuncName, buildDbMigratorImageFuncName, "database migrator", "database-migrator", installerPkg, gen.ModulePath)
 	emitImageReleaseFunc(f, buildDbMigratorReleaseImageFuncName, buildDbMigratorImageFuncName, "database migrator", "database-migrator", installerPkg, releaseImageRepoConst, gen.ModulePath)
@@ -170,7 +170,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			// rest-api and database-migrator. tptctl up installs the
 			// agent unconditionally, so the image needs to be present.
 		})
-		emitImagePackageFunc(f, agentPackageFuncName, "agent", "agent", "threeport-agent")
+		emitImagePackageFunc(f, agentPackageFuncName, "agent", "release", "agent", "threeport-agent")
 		emitImageFunc(f, buildAgentImageFuncName, "agent", "agent", "cmd/agent", agentPackageFuncName)
 		emitImageDevFunc(f, buildAgentDevImageFuncName, buildAgentImageFuncName, "agent", "agent", installerPkg, gen.ModulePath)
 		emitImageReleaseFunc(f, buildAgentReleaseImageFuncName, buildAgentImageFuncName, "agent", "agent", installerPkg, releaseImageRepoConst, gen.ModulePath)
@@ -221,7 +221,14 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				PackageFuncName: packageFuncName,
 				ApiName:         apiName,
 			})
-			emitImagePackageFunc(f, packageFuncName, objGroup.ControllerName, objGroup.ControllerName, imageName)
+			target := "release"
+			switch objGroup.ControllerName {
+			case "terraform-controller":
+				target = "terraform"
+			case "oci-controller":
+				target = "pulumi"
+			}
+			emitImagePackageFunc(f, packageFuncName, objGroup.ControllerName, target, objGroup.ControllerName, imageName)
 			emitImageFunc(f, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir, packageFuncName)
 			emitImageDevFunc(f, buildDevImageFuncName, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, installerPkg, gen.ModulePath)
 			emitImageReleaseFunc(f, buildReleaseImageFuncName, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, installerPkg, releaseImageRepoConst, gen.ModulePath)
@@ -1042,7 +1049,7 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packa
 // it into a container image via util.BuildImage. AllImages* call this
 // directly after the upfront BuildBinaries to skip the redundant per-
 // component compile that the public <ImageFunc> wrapper does.
-func emitImagePackageFunc(f *File, packageFuncName, displayName, binaryName, imageName string) {
+func emitImagePackageFunc(f *File, packageFuncName, displayName, target, binaryName, imageName string) {
 	f.Comment(fmt.Sprintf("%s packages a pre-built %s binary into a container image.", packageFuncName, displayName))
 	f.Func().Params(Id("Build")).Id(packageFuncName).Params(
 		Line().Id("workingDir").String(),
@@ -1057,7 +1064,7 @@ func emitImagePackageFunc(f *File, packageFuncName, displayName, binaryName, ima
 		).Call(
 			Line().Id("workingDir"),
 			Line().Lit("Dockerfile"),
-			Line().Lit("release"),
+			Line().Lit(target),
 			Line().Id("arch"),
 			Line().Lit(binaryName),
 			Line().Lit("bin"),

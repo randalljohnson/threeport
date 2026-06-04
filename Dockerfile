@@ -23,6 +23,9 @@
 #
 # Build args:
 #   BINARY            Binary file name within the per-arch directory.
+#   GIT_REVISION      Commit sha stamped into org.opencontainers.image.revision.
+#   GIT_TAG           Version stamped into org.opencontainers.image.version.
+#   BUILD_CREATED     ISO-8601 timestamp stamped into org.opencontainers.image.created.
 #   TERRAFORM_VERSION Terraform release pulled by terraform-bin.
 #   PULUMI_VERSION    Pulumi release pulled by pulumi-bin.
 #
@@ -76,6 +79,14 @@ RUN apk add --no-cache curl && \
 FROM gcr.io/distroless/static:nonroot AS release
 ARG TARGETARCH
 ARG BINARY
+ARG GIT_REVISION=
+ARG GIT_TAG=
+ARG BUILD_CREATED=
+LABEL org.opencontainers.image.source="https://github.com/threeport/threeport" \
+      org.opencontainers.image.revision="${GIT_REVISION}" \
+      org.opencontainers.image.version="${GIT_TAG}" \
+      org.opencontainers.image.created="${BUILD_CREATED}" \
+      org.opencontainers.image.licenses="Apache-2.0"
 COPY ${TARGETARCH}/${BINARY} /${BINARY}
 USER 65532:65532
 

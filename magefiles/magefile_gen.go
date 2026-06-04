@@ -788,7 +788,7 @@ func (Build) ociControllerImagePackage(
 	if err := util.BuildImage(
 		workingDir,
 		"Dockerfile",
-		"release",
+		"pulumi",
 		arch,
 		"oci-controller",
 		"bin",
@@ -2048,7 +2048,7 @@ func (Build) terraformControllerImagePackage(
 	if err := util.BuildImage(
 		workingDir,
 		"Dockerfile",
-		"release",
+		"terraform",
 		arch,
 		"terraform-controller",
 		"bin",

@@ -28,10 +28,10 @@ import (
 
 // imageBuildTarget returns the Dockerfile target for a component.
 // Defaults to the distroless `release` target; --delve switches to the
-// delve-equipped `dev` variant. terraform-controller and oci-controller
-// also need the terraform / pulumi CLI on PATH at runtime, so they use
-// the `terraform` / `pulumi` targets by default and the `dev-*` variants
-// when --delve is on.
+// delve-equipped `dev` variant. terraform-controller needs the
+// terraform CLI on PATH at runtime; oci-controller and gcp-controller
+// both need the pulumi CLI. Those route to the `terraform` / `pulumi`
+// targets by default and the `dev-*` variants when --delve is on.
 func imageBuildTarget(componentName string, delve bool) string {
 	switch componentName {
 	case installer.ThreeportTerraformControllerName:
@@ -39,7 +39,7 @@ func imageBuildTarget(componentName string, delve bool) string {
 			return "dev-terraform"
 		}
 		return "terraform"
-	case installer.ThreeportOciControllerName:
+	case installer.ThreeportOciControllerName, installer.ThreeportGcpControllerName:
 		if delve {
 			return "dev-pulumi"
 		}

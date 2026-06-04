@@ -139,6 +139,25 @@ func (p *prefixWriter) Write(data []byte) (int, error) {
 	}
 }
 
+// Flush writes any buffered partial line (no trailing newline) with the
+// prefix and a synthetic newline. Buildx's final progress lines often
+// arrive without a newline before the process exits, and Write keeps
+// them buffered until the next newline that never comes. Callers should
+// Flush after the command returns so those tail lines aren't silently
+// dropped.
+func (p *prefixWriter) Flush() error {
+	if p.buf.Len() == 0 {
+		return nil
+	}
+	line := p.buf.Bytes()
+	p.buf.Reset()
+	if len(bytes.TrimSpace(line)) == 0 {
+		return nil
+	}
+	_, err := fmt.Fprintf(p.out, "%s %s\n", p.prefix, line)
+	return err
+}
+
 // multiArchBuilderName is the buildx builder created on demand for
 // multi-architecture builds. The default `docker` driver does not support
 // multi-platform output, so multi-arch builds route through a dedicated
@@ -146,37 +165,38 @@ func (p *prefixWriter) Write(data []byte) (int, error) {
 // is currently active.
 const multiArchBuilderName = "threeport-multi"
 
-// multiArchBuilder state guards setup so concurrent workers under
+// multiArchBuilderMu serializes setup so concurrent workers under
 // RunParallel don't race on inspect-then-create against the docker daemon.
-var (
-	multiArchBuilderOnce sync.Once
-	multiArchBuilderErr  error
-)
+var multiArchBuilderMu sync.Mutex
 
 // ensureMultiArchBuilder makes sure a docker-container builder named
-// multiArchBuilderName exists. sync.Once serializes setup across goroutines
-// in the same process so concurrent parallel image builds don't all race
-// to create the builder and have all but one fail.
+// multiArchBuilderName exists. The mutex serializes setup across
+// goroutines so concurrent parallel image builds don't all race to
+// create the builder and have all but one fail. Every call re-runs
+// `docker buildx inspect` so external deletion of the builder
+// (e.g. `docker buildx rm threeport-multi` in another terminal, or a
+// Docker Desktop reset) is recovered transparently on the next call.
 func ensureMultiArchBuilder() error {
-	multiArchBuilderOnce.Do(func() {
-		inspect := exec.Command("docker", "buildx", "inspect", multiArchBuilderName)
-		if err := inspect.Run(); err == nil {
-			return
-		}
-		fmt.Printf("creating docker-container buildx builder %q for multi-arch builds...\n", multiArchBuilderName)
-		create := exec.Command(
-			"docker", "buildx", "create",
-			"--name", multiArchBuilderName,
-			"--driver", "docker-container",
-			"--bootstrap",
-		)
-		create.Stdout = os.Stdout
-		create.Stderr = os.Stderr
-		if err := create.Run(); err != nil {
-			multiArchBuilderErr = fmt.Errorf("docker buildx create failed: %w", err)
-		}
-	})
-	return multiArchBuilderErr
+	multiArchBuilderMu.Lock()
+	defer multiArchBuilderMu.Unlock()
+
+	inspect := exec.Command("docker", "buildx", "inspect", multiArchBuilderName)
+	if err := inspect.Run(); err == nil {
+		return nil
+	}
+	fmt.Printf("creating docker-container buildx builder %q for multi-arch builds...\n", multiArchBuilderName)
+	create := exec.Command(
+		"docker", "buildx", "create",
+		"--name", multiArchBuilderName,
+		"--driver", "docker-container",
+		"--bootstrap",
+	)
+	create.Stdout = os.Stdout
+	create.Stderr = os.Stderr
+	if err := create.Run(); err != nil {
+		return fmt.Errorf("docker buildx create failed: %w", err)
+	}
+	return nil
 }
 
 // BuildImage packages a pre-built binary into a container image via docker
@@ -304,23 +324,28 @@ func BuildImage(
 	// (e.g. "[linux/arm64 builder 6/6]") already identify the platform
 	// for each line.
 	prefix := fmt.Sprintf("[%s]", shortName)
+	stdoutPrefixer := &prefixWriter{prefix: prefix, out: os.Stdout}
+	stderrPrefixer := &prefixWriter{prefix: prefix, out: os.Stderr}
 	dockerBuildCmd := exec.Command("docker", args...)
-	dockerBuildCmd.Stdout = &prefixWriter{prefix: prefix, out: os.Stdout}
+	dockerBuildCmd.Stdout = stdoutPrefixer
 	var stderrBuf bytes.Buffer
-	dockerBuildCmd.Stderr = io.MultiWriter(
-		&prefixWriter{prefix: prefix, out: os.Stderr},
-		&stderrBuf,
-	)
-	if err := dockerBuildCmd.Run(); err != nil {
+	dockerBuildCmd.Stderr = io.MultiWriter(stderrPrefixer, &stderrBuf)
+	runErr := dockerBuildCmd.Run()
+	// drain any partial trailing line buffered by the prefixer; buildx's
+	// final progress lines are often newline-less and would otherwise be
+	// silently dropped on process exit.
+	_ = stdoutPrefixer.Flush()
+	_ = stderrPrefixer.Flush()
+	if runErr != nil {
 		stderr := stderrBuf.String()
 		// surface a hint for the most common multi-arch setup gap
 		if len(platforms) > 1 && strings.Contains(stderr, "Multi-platform build is not supported for the docker driver") {
 			return fmt.Errorf(
 				"image build failed for %s: the active buildx builder uses the `docker` driver, which can't do multi-arch builds. Create and switch to a docker-container builder with:\n  docker buildx create --name threeport-multi --driver docker-container --bootstrap --use\nThen retry. Underlying error: %w",
-				image, err,
+				image, runErr,
 			)
 		}
-		return fmt.Errorf("image build failed for %s: %w", image, err)
+		return fmt.Errorf("image build failed for %s: %w", image, runErr)
 	}
 
 	if pushImage {

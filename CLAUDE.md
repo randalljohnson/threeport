@@ -400,13 +400,15 @@ Enforced at codegen time by `pkg/sdk/v0/gen/generator.go::ValidateTags`. Every f
 - **yaml** (where present): keep the explicit field name (`yaml:"Name,omitempty"`). yaml's library lowercases the field name by default, so dropping the name part would change the wire format and break existing yaml configs.
 - **query**: forbidden. The `QueryBinder` in `pkg/api-server/lib/v0/binder.go` derives keys from `strings.ToLower(field.Name)`. An explicit query tag is noise at best and a silent rename hazard at worst.
 
-Tag order convention (hand-written types): `json:",omitempty"` first, then `gorm:"..."`, then `validate:"..."`, then any others (`encrypt`, `relationship`, `persist`). Example:
+Tag order convention (hand-written types): `json` -> `validate` -> `gorm` -> `encrypt` -> `relationship` -> `persist`. Example:
 
 ```go
-WorkloadDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+KubernetesWorkloadDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 ```
 
-The codegen emits via jen which sorts tag keys alphabetically (json sorts before validate and yaml), so generated types naturally land json-first when the same convention applies.
+Rationale: `json:",omitempty"` and `validate:"required|optional"` are the strongest semantic pair (they together drive the `PayloadCheck()` null-on-required guard), so keeping them adjacent makes the contract scannable at a glance.
+
+jen's `.Tag(map)` sorts alphabetically (gorm before json), so generated code does not naturally land in convention order. `pkg/sdk/v0/create/api.go` uses a custom ordered-tag helper (`util.Tag`) to emit the convention order at scaffold time.
 
 Why per-field rather than a global toggle: Go's `encoding/json` doesn't support "omitempty by default" as a marshaler option. The experimental `encoding/json/v2` proposal ([#71497](https://github.com/golang/go/issues/71497), in Go 1.25) redefines what "empty" means but still requires per-field tagging.
 

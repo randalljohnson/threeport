@@ -24,9 +24,7 @@ import (
 // a Go cache hit when AllImages pre-built the same package earlier.
 // noCache=true passes -a to force a full rebuild ignoring Go's local
 // build cache. debug=true adds -gcflags="all=-N -l" so the binaries
-// are debugger-friendly (no optimization, no inlining). Symlinks in
-// threeportPath are resolved up front so Go's VCS stamping works from a
-// symlinked workspace.
+// are debugger-friendly (no optimization, no inlining).
 func BuildBinaries(
 	threeportPath string,
 	arches []string,
@@ -34,12 +32,6 @@ func BuildBinaries(
 	noCache bool,
 	debug bool,
 ) error {
-	// resolve symlinks so VCS stamping (commit SHA, dirty status) works
-	// from a symlinked workspace; no-op on direct clones.
-	realPath, err := filepath.EvalSymlinks(threeportPath)
-	if err != nil {
-		return fmt.Errorf("failed to resolve symlinks in %s: %w", threeportPath, err)
-	}
 	tasks := make([]func() error, 0, len(arches))
 	for _, a := range arches {
 		arch := strings.TrimSpace(a)
@@ -47,7 +39,7 @@ func BuildBinaries(
 			continue
 		}
 		tasks = append(tasks, func() error {
-			return buildArchBinaries(realPath, arch, packageDirs, noCache, debug)
+			return buildArchBinaries(threeportPath, arch, packageDirs, noCache, debug)
 		})
 	}
 	return RunParallel(len(tasks), tasks)
@@ -63,10 +55,10 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 		return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
 	}
 
-	// -buildvcs=false sidesteps Go's git probe, which trips on
-	// worktree-shaped checkouts and some symlinked workspace layouts.
-	// EvalSymlinks above helps in the cases where it can; for the rest,
-	// we just skip the stamping.
+	// -buildvcs=false skips Go's git probe. It trips on worktree-shaped
+	// checkouts and some symlinked workspace layouts, and we don't
+	// consume the embedded VCS info anyway (OCI labels on built images
+	// carry the commit SHA via the GIT_REVISION build arg).
 	args := []string{"build", "-buildvcs=false"}
 	if noCache {
 		args = append(args, "-a")

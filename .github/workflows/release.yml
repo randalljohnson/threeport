@@ -11,25 +11,7 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-24.04
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.24'
-
-    - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v5.0.0
-      with:
-        version: v1.26.2
-        args: release --clean -f ./.goreleaser.yml
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: ./.github/workflows/_goreleaser.yml
 
   controller-images:
     needs: goreleaser

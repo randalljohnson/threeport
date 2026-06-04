@@ -16,19 +16,19 @@ type WorkloadEvent struct {
 	// directly from a Kubernetes Event.
 	// * The workload controller ID: when the WorkloadEvent is emitted by the
 	// workload controller.
-	RuntimeEventUID *string `json:",omitempty" gorm:"not null" validate:"required"`
+	RuntimeEventUID *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The type of event that occurred in Kubernetes.
-	Type *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Type *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The reason for the event.
-	Reason *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Reason *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The message associated with the event.
-	Message *string `json:",omitempty" gorm:"not null" validate:"required"`
+	Message *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The timestamp for the event in the kubernetes runtime.
-	Timestamp *time.Time `json:",omitempty" gorm:"not null" validate:"required"`
+	Timestamp *time.Time `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The related kubernetes workload instance.
 	KubernetesWorkloadInstanceID *uint `json:",omitempty" validate:"optional"`

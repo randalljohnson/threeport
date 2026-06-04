@@ -131,12 +131,11 @@ func (p *prefixWriter) Write(data []byte) (int, error) {
 	}
 }
 
-// Flush writes any buffered partial line (no trailing newline) with the
-// prefix and a synthetic newline. Buildx's final progress lines often
-// arrive without a newline before the process exits, and Write keeps
-// them buffered until the next newline that never comes. Callers should
-// Flush after the command returns so those tail lines aren't silently
-// dropped.
+// Flush writes any buffered partial line (no trailing newline) with
+// the prefix and a synthetic newline. Buildx's final progress lines
+// often arrive without a newline before the process exits; without
+// Flush they remain buffered until a newline that never comes and are
+// silently dropped when the process exits.
 func (p *prefixWriter) Flush() error {
 	if p.buf.Len() == 0 {
 		return nil
@@ -191,20 +190,43 @@ func ensureMultiArchBuilder() error {
 	return nil
 }
 
-// BuildImage packages a pre-built binary into a container image via docker
-// buildx, optionally pushing to a registry or loading into a kind cluster.
-// Binary inputs are expected at <threeportPath>/<binDir>/<arch>/<binary>
-// for each arch listed in `arch`; the build context is set to the binDir
-// root so the Dockerfile's `COPY ${TARGETARCH}/${BINARY}` resolves per
-// platform during multi-arch builds. `arch` is a comma-separated list of
-// architectures (e.g. "amd64" or "amd64,arm64"); each is prefixed with
-// "linux/" to form the buildx --platform value. Multi-arch builds require
-// pushImage because buildx cannot --load multiple platforms into a single
-// docker daemon. pushImage and loadImage are mutually exclusive. When
-// multiple platforms are requested, BuildImage routes the build through a
-// dedicated docker-container buildx builder, creating it on first use if
-// absent. extraBuildArgs are passed through to buildx for per-target args
-// like TERRAFORM_VERSION or PULUMI_VERSION.
+// BuildImage packages a pre-built binary into a container image via
+// docker buildx, optionally pushing it to a registry or loading it into
+// a local kind cluster.
+//
+// Build context. Binary inputs are expected at
+// <threeportPath>/<binDir>/<arch>/<binary> for each arch in `arch`. The
+// docker context is set to <threeportPath>/<binDir>, so the Dockerfile's
+// `COPY ${TARGETARCH}/${BINARY}` resolves per platform during multi-arch
+// builds. dockerfilePath is resolved relative to threeportPath.
+//
+// Architectures. `arch` is a comma-separated list (e.g. "amd64" or
+// "amd64,arm64"); each entry is prefixed with "linux/" to form
+// --platform. Multi-arch builds route through a dedicated
+// docker-container builder named threeport-multi, created on first use
+// if absent. The default `docker` driver does not support multi-platform
+// output.
+//
+// Push vs load. pushImage and loadImage are mutually exclusive.
+// Multi-arch builds require pushImage because buildx cannot --load
+// multiple platforms into a single docker daemon. loadImage drives
+// `kind load docker-image` against loadClusterName after the build.
+//
+// Build args. BINARY is always set from the `binary` parameter.
+// GIT_REVISION, GIT_TAG, and BUILD_CREATED are filled from env vars of
+// the same name first and fall back to git probes / a current-time
+// timestamp, so locally-built images carry the same OCI labels as CI
+// builds. extraBuildArgs pass through verbatim for per-target args like
+// TERRAFORM_VERSION or PULUMI_VERSION; keys are emitted in sorted order
+// for stable command output.
+//
+// Cache. If BUILDX_CACHE_FROM / BUILDX_CACHE_TO env vars are set, they
+// forward to buildx with the literal `{component}` placeholder replaced
+// by the image's short name (the `threeport-` prefix is trimmed). Local
+// builds skip the cache round trip unless these are set.
+//
+// Output. Stdout and stderr lines are prefixed with `[shortName]` so
+// concurrent matrix builds remain distinguishable in the combined stream.
 func BuildImage(
 	threeportPath string,
 	dockerfilePath string,
@@ -220,6 +242,7 @@ func BuildImage(
 	loadImage bool,
 	loadClusterName string,
 ) error {
+	// parse arch list into linux/<arch> platforms and validate push/load combos
 	platforms := []string{}
 	for _, a := range strings.Split(arch, ",") {
 		a = strings.TrimSpace(a)
@@ -241,80 +264,26 @@ func BuildImage(
 		return errors.New("--push and --load are mutually exclusive")
 	}
 
-	image := fmt.Sprintf("%s/%s:%s", imageRepo, imageName, imageTag)
-
-	args := []string{"buildx", "build"}
+	// prepare the multi-arch builder once before exec; the arg helper
+	// stays pure so this side effect lives here in the caller
 	if len(platforms) > 1 {
 		if err := ensureMultiArchBuilder(); err != nil {
 			return fmt.Errorf("failed to prepare multi-arch builder: %w", err)
 		}
-		args = append(args, "--builder", multiArchBuilderName)
 	}
-	if pushImage {
-		args = append(args, "--push")
-	} else {
-		args = append(args, "--load")
-	}
-	args = append(args, fmt.Sprintf("--platform=%s", strings.Join(platforms, ",")))
-	if target != "" {
-		args = append(args, "--target", target)
-	}
-	args = append(args, "--build-arg", fmt.Sprintf("BINARY=%s", binary))
-	// always stamp OCI image labels via build args the release stage
-	// reads. Callers (CI workflows) can set GIT_REVISION/GIT_TAG/
-	// BUILD_CREATED env vars to get exact values; otherwise we fall
-	// back to git rev-parse + a current-time timestamp so local mage
-	// builds still produce labeled images.
-	if extraBuildArgs == nil {
-		extraBuildArgs = map[string]string{}
-	}
-	resolveLabelArg(extraBuildArgs, "GIT_REVISION", func() string {
-		return gitOutput(threeportPath, "rev-parse", "HEAD")
-	})
-	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
-		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
-	})
-	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {
-		return time.Now().UTC().Format(time.RFC3339)
-	})
-	// sort extra build-arg keys for deterministic command output
-	keys := make([]string, 0, len(extraBuildArgs))
-	for k := range extraBuildArgs {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, extraBuildArgs[k]))
-	}
-	// short, prefix-trimmed component name used for both stdout prefixing
-	// (see below) and {component} substitution in BUILDX_CACHE_FROM/TO
-	// (see immediately following).
-	shortName := strings.TrimPrefix(imageName, "threeport-")
 
-	// honor BUILDX_CACHE_FROM/TO for CI cache reuse; opt-in via env so
-	// local builds don't pay the registry round trip. {component}
-	// substitutes per image, giving each its own cache scope.
-	if v := os.Getenv("BUILDX_CACHE_FROM"); v != "" {
-		args = append(args, "--cache-from", strings.ReplaceAll(v, "{component}", shortName))
-	}
-	if v := os.Getenv("BUILDX_CACHE_TO"); v != "" {
-		args = append(args, "--cache-to", strings.ReplaceAll(v, "{component}", shortName))
-	}
-	// plain progress keeps output line-oriented so concurrent builds
-	// interleave cleanly when prefixed per component
-	args = append(args, "--progress=plain")
-	// build context is the per-arch bin root; Dockerfile is referenced
-	// from the repo root via -f.
-	contextDir := filepath.Join(threeportPath, binDir)
-	dockerfile := filepath.Join(threeportPath, dockerfilePath)
-	args = append(args, "-t", image, "-f", dockerfile, contextDir)
+	args, image, shortName := buildxBuildArgs(
+		threeportPath, dockerfilePath, target,
+		platforms, binary, binDir,
+		extraBuildArgs,
+		imageRepo, imageName, imageTag,
+		pushImage,
+	)
 
-	// prefix each output line with the short image name so parallel builds
-	// are distinguishable in the combined stdout/stderr stream. The
-	// "threeport-" prefix is dropped since every component shares it.
-	// Arch isn't in the prefix because buildx's own per-step labels
-	// (e.g. "[linux/arm64 builder 6/6]") already identify the platform
-	// for each line.
+	// run buildx with prefixed stdout/stderr. Arch isn't in the prefix
+	// because buildx's own per-step labels already identify the
+	// platform; only the short component name is needed for
+	// disambiguation across concurrent matrix cells.
 	prefix := fmt.Sprintf("[%s]", shortName)
 	stdoutPrefixer := &prefixWriter{prefix: prefix, out: os.Stdout}
 	stderrPrefixer := &prefixWriter{prefix: prefix, out: os.Stderr}
@@ -323,15 +292,17 @@ func BuildImage(
 	var stderrBuf bytes.Buffer
 	dockerBuildCmd.Stderr = io.MultiWriter(stderrPrefixer, &stderrBuf)
 	runErr := dockerBuildCmd.Run()
-	// drain any partial trailing line buffered by the prefixer; buildx's
-	// final progress lines are often newline-less and would otherwise be
-	// silently dropped on process exit.
+
+	// drain partial trailing lines. buildx's final progress lines
+	// often arrive without a newline and would be silently dropped on
+	// process exit.
 	_ = stdoutPrefixer.Flush()
 	_ = stderrPrefixer.Flush()
+
 	if runErr != nil {
-		stderr := stderrBuf.String()
-		// surface a hint for the most common multi-arch setup gap
-		if len(platforms) > 1 && strings.Contains(stderr, "Multi-platform build is not supported for the docker driver") {
+		// surface the most common multi-arch setup gap as actionable
+		// guidance instead of a raw buildx error
+		if len(platforms) > 1 && strings.Contains(stderrBuf.String(), "Multi-platform build is not supported for the docker driver") {
 			return fmt.Errorf(
 				"image build failed for %s: the active buildx builder uses the `docker` driver, which can't do multi-arch builds. Create and switch to a docker-container builder with:\n  docker buildx create --name threeport-multi --driver docker-container --bootstrap --use\nThen retry. Underlying error: %w",
 				image, runErr,
@@ -346,6 +317,7 @@ func BuildImage(
 		fmt.Printf("%s built\n", prefix)
 	}
 
+	// optionally load into a local kind cluster
 	if loadImage {
 		kindLoadCmd := exec.Command(
 			"kind",
@@ -368,6 +340,93 @@ func BuildImage(
 	}
 
 	return nil
+}
+
+// buildxBuildArgs assembles the docker buildx invocation argv, the full
+// image ref, and the short component name used for log prefixes. Reads
+// BUILDX_CACHE_FROM/TO for layer cache scoping and GIT_REVISION /
+// GIT_TAG / BUILD_CREATED for OCI image labels, falling back to git
+// probes for the unset label values. Emits no other side effects.
+func buildxBuildArgs(
+	threeportPath string,
+	dockerfilePath string,
+	target string,
+	platforms []string,
+	binary string,
+	binDir string,
+	extraBuildArgs map[string]string,
+	imageRepo string,
+	imageName string,
+	imageTag string,
+	pushImage bool,
+) (args []string, image string, shortName string) {
+	image = fmt.Sprintf("%s/%s:%s", imageRepo, imageName, imageTag)
+	shortName = strings.TrimPrefix(imageName, "threeport-")
+
+	args = []string{"buildx", "build"}
+
+	// route multi-arch through the dedicated docker-container builder; the
+	// default docker driver can't emit a multi-platform manifest
+	if len(platforms) > 1 {
+		args = append(args, "--builder", multiArchBuilderName)
+	}
+
+	// push to a registry or load into the local docker daemon
+	if pushImage {
+		args = append(args, "--push")
+	} else {
+		args = append(args, "--load")
+	}
+
+	args = append(args, fmt.Sprintf("--platform=%s", strings.Join(platforms, ",")))
+
+	if target != "" {
+		args = append(args, "--target", target)
+	}
+
+	// build args: BINARY always; OCI labels from env or fallbacks;
+	// caller extras emitted in sorted order so command output stays
+	// stable across runs
+	args = append(args, "--build-arg", fmt.Sprintf("BINARY=%s", binary))
+	if extraBuildArgs == nil {
+		extraBuildArgs = map[string]string{}
+	}
+	resolveLabelArg(extraBuildArgs, "GIT_REVISION", func() string {
+		return gitOutput(threeportPath, "rev-parse", "HEAD")
+	})
+	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
+		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
+	})
+	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {
+		return time.Now().UTC().Format(time.RFC3339)
+	})
+	keys := make([]string, 0, len(extraBuildArgs))
+	for k := range extraBuildArgs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, extraBuildArgs[k]))
+	}
+
+	// scope cache per component via {component} substitution; opt-in via env
+	if v := os.Getenv("BUILDX_CACHE_FROM"); v != "" {
+		args = append(args, "--cache-from", strings.ReplaceAll(v, "{component}", shortName))
+	}
+	if v := os.Getenv("BUILDX_CACHE_TO"); v != "" {
+		args = append(args, "--cache-to", strings.ReplaceAll(v, "{component}", shortName))
+	}
+
+	// plain progress keeps lines independent so concurrent builds
+	// interleave cleanly under per-component prefixes
+	args = append(args, "--progress=plain")
+
+	// build context is the per-arch bin root; Dockerfile is referenced from the repo root via -f
+	contextDir := filepath.Join(threeportPath, binDir)
+	dockerfile := filepath.Join(threeportPath, dockerfilePath)
+	args = append(args, "-t", image, "-f", dockerfile, contextDir)
+
+	return args, image, shortName
 }
 
 // resolveLabelArg fills key in args from an env var of the same name,

@@ -18976,7 +18976,7 @@ const docTemplate = `{
                 "Type": {
                     "description": "Type contains ObjectType of returned Data elements.",
                     "type": "string",
-                    "example": "WorkloadInstance"
+                    "example": "KubernetesWorkloadInstance"
                 }
             }
         },

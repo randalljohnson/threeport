@@ -37,7 +37,7 @@ jobs:
           - { name: rest-api,                      main: cmd/rest-api/main_gen.go }
           - { name: database-migrator,             main: cmd/database-migrator/main_gen.go }
           - { name: agent,                         main: cmd/agent/main.go }
-          - { name: workload-controller,           main: cmd/workload-controller/main_gen.go }
+          - { name: kubernetes-workload-controller, main: cmd/kubernetes-workload-controller/main_gen.go }
           - { name: kubernetes-runtime-controller, main: cmd/kubernetes-runtime-controller/main_gen.go }
           - { name: aws-controller,                main: cmd/aws-controller/main_gen.go }
           - { name: gcp-controller,                main: cmd/gcp-controller/main_gen.go }

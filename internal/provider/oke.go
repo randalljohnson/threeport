@@ -773,9 +773,9 @@ func (i *KubernetesRuntimeInfraOKE) GetConnection() (*kube.KubeConnectionInfo, e
 type KubeConfig struct {
 	Clusters []struct {
 		Cluster struct {
-			CertificateAuthorityData string `json:"certificate-authority-data,omitempty"`
-		} `json:"cluster,omitempty"`
-	} `json:"clusters,omitempty"`
+			CertificateAuthorityData string `json:"certificate-authority-data"`
+		} `json:"cluster"`
+	} `json:"clusters"`
 }
 
 // loadOCIConfig reads the OCI configuration using the OCI SDK and

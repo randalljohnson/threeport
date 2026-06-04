@@ -53,17 +53,17 @@ type Pagination struct {
 	// Limit is the maximum number of objects returned.  This is either set in the client's
 	// request or set to a default value by the server.  In any case, this field informs the
 	// client of the maximum number of objects they can expect to receive.
-	Limit int64 `query:"limit" example:"1"`
+	Limit int64 `example:"1"`
 
 	// NextCursor is the ID of the last object in the previous page of results.
-	NextCursor uint `query:"nextcursor" example:"1234567890"`
+	NextCursor uint `example:"1234567890"`
 
 	// QueryId is the ID of the query that produced the paginated objects.  This must be
 	// referenced by the client to fetch subsequent pages of results.
-	QueryId string `query:"queryid" example:"1234567890-1234567890-1234567890"`
+	QueryId string `example:"1234567890-1234567890-1234567890"`
 
 	// HasMore is a boolean indicating if there are more objects to fetch after the current page.
-	HasMore bool `query:"hasmore" example:"true"`
+	HasMore bool `example:"true"`
 }
 
 // Status represents the response HTTP status including error messages if

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 // BuildBinaries compiles every binary for every arch with one go build
@@ -247,6 +248,23 @@ func BuildImage(
 		args = append(args, "--target", target)
 	}
 	args = append(args, "--build-arg", fmt.Sprintf("BINARY=%s", binary))
+	// always stamp OCI image labels via build args the release stage
+	// reads. Callers (CI workflows) can set GIT_REVISION/GIT_TAG/
+	// BUILD_CREATED env vars to get exact values; otherwise we fall
+	// back to git rev-parse + a current-time timestamp so local mage
+	// builds still produce labeled images.
+	if extraBuildArgs == nil {
+		extraBuildArgs = map[string]string{}
+	}
+	resolveLabelArg(extraBuildArgs, "GIT_REVISION", func() string {
+		return gitOutput(threeportPath, "rev-parse", "HEAD")
+	})
+	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
+		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
+	})
+	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {
+		return time.Now().UTC().Format(time.RFC3339)
+	})
 	// sort extra build-arg keys for deterministic command output
 	keys := make([]string, 0, len(extraBuildArgs))
 	for k := range extraBuildArgs {
@@ -333,4 +351,33 @@ func BuildImage(
 	}
 
 	return nil
+}
+
+// resolveLabelArg fills key in args from an env var of the same name,
+// or from the fallback closure if the env var is unset. An existing
+// caller-supplied value wins over both. Empty results are dropped so
+// the Dockerfile ARG default takes over.
+func resolveLabelArg(args map[string]string, key string, fallback func() string) {
+	if _, ok := args[key]; ok {
+		return
+	}
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		args[key] = v
+		return
+	}
+	if v := strings.TrimSpace(fallback()); v != "" {
+		args[key] = v
+	}
+}
+
+// gitOutput runs git in workingDir with the given args and returns
+// trimmed stdout, or "" if git fails. Used to derive label values for
+// local builds where the caller hasn't set GIT_REVISION/GIT_TAG.
+func gitOutput(workingDir string, args ...string) string {
+	cmd := exec.Command("git", append([]string{"-C", workingDir}, args...)...)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

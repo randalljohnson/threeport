@@ -125,7 +125,7 @@ func init() {
 	//)
 	UpCmd.Flags().StringVar(
 		&cliArgs.KubeconfigPath,
-		"kind-kubeconfig", "", "Path to kubeconfig used for kind provider installs (default is ~/.kube/config).",
+		"kind-kubeconfig", "", "Path to kubeconfig used for kind provider installs (default is $KUBECONFIG, then ~/.kube/config).",
 	)
 	UpCmd.Flags().StringVar(
 		&cliArgs.AwsConfigProfile,

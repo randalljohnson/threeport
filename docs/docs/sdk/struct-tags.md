@@ -75,8 +75,8 @@ SSHPassword *string `json:",omitempty" validate:"optional" encrypt:"true"`
 
 ### `relationship`
 
-[Attached Object Reference](../architecture/threeport-core.md) (AOR)
-modeling. The value drives lifecycle behavior on the base object.
+[Attached Object Reference](../concepts/attached-object-reference.md)
+(AOR) modeling. The value drives lifecycle behavior on the base object.
 Values:
 
 - `describes`: informational; does not block delete or update of the

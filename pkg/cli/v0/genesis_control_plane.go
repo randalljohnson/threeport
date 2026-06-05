@@ -748,10 +748,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	}
 
 	// configure control plane with provider-specific details by adding the
-	// infra provider-specific objects to the Threeport API. Populated in
-	// BYO mode too - the destroy path guards against deleting clusters
-	// without stored Pulumi state, so storing provider creds + cluster
-	// references is safe and unlocks per-request token mint for OKE.
+	// infra provider-specific objects to the Threeport API
 	switch controlPlane.InfraProvider {
 	case v0.KubernetesRuntimeInfraProviderEKS:
 		if err := ConfigureControlPlaneWithEksConfig(
@@ -1254,12 +1251,8 @@ func ValidateCreateGenesisControlPlaneFlags(
 		return errors.New("kind port mappings are only supported for infrastructure provider 'kind'")
 	}
 
-	// --cluster-name is required when installing on an existing cluster and
-	// must not be set otherwise (the cluster name is derived from --name in
-	// the create-cluster path).
-	if controlPlaneOnly && clusterName == "" {
-		return errors.New("--cluster-name is required with --control-plane-only")
-	}
+	// --cluster-name doesn't apply outside --control-plane-only mode;
+	// the tptctl up path derives the cluster name from --name
 	if !controlPlaneOnly && clusterName != "" {
 		return errors.New("--cluster-name is only valid with --control-plane-only")
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
@@ -80,10 +81,12 @@ control planes if they are used to create or are created by another control plan
 			os.Exit(1)
 		}
 
-		// default --cluster-name to --name in control-plane-only mode when not
-		// supplied; the existing cluster usually matches the control-plane name
+		// default --cluster-name to the threeport- prefixed runtime name
+		// in control-plane-only mode when not supplied; this is the name
+		// tptctl applies when it provisions the cluster itself (e.g. via
+		// a prior --infra-only run)
 		if cliArgs.ControlPlaneOnly && cliArgs.ClusterName == "" {
-			cliArgs.ClusterName = cliArgs.ControlPlaneName
+			cliArgs.ClusterName = provider.ThreeportRuntimeName(cliArgs.ControlPlaneName)
 		}
 
 		// flag validation
@@ -233,7 +236,7 @@ func init() {
 	)
 	UpCmd.Flags().StringVar(
 		&cliArgs.ClusterName,
-		"cluster-name", "", "Name of the existing kubernetes cluster to install the control plane on. Required with --control-plane-only.",
+		"cluster-name", "", "Optional. Name of the existing kubernetes cluster to install the control plane on. Only applicable with --control-plane-only.",
 	)
 	UpCmd.Flags().BoolVar(
 		&cliArgs.InfraOnly,

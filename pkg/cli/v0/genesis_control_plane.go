@@ -216,9 +216,11 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	genesis := true
 
 	if cpi.Opts.ControlPlaneOnly {
-		// load the matching entry if one exists from a prior run; otherwise
-		// fall through to a new entry. existing entries for other control
-		// planes are preserved either way.
+		// load the matching entry if one exists from a prior run;
+		// otherwise fall through to a new entry, which is the case when
+		// deploying to infrastructure that was provisioned outside of
+		// tptctl. existing entries for other control planes are
+		// preserved either way.
 		if existingConfig, err := threeportConfig.GetControlPlaneConfig(cpi.Opts.ControlPlaneName); err == nil {
 			threeportControlPlaneConfig = existingConfig
 		} else {
@@ -304,16 +306,9 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			return fmt.Errorf("failed to deploy oke infrastructure: %w", err)
 		}
 	case v0.KubernetesRuntimeInfraProviderGKE:
-		// when installing on an existing cluster, the cluster name comes from
-		// --cluster-name; otherwise the cluster is created with the standard
-		// threeport- prefix
-		gkeRuntimeName := provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName)
-		if cpi.Opts.ControlPlaneOnly {
-			gkeRuntimeName = cpi.Opts.ClusterName
-		}
 		kubernetesRuntimeInfraGKE := provider.KubernetesRuntimeInfraGKE{
 			PulumiWorkspace: provider.PulumiWorkspace{
-				RuntimeInstanceName: gkeRuntimeName,
+				RuntimeInstanceName: runtimeInstanceName(cpi.Opts),
 			},
 			Version:                kube.KubernetesDefaultVersion,
 			WorkerNodeInitialCount: int32(2),
@@ -1360,4 +1355,18 @@ func (u *Uninstaller) cleanOnCreateError(
 	}
 
 	return createErr
+}
+
+// runtimeInstanceName returns the effective kubernetes runtime instance
+// name for the deployment.
+func runtimeInstanceName(opts threeport.Options) string {
+	if opts.ControlPlaneOnly {
+		// existing cluster. opts.ClusterName comes from:
+		//   - --cluster-name when the user supplies it
+		//   - default applied in cmd/tptctl: the threeport- prefixed
+		//     name, matching clusters tptctl provisions itself
+		return opts.ClusterName
+	}
+	// new cluster, named with the threeport- prefix
+	return provider.ThreeportRuntimeName(opts.ControlPlaneName)
 }

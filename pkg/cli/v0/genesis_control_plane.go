@@ -216,8 +216,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		// load the matching entry if one exists from a prior run;
 		// otherwise fall through to a new entry, which is the case when
 		// deploying to infrastructure that was provisioned outside of
-		// tptctl. existing entries for other control planes are
-		// preserved either way.
+		// tptctl.
 		if existingConfig, err := threeportConfig.GetControlPlaneConfig(cpi.Opts.ControlPlaneName); err == nil {
 			threeportControlPlaneConfig = existingConfig
 		} else {

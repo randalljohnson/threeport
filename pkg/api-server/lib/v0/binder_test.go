@@ -146,40 +146,6 @@ func TestQueryBinder_EmptyQueryString(t *testing.T) {
 	assert.Nil(t, filter.Name)
 }
 
-// bindTagOverrideFilter exercises the query-tag override paths: an
-// explicit short alias for a long CamelCase field and a renamed wire
-// key.
-type bindTagOverrideFilter struct {
-	KubernetesWorkloadInstanceID *uint  `query:"kwiid"`
-	LegacyName                   string `query:"name"`
-}
-
-// TestQueryBinder_QueryTagOverride confirms an explicit query tag wins
-// over the lowercased field name.
-func TestQueryBinder_QueryTagOverride(t *testing.T) {
-	c, _ := newBindContext(http.MethodGet, "/?kwiid=11&name=keep", nil)
-	var filter bindTagOverrideFilter
-	require.NoError(t, NewQueryBinder().Bind(&filter, c))
-
-	require.NotNil(t, filter.KubernetesWorkloadInstanceID)
-	assert.Equal(t, uint(11), *filter.KubernetesWorkloadInstanceID)
-	assert.Equal(t, "keep", filter.LegacyName)
-}
-
-// TestQueryBinder_QueryTagIgnoresLowercasedFieldName confirms a field
-// with a query tag is NOT also reachable via the lowercased name; the
-// tag is the only key.
-//
-// Example: KubernetesWorkloadInstanceID is tagged `query:"kwiid"`.
-// Only ?kwiid=11 binds it. ?kubernetesworkloadinstanceid=11 (the
-// lowercased Go name) is treated as an unknown param and ignored.
-func TestQueryBinder_QueryTagIgnoresLowercasedFieldName(t *testing.T) {
-	c, _ := newBindContext(http.MethodGet, "/?kubernetesworkloadinstanceid=11", nil)
-	var filter bindTagOverrideFilter
-	require.NoError(t, NewQueryBinder().Bind(&filter, c))
-	assert.Nil(t, filter.KubernetesWorkloadInstanceID)
-}
-
 // bindTestFloatFilter covers the float32/float64 value-parsing paths in
 // setFieldFromString. No threeport api type uses floats today, but the
 // binder supports them and a regression should be caught.

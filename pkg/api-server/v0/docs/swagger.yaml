@@ -457,11 +457,11 @@ definitions:
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
-        description: The cluster where the workload that is using the domain name
-          is running.
+        description: The cluster where the kubernetes workload that is using the domain
+          name is running.
         type: integer
       KubernetesWorkloadInstanceID:
-        description: The workload instance this domain name belongs to.
+        description: The kubernetes workload instance this domain name belongs to.
         type: integer
       Name:
         description: An arbitrary name the instance
@@ -593,7 +593,7 @@ definitions:
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesWorkloadDefinitionID:
-        description: The workload definition that belongs to this resource.
+        description: The kubernetes workload definition that belongs to this resource.
         type: integer
       Name:
         description: An arbitrary name for the definition.
@@ -691,7 +691,7 @@ definitions:
         description: The kubernetes runtime where the ingress layer is installed.
         type: integer
       KubernetesWorkloadInstanceID:
-        description: The workload instance this gateway belongs to.
+        description: The kubernetes workload instance this gateway belongs to.
         type: integer
       Name:
         description: An arbitrary name the instance
@@ -1002,7 +1002,7 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       HelmWorkloadDefinitionID:
-        description: The definition used to configure the workload instance.
+        description: The definition used to configure the kubernetes workload instance.
         type: integer
       InterruptReconciliation:
         description: |-
@@ -1210,8 +1210,8 @@ definitions:
         description: The kubernetes runtime definition for this instance.
         type: integer
       KubernetesWorkloadInstances:
-        description: The associated workload instances running on this kubernetes
-          runtime.
+        description: The associated kubernetes workload instances running on this
+          kubernetes runtime.
         items:
           $ref: '#/definitions/v0.KubernetesWorkloadInstance'
         type: array
@@ -2710,7 +2710,7 @@ definitions:
         description: Status represents an error that occurred while handling a request.
       Type:
         description: Type contains ObjectType of returned Data elements.
-        example: WorkloadInstance
+        example: KubernetesWorkloadInstance
         type: string
     type: object
   v0.SecretDefinition:
@@ -2823,7 +2823,8 @@ definitions:
         description: The kubernetes runtime to which the secret is deployed.
         type: integer
       KubernetesWorkloadInstanceID:
-        description: The workload instance that the secret is associated with.
+        description: The kubernetes workload instance that the secret is associated
+          with.
         type: integer
       Name:
         description: An arbitrary name the instance

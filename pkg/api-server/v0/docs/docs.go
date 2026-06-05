@@ -16620,11 +16620,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
-                    "description": "The cluster where the workload that is using the domain name is running.",
+                    "description": "The cluster where the kubernetes workload that is using the domain name is running.",
                     "type": "integer"
                 },
                 "KubernetesWorkloadInstanceID": {
-                    "description": "The workload instance this domain name belongs to.",
+                    "description": "The kubernetes workload instance this domain name belongs to.",
                     "type": "integer"
                 },
                 "Name": {
@@ -16745,7 +16745,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "KubernetesWorkloadDefinitionID": {
-                    "description": "The workload definition that belongs to this resource.",
+                    "description": "The kubernetes workload definition that belongs to this resource.",
                     "type": "integer"
                 },
                 "Name": {
@@ -16856,7 +16856,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "KubernetesWorkloadInstanceID": {
-                    "description": "The workload instance this gateway belongs to.",
+                    "description": "The kubernetes workload instance this gateway belongs to.",
                     "type": "integer"
                 },
                 "Name": {
@@ -17187,7 +17187,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "HelmWorkloadDefinitionID": {
-                    "description": "The definition used to configure the workload instance.",
+                    "description": "The definition used to configure the kubernetes workload instance.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -17388,7 +17388,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "KubernetesWorkloadInstances": {
-                    "description": "The associated workload instances running on this kubernetes runtime.",
+                    "description": "The associated kubernetes workload instances running on this kubernetes runtime.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
@@ -19097,7 +19097,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "KubernetesWorkloadInstanceID": {
-                    "description": "The workload instance that the secret is associated with.",
+                    "description": "The kubernetes workload instance that the secret is associated with.",
                     "type": "integer"
                 },
                 "Name": {

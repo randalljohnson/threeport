@@ -556,24 +556,16 @@ func TestWorkloadIntegration(t *testing.T) {
 		assert.NotNil(err, "should reject clearing a requires-tagged FK (KubernetesRuntimeInstanceID nil)")
 
 		// encrypted-field round-trip on KubernetesRuntimeInstance.
-		// ConnectionToken is tagged `encrypt:"true" validate:"optional"`.
-		// the API encrypts on write but does not auto-decrypt on read;
-		// GET returns ciphertext. the test verifies the round-trip by
-		// decrypting the response with the shared encryption key
-		// (already loaded above) and comparing against what was written.
+		// ConnectionToken is tagged `encrypt:"true"`. The API encrypts
+		// on write but doesn't decrypt on read, so we decrypt the GET
+		// response with the shared key and compare to what was written.
 		//
-		// Use a standalone runtime created here rather than the
-		// control-plane host runtime. Provider-managed environments
-		// (OCI/AWS/GCP) have a provider-side instance that holds an
-		// `owns` AOR pointing at the host runtime, which the AOR
-		// ownership guard correctly rejects external updates against.
-		// A standalone runtime nothing else references stays free of
-		// incoming AORs and is safe to mutate from a test client.
-		// Names include the workload iteration so multiple iterations of
-		// this loop don't collide on the unique-name constraint. Defers
-		// fire at function return, not iteration end, so resources from
-		// earlier iterations are still in the database when later
-		// iterations run their create calls.
+		// Uses a standalone runtime rather than the control-plane host
+		// runtime. In provider-managed environments the host runtime
+		// is paired with a provider-side instance via a `marries` AOR,
+		// and the 1-to-1 ownership guard rejects external updates.
+		// A standalone runtime that nothing pairs with is safe to
+		// mutate.
 		encDefName := fmt.Sprintf("encrypted-field-test-runtime-def-%s", testWorkload.Name)
 		encInstName := fmt.Sprintf("encrypted-field-test-runtime-%s", testWorkload.Name)
 

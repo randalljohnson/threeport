@@ -85,7 +85,7 @@ func (g *GatewayInstanceConfig) Get(
 			}
 		}
 
-		// get workload instance
+		// get kubernetes workload instance
 		if gatewayInstance.KubernetesWorkloadInstanceID != nil {
 			wi, err := client_v0.GetKubernetesWorkloadInstanceByID(apiClient, apiEndpoint, *gatewayInstance.KubernetesWorkloadInstanceID)
 			if err == nil {
@@ -132,10 +132,10 @@ func (g *GatewayInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to get kubernetes runtime instance: %w", err)
 	}
 
-	// get workload instance
+	// get kubernetes workload instance
 	workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *gatewayInstanceValues.KubernetesWorkloadInstance.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workload instance with name %s: %w", *gatewayInstanceValues.KubernetesWorkloadInstance.Name, err)
+		return nil, fmt.Errorf("failed to get kubernetes workload instance with name %s: %w", *gatewayInstanceValues.KubernetesWorkloadInstance.Name, err)
 	}
 
 	// get gateway definition
@@ -218,10 +218,10 @@ func (g *GatewayInstanceConfig) Replace(
 		)
 	}
 
-	// get workload instance for update
+	// get kubernetes workload instance for update
 	workloadInstance, err := client_v0.GetKubernetesWorkloadInstanceByName(apiClient, apiEndpoint, *gatewayInstanceValues.KubernetesWorkloadInstance.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workload instance with name %s: %w", *gatewayInstanceValues.KubernetesWorkloadInstance.Name, err)
+		return nil, fmt.Errorf("failed to get kubernetes workload instance with name %s: %w", *gatewayInstanceValues.KubernetesWorkloadInstance.Name, err)
 	}
 
 	// get gateway definition for update

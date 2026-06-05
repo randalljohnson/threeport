@@ -142,6 +142,6 @@ type DomainNameInstance struct {
 	// The kubernetes workload instance this domain name belongs to.
 	KubernetesWorkloadInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
-	// The cluster where the workload that is using the domain name is running.
+	// The cluster where the kubernetes workload that is using the domain name is running.
 	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 }

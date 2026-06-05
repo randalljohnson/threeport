@@ -16,6 +16,7 @@ import (
 	"github.com/nukleros/aws-builder/pkg/eks"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	"github.com/threeport/threeport/internal/provider"
@@ -95,16 +96,10 @@ func InitArgs(args *GenesisControlPlaneCLIArgs) {
 		args.ProviderConfigDir = providerConf
 	}
 
-	// kubeconfig - only fill in the default if the user didn't pass --kubeconfig.
-	// cobra parses flags before this hook runs, so a non-empty value here
-	// means the user supplied one explicitly and we must honor it.
+	// fall back to client-go's standard kubeconfig precedence
+	// ($KUBECONFIG, then ~/.kube/config) when --kubeconfig isn't supplied
 	if args.KubeconfigPath == "" {
-		defaultKubeconfig, err := kube.DefaultKubeconfig()
-		if err != nil {
-			Error("failed to get path to default kubeconfig", err)
-			os.Exit(1)
-		}
-		args.KubeconfigPath = defaultKubeconfig
+		args.KubeconfigPath = clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
 	}
 
 	// set default threeport repo path if not provided

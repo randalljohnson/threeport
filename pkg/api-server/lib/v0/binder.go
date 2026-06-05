@@ -12,12 +12,12 @@ import (
 )
 
 // QueryBinder overrides echo's default binder so api types don't need
-// `query:"..."` struct tags for the common case. Each settable struct
-// field is bound from the query param keyed by strings.ToLower of the
-// field name. A field named KubernetesWorkloadInstanceID binds the
-// kubernetesworkloadinstanceid param.
-//
-// An explicit `query:"name"` tag overrides the default key.
+// `query:"..."` struct tags. Each settable struct field is bound from
+// the query param keyed by strings.ToLower of the field name. A field
+// named KubernetesWorkloadInstanceID binds the
+// kubernetesworkloadinstanceid param. Codegen rejects any explicit
+// `query:` tag on api types, so the lowercased-field-name derivation is
+// the only path here.
 //
 // Path params and body binding fall through to echo.DefaultBinder.
 // Query binding fires on GET, DELETE, and HEAD, matching the default
@@ -39,10 +39,6 @@ import (
 //
 //	echo source:  https://github.com/labstack/echo/blob/master/bind.go
 //	echo binding: https://echo.labstack.com/docs/binding
-//
-// Gotchas:
-//   - Two fields whose effective query keys (tag override or lowercased
-//     name) collide is not supported.
 type QueryBinder struct {
 	fallback echo.DefaultBinder
 }
@@ -116,12 +112,9 @@ func bindStructFields(qp url.Values, structValue reflect.Value) error {
 			continue
 		}
 
-		// resolve the URL param key: an explicit query tag wins over
-		// the lowercased field name.
+		// URL param key is the lowercased Go field name; codegen rejects
+		// any explicit query tag so there's no override to consult
 		paramName := strings.ToLower(field.Name)
-		if tag := field.Tag.Get("query"); tag != "" {
-			paramName = tag
-		}
 
 		// missing param means leave the field at its incoming value
 		// (do not zero a pre-populated default)

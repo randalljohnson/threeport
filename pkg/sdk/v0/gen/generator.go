@@ -7,7 +7,6 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -963,10 +962,6 @@ func (a *ApiObjectGroup) HasFieldWithTagValue(
 	return false
 }
 
-// queryNamePattern matches the lowercase ASCII letters and digits allowed
-// in query tag values.
-var queryNamePattern = regexp.MustCompile(`^[a-z0-9]+$`)
-
 // allowedEmbed is the set of base types api models are permitted to embed
 // anonymously. Keeping the set small enforces a flat, one-level mental
 // model: model authors only ever embed one of these, and readers can
@@ -1059,9 +1054,6 @@ func (g *Generator) ValidateTags() error {
 						))
 					}
 				}
-				// query tag is allowed as an override. QueryBinder uses the
-				// tag value when present and falls back to the lowercased
-				// field name otherwise.
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise
 				// and likely indicates a misunderstanding
@@ -1072,96 +1064,14 @@ func (g *Generator) ValidateTags() error {
 						lib.PersistTag, per, lib.PersistFalse,
 					))
 				}
-				// query feeds URL parameter parsing; restrict to lowercase
-				// alphanumerics so codegen and route matching stay simple
-				if q, ok := tagMap[string(lib.QueryTag)]; ok && !queryNamePattern.MatchString(q) {
+				// query tag is forbidden. URL parameter keys derive from
+				// the lowercased Go field name automatically, so an
+				// explicit override is redundant and a silent rename hazard
+				if _, ok := tagMap[string(lib.QueryTag)]; ok {
 					problems = append(problems, fmt.Sprintf(
-						"%s.%s: %s:%q invalid (must match %s)",
-						objectName, fieldName,
-						lib.QueryTag, q, queryNamePattern.String(),
+						"%s.%s: %s tag is not allowed; query keys derive from the lowercased field name",
+						objectName, fieldName, lib.QueryTag,
 					))
-				}
-			}
-
-			// per-struct query-key collision check.
-			//
-			// Errors caught (collisions silently misroute requests at
-			// runtime because the binder's last writer wins, so catch
-			// them at codegen):
-			//   - two directly-declared fields with the same effective key
-			//   - a directly-declared override colliding with an embedded
-			//     field's effective key
-			//   - two embedded fields colliding with each other
-			//
-			// Shadow exemption: a directly-declared field whose Go name
-			// matches an embedded field's Go name is the deliberate Go
-			// shadowing pattern. The outer wins at both bind time and
-			// source-level access. That case is allowed silently. Only
-			// non-shadow collisions are flagged.
-
-			// outerKeys: effective keys claimed by the outer struct's own
-			// fields. embed fields whose key matches an outer-claimed key are
-			// shadowed and pass silently.
-			outerKeys := map[string]string{} // key -> outer field name claiming it
-			effective := map[string]string{} // key -> "Type.Field" currently bound
-
-			// addField resolves and records one field's effective key.
-			// emits a problem on collision unless the new field is an embed
-			// being shadowed by an outer field of the same Go name.
-			addField := func(ownerType, fieldName string, tagMap map[string]string, isOuter bool) {
-				// resolve the effective query key the same way QueryBinder
-				// does: explicit `query:` tag wins, else the lowercased
-				// Go field name
-				key := strings.ToLower(fieldName)
-				if q, ok := tagMap[string(lib.QueryTag)]; ok && q != "" {
-					key = q
-				}
-				owner := fmt.Sprintf("%s.%s", ownerType, fieldName)
-
-				// embed field whose Go name matches an outer field's Go name
-				// is the deliberate Go-shadowing pattern; the outer wins at
-				// both bind time and source-level access. don't flag it
-				if !isOuter {
-					if outerName, shadowed := outerKeys[key]; shadowed && outerName == fieldName {
-						return
-					}
-				}
-
-				// first claimant wins; the second seeing the same key emits
-				// a problem naming both fields. sort the pair so the message
-				// is stable across map iteration orders, then the outer
-				// problems sort below produces a deterministic transcript
-				if prior, dup := effective[key]; dup {
-					a, b := prior, owner
-					if a > b {
-						a, b = b, a
-					}
-					problems = append(problems, fmt.Sprintf(
-						"%s and %s: effective query key %q collides",
-						a, b, key,
-					))
-					return
-				}
-				effective[key] = owner
-				if isOuter {
-					outerKeys[key] = fieldName
-				}
-			}
-
-			// outer struct's own fields participate first so embed fields
-			// can be tested for shadowing against them
-			for fieldName, tagMap := range fieldMap {
-				addField(objectName, fieldName, tagMap, true)
-			}
-
-			// flatten in fields from anonymous embeds. api types are only
-			// allowed to embed the flat base types parsed up front (Common,
-			// Definition, Instance, Reconciliation); the whitelist check
-			// below rejects anything else, so a single-level flatten covers
-			// every binder-visible field.
-			for _, embedType := range group.StructEmbeds[objectName] {
-				for embedFieldName, embedTagMap := range g.EmbedTypes[embedType] {
-					addField(embedType, embedFieldName, embedTagMap, false)
 				}
 			}
 

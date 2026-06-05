@@ -14,14 +14,14 @@ const (
 	// attempts.
 	streamRetryInterval = 2 * time.Second
 
-	// streamMaxRetries caps the wait at ~4 minutes total, matching
-	// WaitForAPI. Each retry is one StreamNames() iteration so the
-	// total cost is dominated by the wait, not the lookups.
+	// streamMaxRetries caps the wait at ~2 minutes total. Each retry
+	// is one StreamNames() iteration so the cost is dominated by the
+	// sleep, not the lookup.
 	streamMaxRetries = 60
 )
 
 // WaitForStream blocks until the named JetStream stream exists,
-// retrying every 2 seconds for up to ~4 minutes. Exits with code 1
+// retrying every 2 seconds for up to ~2 minutes. Exits with code 1
 // after the retry budget so a stuck pod can restart.
 func WaitForStream(js nats.JetStreamContext, streamName string, log logr.Logger) {
 	log.Info("waiting for stream", "streamName", streamName)

@@ -125,19 +125,12 @@ func GetHTTPClient(
 }
 
 // GetKubeDynamicClientAndMapper returns a dynamic client and rest
-// mapper for the given kubeconfig path. An empty path resolves to
-// $KUBECONFIG, then ~/.kube/config; clientcmd.BuildConfigFromFlags
-// does not consult $KUBECONFIG on its own.
+// mapper for the given kubeconfig path. An empty path falls back to
+// client-go's standard kubeconfig precedence ($KUBECONFIG, then
+// ~/.kube/config).
 func GetKubeDynamicClientAndMapper(kubeconfigPath string) (*dynamic.DynamicClient, meta.RESTMapper, error) {
 	if kubeconfigPath == "" {
-		kubeconfigPath = os.Getenv("KUBECONFIG")
-	}
-	if kubeconfigPath == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to resolve home directory for default kubeconfig: %w", err)
-		}
-		kubeconfigPath = filepath.Join(home, ".kube", "config")
+		kubeconfigPath = clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
 	}
 
 	// create the config from the path

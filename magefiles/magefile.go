@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -69,10 +70,19 @@ func (Test) E2eClean() error {
 	return nil
 }
 
-// Sdk builds the SDK binary and installs in GOPATH.
+// installDir returns the directory `go install` writes binaries to:
+// $GOBIN if set, otherwise $GOPATH/bin. build.Default.GOPATH falls back
+// to ~/go when $GOPATH is unset, so the result is always non-empty.
+func installDir() string {
+	if gobin := os.Getenv("GOBIN"); gobin != "" {
+		return gobin
+	}
+	return filepath.Join(build.Default.GOPATH, "bin")
+}
+
+// Sdk builds the SDK binary and installs in $GOBIN (or $GOPATH/bin).
 func (Install) Sdk() error {
-	goPath := os.Getenv("GOPATH")
-	outputPath := filepath.Join(goPath, "bin", "threeport-sdk")
+	outputPath := filepath.Join(installDir(), "threeport-sdk")
 
 	sdkCmd := exec.Command(
 		"go",
@@ -87,7 +97,7 @@ func (Install) Sdk() error {
 		return fmt.Errorf("build failed for sdk binary with output: '%s': %w", output, err)
 	}
 
-	fmt.Println("sdk binary built and available at $GOPATH/bin/threeport-sdk")
+	fmt.Printf("sdk binary built and available at %s\n", outputPath)
 
 	return nil
 }
@@ -128,25 +138,26 @@ func (Build) Tptdev() error {
 	return nil
 }
 
-// Tptdev installs the tptdev binary at /usr/local/bin/.
+// Tptdev builds the tptdev binary and installs in $GOBIN (or $GOPATH/bin).
 func (Install) Tptdev() error {
 	build := Build{}
 	if err := build.Tptdev(); err != nil {
 		return fmt.Errorf("failed to build tptdev: %w", err)
 	}
 
+	outputPath := filepath.Join(installDir(), "tptdev")
+
 	installTptdevCmd := exec.Command(
-		"sudo",
 		"cp",
 		"./bin/tptdev",
-		"/usr/local/bin/tptdev",
+		outputPath,
 	)
 	output, err := installTptdevCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("install failed for tptdev with output: '%s': %w", output, err)
 	}
 
-	fmt.Println("tptdev installed and available at /usr/local/bin/tptdev")
+	fmt.Printf("tptdev installed and available at %s\n", outputPath)
 
 	return nil
 }
@@ -170,35 +181,26 @@ func (Build) Tptctl() error {
 	return nil
 }
 
-// Tptctl installs the tptctl binary at $GOPATH/bin/tptctl, matching
-// install:sdk. Override with TPTCTL_INSTALL_PATH for a different
-// destination.
+// Tptctl builds the tptctl binary and installs in $GOBIN (or $GOPATH/bin).
 func (Install) Tptctl() error {
 	build := Build{}
 	if err := build.Tptctl(); err != nil {
 		return fmt.Errorf("failed to build tptctl: %w", err)
 	}
 
-	path := os.Getenv("TPTCTL_INSTALL_PATH")
-	if path == "" {
-		goPath := os.Getenv("GOPATH")
-		if goPath == "" {
-			return fmt.Errorf("TPTCTL_INSTALL_PATH not set and GOPATH is not set")
-		}
-		path = filepath.Join(goPath, "bin", "tptctl")
-	}
+	outputPath := filepath.Join(installDir(), "tptctl")
 
 	installTptctlCmd := exec.Command(
 		"cp",
 		"./bin/tptctl",
-		path,
+		outputPath,
 	)
 	output, err := installTptctlCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("install failed for tptctl binary with output: '%s': %w", output, err)
 	}
 
-	fmt.Printf("tptctl binary installed and available at %s\n", path)
+	fmt.Printf("tptctl binary installed and available at %s\n", outputPath)
 
 	return nil
 }

@@ -109,6 +109,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// wait for notification stream to be available before proceeding
 	controller.WaitForStream(js, notif.GcpStreamName, log)
 
 	// create a channel and wait group used for graceful shut downs

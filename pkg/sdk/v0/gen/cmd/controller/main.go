@@ -278,7 +278,8 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Qual("os", "Exit").Call(Lit(1)),
 				),
 
-				Line().Qual("github.com/threeport/threeport/pkg/controller/v0", "WaitForStream").Call(
+				Line().Comment("wait for notification stream to be available before proceeding"),
+				Qual("github.com/threeport/threeport/pkg/controller/v0", "WaitForStream").Call(
 					Id("js"),
 					Qual(
 						fmt.Sprintf(

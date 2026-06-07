@@ -397,7 +397,7 @@ sshConfig := MachineRuntimeInstanceValues{
 Enforced at codegen time by `pkg/sdk/v0/gen/generator.go::ValidateTags`. Every field on an api/v0 type carrying a `validate:` tag must follow:
 
 - **json**: `json:",omitempty"` on every `validate:"required"`, `validate:"optional"`, and `validate:"optional,association"` field. The field-name part is dropped (Go's `encoding/json` defaults to the Go field name). The `omitempty` is non-negotiable: without it, nil-pointer required fields serialize as JSON null on partial PATCH bodies, and the `PayloadCheck()` null-on-required guard rejects the request.
-- **yaml** (where present): keep the explicit field name (`yaml:"Name,omitempty"`). yaml's library lowercases the field name by default, so dropping the name part would change the wire format and break existing yaml configs.
+- **yaml**: drop. threeport uses `sigs.k8s.io/yaml` for all YAML handling (tptctl config files, CLI output, SDK config), which routes YAML through JSON via `encoding/json` with case-insensitive field matching. Yaml struct tags are functionally vestigial — the JSON tag determines the wire format. The historical concern about `yaml`'s library lowercasing field names by default applies only to `gopkg.in/yaml.v2`/`v3` used directly, which the codebase doesn't. Don't add yaml tags to new types; drop them when touching existing types.
 - **query**: forbidden. The `QueryBinder` in `pkg/api-server/lib/v0/binder.go` derives keys from `strings.ToLower(field.Name)`. An explicit query tag is noise at best and a silent rename hazard at worst.
 
 Tag order convention (hand-written types): `json` -> `validate` -> `gorm` -> `encrypt` -> `relationship` -> `persist`. Example:

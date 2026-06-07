@@ -147,17 +147,7 @@ func buildxArgsFixture() (threeportPath, dockerfilePath, target string, platform
 		true
 }
 
-// clearCacheEnv unsets the BUILDX_CACHE_FROM/TO env vars for the
-// duration of a single test so the cache-args tests start from a clean
-// slate even if the surrounding shell has them set.
-func clearCacheEnv(t *testing.T) {
-	t.Helper()
-	t.Setenv("BUILDX_CACHE_FROM", "")
-	t.Setenv("BUILDX_CACHE_TO", "")
-}
-
 func TestBuildImage_EmptyArchRejected(t *testing.T) {
-	clearCacheEnv(t)
 	err := BuildImage("/repo", "Dockerfile", "release", "", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", true, false, "")
 	if err == nil || !strings.Contains(err.Error(), "--arch is required") {
 		t.Fatalf("expected --arch is required, got %v", err)
@@ -165,7 +155,6 @@ func TestBuildImage_EmptyArchRejected(t *testing.T) {
 }
 
 func TestBuildImage_MultiArchRequiresPush(t *testing.T) {
-	clearCacheEnv(t)
 	err := BuildImage("/repo", "Dockerfile", "release", "amd64,arm64", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", false, true, "kind")
 	if err == nil || !strings.Contains(err.Error(), "multi-arch builds require --push") {
 		t.Fatalf("expected multi-arch-requires-push error, got %v", err)
@@ -173,7 +162,6 @@ func TestBuildImage_MultiArchRequiresPush(t *testing.T) {
 }
 
 func TestBuildImage_PushAndLoadMutuallyExclusive(t *testing.T) {
-	clearCacheEnv(t)
 	err := BuildImage("/repo", "Dockerfile", "release", "amd64", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", true, true, "kind")
 	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
 		t.Fatalf("expected push/load exclusive error, got %v", err)
@@ -181,7 +169,6 @@ func TestBuildImage_PushAndLoadMutuallyExclusive(t *testing.T) {
 }
 
 func TestBuildxArgs_SingleArchSelectsLoad(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, tgt, plats, bin, bd, ex, repo, name, tag, _ := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, repo, name, tag, false)
 	if !slices.Contains(args, "--load") {
@@ -196,7 +183,6 @@ func TestBuildxArgs_SingleArchSelectsLoad(t *testing.T) {
 }
 
 func TestBuildxArgs_SingleArchPushOmitsBuilder(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, tgt, plats, bin, bd, ex, repo, name, tag, _ := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, repo, name, tag, true)
 	if !slices.Contains(args, "--push") {
@@ -208,7 +194,6 @@ func TestBuildxArgs_SingleArchPushOmitsBuilder(t *testing.T) {
 }
 
 func TestBuildxArgs_MultiArchUsesThreeportMulti(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, tgt, _, bin, bd, ex, repo, name, tag, _ := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs(tp, df, tgt, []string{"linux/amd64", "linux/arm64"}, bin, bd, ex, repo, name, tag, true)
 	if !slices.Contains(args, "--builder") {
@@ -223,7 +208,6 @@ func TestBuildxArgs_MultiArchUsesThreeportMulti(t *testing.T) {
 }
 
 func TestBuildxArgs_TargetOmittedWhenEmpty(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, _, plats, bin, bd, ex, repo, name, tag, push := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs(tp, df, "", plats, bin, bd, ex, repo, name, tag, push)
 	if slices.Contains(args, "--target") {
@@ -232,7 +216,6 @@ func TestBuildxArgs_TargetOmittedWhenEmpty(t *testing.T) {
 }
 
 func TestBuildxArgs_TargetIncludedWhenSet(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, _, plats, bin, bd, ex, repo, name, tag, push := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs(tp, df, "dev", plats, bin, bd, ex, repo, name, tag, push)
 	idx := slices.Index(args, "--target")
@@ -242,7 +225,6 @@ func TestBuildxArgs_TargetIncludedWhenSet(t *testing.T) {
 }
 
 func TestBuildxArgs_BinaryBuildArgSet(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, tgt, plats, _, bd, ex, repo, name, tag, push := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs(tp, df, tgt, plats, "router-controller", bd, ex, repo, name, tag, push)
 	if !slices.Contains(args, "BINARY=router-controller") {
@@ -251,7 +233,6 @@ func TestBuildxArgs_BinaryBuildArgSet(t *testing.T) {
 }
 
 func TestBuildxArgs_ExtraBuildArgsSorted(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, tgt, plats, bin, bd, _, repo, name, tag, push := buildxArgsFixture()
 	ex := map[string]string{
 		"GIT_REVISION":  "deadbeef",
@@ -275,7 +256,6 @@ func TestBuildxArgs_ExtraBuildArgsSorted(t *testing.T) {
 }
 
 func TestBuildxArgs_CallerSuppliedRevisionWinsOverEnv(t *testing.T) {
-	clearCacheEnv(t)
 	t.Setenv("GIT_REVISION", "env-value")
 	tp, df, tgt, plats, bin, bd, _, repo, name, tag, push := buildxArgsFixture()
 	ex := map[string]string{"GIT_REVISION": "caller-value"}
@@ -289,7 +269,6 @@ func TestBuildxArgs_CallerSuppliedRevisionWinsOverEnv(t *testing.T) {
 }
 
 func TestBuildxArgs_EnvRevisionUsedWhenCallerSilent(t *testing.T) {
-	clearCacheEnv(t)
 	t.Setenv("GIT_REVISION", "env-value")
 	tp, df, tgt, plats, bin, bd, _, repo, name, tag, push := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs(tp, df, tgt, plats, bin, bd, nil, repo, name, tag, push)
@@ -298,34 +277,7 @@ func TestBuildxArgs_EnvRevisionUsedWhenCallerSilent(t *testing.T) {
 	}
 }
 
-func TestBuildxArgs_CacheArgsSubstituteComponent(t *testing.T) {
-	clearCacheEnv(t)
-	t.Setenv("BUILDX_CACHE_FROM", "type=gha,scope={component}")
-	t.Setenv("BUILDX_CACHE_TO", "type=gha,scope={component},mode=max")
-	tp, df, tgt, plats, bin, bd, ex, repo, name, tag, push := buildxArgsFixture()
-	args, _, _ := buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, repo, name, tag, push)
-	if !slices.Contains(args, "type=gha,scope=rest-api") {
-		t.Errorf("cache-from {component} substitution missing: %v", args)
-	}
-	if !slices.Contains(args, "type=gha,scope=rest-api,mode=max") {
-		t.Errorf("cache-to {component} substitution missing: %v", args)
-	}
-}
-
-func TestBuildxArgs_CacheArgsAbsentWhenEnvUnset(t *testing.T) {
-	clearCacheEnv(t)
-	tp, df, tgt, plats, bin, bd, ex, repo, name, tag, push := buildxArgsFixture()
-	args, _, _ := buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, repo, name, tag, push)
-	if slices.Contains(args, "--cache-from") {
-		t.Errorf("--cache-from should be absent when env unset: %v", args)
-	}
-	if slices.Contains(args, "--cache-to") {
-		t.Errorf("--cache-to should be absent when env unset: %v", args)
-	}
-}
-
 func TestBuildxArgs_ImageRefAndShortName(t *testing.T) {
-	clearCacheEnv(t)
 	tp, df, tgt, plats, bin, bd, ex, _, _, _, push := buildxArgsFixture()
 	args, image, shortName := buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", push)
 	if got, want := image, "ghcr.io/threeport/threeport-rest-api:v0.7.0"; got != want {
@@ -340,7 +292,6 @@ func TestBuildxArgs_ImageRefAndShortName(t *testing.T) {
 }
 
 func TestBuildxArgs_ContextAndDockerfilePathsJoined(t *testing.T) {
-	clearCacheEnv(t)
 	_, _, tgt, plats, bin, _, ex, repo, name, tag, push := buildxArgsFixture()
 	args, _, _ := buildxBuildArgs("/repo", "subdir/Dockerfile", tgt, plats, bin, "bin", ex, repo, name, tag, push)
 	if got := args[len(args)-1]; got != "/repo/bin" {

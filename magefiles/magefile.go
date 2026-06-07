@@ -288,6 +288,8 @@ func (Dev) GenerateDocs() error {
 		"--dir",
 		"cmd/rest-api,pkg/api-server/v0,pkg/api-server/v0",
 		"--parseDependency",
+		"--propertyStrategy",
+		"pascalcase",
 		"--generalInfo",
 		"main_gen.go",
 		"--output",

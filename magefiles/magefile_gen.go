@@ -2483,8 +2483,12 @@ func (Build) AllBinsRelease() error {
 
 // AllImages builds and pushes images for all components. Pre-compiles
 // binaries for every requested arch in parallel, then packages each
-// component image in parallel. Set PARALLEL >= 1 to cap packaging
-// concurrency (e.g. `PARALLEL=4 mage build:allImages ghcr.io/foo v1 amd64,arm64`).
+// component image in parallel. A multi-arch arch value (e.g. amd64,arm64)
+// produces a multi-arch manifest in one push. A single arch (e.g. amd64)
+// pushes only that arch under the given tag; use package:allManifests to
+// stitch single-arch tags from separate runs into a multi-arch manifest list.
+// Set PARALLEL_IMAGE_BUILD >= 1 to cap packaging concurrency (e.g.
+// `PARALLEL_IMAGE_BUILD=4 mage build:allImages ghcr.io/foo v1 amd64,arm64`).
 func (Build) AllImages(
 	imageRepo string,
 	imageTag string,
@@ -2564,7 +2568,7 @@ func (Build) AllImages(
 }
 
 // AllImagesDev builds and pushes development images for all components.
-// Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesDev`).
+// Set PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage build:allImagesDev`).
 func (Build) AllImagesDev() error {
 	_, arch, err := getBuildVals()
 	if err != nil {
@@ -2940,7 +2944,7 @@ func (Build) ImagesByApis(
 }
 
 // AllImagesRelease builds and pushes release images for all components.
-// Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesRelease`).
+// Set PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage build:allImagesRelease`).
 func (Build) AllImagesRelease() error {
 	arch := releaseArch
 
@@ -3017,9 +3021,9 @@ func (Build) AllImagesRelease() error {
 	return util.RunParallel(parallelFromEnv(), tasks)
 }
 
-// parallelFromEnv returns the PARALLEL env var as an int, defaulting to 1.
+// parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int, defaulting to 1.
 func parallelFromEnv() int {
-	v := os.Getenv("PARALLEL")
+	v := os.Getenv("PARALLEL_IMAGE_BUILD")
 	if v == "" {
 		return 1
 	}

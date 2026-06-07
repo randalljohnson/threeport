@@ -27,25 +27,25 @@ type Object interface{}
 // meta information, and the status of the request.
 type Response struct {
 	// Meta contains PageRequestParams (current page and size of current page) and TotalCount (number of returned Object elements)
-	Meta Meta `json:"Meta"`
+	Meta Meta
 
 	// Type contains ObjectType of returned Data elements.
 	Type string `example:"KubernetesWorkloadInstance"`
 
 	// Data contains array of returned Object elements.
-	Data []Object `json:"Data"`
+	Data []Object
 
 	// Status represents an error that occurred while handling a request.
-	Status Status `json:"Status"`
+	Status Status
 }
 
 // Meta model info
 type Meta struct {
 	// Pagination contains the pagination information for a paginated response.
-	Pagination Pagination `json:"Pagination"`
+	Pagination Pagination
 
 	// The number of objects returned in the response.
-	ObjectCount int64 `json:"ObjectCount" example:"1"`
+	ObjectCount int64 `example:"1"`
 }
 
 // Pagination contains the pagination information for a paginated response.

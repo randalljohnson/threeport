@@ -1549,12 +1549,11 @@ definitions:
         type: string
       LokiHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying loki chart.
         type: string
       LokiHelmWorkloadDefinitionID:
-        description: The loki Helm kubernetes workload definition that belongs to
-          this resource.
+        description: The loki Helm workload definition that belongs to this resource.
         type: integer
       Name:
         description: An arbitrary name for the definition.
@@ -1570,12 +1569,11 @@ definitions:
         type: string
       PromtailHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying promtail chart.
         type: string
       PromtailHelmWorkloadDefinitionID:
-        description: The promtail Helm kubernetes workload definition that belongs
-          to this resource.
+        description: The promtail Helm workload definition that belongs to this resource.
         type: integer
       Reconciled:
         description: Indicates if object is considered to be reconciled by the object's
@@ -1632,7 +1630,7 @@ definitions:
         type: integer
       LokiHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload instance values that can be provided to configure the
+          Optional Helm workload instance values that can be provided to configure the
           underlying loki chart.
         type: string
       LokiHelmWorkloadInstanceID:
@@ -1643,7 +1641,7 @@ definitions:
         type: string
       PromtailHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload instance values that can be provided to configure the
+          Optional Helm workload instance values that can be provided to configure the
           underlying promtail chart.
         type: string
       PromtailHelmWorkloadInstanceID:
@@ -1938,12 +1936,12 @@ definitions:
         type: string
       KubePrometheusStackHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying kube-prometheus-stack chart.
         type: string
       KubePrometheusStackHelmWorkloadDefinitionID:
-        description: The kube-prometheus-stack Helm kubernetes workload definition
-          that belongs to this resource.
+        description: The kube-prometheus-stack Helm workload definition that belongs
+          to this resource.
         type: integer
       MetricsInstances:
         description: The associated metrics instances that are deployed from this
@@ -2008,7 +2006,7 @@ definitions:
         type: boolean
       KubePrometheusStackHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload instance values that can be provided to configure the
+          Optional Helm workload instance values that can be provided to configure the
           underlying kube-prometheus-stack chart.
         type: string
       KubePrometheusStackHelmWorkloadInstanceID:
@@ -2177,12 +2175,11 @@ definitions:
         type: string
       GrafanaHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying grafana chart.
         type: string
       GrafanaHelmWorkloadDefinitionID:
-        description: The Grafana Helm kubernetes workload definition that belongs
-          to this resource.
+        description: The Grafana Helm workload definition that belongs to this resource.
         type: integer
       InterruptReconciliation:
         description: |-
@@ -2247,12 +2244,11 @@ definitions:
         type: string
       GrafanaHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying grafana chart.
         type: string
       GrafanaHelmWorkloadInstanceID:
-        description: The Grafana Helm kubernetes workload instance that belongs to
-          this resource.
+        description: The Grafana Helm workload instance that belongs to this resource.
         type: integer
       InterruptReconciliation:
         description: |-
@@ -2318,7 +2314,7 @@ definitions:
         type: string
       GrafanaHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying grafana chart.
         type: string
       InterruptReconciliation:
@@ -2334,7 +2330,7 @@ definitions:
         type: string
       KubePrometheusStackHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying kube-prometheus-stack chart.
         type: string
       LoggingDefinitionID:
@@ -2348,7 +2344,7 @@ definitions:
         type: string
       LokiHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying loki chart.
         type: string
       MetricsDefinitionID:
@@ -2381,7 +2377,7 @@ definitions:
         type: string
       PromtailHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload definition values that can be provided to configure the
+          Optional Helm workload definition values that can be provided to configure the
           underlying promtail chart.
         type: string
       Reconciled:
@@ -2426,7 +2422,7 @@ definitions:
         type: string
       GrafanaHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload instance values that can be provided to configure the
+          Optional Helm workload instance values that can be provided to configure the
           underlying grafana chart.
         type: string
       InterruptReconciliation:
@@ -2438,7 +2434,7 @@ definitions:
         type: boolean
       KubePrometheusStackHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload instance values that can be provided to configure the
+          Optional Helm workload instance values that can be provided to configure the
           underlying kube-prometheus-stack chart.
         type: string
       KubernetesRuntimeInstanceID:
@@ -2454,7 +2450,7 @@ definitions:
         type: integer
       LokiHelmValuesDocument:
         description: |-
-          Optional Helm kubernetes workload instance values that can be provided to configure the
+          Optional Helm workload instance values that can be provided to configure the
           underlying loki chart.
         type: string
       MetricsEnabled:

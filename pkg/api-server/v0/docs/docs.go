@@ -17412,11 +17412,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "LokiHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying loki chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying loki chart.",
                     "type": "string"
                 },
                 "LokiHelmWorkloadDefinitionID": {
-                    "description": "The loki Helm kubernetes workload definition that belongs to this resource.",
+                    "description": "The loki Helm workload definition that belongs to this resource.",
                     "type": "integer"
                 },
                 "Name": {
@@ -17432,11 +17432,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "PromtailHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying promtail chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
                 "PromtailHelmWorkloadDefinitionID": {
-                    "description": "The promtail Helm kubernetes workload definition that belongs to this resource.",
+                    "description": "The promtail Helm workload definition that belongs to this resource.",
                     "type": "integer"
                 },
                 "Reconciled": {
@@ -17494,7 +17494,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "LokiHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload instance values that can be provided to configure the\nunderlying loki chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying loki chart.",
                     "type": "string"
                 },
                 "LokiHelmWorkloadInstanceID": {
@@ -17506,7 +17506,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "PromtailHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload instance values that can be provided to configure the\nunderlying promtail chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
                 "PromtailHelmWorkloadInstanceID": {
@@ -17817,11 +17817,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
                     "type": "string"
                 },
                 "KubePrometheusStackHelmWorkloadDefinitionID": {
-                    "description": "The kube-prometheus-stack Helm kubernetes workload definition that belongs to this resource.",
+                    "description": "The kube-prometheus-stack Helm workload definition that belongs to this resource.",
                     "type": "integer"
                 },
                 "MetricsInstances": {
@@ -17886,7 +17886,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
                     "type": "string"
                 },
                 "KubePrometheusStackHelmWorkloadInstanceID": {
@@ -18079,11 +18079,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying grafana chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
                 "GrafanaHelmWorkloadDefinitionID": {
-                    "description": "The Grafana Helm kubernetes workload definition that belongs to this resource.",
+                    "description": "The Grafana Helm workload definition that belongs to this resource.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -18148,11 +18148,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying grafana chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
                 "GrafanaHelmWorkloadInstanceID": {
-                    "description": "The Grafana Helm kubernetes workload instance that belongs to this resource.",
+                    "description": "The Grafana Helm workload instance that belongs to this resource.",
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
@@ -18216,7 +18216,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying grafana chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
@@ -18228,7 +18228,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
                     "type": "string"
                 },
                 "LoggingDefinitionID": {
@@ -18240,7 +18240,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "LokiHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying loki chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying loki chart.",
                     "type": "string"
                 },
                 "MetricsDefinitionID": {
@@ -18271,7 +18271,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "PromtailHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload definition values that can be provided to configure the\nunderlying promtail chart.",
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18317,7 +18317,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload instance values that can be provided to configure the\nunderlying grafana chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
@@ -18325,7 +18325,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
                     "type": "string"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18341,7 +18341,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "LokiHelmValuesDocument": {
-                    "description": "Optional Helm kubernetes workload instance values that can be provided to configure the\nunderlying loki chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying loki chart.",
                     "type": "string"
                 },
                 "MetricsEnabled": {

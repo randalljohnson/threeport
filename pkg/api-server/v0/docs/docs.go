@@ -7200,6 +7200,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/v0/kubernetes-workload-resource-definition-sets": {
+            "post": {
+                "description": "Add a set of new kubernetes workload resource definitions to the Threeport database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "adds a new set of kubernetes workload resource definitions.",
+                "operationId": "add-kubernetesWorkloadResourceDefinitions",
+                "parameters": [
+                    {
+                        "description": "KubernetesWorkloadResourceDefinition object array",
+                        "name": "kubernetesWorkloadResourceDefinitions",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v0/kubernetes-workload-resource-definitions": {
             "get": {
                 "description": "Get all kubernetes workload resource definitions from the Threeport database.",
@@ -15756,53 +15803,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/v0/workload-resource-definition-sets": {
-            "post": {
-                "description": "Add a set of new workload resource definition to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new set of workload resource definitions.",
-                "operationId": "add-workloadResourceDefinitions",
-                "parameters": [
-                    {
-                        "description": "KubernetesWorkloadResourceDefinition object array",
-                        "name": "workloadResourceDefinitions",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -17734,13 +17734,6 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "Events": {
-                    "description": "All events generated for the machine workload instance.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.WorkloadEvent"
-                    }
-                },
                 "InterruptReconciliation": {
                     "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
@@ -18372,7 +18365,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "PromtailHelmValuesDocument": {
-                    "description": "Optional Helm workload Instancehat can be provided to configure the\nunderlying promtail chart.",
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18947,50 +18940,6 @@ const docTemplate = `{
                 },
                 "Name": {
                     "description": "The unique name of a tier.",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.WorkloadEvent": {
-            "type": "object",
-            "required": [
-                "Message",
-                "Reason",
-                "RuntimeEventUID",
-                "Timestamp",
-                "Type"
-            ],
-            "properties": {
-                "HelmWorkloadInstanceID": {
-                    "description": "The related helm workload instance.",
-                    "type": "integer"
-                },
-                "KubernetesWorkloadInstanceID": {
-                    "description": "The related kubernetes workload instance.",
-                    "type": "integer"
-                },
-                "KubernetesWorkloadResourceInstanceID": {
-                    "description": "The related kubernetes workload resource instance.",
-                    "type": "integer"
-                },
-                "Message": {
-                    "description": "The message associated with the event.",
-                    "type": "string"
-                },
-                "Reason": {
-                    "description": "The reason for the event.",
-                    "type": "string"
-                },
-                "RuntimeEventUID": {
-                    "description": "A unique ID for de-duplicating purposes.  It is one of two thing:\n* The Kubernetes Event resource UID: when the WorkloadEvent is derived\ndirectly from a Kubernetes Event.\n* The workload controller ID: when the WorkloadEvent is emitted by the\nworkload controller.",
-                    "type": "string"
-                },
-                "Timestamp": {
-                    "description": "The timestamp for the event in the kubernetes runtime.",
-                    "type": "string"
-                },
-                "Type": {
-                    "description": "The type of event that occurred in Kubernetes.",
                     "type": "string"
                 }
             }

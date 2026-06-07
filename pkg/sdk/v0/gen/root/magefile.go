@@ -294,8 +294,12 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	buildAllImagesFuncName := "AllImages"
 	f.Comment(fmt.Sprintf("%s builds and pushes images for all components. Pre-compiles", buildAllImagesFuncName))
 	f.Comment("binaries for every requested arch in parallel, then packages each")
-	f.Comment("component image in parallel. Set PARALLEL >= 1 to cap packaging")
-	f.Comment("concurrency (e.g. `PARALLEL=4 mage build:allImages ghcr.io/foo v1 amd64,arm64`).")
+	f.Comment("component image in parallel. A multi-arch arch value (e.g. amd64,arm64)")
+	f.Comment("produces a multi-arch manifest in one push. A single arch (e.g. amd64)")
+	f.Comment("pushes only that arch under the given tag; use package:allManifests to")
+	f.Comment("stitch single-arch tags from separate runs into a multi-arch manifest list.")
+	f.Comment("Set PARALLEL_IMAGE_BUILD >= 1 to cap packaging concurrency (e.g.")
+	f.Comment("`PARALLEL_IMAGE_BUILD=4 mage build:allImages ghcr.io/foo v1 amd64,arm64`).")
 	f.Func().Params(Id("Build")).Id(buildAllImagesFuncName).Params(
 		Line().Id("imageRepo").String(),
 		Line().Id("imageTag").String(),
@@ -322,7 +326,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// build and push all dev images
 	buildAllDevImagesFuncName := "AllImagesDev"
 	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllDevImagesFuncName))
-	f.Comment("Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesDev`).")
+	f.Comment("Set PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage build:allImagesDev`).")
 	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
 		g.List(Id("_"), Id("arch"), Id("err")).Op(":=").Id("getBuildVals").Call()
 		g.If(Id("err").Op("!=").Nil()).Block(
@@ -673,7 +677,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// build and push all release images
 	buildAllReleaseImagesFuncName := "AllImagesRelease"
 	f.Comment(fmt.Sprintf("%s builds and pushes release images for all components.", buildAllReleaseImagesFuncName))
-	f.Comment("Set PARALLEL >= 1 to control worker concurrency (e.g. `PARALLEL=4 mage build:allImagesRelease`).")
+	f.Comment("Set PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage build:allImagesRelease`).")
 	f.Func().Params(Id("Build")).Id(buildAllReleaseImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
 		g.Id("arch").Op(":=").Id("releaseArch")
 		g.Line()
@@ -697,10 +701,10 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	})
 
-	// helper: parse the PARALLEL env var, default to 1
-	f.Comment("parallelFromEnv returns the PARALLEL env var as an int, defaulting to 1.")
+	// helper: parse the PARALLEL_IMAGE_BUILD env var, default to 1
+	f.Comment("parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int, defaulting to 1.")
 	f.Func().Id("parallelFromEnv").Params().Int().BlockFunc(func(g *Group) {
-		g.Id("v").Op(":=").Qual("os", "Getenv").Call(Lit("PARALLEL"))
+		g.Id("v").Op(":=").Qual("os", "Getenv").Call(Lit("PARALLEL_IMAGE_BUILD"))
 		g.If(Id("v").Op("==").Lit("")).Block(
 			Return(Lit(1)),
 		)

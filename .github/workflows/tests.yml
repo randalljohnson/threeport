@@ -5,9 +5,9 @@
 # (~/.cache/go-build, restored by actions/cache below) invalidates per
 # package, so a single-file edit only recompiles that package. Inside a
 # Dockerfile, the same edit invalidates the whole COPY layer and forces
-# a cold rebuild. The actions/cache step is the primary cache for both
-# jobs in this workflow; BUILDX_CACHE_FROM/TO only cover the tiny
-# COPY+ENTRYPOINT tail.
+# a cold rebuild. actions/cache is the only cache layer; buildx layer
+# caching adds no value on top because the binary COPY changes every
+# build.
 
 name: Tests
 
@@ -30,7 +30,7 @@ jobs:
       GOPATH: /home/runner/go
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v6.0.3
 
     - name: Set up Go
       uses: actions/setup-go@v6.4.0
@@ -81,7 +81,7 @@ jobs:
         secret
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v6.0.3
 
     - name: Set up Go
       uses: actions/setup-go@v6.4.0
@@ -118,13 +118,9 @@ jobs:
     # Only build the images the integration test actually exercises.
     # workload_test.go uses the rest-api, database-migrator, and the
     # workload, kubernetes-runtime, gateway, and secret controllers.
-    # BUILDX_CACHE_FROM/TO only covers the COPY+distroless tail; the
-    # compile cache lives in actions/cache.
     - name: Build and push control plane component images
       env:
-        PARALLEL: "4"
-        BUILDX_CACHE_FROM: type=gha,scope=dev-{component}
-        BUILDX_CACHE_TO: type=gha,scope=dev-{component},mode=max
+        PARALLEL_IMAGE_BUILD: "4"
       run: mage build:imagesByApisDev "$APIS"
 
     - name: Build tptctl

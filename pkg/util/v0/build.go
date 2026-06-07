@@ -66,11 +66,11 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 	if debug {
 		args = append(args, `-gcflags=all=-N -l`)
 	}
-	// GO_BUILD_PARALLELISM caps concurrent compile workers per go build
+	// PARALLEL_GO_BUILD caps concurrent compile workers per go build
 	// invocation. CI sets it (e.g. 2) to keep memory bounded on small
 	// runners; locally we leave it unset so the Go default (GOMAXPROCS)
 	// uses every available core.
-	if p := os.Getenv("GO_BUILD_PARALLELISM"); p != "" {
+	if p := os.Getenv("PARALLEL_GO_BUILD"); p != "" {
 		args = append(args, "-p="+p)
 	}
 	args = append(args, "-o", filepath.Join("bin", arch)+string(os.PathSeparator))
@@ -220,11 +220,6 @@ func ensureMultiArchBuilder() error {
 // TERRAFORM_VERSION or PULUMI_VERSION; keys are emitted in sorted order
 // for stable command output.
 //
-// Cache. If BUILDX_CACHE_FROM / BUILDX_CACHE_TO env vars are set, they
-// forward to buildx with the literal `{component}` placeholder replaced
-// by the image's short name (the `threeport-` prefix is trimmed). Local
-// builds skip the cache round trip unless these are set.
-//
 // Output. Stdout and stderr lines are prefixed with `[shortName]` so
 // concurrent matrix builds remain distinguishable in the combined stream.
 func BuildImage(
@@ -344,9 +339,9 @@ func BuildImage(
 
 // buildxBuildArgs assembles the docker buildx invocation argv, the full
 // image ref, and the short component name used for log prefixes. Reads
-// BUILDX_CACHE_FROM/TO for layer cache scoping and GIT_REVISION /
-// GIT_TAG / BUILD_CREATED for OCI image labels, falling back to git
-// probes for the unset label values. Emits no other side effects.
+// GIT_REVISION / GIT_TAG / BUILD_CREATED for OCI image labels, falling
+// back to git probes for the unset label values. Emits no other side
+// effects.
 func buildxBuildArgs(
 	threeportPath string,
 	dockerfilePath string,
@@ -409,14 +404,6 @@ func buildxBuildArgs(
 		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, extraBuildArgs[k]))
 	}
 
-	// scope cache per component via {component} substitution; opt-in via env
-	if v := os.Getenv("BUILDX_CACHE_FROM"); v != "" {
-		args = append(args, "--cache-from", strings.ReplaceAll(v, "{component}", shortName))
-	}
-	if v := os.Getenv("BUILDX_CACHE_TO"); v != "" {
-		args = append(args, "--cache-to", strings.ReplaceAll(v, "{component}", shortName))
-	}
-
 	// plain progress keeps lines independent so concurrent builds
 	// interleave cleanly under per-component prefixes
 	args = append(args, "--progress=plain")
@@ -456,4 +443,58 @@ func gitOutput(workingDir string, args ...string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// PushMultiArchManifest stitches per-arch image tags into a multi-arch
+// manifest list and pushes the result under the canonical tag. Sources
+// are assumed to already exist at <repo>/<image>:<tag>-<arch> for each
+// arch in the comma-separated arches list; the result publishes to
+// <repo>/<image>:<tag>. Implemented via `docker buildx imagetools
+// create`, which reads the source manifests from the registry and
+// writes a fan-in manifest list back without re-uploading any blobs.
+func PushMultiArchManifest(imageRepo, imageName, imageTag, arches string) error {
+	// parse comma-separated arches and reject empty input
+	archList := []string{}
+	for _, a := range strings.Split(arches, ",") {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			archList = append(archList, a)
+		}
+	}
+	if len(archList) == 0 {
+		return errors.New("--arches is required")
+	}
+
+	// build the canonical target tag and the per-arch source tags
+	target := fmt.Sprintf("%s/%s:%s", imageRepo, imageName, imageTag)
+	sources := make([]string, 0, len(archList))
+	for _, a := range archList {
+		sources = append(sources, fmt.Sprintf("%s/%s:%s-%s", imageRepo, imageName, imageTag, a))
+	}
+
+	// assemble the buildx imagetools create invocation
+	args := []string{"buildx", "imagetools", "create", "--tag", target}
+	args = append(args, sources...)
+
+	// run with prefixed stdout/stderr so concurrent component runs
+	// stay disambiguated in interleaved CI output
+	shortName := strings.TrimPrefix(imageName, "threeport-")
+	prefix := fmt.Sprintf("[%s]", shortName)
+	stdoutPrefixer := &prefixWriter{prefix: prefix, out: os.Stdout}
+	stderrPrefixer := &prefixWriter{prefix: prefix, out: os.Stderr}
+
+	cmd := exec.Command("docker", args...)
+	cmd.Stdout = stdoutPrefixer
+	cmd.Stderr = stderrPrefixer
+	runErr := cmd.Run()
+
+	// drain partial trailing lines so a final no-newline write isn't
+	// silently dropped on process exit
+	_ = stdoutPrefixer.Flush()
+	_ = stderrPrefixer.Flush()
+
+	if runErr != nil {
+		return fmt.Errorf("failed to create multi-arch manifest %s: %w", target, runErr)
+	}
+	return nil
 }

@@ -46,7 +46,7 @@ func init() {
 
 	upCmd.Flags().StringVarP(
 		&cliArgs.KubeconfigPath,
-		"kubeconfig", "k", "", "Path to kubeconfig (default is ~/.kube/config).",
+		"kubeconfig", "k", "", "Path to kubeconfig (default is $KUBECONFIG, then ~/.kube/config).",
 	)
 	upCmd.Flags().BoolVar(
 		&cliArgs.ForceOverwriteConfig,

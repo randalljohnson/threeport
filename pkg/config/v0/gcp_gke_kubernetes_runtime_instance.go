@@ -20,19 +20,19 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type GcpGkeKubernetesRuntimeInstanceConfig struct {
-	GcpGkeKubernetesRuntimeInstance GcpGkeKubernetesRuntimeInstanceValues `yaml:"GcpGkeKubernetesRuntimeInstance"`
+	GcpGkeKubernetesRuntimeInstance GcpGkeKubernetesRuntimeInstanceValues
 }
 
 // GcpGkeKubernetesRuntimeInstanceValues contains all the attributes needed to manage
 // the GcpGkeKubernetesRuntimeInstance API object.
 type GcpGkeKubernetesRuntimeInstanceValues struct {
-	Name                              *string                                  `json:",omitempty" yaml:"Name,omitempty"`
-	Region                            *string                                  `json:",omitempty" yaml:"Region,omitempty"`
-	GcpProviderName                   *string                                  `json:",omitempty" yaml:"GcpProviderName,omitempty"`
-	GcpGkeKubernetesRuntimeDefinition *GcpGkeKubernetesRuntimeDefinitionValues `json:",omitempty" yaml:"GcpGkeKubernetesRuntimeDefinition,omitempty"`
-	KubernetesRuntimeInstance         *KubernetesRuntimeInstanceValues         `json:",omitempty" yaml:"KubernetesRuntimeInstance,omitempty"`
-	Reconciled                        *bool                                    `json:",omitempty" yaml:"Reconciled,omitempty"`
-	Age                               *string                                  `json:",omitempty" yaml:"Age,omitempty"`
+	Name                              *string                                  `json:",omitempty"`
+	Region                            *string                                  `json:",omitempty"`
+	GcpProviderName                   *string                                  `json:",omitempty"`
+	GcpGkeKubernetesRuntimeDefinition *GcpGkeKubernetesRuntimeDefinitionValues `json:",omitempty"`
+	KubernetesRuntimeInstance         *KubernetesRuntimeInstanceValues         `json:",omitempty"`
+	Reconciled                        *bool                                    `json:",omitempty"`
+	Age                               *string                                  `json:",omitempty"`
 }
 
 // Get gets gcp gke kubernetes runtime instances from the Threeport API.

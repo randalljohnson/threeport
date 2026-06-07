@@ -46,7 +46,7 @@ type ModuleApiRoute struct {
 	ModuleApiID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The module object this route serves.
-	ModuleObjects []*ModuleObject `json:",omitempty" gorm:"many2many:v0_module_api_routes_module_objects;" validate:"optional,association"`
+	ModuleObjects []*ModuleObject `json:",omitempty" validate:"optional,association" gorm:"many2many:v0_module_api_routes_module_objects;"`
 }
 
 // ModuleController represents a distinct controller that is a part of the Threeport control plane.
@@ -88,5 +88,5 @@ type ModuleObject struct {
 	ModuleControllerID *uint `json:",omitempty" validate:"optional" relationship:"requires"`
 
 	// The routes that service this module object.
-	ModuleApiRoutes []*ModuleApiRoute `json:",omitempty" gorm:"many2many:v0_module_api_routes_module_objects;" validate:"optional,association"`
+	ModuleApiRoutes []*ModuleApiRoute `json:",omitempty" validate:"optional,association" gorm:"many2many:v0_module_api_routes_module_objects;"`
 }

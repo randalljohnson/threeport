@@ -57,16 +57,16 @@ type ObservabilityStackInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The observability stack definition that belongs to this resource.
-	ObservabilityStackDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	ObservabilityStackDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The kubernetes runtime where the observability stack is installed.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// If true, metrics will be enabled for the observability stack.
-	MetricsEnabled *bool `json:",omitempty" gorm:"default:true" validate:"optional"`
+	MetricsEnabled *bool `json:",omitempty" validate:"optional" gorm:"default:true"`
 
 	// If true, logging will be enabled for the observability stack.
-	LoggingEnabled *bool `json:",omitempty" gorm:"default:true" validate:"optional"`
+	LoggingEnabled *bool `json:",omitempty" validate:"optional" gorm:"default:true"`
 
 	// Dashboard
 	// The observability dashboard instance that belongs to this resource.
@@ -107,7 +107,7 @@ type ObservabilityDashboardDefinition struct {
 	GrafanaHelmWorkloadDefinitionID *uint `json:",omitempty" validate:"optional" relationship:"owns;type:HelmWorkloadDefinition"`
 
 	// The version of the grafana helm chart to use from the helm repo, e.g. 1.2.3
-	GrafanaHelmChartVersion *string `json:",omitempty" gorm:"default:'7.2.1'" validate:"optional"`
+	GrafanaHelmChartVersion *string `json:",omitempty" validate:"optional" gorm:"default:'7.2.1'"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying grafana chart.
@@ -124,10 +124,10 @@ type ObservabilityDashboardInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The observability dashboard definition that belongs to this resource.
-	ObservabilityDashboardDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	ObservabilityDashboardDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The kubernetes runtime where the observability dashboard is installed.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The Grafana Helm workload instance that belongs to this resource.
 	GrafanaHelmWorkloadInstanceID *uint `json:",omitempty" validate:"optional" relationship:"owns;type:HelmWorkloadInstance"`
@@ -147,7 +147,7 @@ type MetricsDefinition struct {
 	KubePrometheusStackHelmWorkloadDefinitionID *uint `json:",omitempty" validate:"optional" relationship:"owns;type:HelmWorkloadDefinition"`
 
 	// The version of the kube-prometheus-stack helm chart to use from the helm repo, e.g. 1.2.3
-	KubePrometheusStackHelmChartVersion *string `json:",omitempty" gorm:"default:'55.8.1'" validate:"optional"`
+	KubePrometheusStackHelmChartVersion *string `json:",omitempty" validate:"optional" gorm:"default:'55.8.1'"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying kube-prometheus-stack chart.
@@ -164,10 +164,10 @@ type MetricsInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The metrics definition that belongs to this resource.
-	MetricsDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	MetricsDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The kubernetes runtime where the metrics is installed.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The kube-prometheus-stack helm workload instance that belongs to this resource.
 	KubePrometheusStackHelmWorkloadInstanceID *uint `json:",omitempty" validate:"optional" relationship:"owns;type:HelmWorkloadInstance"`
@@ -190,10 +190,10 @@ type LoggingDefinition struct {
 	PromtailHelmWorkloadDefinitionID *uint `json:",omitempty" validate:"optional" relationship:"owns;type:HelmWorkloadDefinition"`
 
 	// The version of the loki helm chart to use from the helm repo, e.g. 1.2.3
-	LokiHelmChartVersion *string `json:",omitempty" gorm:"default:'5.41.6'" validate:"optional"`
+	LokiHelmChartVersion *string `json:",omitempty" validate:"optional" gorm:"default:'5.41.6'"`
 
 	// The version of the promtail helm chart to use from the helm repo, e.g. 1.2.3
-	PromtailHelmChartVersion *string `json:",omitempty" gorm:"default:'6.15.3'" validate:"optional"`
+	PromtailHelmChartVersion *string `json:",omitempty" validate:"optional" gorm:"default:'6.15.3'"`
 
 	// Optional Helm workload definition values that can be provided to configure the
 	// underlying loki chart.
@@ -214,10 +214,10 @@ type LoggingInstance struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The logging definition that belongs to this resource.
-	LoggingDefinitionID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	LoggingDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The kubernetes runtime where the logging is installed.
-	KubernetesRuntimeInstanceID *uint `json:",omitempty" gorm:"not null" validate:"required" relationship:"requires"`
+	KubernetesRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 
 	// The loki helm workload instance that belongs to this resource.
 	LokiHelmWorkloadInstanceID *uint `json:",omitempty" validate:"optional" relationship:"owns;type:HelmWorkloadInstance"`

@@ -17,7 +17,7 @@ import (
 // and remove the need for users to interract with API object details such as unique IDs
 // and foreign keys.
 type ObservabilityStackDefinitionConfig struct {
-	ObservabilityStackDefinition ObservabilityStackDefinitionValues `yaml:"ObservabilityStackDefinition"`
+	ObservabilityStackDefinition ObservabilityStackDefinitionValues
 }
 
 // ObservabilityStackDefinitionValues contains all the attributes needed to manage

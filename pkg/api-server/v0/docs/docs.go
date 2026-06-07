@@ -16282,7 +16282,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
-                    "description": "The cluster where the workload that is using the domain name is running.",
+                    "description": "The cluster where the kubernetes workload that is using the domain name is running.",
                     "type": "integer"
                 },
                 "KubernetesWorkloadInstanceID": {

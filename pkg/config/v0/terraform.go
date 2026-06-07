@@ -14,22 +14,22 @@ import (
 // This abstraction allows users to manage definitions and instances together with single operations
 // rather than separate operations for each API object.
 type TerraformConfig struct {
-	Terraform TerraformValues `yaml:"Terraform"`
+	Terraform TerraformValues
 }
 
 // TerraformValues contains all the attributes needed to manage the
 // TerraformDefinition and TerraformInstance API objects
 // together with a single operation.
 type TerraformValues struct {
-	Name                *string           `json:",omitempty" yaml:"Name,omitempty"`
-	ConfigDir           *string           `json:",omitempty" yaml:"ConfigDir,omitempty"`
-	AwsProvider          *AwsProviderValues `json:",omitempty" yaml:"AwsProvider,omitempty"`
-	VarsDocument        *string           `json:",omitempty" yaml:"VarsDocument,omitempty"`
-	StateDocument       *string           `json:",omitempty" yaml:"StateDocument,omitempty"`
-	Outputs             *string           `json:",omitempty" yaml:"Outputs,omitempty"`
-	TerraformConfigPath *string           `json:",omitempty" yaml:"TerraformConfigPath,omitempty"`
-	Status              *string           `json:",omitempty" yaml:"Status,omitempty"`
-	Age                 *string           `json:",omitempty" yaml:"Age,omitempty"`
+	Name                *string            `json:",omitempty" yaml:"Name,omitempty"`
+	ConfigDir           *string            `json:",omitempty" yaml:"ConfigDir,omitempty"`
+	AwsProvider         *AwsProviderValues `json:",omitempty" yaml:"AwsProvider,omitempty"`
+	VarsDocument        *string            `json:",omitempty" yaml:"VarsDocument,omitempty"`
+	StateDocument       *string            `json:",omitempty" yaml:"StateDocument,omitempty"`
+	Outputs             *string            `json:",omitempty" yaml:"Outputs,omitempty"`
+	TerraformConfigPath *string            `json:",omitempty" yaml:"TerraformConfigPath,omitempty"`
+	Status              *string            `json:",omitempty" yaml:"Status,omitempty"`
+	Age                 *string            `json:",omitempty" yaml:"Age,omitempty"`
 }
 
 // Get gets a terraform definition and instance from the Threeport API.
@@ -201,7 +201,7 @@ func (t *TerraformConfig) GetOperations(
 	terraformInstanceConfig := TerraformInstanceConfig{
 		TerraformInstance: TerraformInstanceValues{
 			Name:                terraformValues.Name,
-			AwsProvider:          terraformValues.AwsProvider,
+			AwsProvider:         terraformValues.AwsProvider,
 			VarsDocument:        terraformValues.VarsDocument,
 			StateDocument:       terraformValues.StateDocument,
 			Outputs:             terraformValues.Outputs,
@@ -266,7 +266,7 @@ func mapToTerraformDefinedInstances(
 					Terraform: TerraformValues{
 						Name:                inst.TerraformInstance.Name,
 						ConfigDir:           def.TerraformDefinition.ConfigDir,
-						AwsProvider:          inst.TerraformInstance.AwsProvider,
+						AwsProvider:         inst.TerraformInstance.AwsProvider,
 						VarsDocument:        inst.TerraformInstance.VarsDocument,
 						TerraformConfigPath: inst.TerraformInstance.TerraformConfigPath,
 						Status:              inst.TerraformInstance.Status,

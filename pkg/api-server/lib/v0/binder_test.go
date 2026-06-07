@@ -145,3 +145,43 @@ func TestQueryBinder_EmptyQueryString(t *testing.T) {
 	assert.Nil(t, filter.ID)
 	assert.Nil(t, filter.Name)
 }
+
+// bindTestFloatFilter covers the float32/float64 value-parsing paths in
+// setFieldFromString. No threeport api type uses floats today, but the
+// binder supports them and a regression should be caught.
+type bindTestFloatFilter struct {
+	Threshold *float64
+	Ratio     float32
+}
+
+// TestQueryBinder_FloatScalars exercises the float32/float64 branches of
+// setFieldFromString. The query keys are the usual lowercased field names;
+// what's being tested is that the raw string VALUES parse correctly into
+// pointer-float64 and value-float32 fields via strconv.ParseFloat.
+//
+// Example: ?threshold=0.25 binds *Threshold = 0.25; ?ratio=1.5 binds
+// Ratio = 1.5.
+func TestQueryBinder_FloatScalars(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?threshold=0.25&ratio=1.5", nil)
+	var filter bindTestFloatFilter
+	require.NoError(t, NewQueryBinder().Bind(&filter, c))
+
+	require.NotNil(t, filter.Threshold)
+	assert.InDelta(t, 0.25, *filter.Threshold, 0.0001)
+	assert.InDelta(t, float32(1.5), filter.Ratio, 0.0001)
+}
+
+// TestQueryBinder_MalformedFloatValue mirrors the malformed-int test for
+// the float branch of setFieldFromString. The query value isn't parseable
+// as a float so strconv.ParseFloat returns an error, which the binder
+// wraps with the param name.
+//
+// Example: ?threshold=not-a-float surfaces an error citing "threshold".
+func TestQueryBinder_MalformedFloatValue(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?threshold=not-a-float", nil)
+	var filter bindTestFloatFilter
+	err := NewQueryBinder().Bind(&filter, c)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "threshold")
+}
+

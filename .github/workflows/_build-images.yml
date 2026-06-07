@@ -1,27 +1,31 @@
-# Reusable per-component image build + push workflow.
+# Reusable per-arch image build + push workflow.
 #
-# Each matrix cell handles one component end-to-end on a single runner:
-# native Go cross-compiles linux/amd64 + linux/arm64 binaries side by
-# side (CGO_ENABLED=0 so no QEMU is needed), and one `docker buildx
-# build --platform=linux/amd64,linux/arm64 --push` produces a multi-arch
-# manifest list referencing both. Both binaries live in the same bin/
-# tree the buildx step consumes, which is what lets a single command
-# produce the manifest in one push.
+# Two phases:
 #
-# Alternative we don't use: one matrix cell per (component, arch) pair
-# pushing single-arch tags, followed by `docker buildx imagetools
-# create` to stitch the manifest. That doubles matrix breadth and adds
-# a manifest-list job per component, and only wins clearly when CGO
-# forces QEMU or you want to run tests on real arm64. Pure-Go builds
-# don't benefit enough to justify the orchestration.
+#   1. `build` runs one matrix cell per architecture (amd64, arm64) in
+#      parallel. Each cell runs `mage build:allImages` once, which
+#      iterates every controller internally and pushes single-arch tags
+#      as <repo>/<image>:<tag>-<arch>. One runner per arch keeps the Go
+#      build/module cache hot across every component build within that
+#      cell.
+#   2. `manifest` runs after both build cells succeed. It runs
+#      `mage package:allManifests` once, which iterates every controller
+#      and stitches its per-arch tags into a multi-arch manifest list
+#      published as <repo>/<image>:<tag> via `docker buildx imagetools
+#      create`. imagetools create only updates the manifest in the
+#      registry; no blobs are re-uploaded.
+#
+# Component list is owned by mage (`Build.AllImages` /
+# `Package.AllManifests`), so this workflow doesn't need to maintain it.
 #
 # Caches:
 #   - actions/cache holds ~/.cache/go-build + ~/go/pkg/mod and is keyed
-#     by go.sum. Go's build cache is content-addressed, so the same blob
-#     restores cleanly across every matrix cell.
-#   - BUILDX_CACHE_FROM/TO are scoped per component since each image's
-#     final layer is a different binary; no cross-component layer reuse
-#     is possible.
+#     by go.sum. Shared across all component builds within an arch cell;
+#     the first component primes the rest.
+#   - buildx layer caching isn't used. The Dockerfile is base + binary
+#     COPY; the binary changes every build and the BUILD_CREATED label
+#     invalidates everything below it, so layer cache hits are limited
+#     to the distroless base which is a sub-second registry pull.
 
 name: Build Images
 
@@ -37,7 +41,7 @@ on:
         type: string
         required: true
       arches:
-        description: Comma-separated arch list for buildx (e.g. amd64,arm64 or amd64).
+        description: Comma-separated arch list (e.g. amd64,arm64 or amd64).
         type: string
         required: false
         default: 'amd64,arm64'
@@ -52,33 +56,17 @@ permissions:
 
 jobs:
   build:
-    name: ${{ matrix.component.name }}
+    name: build-${{ matrix.arch }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        component:
-          - { name: rest-api,                       mage: build:apiImage }
-          - { name: database-migrator,              mage: build:dbMigratorImage }
-          - { name: agent,                          mage: build:agentImage }
-          - { name: kubernetes-workload-controller, mage: build:kubernetesWorkloadControllerImage }
-          - { name: kubernetes-runtime-controller,  mage: build:kubernetesRuntimeControllerImage }
-          - { name: aws-controller,                 mage: build:awsControllerImage }
-          - { name: gcp-controller,                 mage: build:gcpControllerImage }
-          - { name: oci-controller,                 mage: build:ociControllerImage }
-          - { name: gateway-controller,             mage: build:gatewayControllerImage }
-          - { name: control-plane-controller,       mage: build:controlPlaneControllerImage }
-          - { name: helm-workload-controller,       mage: build:helmWorkloadControllerImage }
-          - { name: terraform-controller,           mage: build:terraformControllerImage }
-          - { name: observability-controller,       mage: build:observabilityControllerImage }
-          - { name: secret-controller,              mage: build:secretControllerImage }
-          - { name: machine-runtime-controller,     mage: build:machineRuntimeControllerImage }
-          - { name: machine-workload-controller,    mage: build:machineWorkloadControllerImage }
+        arch: [amd64, arm64]
     env:
       GOPATH: /home/runner/go
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v6.0.3
 
     - name: Set up Go
       uses: actions/setup-go@v6.4.0
@@ -86,9 +74,6 @@ jobs:
         go-version: '1.24'
         cache: false
 
-    # Shared key across all matrix cells: Go's build cache is
-    # content-addressed and components overlap heavily on dependencies,
-    # so one cache holds the union and every cell restores the same blob.
     - name: Cache Go build + module cache
       uses: actions/cache@v5.0.5
       with:
@@ -112,20 +97,67 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GH_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
 
-    # GO_BUILD_PARALLELISM caps concurrent compile workers per `go build`
-    # invocation. 2 archs in parallel x 2 workers each = 4 concurrent
-    # compile workers, matched to the runner's 4 vCPU. Buildx layer cache
-    # is per-component since the binary differs per image; the Go compile
-    # cache is the shared actions/cache above.
-    - name: Build and push
+    # build:allImages with a single arch pushes single-arch tags only;
+    # the manifest job below stitches them via package:allManifests.
+    # We split by arch because amd64 and arm64 don't share buildx or Go
+    # build cache, so running them on separate runners is a free
+    # parallelization win.
+    - name: Build and push all components for ${{ matrix.arch }}
       env:
-        GO_BUILD_PARALLELISM: "2"
-        BUILDX_CACHE_FROM: type=gha,scope=${{ matrix.component.name }}
-        BUILDX_CACHE_TO: type=gha,scope=${{ matrix.component.name }},mode=max
-        # OCI image label values. BuildImage reads these and stamps
-        # them onto the release stage via Dockerfile ARG/LABEL.
+        # PARALLEL_GO_BUILD caps go build's compile workers. Only one
+        # go build runs at a time within a cell, so 4 saturates the
+        # 4 vCPU runner.
+        PARALLEL_GO_BUILD: "4"
+        # PARALLEL_IMAGE_BUILD controls how many image-package (buildx)
+        # tasks run concurrently after binaries are pre-compiled.
+        PARALLEL_IMAGE_BUILD: "4"
+        # OCI image label values. BuildImage reads these and stamps them
+        # onto the release stage via Dockerfile ARG/LABEL.
         GIT_REVISION: ${{ github.sha }}
         GIT_TAG: ${{ inputs.tag }}
       run: |
         export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        mage ${{ matrix.component.mage }} ${{ inputs.image_repo }} ${{ inputs.tag }} ${{ inputs.arches }}
+        mage build:allImages \
+          ${{ inputs.image_repo }} \
+          ${{ inputs.tag }}-${{ matrix.arch }} \
+          ${{ matrix.arch }}
+
+  manifest:
+    name: manifest
+    needs: build
+    runs-on: ubuntu-24.04
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6.0.3
+
+    - name: Set up Go
+      uses: actions/setup-go@v6.4.0
+      with:
+        go-version: '1.24'
+        cache: false
+
+    - name: Install mage
+      run: go install github.com/magefile/mage@v1.17.2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4.1.0
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@v4.2.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GH_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+
+    - name: Create multi-arch manifests
+      env:
+        # imagetools create is light (manifest-only, no blob upload), so
+        # we can fan out wider than the build phase.
+        PARALLEL_IMAGE_BUILD: "8"
+      run: |
+        mage package:allManifests \
+          ${{ inputs.image_repo }} \
+          ${{ inputs.tag }} \
+          ${{ inputs.arches }}

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -15,7 +16,7 @@ const (
 	streamRetryInterval = 2 * time.Second
 
 	// streamMaxRetries caps the wait at ~2 minutes total. Each retry
-	// is one StreamNames() iteration so the cost is dominated by the
+	// is one StreamInfo() round-trip so the cost is dominated by the
 	// sleep, not the lookup.
 	streamMaxRetries = 60
 )
@@ -27,11 +28,13 @@ func WaitForStream(js nats.JetStreamContext, streamName string, log logr.Logger)
 	log.Info("waiting for stream", "streamName", streamName)
 
 	for i := 0; i < streamMaxRetries; i++ {
-		for s := range js.StreamNames() {
-			if s == streamName {
-				log.Info("stream is available", "streamName", streamName)
-				return
-			}
+		_, err := js.StreamInfo(streamName)
+		if err == nil {
+			log.Info("stream is available", "streamName", streamName)
+			return
+		}
+		if !errors.Is(err, nats.ErrStreamNotFound) {
+			log.Info("stream lookup error, retrying", "err", err)
 		}
 		time.Sleep(streamRetryInterval)
 	}

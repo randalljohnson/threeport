@@ -5,9 +5,7 @@ Manage development operations with ease.
 Here you will find the main package for `tptdev` which is a developer tool to help make
 developers' lives more efficient.  Currently it supports spinning up and down development
 environments, building docker images, and managing debug mode of Threeport control plane
-components.  The dev environment differs from a regular instance of Threeport in that the
-API and controller components run delve-equipped images, so they can be remotely
-debugged via `tptdev debug --delve`.
+components.
 
 If you find yourself writing scripts or complex make targets for common development tasks,
 it may warrant a new command for `tptdev`.

@@ -23,14 +23,12 @@ import (
 // binary; per-image targets use this form for standalone use, and pick up
 // a Go cache hit when AllImages pre-built the same package earlier.
 // noCache=true passes -a to force a full rebuild ignoring Go's local
-// build cache. debug=true adds -gcflags="all=-N -l" so the binaries
-// are debugger-friendly (no optimization, no inlining).
+// build cache.
 func BuildBinaries(
 	threeportPath string,
 	arches []string,
 	packageDirs []string,
 	noCache bool,
-	debug bool,
 ) error {
 	tasks := make([]func() error, 0, len(arches))
 	for _, a := range arches {
@@ -39,7 +37,7 @@ func BuildBinaries(
 			continue
 		}
 		tasks = append(tasks, func() error {
-			return buildArchBinaries(threeportPath, arch, packageDirs, noCache, debug)
+			return buildArchBinaries(threeportPath, arch, packageDirs, noCache)
 		})
 	}
 	return RunParallel(len(tasks), tasks)
@@ -49,7 +47,7 @@ func BuildBinaries(
 // every package dir into bin/<arch>/<name>. Shared dependency compilation
 // within the invocation means a cold build is much faster than running
 // one go build per binary.
-func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache, debug bool) error {
+func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache bool) error {
 	outDir := filepath.Join(threeportPath, "bin", arch)
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
@@ -62,9 +60,6 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 	args := []string{"build", "-buildvcs=false"}
 	if noCache {
 		args = append(args, "-a")
-	}
-	if debug {
-		args = append(args, `-gcflags=all=-N -l`)
 	}
 	// PARALLEL_GO_BUILD caps concurrent compile workers per go build
 	// invocation. CI sets it (e.g. 2) to keep memory bounded on small
@@ -131,12 +126,12 @@ func (p *prefixWriter) Write(data []byte) (int, error) {
 	}
 }
 
-// Flush writes any buffered partial line (no trailing newline) with
+// flush writes any buffered partial line (no trailing newline) with
 // the prefix and a synthetic newline. Buildx's final progress lines
 // often arrive without a newline before the process exits; without
-// Flush they remain buffered until a newline that never comes and are
+// flush they remain buffered until a newline that never comes and are
 // silently dropped when the process exits.
-func (p *prefixWriter) Flush() error {
+func (p *prefixWriter) flush() error {
 	if p.buf.Len() == 0 {
 		return nil
 	}
@@ -291,8 +286,8 @@ func BuildImage(
 	// drain partial trailing lines. buildx's final progress lines
 	// often arrive without a newline and would be silently dropped on
 	// process exit.
-	_ = stdoutPrefixer.Flush()
-	_ = stderrPrefixer.Flush()
+	_ = stdoutPrefixer.flush()
+	_ = stderrPrefixer.flush()
 
 	if runErr != nil {
 		// surface the most common multi-arch setup gap as actionable
@@ -445,6 +440,19 @@ func gitOutput(workingDir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// ParseArches splits a comma-separated arch string into a clean slice,
+// trimming whitespace from each entry and dropping empties.
+func ParseArches(arch string) []string {
+	out := []string{}
+	for _, a := range strings.Split(arch, ",") {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
 // PushMultiArchManifest stitches per-arch image tags into a multi-arch
 // manifest list and pushes the result under the canonical tag. Sources
 // are assumed to already exist at <repo>/<image>:<tag>-<arch> for each
@@ -453,14 +461,7 @@ func gitOutput(workingDir string, args ...string) string {
 // create`, which reads the source manifests from the registry and
 // writes a fan-in manifest list back without re-uploading any blobs.
 func PushMultiArchManifest(imageRepo, imageName, imageTag, arches string) error {
-	// parse comma-separated arches and reject empty input
-	archList := []string{}
-	for _, a := range strings.Split(arches, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			archList = append(archList, a)
-		}
-	}
+	archList := ParseArches(arches)
 	if len(archList) == 0 {
 		return errors.New("--arches is required")
 	}
@@ -490,8 +491,8 @@ func PushMultiArchManifest(imageRepo, imageName, imageTag, arches string) error 
 
 	// drain partial trailing lines so a final no-newline write isn't
 	// silently dropped on process exit
-	_ = stdoutPrefixer.Flush()
-	_ = stderrPrefixer.Flush()
+	_ = stdoutPrefixer.flush()
+	_ = stderrPrefixer.flush()
 
 	if runErr != nil {
 		return fmt.Errorf("failed to create multi-arch manifest %s: %w", target, runErr)

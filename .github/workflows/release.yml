@@ -13,7 +13,7 @@ jobs:
   goreleaser:
     uses: ./.github/workflows/_goreleaser.yml
 
-  controller-images:
+  images:
     needs: goreleaser
     uses: ./.github/workflows/_build-images.yml
     with:

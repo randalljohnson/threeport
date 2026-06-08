@@ -1,7 +1,6 @@
 # Reusable: runs `goreleaser release --clean` against the upstream
 # .goreleaser.yml. Callers either rely on the natural tag context
-# (release.yml on tag push) or pass a synthesized tag via `ref`
-# (dev-release.yml after tagging dev-pinned's head).
+# (release.yml on tag push) or pass a synthesized tag via `ref`.
 
 name: GoReleaser
 

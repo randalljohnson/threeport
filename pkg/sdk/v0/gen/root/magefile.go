@@ -207,7 +207,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			switch objGroup.ControllerName {
 			case "terraform-controller":
 				target = "terraform"
-			case "oci-controller":
+			case "oci-controller", "gcp-controller":
 				target = "pulumi"
 			}
 			emitImagePackageFunc(f, packageFuncName, objGroup.ControllerName, target, objGroup.ControllerName, imageName)

@@ -88,7 +88,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Const().Id("releaseArch").Op("=").Lit("amd64")
 	f.Line()
 
-	namespaces := []string{"Build", "Test", "Install", "Dev"}
+	namespaces := []string{"Build", "Test", "Install", "Dev", "Package"}
 	for _, ns := range namespaces {
 		f.Comment(fmt.Sprintf(
 			"%s provides a type for methods that implement %s targets.", ns, strcase.ToLowerCamel(ns),
@@ -203,12 +203,9 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				ImageName:       imageName,
 				PackageFuncName: packageFuncName,
 			})
-			target := "release"
-			switch objGroup.ControllerName {
-			case "terraform-controller":
-				target = "terraform"
-			case "oci-controller":
-				target = "pulumi"
+			target := objGroup.DockerfileTarget
+			if target == "" {
+				target = "release"
 			}
 			emitImagePackageFunc(f, packageFuncName, objGroup.ControllerName, target, objGroup.ControllerName, imageName)
 			emitImageFunc(f, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir, packageFuncName)
@@ -335,6 +332,313 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	})
 
+	// build and push dev images narrowed by sdk-config api name
+	buildImagesByApisDevFuncName := "ImagesByApisDev"
+	f.Comment(fmt.Sprintf(
+		"%s builds and pushes development images for the rest-api,",
+		buildImagesByApisDevFuncName,
+	))
+	f.Comment("database-migrator, and the controllers of the listed sdk-config")
+	f.Comment("apis. The agent is not included by default; pass \"agent\" in the")
+	f.Comment("apis list (or use AllImagesDev) if it is needed. Set PARALLEL >= 1")
+	f.Comment("to control worker concurrency. Example:")
+	f.Comment("`PARALLEL=4 mage build:imagesByApisDev kubernetes_workload,gateway,secret`.")
+	f.Func().Params(Id("Build")).Id(buildImagesByApisDevFuncName).Params(
+		Id("apis").String(),
+	).Error().BlockFunc(func(g *Group) {
+		g.List(Id("workingDir"), Id("arch"), Id("err")).Op(":=").Id("getBuildVals").Call()
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Id("err"))),
+		)
+		g.Line()
+
+		// partition components into always-included (no ApiName) and
+		// api-scoped controllers so the runtime lookup only covers
+		// the controller set.
+		var alwaysIncluded []componentSpec
+		var controllerComponents []componentSpec
+		for _, c := range allComponents {
+			if c.ApiName == "" {
+				alwaysIncluded = append(alwaysIncluded, c)
+			} else {
+				controllerComponents = append(controllerComponents, c)
+			}
+		}
+
+		// emit a static map keyed by api name → controller entry.
+		// Each entry pairs the package dir (for the upfront BuildBinaries
+		// call) with the per-component package method value (for the
+		// per-image task).
+		g.Type().Id("controllerEntry").Struct(
+			Id("packageDir").String(),
+			Id("packageFunc").Func().Params(String(), String(), String(), String()).Error(),
+		)
+		g.Line()
+
+		g.Id("build").Op(":=").Id("Build").Values()
+		g.Line()
+
+		g.Id("controllersByApi").Op(":=").Map(String()).Id("controllerEntry").ValuesFunc(func(v *Group) {
+			for _, c := range controllerComponents {
+				v.Line().Lit(c.ApiName).Op(":").Values(Dict{
+					Id("packageDir"):  Lit(c.PackageDir),
+					Id("packageFunc"): Id("build").Dot(c.PackageFuncName),
+				})
+			}
+			v.Line()
+		})
+		g.Line()
+
+		// known api list for the unknown-api error message.
+		g.Id("validApiNames").Op(":=").Func().Params().Index().String().Block(
+			Id("names").Op(":=").Make(Index().String(), Lit(0), Len(Id("controllersByApi"))),
+			For(List(Id("name"), Id("_")).Op(":=").Range().Id("controllersByApi")).Block(
+				Id("names").Op("=").Append(Id("names"), Id("name")),
+			),
+			Qual("sort", "Strings").Call(Id("names")),
+			Return(Id("names")),
+		).Call()
+		g.Line()
+
+		// parse the comma-separated api list, trimming whitespace
+		// and dropping empty fragments.
+		g.Id("requestedApis").Op(":=").Index().String().Values()
+		g.For(List(Id("_"), Id("part")).Op(":=").Range().Qual("strings", "Split").Call(Id("apis"), Lit(","))).Block(
+			Id("trimmed").Op(":=").Qual("strings", "TrimSpace").Call(Id("part")),
+			If(Id("trimmed").Op("!=").Lit("")).Block(
+				Id("requestedApis").Op("=").Append(Id("requestedApis"), Id("trimmed")),
+			),
+		)
+		g.Line()
+
+		// resolve each requested api to its controller entry,
+		// erroring out on the first unknown name.
+		g.Id("selectedControllers").Op(":=").Make(Index().Id("controllerEntry"), Lit(0), Len(Id("requestedApis")))
+		g.For(List(Id("_"), Id("apiName")).Op(":=").Range().Id("requestedApis")).Block(
+			List(Id("entry"), Id("ok")).Op(":=").Id("controllersByApi").Index(Id("apiName")),
+			If(Op("!").Id("ok")).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("unknown api %q: valid choices are %s"),
+					Id("apiName"),
+					Qual("strings", "Join").Call(Id("validApiNames"), Lit(", ")),
+				)),
+			),
+			Id("selectedControllers").Op("=").Append(Id("selectedControllers"), Id("entry")),
+		)
+		g.Line()
+
+		// pre-compile every binary for every requested arch in one go
+		// build per arch (arches run in parallel) so dependency
+		// compilation is shared across components within an arch. Each
+		// per-image task below then only packages the pre-built binary.
+		g.Id("arches").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ParseArches").Call(Id("arch"))
+		g.Line()
+
+		// build the packageDirs list: always-included dirs first, then
+		// one entry per selected controller.
+		g.Id("packageDirs").Op(":=").Index().String().ValuesFunc(func(v *Group) {
+			for _, c := range alwaysIncluded {
+				v.Line().Lit(c.PackageDir)
+			}
+			v.Line()
+		})
+		g.For(List(Id("_"), Id("entry")).Op(":=").Range().Id("selectedControllers")).Block(
+			Id("packageDirs").Op("=").Append(Id("packageDirs"), Id("entry").Dot("packageDir")),
+		)
+		g.Line()
+
+		g.If(Err().Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"BuildBinaries",
+		).Call(
+			Line().Id("workingDir"),
+			Line().Id("arches"),
+			Line().Id("packageDirs"),
+			Line().False(),
+			Line(),
+		).Op(";").Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to pre-build binaries: %w"), Err())),
+		)
+		g.Line()
+
+		emitWrapHelper(g,
+			Qual(installerPkg, "DevImageNamespace"),
+			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
+		g.Line()
+
+		// always-included tasks first, then one per selected controller.
+		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
+			for _, c := range alwaysIncluded {
+				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
+			}
+			v.Line()
+		})
+		g.For(List(Id("_"), Id("entry")).Op(":=").Range().Id("selectedControllers")).Block(
+			Id("tasks").Op("=").Append(Id("tasks"), Id("wrap").Call(Id("entry").Dot("packageFunc"))),
+		)
+		g.Line()
+
+		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
+			Id("parallelFromEnv").Call(),
+			Id("tasks"),
+		)
+	})
+
+	// build and push multi-arch images narrowed by sdk-config api name
+	buildImagesByApisFuncName := "ImagesByApis"
+	f.Comment(fmt.Sprintf(
+		"%s builds and pushes multi-arch container images for the rest-api,",
+		buildImagesByApisFuncName,
+	))
+	f.Comment("database-migrator, and the controllers of the listed sdk-config apis")
+	f.Comment("to the given registry under the given tag. The rest-api, database-migrator,")
+	f.Comment("by default; pass \"agent\" in the apis list (or use AllImages) if it")
+	f.Comment("is needed. Set PARALLEL >= 1 to control worker concurrency. Example:")
+	f.Comment("`PARALLEL=2 mage build:imagesByApis machine_workload,machine_runtime ghcr.io/myorg dev-pinned-abc1234 amd64,arm64`.")
+	f.Func().Params(Id("Build")).Id(buildImagesByApisFuncName).Params(
+		Line().Id("apis").String(),
+		Line().Id("imageRepo").String(),
+		Line().Id("imageTag").String(),
+		Line().Id("arch").String(),
+		Line(),
+	).Error().BlockFunc(func(g *Group) {
+		g.List(Id("workingDir"), Id("_"), Id("err")).Op(":=").Id("getBuildVals").Call()
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Id("err"))),
+		)
+		g.Line()
+
+		// partition components into always-included (no ApiName) and
+		// api-scoped controllers so the runtime lookup only covers
+		// the controller set.
+		var alwaysIncluded []componentSpec
+		var controllerComponents []componentSpec
+		for _, c := range allComponents {
+			if c.ApiName == "" {
+				alwaysIncluded = append(alwaysIncluded, c)
+			} else {
+				controllerComponents = append(controllerComponents, c)
+			}
+		}
+
+		// emit a static map keyed by api name → controller entry.
+		// Each entry pairs the package dir (for the upfront BuildBinaries
+		// call) with the per-component package method value (for the
+		// per-image task).
+		g.Type().Id("controllerEntry").Struct(
+			Id("packageDir").String(),
+			Id("packageFunc").Func().Params(String(), String(), String(), String()).Error(),
+		)
+		g.Line()
+
+		g.Id("build").Op(":=").Id("Build").Values()
+		g.Line()
+
+		g.Id("controllersByApi").Op(":=").Map(String()).Id("controllerEntry").ValuesFunc(func(v *Group) {
+			for _, c := range controllerComponents {
+				v.Line().Lit(c.ApiName).Op(":").Values(Dict{
+					Id("packageDir"):  Lit(c.PackageDir),
+					Id("packageFunc"): Id("build").Dot(c.PackageFuncName),
+				})
+			}
+			v.Line()
+		})
+		g.Line()
+
+		// known api list for the unknown-api error message.
+		g.Id("validApiNames").Op(":=").Func().Params().Index().String().Block(
+			Id("names").Op(":=").Make(Index().String(), Lit(0), Len(Id("controllersByApi"))),
+			For(List(Id("name"), Id("_")).Op(":=").Range().Id("controllersByApi")).Block(
+				Id("names").Op("=").Append(Id("names"), Id("name")),
+			),
+			Qual("sort", "Strings").Call(Id("names")),
+			Return(Id("names")),
+		).Call()
+		g.Line()
+
+		// parse the comma-separated api list, trimming whitespace
+		// and dropping empty fragments.
+		g.Id("requestedApis").Op(":=").Index().String().Values()
+		g.For(List(Id("_"), Id("part")).Op(":=").Range().Qual("strings", "Split").Call(Id("apis"), Lit(","))).Block(
+			Id("trimmed").Op(":=").Qual("strings", "TrimSpace").Call(Id("part")),
+			If(Id("trimmed").Op("!=").Lit("")).Block(
+				Id("requestedApis").Op("=").Append(Id("requestedApis"), Id("trimmed")),
+			),
+		)
+		g.Line()
+
+		// resolve each requested api to its controller entry,
+		// erroring out on the first unknown name.
+		g.Id("selectedControllers").Op(":=").Make(Index().Id("controllerEntry"), Lit(0), Len(Id("requestedApis")))
+		g.For(List(Id("_"), Id("apiName")).Op(":=").Range().Id("requestedApis")).Block(
+			List(Id("entry"), Id("ok")).Op(":=").Id("controllersByApi").Index(Id("apiName")),
+			If(Op("!").Id("ok")).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("unknown api %q: valid choices are %s"),
+					Id("apiName"),
+					Qual("strings", "Join").Call(Id("validApiNames"), Lit(", ")),
+				)),
+			),
+			Id("selectedControllers").Op("=").Append(Id("selectedControllers"), Id("entry")),
+		)
+		g.Line()
+
+		// pre-compile every binary for every requested arch in one go
+		// build per arch (arches run in parallel) so dependency
+		// compilation is shared across components within an arch. Each
+		// per-image task below then only packages the pre-built binary.
+		g.Id("arches").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ParseArches").Call(Id("arch"))
+		g.Line()
+
+		// build the packageDirs list: always-included dirs first, then
+		// one entry per selected controller.
+		g.Id("packageDirs").Op(":=").Index().String().ValuesFunc(func(v *Group) {
+			for _, c := range alwaysIncluded {
+				v.Line().Lit(c.PackageDir)
+			}
+			v.Line()
+		})
+		g.For(List(Id("_"), Id("entry")).Op(":=").Range().Id("selectedControllers")).Block(
+			Id("packageDirs").Op("=").Append(Id("packageDirs"), Id("entry").Dot("packageDir")),
+		)
+		g.Line()
+
+		g.If(Err().Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"BuildBinaries",
+		).Call(
+			Line().Id("workingDir"),
+			Line().Id("arches"),
+			Line().Id("packageDirs"),
+			Line().False(),
+			Line(),
+		).Op(";").Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to pre-build binaries: %w"), Err())),
+		)
+		g.Line()
+
+		emitWrapHelper(g, Id("imageRepo"), Id("imageTag"))
+		g.Line()
+
+		// always-included tasks first, then one per selected controller.
+		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
+			for _, c := range alwaysIncluded {
+				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
+			}
+			v.Line()
+		})
+		g.For(List(Id("_"), Id("entry")).Op(":=").Range().Id("selectedControllers")).Block(
+			Id("tasks").Op("=").Append(Id("tasks"), Id("wrap").Call(Id("entry").Dot("packageFunc"))),
+		)
+		g.Line()
+
+		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
+			Id("parallelFromEnv").Call(),
+			Id("tasks"),
+		)
+	})
+
 	// build and push all release images
 	buildAllReleaseImagesFuncName := "AllImagesRelease"
 	f.Comment(fmt.Sprintf("%s builds and pushes release images for all components.", buildAllReleaseImagesFuncName))
@@ -361,6 +665,99 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Id("tasks"),
 		)
 	})
+
+	// Package.Manifest stitches per-arch image tags into a multi-arch
+	// manifest list under the canonical tag.
+	f.Comment("Manifest stitches per-arch images into a multi-arch manifest list")
+	f.Comment("under the canonical tag. Sources are looked up at")
+	f.Comment("<repo>/<image>:<tag>-<arch> for each arch in the comma-separated")
+	f.Comment("arches list and combined into <repo>/<image>:<tag> via")
+	f.Comment("`docker buildx imagetools create`.")
+	f.Func().Params(Id("Package")).Id("Manifest").Params(
+		Line().Id("imageRepo").String(),
+		Line().Id("imageName").String(),
+		Line().Id("imageTag").String(),
+		Line().Id("arches").String(),
+		Line(),
+	).Error().Block(
+		Return().Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"PushMultiArchManifest",
+		).Call(Id("imageRepo"), Id("imageName"), Id("imageTag"), Id("arches")),
+	)
+	f.Line()
+
+	// Package.AllManifests stitches multi-arch manifests for every
+	// component image in parallel, sourced from the installer's
+	// authoritative controller list so adding a new controller
+	// automatically extends coverage.
+	f.Comment("AllManifests stitches multi-arch manifest lists for every component")
+	f.Comment("in parallel, sourced from the installer's authoritative controller")
+	f.Comment("list so adding a new controller automatically extends coverage. Set")
+	f.Comment("PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g.")
+	f.Comment("`PARALLEL_IMAGE_BUILD=4 mage package:allManifests ghcr.io/foo v1 amd64,arm64`).")
+	f.Func().Params(Id("Package")).Id("AllManifests").Params(
+		Line().Id("imageRepo").String(),
+		Line().Id("imageTag").String(),
+		Line().Id("arches").String(),
+		Line(),
+	).Error().BlockFunc(func(g *Group) {
+		// gather every component image. For threeport-core, source from
+		// the installer's authoritative list so adding a new controller
+		// extends coverage automatically. For module forks, emit the
+		// per-component image names directly from the generator's
+		// component slice since module installers don't share the
+		// ThreeportRestApi / DatabaseMigrator / ThreeportAgent /
+		// ThreeportControllerList identifiers.
+		if gen.Module {
+			g.Comment("gather every component image emitted by the generator")
+			g.Id("images").Op(":=").Index().String().ValuesFunc(func(v *Group) {
+				for _, c := range allComponents {
+					v.Line().Lit(c.ImageName)
+				}
+				v.Line()
+			})
+			g.Line()
+		} else {
+			g.Comment("gather every component image: rest-api, db migrator, agent, and")
+			g.Comment("all controllers from the installer's authoritative list")
+			g.Id("images").Op(":=").Index().String().Values(
+				Line().Qual(installerPkg, "ThreeportRestApi").Dot("ImageName"),
+				Line().Qual(installerPkg, "DatabaseMigrator").Dot("ImageName"),
+				Line().Qual(installerPkg, "ThreeportAgent").Dot("ImageName"),
+				Line(),
+			)
+			g.For(List(Id("_"), Id("c")).Op(":=").Range().Qual(installerPkg, "ThreeportControllerList")).Block(
+				Id("images").Op("=").Append(Id("images"), Id("c").Dot("ImageName")),
+			)
+			g.Line()
+		}
+
+		g.Id("tasks").Op(":=").Make(
+			Index().Func().Params().Error(),
+			Lit(0),
+			Len(Id("images")),
+		)
+		g.For(List(Id("_"), Id("image")).Op(":=").Range().Id("images")).Block(
+			Id("image").Op(":=").Id("image"),
+			Id("tasks").Op("=").Append(
+				Id("tasks"),
+				Func().Params().Error().Block(
+					Return().Qual(
+						"github.com/threeport/threeport/pkg/util/v0",
+						"PushMultiArchManifest",
+					).Call(Id("imageRepo"), Id("image"), Id("imageTag"), Id("arches")),
+				),
+			),
+		)
+		g.Line()
+
+		g.Return().Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"RunParallel",
+		).Call(Id("parallelFromEnv").Call(), Id("tasks"))
+	})
+	f.Line()
 
 	// helper: parse the PARALLEL_IMAGE_BUILD env var, default to 1
 	f.Comment("parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int, defaulting to 1.")
@@ -395,7 +792,6 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Line().Id("workingDir"),
 			Line().Index().String().Values(Id("arch")),
 			Line().Index().String().Values(Qual("fmt", "Sprintf").Call(Lit("cmd/%s"), Id("component"))),
-			Line().False(),
 			Line().False(),
 			Line(),
 		).Op(";").Err().Op("!=").Nil()).Block(
@@ -601,7 +997,6 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 			Line().Index().String().Values(Id("arch")),
 			Line().Index().String().Values(Lit(packageDir)),
 			Line().False(),
-			Line().False(),
 			Line(),
 		).Op(";").Err().Op("!=").Nil()).Block(
 			Return().Qual("fmt", "Errorf").Call(
@@ -679,13 +1074,7 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packa
 		),
 		Line(),
 
-		Id("arches").Op(":=").Index().String().Values(),
-		For(List(Id("_"), Id("a")).Op(":=").Range().Qual("strings", "Split").Call(Id("arch"), Lit(","))).Block(
-			Id("a").Op("=").Qual("strings", "TrimSpace").Call(Id("a")),
-			If(Id("a").Op("!=").Lit("")).Block(
-				Id("arches").Op("=").Append(Id("arches"), Id("a")),
-			),
-		),
+		Id("arches").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ParseArches").Call(Id("arch")),
 		If(Err().Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"BuildBinaries",
@@ -693,7 +1082,6 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packa
 			Line().Id("workingDir"),
 			Line().Id("arches"),
 			Line().Index().String().Values(Lit(packageDir)),
-			Line().False(),
 			Line().False(),
 			Line(),
 		).Op(";").Err().Op("!=").Nil()).Block(
@@ -822,13 +1210,7 @@ func emitPrebuildBlock(g *Group, components []componentSpec) {
 	)
 	g.Line()
 
-	g.Id("arches").Op(":=").Index().String().ValuesFunc(func(v *Group) {})
-	g.For(List(Id("_"), Id("a")).Op(":=").Range().Qual("strings", "Split").Call(Id("arch"), Lit(","))).Block(
-		Id("a").Op("=").Qual("strings", "TrimSpace").Call(Id("a")),
-		If(Id("a").Op("!=").Lit("")).Block(
-			Id("arches").Op("=").Append(Id("arches"), Id("a")),
-		),
-	)
+	g.Id("arches").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ParseArches").Call(Id("arch"))
 	g.Line()
 
 	g.Id("packageDirs").Op(":=").Index().String().ValuesFunc(func(v *Group) {
@@ -846,7 +1228,6 @@ func emitPrebuildBlock(g *Group, components []componentSpec) {
 		Line().Id("workingDir"),
 		Line().Id("arches"),
 		Line().Id("packageDirs"),
-		Line().False(),
 		Line().False(),
 		Line(),
 	).Op(";").Err().Op("!=").Nil()).Block(

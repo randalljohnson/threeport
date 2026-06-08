@@ -204,13 +204,6 @@ THREEPORT_CONTROL_PLANE_NAMESPACE=%[2]s
 			"protocol":      "TCP",
 		},
 	}
-	if cpi.Opts.Delve {
-		ports = append(ports, map[string]interface{}{
-			"containerPort": 40000,
-			"name":          "dlv",
-			"protocol":      "TCP",
-		})
-	}
 
 	initContainers := []interface{}{
 		map[string]interface{}{
@@ -1384,19 +1377,6 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 	// in tptctl, auth is enabled by default
 
 	switch {
-	case cpi.Opts.Delve:
-		// build delve args with component args appended after "--" separator
-		delveArgs := cpi.getDelveArgs("rest-api")
-		args := make([]interface{}, 0, len(delveArgs)+4)
-		for _, a := range delveArgs {
-			args = append(args, a)
-		}
-		args = append(args, "--")
-		args = append(args, "-auto-migrate=true", "-verbose=true")
-		if !cpi.Opts.AuthEnabled {
-			args = append(args, "-auth-enabled=false")
-		}
-		return args
 	case cpi.Opts.Debug:
 		args := []interface{}{
 			"-auto-migrate=true",
@@ -1420,28 +1400,13 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 }
 
 // getControllerArgs returns the args that are passed to a controller.
-func (cpi *ControlPlaneInstaller) getControllerArgs(name string) []interface{} {
+func (cpi *ControlPlaneInstaller) getControllerArgs() []interface{} {
 
 	// in tptdev, auth is disabled by default
 	// in tptctl, auth is enabled by default
 
 	// enable auth if authConfig is set in dev environment
 	switch {
-	case cpi.Opts.Delve:
-		// build delve args with component args appended after "--" separator
-		delveArgs := cpi.getDelveArgs(name)
-		args := make([]interface{}, 0, len(delveArgs)+4)
-		for _, a := range delveArgs {
-			args = append(args, a)
-		}
-		args = append(args, "--")
-		if !cpi.Opts.AuthEnabled {
-			args = append(args, "-auth-enabled=false")
-		}
-		if cpi.Opts.Verbose {
-			args = append(args, "-verbose=true")
-		}
-		return args
 	case cpi.Opts.Debug:
 		args := []interface{}{}
 		if !cpi.Opts.AuthEnabled {
@@ -1462,25 +1427,6 @@ func (cpi *ControlPlaneInstaller) getControllerArgs(name string) []interface{} {
 		}
 		return args
 	}
-}
-
-// cpi.getDelveArgs returns the args that are passed to delve.
-func (cpi *ControlPlaneInstaller) getDelveArgs(name string) []string {
-	args := []string{
-		"--continue",
-		"--accept-multiclient",
-		"--listen=:40000",
-		"--headless=true",
-		"--api-version=2",
-	}
-
-	if cpi.Opts.Verbose {
-		args = append(args, "--log")
-	}
-
-	args = append(args, "exec")
-	args = append(args, fmt.Sprintf("/%s", name))
-	return args
 }
 
 // getAPIVolumes returns volumes and volume mounts for the API server.
@@ -1779,17 +1725,10 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 		return nil, fmt.Errorf("could not get vols for controller %s: %w", controller.Name, err)
 	}
 
-	controllerArgs := cpi.getControllerArgs(controller.Name)
+	controllerArgs := cpi.getControllerArgs()
 	controllerImagePullSecrets := cpi.getImagePullSecrets(controller.ImagePullSecretName)
 
 	ports := []map[string]interface{}{}
-	if cpi.Opts.Delve {
-		ports = append(ports, map[string]interface{}{
-			"containerPort": 40000,
-			"name":          "dlv",
-			"protocol":      "TCP",
-		})
-	}
 
 	envFrom := []interface{}{
 		map[string]interface{}{
@@ -1865,22 +1804,18 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 }
 
 func (cpi *ControlPlaneInstaller) getReadinessProbe() map[string]interface{} {
-	var readinessProbe map[string]interface{}
-	if !cpi.Opts.Delve {
-		readinessProbe = map[string]interface{}{
-			"failureThreshold": 1,
-			"httpGet": map[string]interface{}{
-				"path":   "/readyz",
-				"port":   8081,
-				"scheme": "HTTP",
-			},
-			"initialDelaySeconds": 1,
-			"periodSeconds":       2,
-			"successThreshold":    1,
-			"timeoutSeconds":      1,
-		}
+	return map[string]interface{}{
+		"failureThreshold": 1,
+		"httpGet": map[string]interface{}{
+			"path":   "/readyz",
+			"port":   8081,
+			"scheme": "HTTP",
+		},
+		"initialDelaySeconds": 1,
+		"periodSeconds":       2,
+		"successThreshold":    1,
+		"timeoutSeconds":      1,
 	}
-	return readinessProbe
 }
 
 // getImagePullSecrets returns the image pull secret config for a control plane
@@ -1918,15 +1853,7 @@ func GetLocalThreeportAPIEndpoint(authEnabled bool) string {
 
 // getCommand returns the args that are passed to the container.
 func (cpi *ControlPlaneInstaller) getCommand(name string) []interface{} {
-
-	switch {
-	case cpi.Opts.Delve:
-		return []interface{}{
-			"/usr/local/bin/dlv",
-		}
-	default:
-		return []interface{}{
-			fmt.Sprintf("/%s", name),
-		}
+	return []interface{}{
+		fmt.Sprintf("/%s", name),
 	}
 }

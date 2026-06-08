@@ -22,11 +22,11 @@ func TestPrefixWriter_CompleteLineEmittedDuringWrite(t *testing.T) {
 		t.Errorf("Write output = %q, want %q", got, want)
 	}
 
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if err := w.flush(); err != nil {
+		t.Fatalf("flush: %v", err)
 	}
 	if got, want := out.String(), "[svc] done\n"; got != want {
-		t.Errorf("Flush should be no-op, got %q, want %q", got, want)
+		t.Errorf("flush should be no-op, got %q, want %q", got, want)
 	}
 }
 
@@ -41,11 +41,11 @@ func TestPrefixWriter_PartialLineFlushed(t *testing.T) {
 		t.Errorf("partial line should be buffered, got %q", out.String())
 	}
 
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if err := w.flush(); err != nil {
+		t.Fatalf("flush: %v", err)
 	}
 	if got, want := out.String(), "[svc] exporting layers\n"; got != want {
-		t.Errorf("Flush output = %q, want %q", got, want)
+		t.Errorf("flush output = %q, want %q", got, want)
 	}
 }
 
@@ -53,11 +53,11 @@ func TestPrefixWriter_FlushEmptyBufferNoop(t *testing.T) {
 	var out bytes.Buffer
 	w := &prefixWriter{prefix: "[svc]", out: &out}
 
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if err := w.flush(); err != nil {
+		t.Fatalf("flush: %v", err)
 	}
 	if out.Len() != 0 {
-		t.Errorf("Flush on empty buffer should write nothing, got %q", out.String())
+		t.Errorf("flush on empty buffer should write nothing, got %q", out.String())
 	}
 }
 
@@ -68,8 +68,8 @@ func TestPrefixWriter_WhitespaceOnlyLineSkipped(t *testing.T) {
 	if _, err := w.Write([]byte("   \n")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if err := w.flush(); err != nil {
+		t.Fatalf("flush: %v", err)
 	}
 	if out.Len() != 0 {
 		t.Errorf("whitespace-only line should be skipped, got %q", out.String())
@@ -123,12 +123,12 @@ func TestPrefixWriter_CompleteLinesThenPartialFlushed(t *testing.T) {
 	if got, want := out.String(), "[svc] first\n[svc] second\n"; got != want {
 		t.Errorf("complete-line output = %q, want %q", got, want)
 	}
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if err := w.flush(); err != nil {
+		t.Fatalf("flush: %v", err)
 	}
 	want := "[svc] first\n[svc] second\n[svc] third-no-newline\n"
 	if got := out.String(); got != want {
-		t.Errorf("output after Flush = %q, want %q", got, want)
+		t.Errorf("output after flush = %q, want %q", got, want)
 	}
 }
 

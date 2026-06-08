@@ -29,6 +29,8 @@ import (
 // fail with "still referenced", silently leaving orphans for the next
 // run.
 func retryDelete(t *testing.T, target string, deleteFn func() error) {
+	// report failures at the deferred callsite instead of this helper.
+	t.Helper()
 	deadline := time.Now().Add(60 * time.Second)
 	var lastErr error
 	for time.Now().Before(deadline) {
@@ -120,7 +122,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			domainNameDefinition,
 		)
-		assert.Nil(err, "should have no error creating domain name definition")
+		require.Nil(t, err, "should have no error creating domain name definition")
 		defer retryDelete(t, "domain name definition", func() error {
 			_, err := client.DeleteDomainNameDefinition(apiClient, threeportAPIEndpoint, *createdDomainNameDefinition.ID)
 			return err
@@ -156,7 +158,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			gatewayDefinition,
 		)
-		assert.Nil(err, "should have no error creating gateway definition")
+		require.Nil(t, err, "should have no error creating gateway definition")
 		defer retryDelete(t, "gateway definition", func() error {
 			_, err := client.DeleteGatewayDefinition(apiClient, threeportAPIEndpoint, *createdGatewayDef.ID)
 			return err
@@ -212,7 +214,7 @@ func TestWorkloadIntegration(t *testing.T) {
 				Data: util.Ptr(datatypes.JSON(jsonData)),
 			},
 		)
-		assert.Nil(err, "should have no error creating secret definition")
+		require.Nil(t, err, "should have no error creating secret definition")
 		defer retryDelete(t, "secret definition", func() error {
 			_, err := client.DeleteSecretDefinition(apiClient, threeportAPIEndpoint, *createdSecretDefinition.ID)
 			return err
@@ -224,8 +226,8 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			&workloadDef,
 		)
-		assert.Nil(err, "should have no error creating workload definition")
-		defer retryDelete(t, "workload definition", func() error {
+		require.Nil(t, err, "should have no error creating kubernetes workload definition")
+		defer retryDelete(t, "kubernetes workload definition", func() error {
 			_, err := client.DeleteKubernetesWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdWorkloadDef.ID)
 			return err
 		})
@@ -316,9 +318,9 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			&workloadInst,
 		)
-		assert.Nil(err, "should have no error creating workload instance")
-		assert.NotNil(createdWorkloadInst, "should have a workload instance returned")
-		defer retryDelete(t, "workload instance", func() error {
+		require.Nil(t, err, "should have no error creating kubernetes workload instance")
+		assert.NotNil(createdWorkloadInst, "should have a kubernetes workload instance returned")
+		defer retryDelete(t, "kubernetes workload instance", func() error {
 			_, err := client.DeleteKubernetesWorkloadInstance(apiClient, threeportAPIEndpoint, *createdWorkloadInst.ID)
 			return err
 		})
@@ -359,7 +361,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			Instance: v0.Instance{
 				Name: &workloadInstName,
 			},
-			DomainNameDefinitionID:       domainNameDefinition.ID,
+			DomainNameDefinitionID:       createdDomainNameDefinition.ID,
 			KubernetesWorkloadInstanceID: createdWorkloadInst.ID,
 			KubernetesRuntimeInstanceID:  testKubernetesRuntimeInst.ID,
 		}
@@ -370,7 +372,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			domainNameInstance,
 		)
-		assert.Nil(err, "should have no error creating domain name instance")
+		require.Nil(t, err, "should have no error creating domain name instance")
 		defer retryDelete(t, "domain name instance", func() error {
 			_, err := client.DeleteDomainNameInstance(apiClient, threeportAPIEndpoint, *createdDomainNameInstance.ID)
 			return err
@@ -382,7 +384,7 @@ func TestWorkloadIntegration(t *testing.T) {
 				Name: util.Ptr("gatewayInstance"),
 			},
 			KubernetesRuntimeInstanceID:  testKubernetesRuntimeInst.ID,
-			GatewayDefinitionID:          gatewayDefinition.ID,
+			GatewayDefinitionID:          createdGatewayDef.ID,
 			KubernetesWorkloadInstanceID: createdWorkloadInst.ID,
 		}
 		createdGatewayInstance, err := client.CreateGatewayInstance(
@@ -390,7 +392,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			gatewayInstance,
 		)
-		assert.Nil(err, "should have no error creating gateway instance")
+		require.Nil(t, err, "should have no error creating gateway instance")
 		defer retryDelete(t, "gateway instance", func() error {
 			_, err := client.DeleteGatewayInstance(apiClient, threeportAPIEndpoint, *createdGatewayInstance.ID)
 			return err
@@ -517,8 +519,8 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			&secondWorkloadDef,
 		)
-		assert.Nil(err, "should have no error creating second workload definition")
-		defer retryDelete(t, "second workload definition", func() error {
+		require.Nil(t, err, "should have no error creating second kubernetes workload definition")
+		defer retryDelete(t, "second kubernetes workload definition", func() error {
 			_, err := client.DeleteKubernetesWorkloadDefinition(apiClient, threeportAPIEndpoint, *createdSecondWorkloadDef.ID)
 			return err
 		})
@@ -645,14 +647,14 @@ func TestWorkloadIntegration(t *testing.T) {
 		_, err = client.DeleteGatewayDefinition(
 			apiClient,
 			threeportAPIEndpoint,
-			*gatewayDefinition.ID,
+			*createdGatewayDef.ID,
 		)
 		assert.NotNil(err, "should fail to delete gateway definition while gateway instance still references it")
 
 		_, err = client.DeleteDomainNameDefinition(
 			apiClient,
 			threeportAPIEndpoint,
-			*domainNameDefinition.ID,
+			*createdDomainNameDefinition.ID,
 		)
 		assert.NotNil(err, "should fail to delete domain name definition while domain name instance still references it")
 
@@ -780,7 +782,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		_, err = client.DeleteGatewayDefinition(
 			apiClient,
 			threeportAPIEndpoint,
-			*gatewayDefinition.ID,
+			*createdGatewayDef.ID,
 		)
 		assert.Nil(err, "should have no error deleting gateway definition")
 
@@ -809,7 +811,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		_, err = client.DeleteDomainNameDefinition(
 			apiClient,
 			threeportAPIEndpoint,
-			*domainNameDefinition.ID,
+			*createdDomainNameDefinition.ID,
 		)
 		assert.Nil(err, "should have no error deleting domain name definition")
 

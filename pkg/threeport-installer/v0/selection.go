@@ -21,6 +21,24 @@ const (
 	deployNamePrefix    = "threeport-"
 )
 
+// ParseApis splits a comma-separated --apis flag value into a clean
+// slice, trimming whitespace from each entry and dropping empty
+// fragments produced by leading or trailing commas.
+func ParseApis(value string) []string {
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
 // SelectControllersByGroup filters allControllers down to those whose
 // component name corresponds to one of the requested sdk-config
 // ApiObjectGroup names. Group names follow sdk-config.yaml exactly

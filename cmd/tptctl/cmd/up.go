@@ -19,8 +19,8 @@ import (
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 )
 
-// upApis holds the --apis flag value: a comma-separated list
-// of sdk-config ApiObjectGroup names whose controllers to install.
+// upApis holds the --apis flag value: a comma-separated list of
+// sdk-config ApiObjectGroup names whose controllers to install.
 var upApis string
 
 // TODO: will become a variable once production-ready control plane instances are
@@ -114,7 +114,7 @@ control planes if they are used to create or are created by another control plan
 		// rest-api and agent.
 		if upApis != "" {
 			selected, err := threeport.SelectControllersByGroup(
-				parseUpApis(upApis),
+				threeport.ParseApis(upApis),
 				cpi.Opts.ControllerList,
 			)
 			if err != nil {
@@ -252,27 +252,6 @@ func init() {
 	)
 	UpCmd.Flags().StringVar(
 		&upApis,
-		"apis", "",
-		"Comma-separated sdk-config api names (e.g. kubernetes_workload,gateway) "+
-			"whose controllers to install. NOT component names. When omitted, installs the "+
-			"full default controller list.",
+		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the install to those apis' controllers. Defaults to empty, which installs all controllers.",
 	)
-}
-
-// parseUpApis splits the --apis flag value on commas and trims
-// whitespace from each entry, dropping empty fragments produced by
-// leading or trailing commas.
-func parseUpApis(value string) []string {
-	if value == "" {
-		return nil
-	}
-	parts := strings.Split(value, ",")
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			out = append(out, trimmed)
-		}
-	}
-	return out
 }

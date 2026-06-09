@@ -16,8 +16,8 @@ import (
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
 
-// upApis holds the --apis flag value: a comma-separated list
-// of sdk-config ApiObjectGroup names whose controllers to install.
+// upApis holds the --apis flag value: a comma-separated list of
+// sdk-config ApiObjectGroup names whose controllers to install.
 var upApis string
 
 // upCmd represents the up command
@@ -41,7 +41,7 @@ var upCmd = &cobra.Command{
 		// rest-api and agent.
 		if upApis != "" {
 			selected, err := installer.SelectControllersByGroup(
-				parseApis(upApis),
+				installer.ParseApis(upApis),
 				cpi.Opts.ControllerList,
 			)
 			if err != nil {
@@ -128,7 +128,7 @@ func init() {
 	)
 	upCmd.Flags().BoolVar(
 		&cliArgs.Verbose,
-		"verbose", false, "Enable verbose logging in control plane components and cli logs.",
+		"verbose", false, "Enable verbose logging in control plane components, delve, and cli logs.",
 	)
 	upCmd.Flags().BoolVar(
 		&cliArgs.TeardownOnFailure,
@@ -140,10 +140,7 @@ func init() {
 	)
 	upCmd.Flags().StringVar(
 		&upApis,
-		"apis", "",
-		"Comma-separated sdk-config api names (e.g. kubernetes_workload,gateway) "+
-			"whose controllers to install. NOT component names. When omitted, installs the "+
-			"full default controller list.",
+		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the install to those apis' controllers. Defaults to empty, which installs all controllers.",
 	)
 	cobra.OnInitialize(func() {
 		cli.InitConfig(upCmd, cliArgs.CfgFile)

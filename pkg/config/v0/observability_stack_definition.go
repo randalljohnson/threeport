@@ -23,17 +23,17 @@ type ObservabilityStackDefinitionConfig struct {
 // ObservabilityStackDefinitionValues contains all the attributes needed to manage
 // the ObservabilityStackDefinition API object.
 type ObservabilityStackDefinitionValues struct {
-	Name                                  *string `json:",omitempty" yaml:"Name,omitempty"`
-	GrafanaHelmValues                     *string `json:",omitempty" yaml:"GrafanaHelmValues,omitempty"`
-	GrafanaHelmValuesDocument             *string `json:",omitempty" yaml:"GrafanaHelmValuesDocument,omitempty"`
-	LokiHelmValues                        *string `json:",omitempty" yaml:"LokiHelmValues,omitempty"`
-	LokiHelmValuesDocument                *string `json:",omitempty" yaml:"LokiHelmValuesDocument,omitempty"`
-	PromtailHelmValues                    *string `json:",omitempty" yaml:"PromtailHelmValues,omitempty"`
-	PromtailHelmValuesDocument            *string `json:",omitempty" yaml:"PromtailHelmValuesDocument,omitempty"`
-	KubePrometheusStackHelmValues         *string `json:",omitempty" yaml:"KubePrometheusStackHelmValues,omitempty"`
-	KubePrometheusStackHelmValuesDocument *string `json:",omitempty" yaml:"KubePrometheusStackHelmValuesDocument,omitempty"`
-	ObservabilityConfigPath               *string `json:",omitempty" yaml:"ObservabilityConfigPath,omitempty"`
-	Age                                   *string `json:",omitempty" yaml:"Age,omitempty"`
+	Name                                  *string `json:",omitempty"`
+	GrafanaHelmValues                     *string `json:",omitempty"`
+	GrafanaHelmValuesDocument             *string `json:",omitempty"`
+	LokiHelmValues                        *string `json:",omitempty"`
+	LokiHelmValuesDocument                *string `json:",omitempty"`
+	PromtailHelmValues                    *string `json:",omitempty"`
+	PromtailHelmValuesDocument            *string `json:",omitempty"`
+	KubePrometheusStackHelmValues         *string `json:",omitempty"`
+	KubePrometheusStackHelmValuesDocument *string `json:",omitempty"`
+	ObservabilityConfigPath               *string `json:",omitempty"`
+	Age                                   *string `json:",omitempty"`
 }
 
 // Get gets observability stack definitions from the Threeport API.

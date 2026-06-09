@@ -21,15 +21,15 @@ type TerraformConfig struct {
 // TerraformDefinition and TerraformInstance API objects
 // together with a single operation.
 type TerraformValues struct {
-	Name                *string            `json:",omitempty" yaml:"Name,omitempty"`
-	ConfigDir           *string            `json:",omitempty" yaml:"ConfigDir,omitempty"`
-	AwsProvider         *AwsProviderValues `json:",omitempty" yaml:"AwsProvider,omitempty"`
-	VarsDocument        *string            `json:",omitempty" yaml:"VarsDocument,omitempty"`
-	StateDocument       *string            `json:",omitempty" yaml:"StateDocument,omitempty"`
-	Outputs             *string            `json:",omitempty" yaml:"Outputs,omitempty"`
-	TerraformConfigPath *string            `json:",omitempty" yaml:"TerraformConfigPath,omitempty"`
-	Status              *string            `json:",omitempty" yaml:"Status,omitempty"`
-	Age                 *string            `json:",omitempty" yaml:"Age,omitempty"`
+	Name                *string            `json:",omitempty"`
+	ConfigDir           *string            `json:",omitempty"`
+	AwsProvider         *AwsProviderValues `json:",omitempty"`
+	VarsDocument        *string            `json:",omitempty"`
+	StateDocument       *string            `json:",omitempty"`
+	Outputs             *string            `json:",omitempty"`
+	TerraformConfigPath *string            `json:",omitempty"`
+	Status              *string            `json:",omitempty"`
+	Age                 *string            `json:",omitempty"`
 }
 
 // Get gets a terraform definition and instance from the Threeport API.

@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -15,6 +16,12 @@ import (
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
+
+// reinstallApis holds the --apis flag value: a comma-separated list
+// of sdk-config ApiObjectGroup names whose controllers should be
+// reinstalled. When empty, the reinstall auto-detects the controller
+// subset from the cluster's installer-managed deployments.
+var reinstallApis string
 
 // reinstallCmd represents the reinstall command. Dev-only: sweeps
 // installer-managed stateless deployments and reapplies the install
@@ -66,6 +73,31 @@ change.`,
 			os.Exit(1)
 		}
 
+		// narrow the controller list to the subset that should be
+		// reinstalled. With --apis set the user picks the subset
+		// explicitly; otherwise auto-detect from the cluster's
+		// installer-managed deployments so the reinstall mirrors the
+		// current install rather than expanding it.
+		selected, selectedNames, autoDetected, err := installer.SelectControllersForReinstall(
+			kubeClient,
+			cpi.Opts.Namespace,
+			installer.ParseApis(reinstallApis),
+			cpi.Opts.ControllerList,
+		)
+		if err != nil {
+			cli.Error("failed to select controllers for reinstall", err)
+			os.Exit(1)
+		}
+		source := "specified via --apis"
+		if autoDetected {
+			source = "auto-detected from cluster"
+		}
+		cli.Info(fmt.Sprintf(
+			"reinstalling %d controller(s) (%s): %s",
+			len(selected), source, strings.Join(selectedNames, ", "),
+		))
+		cpi.Opts.ControllerList = selected
+
 		// detect whether the running api was installed with auth so the
 		// reapply path configures the new pods the same way
 		cpi.Opts.AuthEnabled = detectAuthEnabled(kubeClient)
@@ -114,5 +146,9 @@ func init() {
 	reinstallCmd.Flags().BoolVar(
 		&cliArgs.Debug,
 		"debug", false, "If true, pod imagePullPolicy is set to Always so each rollout re-pulls the tag.",
+	)
+	reinstallCmd.Flags().StringVar(
+		&reinstallApis,
+		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the reinstall to those apis' controllers. Defaults to empty, which auto-detects the controller subset from the cluster's installer-managed deployments.",
 	)
 }

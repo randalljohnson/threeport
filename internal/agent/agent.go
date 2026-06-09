@@ -11,8 +11,8 @@ const (
 	// The workload type applied to the `.spec.workloadType` field in a
 	// `ThreeportWorkload` kubernetes resource to indicate to the Threeport
 	// Agent what Threeport type is managing workload resources in Kubernetes.
-	WorkloadInstanceType     = "KubernetesWorkloadInstance"
-	HelmWorkloadInstanceType = "HelmWorkloadInstance"
+	KubernetesWorkloadInstanceType = "KubernetesWorkloadInstance"
+	HelmWorkloadInstanceType       = "HelmWorkloadInstance"
 
 	// The label keys applied to workloads managed by Threeport
 	WorkloadInstanceLabelKey     = "control-plane.threeport.io/workload-instance"
@@ -26,14 +26,14 @@ func ThreeportWorkloadName(
 	workloadType string,
 ) (string, error) {
 	switch workloadType {
-	case WorkloadInstanceType:
+	case KubernetesWorkloadInstanceType:
 		return fmt.Sprintf("workload-instance-%d", workloadInstanceID), nil
 	case HelmWorkloadInstanceType:
 		return fmt.Sprintf("helm-workload-instance-%d", workloadInstanceID), nil
 	default:
 		return "", fmt.Errorf(
 			"unrecognized workload type - recoginzed types: [%s,%s]",
-			WorkloadInstanceType,
+			KubernetesWorkloadInstanceType,
 			HelmWorkloadInstanceType,
 		)
 	}

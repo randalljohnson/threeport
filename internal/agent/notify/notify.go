@@ -140,7 +140,7 @@ func Notify(
 						ObjectType: util.Ptr("threeport.io/v0.KubernetesWorkloadResourceInstance"),
 						ObjectID:   util.Ptr(notif.Event.KubernetesWorkloadResourceInstanceID),
 					}
-				case notif.Event.WorkloadType == agent.WorkloadInstanceType:
+				case notif.Event.WorkloadType == agent.KubernetesWorkloadInstanceType:
 					evt = tpapi.Event{
 						Type:       util.Ptr(notif.Event.Type),
 						Reason:     util.Ptr(notif.Event.Reason),

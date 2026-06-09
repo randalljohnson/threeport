@@ -12,15 +12,6 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// always-on control plane deployment name prefixes excluded from
-// auto-detection. The rest-api and agent aren't group-scoped and are
-// reapplied on every install path.
-const (
-	restApiStrippedName = "api-server"
-	agentStrippedName   = "agent"
-	deployNamePrefix    = "threeport-"
-)
-
 // ParseApis splits a comma-separated --apis flag value into a clean
 // slice, trimming whitespace from each entry and dropping empty
 // fragments produced by leading or trailing commas.
@@ -70,7 +61,7 @@ func SelectControllersByGroup(
 			return nil, fmt.Errorf(
 				"unknown api object group %q: valid choices are %s",
 				groupName,
-				strings.Join(validGroupNames(allControllers), ", "),
+				strings.Join(ApiObjectGroupNames, ", "),
 			)
 		}
 		selected = append(selected, controller)
@@ -83,8 +74,8 @@ func SelectControllersByGroup(
 // controller Deployments currently present in the control plane
 // namespace. Uses the installer's managed-by label so it only counts
 // installer-managed deployments. The rest-api and agent deployments
-// are excluded because they aren't controllers and are always
-// reapplied.
+// are excluded because they aren't group-scoped controllers and are
+// reapplied on every install path.
 func DetectInstalledControllerNames(
 	kubeClient dynamic.Interface,
 	namespace string,
@@ -105,12 +96,12 @@ func DetectInstalledControllerNames(
 	names := make([]string, 0, len(list.Items))
 	for _, item := range list.Items {
 		deployName := item.GetName()
-		// installer deploys controllers as threeport-<name>; strip the
-		// prefix to recover the component name in ControllerList.
-		stripped := strings.TrimPrefix(deployName, deployNamePrefix)
-		if stripped == restApiStrippedName || stripped == agentStrippedName {
+		if deployName == ThreeportAPIServiceResourceName || deployName == ThreeportAgentDeployName {
 			continue
 		}
+		// installer deploys controllers as threeport-<name>; strip the
+		// prefix to recover the component name in ControllerList.
+		stripped := strings.TrimPrefix(deployName, "threeport-")
 		names = append(names, stripped)
 	}
 
@@ -130,6 +121,7 @@ func SelectControllersForReinstall(
 	explicitGroups []string,
 	allControllers []*v0.ControlPlaneComponent,
 ) ([]*v0.ControlPlaneComponent, []string, bool, error) {
+	// explicit groups path: --apis-supplied set, trust user selection
 	if len(explicitGroups) > 0 {
 		selected, err := SelectControllersByGroup(explicitGroups, allControllers)
 		if err != nil {
@@ -142,6 +134,7 @@ func SelectControllersForReinstall(
 		return selected, names, false, nil
 	}
 
+	// auto-detect path: mirror what is currently installed in the cluster
 	detectedNames, err := DetectInstalledControllerNames(kubeClient, namespace)
 	if err != nil {
 		return nil, nil, true, fmt.Errorf("failed to detect installed controllers: %w", err)
@@ -152,6 +145,7 @@ func SelectControllersForReinstall(
 		wanted[name] = struct{}{}
 	}
 
+	// intersect with allControllers to preserve canonical install order
 	selected := make([]*v0.ControlPlaneComponent, 0, len(detectedNames))
 	selectedNames := make([]string, 0, len(detectedNames))
 	for _, controller := range allControllers {
@@ -172,15 +166,3 @@ func controllerNameForGroup(groupName string) string {
 	return strings.ReplaceAll(fmt.Sprintf("%s-controller", groupName), "_", "-")
 }
 
-// validGroupNames returns the sorted set of group names derivable
-// from the controller list, used to build clear error messages
-// when a caller passes an unknown group.
-func validGroupNames(allControllers []*v0.ControlPlaneComponent) []string {
-	names := make([]string, 0, len(allControllers))
-	for _, controller := range allControllers {
-		stripped := strings.TrimSuffix(controller.Name, "-controller")
-		names = append(names, strings.ReplaceAll(stripped, "-", "_"))
-	}
-	sort.Strings(names)
-	return names
-}

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SupportServicesNamespace     = "threeport-support-services"
+	SupportServicesNamespace     = "support-services-system"
 	SupportServicesOperatorImage = "ghcr.io/nukleros/support-services-operator:v0.6.0"
 	RBACProxyImage               = "quay.io/brancz/kube-rbac-proxy:v0.22.0"
 

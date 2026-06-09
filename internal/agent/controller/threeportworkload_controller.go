@@ -54,7 +54,7 @@ type ThreeportWorkloadReconciler struct {
 
 type InformerStopChannels struct {
 	KubernetesWorkloadInstanceID uint
-	StopChannels       []chan struct{}
+	StopChannels                 []chan struct{}
 }
 
 //+kubebuilder:rbac:groups=control-plane.threeport.io,resources=threeportworkloads,verbs=get;list;watch;create;update;patch;delete
@@ -251,7 +251,7 @@ func (r *ThreeportWorkloadReconciler) addInformerStopChannel(
 	if !k8sWorkloadInstanceIDFound {
 		informerStopChans := InformerStopChannels{
 			KubernetesWorkloadInstanceID: k8sWorkloadInstanceID,
-			StopChannels:       []chan struct{}{stopChannel},
+			StopChannels:                 []chan struct{}{stopChannel},
 		}
 		r.InformerStopChans = append(r.InformerStopChans, informerStopChans)
 	}

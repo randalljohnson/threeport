@@ -110,20 +110,34 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	// read committed pre-update FK values. under a PUT the receiver holds
-	// the caller's new values, so load the committed row to learn which
-	// FKs were previously set; tx.Statement.Changed reports which ones the
-	// update changes.
+	// read the committed pre-update row and the inbound values being
+	// written. comparing the two directly is the only call-shape-independent
+	// way to tell whether a previously-set FK is changing: under a PUT the
+	// receiver IS the inbound values, so tx.Statement.Changed has no committed
+	// row to diff against and reports nothing changed.
 	preUpdateObj, err := lib.LoadObjFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
 	}
+	incomingByField := make(map[string]*uint)
+	for _, foreignKey := range relationshipTaggedForeignKeysFor(lib.IncomingValues(tx, obj)) {
+		incomingByField[foreignKey.FieldName] = foreignKey.ObjectID
+	}
 
-	// reject any change (set->different OR set->clear) to a relationship
-	// FK that was previously non-nil. the initial clear->set transition
-	// stays allowed; everything after that requires teardown.
+	// reject any change (set->different OR set->clear) to a relationship FK
+	// that was previously non-nil. the initial clear->set transition stays
+	// allowed; everything after that requires teardown. a nil inbound FK is
+	// an explicit clear on a full replace but an absent, unchanged field on
+	// a patch, so only treat it as a clear when replacing.
+	isReplace := lib.IsFullReplace(tx, obj)
 	for _, preUpdateForeignKey := range relationshipTaggedForeignKeysFor(preUpdateObj) {
-		if preUpdateForeignKey.ObjectID != nil && tx.Statement.Changed(string(preUpdateForeignKey.FieldName)) {
+		if preUpdateForeignKey.ObjectID == nil {
+			continue
+		}
+		incomingID := incomingByField[preUpdateForeignKey.FieldName]
+		cleared := incomingID == nil && isReplace
+		changed := incomingID != nil && *incomingID != *preUpdateForeignKey.ObjectID
+		if cleared || changed {
 			return util.NewBadRequestError(fmt.Sprintf(
 				"%s is immutable once set; tear down and recreate the holder to undo this relationship",
 				preUpdateForeignKey.FieldName,

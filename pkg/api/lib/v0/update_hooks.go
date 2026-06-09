@@ -34,3 +34,11 @@ func IncomingValues(tx *gorm.DB, receiver interface{}) interface{} {
 	}
 	return receiver
 }
+
+// IsFullReplace reports whether the current update is a full replace (a
+// PUT via Save, where Model == Dest) rather than a partial patch (Updates,
+// where they differ). On a full replace a nil field is an explicit clear;
+// on a patch a nil field is absent and left unchanged.
+func IsFullReplace(tx *gorm.DB, receiver interface{}) bool {
+	return tx.Statement.Dest == receiver
+}

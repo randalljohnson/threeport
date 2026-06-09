@@ -145,7 +145,7 @@ func (r *ThreeportWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// set label selector - this is used to identify pods and replicasets
 	labelSelector := labels.Set(map[string]string{
-		agent.WorkloadInstanceLabelKey: fmt.Sprint(threeportWorkload.Spec.KubernetesWorkloadInstanceID),
+		agent.KubernetesWorkloadInstanceLabelKey: fmt.Sprint(threeportWorkload.Spec.KubernetesWorkloadInstanceID),
 	}).AsSelector().String()
 
 	// create pod and replicaset informers, add the their stop channels to the

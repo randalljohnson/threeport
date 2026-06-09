@@ -40,8 +40,8 @@ Visit https://threeport.io for more information.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	// find installed plugins
-	pluginDir := os.Getenv("THREEPORT_PLUGIN_DIR")
-	if pluginDir == "" {
+	pluginDir, ok := os.LookupEnv("THREEPORT_PLUGIN_DIR")
+	if !ok {
 		p, err := cli.DefaultPluginDir()
 		if err != nil {
 			cli.Error("failed to determine default tptctl plugin directory", err)

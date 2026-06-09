@@ -1,5 +1,5 @@
 # Fork-only: produces a snapshot release of tptctl + threeport-sdk on
-# every push to dev-pinned. Synthesizes a SemVer pre-release tag from
+# every push to dev-release. Synthesizes a SemVer pre-release tag from
 # the commit SHA, then delegates the actual build/publish to the
 # shared _goreleaser.yml so this file stays minimal and any change to
 # the upstream goreleaser config or step pinning flows through here
@@ -9,7 +9,7 @@ name: Dev Release
 
 on:
   push:
-    branches: [dev-pinned]
+    branches: [dev-release]
 
 permissions:
   contents: write

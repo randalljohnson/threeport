@@ -1,15 +1,26 @@
 # Fork-only: builds per-component multi-arch images on push/PR to
-# dev-pinned and pushes them to ghcr.io/randalljohnson, tagged
-# dev-pinned-<short-sha> (or dev-pinned-pr-<short-sha> for PR events).
+# dev-release and pushes them to ghcr.io/randalljohnson.
+#
+# Tag scheme (multi-arch manifest list published by the manifest job
+# in _build-images.yml; lack of -<arch> suffix implies multi-arch):
+#   - PR event             -> <image>:dev-<short-sha>
+#   - push to dev-release  -> <image>:dev-release-<short-sha>
+#
+# Per-arch single-platform tags pushed by each matrix cell are suffixed
+# with -<arch> by _build-images.yml (e.g. dev-<sha>-amd64); the
+# manifest job stitches them into the bare <image>:<tag> manifest list
+# above via `docker buildx imagetools create` (wrapped by
+# `mage package:allManifests`).
+#
 # Thin caller over the shared reusable workflow at _build-images.yml.
 
 name: Images
 
 on:
   pull_request:
-    branches: [dev-pinned]
+    branches: [dev-release]
   push:
-    branches: [dev-pinned]
+    branches: [dev-release]
 
 permissions:
   contents: read
@@ -34,9 +45,9 @@ jobs:
         run: |
           short="${SHA:0:7}"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "value=dev-pinned-pr-$short" >> "$GITHUB_OUTPUT"
+            echo "value=dev-$short" >> "$GITHUB_OUTPUT"
           else
-            echo "value=dev-pinned-$short" >> "$GITHUB_OUTPUT"
+            echo "value=dev-release-$short" >> "$GITHUB_OUTPUT"
           fi
 
   build:

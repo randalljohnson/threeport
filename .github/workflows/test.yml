@@ -71,14 +71,6 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
-      # Comma-separated list of sdk-config api names whose controllers
-      # (plus rest-api and database-migrator) get built and deployed for
-      # the integration test.
-      APIS: >-
-        kubernetes_workload,
-        kubernetes_runtime,
-        gateway,
-        secret
     steps:
     - name: Checkout
       uses: actions/checkout@v6.0.3
@@ -115,19 +107,16 @@ jobs:
     - name: Create local container registry
       run: mage dev:localRegistryUp
 
-    # Only build the images the integration test actually exercises.
-    # workload_test.go uses the rest-api, database-migrator, and the
-    # workload, kubernetes-runtime, gateway, and secret controllers.
     - name: Build and push control plane component images
       env:
         PARALLEL_IMAGE_BUILD: "4"
-      run: mage build:imagesByApisDev "$APIS"
+      run: mage build:allImagesDev
 
     - name: Build tptctl
       run: mage build:tptctl
 
     - name: Create test control plane
-      run: mage test:up "$APIS"
+      run: mage test:up
 
     - name: Integration tests
       run: mage test:integration

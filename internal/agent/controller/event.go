@@ -67,6 +67,6 @@ func (r *ThreeportWorkloadReconciler) addEventEventHandlers(
 	logger.Info(
 		"event handlers for resource involved events added",
 		"resourceID", resourceUID,
-		"kubernetesWorkloadResourceInstanceID", &k8sWorkloadResourceInstanceID,
+		"kubernetesWorkloadResourceInstanceID", k8sWorkloadResourceInstanceID,
 	)
 }

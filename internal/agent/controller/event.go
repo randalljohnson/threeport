@@ -16,8 +16,8 @@ func (r *ThreeportWorkloadReconciler) addEventEventHandlers(
 	ctx context.Context,
 	resourceUID string,
 	workloadType string,
-	workloadInstanceID uint,
-	workloadResourceInstanceID uint,
+	k8sWorkloadInstanceID uint,
+	k8sWorkloadResourceInstanceID uint,
 	informer cache.SharedInformer,
 ) {
 	logger := log.FromContext(ctx)
@@ -28,12 +28,12 @@ func (r *ThreeportWorkloadReconciler) addEventEventHandlers(
 			event := obj.(*corev1.Event)
 			if string(event.InvolvedObject.UID) == resourceUID {
 				var eventSummary notify.EventSummary
-				if workloadResourceInstanceID != 0 {
+				if k8sWorkloadResourceInstanceID != 0 {
 					eventSummary = notify.EventSummary{
 						EventUID:                             string(event.ObjectMeta.UID),
 						WorkloadType:                         workloadType,
-						KubernetesWorkloadInstanceID:         workloadInstanceID,
-						KubernetesWorkloadResourceInstanceID: workloadResourceInstanceID,
+						KubernetesWorkloadInstanceID:         k8sWorkloadInstanceID,
+						KubernetesWorkloadResourceInstanceID: k8sWorkloadResourceInstanceID,
 						ObjectNamespace:                      event.InvolvedObject.Namespace,
 						ObjectKind:                           event.InvolvedObject.Kind,
 						ObjectName:                           event.InvolvedObject.Name,
@@ -46,7 +46,7 @@ func (r *ThreeportWorkloadReconciler) addEventEventHandlers(
 					eventSummary = notify.EventSummary{
 						EventUID:                     string(event.ObjectMeta.UID),
 						WorkloadType:                 workloadType,
-						KubernetesWorkloadInstanceID: workloadInstanceID,
+						KubernetesWorkloadInstanceID: k8sWorkloadInstanceID,
 						ObjectNamespace:              event.InvolvedObject.Namespace,
 						ObjectKind:                   event.InvolvedObject.Kind,
 						ObjectName:                   event.InvolvedObject.Name,
@@ -67,6 +67,6 @@ func (r *ThreeportWorkloadReconciler) addEventEventHandlers(
 	logger.Info(
 		"event handlers for resource involved events added",
 		"resourceID", resourceUID,
-		"workloadResourceInstanceID", &workloadResourceInstanceID,
+		"kubernetesWorkloadResourceInstanceID", &k8sWorkloadResourceInstanceID,
 	)
 }

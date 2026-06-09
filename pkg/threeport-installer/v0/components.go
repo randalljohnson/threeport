@@ -475,11 +475,18 @@ func (cpi *ControlPlaneInstaller) CreateOrUpdateKubeResource(
 
 	if isPersistent(resource) {
 		group, version := splitAPIVersion(resource.GetAPIVersion())
-		if existing, _ := kube.GetResource(
+		existing, err := kube.GetResource(
 			group, version, resource.GetKind(),
 			resource.GetNamespace(), resource.GetName(),
 			kubeClient, *mapper,
-		); existing != nil {
+		)
+		if err != nil && !k8serrors.IsNotFound(err) {
+			return fmt.Errorf(
+				"failed to check existence of persistent resource %s/%s: %w",
+				resource.GetKind(), resource.GetName(), err,
+			)
+		}
+		if existing != nil {
 			return nil
 		}
 	}

@@ -27,26 +27,26 @@ type ThreeportNotif struct {
 // ResourceOperation contains information gathered from watches on
 // threeport-managed resources.
 type ResourceOperation struct {
-	WorkloadType               string
+	WorkloadType                         string
 	KubernetesWorkloadResourceInstanceID uint
-	OperationType              string
-	OperationObject            string
+	OperationType                        string
+	OperationObject                      string
 }
 
 // EventSummary contains information collected from events related to
 // threeport-managed resources.
 type EventSummary struct {
-	EventUID                   string
-	WorkloadType               string
+	EventUID                             string
+	WorkloadType                         string
 	KubernetesWorkloadInstanceID         uint
 	KubernetesWorkloadResourceInstanceID uint
-	ObjectNamespace            string
-	ObjectKind                 string
-	ObjectName                 string
-	Timestamp                  metav1.Time
-	Type                       string
-	Reason                     string
-	Message                    string
+	ObjectNamespace                      string
+	ObjectKind                           string
+	ObjectName                           string
+	Timestamp                            metav1.Time
+	Type                                 string
+	Reason                               string
+	Message                              string
 }
 
 // Notify collects information about all resources being watched and

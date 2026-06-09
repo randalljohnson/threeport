@@ -123,10 +123,10 @@ func (r *ThreeportWorkloadReconciler) watchResource(
 		// create notification object and send over notif channel so that
 		// threeport API gets updated
 		resourceOp := notify.ResourceOperation{
-			WorkloadType:               workloadType,
+			WorkloadType:                         workloadType,
 			KubernetesWorkloadResourceInstanceID: threeportID,
-			OperationType:              string(op.Type),
-			OperationObject:            string(objectJSON),
+			OperationType:                        string(op.Type),
+			OperationObject:                      string(objectJSON),
 		}
 		threeportNotif := notify.ThreeportNotif{
 			Operation: &resourceOp,

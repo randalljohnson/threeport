@@ -15,8 +15,8 @@ const (
 	HelmWorkloadInstanceType       = "HelmWorkloadInstance"
 
 	// The label keys applied to workloads managed by Threeport
-	WorkloadInstanceLabelKey     = "control-plane.threeport.io/workload-instance"
-	HelmWorkloadInstanceLabelKey = "control-plane.threeport.io/helm-workload-instance"
+	KubernetesWorkloadInstanceLabelKey = "control-plane.threeport.io/kubernetes-workload-instance"
+	HelmWorkloadInstanceLabelKey       = "control-plane.threeport.io/helm-workload-instance"
 )
 
 // ThreeportWorkloadName returns a standardized name for a ThreeportWorkload
@@ -27,7 +27,7 @@ func ThreeportWorkloadName(
 ) (string, error) {
 	switch workloadType {
 	case KubernetesWorkloadInstanceType:
-		return fmt.Sprintf("workload-instance-%d", workloadInstanceID), nil
+		return fmt.Sprintf("kubernetes-workload-instance-%d", workloadInstanceID), nil
 	case HelmWorkloadInstanceType:
 		return fmt.Sprintf("helm-workload-instance-%d", workloadInstanceID), nil
 	default:

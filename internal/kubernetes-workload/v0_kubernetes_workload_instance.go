@@ -157,7 +157,7 @@ func v0KubernetesWorkloadInstanceCreated(
 			*k8sWorkloadDefinition.Name,
 			*k8sWorkloadInstance.Name,
 			*k8sWorkloadInstance.ID,
-			agent.WorkloadInstanceLabelKey,
+			agent.KubernetesWorkloadInstanceLabelKey,
 		)
 		if err != nil {
 			return 0, fmt.Errorf("failed to add label metadata to objects: %w", err)

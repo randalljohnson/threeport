@@ -16,6 +16,10 @@ func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the MachineRuntimeDefinition before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *MachineRuntimeDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -42,6 +46,10 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the MachineRuntimeInstance before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *MachineRuntimeInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

@@ -20,6 +20,10 @@ func (m *ModuleApi) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the ModuleApi before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *ModuleApi).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (m *ModuleApi) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -65,6 +69,10 @@ func (m *ModuleApiRoute) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the ModuleApiRoute before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *ModuleApiRoute).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (m *ModuleApiRoute) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -117,6 +125,10 @@ func (m *ModuleController) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the ModuleController before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *ModuleController).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (m *ModuleController) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -151,6 +163,10 @@ func (m *ModuleObject) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the ModuleObject before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *ModuleObject).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (m *ModuleObject) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

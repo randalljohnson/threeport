@@ -141,6 +141,15 @@ func emitValidateScaffoldIfMissing(
 				"%s runs %s the %s is %s.",
 				h.userName, tense, typeName, h.verb,
 			))
+			if h.gormName == "BeforeUpdate" {
+				f.Comment("")
+				f.Comment("Receiver is the loaded DB row. The new field values being written")
+				f.Comment(fmt.Sprintf(
+					"are in tx.Statement.Dest (cast to *%s).",
+					typeName,
+				))
+				f.Comment(`Use tx.Statement.Changed("FieldName") to detect field changes.`)
+			}
 			f.Func().Params(
 				Id(receiver).Op("*").Id(typeName),
 			).Id(h.userName).Params(

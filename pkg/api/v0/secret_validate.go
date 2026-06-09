@@ -15,6 +15,10 @@ func (s *SecretDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the SecretDefinition before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *SecretDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (s *SecretDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -30,6 +34,10 @@ func (s *SecretInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the SecretInstance before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *SecretInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (s *SecretInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

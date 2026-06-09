@@ -59,6 +59,10 @@ func (k *KubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates that no immutable fields are being changed
 // before updates are persisted.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *KubernetesRuntimeDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (k *KubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	// ensure infra provider is not changed
 	if tx.Statement.Changed("InfraProvider") {
@@ -100,6 +104,10 @@ func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates that no immutable fields are being changed
 // before updates are persisted.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *KubernetesRuntimeInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	// ensure runtime location is not changed
 	if tx.Statement.Changed("Location") {

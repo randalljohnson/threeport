@@ -56,23 +56,24 @@ func NewCleanSession(tx *gorm.DB) *gorm.DB {
 	return tx.Session(&gorm.Session{NewDB: true})
 }
 
-// LoadUpdatedObjFromDB returns a newly-allocated instance of obj's concrete
-// type populated from the database by ID. The original obj is not
-// mutated. Use this from GORM hooks that need to read post-write field
-// values while keeping the original as a pre-write snapshot.
-func LoadUpdatedObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
+// LoadObjFromDB returns a newly-allocated instance of obj's concrete
+// type populated from the database by ID via a fresh session that
+// does not inherit the current statement's clauses. The original obj
+// is not mutated. Used by GORM hooks that need a clean snapshot of
+// the current row: pre-update state when called from before-hooks,
+// post-update state when called from after-hooks.
+func LoadObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
 	// allocate a new instance of obj's concrete type via reflection;
 	// the caller's obj stays untouched while loaded values land here
-	updatedObj := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
+	loaded := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
 
-	// read the row by primary key into updatedObj
-	if err := NewCleanSession(tx).First(updatedObj, id).Error; err != nil {
+	if err := NewCleanSession(tx).First(loaded, id).Error; err != nil {
 		return nil, fmt.Errorf(
-			"failed to reload %s/%d from database: %w",
+			"failed to load %s/%d from database: %w",
 			util.ObjectTypeName(obj), id, err,
 		)
 	}
-	return updatedObj, nil
+	return loaded, nil
 }
 
 // ParseQualifiedType splits "<api-namespace>/<version>.<TypeName>" into

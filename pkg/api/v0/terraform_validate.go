@@ -12,6 +12,10 @@ func (t *TerraformDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the TerraformDefinition before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *TerraformDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (t *TerraformDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -27,6 +31,10 @@ func (t *TerraformInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the TerraformInstance before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *TerraformInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (t *TerraformInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

@@ -74,6 +74,10 @@ func (a *AwsProvider) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the AwsProvider before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *AwsProvider).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (a *AwsProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -89,6 +93,10 @@ func (a *AwsEksKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the AwsEksKubernetesRuntimeDefinition before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *AwsEksKubernetesRuntimeDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (a *AwsEksKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -104,6 +112,10 @@ func (a *AwsEksKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the AwsEksKubernetesRuntimeInstance before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *AwsEksKubernetesRuntimeInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (a *AwsEksKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

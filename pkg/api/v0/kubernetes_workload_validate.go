@@ -10,6 +10,10 @@ func (w *KubernetesWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the KubernetesWorkloadDefinition is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *KubernetesWorkloadDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (w *KubernetesWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -40,6 +44,10 @@ func (w *KubernetesWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the KubernetesWorkloadInstance is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *KubernetesWorkloadInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (w *KubernetesWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -70,6 +78,10 @@ func (w *KubernetesWorkloadResourceDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the KubernetesWorkloadResourceDefinition is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *KubernetesWorkloadResourceDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (w *KubernetesWorkloadResourceDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -100,6 +112,10 @@ func (w *KubernetesWorkloadResourceInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the KubernetesWorkloadResourceInstance is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *KubernetesWorkloadResourceInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (w *KubernetesWorkloadResourceInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

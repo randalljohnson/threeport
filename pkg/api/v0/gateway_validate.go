@@ -10,6 +10,10 @@ func (d *DomainNameDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the DomainNameDefinition is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *DomainNameDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (d *DomainNameDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -40,6 +44,10 @@ func (d *DomainNameInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the DomainNameInstance is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *DomainNameInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (d *DomainNameInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -70,6 +78,10 @@ func (g *GatewayDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the GatewayDefinition is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *GatewayDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (g *GatewayDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -100,6 +112,10 @@ func (g *GatewayHttpPort) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the GatewayHttpPort is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *GatewayHttpPort).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (g *GatewayHttpPort) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -130,6 +146,10 @@ func (g *GatewayInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the GatewayInstance is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *GatewayInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (g *GatewayInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -160,6 +180,10 @@ func (g *GatewayTcpPort) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the GatewayTcpPort is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *GatewayTcpPort).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (g *GatewayTcpPort) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

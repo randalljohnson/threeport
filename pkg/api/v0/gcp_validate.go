@@ -16,6 +16,10 @@ func (g *GcpProvider) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the GcpProvider before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *GcpProvider).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (g *GcpProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -52,6 +56,10 @@ func (g *GcpGkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the GcpGkeKubernetesRuntimeDefinition before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *GcpGkeKubernetesRuntimeDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (g *GcpGkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -67,6 +75,10 @@ func (g *GcpGkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the GcpGkeKubernetesRuntimeInstance before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *GcpGkeKubernetesRuntimeInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (g *GcpGkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

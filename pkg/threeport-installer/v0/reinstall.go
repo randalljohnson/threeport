@@ -20,27 +20,26 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// deploymentGVR is reused by the quiesce and verify phases (which
-// target the rest-api Deployment by name) and by the sweep target
-// set (which lists matching Deployments by label).
+// deploymentGVR is reused by the scale-down and verify phases (which
+// target Deployments by name or by label).
 var deploymentGVR = schema.GroupVersionResource{
 	Group:    "apps",
 	Version:  "v1",
 	Resource: "deployments",
 }
 
-// sweepTarget pairs a GVR with whether it's namespace-scoped. Cluster
+// deleteTarget pairs a GVR with whether it's namespace-scoped. Cluster
 // -scoped kinds (ClusterRole, ClusterRoleBinding) skip the .Namespace
 // call on the dynamic client.
-type sweepTarget struct {
+type deleteTarget struct {
 	gvr        schema.GroupVersionResource
 	namespaced bool
 }
 
-// sweepTargets is the closed set of kinds the reinstall sweep walks.
-// Each kind that the installer can create is listed here; resources
-// whose loss is unrecoverable (cascade-delete, data, external state)
-// are deliberately excluded:
+// deleteTargets is the closed set of kinds the reinstall delete phase
+// walks. Each kind that the installer can create is listed here;
+// resources whose loss is unrecoverable (cascade-delete, data,
+// external state) are deliberately excluded:
 //
 //	customresourcedefinitions - cascade-deletes every cr of that type
 //	namespaces                - cascade-deletes everything in the ns
@@ -48,24 +47,24 @@ type sweepTarget struct {
 //	statefulsets              - the persistent label protects cockroach
 //	                            and nats specifically; no other
 //	                            installer-managed statefulset exists
-var sweepTargets = []sweepTarget{
-	{deploymentGVR, true},
-	{schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}, true},
-	{schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}, true},
-	{schema.GroupVersionResource{Group: "", Version: "v1", Resource: "services"}, true},
-	{schema.GroupVersionResource{Group: "", Version: "v1", Resource: "serviceaccounts"}, true},
-	{schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}, true},
-	{schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}, true},
-	{schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterroles"}, false},
-	{schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterrolebindings"}, false},
+var deleteTargets = []deleteTarget{
+	{gvr: deploymentGVR, namespaced: true},
+	{gvr: schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}, namespaced: true},
+	{gvr: schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}, namespaced: true},
+	{gvr: schema.GroupVersionResource{Group: "", Version: "v1", Resource: "services"}, namespaced: true},
+	{gvr: schema.GroupVersionResource{Group: "", Version: "v1", Resource: "serviceaccounts"}, namespaced: true},
+	{gvr: schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}, namespaced: true},
+	{gvr: schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}, namespaced: true},
+	{gvr: schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterroles"}, namespaced: false},
+	{gvr: schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterrolebindings"}, namespaced: false},
 }
 
 // restApiDeploymentReadyTimeout caps how long Reinstall will wait for
-// the rest-api deployment to roll back to ready after the reapply.
+// the rest-api deployment to roll back to ready after install.
 const restApiDeploymentReadyTimeout = 5 * time.Minute
 
-// Reinstall sweeps every installer-managed stateless deployment in the
-// control plane namespace and then reapplies the install path so the
+// Reinstall deletes every installer-managed stateless resource in the
+// control plane namespace and then re-runs the install path so the
 // pods come back with fresh images and specs. Designed for dev
 // environments only; production-safe upgrades are a separate flow.
 //
@@ -75,10 +74,10 @@ const restApiDeploymentReadyTimeout = 5 * time.Minute
 // their database contents and the api endpoint's public ip across
 // reinstalls.
 //
-// Phases: quiesce -> sweep -> reapply -> verify. The quiesce step
-// scales the rest-api to zero before sweeping so in-cluster
-// reconcilers (the controllers) don't race the sweep by recreating
-// resources we just deleted.
+// Phases: delete -> install -> verify. The delete step scales control
+// plane deployments to zero before issuing deletes so in-cluster
+// reconcilers (the controllers) don't race by recreating resources we
+// just deleted.
 func (cpi *ControlPlaneInstaller) Reinstall(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
@@ -86,58 +85,41 @@ func (cpi *ControlPlaneInstaller) Reinstall(
 ) error {
 	ns := cpi.Opts.Namespace
 
-	fmt.Println("Info: scaling rest-api to 0 and waiting for pods to terminate")
-	if err := cpi.quiesceForReinstall(kubeClient, ns); err != nil {
-		return fmt.Errorf("failed to quiesce control plane for reinstall: %w", err)
+	if err := cpi.deleteForReinstall(kubeClient, ns); err != nil {
+		return fmt.Errorf("failed to delete control plane resources: %w", err)
 	}
 
-	fmt.Println("Info: sweeping installer-managed stateless resources across deployments, configmaps, secrets, services, serviceaccounts, roles, rolebindings, clusterroles, clusterrolebindings")
-	deleted, err := cpi.sweepReinstallTargets(kubeClient, ns)
-	if err != nil {
-		return fmt.Errorf("failed to sweep stateless resources: %w", err)
-	}
-	fmt.Printf("Info: swept %d stateless resource(s)\n", deleted)
-
-	// reapply uses CreateOrUpdate so resources that survived the sweep
-	// (configmaps, secrets, rbac, services) are patched in place. set
-	// the flag explicitly in case the installer was constructed for a
-	// fresh install path.
+	// install uses CreateOrUpdate so resources that survived the delete
+	// phase (api-ca, api-cert, persistent statefulsets) are patched in
+	// place. set the flag explicitly in case the installer was
+	// constructed for a fresh install path.
 	cpi.Opts.CreateOrUpdateKubeResources = true
 
 	// dependencies first - encryption-key, nats config, crdb config,
 	// api load balancer service. existence guards on the encryption
 	// secret and db cert secret keep their content intact across this
-	// reapply; the empty arguments below only matter for fresh installs,
+	// install; the empty arguments below only matter for fresh installs,
 	// which reinstall doesn't run.
-	fmt.Println("Info: reapplying threeport control plane dependencies (nats, crdb, encryption-key, api load balancer)")
+	fmt.Println("Info: installing threeport control plane dependencies (nats, crdb, encryption-key, api load balancer)")
 	if err := cpi.InstallThreeportControlPlaneDependencies(kubeClient, mapper, "", nil); err != nil {
-		return fmt.Errorf("failed to reapply control plane dependencies: %w", err)
+		return fmt.Errorf("failed to install control plane dependencies: %w", err)
 	}
 
-	// api server tls assets: pass the cluster-loaded authConfig so
-	// any cert secret that doesn't exist yet (e.g. a brand-new
-	// controller added since the last install) gets signed by the
-	// existing CA. existing cert secrets survive the sweep and are
-	// reused as-is - install functions check existence before
-	// re-issuing.
-	fmt.Println("Info: ensuring threeport api tls assets")
-	if err := cpi.InstallThreeportAPITLS(kubeClient, mapper, authConfig); err != nil {
-		return fmt.Errorf("failed to reapply threeport api tls assets: %w", err)
-	}
+	// api-ca and api-cert secrets carry the persistent label and survive the delete; no re-issue needed.
 
-	fmt.Println("Info: reapplying threeport api deployment")
+	fmt.Println("Info: installing threeport api deployment")
 	if err := cpi.UpdateThreeportAPIDeployment(kubeClient, mapper, nil); err != nil {
-		return fmt.Errorf("failed to reapply threeport api deployment: %w", err)
+		return fmt.Errorf("failed to install threeport api deployment: %w", err)
 	}
 
-	fmt.Printf("Info: reapplying %d threeport controller(s)\n", len(cpi.Opts.ControllerList))
+	fmt.Printf("Info: installing %d threeport controller(s)\n", len(cpi.Opts.ControllerList))
 	if err := cpi.InstallThreeportControllers(kubeClient, mapper, authConfig); err != nil {
-		return fmt.Errorf("failed to reapply threeport controllers: %w", err)
+		return fmt.Errorf("failed to install threeport controllers: %w", err)
 	}
 
-	fmt.Println("Info: reapplying threeport agent")
+	fmt.Println("Info: installing threeport agent")
 	if err := cpi.InstallThreeportAgent(kubeClient, mapper, authConfig); err != nil {
-		return fmt.Errorf("failed to reapply threeport agent: %w", err)
+		return fmt.Errorf("failed to install threeport agent: %w", err)
 	}
 
 	fmt.Printf("Info: waiting for rest-api deployment to become ready (timeout %s)\n", restApiDeploymentReadyTimeout)
@@ -148,79 +130,87 @@ func (cpi *ControlPlaneInstaller) Reinstall(
 	return nil
 }
 
-// quiesceForReinstall scales the rest-api deployment to zero and
-// waits for its pods to fully terminate. Controllers can't drive
-// reconciliation without the api, so this stops them from racing
-// the sweep.
-func (cpi *ControlPlaneInstaller) quiesceForReinstall(
+// deleteForReinstall performs the combined delete phase: scale every
+// installer-managed Deployment to zero, wait for pods to drain, then
+// foreground-cascade delete every stateless resource matching the
+// managed-by label, then wait for the api to report empty across every
+// kind.
+//
+// Reinstall covers any change to deployment spec, including fields
+// that are immutable on a running deployment (volume mounts, selectors,
+// init containers) - not just the image-swap that `strategy: Recreate`
+// handles. Scale to 0 + foreground-cascade delete + recreate means the
+// new pods come up against the fresh spec without trying to patch
+// through any in-place restriction. Stateful resources (CRDB data,
+// NATS data, the CA, rest-api external IP) are deliberately excluded
+// from the delete.
+func (cpi *ControlPlaneInstaller) deleteForReinstall(
 	kubeClient dynamic.Interface,
 	namespace string,
 ) error {
-	name := cpi.Opts.RestApiInfo.ServiceResourceName
-
-	patch := []byte(`{"spec":{"replicas":0}}`)
-	_, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).Patch(
-		context.Background(),
-		name,
-		"application/strategic-merge-patch+json",
-		patch,
-		metav1.PatchOptions{},
-	)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to scale rest-api deployment to zero: %w", err)
-	}
-
-	// poll until the deployment reports zero ready replicas. nothing
-	// downstream needs the pods to be fully gone (they're already not
-	// serving traffic once ready=0), so this stays simple.
-	deadline := time.Now().Add(90 * time.Second)
-	for {
-		dep, getErr := kubeClient.Resource(deploymentGVR).Namespace(namespace).Get(
-			context.Background(), name, metav1.GetOptions{},
-		)
-		if errors.IsNotFound(getErr) {
-			return nil
-		}
-		if getErr != nil {
-			return fmt.Errorf("failed to read rest-api deployment status: %w", getErr)
-		}
-		ready, _, _ := unstructuredNestedInt(dep.Object, "status", "readyReplicas")
-		if ready == 0 {
-			return nil
-		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("rest-api deployment still has %d ready replica(s) after quiesce timeout", ready)
-		}
-		time.Sleep(2 * time.Second)
-	}
-}
-
-// sweepReinstallTargets deletes every resource matching the
-// managed-by=threeport-installer label across the closed sweepTargets
-// set, skipping anything marked persistent, then blocks until the
-// deletions actually clear from the api. Returns the count of
-// deletions issued.
-//
-// Uses background cascade so the owner (deployment, clusterrolebinding
-// etc.) leaves the api on first call and the same-named reapply that
-// follows doesn't collide with a still-terminating object. Pods owned
-// by deleted deployments are gc'd asynchronously - the new deployment
-// created right after gets its own replicaset + pods.
-func (cpi *ControlPlaneInstaller) sweepReinstallTargets(
-	kubeClient dynamic.Interface,
-	namespace string,
-) (int, error) {
 	selector := fmt.Sprintf(
 		"%s=%s,%s!=%s",
 		LabelManagedBy, LabelManagedByValue,
 		LabelPersistent, LabelPersistentValue,
 	)
 
-	deletePolicy := metav1.DeletePropagationBackground
+	// scale every installer-managed Deployment to zero so in-cluster
+	// reconcilers stop driving state before the delete fan-out.
+	fmt.Println("Info: scaling all control plane deployments to 0 and waiting for pods to terminate")
+	deployList, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
+		context.Background(), metav1.ListOptions{LabelSelector: selector},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to list control plane deployments: %w", err)
+	}
+	patch := []byte(`{"spec":{"replicas":0}}`)
+	for _, dep := range deployList.Items {
+		name := dep.GetName()
+		_, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).Patch(
+			context.Background(),
+			name,
+			"application/strategic-merge-patch+json",
+			patch,
+			metav1.PatchOptions{},
+		)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to scale deployment %s to zero: %w", name, err)
+		}
+	}
+
+	// 3s poll x 60 attempts = 3 minute aggregate deadline.
+	if err := util.Retry(60, 3, func() error {
+		current, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
+			context.Background(), metav1.ListOptions{LabelSelector: selector},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to list deployments while waiting for scale-down: %w", err)
+		}
+		pending := 0
+		for _, dep := range current.Items {
+			ready, _, _ := util.NestedInt64OrFloat64(dep.Object, "status", "readyReplicas")
+			if ready > 0 {
+				pending += int(ready)
+			}
+		}
+		if pending > 0 {
+			return fmt.Errorf("%d ready replica(s) still present", pending)
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("control plane deployments did not scale to zero: %w", err)
+	}
+
+	// foreground-cascade delete the stateless resource set. foreground
+	// holds the owner in the api until its dependents are gone, so the
+	// install step that follows doesn't collide with a still-terminating
+	// same-named object.
+	fmt.Println("Info: deleting installer-managed stateless resources across deployments, configmaps, secrets, services, serviceaccounts, roles, rolebindings, clusterroles, clusterrolebindings")
+	deletePolicy := metav1.DeletePropagationForeground
 	deleteOpts := metav1.DeleteOptions{PropagationPolicy: &deletePolicy}
 
 	count := 0
-	for _, target := range sweepTargets {
+	for _, target := range deleteTargets {
 		// cluster-scoped resources (clusterroles, clusterrolebindings)
 		// skip the namespace call; namespaced resources pin to the
 		// control plane namespace.
@@ -233,7 +223,7 @@ func (cpi *ControlPlaneInstaller) sweepReinstallTargets(
 
 		list, err := ri.List(context.Background(), metav1.ListOptions{LabelSelector: selector})
 		if err != nil {
-			return count, fmt.Errorf(
+			return fmt.Errorf(
 				"failed to list %s matching %q: %w",
 				target.gvr.Resource, selector, err,
 			)
@@ -242,7 +232,7 @@ func (cpi *ControlPlaneInstaller) sweepReinstallTargets(
 		for _, obj := range list.Items {
 			name := obj.GetName()
 			if err := ri.Delete(context.Background(), name, deleteOpts); err != nil && !errors.IsNotFound(err) {
-				return count, fmt.Errorf(
+				return fmt.Errorf(
 					"failed to delete %s/%s: %w",
 					target.gvr.Resource, name, err,
 				)
@@ -250,32 +240,23 @@ func (cpi *ControlPlaneInstaller) sweepReinstallTargets(
 			count++
 		}
 	}
+	fmt.Printf("Info: deleted %d stateless resource(s)\n", count)
 
 	// k8s Delete is async: the call returns once the deletion is
 	// initiated, not once the object is gone. wait until the label
-	// selector returns empty across every swept kind, so the reapply
-	// step doesn't collide with a still-terminating same-named object.
-	if err := cpi.waitForSweepComplete(kubeClient, namespace, selector); err != nil {
-		return count, fmt.Errorf("sweep deletions did not clear: %w", err)
-	}
-
-	return count, nil
-}
-
-// waitForSweepComplete polls the sweep target set until every kind
-// reports zero label-matching resources, or the deadline elapses.
-// Worst-case shape: many controllers being torn down at once, each
-// with a single replica, all clearing well within the deadline.
-func (cpi *ControlPlaneInstaller) waitForSweepComplete(
-	kubeClient dynamic.Interface,
-	namespace string,
-	selector string,
-) error {
-	deadline := time.Now().Add(2 * time.Minute)
-	for {
+	// selector returns empty across every kind so the install step
+	// doesn't collide with a still-terminating same-named object.
+	//
+	// Stuck-mode shape: a single resource hung in termination
+	// (finalizer not cleared, SIGTERM handler hanging on in-flight
+	// reconcile, unresponsive node) holds the deadline. Many concurrent
+	// fast-terminating resources is the expected case, not the worst
+	// case.
+	var sample string
+	if err := util.Retry(60, 3, func() error {
 		pending := 0
-		var sample string
-		for _, target := range sweepTargets {
+		sample = ""
+		for _, target := range deleteTargets {
 			var ri dynamic.ResourceInterface
 			if target.namespaced {
 				ri = kubeClient.Resource(target.gvr).Namespace(namespace)
@@ -284,7 +265,7 @@ func (cpi *ControlPlaneInstaller) waitForSweepComplete(
 			}
 			list, err := ri.List(context.Background(), metav1.ListOptions{LabelSelector: selector})
 			if err != nil {
-				return fmt.Errorf("failed to list %s while waiting for sweep: %w", target.gvr.Resource, err)
+				return fmt.Errorf("failed to list %s while waiting for delete: %w", target.gvr.Resource, err)
 			}
 			if n := len(list.Items); n > 0 {
 				pending += n
@@ -293,14 +274,15 @@ func (cpi *ControlPlaneInstaller) waitForSweepComplete(
 				}
 			}
 		}
-		if pending == 0 {
-			return nil
+		if pending > 0 {
+			return fmt.Errorf("%d resource(s) still terminating (e.g. %s)", pending, sample)
 		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("%d resource(s) still terminating after 2m (e.g. %s)", pending, sample)
-		}
-		time.Sleep(2 * time.Second)
+		return nil
+	}); err != nil {
+		return fmt.Errorf("control plane resources did not finish terminating: %w", err)
 	}
+
+	return nil
 }
 
 // waitForRestAPIReady polls the rest-api deployment until its ready
@@ -311,8 +293,9 @@ func (cpi *ControlPlaneInstaller) waitForRestAPIReady(
 	timeout time.Duration,
 ) error {
 	name := cpi.Opts.RestApiInfo.ServiceResourceName
-	deadline := time.Now().Add(timeout)
-	for {
+	// 3s poll x ceil(timeout / 3s) attempts.
+	attemptsMax := int(timeout / (3 * time.Second))
+	return util.Retry(attemptsMax, 3, func() error {
 		dep, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).Get(
 			context.Background(), name, metav1.GetOptions{},
 		)
@@ -320,16 +303,13 @@ func (cpi *ControlPlaneInstaller) waitForRestAPIReady(
 			return fmt.Errorf("failed to read rest-api deployment status: %w", err)
 		}
 		if err == nil {
-			ready, _, _ := unstructuredNestedInt(dep.Object, "status", "readyReplicas")
+			ready, _, _ := util.NestedInt64OrFloat64(dep.Object, "status", "readyReplicas")
 			if ready >= 1 {
 				return nil
 			}
 		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("rest-api deployment not ready after %s", timeout)
-		}
-		time.Sleep(3 * time.Second)
-	}
+		return fmt.Errorf("rest-api deployment not yet ready")
+	})
 }
 
 // LoadAuthConfigFromCluster reads the persistent api-ca Secret and
@@ -337,7 +317,7 @@ func (cpi *ControlPlaneInstaller) waitForRestAPIReady(
 // passes the returned config into the install functions so any new
 // controller added since the last install gets a cert signed by the
 // cluster's existing CA, without rotating it. Existing controllers'
-// cert secrets survive the sweep and aren't re-issued.
+// cert secrets survive the delete and aren't re-issued.
 func (cpi *ControlPlaneInstaller) LoadAuthConfigFromCluster(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
@@ -398,34 +378,4 @@ func (cpi *ControlPlaneInstaller) LoadAuthConfigFromCluster(
 		CAPrivateKeyPemEncoded:    string(keyPem),
 		CAPrivateKeyBase64Encoded: util.Base64Encode(string(keyPem)),
 	}, nil
-}
-
-// unstructuredNestedInt fetches a nested int field from an
-// unstructured object's map, returning zero+false when missing. Wraps
-// the json.Number / float64 numeric ambiguity gorm and the kube
-// dynamic client produce.
-func unstructuredNestedInt(obj map[string]interface{}, fields ...string) (int64, bool, error) {
-	cur := obj
-	for i, f := range fields {
-		v, ok := cur[f]
-		if !ok {
-			return 0, false, nil
-		}
-		if i == len(fields)-1 {
-			switch n := v.(type) {
-			case int64:
-				return n, true, nil
-			case float64:
-				return int64(n), true, nil
-			default:
-				return 0, false, fmt.Errorf("field %q has unexpected type %T", f, v)
-			}
-		}
-		next, ok := v.(map[string]interface{})
-		if !ok {
-			return 0, false, nil
-		}
-		cur = next
-	}
-	return 0, false, nil
 }

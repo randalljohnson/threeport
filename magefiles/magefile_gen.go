@@ -31,6 +31,9 @@ type Install mg.Namespace
 // Dev provides a type for methods that implement dev targets.
 type Dev mg.Namespace
 
+// Package provides a type for methods that implement package targets.
+type Package mg.Namespace
+
 // ApiBin builds the REST API binary.
 func (Build) ApiBin(arch string) error {
 	workingDir, _, err := getBuildVals()
@@ -42,7 +45,6 @@ func (Build) ApiBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/rest-api"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build rest-api binary: %w", err)
@@ -118,18 +120,11 @@ func (Build) ApiImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/rest-api"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build rest-api binary: %w", err)
@@ -182,7 +177,6 @@ func (Build) DbMigratorBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/database-migrator"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build database-migrator binary: %w", err)
@@ -258,18 +252,11 @@ func (Build) DbMigratorImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/database-migrator"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build database-migrator binary: %w", err)
@@ -322,7 +309,6 @@ func (Build) AgentBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/agent"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build agent binary: %w", err)
@@ -398,18 +384,11 @@ func (Build) AgentImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/agent"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build agent binary: %w", err)
@@ -462,7 +441,6 @@ func (Build) SecretControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/secret-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build secret-controller binary: %w", err)
@@ -538,18 +516,11 @@ func (Build) SecretControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/secret-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build secret-controller binary: %w", err)
@@ -602,7 +573,6 @@ func (Build) AwsControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/aws-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build aws-controller binary: %w", err)
@@ -678,18 +648,11 @@ func (Build) AwsControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/aws-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build aws-controller binary: %w", err)
@@ -743,7 +706,6 @@ func (Build) OciControllerBin(arch string) error {
 		[]string{arch},
 		[]string{"cmd/oci-controller"},
 		false,
-		false,
 	); err != nil {
 		return fmt.Errorf("failed to build oci-controller binary: %w", err)
 	}
@@ -789,7 +751,7 @@ func (Build) ociControllerImagePackage(
 	if err := util.BuildImage(
 		workingDir,
 		"Dockerfile",
-		"pulumi",
+		"release-pulumi",
 		arch,
 		"oci-controller",
 		"bin",
@@ -818,18 +780,11 @@ func (Build) OciControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/oci-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build oci-controller binary: %w", err)
@@ -883,7 +838,6 @@ func (Build) GcpControllerBin(arch string) error {
 		[]string{arch},
 		[]string{"cmd/gcp-controller"},
 		false,
-		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gcp-controller binary: %w", err)
 	}
@@ -929,7 +883,7 @@ func (Build) gcpControllerImagePackage(
 	if err := util.BuildImage(
 		workingDir,
 		"Dockerfile",
-		"release",
+		"release-pulumi",
 		arch,
 		"gcp-controller",
 		"bin",
@@ -958,18 +912,11 @@ func (Build) GcpControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/gcp-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gcp-controller binary: %w", err)
@@ -1022,7 +969,6 @@ func (Build) ControlPlaneControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/control-plane-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build control-plane-controller binary: %w", err)
@@ -1098,18 +1044,11 @@ func (Build) ControlPlaneControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/control-plane-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build control-plane-controller binary: %w", err)
@@ -1162,7 +1101,6 @@ func (Build) GatewayControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/gateway-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gateway-controller binary: %w", err)
@@ -1238,18 +1176,11 @@ func (Build) GatewayControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/gateway-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build gateway-controller binary: %w", err)
@@ -1302,7 +1233,6 @@ func (Build) HelmWorkloadControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/helm-workload-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build helm-workload-controller binary: %w", err)
@@ -1378,18 +1308,11 @@ func (Build) HelmWorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/helm-workload-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build helm-workload-controller binary: %w", err)
@@ -1442,7 +1365,6 @@ func (Build) MachineRuntimeControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/machine-runtime-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-runtime-controller binary: %w", err)
@@ -1518,18 +1440,11 @@ func (Build) MachineRuntimeControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/machine-runtime-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-runtime-controller binary: %w", err)
@@ -1582,7 +1497,6 @@ func (Build) MachineWorkloadControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/machine-workload-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-workload-controller binary: %w", err)
@@ -1658,18 +1572,11 @@ func (Build) MachineWorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/machine-workload-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build machine-workload-controller binary: %w", err)
@@ -1722,7 +1629,6 @@ func (Build) KubernetesRuntimeControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/kubernetes-runtime-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build kubernetes-runtime-controller binary: %w", err)
@@ -1798,18 +1704,11 @@ func (Build) KubernetesRuntimeControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/kubernetes-runtime-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build kubernetes-runtime-controller binary: %w", err)
@@ -1862,7 +1761,6 @@ func (Build) ObservabilityControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/observability-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build observability-controller binary: %w", err)
@@ -1938,18 +1836,11 @@ func (Build) ObservabilityControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/observability-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build observability-controller binary: %w", err)
@@ -2003,7 +1894,6 @@ func (Build) TerraformControllerBin(arch string) error {
 		[]string{arch},
 		[]string{"cmd/terraform-controller"},
 		false,
-		false,
 	); err != nil {
 		return fmt.Errorf("failed to build terraform-controller binary: %w", err)
 	}
@@ -2049,7 +1939,7 @@ func (Build) terraformControllerImagePackage(
 	if err := util.BuildImage(
 		workingDir,
 		"Dockerfile",
-		"terraform",
+		"release-terraform",
 		arch,
 		"terraform-controller",
 		"bin",
@@ -2078,18 +1968,11 @@ func (Build) TerraformControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/terraform-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build terraform-controller binary: %w", err)
@@ -2142,7 +2025,6 @@ func (Build) KubernetesWorkloadControllerBin(arch string) error {
 		workingDir,
 		[]string{arch},
 		[]string{"cmd/kubernetes-workload-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build kubernetes-workload-controller binary: %w", err)
@@ -2218,18 +2100,11 @@ func (Build) KubernetesWorkloadControllerImage(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
 		workingDir,
 		arches,
 		[]string{"cmd/kubernetes-workload-controller"},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build kubernetes-workload-controller binary: %w", err)
@@ -2503,13 +2378,7 @@ func (Build) AllImages(
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 
 	packageDirs := []string{
 		"cmd/rest-api",
@@ -2534,7 +2403,6 @@ func (Build) AllImages(
 		workingDir,
 		arches,
 		packageDirs,
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
@@ -2584,13 +2452,7 @@ func (Build) AllImagesDev() error {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 
 	packageDirs := []string{
 		"cmd/rest-api",
@@ -2615,7 +2477,6 @@ func (Build) AllImagesDev() error {
 		workingDir,
 		arches,
 		packageDirs,
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
@@ -2684,7 +2545,7 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/gcp-controller",
 			packageFunc: build.gcpControllerImagePackage,
 		},
-		"control_plane": {
+		"controlPlane": {
 			packageDir:  "cmd/control-plane-controller",
 			packageFunc: build.controlPlaneControllerImagePackage,
 		},
@@ -2692,19 +2553,19 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/gateway-controller",
 			packageFunc: build.gatewayControllerImagePackage,
 		},
-		"helm_workload": {
+		"helmWorkload": {
 			packageDir:  "cmd/helm-workload-controller",
 			packageFunc: build.helmWorkloadControllerImagePackage,
 		},
-		"machine_runtime": {
+		"machineRuntime": {
 			packageDir:  "cmd/machine-runtime-controller",
 			packageFunc: build.machineRuntimeControllerImagePackage,
 		},
-		"machine_workload": {
+		"machineWorkload": {
 			packageDir:  "cmd/machine-workload-controller",
 			packageFunc: build.machineWorkloadControllerImagePackage,
 		},
-		"kubernetes_runtime": {
+		"kubernetesRuntime": {
 			packageDir:  "cmd/kubernetes-runtime-controller",
 			packageFunc: build.kubernetesRuntimeControllerImagePackage,
 		},
@@ -2716,7 +2577,7 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/terraform-controller",
 			packageFunc: build.terraformControllerImagePackage,
 		},
-		"kubernetes_workload": {
+		"kubernetesWorkload": {
 			packageDir:  "cmd/kubernetes-workload-controller",
 			packageFunc: build.kubernetesWorkloadControllerImagePackage,
 		},
@@ -2748,13 +2609,7 @@ func (Build) ImagesByApisDev(apis string) error {
 		selectedControllers = append(selectedControllers, entry)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 
 	packageDirs := []string{
 		"cmd/rest-api",
@@ -2769,7 +2624,6 @@ func (Build) ImagesByApisDev(apis string) error {
 		workingDir,
 		arches,
 		packageDirs,
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
@@ -2834,7 +2688,7 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/gcp-controller",
 			packageFunc: build.gcpControllerImagePackage,
 		},
-		"control_plane": {
+		"controlPlane": {
 			packageDir:  "cmd/control-plane-controller",
 			packageFunc: build.controlPlaneControllerImagePackage,
 		},
@@ -2842,19 +2696,19 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/gateway-controller",
 			packageFunc: build.gatewayControllerImagePackage,
 		},
-		"helm_workload": {
+		"helmWorkload": {
 			packageDir:  "cmd/helm-workload-controller",
 			packageFunc: build.helmWorkloadControllerImagePackage,
 		},
-		"machine_runtime": {
+		"machineRuntime": {
 			packageDir:  "cmd/machine-runtime-controller",
 			packageFunc: build.machineRuntimeControllerImagePackage,
 		},
-		"machine_workload": {
+		"machineWorkload": {
 			packageDir:  "cmd/machine-workload-controller",
 			packageFunc: build.machineWorkloadControllerImagePackage,
 		},
-		"kubernetes_runtime": {
+		"kubernetesRuntime": {
 			packageDir:  "cmd/kubernetes-runtime-controller",
 			packageFunc: build.kubernetesRuntimeControllerImagePackage,
 		},
@@ -2866,7 +2720,7 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/terraform-controller",
 			packageFunc: build.terraformControllerImagePackage,
 		},
-		"kubernetes_workload": {
+		"kubernetesWorkload": {
 			packageDir:  "cmd/kubernetes-workload-controller",
 			packageFunc: build.kubernetesWorkloadControllerImagePackage,
 		},
@@ -2898,13 +2752,7 @@ func (Build) ImagesByApis(
 		selectedControllers = append(selectedControllers, entry)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 
 	packageDirs := []string{
 		"cmd/rest-api",
@@ -2919,7 +2767,6 @@ func (Build) ImagesByApis(
 		workingDir,
 		arches,
 		packageDirs,
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
@@ -2957,13 +2804,7 @@ func (Build) AllImagesRelease() error {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arches := []string{}
-	for _, a := range strings.Split(arch, ",") {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			arches = append(arches, a)
-		}
-	}
+	arches := util.ParseArches(arch)
 
 	packageDirs := []string{
 		"cmd/rest-api",
@@ -2988,7 +2829,6 @@ func (Build) AllImagesRelease() error {
 		workingDir,
 		arches,
 		packageDirs,
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
@@ -3021,6 +2861,52 @@ func (Build) AllImagesRelease() error {
 	return util.RunParallel(parallelFromEnv(), tasks)
 }
 
+// Manifest stitches per-arch images into a multi-arch manifest list
+// under the canonical tag. Sources are looked up at
+// <repo>/<image>:<tag>-<arch> for each arch in the comma-separated
+// arches list and combined into <repo>/<image>:<tag> via
+// `docker buildx imagetools create`.
+func (Package) Manifest(
+	imageRepo string,
+	imageName string,
+	imageTag string,
+	arches string,
+) error {
+	return util.PushMultiArchManifest(imageRepo, imageName, imageTag, arches)
+}
+
+// AllManifests stitches multi-arch manifest lists for every component
+// in parallel, sourced from the installer's authoritative controller
+// list so adding a new controller automatically extends coverage. Set
+// PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g.
+// `PARALLEL_IMAGE_BUILD=4 mage package:allManifests ghcr.io/foo v1 amd64,arm64`).
+func (Package) AllManifests(
+	imageRepo string,
+	imageTag string,
+	arches string,
+) error {
+	// gather every component image: rest-api, db migrator, agent, and
+	// all controllers from the installer's authoritative list
+	images := []string{
+		installer.ThreeportRestApi.ImageName,
+		installer.DatabaseMigrator.ImageName,
+		installer.ThreeportAgent.ImageName,
+	}
+	for _, c := range installer.ThreeportControllerList {
+		images = append(images, c.ImageName)
+	}
+
+	tasks := make([]func() error, 0, len(images))
+	for _, image := range images {
+		image := image
+		tasks = append(tasks, func() error {
+			return util.PushMultiArchManifest(imageRepo, image, imageTag, arches)
+		})
+	}
+
+	return util.RunParallel(parallelFromEnv(), tasks)
+}
+
 // parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int, defaulting to 1.
 func parallelFromEnv() int {
 	v := os.Getenv("PARALLEL_IMAGE_BUILD")
@@ -3045,7 +2931,6 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 		workingDir,
 		[]string{arch},
 		[]string{fmt.Sprintf("cmd/%s", component)},
-		false,
 		false,
 	); err != nil {
 		return fmt.Errorf("failed to build binary: %w", err)

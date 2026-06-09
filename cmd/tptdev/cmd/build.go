@@ -27,26 +27,16 @@ import (
 )
 
 // imageBuildTarget returns the Dockerfile target for a component.
-// Defaults to the distroless `release` target; --delve switches to the
-// delve-equipped `dev` variant. terraform-controller needs the
-// terraform CLI on PATH at runtime; oci-controller and gcp-controller
-// both need the pulumi CLI. Those route to the `terraform` / `pulumi`
-// targets by default and the `dev-*` variants when --delve is on.
-func imageBuildTarget(componentName string, delve bool) string {
+// terraform-controller needs the terraform CLI on PATH at runtime;
+// oci-controller and gcp-controller both need the pulumi CLI. Those
+// route to the `release-terraform` / `release-pulumi` targets;
+// everything else uses the distroless `release` target.
+func imageBuildTarget(componentName string) string {
 	switch componentName {
 	case installer.ThreeportTerraformControllerName:
-		if delve {
-			return "dev-terraform"
-		}
-		return "terraform"
+		return "release-terraform"
 	case installer.ThreeportOciControllerName, installer.ThreeportGcpControllerName:
-		if delve {
-			return "dev-pulumi"
-		}
-		return "pulumi"
-	}
-	if delve {
-		return "dev"
+		return "release-pulumi"
 	}
 	return "release"
 }
@@ -142,7 +132,7 @@ var buildCmd = &cobra.Command{
 			for _, component := range componentList {
 				packageDirs = append(packageDirs, filepath.Dir(componentMainPath(component.Name)))
 			}
-			if err := util.BuildBinaries(cpi.Opts.ThreeportPath, arches, packageDirs, noCache, delve); err != nil {
+			if err := util.BuildBinaries(cpi.Opts.ThreeportPath, arches, packageDirs, noCache); err != nil {
 				cli.Error("failed to build binaries:", err)
 				os.Exit(1)
 			}
@@ -165,7 +155,7 @@ var buildCmd = &cobra.Command{
 					if err := util.BuildImage(
 						cpi.Opts.ThreeportPath,
 						"Dockerfile",
-						imageBuildTarget(component.Name, delve),
+						imageBuildTarget(component.Name),
 						arch,
 						component.Name,
 						"bin",
@@ -307,10 +297,6 @@ func init() {
 	buildCmd.Flags().BoolVar(
 		&restart,
 		"restart", false, "Restart pods after pushing or loading images.",
-	)
-	buildCmd.Flags().BoolVar(
-		&delve,
-		"delve", false, "Build delve-equipped dev images instead of the default distroless release images.",
 	)
 	buildCmd.Flags().BoolVar(
 		&noCache,

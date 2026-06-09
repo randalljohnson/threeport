@@ -18,9 +18,9 @@ var dockerfileContent string
 // GenDockerfile writes the minimal module Dockerfile to the project
 // root if not already present. The embedded source is a stripped-down
 // variant of threeport's canonical Dockerfile carrying only the
-// release and dev targets a module image needs. The write is skipped
-// when a Dockerfile already exists so threeport's own repo and any
-// module that has customized its Dockerfile are left untouched.
+// release target a module image needs. The write is skipped when a
+// Dockerfile already exists so threeport's own repo and any module
+// that has customized its Dockerfile are left untouched.
 func GenDockerfile(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	const target = "Dockerfile"
 

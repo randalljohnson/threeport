@@ -113,9 +113,6 @@ type Options struct {
 	// If true, run in debug mode. Appropriate for development environments only.
 	Debug bool
 
-	// If true, enable delve debugger for remote debugging. Only applicable when Debug is true.
-	Delve bool
-
 	// If true, infrastructure is not provisioned, control plane is installed on existing infra.
 	ControlPlaneOnly bool
 

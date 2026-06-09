@@ -8,60 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/magefile/mage/mg"
 	version "github.com/threeport/threeport/internal/version"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
-
-// Package groups mage targets that publish artifacts derived from
-// already-pushed inputs, such as stitching per-arch image tags into a
-// multi-arch manifest list.
-type Package mg.Namespace
-
-// Manifest stitches per-arch images into a multi-arch manifest list
-// under the canonical tag. Sources are looked up at
-// <repo>/<image>:<tag>-<arch> for each arch in the comma-separated
-// arches list and combined into <repo>/<image>:<tag> via
-// `docker buildx imagetools create`.
-func (Package) Manifest(
-	imageRepo string,
-	imageName string,
-	imageTag string,
-	arches string,
-) error {
-	return util.PushMultiArchManifest(imageRepo, imageName, imageTag, arches)
-}
-
-// AllManifests stitches multi-arch manifest lists for every component
-// in parallel, sourced from the installer's authoritative controller
-// list so adding a new controller automatically extends coverage. Set
-// PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g.
-// `PARALLEL_IMAGE_BUILD=4 mage package:allManifests ghcr.io/foo v1 amd64,arm64`).
-func (Package) AllManifests(
-	imageRepo string,
-	imageTag string,
-	arches string,
-) error {
-	// gather every component image: rest-api, db migrator, agent, and
-	// all controllers from the installer's authoritative list
-	images := []string{
-		installer.ThreeportRestApi.ImageName,
-		installer.DatabaseMigrator.ImageName,
-		installer.ThreeportAgent.ImageName,
-	}
-	for _, c := range installer.ThreeportControllerList {
-		images = append(images, c.ImageName)
-	}
-
-	tasks := make([]func() error, 0, len(images))
-	for _, image := range images {
-		tasks = append(tasks, func() error {
-			return util.PushMultiArchManifest(imageRepo, image, imageTag, arches)
-		})
-	}
-	return util.RunParallel(parallelFromEnv(), tasks)
-}
 
 // E2e calls ginkgo to run the e2e tests suite.  Takes 2 args: 1. imageRepo -
 // either 'local' or the URL for an external image repo.  2. clean - if true

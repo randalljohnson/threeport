@@ -1289,14 +1289,11 @@ func (cpi *ControlPlaneInstaller) UnInstallThreeportControlPlaneComponents(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) error {
-	// delete control plane and support services namespace
+	// delete the control plane namespace
 	if err := DeleteNamespaces(
 		kubeClient,
 		mapper,
-		[]string{
-			cpi.Opts.Namespace,
-			SupportServicesNamespace,
-		},
+		[]string{cpi.Opts.Namespace},
 	); err != nil && !k8serrors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete control plane namespace: %w", err)
 	}

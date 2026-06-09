@@ -110,10 +110,10 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	// Load the pre-update row from the DB. obj's meaning depends on
-	// the GORM call shape: Updates(&patch) hands the loaded row,
-	// Save(&obj) hands the new values. A fresh First() is the only
-	// call-pattern-independent way to get committed pre-update state.
+	// read committed pre-update FK values. under a PUT the receiver holds
+	// the caller's new values, so load the committed row to learn which
+	// FKs were previously set; tx.Statement.Changed reports which ones the
+	// update changes.
 	preUpdateObj, err := lib.LoadObjFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
@@ -187,8 +187,9 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		)
 	}
 
-	// reload from the database so the foreign-key values reflect the
-	// just-committed update, not the pre-update snapshot still on obj
+	// read committed FK values. the receiver already reflects them (gorm
+	// merges the update before this hook), so the reload only keeps the FK
+	// reads correct regardless of call shape.
 	updatedObj, err := lib.LoadObjFromDB(tx, obj, *objID)
 	if err != nil {
 		return err

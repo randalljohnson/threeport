@@ -57,11 +57,12 @@ func NewCleanSession(tx *gorm.DB) *gorm.DB {
 }
 
 // LoadObjFromDB returns a newly-allocated instance of obj's concrete
-// type populated from the database by ID via a fresh session that
-// does not inherit the current statement's clauses. The original obj
-// is not mutated. Used by GORM hooks that need a clean snapshot of
-// the current row: pre-update state when called from before-hooks,
-// post-update state when called from after-hooks.
+// type populated from the database by ID via a fresh session that does
+// not inherit the current statement's clauses. The original obj is not
+// mutated. It is the call-shape-independent way to read committed state:
+// in a before-update hook that is the pre-update row (needed because
+// under a PUT the receiver holds the caller's new values, not the
+// committed ones); in an after-update hook it is the post-update row.
 func LoadObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
 	// allocate a new instance of obj's concrete type via reflection;
 	// the caller's obj stays untouched while loaded values land here

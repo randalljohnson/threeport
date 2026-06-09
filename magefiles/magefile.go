@@ -80,24 +80,45 @@ func installDir() string {
 	return filepath.Join(build.Default.GOPATH, "bin")
 }
 
-// Sdk builds the SDK binary and installs in $GOBIN (or $GOPATH/bin).
-func (Install) Sdk() error {
-	outputPath := filepath.Join(installDir(), "threeport-sdk")
-
-	sdkCmd := exec.Command(
+// Sdk builds the threeport-sdk binary.
+func (Build) Sdk() error {
+	buildSdkCmd := exec.Command(
 		"go",
 		"build",
 		"-o",
-		outputPath,
+		"bin/threeport-sdk",
 		"cmd/sdk/main.go",
 	)
-
-	output, err := sdkCmd.CombinedOutput()
+	output, err := buildSdkCmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("build failed for sdk binary with output: '%s': %w", output, err)
+		return fmt.Errorf("build failed for threeport-sdk binary with output: '%s': %w", output, err)
 	}
 
-	fmt.Printf("sdk binary built and available at %s\n", outputPath)
+	fmt.Println("threeport-sdk binary built and available at bin/threeport-sdk")
+
+	return nil
+}
+
+// Sdk builds the threeport-sdk binary and installs in $GOBIN (or $GOPATH/bin).
+func (Install) Sdk() error {
+	build := Build{}
+	if err := build.Sdk(); err != nil {
+		return fmt.Errorf("failed to build threeport-sdk: %w", err)
+	}
+
+	outputPath := filepath.Join(installDir(), "threeport-sdk")
+
+	installSdkCmd := exec.Command(
+		"cp",
+		"./bin/threeport-sdk",
+		outputPath,
+	)
+	output, err := installSdkCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("install failed for threeport-sdk binary with output: '%s': %w", output, err)
+	}
+
+	fmt.Printf("threeport-sdk binary installed and available at %s\n", outputPath)
 
 	return nil
 }

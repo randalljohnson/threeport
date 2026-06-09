@@ -42,14 +42,6 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		installerPkg = fmt.Sprintf("%s/pkg/threeport-installer/v0", gen.ModulePath)
 	}
 
-	// set release image namespace constant
-	var releaseImageRepoConst string
-	if gen.Module {
-		releaseImageRepoConst = "ReleaseImageNamespace"
-	} else {
-		releaseImageRepoConst = "ThreeportImageNamespace"
-	}
-
 	f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 	f.ImportAlias(installerPkg, "installer")
 
@@ -63,30 +55,9 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	buildAgentFuncName := "AgentBin"
 	buildFuncNames := []string{buildApiFuncName, buildDbMigratorFuncName}
 
-	buildApiDevFuncName := "ApiBinDev"
-	buildDbMigratorDevFuncName := "DbMigratorBinDev"
-	buildAgentDevFuncName := "AgentBinDev"
-	buildDevFuncNames := []string{buildApiDevFuncName, buildDbMigratorDevFuncName}
-
-	buildApiReleaseFuncName := "ApiBinRelease"
-	buildDbMigratorReleaseFuncName := "DbMigratorBinRelease"
-	buildAgentReleaseFuncName := "AgentBinRelease"
-	buildReleaseFuncNames := []string{buildApiReleaseFuncName, buildDbMigratorReleaseFuncName}
-
 	buildApiImageFuncName := "ApiImage"
 	buildDbMigratorImageFuncName := "DbMigratorImage"
 	buildAgentImageFuncName := "AgentImage"
-
-	buildApiDevImageFuncName := "ApiImageDev"
-	buildDbMigratorDevImageFuncName := "DbMigratorImageDev"
-	buildAgentDevImageFuncName := "AgentImageDev"
-
-	buildApiReleaseImageFuncName := "ApiImageRelease"
-	buildDbMigratorReleaseImageFuncName := "DbMigratorImageRelease"
-	buildAgentReleaseImageFuncName := "AgentImageRelease"
-
-	f.Const().Id("releaseArch").Op("=").Lit("amd64")
-	f.Line()
 
 	namespaces := []string{"Build", "Test", "Install", "Dev", "Package"}
 	for _, ns := range namespaces {
@@ -99,8 +70,6 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	// binary build function for API
 	emitBinFunc(f, buildApiFuncName, "REST API", "rest-api", "cmd/rest-api")
-	emitBinDevFunc(f, buildApiDevFuncName, buildApiFuncName, "REST API", "rest-api")
-	emitBinReleaseFunc(f, buildApiReleaseFuncName, buildApiFuncName, "REST API", "rest-api")
 
 	apiImageName := "threeport-rest-api"
 	if gen.Module {
@@ -117,14 +86,10 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		PackageFuncName: apiPackageFuncName,
 	})
 	emitImagePackageFunc(f, apiPackageFuncName, "REST API", "release", "rest-api", apiImageName)
-	emitImageFunc(f, buildApiImageFuncName, "REST API", "rest-api", "cmd/rest-api", apiPackageFuncName)
-	emitImageDevFunc(f, buildApiDevImageFuncName, buildApiImageFuncName, "REST API", "rest-api", installerPkg, gen.ModulePath)
-	emitImageReleaseFunc(f, buildApiReleaseImageFuncName, buildApiImageFuncName, "REST API", "rest-api", installerPkg, releaseImageRepoConst, gen.ModulePath)
+	emitImageFunc(f, buildApiImageFuncName, "REST API", "rest-api", "cmd/rest-api", apiPackageFuncName, installerPkg, gen.ModulePath)
 
 	// binary build function for database migrator
 	emitBinFunc(f, buildDbMigratorFuncName, "database migrator", "database-migrator", "cmd/database-migrator")
-	emitBinDevFunc(f, buildDbMigratorDevFuncName, buildDbMigratorFuncName, "database migrator", "database-migrator")
-	emitBinReleaseFunc(f, buildDbMigratorReleaseFuncName, buildDbMigratorFuncName, "database migrator", "database-migrator")
 
 	dbMigratorImageName := "threeport-database-migrator"
 	if gen.Module {
@@ -141,19 +106,13 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		PackageFuncName: dbMigratorPackageFuncName,
 	})
 	emitImagePackageFunc(f, dbMigratorPackageFuncName, "database migrator", "release", "database-migrator", dbMigratorImageName)
-	emitImageFunc(f, buildDbMigratorImageFuncName, "database migrator", "database-migrator", "cmd/database-migrator", dbMigratorPackageFuncName)
-	emitImageDevFunc(f, buildDbMigratorDevImageFuncName, buildDbMigratorImageFuncName, "database migrator", "database-migrator", installerPkg, gen.ModulePath)
-	emitImageReleaseFunc(f, buildDbMigratorReleaseImageFuncName, buildDbMigratorImageFuncName, "database migrator", "database-migrator", installerPkg, releaseImageRepoConst, gen.ModulePath)
+	emitImageFunc(f, buildDbMigratorImageFuncName, "database migrator", "database-migrator", "cmd/database-migrator", dbMigratorPackageFuncName, installerPkg, gen.ModulePath)
 
 	if !gen.Module {
 		// add function names to "build all" functions
 		buildFuncNames = append(buildFuncNames, buildAgentFuncName)
-		buildDevFuncNames = append(buildDevFuncNames, buildAgentDevFuncName)
-		buildReleaseFuncNames = append(buildReleaseFuncNames, buildAgentReleaseFuncName)
 
 		emitBinFunc(f, buildAgentFuncName, "agent", "agent", "cmd/agent")
-		emitBinDevFunc(f, buildAgentDevFuncName, buildAgentFuncName, "agent", "agent")
-		emitBinReleaseFunc(f, buildAgentReleaseFuncName, buildAgentFuncName, "agent", "agent")
 
 		agentPackageFuncName := "agentImagePackage"
 		allComponents = append(allComponents, componentSpec{
@@ -163,9 +122,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			PackageFuncName: agentPackageFuncName,
 		})
 		emitImagePackageFunc(f, agentPackageFuncName, "agent", "release", "agent", "threeport-agent")
-		emitImageFunc(f, buildAgentImageFuncName, "agent", "agent", "cmd/agent", agentPackageFuncName)
-		emitImageDevFunc(f, buildAgentDevImageFuncName, buildAgentImageFuncName, "agent", "agent", installerPkg, gen.ModulePath)
-		emitImageReleaseFunc(f, buildAgentReleaseImageFuncName, buildAgentImageFuncName, "agent", "agent", installerPkg, releaseImageRepoConst, gen.ModulePath)
+		emitImageFunc(f, buildAgentImageFuncName, "agent", "agent", "cmd/agent", agentPackageFuncName, installerPkg, gen.ModulePath)
 	}
 
 	// binary build functions for controllers
@@ -175,15 +132,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			buildFuncName := fmt.Sprintf("%sControllerBin", objGroup.ControllerDomain)
 			buildFuncNames = append(buildFuncNames, buildFuncName)
 
-			buildDevFuncName := fmt.Sprintf("%sControllerBinDev", objGroup.ControllerDomain)
-			buildDevFuncNames = append(buildDevFuncNames, buildDevFuncName)
-
-			buildReleaseFuncName := fmt.Sprintf("%sControllerBinRelease", objGroup.ControllerDomain)
-			buildReleaseFuncNames = append(buildReleaseFuncNames, buildReleaseFuncName)
-
 			buildImageFuncName := fmt.Sprintf("%sControllerImage", objGroup.ControllerDomain)
-			buildDevImageFuncName := fmt.Sprintf("%sControllerImageDev", objGroup.ControllerDomain)
-			buildReleaseImageFuncName := fmt.Sprintf("%sControllerImageRelease", objGroup.ControllerDomain)
 
 			// set image name
 			imageName := fmt.Sprintf("threeport-%s", objGroup.ControllerName)
@@ -193,8 +142,6 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 			packageDir := fmt.Sprintf("cmd/%s", objGroup.ControllerName)
 			emitBinFunc(f, buildFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir)
-			emitBinDevFunc(f, buildDevFuncName, buildFuncName, objGroup.ControllerName, objGroup.ControllerName)
-			emitBinReleaseFunc(f, buildReleaseFuncName, buildFuncName, objGroup.ControllerName, objGroup.ControllerName)
 
 			packageFuncName := fmt.Sprintf("%sControllerImagePackage", strcase.ToLowerCamel(objGroup.ControllerDomain))
 			allComponents = append(allComponents, componentSpec{
@@ -208,55 +155,18 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				target = "release"
 			}
 			emitImagePackageFunc(f, packageFuncName, objGroup.ControllerName, target, objGroup.ControllerName, imageName)
-			emitImageFunc(f, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir, packageFuncName)
-			emitImageDevFunc(f, buildDevImageFuncName, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, installerPkg, gen.ModulePath)
-			emitImageReleaseFunc(f, buildReleaseImageFuncName, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, installerPkg, releaseImageRepoConst, gen.ModulePath)
+			emitImageFunc(f, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir, packageFuncName, installerPkg, gen.ModulePath)
 		}
 	}
 	f.Line()
 
 	// build all binaries
 	buildAllFuncName := "AllBins"
-	f.Comment(fmt.Sprintf("%s builds the binaries for all components.", buildAllFuncName))
-	f.Func().Params(Id("Build")).Id(buildAllFuncName).Params(Id("arch").String()).Error().BlockFunc(func(g *Group) {
+	f.Comment(fmt.Sprintf("%s builds the binaries for all components for the arch(es) in", buildAllFuncName))
+	f.Comment("the ARCH env var, defaulting to the local CPU architecture.")
+	f.Func().Params(Id("Build")).Id(buildAllFuncName).Params().Error().BlockFunc(func(g *Group) {
 		g.Id("build").Op(":=").Id("Build").Values()
 		for _, funcName := range buildFuncNames {
-			g.If(Err().Op(":=").Id("build").Dot(funcName).Call(Id("arch")).Op(";").Err().Op("!=").Nil()).Block(
-				Return().Qual("fmt", "Errorf").Call(
-					Lit("failed to build binary: %w"),
-					Err(),
-				),
-			)
-			g.Line()
-		}
-
-		g.Return().Nil()
-	})
-
-	// build all dev binaries
-	buildAllDevFuncName := "AllBinsDev"
-	f.Comment(fmt.Sprintf("%s builds the development binaries for all components.", buildAllDevFuncName))
-	f.Func().Params(Id("Build")).Id(buildAllDevFuncName).Params().Error().BlockFunc(func(g *Group) {
-		g.Id("build").Op(":=").Id("Build").Values()
-		for _, funcName := range buildDevFuncNames {
-			g.If(Err().Op(":=").Id("build").Dot(funcName).Call().Op(";").Err().Op("!=").Nil()).Block(
-				Return().Qual("fmt", "Errorf").Call(
-					Lit("failed to build binary: %w"),
-					Err(),
-				),
-			)
-			g.Line()
-		}
-
-		g.Return().Nil()
-	})
-
-	// build all release binaries
-	buildAllReleaseFuncName := "AllBinsRelease"
-	f.Comment(fmt.Sprintf("%s builds the release binaries for all components.", buildAllReleaseFuncName))
-	f.Func().Params(Id("Build")).Id(buildAllReleaseFuncName).Params().Error().BlockFunc(func(g *Group) {
-		g.Id("build").Op(":=").Id("Build").Values()
-		for _, funcName := range buildReleaseFuncNames {
 			g.If(Err().Op(":=").Id("build").Dot(funcName).Call().Op(";").Err().Op("!=").Nil()).Block(
 				Return().Qual("fmt", "Errorf").Call(
 					Lit("failed to build binary: %w"),
@@ -271,21 +181,28 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	// build and push all images
 	buildAllImagesFuncName := "AllImages"
-	f.Comment(fmt.Sprintf("%s builds and pushes images for all components. Pre-compiles", buildAllImagesFuncName))
-	f.Comment("binaries for every requested arch in parallel, then packages each")
-	f.Comment("component image in parallel. A multi-arch arch value (e.g. amd64,arm64)")
-	f.Comment("produces a multi-arch manifest in one push. A single arch (e.g. amd64)")
-	f.Comment("pushes only that arch under the given tag; use package:allManifests to")
-	f.Comment("stitch single-arch tags from separate runs into a multi-arch manifest list.")
-	f.Comment("Set PARALLEL_IMAGE_BUILD >= 1 to cap packaging concurrency (e.g.")
-	f.Comment("`PARALLEL_IMAGE_BUILD=4 mage build:allImages ghcr.io/foo v1 amd64,arm64`).")
-	f.Func().Params(Id("Build")).Id(buildAllImagesFuncName).Params(
-		Line().Id("imageRepo").String(),
-		Line().Id("imageTag").String(),
-		Line().Id("arch").String(),
-		Line(),
-	).Error().BlockFunc(func(g *Group) {
+	f.Comment(fmt.Sprintf("%s builds and pushes images for all components. Repo and tag", buildAllImagesFuncName))
+	f.Comment("default to the dev namespace and current version; override with the")
+	f.Comment("IMAGE_REPO and IMAGE_TAG env vars. Arch comes from the ARCH env var or")
+	f.Comment("the local CPU architecture. Pre-compiles binaries for every requested")
+	f.Comment("arch in parallel, then packages each component image in parallel. A")
+	f.Comment("comma-separated ARCH value (e.g. amd64,arm64) produces a multi-arch")
+	f.Comment("manifest in one push; a single arch pushes only that arch under the given")
+	f.Comment("tag (use package:allManifests to stitch single-arch tags from separate")
+	f.Comment("runs). Set PARALLEL_IMAGE_BUILD >= 1 to cap packaging concurrency (e.g.")
+	f.Comment("`PARALLEL_IMAGE_BUILD=4 mage build:allImages`).")
+	f.Func().Params(Id("Build")).Id(buildAllImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
 		emitPrebuildBlock(g, allComponents)
+
+		g.Id("imageRepo").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_REPO"),
+			Qual(installerPkg, "DevImageNamespace"),
+		)
+		g.Id("imageTag").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_TAG"),
+			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
+		g.Line()
 
 		g.Id("build").Op(":=").Id("Build").Values()
 		emitWrapHelper(g, Id("imageRepo"), Id("imageTag"))
@@ -302,54 +219,35 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	})
 
-	// build and push all dev images
-	buildAllDevImagesFuncName := "AllImagesDev"
-	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllDevImagesFuncName))
-	f.Comment("Set PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage build:allImagesDev`).")
-	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
-		g.List(Id("_"), Id("arch"), Id("err")).Op(":=").Id("getBuildVals").Call()
-		g.If(Id("err").Op("!=").Nil()).Block(
-			Return(Qual("fmt", "Errorf").Call(Lit("failed to get local CPU architecture: %w"), Id("err"))),
-		)
-		g.Line()
-
-		emitPrebuildBlock(g, allComponents)
-
-		g.Id("build").Op(":=").Id("Build").Values()
-		emitWrapHelper(g,
-			Qual(installerPkg, "DevImageNamespace"),
-			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
-		)
-		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
-			for _, c := range allComponents {
-				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
-			}
-			v.Line()
-		})
-		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
-			Id("parallelFromEnv").Call(),
-			Id("tasks"),
-		)
-	})
-
 	// Package.Manifest stitches per-arch image tags into a multi-arch
 	// manifest list under the canonical tag.
-	f.Comment("Manifest stitches per-arch images into a multi-arch manifest list")
-	f.Comment("under the canonical tag. Sources are looked up at")
-	f.Comment("<repo>/<image>:<tag>-<arch> for each arch in the comma-separated")
-	f.Comment("arches list and combined into <repo>/<image>:<tag> via")
-	f.Comment("`docker buildx imagetools create`.")
-	f.Func().Params(Id("Package")).Id("Manifest").Params(
-		Line().Id("imageRepo").String(),
-		Line().Id("imageName").String(),
-		Line().Id("imageTag").String(),
-		Line().Id("arches").String(),
+	f.Comment("Manifest stitches per-arch images for one component into a multi-arch")
+	f.Comment("manifest list under the canonical tag. Repo and tag default to the dev")
+	f.Comment("namespace and current version (override with IMAGE_REPO / IMAGE_TAG);")
+	f.Comment("arches come from the ARCH env var or the local CPU architecture. Sources")
+	f.Comment("are looked up at <repo>/<image>:<tag>-<arch> for each arch and combined")
+	f.Comment("into <repo>/<image>:<tag> via `docker buildx imagetools create`.")
+	f.Func().Params(Id("Package")).Id("Manifest").Params(Id("imageName").String()).Error().Block(
+		List(Id("_"), Id("arch"), Err()).Op(":=").Id("getBuildVals").Call(),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Err())),
+		),
 		Line(),
-	).Error().Block(
+
+		Id("imageRepo").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_REPO"),
+			Qual(installerPkg, "DevImageNamespace"),
+		),
+		Id("imageTag").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_TAG"),
+			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		),
+		Line(),
+
 		Return().Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"PushMultiArchManifest",
-		).Call(Id("imageRepo"), Id("imageName"), Id("imageTag"), Id("arches")),
+		).Call(Id("imageRepo"), Id("imageName"), Id("imageTag"), Id("arch")),
 	)
 	f.Line()
 
@@ -359,15 +257,27 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// automatically extends coverage.
 	f.Comment("AllManifests stitches multi-arch manifest lists for every component")
 	f.Comment("in parallel, sourced from the installer's authoritative controller")
-	f.Comment("list so adding a new controller automatically extends coverage. Set")
-	f.Comment("PARALLEL_IMAGE_BUILD >= 1 to control worker concurrency (e.g.")
-	f.Comment("`PARALLEL_IMAGE_BUILD=4 mage package:allManifests ghcr.io/foo v1 amd64,arm64`).")
-	f.Func().Params(Id("Package")).Id("AllManifests").Params(
-		Line().Id("imageRepo").String(),
-		Line().Id("imageTag").String(),
-		Line().Id("arches").String(),
-		Line(),
-	).Error().BlockFunc(func(g *Group) {
+	f.Comment("list so adding a new controller automatically extends coverage. Repo")
+	f.Comment("and tag default to the dev namespace and current version (override with")
+	f.Comment("IMAGE_REPO / IMAGE_TAG); arches come from the ARCH env var or the local")
+	f.Comment("CPU architecture. Set PARALLEL_IMAGE_BUILD >= 1 to control worker")
+	f.Comment("concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage package:allManifests`).")
+	f.Func().Params(Id("Package")).Id("AllManifests").Params().Error().BlockFunc(func(g *Group) {
+		g.List(Id("_"), Id("arch"), Id("err")).Op(":=").Id("getBuildVals").Call()
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Id("err"))),
+		)
+		g.Line()
+
+		g.Id("imageRepo").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_REPO"),
+			Qual(installerPkg, "DevImageNamespace"),
+		)
+		g.Id("imageTag").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_TAG"),
+			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
+		g.Line()
 		// gather every component image. For threeport-core, source from
 		// the installer's authoritative list so adding a new controller
 		// extends coverage automatically. For module forks, emit the
@@ -412,7 +322,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Return().Qual(
 						"github.com/threeport/threeport/pkg/util/v0",
 						"PushMultiArchManifest",
-					).Call(Id("imageRepo"), Id("image"), Id("imageTag"), Id("arches")),
+					).Call(Id("imageRepo"), Id("image"), Id("imageTag"), Id("arch")),
 				),
 			),
 		)
@@ -438,6 +348,16 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 		g.Return(Id("n"))
 	})
+
+	// helper: env var lookup with a fallback default
+	f.Comment("envOr returns the trimmed value of the named env var, or def if it is unset or empty.")
+	f.Func().Id("envOr").Params(Id("key").String(), Id("def").String()).String().Block(
+		If(Id("v").Op(":=").Qual("strings", "TrimSpace").Call(Qual("os", "Getenv").Call(Id("key"))).Op(";").Id("v").Op("!=").Lit("")).Block(
+			Return(Id("v")),
+		),
+		Return(Id("def")),
+	)
+	f.Line()
 
 	// dev image loads to kind clusters
 	f.Comment("LoadImage builds and loads an image to the provided kind cluster.")
@@ -610,7 +530,9 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	)
 
 	// build vals utility function
-	f.Comment("getBuildVals returns the working directory and arch for builds.")
+	f.Comment("getBuildVals returns the working directory and the arch(es) to build for.")
+	f.Comment("Arch comes from the ARCH env var (comma-separated for multi-arch) or")
+	f.Comment("defaults to the local CPU architecture.")
 	f.Func().Id("getBuildVals").Params().Params(
 		String(),
 		String(),
@@ -622,7 +544,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
-		Id("arch").Op(":=").Qual("runtime", "GOARCH"),
+		Id("arch").Op(":=").Id("envOr").Call(Lit("ARCH"), Qual("runtime", "GOARCH")),
 		Line(),
 
 		Return(Id("workingDir"), Id("arch"), Nil()),
@@ -643,24 +565,27 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	return nil
 }
 
-// emitBinFunc writes a `func (Build) <BinFunc>(arch string) error` that
-// compiles the component's binary via util.BuildBinaries with a
-// single-element packageDirs slice.
+// emitBinFunc writes a no-arg `func (Build) <BinFunc>() error` that compiles
+// the component's binary for the arch(es) resolved by getBuildVals (the ARCH
+// env var or the local CPU arch) via util.BuildBinaries. A comma-separated
+// ARCH builds one binary per arch under bin/<arch>/.
 func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) {
-	f.Comment(fmt.Sprintf("%s builds the %s binary.", funcName, displayName))
-	f.Func().Params(Id("Build")).Id(funcName).Params(Id("arch").String()).Error().Block(
-		List(Id("workingDir"), Id("_"), Err()).Op(":=").Id("getBuildVals").Call(),
+	f.Comment(fmt.Sprintf("%s builds the %s binary for the arch(es) in the ARCH env", funcName, displayName))
+	f.Comment("var, defaulting to the local CPU architecture.")
+	f.Func().Params(Id("Build")).Id(funcName).Params().Error().Block(
+		List(Id("workingDir"), Id("arch"), Err()).Op(":=").Id("getBuildVals").Call(),
 		If(Err().Op("!=").Nil()).Block(
-			Return().Qual("fmt", "Errorf").Call(Lit("failed to get working directory: %w"), Err()),
+			Return().Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Err()),
 		),
 		Line(),
 
+		Id("arches").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ParseArches").Call(Id("arch")),
 		If(Err().Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"BuildBinaries",
 		).Call(
 			Line().Id("workingDir"),
-			Line().Index().String().Values(Id("arch")),
+			Line().Id("arches"),
 			Line().Index().String().Values(Lit(packageDir)),
 			Line().False(),
 			Line(),
@@ -672,9 +597,10 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 		),
 		Line(),
 
-		Qual("fmt", "Printf").Call(Lit(fmt.Sprintf(
-			"binary built and available at bin/%%s/%s\n", binaryName,
-		)), Id("arch")),
+		Qual("fmt", "Printf").Call(
+			Lit(fmt.Sprintf("%s binary built for arch(es): %%s\n", binaryName)),
+			Qual("strings", "Join").Call(Id("arches"), Lit(", ")),
+		),
 		Line(),
 
 		Return().Nil(),
@@ -682,61 +608,29 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 	f.Line()
 }
 
-// emitBinDevFunc writes the no-arg `<BinFunc>Dev` wrapper.
-func emitBinDevFunc(f *File, funcName, baseFuncName, displayName, binaryName string) {
-	f.Comment(fmt.Sprintf("%s builds the %s binary for the architcture of the machine", funcName, displayName))
-	f.Comment("where it is built.")
-	f.Func().Params(Id("Build")).Id(funcName).Params().Error().Block(
-		List(Id("_"), Id("arch"), Err()).Op(":=").Id("getBuildVals").Call(),
-		If(Err().Op("!=").Nil()).Block(
-			Return().Qual("fmt", "Errorf").Call(Lit("failed to get local CPU architecture: %w"), Err()),
-		),
-		Line(),
-		Id("build").Op(":=").Id("Build").Values(),
-		If(Err().Op(":=").Id("build").Dot(baseFuncName).Call(Id("arch")).Op(";").Err().Op("!=").Nil()).Block(
-			Return().Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
-				"failed to build dev %s binary: %%w", binaryName,
-			)), Err()),
-		),
-		Line(),
-		Return().Nil(),
-	)
-	f.Line()
-}
-
-// emitBinReleaseFunc writes the no-arg `<BinFunc>Release` wrapper.
-func emitBinReleaseFunc(f *File, funcName, baseFuncName, displayName, binaryName string) {
-	f.Comment(fmt.Sprintf("%s builds the %s binary for release architecture.", funcName, displayName))
-	f.Func().Params(Id("Build")).Id(funcName).Params().Error().Block(
-		Id("build").Op(":=").Id("Build").Values(),
-		If(Err().Op(":=").Id("build").Dot(baseFuncName).Call(Id("releaseArch")).Op(";").Err().Op("!=").Nil()).Block(
-			Return().Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
-				"failed to build release %s binary: %%w", binaryName,
-			)), Err()),
-		),
-		Line(),
-		Return().Nil(),
-	)
-	f.Line()
-}
-
-// emitImageFunc writes a `func (Build) <ImageFunc>(repo, tag, arch) error`
-// that compiles the binary for every requested arch via BuildBinaries,
-// then delegates packaging to the per-component package function. When
-// called from AllImages the BuildBinaries call is a Go cache hit
-// (AllImages pre-compiled the same package earlier); when called
-// standalone it does the actual compile.
-func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packageFuncName string) {
+// emitImageFunc writes a no-arg `func (Build) <ImageFunc>() error` that
+// compiles the binary for the resolved arch(es) via BuildBinaries, then
+// delegates packaging to the per-component package function. Repo and tag
+// default to the dev namespace and current version (override with IMAGE_REPO
+// / IMAGE_TAG); arch comes from the ARCH env var or the local CPU arch. When
+// called from AllImages the BuildBinaries call is a Go cache hit (AllImages
+// pre-compiled the same package earlier); standalone it does the compile.
+func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packageFuncName, installerPkg, modulePath string) {
 	f.Comment(fmt.Sprintf("%s builds and pushes a %s container image.", funcName, displayName))
-	f.Func().Params(Id("Build")).Id(funcName).Params(
-		Line().Id("imageRepo").String(),
-		Line().Id("imageTag").String(),
-		Line().Id("arch").String(),
-		Line(),
-	).Parens(Error()).Block(
-		List(Id("workingDir"), Id("_"), Err()).Op(":=").Id("getBuildVals").Call(),
+	f.Func().Params(Id("Build")).Id(funcName).Params().Parens(Error()).Block(
+		List(Id("workingDir"), Id("arch"), Err()).Op(":=").Id("getBuildVals").Call(),
 		If(Err().Op("!=").Nil()).Block(
-			Return(Qual("fmt", "Errorf").Call(Lit("failed to get working directory: %w"), Err())),
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Err())),
+		),
+		Line(),
+
+		Id("imageRepo").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_REPO"),
+			Qual(installerPkg, "DevImageNamespace"),
+		),
+		Id("imageTag").Op(":=").Id("envOr").Call(
+			Lit("IMAGE_TAG"),
+			Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call(),
 		),
 		Line(),
 
@@ -807,75 +701,20 @@ func emitImagePackageFunc(f *File, packageFuncName, displayName, target, binaryN
 	f.Line()
 }
 
-// emitImageDevFunc writes the no-arg `<ImageFunc>Dev` wrapper that calls
-// the per-component image function with the dev image namespace and the
-// host arch.
-func emitImageDevFunc(f *File, funcName, baseFuncName, displayName, binaryName, installerPkg, modulePath string) {
-	f.Comment(fmt.Sprintf("%s builds and pushes a development %s container image.", funcName, displayName))
-	f.Func().Params(Id("Build")).Id(funcName).Params().Error().Block(
-		List(Id("_"), Id("arch"), Err()).Op(":=").Id("getBuildVals").Call(),
-		If(Err().Op("!=").Nil()).Block(
-			Return().Qual("fmt", "Errorf").Call(Lit("failed to get local CPU architecture: %w"), Err()),
-		),
-		Line(),
-		Id("build").Op(":=").Id("Build").Values(),
-		If(Err().Op(":=").Id("build").Dot(baseFuncName).Call(
-			Line().Qual(installerPkg, "DevImageNamespace"),
-			Line().Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call(),
-			Line().Id("arch"),
-			Line(),
-		).Op(";").Err().Op("!=").Nil()).Block(
-			Return().Qual("fmt", "Errorf").Call(
-				Lit(fmt.Sprintf("failed to build and push dev %s image: %%w", binaryName)),
-				Err(),
-			),
-		),
-		Line(),
-
-		Return(Nil()),
-	)
-	f.Line()
-}
-
-// emitImageReleaseFunc writes the no-arg `<ImageFunc>Release` wrapper that
-// calls the per-component image function with the release image namespace
-// and arch.
-func emitImageReleaseFunc(f *File, funcName, baseFuncName, displayName, binaryName, installerPkg, releaseImageRepoConst, modulePath string) {
-	f.Comment(fmt.Sprintf("%s builds and pushes a release %s container image.", funcName, displayName))
-	f.Func().Params(Id("Build")).Id(funcName).Params().Error().Block(
-		Id("build").Op(":=").Id("Build").Values(),
-		If(Err().Op(":=").Id("build").Dot(baseFuncName).Call(
-			Line().Qual(installerPkg, releaseImageRepoConst),
-			Line().Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call(),
-			Line().Id("releaseArch"),
-			Line(),
-		).Op(";").Err().Op("!=").Nil()).Block(
-			Return().Qual("fmt", "Errorf").Call(
-				Lit(fmt.Sprintf("failed to build and push release %s image: %%w", binaryName)),
-				Err(),
-			),
-		),
-		Line(),
-
-		Return(Nil()),
-	)
-	f.Line()
-}
-
-// emitPrebuildBlock writes the upfront BuildBinaries call shared by
-// AllImages and its Dev/Release wrappers. Expects `arch` in the caller's
-// scope; declares workingDir locally via getBuildVals.
+// emitPrebuildBlock writes the upfront BuildBinaries call used by AllImages.
+// Declares workingDir and arch (from getBuildVals: the ARCH env var or the
+// local CPU arch) in the caller's scope so the wrap helper can reference arch.
 func emitPrebuildBlock(g *Group, components []componentSpec) {
+	g.List(Id("workingDir"), Id("arch"), Id("err")).Op(":=").Id("getBuildVals").Call()
+	g.If(Id("err").Op("!=").Nil()).Block(
+		Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Id("err"))),
+	)
+	g.Line()
+
 	g.Comment("pre-compile every binary for every requested arch in one go build")
 	g.Comment("per arch (arches run in parallel) so dependency compilation is")
 	g.Comment("shared across components within an arch. Each per-image task")
 	g.Comment("below then only packages the pre-built binary.")
-	g.List(Id("workingDir"), Id("_"), Id("err")).Op(":=").Id("getBuildVals").Call()
-	g.If(Id("err").Op("!=").Nil()).Block(
-		Return(Qual("fmt", "Errorf").Call(Lit("failed to get working directory: %w"), Id("err"))),
-	)
-	g.Line()
-
 	g.Id("arches").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ParseArches").Call(Id("arch"))
 	g.Line()
 

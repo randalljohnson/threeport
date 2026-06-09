@@ -17,14 +17,18 @@ import (
 // componentSpec carries the bits the magefile generator needs to emit a
 // per-component build target: the binary name on disk (used both for the
 // `bin/<arch>/<name>` output path and the `BINARY=<name>` build-arg), the
-// package dir the Go compiler builds, the container image name, and the
+// package dir the Go compiler builds, the container image name, the
 // name of the generated package-only function that the AllImages* tasks
-// call to skip redundant compile work.
+// call to skip redundant compile work, and the sdk-config api name.
+// ApiName is empty for the always-included components (rest-api,
+// database-migrator, agent); controllers carry the sdk-config api name
+// so the ImagesByApis* targets can filter by it.
 type componentSpec struct {
 	BinaryName      string
 	PackageDir      string
 	ImageName       string
 	PackageFuncName string
+	ApiName         string
 }
 
 // GenMagefile generates the source code for mage which is a Make-like tool
@@ -202,6 +206,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				PackageDir:      packageDir,
 				ImageName:       imageName,
 				PackageFuncName: packageFuncName,
+				ApiName:         objGroup.ControllerDomainLower,
 			})
 			target := objGroup.DockerfileTarget
 			if target == "" {

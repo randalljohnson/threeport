@@ -78,32 +78,14 @@ COPY ${TARGETARCH}/${BINARY} /${BINARY}
 # distroless/static:nonroot's default UID; explicit confirmation.
 USER 65532:65532
 
-# ----- release-terraform: release + terraform CLI -----
-FROM release AS release-terraform
-
-# layer the terraform binary (fetched by the terraform-bin stage below)
-# onto release at the standard PATH location.
-COPY --from=terraform-bin /out/terraform /usr/local/bin/terraform
-
-# ----- release-pulumi: release + pulumi CLI -----
-FROM release AS release-pulumi
-
-# layer the pulumi binary set (fetched by the pulumi-bin stage below)
-# into /pulumi/bin; pulumi installs as a multi-file bundle, not a single
-# binary, so we keep them together rather than copying to /usr/local/bin.
-COPY --from=pulumi-bin /root/.pulumi/bin /pulumi/bin
-
-# put pulumi on PATH ahead of distroless defaults so `pulumi` resolves
-# without an absolute path.
-ENV PATH="/pulumi/bin:${PATH}"
-
-# HOME=/home/nonroot is distroless/static:nonroot's default; pulumi
-# writes its plugin cache under $HOME/.pulumi.
-ENV HOME=/home/nonroot
-
 # ============================================================
 # intermediate stages: build-only, never used as a final target
 # ============================================================
+#
+# These have to be defined BEFORE release-terraform and release-pulumi
+# below — buildx requires that any stage referenced by `COPY --from=`
+# is declared earlier in the file (only true with `--target` builds,
+# which threeport's release pipeline uses for every image).
 
 # ----- terraform-bin: download terraform; consumed by release-terraform -----
 FROM mirror.gcr.io/library/alpine:3 AS terraform-bin
@@ -131,7 +113,34 @@ FROM mirror.gcr.io/library/alpine:3 AS pulumi-bin
 ARG PULUMI_VERSION=3.185.0
 
 # pulumi's installer detects the platform and lays everything down
-# under /root/.pulumi/bin/. The release-pulumi stage above copies that
+# under /root/.pulumi/bin/. The release-pulumi stage below copies that
 # whole directory.
 RUN apk add --no-cache curl && \
     curl -fsSL https://get.pulumi.com | sh -s -- --version ${PULUMI_VERSION}
+
+# ==================================================================
+# release variants: composed from release + the intermediates above
+# ==================================================================
+
+# ----- release-terraform: release + terraform CLI -----
+FROM release AS release-terraform
+
+# layer the terraform binary (fetched by the terraform-bin stage above)
+# onto release at the standard PATH location.
+COPY --from=terraform-bin /out/terraform /usr/local/bin/terraform
+
+# ----- release-pulumi: release + pulumi CLI -----
+FROM release AS release-pulumi
+
+# layer the pulumi binary set (fetched by the pulumi-bin stage above)
+# into /pulumi/bin; pulumi installs as a multi-file bundle, not a single
+# binary, so we keep them together rather than copying to /usr/local/bin.
+COPY --from=pulumi-bin /root/.pulumi/bin /pulumi/bin
+
+# put pulumi on PATH ahead of distroless defaults so `pulumi` resolves
+# without an absolute path.
+ENV PATH="/pulumi/bin:${PATH}"
+
+# HOME=/home/nonroot is distroless/static:nonroot's default; pulumi
+# writes its plugin cache under $HOME/.pulumi.
+ENV HOME=/home/nonroot

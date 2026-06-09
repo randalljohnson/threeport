@@ -9,7 +9,7 @@
 # caching adds no value on top because the binary COPY changes every
 # build.
 
-name: Tests
+name: Test
 
 on:
   pull_request:

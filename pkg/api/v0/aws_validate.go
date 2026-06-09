@@ -75,6 +75,41 @@ func (a *AwsProvider) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the AwsProvider before update.
 func (a *AwsProvider) beforeUpdate(tx *gorm.DB) error {
+	// Re-enforce the create-time pairing invariant: access key id and
+	// secret access key must both be set or both be unset. Skip when
+	// neither field is in the patch so unrelated updates do not have to
+	// load credentials to remain valid.
+	accessKeyIDChanged := tx.Statement.Changed("AccessKeyID")
+	secretAccessKeyChanged := tx.Statement.Changed("SecretAccessKey")
+	if !accessKeyIDChanged && !secretAccessKeyChanged {
+		return nil
+	}
+
+	patch, ok := tx.Statement.Dest.(*AwsProvider)
+	if !ok {
+		return nil
+	}
+
+	// Resolve each field's post-update value: take the patch when the
+	// field is being modified, otherwise keep the loaded row's value.
+	resultingAccessKeyID := a.AccessKeyID
+	if accessKeyIDChanged {
+		resultingAccessKeyID = patch.AccessKeyID
+	}
+	resultingSecretAccessKey := a.SecretAccessKey
+	if secretAccessKeyChanged {
+		resultingSecretAccessKey = patch.SecretAccessKey
+	}
+
+	isAccessKeyIDSet := resultingAccessKeyID != nil && *resultingAccessKeyID != ""
+	isSecretAccessKeySet := resultingSecretAccessKey != nil && *resultingSecretAccessKey != ""
+
+	if isAccessKeyIDSet != isSecretAccessKeySet {
+		return util.NewBadRequestError(
+			"both access key id and secret access key must be set if one of them is provided",
+		)
+	}
+
 	return nil
 }
 

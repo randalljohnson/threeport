@@ -254,6 +254,66 @@ func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	_ = transition{}
 }
 
+// TestRelationshipHooks_BeforeUpdate_FKImmutability_FullReplace proves the
+// immutability guard fires on a PUT (gorm.Save), where Model == Dest so a
+// stale tx.Statement.Changed cannot see the change. set->other and
+// set->clear are rejected; clear->set and set->same are allowed, and an
+// untagged FK is never guarded.
+func TestRelationshipHooks_BeforeUpdate_FKImmutability_FullReplace(t *testing.T) {
+	cases := []struct {
+		name         string
+		preSet       bool   // RequiresFK set before the replace
+		newTarget    string // "", "same", or "other": the relationship FK in the replace
+		untaggedOnly bool   // change UntaggedFK set->other, leave RequiresFK nil
+		wantRejected bool
+	}{
+		{name: "tagged_clear_to_set", preSet: false, newTarget: "other", wantRejected: false},
+		{name: "tagged_set_to_other", preSet: true, newTarget: "other", wantRejected: true},
+		{name: "tagged_set_to_clear", preSet: true, newTarget: "", wantRejected: true},
+		{name: "tagged_set_to_same", preSet: true, newTarget: "same", wantRejected: false},
+		{name: "untagged_set_to_other", untaggedOnly: true, wantRejected: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupRelTestDB(t)
+			t1 := seedHolder(t, db, "target-1")
+			t2 := seedHolder(t, db, "target-2")
+
+			existing := &testHolder{Name: strPtr("orig")}
+			if tc.preSet {
+				existing.RequiresFK = t1.ID
+			}
+			if tc.untaggedOnly {
+				existing.UntaggedFK = t1.ID
+			}
+			require.NoError(t, db.Create(existing).Error)
+
+			// a full replace carries the existing id and every field; a nil
+			// RequiresFK on this payload is an explicit clear, not an omission
+			replacement := &testHolder{ID: existing.ID, Name: strPtr("replaced")}
+			switch tc.newTarget {
+			case "same":
+				replacement.RequiresFK = t1.ID
+			case "other":
+				replacement.RequiresFK = t2.ID
+			}
+			if tc.untaggedOnly {
+				replacement.UntaggedFK = t2.ID
+			}
+
+			err := db.Save(replacement).Error
+
+			if tc.wantRejected {
+				require.Error(t, err, "full-replace %s should be rejected", tc.name)
+				assert.Contains(t, err.Error(), "immutable once set")
+				return
+			}
+			require.NoError(t, err, "full-replace %s should be allowed", tc.name)
+		})
+	}
+}
+
 // runFKMatrix exercises gorm.Updates(struct) transitions for one FK:
 //   - nil -> set:    allowed
 //   - set -> other:  rejected on tagged FKs

@@ -10,6 +10,10 @@ func (p *Profile) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the Profile is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *Profile).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (p *Profile) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -40,6 +44,10 @@ func (t *Tier) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the Tier is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *Tier).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (t *Tier) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

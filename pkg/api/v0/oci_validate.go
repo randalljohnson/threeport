@@ -16,6 +16,10 @@ func (o *OciProvider) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the OciProvider before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *OciProvider).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (o *OciProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -49,6 +53,10 @@ func (o *OciOkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the OciOkeKubernetesRuntimeDefinition before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *OciOkeKubernetesRuntimeDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (o *OciOkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -64,6 +72,10 @@ func (o *OciOkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the OciOkeKubernetesRuntimeInstance before update.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *OciOkeKubernetesRuntimeInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (o *OciOkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

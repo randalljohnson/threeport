@@ -14,6 +14,10 @@ func (a *AttachedObjectReference) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the AttachedObjectReference is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *AttachedObjectReference).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (a *AttachedObjectReference) beforeUpdate(tx *gorm.DB) error {
 	// Relationship is the lifecycle dial; silently widening or narrowing it
 	// post-create would change blocking behavior of an existing reference

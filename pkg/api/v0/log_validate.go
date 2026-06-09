@@ -10,6 +10,10 @@ func (l *LogBackend) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the LogBackend is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *LogBackend).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (l *LogBackend) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -40,6 +44,10 @@ func (l *LogStorageDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the LogStorageDefinition is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *LogStorageDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (l *LogStorageDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -70,6 +78,10 @@ func (l *LogStorageInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the LogStorageInstance is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *LogStorageInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (l *LogStorageInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

@@ -32,6 +32,10 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the Event is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *Event).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (e *Event) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

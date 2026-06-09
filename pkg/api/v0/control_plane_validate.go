@@ -10,6 +10,10 @@ func (c *ControlPlaneDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ControlPlaneDefinition is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *ControlPlaneDefinition).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (c *ControlPlaneDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -40,6 +44,10 @@ func (c *ControlPlaneInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ControlPlaneInstance is updated.
+//
+// Receiver is the loaded DB row. The new field values being written
+// are in tx.Statement.Dest (cast to *ControlPlaneInstance).
+// Use tx.Statement.Changed("FieldName") to detect field changes.
 func (c *ControlPlaneInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

@@ -2545,7 +2545,7 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/gcp-controller",
 			packageFunc: build.gcpControllerImagePackage,
 		},
-		"control_plane": {
+		"controlPlane": {
 			packageDir:  "cmd/control-plane-controller",
 			packageFunc: build.controlPlaneControllerImagePackage,
 		},
@@ -2553,19 +2553,19 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/gateway-controller",
 			packageFunc: build.gatewayControllerImagePackage,
 		},
-		"helm_workload": {
+		"helmWorkload": {
 			packageDir:  "cmd/helm-workload-controller",
 			packageFunc: build.helmWorkloadControllerImagePackage,
 		},
-		"machine_runtime": {
+		"machineRuntime": {
 			packageDir:  "cmd/machine-runtime-controller",
 			packageFunc: build.machineRuntimeControllerImagePackage,
 		},
-		"machine_workload": {
+		"machineWorkload": {
 			packageDir:  "cmd/machine-workload-controller",
 			packageFunc: build.machineWorkloadControllerImagePackage,
 		},
-		"kubernetes_runtime": {
+		"kubernetesRuntime": {
 			packageDir:  "cmd/kubernetes-runtime-controller",
 			packageFunc: build.kubernetesRuntimeControllerImagePackage,
 		},
@@ -2577,7 +2577,7 @@ func (Build) ImagesByApisDev(apis string) error {
 			packageDir:  "cmd/terraform-controller",
 			packageFunc: build.terraformControllerImagePackage,
 		},
-		"kubernetes_workload": {
+		"kubernetesWorkload": {
 			packageDir:  "cmd/kubernetes-workload-controller",
 			packageFunc: build.kubernetesWorkloadControllerImagePackage,
 		},
@@ -2688,7 +2688,7 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/gcp-controller",
 			packageFunc: build.gcpControllerImagePackage,
 		},
-		"control_plane": {
+		"controlPlane": {
 			packageDir:  "cmd/control-plane-controller",
 			packageFunc: build.controlPlaneControllerImagePackage,
 		},
@@ -2696,19 +2696,19 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/gateway-controller",
 			packageFunc: build.gatewayControllerImagePackage,
 		},
-		"helm_workload": {
+		"helmWorkload": {
 			packageDir:  "cmd/helm-workload-controller",
 			packageFunc: build.helmWorkloadControllerImagePackage,
 		},
-		"machine_runtime": {
+		"machineRuntime": {
 			packageDir:  "cmd/machine-runtime-controller",
 			packageFunc: build.machineRuntimeControllerImagePackage,
 		},
-		"machine_workload": {
+		"machineWorkload": {
 			packageDir:  "cmd/machine-workload-controller",
 			packageFunc: build.machineWorkloadControllerImagePackage,
 		},
-		"kubernetes_runtime": {
+		"kubernetesRuntime": {
 			packageDir:  "cmd/kubernetes-runtime-controller",
 			packageFunc: build.kubernetesRuntimeControllerImagePackage,
 		},
@@ -2720,7 +2720,7 @@ func (Build) ImagesByApis(
 			packageDir:  "cmd/terraform-controller",
 			packageFunc: build.terraformControllerImagePackage,
 		},
-		"kubernetes_workload": {
+		"kubernetesWorkload": {
 			packageDir:  "cmd/kubernetes-workload-controller",
 			packageFunc: build.kubernetesWorkloadControllerImagePackage,
 		},

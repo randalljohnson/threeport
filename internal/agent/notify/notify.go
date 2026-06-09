@@ -27,10 +27,10 @@ type ThreeportNotif struct {
 // ResourceOperation contains information gathered from watches on
 // threeport-managed resources.
 type ResourceOperation struct {
-	WorkloadType               string
+	WorkloadType                         string
 	KubernetesWorkloadResourceInstanceID uint
-	OperationType              string
-	OperationObject            string
+	OperationType                        string
+	OperationObject                      string
 }
 
 // EventSummary contains information collected from events related to
@@ -156,6 +156,12 @@ func Notify(
 						ObjectType: util.Ptr("threeport.io/v0.HelmWorkloadInstance"),
 						ObjectID:   util.Ptr(notif.Event.KubernetesWorkloadInstanceID),
 					}
+				default:
+					log.Info(
+						"unrecognized event workload type, skipping",
+						"workloadType", notif.Event.WorkloadType,
+					)
+					continue
 				}
 				pendingEvents = append(pendingEvents, evt)
 			}

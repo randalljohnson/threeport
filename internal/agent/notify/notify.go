@@ -156,6 +156,12 @@ func Notify(
 						ObjectType: util.Ptr("threeport.io/v0.HelmWorkloadInstance"),
 						ObjectID:   util.Ptr(notif.Event.KubernetesWorkloadInstanceID),
 					}
+				default:
+					log.Info(
+						"unrecognized event workload type, skipping",
+						"workloadType", notif.Event.WorkloadType,
+					)
+					continue
 				}
 				pendingEvents = append(pendingEvents, evt)
 			}

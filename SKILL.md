@@ -224,7 +224,7 @@ From `pkg/kube/v0/metadata.go:24-29` and `internal/agent/agent.go:18-19`:
 | `app.kubernetes.io/name` | `{definitionName}` | All managed resources |
 | `app.kubernetes.io/instance` | `{instanceName}` | All managed resources |
 | `control-plane.threeport.io/managed-by` | `threeport` | All managed resources + namespaces |
-| `control-plane.threeport.io/workload-instance` | `{ID}` | Workload resources |
+| `control-plane.threeport.io/kubernetes-workload-instance` | `{ID}` | Workload resources |
 | `control-plane.threeport.io/helm-workload-instance` | `{ID}` | Helm workload resources |
 
 ### kubectl Examples
@@ -270,7 +270,7 @@ kubectl logs deploy/threeport-kubernetes-runtime-controller -n threeport-control
 2. If `DeletionScheduled` set but no `DeletionAcknowledged`: controller hasn't started cleanup
    - Check controller logs for errors
 3. If `DeletionAcknowledged` set but no `DeletionConfirmed`: cleanup is in progress or stuck
-   - Check Kubernetes for remaining resources: `kubectl get all -l control-plane.threeport.io/workload-instance={ID}`
+   - Check Kubernetes for remaining resources: `kubectl get all -l control-plane.threeport.io/kubernetes-workload-instance={ID}`
 4. Call DELETE again once `DeletionConfirmed` is set to remove from database
 
 ### Controller Not Processing Messages

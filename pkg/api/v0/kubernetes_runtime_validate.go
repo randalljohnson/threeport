@@ -9,6 +9,7 @@ import (
 
 	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	util "github.com/threeport/threeport/pkg/util/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // KubernetesRuntimeInfraProvider indicates which infrastructure provider is being
@@ -60,24 +61,25 @@ func (k *KubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate validates that no immutable fields are being changed
 // before updates are persisted.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *KubernetesRuntimeDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, k) — values being written
+//   - lib.IsFullReplace(tx, k) — true for PUT, false for PATCH
 func (k *KubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
-	// ensure infra provider is not changed
-	if tx.Statement.Changed("InfraProvider") {
+	if lib.IsFieldChanged(tx, "InfraProvider") {
 		return util.NewBadRequestError(
 			"kubernetes runtime definition infra provider cannot be changed after creation",
 		)
 	}
-
-	// ensure high availability is not changed
-	if tx.Statement.Changed("HighAvailability") {
+	if lib.IsFieldChanged(tx, "HighAvailability") {
 		return util.NewBadRequestError(
 			"kubernetes runtime definition high availability cannot be changed after creation",
 		)
 	}
-
 	return nil
 }
 
@@ -105,12 +107,16 @@ func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate validates that no immutable fields are being changed
 // before updates are persisted.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *KubernetesRuntimeInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, k) — values being written
+//   - lib.IsFullReplace(tx, k) — true for PUT, false for PATCH
 func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
-	// ensure runtime location is not changed
-	if tx.Statement.Changed("Location") {
+	if lib.IsFieldChanged(tx, "Location") {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
 				"kubernetes runtime instances cannot be moved - location %s is immutable",
@@ -118,7 +124,6 @@ func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 			),
 		)
 	}
-
 	return nil
 }
 

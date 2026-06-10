@@ -21,9 +21,14 @@ func (m *ModuleApi) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the ModuleApi before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ModuleApi).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *ModuleApi) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -70,9 +75,14 @@ func (m *ModuleApiRoute) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the ModuleApiRoute before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ModuleApiRoute).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *ModuleApiRoute) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -126,9 +136,14 @@ func (m *ModuleController) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the ModuleController before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ModuleController).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *ModuleController) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -164,9 +179,14 @@ func (m *ModuleObject) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the ModuleObject before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ModuleObject).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *ModuleObject) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

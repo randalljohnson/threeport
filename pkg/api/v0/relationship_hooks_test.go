@@ -196,10 +196,13 @@ func TestRelationshipHooks_AfterCreate_AllFourRelationships(t *testing.T) {
 }
 
 // TestRelationshipHooks_BeforeUpdate_FKImmutability walks every
-// relationship FK through gorm-reachable transitions: nil->set
-// allowed, set->other rejected on tagged FKs, set->nil silently
-// dropped by gorm so the FK stays at its pre value. The untagged
-// FK is a negative control, freely mutable.
+// relationship FK through gorm-reachable transitions under a PATCH
+// (Model+Updates). The guard uses tx.Statement.Changed to detect
+// mutations against the loaded row.
+//
+// Tagged FKs: nil->set allowed, set->other rejected, set->nil
+// silently dropped by gorm so the FK stays at its pre value. The
+// untagged FK is a negative control, freely mutable.
 func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	type transition struct {
 		name        string
@@ -254,11 +257,16 @@ func TestRelationshipHooks_BeforeUpdate_FKImmutability(t *testing.T) {
 	_ = transition{}
 }
 
-// TestRelationshipHooks_BeforeUpdate_FKImmutability_FullReplace proves the
-// immutability guard fires on a PUT (gorm.Save), where Model == Dest so a
-// stale tx.Statement.Changed cannot see the change. set->other and
-// set->clear are rejected; clear->set and set->same are allowed, and an
-// untagged FK is never guarded.
+// TestRelationshipHooks_BeforeUpdate_FKImmutability_FullReplace is
+// the PUT counterpart to ...FKImmutability: same FK-transition
+// matrix, but the update happens via gorm.Save instead of Updates.
+// Under Save, Model and Dest are the same object so the guard can't
+// rely on tx.Statement.Changed; it compares inbound values against
+// the committed row directly.
+//
+// Tagged FKs: nil->set allowed, set->other and set->nil rejected,
+// set->same allowed. The untagged FK is a negative control, freely
+// mutable.
 func TestRelationshipHooks_BeforeUpdate_FKImmutability_FullReplace(t *testing.T) {
 	cases := []struct {
 		name         string

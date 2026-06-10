@@ -143,12 +143,20 @@ func emitValidateScaffoldIfMissing(
 			))
 			if h.gormName == "BeforeUpdate" {
 				f.Comment("")
-				f.Comment("Receiver is the loaded DB row. The new field values being written")
+				f.Comment("Receiver semantics depend on the GORM call shape; see")
+				f.Comment("pkg/api/lib/v0/update_hooks.go for the full model. The simplest")
+				f.Comment("per-field check is:")
+				f.Comment(`  - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH`)
+				f.Comment("    and PUT; handles the DB load internally")
+				f.Comment("Lower-level helpers, useful when IsFieldChanged doesn't fit:")
 				f.Comment(fmt.Sprintf(
-					"are in tx.Statement.Dest (cast to *%s).",
-					typeName,
+					"  - lib.IncomingValues(tx, %s) — values being written",
+					receiver,
 				))
-				f.Comment(`Use tx.Statement.Changed("FieldName") to detect field changes.`)
+				f.Comment(fmt.Sprintf(
+					"  - lib.IsFullReplace(tx, %s) — true for PUT, false for PATCH",
+					receiver,
+				))
 			}
 			f.Func().Params(
 				Id(receiver).Op("*").Id(typeName),

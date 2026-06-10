@@ -75,9 +75,14 @@ func (a *AwsProvider) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the AwsProvider before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *AwsProvider).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, a) — values being written
+//   - lib.IsFullReplace(tx, a) — true for PUT, false for PATCH
 func (a *AwsProvider) beforeUpdate(tx *gorm.DB) error {
 	// Re-enforce the create-time pairing invariant: access key id and
 	// secret access key must both be set or both be unset. Skip when
@@ -129,9 +134,14 @@ func (a *AwsEksKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the AwsEksKubernetesRuntimeDefinition before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *AwsEksKubernetesRuntimeDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, a) — values being written
+//   - lib.IsFullReplace(tx, a) — true for PUT, false for PATCH
 func (a *AwsEksKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -148,9 +158,14 @@ func (a *AwsEksKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the AwsEksKubernetesRuntimeInstance before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *AwsEksKubernetesRuntimeInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, a) — values being written
+//   - lib.IsFullReplace(tx, a) — true for PUT, false for PATCH
 func (a *AwsEksKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

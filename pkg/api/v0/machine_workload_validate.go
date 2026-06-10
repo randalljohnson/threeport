@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	util "github.com/threeport/threeport/pkg/util/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // envKeyRegex matches a valid POSIX environment variable name.
@@ -48,18 +49,19 @@ func (m *MachineWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the MachineWorkloadDefinition before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *MachineWorkloadDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *MachineWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
-	if !tx.Statement.Changed("Env") {
+	if !lib.IsFieldChanged(tx, "Env") {
 		return nil
 	}
-	target := m
-	if dest, ok := tx.Statement.Dest.(*MachineWorkloadDefinition); ok && dest != m {
-		target = dest
-	}
-	return validateEnv(target.Env)
+	return validateEnv(lib.IncomingValues(tx, m).(*MachineWorkloadDefinition).Env)
 }
 
 // beforeDelete validates the MachineWorkloadDefinition before delete.
@@ -74,18 +76,19 @@ func (m *MachineWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the MachineWorkloadInstance before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *MachineWorkloadInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *MachineWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
-	if !tx.Statement.Changed("Env") {
+	if !lib.IsFieldChanged(tx, "Env") {
 		return nil
 	}
-	target := m
-	if dest, ok := tx.Statement.Dest.(*MachineWorkloadInstance); ok && dest != m {
-		target = dest
-	}
-	return validateEnv(target.Env)
+	return validateEnv(lib.IncomingValues(tx, m).(*MachineWorkloadInstance).Env)
 }
 
 // beforeDelete validates the MachineWorkloadInstance before delete.

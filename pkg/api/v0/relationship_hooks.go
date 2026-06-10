@@ -103,6 +103,15 @@ func processRelationshipTaggedFieldsAfterCreate(tx *gorm.DB, obj interface{}) er
 // and rejects updates to a row owned or married by another object.
 // Once a relationship FK has been set, the only way to change it is to
 // tear down and recreate the holding object.
+//
+// This hook enforces two rules:
+//
+//  1. Relationship FK immutability: once an FK has been set, it can't
+//     be changed or cleared. Only clear->set is allowed; after that
+//     the holder must be torn down and recreated.
+//  2. Caller authorization: if this row is owned or married by
+//     another object via an incoming AOR, only the owner/partner
+//     controller (or any control-plane caller) may update it.
 func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) error {
 	objType := obj.(lib.FullyQualifiedTypeProvider).GetFullyQualifiedType()
 	objID := util.ObjectID(obj)
@@ -110,11 +119,15 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	// read the committed pre-update row and the inbound values being
-	// written. comparing the two directly is the only call-shape-independent
-	// way to tell whether a previously-set FK is changing: under a PUT the
-	// receiver IS the inbound values, so tx.Statement.Changed has no committed
-	// row to diff against and reports nothing changed.
+	// We don't reach for lib.IsFieldChanged here because the check
+	// needs (a) the "previously non-nil" filter — only FKs that were
+	// already set are immutable, and (b) all FKs diffed in a single
+	// DB read. Calling IsFieldChanged per FK would re-load the pre
+	// row N times under PUT.
+	//
+	// Read the committed pre-update row and a map of the inbound FK
+	// values keyed by Go field name so the loop below can compare
+	// each pre FK against its inbound counterpart.
 	preUpdateObj, err := lib.LoadObjFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
@@ -124,18 +137,23 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		incomingByField[foreignKey.FieldName] = foreignKey.ObjectID
 	}
 
-	// reject any change (set->different OR set->clear) to a relationship FK
-	// that was previously non-nil. the initial clear->set transition stays
-	// allowed; everything after that requires teardown. a nil inbound FK is
-	// an explicit clear on a full replace but an absent, unchanged field on
-	// a patch, so only treat it as a clear when replacing.
+	// A nil inbound FK means different things under PUT and PATCH:
+	// under PUT (full replace) it's an explicit clear; under PATCH
+	// it's "the field was absent from the payload, leave it alone".
+	// isReplace lets the loop distinguish the two.
 	isReplace := lib.IsFullReplace(tx, obj)
+
 	for _, preUpdateForeignKey := range relationshipTaggedForeignKeysFor(preUpdateObj) {
+		// FK wasn't set before this update; clear->set (or stay nil)
+		// is allowed, so nothing to enforce here.
 		if preUpdateForeignKey.ObjectID == nil {
 			continue
 		}
 		incomingID := incomingByField[preUpdateForeignKey.FieldName]
+		// cleared: caller explicitly nulled the FK (only meaningful
+		// under PUT — see the isReplace note above).
 		cleared := incomingID == nil && isReplace
+		// changed: caller set the FK to a different non-nil value.
 		changed := incomingID != nil && *incomingID != *preUpdateForeignKey.ObjectID
 		if cleared || changed {
 			return util.NewBadRequestError(fmt.Sprintf(
@@ -145,8 +163,10 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		}
 	}
 
-	// look up incoming owns/marries refs to decide whether this row's
-	// non-FK fields can be updated by the caller
+	// Done with the FK immutability check; the rest of this function
+	// is the caller-authorization check. A row may have incoming
+	// "owns" or "marries" AORs, meaning another object holds its
+	// lifecycle. External callers can't mutate such a row.
 	var ownedOrMarriedRefs []AttachedObjectReference
 	if err := tx.
 		Where(
@@ -160,13 +180,15 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		)
 	}
 
-	// no incoming owns/marries refs means anyone can update this row
+	// No incoming owns/marries refs → this row isn't owned by another
+	// object; anyone can update it.
 	if len(ownedOrMarriedRefs) == 0 {
 		return nil
 	}
 
-	// the owner/partner controller is allowed to update its owned/married
-	// row; any control-plane caller bypasses the block
+	// Control-plane callers bypass the block — they're the
+	// owner/partner controllers (or internal reconcilers) that are
+	// supposed to maintain owned rows.
 	if lib.Caller(tx.Statement.Context).OrganizationalUnit == auth.OUControlPlane {
 		return nil
 	}
@@ -187,8 +209,14 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 // object reference for each relationship-tagged foreign key whose
 // value lacks one. Foreign-key clears are not handled - the
 // before-update hook rejects set->clear.
+//
+// FK clears aren't handled here because the before-update hook
+// rejects set->clear before we get here. The only transitions to
+// react to are nil->set and (no-op) set->same-value, both of which
+// reduce to "ensure an AOR exists for the current value".
 func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) error {
 	if len(relationshipTaggedForeignKeysFor(obj)) == 0 {
+		// type has no relationship-tagged FKs → nothing to sync
 		return nil
 	}
 
@@ -201,19 +229,25 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		)
 	}
 
-	// read committed FK values. the receiver already reflects them (gorm
-	// merges the update before this hook), so the reload only keeps the FK
-	// reads correct regardless of call shape.
+	// Reload so the FK values reflect what was just committed. GORM
+	// merges the update into the receiver before this hook fires, so
+	// the reload is mostly defensive — it keeps the FK reads correct
+	// regardless of which call shape (PATCH or PUT) drove the update.
 	updatedObj, err := lib.LoadObjFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
 	}
 
 	for _, updatedObjForeignKey := range relationshipTaggedForeignKeysFor(updatedObj) {
+		// FK isn't set → no AOR needed for this column
 		if updatedObjForeignKey.ObjectID == nil {
 			continue
 		}
 
+		// Does an AOR already exist linking (FK target → this row)?
+		// Use a clean session: we're issuing an unrelated query from
+		// inside an update hook, so the surrounding statement's
+		// WHERE clauses would otherwise apply.
 		var count int64
 		err := lib.NewCleanSession(tx).
 			Model(&AttachedObjectReference{}).
@@ -230,6 +264,8 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		}
 
 		if count == 0 {
+			// No AOR yet — this is either the initial nil->set transition
+			// or a sync after a backfill. Insert one now.
 			if err := insertAttachedObjectReference(tx, updatedObjForeignKey, objType, *objID); err != nil {
 				return err
 			}

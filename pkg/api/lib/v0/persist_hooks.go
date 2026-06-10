@@ -33,8 +33,10 @@ func persistFalseFieldsFor(obj interface{}) []PersistFalseField {
 // ProcessPersistFalseTaggedFields nulls every column for a field tagged
 // `persist:"false"` before the row is written, so the value never
 // reaches the database. The value travels through the notification
-// payload to the controller and is then dropped. It operates on the
-// inbound values being written, not stale loaded values.
+// payload to the controller and is then dropped. Fires from both
+// BeforeCreate and BeforeUpdate hooks.
+//
+// See pkg/api/lib/v0/update_hooks.go for the full call-shape model.
 func ProcessPersistFalseTaggedFields(tx *gorm.DB, obj interface{}) error {
 	for _, field := range persistFalseFieldsFor(IncomingValues(tx, obj)) {
 		tx.Statement.SetColumn(strcase.ToSnake(field.Name), nil)

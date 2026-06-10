@@ -17,9 +17,14 @@ func (g *GcpProvider) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the GcpProvider before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *GcpProvider).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, g) — values being written
+//   - lib.IsFullReplace(tx, g) — true for PUT, false for PATCH
 func (g *GcpProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -57,9 +62,14 @@ func (g *GcpGkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the GcpGkeKubernetesRuntimeDefinition before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *GcpGkeKubernetesRuntimeDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, g) — values being written
+//   - lib.IsFullReplace(tx, g) — true for PUT, false for PATCH
 func (g *GcpGkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -76,9 +86,14 @@ func (g *GcpGkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the GcpGkeKubernetesRuntimeInstance before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *GcpGkeKubernetesRuntimeInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, g) — values being written
+//   - lib.IsFullReplace(tx, g) — true for PUT, false for PATCH
 func (g *GcpGkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

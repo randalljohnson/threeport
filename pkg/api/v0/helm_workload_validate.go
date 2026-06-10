@@ -19,6 +19,8 @@ func (h *HelmWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, h) — values being written
 //   - lib.IsFullReplace(tx, h) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (h *HelmWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -58,6 +60,8 @@ func (h *HelmWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, h) — values being written
 //   - lib.IsFullReplace(tx, h) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (h *HelmWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

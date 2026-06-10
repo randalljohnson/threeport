@@ -83,6 +83,8 @@ func (a *AwsProvider) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, a) — values being written
 //   - lib.IsFullReplace(tx, a) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (a *AwsProvider) beforeUpdate(tx *gorm.DB) error {
 	// Re-enforce the create-time pairing invariant: access key id and
 	// secret access key must both be set or both be unset. Skip when
@@ -142,6 +144,8 @@ func (a *AwsEksKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, a) — values being written
 //   - lib.IsFullReplace(tx, a) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (a *AwsEksKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -166,6 +170,8 @@ func (a *AwsEksKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, a) — values being written
 //   - lib.IsFullReplace(tx, a) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (a *AwsEksKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

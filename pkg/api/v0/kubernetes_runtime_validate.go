@@ -69,6 +69,8 @@ func (k *KubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, k) — values being written
 //   - lib.IsFullReplace(tx, k) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (k *KubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	infraChanged, err := lib.IsFieldChanged(tx, "InfraProvider")
 	if err != nil {
@@ -123,6 +125,8 @@ func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, k) — values being written
 //   - lib.IsFullReplace(tx, k) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	locationChanged, err := lib.IsFieldChanged(tx, "Location")
 	if err != nil {

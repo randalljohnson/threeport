@@ -7,7 +7,7 @@ import (
 
 	gorm "gorm.io/gorm"
 
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -22,7 +22,7 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 			"event requires ObjectType (fully qualified form) and ObjectID to identify its subject",
 		)
 	}
-	if _, _, _, ok := apilib.ParseQualifiedType(*e.ObjectType); !ok {
+	if _, _, _, ok := lib.ParseQualifiedType(*e.ObjectType); !ok {
 		return util.NewBadRequestError(fmt.Sprintf(
 			"event ObjectType %q is not a fully qualified type name (expected <api-namespace>/<version>.<TypeName>)",
 			*e.ObjectType,
@@ -41,6 +41,8 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, e) — values being written
 //   - lib.IsFullReplace(tx, e) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (e *Event) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

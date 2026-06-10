@@ -24,6 +24,8 @@ func (a *AttachedObjectReference) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, a) — values being written
 //   - lib.IsFullReplace(tx, a) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (a *AttachedObjectReference) beforeUpdate(tx *gorm.DB) error {
 	// Relationship is the lifecycle dial; silently widening or narrowing it
 	// post-create would change blocking behavior of an existing reference

@@ -163,3 +163,20 @@ func TestKubernetesRuntimeInstance_beforeUpdate_RejectsPutLocation(t *testing.T)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot be moved")
 }
+
+// TestKubernetesRuntimeInstance_beforeUpdate_RejectsPutLocationClear
+// confirms a PUT that nulls Location (set->clear under Save) is
+// rejected just like a value change. The hook used to dereference
+// k.Location in the error message and would panic when the inbound
+// pointer was nil; this test pins the nil-safe form.
+func TestKubernetesRuntimeInstance_beforeUpdate_RejectsPutLocationClear(t *testing.T) {
+	db := setupKubernetesRuntimeValidateDB(t)
+	loaded := createValidKRI(t, db, "Local")
+
+	full := loaded
+	full.Location = nil
+	err := db.Save(&full).Error
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot be moved")
+}

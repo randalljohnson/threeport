@@ -117,11 +117,10 @@ func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 //   - lib.IsFullReplace(tx, k) — true for PUT, false for PATCH
 func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	if lib.IsFieldChanged(tx, "Location") {
+		// don't dereference k.Location here: under a PUT that clears
+		// the field, k.Location is nil and the format would panic.
 		return util.NewBadRequestError(
-			fmt.Sprintf(
-				"kubernetes runtime instances cannot be moved - location %s is immutable",
-				*k.Location,
-			),
+			"kubernetes runtime instances cannot be moved - location is immutable",
 		)
 	}
 	return nil

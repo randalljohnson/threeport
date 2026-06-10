@@ -70,12 +70,20 @@ func (k *KubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 //   - lib.IncomingValues(tx, k) — values being written
 //   - lib.IsFullReplace(tx, k) — true for PUT, false for PATCH
 func (k *KubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
-	if lib.IsFieldChanged(tx, "InfraProvider") {
+	infraChanged, err := lib.IsFieldChanged(tx, "InfraProvider")
+	if err != nil {
+		return err
+	}
+	if infraChanged {
 		return util.NewBadRequestError(
 			"kubernetes runtime definition infra provider cannot be changed after creation",
 		)
 	}
-	if lib.IsFieldChanged(tx, "HighAvailability") {
+	haChanged, err := lib.IsFieldChanged(tx, "HighAvailability")
+	if err != nil {
+		return err
+	}
+	if haChanged {
 		return util.NewBadRequestError(
 			"kubernetes runtime definition high availability cannot be changed after creation",
 		)
@@ -116,7 +124,11 @@ func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 //   - lib.IncomingValues(tx, k) — values being written
 //   - lib.IsFullReplace(tx, k) — true for PUT, false for PATCH
 func (k *KubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
-	if lib.IsFieldChanged(tx, "Location") {
+	locationChanged, err := lib.IsFieldChanged(tx, "Location")
+	if err != nil {
+		return err
+	}
+	if locationChanged {
 		// don't dereference k.Location here: under a PUT that clears
 		// the field, k.Location is nil and the format would panic.
 		return util.NewBadRequestError(

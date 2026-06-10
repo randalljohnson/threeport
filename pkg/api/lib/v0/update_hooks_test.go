@@ -23,26 +23,38 @@ type testUpdateRow struct {
 	SawNameChanged  bool        `gorm:"-"`
 	SawCountChanged bool        `gorm:"-"`
 	SawColorChanged bool        `gorm:"-"`
+	SawErr          error       `gorm:"-"`
 }
 
 func (t *testUpdateRow) BeforeUpdate(tx *gorm.DB) error {
 	t.SawIncomingPtr = IncomingValues(tx, t)
-	t.SawNameChanged = IsFieldChanged(tx, "Name")
-	t.SawCountChanged = IsFieldChanged(tx, "Count")
-	t.SawColorChanged = IsFieldChanged(tx, "Color")
+	var err error
+	if t.SawNameChanged, err = IsFieldChanged(tx, "Name"); err != nil {
+		t.SawErr = err
+		return err
+	}
+	if t.SawCountChanged, err = IsFieldChanged(tx, "Count"); err != nil {
+		t.SawErr = err
+		return err
+	}
+	if t.SawColorChanged, err = IsFieldChanged(tx, "Color"); err != nil {
+		t.SawErr = err
+		return err
+	}
 	return nil
 }
 
-// testTypoRow exists only to drive the missing-field panic path; its
+// testTypoRow exists only to drive the missing-field error path; its
 // hook asks IsFieldChanged for a field that doesn't exist on the type.
 type testTypoRow struct {
-	ID   *uint `gorm:"primaryKey"`
-	Name *string
+	ID     *uint `gorm:"primaryKey"`
+	Name   *string
+	SawErr error `gorm:"-"`
 }
 
 func (t *testTypoRow) BeforeUpdate(tx *gorm.DB) error {
-	IsFieldChanged(tx, "NoSuchField")
-	return nil
+	_, t.SawErr = IsFieldChanged(tx, "NoSuchField")
+	return t.SawErr
 }
 
 func setupUpdateHooksTestDB(t *testing.T) *gorm.DB {
@@ -200,30 +212,21 @@ func TestIsFieldChanged_PATCH_NoChangeReportsFalse(t *testing.T) {
 	assert.False(t, loaded.SawColorChanged)
 }
 
-// TestIsFieldChanged_MissingFieldPanics confirms a typo'd field name
-// panics on the PUT path rather than silently returning false. We catch
-// the panic with recover() since GORM doesn't wrap hook panics into
-// returned errors — they bubble up.
-func TestIsFieldChanged_MissingFieldPanics(t *testing.T) {
+// TestIsFieldChanged_MissingFieldReturnsError confirms a typo'd field
+// name surfaces as a returned error rather than silently returning
+// false. The hook propagates the error so GORM aborts the operation.
+func TestIsFieldChanged_MissingFieldReturnsError(t *testing.T) {
 	db := setupUpdateHooksTestDB(t)
 	require.NoError(t, db.Create(&testTypoRow{
 		ID: updateTestUintPtr(1), Name: updateTestStrPtr("orig"),
 	}).Error)
 
 	obj := &testTypoRow{ID: updateTestUintPtr(1), Name: updateTestStrPtr("renamed")}
+	err := db.Save(obj).Error
 
-	defer func() {
-		r := recover()
-		require.NotNil(t, r, "expected panic for missing field")
-		msg := ""
-		switch v := r.(type) {
-		case string:
-			msg = v
-		case error:
-			msg = v.Error()
-		}
-		assert.True(t, strings.Contains(msg, "NoSuchField"),
-			"panic message should name the missing field; got: %s", msg)
-	}()
-	_ = db.Save(obj).Error
+	require.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "NoSuchField"),
+		"error message should name the missing field; got: %s", err.Error())
+	require.Error(t, obj.SawErr)
+	assert.True(t, strings.Contains(obj.SawErr.Error(), "NoSuchField"))
 }

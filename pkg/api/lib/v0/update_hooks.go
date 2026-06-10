@@ -111,18 +111,17 @@ func IsFullReplace(tx *gorm.DB, receiver interface{}) bool {
 // read under the PUT path; callers checking several fields in the
 // same hook will incur one read per call, which is fine in practice.
 //
-// Panics on programmer errors: the field doesn't exist on the type,
-// the row has no ID, or the DB load fails. GORM catches the panic and
-// aborts the transaction, which is the safe behavior — silently
-// treating "couldn't determine" as "not changed" would hide bugs in
-// immutability checks.
-func IsFieldChanged(tx *gorm.DB, fieldName string) bool {
+// Returns an error if the named field doesn't exist on the type, the
+// row has no ID, or the DB load fails. Callers in immutability hooks
+// should return the error so GORM aborts the transaction rather than
+// proceeding with an undetermined change status.
+func IsFieldChanged(tx *gorm.DB, fieldName string) (bool, error) {
 	// PATCH fast-path: Statement.Model is the loaded row, Statement.Dest
 	// is the inbound patch, and they're different objects. GORM's
 	// Statement.Changed compares them directly, so no DB read of our own
 	// is needed.
 	if tx.Statement.Model != tx.Statement.Dest {
-		return tx.Statement.Changed(fieldName)
+		return tx.Statement.Changed(fieldName), nil
 	}
 
 	// PUT path: Model == Dest, so the inbound IS the receiver. Under
@@ -133,12 +132,12 @@ func IsFieldChanged(tx *gorm.DB, fieldName string) bool {
 
 	id := util.ObjectID(incoming)
 	if id == nil {
-		panic(fmt.Sprintf("IsFieldChanged: %T has no ID; only call from update hooks on persisted rows", incoming))
+		return false, fmt.Errorf("IsFieldChanged: %T has no ID; only call from update hooks on persisted rows", incoming)
 	}
 
 	pre, err := LoadObjFromDB(tx, incoming, *id)
 	if err != nil {
-		panic(fmt.Sprintf("IsFieldChanged: failed to load pre-update row: %v", err))
+		return false, fmt.Errorf("IsFieldChanged: failed to load pre-update row: %w", err)
 	}
 
 	// Both pre and incoming are *T; .Elem() unwraps to T so FieldByName
@@ -146,11 +145,11 @@ func IsFieldChanged(tx *gorm.DB, fieldName string) bool {
 	preVal := reflect.ValueOf(pre).Elem().FieldByName(fieldName)
 	newVal := reflect.ValueOf(incoming).Elem().FieldByName(fieldName)
 	if !preVal.IsValid() || !newVal.IsValid() {
-		panic(fmt.Sprintf("IsFieldChanged: field %s not found on %T", fieldName, incoming))
+		return false, fmt.Errorf("IsFieldChanged: field %s not found on %T", fieldName, incoming)
 	}
 
 	// DeepEqual handles pointer fields, slices, maps, and primitives
 	// uniformly. For *uint FK fields this correctly distinguishes nil
 	// from non-nil and any non-equal pair of values.
-	return !reflect.DeepEqual(preVal.Interface(), newVal.Interface())
+	return !reflect.DeepEqual(preVal.Interface(), newVal.Interface()), nil
 }

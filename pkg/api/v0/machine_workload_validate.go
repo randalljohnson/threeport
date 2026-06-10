@@ -58,7 +58,11 @@ func (m *MachineWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *MachineWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
-	if !lib.IsFieldChanged(tx, "Env") {
+	changed, err := lib.IsFieldChanged(tx, "Env")
+	if err != nil {
+		return err
+	}
+	if !changed {
 		return nil
 	}
 	return validateEnv(lib.IncomingValues(tx, m).(*MachineWorkloadDefinition).Env)
@@ -85,7 +89,11 @@ func (m *MachineWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *MachineWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
-	if !lib.IsFieldChanged(tx, "Env") {
+	changed, err := lib.IsFieldChanged(tx, "Env")
+	if err != nil {
+		return err
+	}
+	if !changed {
 		return nil
 	}
 	return validateEnv(lib.IncomingValues(tx, m).(*MachineWorkloadInstance).Env)

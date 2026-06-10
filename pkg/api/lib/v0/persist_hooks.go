@@ -36,7 +36,7 @@ func persistFalseFieldsFor(obj interface{}) []PersistFalseField {
 // payload to the controller and is then dropped. Fires from both
 // BeforeCreate and BeforeUpdate hooks.
 //
-// See pkg/api/lib/v0/update_hooks.go for the full call-shape model.
+// See pkg/api/lib/v0/update_helpers.go for the full call-shape model.
 func ProcessPersistFalseTaggedFields(tx *gorm.DB, obj interface{}) error {
 	for _, field := range persistFalseFieldsFor(IncomingValues(tx, obj)) {
 		tx.Statement.SetColumn(strcase.ToSnake(field.Name), nil)

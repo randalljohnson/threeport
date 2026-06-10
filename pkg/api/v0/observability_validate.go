@@ -12,7 +12,7 @@ func (l *LoggingDefinition) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the LoggingDefinition is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -51,7 +51,7 @@ func (l *LoggingInstance) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the LoggingInstance is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -90,7 +90,7 @@ func (m *MetricsDefinition) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the MetricsDefinition is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -129,7 +129,7 @@ func (m *MetricsInstance) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the MetricsInstance is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -168,7 +168,7 @@ func (o *ObservabilityDashboardDefinition) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the ObservabilityDashboardDefinition is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -207,7 +207,7 @@ func (o *ObservabilityDashboardInstance) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the ObservabilityDashboardInstance is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -246,7 +246,7 @@ func (o *ObservabilityStackDefinition) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the ObservabilityStackDefinition is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -285,7 +285,7 @@ func (o *ObservabilityStackInstance) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the ObservabilityStackInstance is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally

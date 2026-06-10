@@ -12,7 +12,7 @@ func (d *DomainNameDefinition) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the DomainNameDefinition is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -51,7 +51,7 @@ func (d *DomainNameInstance) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the DomainNameInstance is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -90,7 +90,7 @@ func (g *GatewayDefinition) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the GatewayDefinition is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -129,7 +129,7 @@ func (g *GatewayHttpPort) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the GatewayHttpPort is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -168,7 +168,7 @@ func (g *GatewayInstance) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the GatewayInstance is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -207,7 +207,7 @@ func (g *GatewayTcpPort) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate runs before the GatewayTcpPort is updated.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally

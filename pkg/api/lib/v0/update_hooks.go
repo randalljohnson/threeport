@@ -68,10 +68,10 @@ import (
 // both shapes.
 //
 // To stay correct regardless of shape, hooks read through helpers
-// rather than the receiver directly. ChangedFields is the high-level
+// rather than the receiver directly. IsFieldChanged is the high-level
 // helper to reach for first; the rest are lower-level building blocks:
 //
-//   - ChangedFields for per-field change detection (works under both
+//   - IsFieldChanged for per-field change detection (works under both
 //     PATCH and PUT; handles the DB load internally).
 //   - IncomingValues for the values being written.
 //   - LoadObjFromDB for a fresh read of the committed row.

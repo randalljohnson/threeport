@@ -297,7 +297,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// 			Name: util.Ptr("secret-instance"),
 		// 		},
 		// 		SecretDefinitionID:          createdSecretDefinition.ID,
-		// 		WorkloadInstanceID:          createdWorkloadInst.ID,
+		// 		KubernetesWorkloadInstanceID: createdWorkloadInst.ID,
 		// 		KubernetesRuntimeInstanceID: testKubernetesRuntimeInst.ID,
 		// 	},
 		// )
@@ -414,7 +414,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 		assert.Equal(allResourcesFound, true, fmt.Sprintf("should have found all resources in Kubernetes after %d seconds", findAttemptsMax*findCheckDurationSeconds))
 
-		// check threeport API for expected Events on this WorkloadInstance
+		// check threeport API for expected Events on this KubernetesWorkloadInstance
 		startedEventFound := false
 		eventAttempts := 0
 		eventAttemptsMax := 300
@@ -443,8 +443,8 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 		assert.Equal(startedEventFound, true, fmt.Sprintf("should have found all container started events in Kubernetes after %d seconds", eventAttemptsMax*eventCheckDurationSeconds))
 
-		// relationship-tag FK transitions on WorkloadInstance.
-		// WorkloadDefinitionID is tagged `relationship:"requires"` and
+		// relationship-tag FK transitions on KubernetesWorkloadInstance.
+		// KubernetesWorkloadDefinitionID is tagged `relationship:"requires"` and
 		// `validate:"required"`. once set at create, the API must reject
 		// any further state change (clear or reassign). a second
 		// workload definition is created here purely as the "other

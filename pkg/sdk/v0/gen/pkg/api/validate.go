@@ -62,6 +62,7 @@ func emitValidateGen(
 	f.ImportAlias("gorm.io/gorm", "gorm")
 	if generator.Module {
 		f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "tpapi_v0")
+		f.ImportAlias("github.com/threeport/threeport/pkg/api/lib/v0", "tpapi_lib")
 	}
 
 	for _, apiObj := range objGroup.ApiObjects {
@@ -142,20 +143,33 @@ func emitValidateScaffoldIfMissing(
 				h.userName, tense, typeName, h.verb,
 			))
 			if h.gormName == "BeforeUpdate" {
+				// in modules the lib package collides with the module's own
+				// pkg/api/v0; the convention for that case is the tpapi_lib
+				// alias, matching tpapi_v0 used in module gen files.
+				libAlias := "lib"
+				if generator.Module {
+					libAlias = "tpapi_lib"
+				}
 				f.Comment("")
 				f.Comment("Receiver semantics depend on the GORM call shape; see")
 				f.Comment("pkg/api/lib/v0/update_hooks.go for the full model. The simplest")
 				f.Comment("per-field check is:")
-				f.Comment(`  - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH`)
-				f.Comment("    and PUT; handles the DB load internally")
-				f.Comment("Lower-level helpers, useful when IsFieldChanged doesn't fit:")
 				f.Comment(fmt.Sprintf(
-					"  - lib.IncomingValues(tx, %s) — values being written",
-					receiver,
+					`  - %s.IsFieldChanged(tx, "FieldName") — works under both PATCH`,
+					libAlias,
+				))
+				f.Comment("    and PUT; handles the DB load internally")
+				f.Comment(fmt.Sprintf(
+					"Lower-level helpers, useful when %s.IsFieldChanged doesn't fit:",
+					libAlias,
 				))
 				f.Comment(fmt.Sprintf(
-					"  - lib.IsFullReplace(tx, %s) — true for PUT, false for PATCH",
-					receiver,
+					"  - %s.IncomingValues(tx, %s) — values being written",
+					libAlias, receiver,
+				))
+				f.Comment(fmt.Sprintf(
+					"  - %s.IsFullReplace(tx, %s) — true for PUT, false for PATCH",
+					libAlias, receiver,
 				))
 			}
 			f.Func().Params(

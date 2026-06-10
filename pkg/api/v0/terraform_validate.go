@@ -13,9 +13,14 @@ func (t *TerraformDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the TerraformDefinition before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *TerraformDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, t) — values being written
+//   - lib.IsFullReplace(tx, t) — true for PUT, false for PATCH
 func (t *TerraformDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -32,9 +37,14 @@ func (t *TerraformInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate validates the TerraformInstance before update.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *TerraformInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, t) — values being written
+//   - lib.IsFullReplace(tx, t) — true for PUT, false for PATCH
 func (t *TerraformInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

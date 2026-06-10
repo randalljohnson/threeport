@@ -11,9 +11,14 @@ func (l *LogBackend) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the LogBackend is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *LogBackend).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, l) — values being written
+//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
 func (l *LogBackend) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -45,9 +50,14 @@ func (l *LogStorageDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the LogStorageDefinition is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *LogStorageDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, l) — values being written
+//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
 func (l *LogStorageDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -79,9 +89,14 @@ func (l *LogStorageInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the LogStorageInstance is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *LogStorageInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, l) — values being written
+//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
 func (l *LogStorageInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

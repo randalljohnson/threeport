@@ -11,9 +11,14 @@ func (l *LoggingDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the LoggingDefinition is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *LoggingDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, l) — values being written
+//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
 func (l *LoggingDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -45,9 +50,14 @@ func (l *LoggingInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the LoggingInstance is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *LoggingInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, l) — values being written
+//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
 func (l *LoggingInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -79,9 +89,14 @@ func (m *MetricsDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the MetricsDefinition is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *MetricsDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *MetricsDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -113,9 +128,14 @@ func (m *MetricsInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the MetricsInstance is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *MetricsInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, m) — values being written
+//   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
 func (m *MetricsInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -147,9 +167,14 @@ func (o *ObservabilityDashboardDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the ObservabilityDashboardDefinition is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ObservabilityDashboardDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, o) — values being written
+//   - lib.IsFullReplace(tx, o) — true for PUT, false for PATCH
 func (o *ObservabilityDashboardDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -181,9 +206,14 @@ func (o *ObservabilityDashboardInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the ObservabilityDashboardInstance is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ObservabilityDashboardInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, o) — values being written
+//   - lib.IsFullReplace(tx, o) — true for PUT, false for PATCH
 func (o *ObservabilityDashboardInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -215,9 +245,14 @@ func (o *ObservabilityStackDefinition) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the ObservabilityStackDefinition is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ObservabilityStackDefinition).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, o) — values being written
+//   - lib.IsFullReplace(tx, o) — true for PUT, false for PATCH
 func (o *ObservabilityStackDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -249,9 +284,14 @@ func (o *ObservabilityStackInstance) beforeCreate(tx *gorm.DB) error {
 
 // beforeUpdate runs before the ObservabilityStackInstance is updated.
 //
-// Receiver is the loaded DB row. The new field values being written
-// are in tx.Statement.Dest (cast to *ObservabilityStackInstance).
-// Use tx.Statement.Changed("FieldName") to detect field changes.
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
+//     and PUT; handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx, o) — values being written
+//   - lib.IsFullReplace(tx, o) — true for PUT, false for PATCH
 func (o *ObservabilityStackInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

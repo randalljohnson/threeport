@@ -63,6 +63,8 @@ func NewCleanSession(tx *gorm.DB) *gorm.DB {
 // in a before-update hook that is the pre-update row (needed because
 // under a PUT the receiver holds the caller's new values, not the
 // committed ones); in an after-update hook it is the post-update row.
+// See pkg/api/lib/v0/update_hooks.go for the full call-shape model
+// and sibling helpers.
 func LoadObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
 	// allocate a new instance of obj's concrete type via reflection;
 	// the caller's obj stays untouched while loaded values land here

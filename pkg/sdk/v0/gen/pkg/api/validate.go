@@ -150,7 +150,7 @@ func emitValidateScaffoldIfMissing(
 				}
 				f.Comment("")
 				f.Comment("Receiver semantics depend on the GORM call shape; see")
-				f.Comment("pkg/api/lib/v0/update_hooks.go for the full model. The simplest")
+				f.Comment("pkg/api/lib/v0/update_helpers.go for the full model. The simplest")
 				f.Comment("per-field check is:")
 				f.Comment(fmt.Sprintf(
 					`  - %s.IsFieldChanged(tx, "FieldName") — works under both PATCH`,

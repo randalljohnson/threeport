@@ -62,7 +62,7 @@ func (k *KubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // before updates are persisted.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -116,7 +116,7 @@ func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // before updates are persisted.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally

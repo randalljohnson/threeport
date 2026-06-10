@@ -22,7 +22,7 @@ func (m *ModuleApi) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate validates the ModuleApi before update.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -76,7 +76,7 @@ func (m *ModuleApiRoute) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate validates the ModuleApiRoute before update.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -137,7 +137,7 @@ func (m *ModuleController) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate validates the ModuleController before update.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally
@@ -180,7 +180,7 @@ func (m *ModuleObject) beforeCreate(tx *gorm.DB) error {
 // beforeUpdate validates the ModuleObject before update.
 //
 // Receiver semantics depend on the GORM call shape; see
-// pkg/api/lib/v0/update_hooks.go for the full model. The simplest
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
 //     and PUT; handles the DB load internally

@@ -48,7 +48,7 @@ func encryptedFieldsFor(obj interface{}) []EncryptedField {
 // always operate on the inbound values regardless of call shape; under
 // a PUT (Save) or a create the redirect is a no-op because the
 // receiver and tx.Statement.Dest are already the same object. See
-// pkg/api/lib/v0/update_hooks.go for the full call-shape model.
+// pkg/api/lib/v0/update_helpers.go for the full call-shape model.
 func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}) error {
 	fields := encryptedFieldsFor(IncomingValues(tx, obj))
 	if len(fields) == 0 {

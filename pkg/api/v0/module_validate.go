@@ -29,6 +29,8 @@ func (m *ModuleApi) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *ModuleApi) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -83,6 +85,8 @@ func (m *ModuleApiRoute) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *ModuleApiRoute) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -144,6 +148,8 @@ func (m *ModuleController) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *ModuleController) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -187,6 +193,8 @@ func (m *ModuleObject) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *ModuleObject) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

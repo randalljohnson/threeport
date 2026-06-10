@@ -169,12 +169,13 @@ func emitValidateScaffoldIfMissing(
 					"  - %s.IsFullReplace(tx, %s) — true for PUT, false for PATCH",
 					libAlias, receiver,
 				))
-				// modules won't have the lib package imported; spell out the
-				// import line so the developer can drop it straight in.
-				if generator.Module {
-					f.Comment("Import:")
-					f.Comment(`  tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"`)
-				}
+				// spell out the import line so the developer can drop it
+				// straight in; most _validate.go files don't already have it.
+				f.Comment("Import:")
+				f.Comment(fmt.Sprintf(
+					`  %s "github.com/threeport/threeport/pkg/api/lib/v0"`,
+					libAlias,
+				))
 			}
 			f.Func().Params(
 				Id(receiver).Op("*").Id(typeName),

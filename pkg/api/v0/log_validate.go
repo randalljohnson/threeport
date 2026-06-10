@@ -19,6 +19,8 @@ func (l *LogBackend) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, l) — values being written
 //   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LogBackend) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -58,6 +60,8 @@ func (l *LogStorageDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, l) — values being written
 //   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LogStorageDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -97,6 +101,8 @@ func (l *LogStorageInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, l) — values being written
 //   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LogStorageInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

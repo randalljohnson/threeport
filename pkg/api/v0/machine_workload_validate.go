@@ -57,6 +57,8 @@ func (m *MachineWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *MachineWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
 	changed, err := lib.IsFieldChanged(tx, "Env")
 	if err != nil {
@@ -88,6 +90,8 @@ func (m *MachineWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, m) — values being written
 //   - lib.IsFullReplace(tx, m) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *MachineWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
 	changed, err := lib.IsFieldChanged(tx, "Env")
 	if err != nil {

@@ -25,6 +25,8 @@ func (o *OciProvider) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, o) — values being written
 //   - lib.IsFullReplace(tx, o) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -67,6 +69,8 @@ func (o *OciOkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, o) — values being written
 //   - lib.IsFullReplace(tx, o) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciOkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -91,6 +95,8 @@ func (o *OciOkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, o) — values being written
 //   - lib.IsFullReplace(tx, o) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciOkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

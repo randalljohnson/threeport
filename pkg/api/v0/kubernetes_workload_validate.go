@@ -19,6 +19,8 @@ func (w *KubernetesWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, w) — values being written
 //   - lib.IsFullReplace(tx, w) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (w *KubernetesWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -58,6 +60,8 @@ func (w *KubernetesWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, w) — values being written
 //   - lib.IsFullReplace(tx, w) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (w *KubernetesWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -97,6 +101,8 @@ func (w *KubernetesWorkloadResourceDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, w) — values being written
 //   - lib.IsFullReplace(tx, w) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (w *KubernetesWorkloadResourceDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -136,6 +142,8 @@ func (w *KubernetesWorkloadResourceInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, w) — values being written
 //   - lib.IsFullReplace(tx, w) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (w *KubernetesWorkloadResourceInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

@@ -21,6 +21,8 @@ func (t *TerraformDefinition) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, t) — values being written
 //   - lib.IsFullReplace(tx, t) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (t *TerraformDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -45,6 +47,8 @@ func (t *TerraformInstance) beforeCreate(tx *gorm.DB) error {
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx, t) — values being written
 //   - lib.IsFullReplace(tx, t) — true for PUT, false for PATCH
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (t *TerraformInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

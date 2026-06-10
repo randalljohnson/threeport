@@ -350,7 +350,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// 			Name: util.Ptr("secret-instance"),
 		// 		},
 		// 		SecretDefinitionID:          createdSecretDefinition.ID,
-		// 		KubernetesWorkloadInstanceID:          createdWorkloadInst.ID,
+		// 		KubernetesWorkloadInstanceID: createdWorkloadInst.ID,
 		// 		KubernetesRuntimeInstanceID: testKubernetesRuntimeInst.ID,
 		// 	},
 		// )

@@ -143,8 +143,7 @@ func emitValidateScaffoldIfMissing(
 				h.userName, tense, typeName, h.verb,
 			))
 			if h.gormName == "BeforeUpdate" {
-				// pkg/api/lib/v0's package name (v0) collides with the
-				// module's own v0 package, so modules need an alias.
+				// use tpapi_lib in modules
 				libAlias := "lib"
 				if generator.Module {
 					libAlias = "tpapi_lib"

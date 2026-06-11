@@ -128,12 +128,12 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	// Read the committed pre-update row and a map of the inbound FK
 	// values keyed by Go field name so the loop below can compare
 	// each pre FK against its inbound counterpart.
-	preUpdateObj, err := lib.LoadObjectFromDB(tx, obj, *objID)
+	preUpdateObj, err := lib.LoadObjectFromDB(tx)
 	if err != nil {
 		return err
 	}
 	incomingByField := make(map[string]*uint)
-	for _, foreignKey := range relationshipTaggedForeignKeysFor(lib.IncomingValues(tx, obj)) {
+	for _, foreignKey := range relationshipTaggedForeignKeysFor(lib.IncomingValues(tx)) {
 		incomingByField[foreignKey.FieldName] = foreignKey.ObjectID
 	}
 
@@ -141,7 +141,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	// under PUT (full replace) it's an explicit clear; under PATCH
 	// it's "the field was absent from the payload, leave it alone".
 	// isReplace lets the loop distinguish the two.
-	isReplace := lib.IsFullReplace(tx, obj)
+	isReplace := lib.IsFullReplace(tx)
 
 	for _, preUpdateForeignKey := range relationshipTaggedForeignKeysFor(preUpdateObj) {
 		// FK wasn't set before this update; clear->set (or stay nil)
@@ -233,7 +233,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	// merges the update into the receiver before this hook fires, so
 	// the reload is mostly defensive; it keeps the FK reads correct
 	// regardless of which call shape (PATCH or PUT) drove the update.
-	updatedObj, err := lib.LoadObjectFromDB(tx, obj, *objID)
+	updatedObj, err := lib.LoadObjectFromDB(tx)
 	if err != nil {
 		return err
 	}

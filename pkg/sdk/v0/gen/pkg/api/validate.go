@@ -162,12 +162,16 @@ func emitValidateScaffoldIfMissing(
 					libAlias,
 				))
 				f.Comment(fmt.Sprintf(
-					"  - %s.IncomingValues(tx, %s): values being written",
-					libAlias, receiver,
+					"  - %s.IncomingValues(tx): values being written",
+					libAlias,
 				))
 				f.Comment(fmt.Sprintf(
-					"  - %s.IsFullReplace(tx, %s): true for PUT, false for PATCH",
-					libAlias, receiver,
+					"  - %s.IsFullReplace(tx): true on PUT (Save shape)",
+					libAlias,
+				))
+				f.Comment(fmt.Sprintf(
+					"  - %s.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)",
+					libAlias,
 				))
 				// spell out the import line so the developer can drop it
 				// straight in; most _validate.go files don't already have it.

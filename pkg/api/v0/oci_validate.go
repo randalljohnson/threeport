@@ -23,8 +23,9 @@ func (o *OciProvider) beforeCreate(tx *gorm.DB) error {
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, o): values being written
-//   - lib.IsFullReplace(tx, o): true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciProvider) beforeUpdate(tx *gorm.DB) error {
@@ -67,8 +68,9 @@ func (o *OciOkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, o): values being written
-//   - lib.IsFullReplace(tx, o): true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciOkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
@@ -93,8 +95,9 @@ func (o *OciOkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, o): values being written
-//   - lib.IsFullReplace(tx, o): true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciOkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {

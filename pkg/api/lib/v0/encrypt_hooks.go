@@ -50,7 +50,7 @@ func encryptedFieldsFor(obj interface{}) []EncryptedField {
 // receiver and tx.Statement.Dest are already the same object. See
 // pkg/api/lib/v0/update_helpers.go for the full call-shape model.
 func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}) error {
-	fields := encryptedFieldsFor(IncomingValues(tx, obj))
+	fields := encryptedFieldsFor(IncomingValues(tx))
 	if len(fields) == 0 {
 		return nil
 	}

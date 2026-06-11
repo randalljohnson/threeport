@@ -17,8 +17,9 @@ func (p *Profile) beforeCreate(tx *gorm.DB) error {
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, p): values being written
-//   - lib.IsFullReplace(tx, p): true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (p *Profile) beforeUpdate(tx *gorm.DB) error {
@@ -58,8 +59,9 @@ func (t *Tier) beforeCreate(tx *gorm.DB) error {
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, t): values being written
-//   - lib.IsFullReplace(tx, t): true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (t *Tier) beforeUpdate(tx *gorm.DB) error {

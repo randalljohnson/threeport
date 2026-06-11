@@ -27,7 +27,7 @@ type testUpdateRow struct {
 }
 
 func (t *testUpdateRow) BeforeUpdate(tx *gorm.DB) error {
-	t.SawIncomingPtr = IncomingValues(tx, t)
+	t.SawIncomingPtr = IncomingValues(tx)
 	var err error
 	if t.SawNameChanged, err = IsFieldChanged(tx, "Name"); err != nil {
 		t.SawErr = err

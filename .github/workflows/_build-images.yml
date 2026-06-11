@@ -111,17 +111,16 @@ jobs:
         # PARALLEL_IMAGE_BUILD controls how many image-package (buildx)
         # tasks run concurrently after binaries are pre-compiled.
         PARALLEL_IMAGE_BUILD: "4"
-        # build:allImages reads repo, tag, and arch from these env vars.
-        IMAGE_REPO: ${{ inputs.image_repo }}
-        IMAGE_TAG: ${{ inputs.tag }}-${{ matrix.arch }}
-        ARCH: ${{ matrix.arch }}
         # OCI image label values. BuildImage reads these and stamps them
         # onto the release stage via Dockerfile ARG/LABEL.
         GIT_REVISION: ${{ github.sha }}
         GIT_TAG: ${{ inputs.tag }}
       run: |
         export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        mage build:allImages
+        mage build:allImages \
+          ${{ inputs.image_repo }} \
+          ${{ inputs.tag }}-${{ matrix.arch }} \
+          ${{ matrix.arch }}
 
   manifest:
     name: manifest
@@ -157,9 +156,8 @@ jobs:
         # imagetools create is light (manifest-only, no blob upload), so
         # we can fan out wider than the build phase.
         PARALLEL_IMAGE_BUILD: "8"
-        # package:allManifests reads repo, tag, and arches from these env vars.
-        IMAGE_REPO: ${{ inputs.image_repo }}
-        IMAGE_TAG: ${{ inputs.tag }}
-        ARCH: ${{ inputs.arches }}
       run: |
-        mage package:allManifests
+        mage package:allManifests \
+          ${{ inputs.image_repo }} \
+          ${{ inputs.tag }} \
+          ${{ inputs.arches }}

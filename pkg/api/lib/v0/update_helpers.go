@@ -74,30 +74,9 @@ import (
 //   - IsFieldChanged for per-field change detection (works under both
 //     PATCH and PUT; handles the DB load internally).
 //   - IncomingValues for the values being written.
-//   - LoadObjFromDB for a fresh read of the committed row.
+//   - LoadObjectFromDB for a fresh read of the committed row.
 //   - IsFullReplace to distinguish PUT (where a nil inbound field means
 //     an explicit clear) from PATCH (where it means absent-and-unchanged).
-
-// IncomingValues returns tx.Statement.Dest when it differs from the
-// receiver, otherwise the receiver itself. Use in before-hooks that
-// need to operate on the caller-supplied values regardless of call
-// shape.
-func IncomingValues(tx *gorm.DB, receiver interface{}) interface{} {
-	if dest := tx.Statement.Dest; dest != nil && dest != receiver {
-		return dest
-	}
-	return receiver
-}
-
-// IsFullReplace reports whether the current update is a full replace (a
-// PUT via Save, where Model == Dest) rather than a partial patch
-// (Updates, where they differ). The distinction matters when a nil
-// inbound field can mean two different things: an explicit clear on a
-// full replace, or an absent-and-unchanged field on a patch. See the
-// top of this file for the full call-shape model.
-func IsFullReplace(tx *gorm.DB, receiver interface{}) bool {
-	return tx.Statement.Dest == receiver
-}
 
 // IsFieldChanged reports whether the named field is being modified by
 // the current GORM update. Reach for this first for any per-field
@@ -106,7 +85,7 @@ func IsFullReplace(tx *gorm.DB, receiver interface{}) bool {
 //
 // Under PATCH (Updates), uses tx.Statement.Changed which correctly
 // compares the inbound patch against the loaded row (no DB read).
-// Under PUT (Save), loads the committed row via LoadObjFromDB and
+// Under PUT (Save), loads the committed row via LoadObjectFromDB and
 // compares the named field by reflection. Each call may incur one DB
 // read under the PUT path; callers checking several fields in the
 // same hook will incur one read per call, which is fine in practice.
@@ -135,7 +114,7 @@ func IsFieldChanged(tx *gorm.DB, fieldName string) (bool, error) {
 		return false, fmt.Errorf("IsFieldChanged: %T has no ID; only call from update hooks on persisted rows", incoming)
 	}
 
-	pre, err := LoadObjFromDB(tx, incoming, *id)
+	pre, err := LoadObjectFromDB(tx, incoming, *id)
 	if err != nil {
 		return false, fmt.Errorf("IsFieldChanged: failed to load pre-update row: %w", err)
 	}
@@ -152,4 +131,46 @@ func IsFieldChanged(tx *gorm.DB, fieldName string) (bool, error) {
 	// uniformly. For *uint FK fields this correctly distinguishes nil
 	// from non-nil and any non-equal pair of values.
 	return !reflect.DeepEqual(preVal.Interface(), newVal.Interface()), nil
+}
+
+// IncomingValues returns tx.Statement.Dest when it differs from the
+// receiver, otherwise the receiver itself. Use in before-hooks that
+// need to operate on the caller-supplied values regardless of call
+// shape.
+func IncomingValues(tx *gorm.DB, receiver interface{}) interface{} {
+	if dest := tx.Statement.Dest; dest != nil && dest != receiver {
+		return dest
+	}
+	return receiver
+}
+
+// LoadObjectFromDB returns a newly-allocated instance of obj's concrete
+// type populated from the database by ID via a fresh session that does
+// not inherit the current statement's clauses. The original obj is not
+// mutated. It is the call-shape-independent way to read committed state:
+// in a before-update hook that is the pre-update row (needed because
+// under a PUT the receiver holds the caller's new values, not the
+// committed ones); in an after-update hook it is the post-update row.
+func LoadObjectFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
+	// allocate a new instance of obj's concrete type via reflection;
+	// the caller's obj stays untouched while loaded values land here
+	loaded := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
+
+	if err := NewCleanSession(tx).First(loaded, id).Error; err != nil {
+		return nil, fmt.Errorf(
+			"failed to load %s/%d from database: %w",
+			util.ObjectTypeName(obj), id, err,
+		)
+	}
+	return loaded, nil
+}
+
+// IsFullReplace reports whether the current update is a full replace (a
+// PUT via Save, where Model == Dest) rather than a partial patch
+// (Updates, where they differ). The distinction matters when a nil
+// inbound field can mean two different things: an explicit clear on a
+// full replace, or an absent-and-unchanged field on a patch. See the
+// top of this file for the full call-shape model.
+func IsFullReplace(tx *gorm.DB, receiver interface{}) bool {
+	return tx.Statement.Dest == receiver
 }

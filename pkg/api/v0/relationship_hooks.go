@@ -128,7 +128,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	// Read the committed pre-update row and a map of the inbound FK
 	// values keyed by Go field name so the loop below can compare
 	// each pre FK against its inbound counterpart.
-	preUpdateObj, err := lib.LoadObjFromDB(tx, obj, *objID)
+	preUpdateObj, err := lib.LoadObjectFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 	// merges the update into the receiver before this hook fires, so
 	// the reload is mostly defensive — it keeps the FK reads correct
 	// regardless of which call shape (PATCH or PUT) drove the update.
-	updatedObj, err := lib.LoadObjFromDB(tx, obj, *objID)
+	updatedObj, err := lib.LoadObjectFromDB(tx, obj, *objID)
 	if err != nil {
 		return err
 	}

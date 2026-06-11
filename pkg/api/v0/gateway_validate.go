@@ -14,11 +14,12 @@ func (d *DomainNameDefinition) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, d) — values being written
-//   - lib.IsFullReplace(tx, d) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (d *DomainNameDefinition) beforeUpdate(tx *gorm.DB) error {
@@ -55,11 +56,12 @@ func (d *DomainNameInstance) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, d) — values being written
-//   - lib.IsFullReplace(tx, d) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (d *DomainNameInstance) beforeUpdate(tx *gorm.DB) error {
@@ -96,11 +98,12 @@ func (g *GatewayDefinition) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, g) — values being written
-//   - lib.IsFullReplace(tx, g) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GatewayDefinition) beforeUpdate(tx *gorm.DB) error {
@@ -137,11 +140,12 @@ func (g *GatewayHttpPort) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, g) — values being written
-//   - lib.IsFullReplace(tx, g) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GatewayHttpPort) beforeUpdate(tx *gorm.DB) error {
@@ -178,11 +182,12 @@ func (g *GatewayInstance) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, g) — values being written
-//   - lib.IsFullReplace(tx, g) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GatewayInstance) beforeUpdate(tx *gorm.DB) error {
@@ -219,11 +224,12 @@ func (g *GatewayTcpPort) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, g) — values being written
-//   - lib.IsFullReplace(tx, g) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GatewayTcpPort) beforeUpdate(tx *gorm.DB) error {

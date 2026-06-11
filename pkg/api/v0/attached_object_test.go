@@ -229,7 +229,7 @@ func TestAttachedObjectReference_beforeUpdate_RejectsPutRelationship(t *testing.
 
 // TestAttachedObjectReference_beforeUpdate_AllowsNoOpUpdate confirms a
 // patch that doesn't touch Relationship passes through. This pins the
-// "no spurious rejection" branch — without it a regression that
+// "no spurious rejection" branch; without it a regression that
 // always-returns-error on the field check would still pass the
 // rejection tests above but break legitimate updates.
 func TestAttachedObjectReference_beforeUpdate_AllowsNoOpUpdate(t *testing.T) {

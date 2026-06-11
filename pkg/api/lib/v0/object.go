@@ -1,15 +1,12 @@
 package v0
 
 import (
-	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
 
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // CoreApiNamespace is the api namespace used for core threeport types
@@ -54,29 +51,6 @@ type FullyQualifiedTypeProvider interface {
 // new query.
 func NewCleanSession(tx *gorm.DB) *gorm.DB {
 	return tx.Session(&gorm.Session{NewDB: true})
-}
-
-// LoadObjFromDB returns a newly-allocated instance of obj's concrete
-// type populated from the database by ID via a fresh session that does
-// not inherit the current statement's clauses. The original obj is not
-// mutated. It is the call-shape-independent way to read committed state:
-// in a before-update hook that is the pre-update row (needed because
-// under a PUT the receiver holds the caller's new values, not the
-// committed ones); in an after-update hook it is the post-update row.
-// See pkg/api/lib/v0/update_helpers.go for the full call-shape model
-// and sibling helpers.
-func LoadObjFromDB(tx *gorm.DB, obj interface{}, id uint) (interface{}, error) {
-	// allocate a new instance of obj's concrete type via reflection;
-	// the caller's obj stays untouched while loaded values land here
-	loaded := reflect.New(reflect.TypeOf(obj).Elem()).Interface()
-
-	if err := NewCleanSession(tx).First(loaded, id).Error; err != nil {
-		return nil, fmt.Errorf(
-			"failed to load %s/%d from database: %w",
-			util.ObjectTypeName(obj), id, err,
-		)
-	}
-	return loaded, nil
 }
 
 // ParseQualifiedType splits "<api-namespace>/<version>.<TypeName>" into

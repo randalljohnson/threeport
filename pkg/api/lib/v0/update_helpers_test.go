@@ -27,7 +27,7 @@ type testUpdateRow struct {
 }
 
 func (t *testUpdateRow) BeforeUpdate(tx *gorm.DB) error {
-	t.SawIncomingPtr = IncomingValues(tx, t)
+	t.SawIncomingPtr = IncomingValues(tx)
 	var err error
 	if t.SawNameChanged, err = IsFieldChanged(tx, "Name"); err != nil {
 		t.SawErr = err
@@ -72,7 +72,7 @@ func updateTestUintPtr(n uint) *uint    { return &n }
 // TestIncomingValues_UnderPATCH confirms the helper returns
 // tx.Statement.Dest (the patch struct) under db.Model(...).Updates(...).
 // The hook receiver in that call shape is the loaded row, not the
-// patch — the whole point of IncomingValues is to redirect to the
+// patch; the whole point of IncomingValues is to redirect to the
 // inbound payload so callers don't read stale loaded values by mistake.
 func TestIncomingValues_UnderPATCH(t *testing.T) {
 	db := setupUpdateHooksTestDB(t)
@@ -93,7 +93,7 @@ func TestIncomingValues_UnderPATCH(t *testing.T) {
 // TestIncomingValues_UnderPUT confirms the helper returns the receiver
 // itself under db.Save(...). Under that call shape Model == Dest, so
 // the receiver already IS the caller's new values and the redirect is
-// a no-op — IncomingValues hands the receiver back unchanged.
+// a no-op; IncomingValues hands the receiver back unchanged.
 func TestIncomingValues_UnderPUT(t *testing.T) {
 	db := setupUpdateHooksTestDB(t)
 	require.NoError(t, db.Create(&testUpdateRow{
@@ -212,10 +212,11 @@ func TestIsFieldChanged_PATCH_NoChangeReportsFalse(t *testing.T) {
 	assert.False(t, loaded.SawColorChanged)
 }
 
-// TestIsFieldChanged_MissingFieldReturnsError confirms a typo'd field
-// name surfaces as a returned error rather than silently returning
-// false. The hook propagates the error so GORM aborts the operation.
-func TestIsFieldChanged_MissingFieldReturnsError(t *testing.T) {
+// TestIsFieldChanged_MissingFieldReturnsError_UnderPUT confirms a typo'd
+// field name surfaces as a returned error rather than silently returning
+// false on the PUT path. The hook propagates the error so GORM aborts
+// the operation.
+func TestIsFieldChanged_MissingFieldReturnsError_UnderPUT(t *testing.T) {
 	db := setupUpdateHooksTestDB(t)
 	require.NoError(t, db.Create(&testTypoRow{
 		ID: updateTestUintPtr(1), Name: updateTestStrPtr("orig"),
@@ -229,4 +230,28 @@ func TestIsFieldChanged_MissingFieldReturnsError(t *testing.T) {
 		"error message should name the missing field; got: %s", err.Error())
 	require.Error(t, obj.SawErr)
 	assert.True(t, strings.Contains(obj.SawErr.Error(), "NoSuchField"))
+}
+
+// TestIsFieldChanged_MissingFieldReturnsError_UnderPATCH confirms the
+// same guard fires on the PATCH path. Without explicit schema lookup
+// the PATCH branch would delegate to tx.Statement.Changed which
+// returns false silently for unknown field names, letting a typo
+// slip through any immutability check that depends on the helper.
+func TestIsFieldChanged_MissingFieldReturnsError_UnderPATCH(t *testing.T) {
+	db := setupUpdateHooksTestDB(t)
+	require.NoError(t, db.Create(&testTypoRow{
+		ID: updateTestUintPtr(1), Name: updateTestStrPtr("orig"),
+	}).Error)
+
+	var loaded testTypoRow
+	require.NoError(t, db.First(&loaded, 1).Error)
+
+	patch := &testTypoRow{Name: updateTestStrPtr("renamed")}
+	err := db.Model(&loaded).Updates(patch).Error
+
+	require.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "NoSuchField"),
+		"error message should name the missing field; got: %s", err.Error())
+	require.Error(t, loaded.SawErr)
+	assert.True(t, strings.Contains(loaded.SawErr.Error(), "NoSuchField"))
 }

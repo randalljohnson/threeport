@@ -38,7 +38,7 @@ func persistFalseFieldsFor(obj interface{}) []PersistFalseField {
 //
 // See pkg/api/lib/v0/update_helpers.go for the full call-shape model.
 func ProcessPersistFalseTaggedFields(tx *gorm.DB, obj interface{}) error {
-	for _, field := range persistFalseFieldsFor(IncomingValues(tx, obj)) {
+	for _, field := range persistFalseFieldsFor(IncomingValues(tx)) {
 		tx.Statement.SetColumn(strcase.ToSnake(field.Name), nil)
 	}
 

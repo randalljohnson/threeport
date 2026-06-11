@@ -19,11 +19,12 @@ func (s *SecretDefinition) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, s) — values being written
-//   - lib.IsFullReplace(tx, s) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (s *SecretDefinition) beforeUpdate(tx *gorm.DB) error {
@@ -45,11 +46,12 @@ func (s *SecretInstance) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, s) — values being written
-//   - lib.IsFullReplace(tx, s) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (s *SecretInstance) beforeUpdate(tx *gorm.DB) error {

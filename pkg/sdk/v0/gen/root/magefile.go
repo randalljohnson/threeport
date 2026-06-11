@@ -44,6 +44,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 	f.ImportAlias(installerPkg, "installer")
+	f.ImportAlias("github.com/threeport/threeport/pkg/cli/v0", "cli")
 
 	// collect specs for every per-component image function so AllImages
 	// can pre-build the binaries up front in one go build per arch.
@@ -429,7 +430,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	})
 	f.Line()
 
-	// extension plugin build
+	// extension plugin build and install
 	if gen.Module {
 		f.Comment("Plugin compiles the extension's tptctl plugin.")
 		f.Func().Params(Id("Build")).Id("Plugin").Params().Error().Block(
@@ -463,6 +464,77 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				"tptctl plugin built and available at bin/%s",
 				strcase.ToKebab(sdkConfig.ModuleName),
 			))),
+			Line(),
+
+			Return(Nil()),
+		)
+		f.Line()
+
+		f.Comment("Plugin builds the tptctl plugin and installs it in the tptctl plugin directory.")
+		f.Func().Params(Id("Install")).Id("Plugin").Params().Error().Block(
+			Id("build").Op(":=").Id("Build").Values(),
+			If(Err().Op(":=").Id("build").Dot("Plugin").Call().Op(";").Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("failed to build tptctl plugin: %w"),
+					Err(),
+				)),
+			),
+			Line(),
+
+			Id("pluginDir").Op(":=").Qual("os", "Getenv").Call(Lit("THREEPORT_PLUGIN_DIR")),
+			If(Id("pluginDir").Op("==").Lit("")).Block(
+				List(Id("dir"), Err()).Op(":=").Qual(
+					"github.com/threeport/threeport/pkg/cli/v0",
+					"DefaultPluginDir",
+				).Call(),
+				If(Err().Op("!=").Nil()).Block(
+					Return(Qual("fmt", "Errorf").Call(
+						Lit("failed to determine tptctl plugin directory: %w"),
+						Err(),
+					)),
+				),
+				Id("pluginDir").Op("=").Id("dir"),
+			),
+			If(Err().Op(":=").Qual("os", "MkdirAll").Call(
+				Id("pluginDir"),
+				Id("0o755"),
+			).Op(";").Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("failed to create tptctl plugin directory: %w"),
+					Err(),
+				)),
+			),
+			Line(),
+
+			Id("outputPath").Op(":=").Qual("path/filepath", "Join").Call(
+				Id("pluginDir"),
+				Lit(strcase.ToKebab(sdkConfig.ModuleName)),
+			),
+			Id("installCmd").Op(":=").Qual("os/exec", "Command").Call(
+				Line().Lit("cp"),
+				Line().Lit(fmt.Sprintf(
+					"bin/%s",
+					strcase.ToKebab(sdkConfig.ModuleName),
+				)),
+				Line().Id("outputPath"),
+				Line(),
+			),
+			Line(),
+
+			List(Id("output"), Err()).Op(":=").Id("installCmd").Dot("CombinedOutput").Call(),
+			If(Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("install failed for tptctl plugin with output '%s': %w"),
+					Id("output"),
+					Err(),
+				)),
+			),
+			Line(),
+
+			Qual("fmt", "Printf").Call(
+				Lit("tptctl plugin installed and available at %s\n"),
+				Id("outputPath"),
+			),
 			Line(),
 
 			Return(Nil()),

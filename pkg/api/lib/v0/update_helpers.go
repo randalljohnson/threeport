@@ -100,6 +100,12 @@ func IsFieldChanged(tx *gorm.DB, fieldName string) (bool, error) {
 	// Statement.Changed compares them directly, so no DB read of our own
 	// is needed.
 	if tx.Statement.Model != tx.Statement.Dest {
+		// validate the field exists on the schema; tx.Statement.Changed
+		// silently returns false for unknown names, which would let a
+		// typo'd field slip through an immutability check on PATCH.
+		if tx.Statement.Schema != nil && tx.Statement.Schema.LookUpField(fieldName) == nil {
+			return false, fmt.Errorf("IsFieldChanged: field %s not found on %T", fieldName, tx.Statement.Dest)
+		}
 		return tx.Statement.Changed(fieldName), nil
 	}
 

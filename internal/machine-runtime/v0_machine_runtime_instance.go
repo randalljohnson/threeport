@@ -3,9 +3,12 @@
 package machineruntime
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	logr "github.com/go-logr/logr"
+	"golang.org/x/crypto/ssh"
 
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
@@ -15,6 +18,75 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// sshRetryDelaySeconds is the requeue delay (in seconds) returned when an
+// SSH connect or ping fails. Package-level so tests can override it.
+var sshRetryDelaySeconds int64 = 30
+
+// sshOperationTimeout bounds the SSH operations of one reconcile pass.
+// Package-level so tests can shrink it to exercise the timeout path.
+var sshOperationTimeout = 30 * time.Second
+
+// newReconcileContext returns the context that bounds one reconcile pass's
+// SSH operations. Package-level so tests can swap in a context that is
+// already canceled or cancels mid-flight.
+var newReconcileContext = func() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), sshOperationTimeout)
+}
+
+// getClientResult carries an SSH connect outcome across a goroutine
+// boundary.
+type getClientResult struct {
+	client          *ssh.Client
+	capturedHostKey string
+	err             error
+}
+
+// getClientWithContext establishes the SSH connection in its own goroutine
+// so the caller returns promptly when ctx is canceled or times out, even
+// though the underlying connect cannot be interrupted. When the caller
+// abandons the attempt, a reaper goroutine waits for the connect to finish
+// and closes any connection it produced; the buffered channel lets the
+// connect goroutine exit without blocking either way.
+func getClientWithContext(
+	ctx context.Context,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	encryptionKey string,
+) (*ssh.Client, string, error) {
+	done := make(chan getClientResult, 1)
+	go func() {
+		sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, encryptionKey)
+		done <- getClientResult{sshClient, capturedHostKey, err}
+	}()
+	select {
+	case res := <-done:
+		return res.client, res.capturedHostKey, res.err
+	case <-ctx.Done():
+		go func() {
+			if res := <-done; res.client != nil {
+				res.client.Close()
+			}
+		}()
+		return nil, "", fmt.Errorf("ssh connect aborted: %w", ctx.Err())
+	}
+}
+
+// pingWithContext verifies the connection is usable, returning early with
+// ctx's error when the context is canceled or times out before the ping
+// completes. The underlying call cannot be interrupted; an abandoned ping
+// unblocks and exits when the caller closes the SSH client.
+func pingWithContext(ctx context.Context, sshClient *ssh.Client) error {
+	done := make(chan error, 1)
+	go func() {
+		done <- machine.Ping(sshClient)
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("ssh ping aborted: %w", ctx.Err())
+	}
+}
+
 // v0MachineRuntimeInstanceCreated performs reconciliation when a v0 MachineRuntimeInstance
 // has been created.  It verifies the machine is reachable via SSH and records
 // an event reflecting the result.
@@ -23,8 +95,13 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// bound all ssh operations in this reconcile pass so a partitioned or
+	// hanging host cannot stall the reconciler indefinitely
+	ctx, cancel := newReconcileContext()
+	defer cancel()
+
 	// establish an ssh connection to the machine
-	sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
+	sshClient, capturedHostKey, err := getClientWithContext(ctx, machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
@@ -40,7 +117,7 @@ func v0MachineRuntimeInstanceCreated(
 		// always retry ssh client failures, since a misconfigured credential
 		// or unreachable host may be fixed externally without any change
 		// to this object, so reconciliation should keep trying
-		return 30, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
 	}
 	defer sshClient.Close()
 
@@ -69,7 +146,7 @@ func v0MachineRuntimeInstanceCreated(
 	}
 
 	// verify the connection is usable
-	if err := machine.Ping(sshClient); err != nil {
+	if err := pingWithContext(ctx, sshClient); err != nil {
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -82,7 +159,7 @@ func v0MachineRuntimeInstanceCreated(
 			log.Error(eventErr, "failed to record event for ssh ping error")
 		}
 		// always retry, same reasoning as the GetClient path above
-		return 30, fmt.Errorf("failed to ping machine runtime instance: %w", err)
+		return sshRetryDelaySeconds, fmt.Errorf("failed to ping machine runtime instance: %w", err)
 	}
 
 	// record successful reachability event

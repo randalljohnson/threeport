@@ -50,12 +50,12 @@ import (
 // Under the hood the two call shapes differ in what the hook receiver
 // holds:
 //
-//   - Model(&loaded).Updates(&patch) — the caller has a payload with
+//   - Model(&loaded).Updates(&patch): the caller has a payload with
 //     only the fields it wants to change; GORM applies those over the
 //     loaded row and leaves the rest. Hook receiver is the loaded DB
 //     row; the caller's new values live in tx.Statement.Dest.
 //
-//   - Save(&obj) — the caller has a complete object and wants every
+//   - Save(&obj): the caller has a complete object and wants every
 //     field persisted. Receiver and tx.Statement.Dest are the same
 //     inbound object that already holds the new values.
 //
@@ -80,7 +80,7 @@ import (
 
 // IsFieldChanged reports whether the named field is being modified by
 // the current GORM update. Reach for this first for any per-field
-// change detection in a hook — it works under both PATCH and PUT call
+// change detection in a hook; it works under both PATCH and PUT call
 // shapes.
 //
 // Under PATCH (Updates), uses tx.Statement.Changed which correctly
@@ -111,7 +111,7 @@ func IsFieldChanged(tx *gorm.DB, fieldName string) (bool, error) {
 
 	// PUT path: Model == Dest, so the inbound IS the receiver. Under
 	// Save, tx.Statement.Changed always reports false because there is
-	// no separate loaded row to diff against — we have to load the
+	// no separate loaded row to diff against; we have to load the
 	// committed row ourselves and compare manually.
 	incoming := tx.Statement.Dest
 

@@ -72,7 +72,7 @@ func updateTestUintPtr(n uint) *uint    { return &n }
 // TestIncomingValues_UnderPATCH confirms the helper returns
 // tx.Statement.Dest (the patch struct) under db.Model(...).Updates(...).
 // The hook receiver in that call shape is the loaded row, not the
-// patch — the whole point of IncomingValues is to redirect to the
+// patch; the whole point of IncomingValues is to redirect to the
 // inbound payload so callers don't read stale loaded values by mistake.
 func TestIncomingValues_UnderPATCH(t *testing.T) {
 	db := setupUpdateHooksTestDB(t)
@@ -93,7 +93,7 @@ func TestIncomingValues_UnderPATCH(t *testing.T) {
 // TestIncomingValues_UnderPUT confirms the helper returns the receiver
 // itself under db.Save(...). Under that call shape Model == Dest, so
 // the receiver already IS the caller's new values and the redirect is
-// a no-op — IncomingValues hands the receiver back unchanged.
+// a no-op; IncomingValues hands the receiver back unchanged.
 func TestIncomingValues_UnderPUT(t *testing.T) {
 	db := setupUpdateHooksTestDB(t)
 	require.NoError(t, db.Create(&testUpdateRow{

@@ -153,20 +153,20 @@ func emitValidateScaffoldIfMissing(
 				f.Comment("pkg/api/lib/v0/update_helpers.go for the full model. The simplest")
 				f.Comment("per-field check is:")
 				f.Comment(fmt.Sprintf(
-					`  - %s.IsFieldChanged(tx, "FieldName") — works under both PATCH`,
+					`  - %s.IsFieldChanged(tx, "FieldName"): works under both PATCH`,
 					libAlias,
 				))
-				f.Comment("    and PUT; handles the DB load internally")
+				f.Comment("    and PUT, handles the DB load internally")
 				f.Comment(fmt.Sprintf(
 					"Lower-level helpers, useful when %s.IsFieldChanged doesn't fit:",
 					libAlias,
 				))
 				f.Comment(fmt.Sprintf(
-					"  - %s.IncomingValues(tx, %s) — values being written",
+					"  - %s.IncomingValues(tx, %s): values being written",
 					libAlias, receiver,
 				))
 				f.Comment(fmt.Sprintf(
-					"  - %s.IsFullReplace(tx, %s) — true for PUT, false for PATCH",
+					"  - %s.IsFullReplace(tx, %s): true for PUT, false for PATCH",
 					libAlias, receiver,
 				))
 				// spell out the import line so the developer can drop it

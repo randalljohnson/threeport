@@ -120,7 +120,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 	}
 
 	// We don't reach for lib.IsFieldChanged here because the check
-	// needs (a) the "previously non-nil" filter — only FKs that were
+	// needs (a) the "previously non-nil" filter; only FKs that were
 	// already set are immutable, and (b) all FKs diffed in a single
 	// DB read. Calling IsFieldChanged per FK would re-load the pre
 	// row N times under PUT.
@@ -151,7 +151,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		}
 		incomingID := incomingByField[preUpdateForeignKey.FieldName]
 		// cleared: caller explicitly nulled the FK (only meaningful
-		// under PUT — see the isReplace note above).
+		// under PUT, see the isReplace note above).
 		cleared := incomingID == nil && isReplace
 		// changed: caller set the FK to a different non-nil value.
 		changed := incomingID != nil && *incomingID != *preUpdateForeignKey.ObjectID
@@ -186,7 +186,7 @@ func processRelationshipTaggedFieldsBeforeUpdate(tx *gorm.DB, obj interface{}) e
 		return nil
 	}
 
-	// Control-plane callers bypass the block — they're the
+	// Control-plane callers bypass the block; they're the
 	// owner/partner controllers (or internal reconcilers) that are
 	// supposed to maintain owned rows.
 	if lib.Caller(tx.Statement.Context).OrganizationalUnit == auth.OUControlPlane {
@@ -231,7 +231,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 
 	// Reload so the FK values reflect what was just committed. GORM
 	// merges the update into the receiver before this hook fires, so
-	// the reload is mostly defensive — it keeps the FK reads correct
+	// the reload is mostly defensive; it keeps the FK reads correct
 	// regardless of which call shape (PATCH or PUT) drove the update.
 	updatedObj, err := lib.LoadObjectFromDB(tx, obj, *objID)
 	if err != nil {
@@ -264,7 +264,7 @@ func processRelationshipTaggedFieldsAfterUpdate(tx *gorm.DB, obj interface{}) er
 		}
 
 		if count == 0 {
-			// No AOR yet — this is either the initial nil->set transition
+			// No AOR yet; this is either the initial nil->set transition
 			// or a sync after a backfill. Insert one now.
 			if err := insertAttachedObjectReference(tx, updatedObjForeignKey, objType, *objID); err != nil {
 				return err

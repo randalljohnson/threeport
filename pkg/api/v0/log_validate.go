@@ -14,11 +14,11 @@ func (l *LogBackend) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, l) — values being written
-//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx, l): values being written
+//   - lib.IsFullReplace(tx, l): true for PUT, false for PATCH
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LogBackend) beforeUpdate(tx *gorm.DB) error {
@@ -55,11 +55,11 @@ func (l *LogStorageDefinition) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, l) — values being written
-//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx, l): values being written
+//   - lib.IsFullReplace(tx, l): true for PUT, false for PATCH
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LogStorageDefinition) beforeUpdate(tx *gorm.DB) error {
@@ -96,11 +96,11 @@ func (l *LogStorageInstance) beforeCreate(tx *gorm.DB) error {
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
-//   - lib.IsFieldChanged(tx, "FieldName") — works under both PATCH
-//     and PUT; handles the DB load internally
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
-//   - lib.IncomingValues(tx, l) — values being written
-//   - lib.IsFullReplace(tx, l) — true for PUT, false for PATCH
+//   - lib.IncomingValues(tx, l): values being written
+//   - lib.IsFullReplace(tx, l): true for PUT, false for PATCH
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LogStorageInstance) beforeUpdate(tx *gorm.DB) error {

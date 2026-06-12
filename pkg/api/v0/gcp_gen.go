@@ -11,10 +11,16 @@ import (
 )
 
 const (
+	ObjectTypeGcpGceMachineRuntimeDefinition    string = "GcpGceMachineRuntimeDefinition"
+	ObjectTypeGcpGceMachineRuntimeInstance      string = "GcpGceMachineRuntimeInstance"
 	ObjectTypeGcpGkeKubernetesRuntimeDefinition string = "GcpGkeKubernetesRuntimeDefinition"
 	ObjectTypeGcpGkeKubernetesRuntimeInstance   string = "GcpGkeKubernetesRuntimeInstance"
 	ObjectTypeGcpProvider                       string = "GcpProvider"
 
+	PathGcpGceMachineRuntimeDefinitionVersions    = "/gcp-gce-machine-runtime-definitions/versions"
+	PathGcpGceMachineRuntimeDefinitions           = "/v0/gcp-gce-machine-runtime-definitions"
+	PathGcpGceMachineRuntimeInstanceVersions      = "/gcp-gce-machine-runtime-instances/versions"
+	PathGcpGceMachineRuntimeInstances             = "/v0/gcp-gce-machine-runtime-instances"
 	PathGcpGkeKubernetesRuntimeDefinitionVersions = "/gcp-gke-kubernetes-runtime-definitions/versions"
 	PathGcpGkeKubernetesRuntimeDefinitions        = "/v0/gcp-gke-kubernetes-runtime-definitions"
 	PathGcpGkeKubernetesRuntimeInstanceVersions   = "/gcp-gke-kubernetes-runtime-instances/versions"
@@ -22,6 +28,130 @@ const (
 	PathGcpProviderVersions                       = "/gcp-providers/versions"
 	PathGcpProviders                              = "/v0/gcp-providers"
 )
+
+// NotificationPayload returns the notification payload that is delivered to the
+// controller when a change is made.  It includes the object as presented by the
+// client when the change was made.
+func (ggmrd *GcpGceMachineRuntimeDefinition) NotificationPayload(
+	operation notifications.NotificationOperation,
+	requeue bool,
+	creationTime int64,
+) (*[]byte, error) {
+	notif := notifications.Notification{
+		CreationTime:  &creationTime,
+		Object:        ggmrd,
+		ObjectVersion: ggmrd.GetVersion(),
+		Operation:     operation,
+	}
+
+	payload, err := json.Marshal(notif)
+	if err != nil {
+		return &payload, fmt.Errorf("failed to marshal notification payload %+v: %w", ggmrd, err)
+	}
+
+	return &payload, nil
+}
+
+// DecodeNotifObject takes the threeport object in the form of a
+// map[string]interface and returns the typed object by marshalling into JSON
+// and then unmarshalling into the typed object.  We are not using the
+// mapstructure library here as that requires custom decode hooks to manage
+// fields with non-native go types.
+func (ggmrd *GcpGceMachineRuntimeDefinition) DecodeNotifObject(object interface{}) error {
+	jsonObject, err := json.Marshal(object)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object map from consumed notification message: %w", err)
+	}
+	if err := json.Unmarshal(jsonObject, &ggmrd); err != nil {
+		return fmt.Errorf("failed to unmarshal json object to typed object: %w", err)
+	}
+	return nil
+}
+
+// GetId returns the unique ID for the object.
+func (ggmrd *GcpGceMachineRuntimeDefinition) GetId() uint {
+	return *ggmrd.ID
+}
+
+// GetType returns the object type.
+func (ggmrd *GcpGceMachineRuntimeDefinition) GetType() string {
+	return "GcpGceMachineRuntimeDefinition"
+}
+
+// GetVersion returns the version of the API object.
+func (ggmrd *GcpGceMachineRuntimeDefinition) GetVersion() string {
+	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ggmrd *GcpGceMachineRuntimeDefinition) GetFullyQualifiedType() string {
+	return "threeport.io/v0.GcpGceMachineRuntimeDefinition"
+}
+
+// NotificationPayload returns the notification payload that is delivered to the
+// controller when a change is made.  It includes the object as presented by the
+// client when the change was made.
+func (ggmri *GcpGceMachineRuntimeInstance) NotificationPayload(
+	operation notifications.NotificationOperation,
+	requeue bool,
+	creationTime int64,
+) (*[]byte, error) {
+	notif := notifications.Notification{
+		CreationTime:  &creationTime,
+		Object:        ggmri,
+		ObjectVersion: ggmri.GetVersion(),
+		Operation:     operation,
+	}
+
+	payload, err := json.Marshal(notif)
+	if err != nil {
+		return &payload, fmt.Errorf("failed to marshal notification payload %+v: %w", ggmri, err)
+	}
+
+	return &payload, nil
+}
+
+// DecodeNotifObject takes the threeport object in the form of a
+// map[string]interface and returns the typed object by marshalling into JSON
+// and then unmarshalling into the typed object.  We are not using the
+// mapstructure library here as that requires custom decode hooks to manage
+// fields with non-native go types.
+func (ggmri *GcpGceMachineRuntimeInstance) DecodeNotifObject(object interface{}) error {
+	jsonObject, err := json.Marshal(object)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object map from consumed notification message: %w", err)
+	}
+	if err := json.Unmarshal(jsonObject, &ggmri); err != nil {
+		return fmt.Errorf("failed to unmarshal json object to typed object: %w", err)
+	}
+	return nil
+}
+
+// GetId returns the unique ID for the object.
+func (ggmri *GcpGceMachineRuntimeInstance) GetId() uint {
+	return *ggmri.ID
+}
+
+// GetType returns the object type.
+func (ggmri *GcpGceMachineRuntimeInstance) GetType() string {
+	return "GcpGceMachineRuntimeInstance"
+}
+
+// GetVersion returns the version of the API object.
+func (ggmri *GcpGceMachineRuntimeInstance) GetVersion() string {
+	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (ggmri *GcpGceMachineRuntimeInstance) GetFullyQualifiedType() string {
+	return "threeport.io/v0.GcpGceMachineRuntimeInstance"
+}
+
+// ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
+// if scheduled for deletion or nil if not scheduled for deletion.
+func (ggmri *GcpGceMachineRuntimeInstance) ScheduledForDeletion() *time.Time {
+	return ggmri.DeletionScheduled
+}
 
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the

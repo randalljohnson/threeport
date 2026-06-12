@@ -131,6 +131,17 @@ func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 // linked kubernetes runtime instance. It is split out from OnCreateConfirmed so
 // it can be unit tested without the environment-dependent GetConnection call.
 func (g *gkeLifecycle) updateKubeRuntimeConnection(kubeConnectionInfo *kube.KubeConnectionInfo) error {
+	// reject partial connection info so a transient cloud read cannot write
+	// empty connection fields onto the kubernetes runtime instance; the
+	// resulting error requeues the confirmation for a later retry
+	if kubeConnectionInfo.APIEndpoint == "" ||
+		kubeConnectionInfo.CACertificate == "" ||
+		kubeConnectionInfo.Token == "" {
+		return fmt.Errorf(
+			"incomplete kube connection info for GKE cluster: API endpoint, CA certificate, and token are all required",
+		)
+	}
+
 	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
 		g.r.APIClient,
 		g.r.APIServer,

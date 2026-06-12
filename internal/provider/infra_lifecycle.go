@@ -1,89 +1,145 @@
 package provider
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"sync/atomic"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/go-logr/logr"
 	"gorm.io/datatypes"
 )
 
-// staleAckDurationSeconds is the threshold after which an acknowledgement
-// timestamp is considered stale, indicating the operation was interrupted.
-const staleAckDurationSeconds = 240
+// Requeue intervals and the per-step deadline that bound the observe model.
+// Each reconcile observes cloud reality, optionally kicks one bounded step,
+// then asks the reconciler to requeue after one of these intervals so the next
+// reconcile re-observes. There is no liveness clock: progress is read from the
+// cloud on every pass, not inferred from a stamped timestamp.
+const (
+	// requeueProvisioning is the delay between reconciles while a create is in
+	// flight, giving the kicked step time to advance before the next observe.
+	requeueProvisioning = 60
 
-// infraSemaphore limits concurrent infrastructure operations to prevent OOM
-// from too many simultaneous deployments.
-var infraSemaphore = make(chan struct{}, 5)
+	// requeueDeleting is the delay between reconciles while a destroy is in
+	// flight.
+	requeueDeleting = 60
 
-// ReconciliationSnapshot captures the reconciliation timestamps and resource
-// inventory for a provider instance at a point in time. This decouples the
-// lifecycle handler from any specific API object type.
-type ReconciliationSnapshot struct {
-	CreationAcknowledged *time.Time
-	CreationConfirmed    *time.Time
-	CreationFailed       bool
-	DeletionScheduled    *time.Time
-	DeletionAcknowledged *time.Time
-	DeletionConfirmed    *time.Time
-	ResourceInventory    *datatypes.JSON
+	// requeueAfterFailure is the delay before retrying after a kicked apply or
+	// destroy step returns an error. The partial state is persisted first so
+	// the retry resumes against what already exists.
+	requeueAfterFailure = 60
+
+	// stepDeadline bounds a single Apply or Destroy kick so a stuck cloud
+	// operation cannot pin a reconcile indefinitely; the step returns and the
+	// next observe picks up where it left off.
+	stepDeadline = 240 * time.Second
+)
+
+// infraSemaphore caps how many infrastructure provisioning steps run at once
+// across this process, so a controller reconciling many runtimes in parallel
+// cannot launch an unbounded number of memory-heavy cloud operations and
+// exhaust its memory. A reconcile that cannot acquire a slot does not block: it
+// requeues and tries again on the next pass. Capacity is fixed once at
+// controller startup via SetInfraConcurrency; until then it defaults to a
+// single slot.
+var infraSemaphore = make(chan struct{}, 1)
+
+// inFlight tracks how many infrastructure steps are executing right now, so the
+// concurrency cap can be observed at any instant. It is incremented after a slot
+// is acquired and decremented before the slot is released.
+var inFlight int64
+
+// SetInfraConcurrency sizes the infrastructure concurrency semaphore. It must be
+// called once during controller startup, before any reconcilers launch, since
+// the channel capacity is fixed at creation and re-making it is only safe while
+// no goroutine is using it. A cap below 1 is clamped to 1. It is a no-op in
+// effect for controllers that never run the infrastructure lifecycle, since the
+// semaphore is only acquired on a provisioning step.
+func SetInfraConcurrency(cap int) {
+	if cap < 1 {
+		cap = 1
+	}
+	infraSemaphore = make(chan struct{}, cap)
 }
 
-// InfraLifecycleProvider defines the provider-specific operations needed by the
-// HandleInfraCreate and HandleInfraDelete state machines. Each infrastructure
-// provider implements this interface; the lifecycle handler does everything
-// else (ack/confirm checks, stale detection, goroutine wiring).
+// acquireInfraSlot tries to take a semaphore slot without blocking. It reports
+// whether a slot was acquired; on success the caller must call releaseInfraSlot
+// exactly once when its step finishes. A failed acquire means the cap is full,
+// and the caller requeues rather than waiting.
+func acquireInfraSlot() bool {
+	select {
+	case infraSemaphore <- struct{}{}:
+		atomic.AddInt64(&inFlight, 1)
+		return true
+	default:
+		return false
+	}
+}
+
+// releaseInfraSlot returns a previously acquired slot and decrements the
+// in-flight count. It must be called exactly once per successful acquire.
+func releaseInfraSlot() {
+	atomic.AddInt64(&inFlight, -1)
+	<-infraSemaphore
+}
+
+// inFlightCount reports how many infrastructure steps are executing right now.
+func inFlightCount() int64 {
+	return atomic.LoadInt64(&inFlight)
+}
+
+// emptyInventory is the placeholder written to the resource inventory once a
+// destroy is confirmed, signalling that no cloud resources remain.
+var emptyInventory = datatypes.JSON([]byte("{}"))
+
+// ReconciliationSnapshot is the lifecycle-relevant projection of an API object.
+// It carries only durable lifecycle facts: whether create and delete are
+// confirmed, whether a delete is scheduled, whether the last step failed, and
+// the persisted state. Phase is never stored here; it comes from Observe.
+type ReconciliationSnapshot struct {
+	// Reconciled is true once create is confirmed and the object is settled.
+	Reconciled bool
+
+	// CreationConfirmed is set once Observe first reported PhaseReady.
+	CreationConfirmed *time.Time
+
+	// CreationFailed records that the last apply step ended terminally.
+	CreationFailed bool
+
+	// DeletionScheduled is set by the API when the object is marked for delete.
+	DeletionScheduled *time.Time
+
+	// DeletionConfirmed is set once Observe first reported PhaseAbsent.
+	DeletionConfirmed *time.Time
+
+	// ResourceInventory is the persisted stack state for crash recovery and
+	// idempotent resume.
+	ResourceInventory *datatypes.JSON
+}
+
+// InfraLifecycleProvider is the provider-specific surface the HandleInfraCreate
+// and HandleInfraDelete state machines call. The handler owns all phase logic,
+// requeue timing, and reconciliation writes; the provider supplies only what is
+// genuinely provider-specific: how to read state, how to build the infra
+// object, post-create/post-delete hooks, and notifications.
 type InfraLifecycleProvider interface {
-	// GetReconciliation fetches the latest reconciliation state and resource
-	// inventory from the API.
+	// GetReconciliation fetches the current lifecycle projection from the API.
 	GetReconciliation() (*ReconciliationSnapshot, error)
+
+	// UpdateReconciliation persists the next reconciliation snapshot in a
+	// single write. The handler passes only the fields it intends to change.
+	UpdateReconciliation(snapshot ReconciliationSnapshot) error
 
 	// BuildInfra constructs the InfraProvider implementor for this provider.
 	BuildInfra() (InfraProvider, error)
 
-	// IsCreateComplete checks whether the async create operation has finished.
-	IsCreateComplete() (bool, error)
-
-	// OnCreateConfirmed performs provider-specific post-creation work.
+	// OnCreateConfirmed performs provider-specific post-creation work, e.g.
+	// fetching connection info and updating the runtime instance.
 	OnCreateConfirmed(infra InfraProvider) error
-
-	// SaveCreateOutputs saves provider-specific outputs and final state.
-	SaveCreateOutputs(infra InfraProvider, state *datatypes.JSON) error
 
 	// OnDeleteConfirmed performs provider-specific post-deletion cleanup.
 	OnDeleteConfirmed(infra InfraProvider) error
-
-	// AckCreation sets CreationAcknowledged and clears CreationFailed in the API.
-	AckCreation() error
-
-	// RefreshCreationAck updates CreationAcknowledged to prevent stale detection.
-	RefreshCreationAck() error
-
-	// SetCreationFailed marks CreationFailed=true in the API.
-	SetCreationFailed() error
-
-	// ConfirmCreation sets CreationConfirmed and Reconciled=true in the API.
-	ConfirmCreation() error
-
-	// AckDeletion sets DeletionAcknowledged in the API.
-	AckDeletion() error
-
-	// RefreshDeletionAck updates DeletionAcknowledged to prevent stale detection.
-	RefreshDeletionAck() error
-
-	// ConfirmDeletion sets DeletionConfirmed in the API.
-	ConfirmDeletion() error
-
-	// SaveState persists intermediate state to the API for crash recovery.
-	SaveState(state *datatypes.JSON) error
-
-	// ClearInventory sets ResourceInventory to "{}" to signal destroy complete.
-	ClearInventory() error
 
 	// PublishCreateNotification publishes a NATS notification for creation.
 	PublishCreateNotification() error
@@ -93,665 +149,253 @@ type InfraLifecycleProvider interface {
 }
 
 // HandleInfraCreate implements the create state machine for any infrastructure
-// provider. It checks reconciliation state, manages ack/confirm transitions,
-// and launches the create goroutine when needed.
+// provider in the observe-and-requeue model. Each reconcile observes cloud
+// reality, kicks one bounded apply step only when resources are absent or the
+// last step failed, persists the refreshed state, and requeues. Phase is read
+// from the cloud on every pass, so any replica computes the same next action
+// and a retry resumes against existing state rather than provisioning a
+// duplicate. The context carries a per-step deadline; the call site signature
+// is unchanged so the reconciler scaffolds do not need editing.
 func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error) {
-	// fetch latest state from API
+	ctx := context.Background()
+
+	// fetch latest lifecycle projection from API
 	snap, err := p.GetReconciliation()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get reconciliation state: %w", err)
 	}
 
-	// check if already reconciled
+	// terminal: create already confirmed and settled
 	if snap.CreationConfirmed != nil {
 		return 0, nil
 	}
 
-	// check if previously acknowledged and not failed
-	if snap.CreationAcknowledged != nil && !snap.CreationFailed {
-		// check if creation is complete
-		complete, err := p.IsCreateComplete()
-		if err != nil {
-			return 0, fmt.Errorf("failed to check create completion: %w", err)
-		}
-
-		if complete {
-			// build infra for post-creation work (e.g., GetConnection)
-			infra, err := p.BuildInfra()
-			if err != nil {
-				return 0, fmt.Errorf("failed to build infra for create confirmation: %w", err)
-			}
-
-			// perform provider-specific post-creation work
-			if err := p.OnCreateConfirmed(infra); err != nil {
-				return 0, fmt.Errorf("failed to run post-creation work: %w", err)
-			}
-
-			// confirm creation
-			if err := p.ConfirmCreation(); err != nil {
-				return 0, fmt.Errorf("failed to confirm creation: %w", err)
-			}
-
-			log.Info("creation confirmed")
-			return 0, nil
-		}
-
-		// not complete yet — check if acknowledgement is stale
-		if !checkStaleAck(*snap.CreationAcknowledged) {
-			return 120, nil
-		}
+	// a delete raced in front of this create; yield to the delete handler
+	if snap.DeletionScheduled != nil {
+		log.Info("deletion scheduled, yielding to delete handler")
+		return 0, nil
 	}
 
-	// one of the following is true:
-	// 1. creation has not been acknowledged — new create request
-	// 2. creation has previously failed — time to retry
-	// 3. the last acknowledgement is stale — creation was interrupted
-
-	// acknowledge creation
-	if err := p.AckCreation(); err != nil {
-		return 0, fmt.Errorf("failed to acknowledge creation: %w", err)
-	}
-
-	// build infra
+	// build the provider's infra object and restore any persisted state so the
+	// observe below refreshes against resources an earlier process created
 	infra, err := p.BuildInfra()
 	if err != nil {
 		return 0, fmt.Errorf("failed to build infra for create: %w", err)
 	}
+	if hasExistingState(snap.ResourceInventory) {
+		if err := infra.SetStackState(snap.ResourceInventory); err != nil {
+			return 0, fmt.Errorf("failed to restore stack state: %w", err)
+		}
+	}
 
-	// check if deletion was scheduled while we were preparing to create
-	snap, err = p.GetReconciliation()
+	// observe: refresh against the cloud and derive the current phase. A
+	// refresh error surfaces here and we requeue without kicking, so a transient
+	// failure is never mistaken for absent infrastructure.
+	obs, err := infra.Observe(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
+		return 0, fmt.Errorf("failed to observe infrastructure: %w", err)
 	}
-	if snap.DeletionScheduled != nil {
-		log.Info("deletion scheduled, aborting create to let delete handler proceed")
+
+	switch obs.Phase {
+	case PhaseReady:
+		// resources exist and are healthy; run post-creation work, then confirm
+		if err := p.OnCreateConfirmed(infra); err != nil {
+			return 0, fmt.Errorf("failed to run post-creation work: %w", err)
+		}
+		now := time.Now().UTC()
+		if err := p.UpdateReconciliation(ReconciliationSnapshot{
+			ResourceInventory: obs.State,
+			CreationConfirmed: &now,
+			Reconciled:        true,
+			CreationFailed:    false,
+		}); err != nil {
+			return 0, fmt.Errorf("failed to confirm creation: %w", err)
+		}
+		if err := p.PublishCreateNotification(); err != nil {
+			log.Error(err, "failed to publish create notification")
+		}
+		log.Info("creation confirmed")
 		return 0, nil
+
+	case PhaseProvisioning:
+		// a create is already in flight; persist the refreshed state and requeue
+		if err := p.UpdateReconciliation(ReconciliationSnapshot{
+			ResourceInventory: obs.State,
+		}); err != nil {
+			return 0, fmt.Errorf("failed to persist provisioning state: %w", err)
+		}
+		return requeueProvisioning, nil
+
+	default:
+		// PhaseAbsent or PhaseFailed: kick one bounded apply step. Apply is
+		// idempotent against the refreshed state, so this resumes a partial
+		// create rather than starting a second one.
+
+		// honor the global infrastructure concurrency cap: if every slot is
+		// taken, requeue without kicking so another reconcile can make progress
+		// first. The next pass re-observes and tries again.
+		if !acquireInfraSlot() {
+			return requeueProvisioning, nil
+		}
+		defer releaseInfraSlot()
+
+		stepCtx, cancel := context.WithTimeout(ctx, stepDeadline)
+		defer cancel()
+
+		if err := infra.Apply(stepCtx); err != nil {
+			// keep whatever partial state exists so the retry can resume
+			state, stateErr := infra.GetStackState()
+			if stateErr != nil {
+				log.Error(stateErr, "failed to capture state after failed apply step")
+			}
+			if updateErr := p.UpdateReconciliation(ReconciliationSnapshot{
+				ResourceInventory: state,
+				CreationFailed:    true,
+			}); updateErr != nil {
+				log.Error(updateErr, "failed to persist state after failed apply step")
+			}
+			log.Error(err, "apply step failed, will retry")
+			return requeueAfterFailure, nil
+		}
+
+		// persist the state the step produced and requeue to observe progress
+		state, stateErr := infra.GetStackState()
+		if stateErr != nil {
+			log.Error(stateErr, "failed to capture state after apply step")
+		}
+		if err := p.UpdateReconciliation(ReconciliationSnapshot{
+			ResourceInventory: state,
+			CreationFailed:    false,
+		}); err != nil {
+			return 0, fmt.Errorf("failed to persist state after apply step: %w", err)
+		}
+		return requeueProvisioning, nil
 	}
-
-	// wire callbacks and launch goroutine
-	callbacks := infraCallbacks{
-		RefreshAck:     p.RefreshCreationAck,
-		SaveState:      p.SaveState,
-		PersistFailure: p.SetCreationFailed,
-		OnSuccess: func(state *datatypes.JSON) error {
-			// save provider-specific outputs
-			if err := p.SaveCreateOutputs(infra, state); err != nil {
-				return fmt.Errorf("failed to save create outputs: %w", err)
-			}
-
-			// check if deletion was scheduled during the create operation
-			latestSnap, err := p.GetReconciliation()
-			if err == nil && latestSnap.DeletionScheduled != nil {
-				log.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
-				return nil
-			}
-
-			// publish notification
-			if err := p.PublishCreateNotification(); err != nil {
-				log.Error(err, "failed to publish create notification")
-			}
-
-			return nil
-		},
-	}
-
-	return launchInfraCreate(infraConfig{
-		Infra:         infra,
-		ExistingState: snap.ResourceInventory,
-		Callbacks:     callbacks,
-		Log:           log,
-	})
 }
 
 // HandleInfraDelete implements the delete state machine for any infrastructure
-// provider. It checks reconciliation state, manages ack/confirm transitions,
-// handles cross-replica safety, and launches the delete goroutine when needed.
+// provider in the observe-and-requeue model. Each reconcile observes cloud
+// reality, kicks one bounded destroy step only while resources remain,
+// persists the refreshed state, and requeues. Deletion is confirmed only on an
+// observed PhaseAbsent that came from a successful refresh, so a refresh error
+// never clears the inventory while resources still exist.
 func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error) {
-	// fetch latest state from API
+	ctx := context.Background()
+
+	// fetch latest lifecycle projection from API
 	snap, err := p.GetReconciliation()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get reconciliation state: %w", err)
 	}
 
-	// validate that deletion is scheduled
+	// a delete notification only makes sense once the API has scheduled it
 	if snap.DeletionScheduled == nil {
 		return 0, errors.New("deletion notification received but not scheduled")
 	}
 
-	// check if already confirmed
+	// terminal: delete already confirmed
 	if snap.DeletionConfirmed != nil {
 		return 0, nil
 	}
 
-	// cross-replica safety: if a create operation is still in progress on
-	// another replica, requeue to let it finish
-	if snap.CreationAcknowledged != nil &&
-		!checkStaleAck(*snap.CreationAcknowledged) &&
-		snap.CreationConfirmed == nil {
-		log.Info("create operation still in progress, requeueing delete")
-		return 60, nil
-	}
-
-	// check if previously acknowledged
-	if snap.DeletionAcknowledged != nil {
-		// re-fetch to check if inventory has been cleared
-		latestSnap, err := p.GetReconciliation()
-		if err != nil {
-			return 0, fmt.Errorf("failed to check deletion status: %w", err)
-		}
-
-		if inventoryCleared(latestSnap.ResourceInventory) {
-			// refresh ack to prevent stale detection during cleanup
-			if err := p.RefreshDeletionAck(); err != nil {
-				log.Error(err, "failed to refresh deletion ack during cleanup")
-			}
-
-			// build infra for post-deletion cleanup
-			infra, err := p.BuildInfra()
-			if err != nil {
-				return 0, fmt.Errorf("failed to build infra for delete confirmation: %w", err)
-			}
-
-			// perform provider-specific post-deletion cleanup
-			if err := p.OnDeleteConfirmed(infra); err != nil {
-				log.Error(err, "failed to run post-deletion cleanup, will retry")
-				return 60, nil
-			}
-
-			// confirm deletion
-			if err := p.ConfirmDeletion(); err != nil {
-				return 0, fmt.Errorf("failed to confirm deletion: %w", err)
-			}
-
-			log.Info("deletion confirmed")
-			return 0, nil
-		}
-
-		// resources not yet destroyed — check if ack is stale
-		if checkStaleAck(*snap.DeletionAcknowledged) {
-			log.Info("deletion acknowledgement is stale, re-launching delete goroutine")
-			// fall through to re-launch
-		} else {
-			return 60, nil
-		}
-	}
-
-	// acknowledge deletion
-	if err := p.AckDeletion(); err != nil {
-		return 0, fmt.Errorf("failed to acknowledge deletion: %w", err)
-	}
-
-	// build infra
+	// build the provider's infra object and restore any persisted state so the
+	// observe below knows which cloud resources to tear down
 	infra, err := p.BuildInfra()
 	if err != nil {
 		return 0, fmt.Errorf("failed to build infra for delete: %w", err)
 	}
+	if hasExistingState(snap.ResourceInventory) {
+		if err := infra.SetStackState(snap.ResourceInventory); err != nil {
+			return 0, fmt.Errorf("failed to restore stack state: %w", err)
+		}
+	}
 
-	// re-fetch for latest resource inventory
-	snap, err = p.GetReconciliation()
+	// observe: refresh against the cloud and derive the current phase. A
+	// refresh error surfaces here and we requeue without confirming, so a
+	// transient failure never clears the inventory prematurely.
+	obs, err := infra.Observe(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get resource inventory for delete: %w", err)
+		return 0, fmt.Errorf("failed to observe infrastructure: %w", err)
 	}
 
-	// wire callbacks and launch goroutine
-	callbacks := infraCallbacks{
-		RefreshAck: p.RefreshDeletionAck,
-		SaveState:  p.SaveState,
-		OnSuccess: func(_ *datatypes.JSON) error {
-			// clear inventory to signal destroy complete
-			if err := p.ClearInventory(); err != nil {
-				log.Error(err, "failed to clear resource inventory after deletion")
-			}
+	switch obs.Phase {
+	case PhaseAbsent:
+		// no cloud resources remain; run post-deletion cleanup, then confirm
+		if err := p.OnDeleteConfirmed(infra); err != nil {
+			log.Error(err, "failed to run post-deletion cleanup, will retry")
+			return requeueDeleting, nil
+		}
+		now := time.Now().UTC()
+		if err := p.UpdateReconciliation(ReconciliationSnapshot{
+			ResourceInventory: &emptyInventory,
+			DeletionConfirmed: &now,
+		}); err != nil {
+			return 0, fmt.Errorf("failed to confirm deletion: %w", err)
+		}
+		if err := p.PublishDeleteNotification(); err != nil {
+			log.Error(err, "failed to publish delete notification")
+		}
+		log.Info("deletion confirmed")
+		return 0, nil
 
-			// publish notification
-			if err := p.PublishDeleteNotification(); err != nil {
-				log.Error(err, "failed to publish delete notification")
-			}
+	case PhaseDeleting:
+		// a destroy is already in flight; persist the refreshed state and requeue
+		if err := p.UpdateReconciliation(ReconciliationSnapshot{
+			ResourceInventory: obs.State,
+		}); err != nil {
+			return 0, fmt.Errorf("failed to persist deleting state: %w", err)
+		}
+		return requeueDeleting, nil
 
-			return nil
-		},
-	}
-
-	return launchInfraDelete(infraConfig{
-		Infra:         infra,
-		ExistingState: snap.ResourceInventory,
-		Callbacks:     callbacks,
-		Log:           log,
-	})
-}
-
-// infraCallbacks contains callback functions invoked at various points during
-// create and delete goroutine lifecycles.
-type infraCallbacks struct {
-	// RefreshAck updates the acknowledged timestamp to prevent stale detection
-	// while the operation is still running.
-	RefreshAck func() error
-
-	// SaveState persists intermediate state to the API for crash recovery.
-	SaveState func(state *datatypes.JSON) error
-
-	// PersistFailure marks the operation as failed in the API so the
-	// reconciler knows to retry. Set for create operations, nil for delete.
-	PersistFailure func() error
-
-	// OnSuccess is called after successful infrastructure create or delete.
-	// For create, state contains the final Pulumi state; for delete, state is nil.
-	OnSuccess func(state *datatypes.JSON) error
-}
-
-// infraConfig contains all parameters needed to launch an infrastructure
-// create or delete operation in a background goroutine.
-type infraConfig struct {
-	// Infra is the provider's infrastructure object that implements InfraProvider.
-	Infra InfraProvider
-
-	// ExistingState is the previously saved state from ResourceInventory.
-	// When non-nil and non-empty, state is restored before operating.
-	ExistingState *datatypes.JSON
-
-	// Callbacks contains functions invoked during the operation.
-	Callbacks infraCallbacks
-
-	// Log is the structured logger for the operation.
-	Log *logr.Logger
-}
-
-// checkStaleAck returns true if the given acknowledgement timestamp has gone
-// stale, indicating the operation was interrupted (e.g. pod restart).
-func checkStaleAck(ackTimestamp time.Time) bool {
-	duration := time.Now().UTC().Sub(ackTimestamp)
-	return duration.Seconds() > staleAckDurationSeconds
-}
-
-// launchInfraCreate acquires the concurrency semaphore, then launches
-// executeInfraCreate in a background goroutine. Returns a requeue delay
-// for the reconciler.
-func launchInfraCreate(config infraConfig) (int64, error) {
-	// acquire infrastructure concurrency semaphore
-	select {
-	case infraSemaphore <- struct{}{}:
-		// acquired slot
 	default:
-		config.Log.Info("infrastructure worker pool full, requeuing")
-		return 30, nil
-	}
+		// PhaseReady, PhaseProvisioning, or PhaseFailed: resources still present,
+		// kick one bounded destroy step. Destroy is idempotent against the
+		// refreshed state, so this resumes a partial teardown.
 
-	// launch creation in background goroutine
-	go func() {
-		defer func() { <-infraSemaphore }()
-		defer func() {
-			if r := recover(); r != nil {
-				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure create goroutine")
-				persistFailure(config.Callbacks.PersistFailure, config.Log)
-			}
-		}()
-		executeInfraCreate(config)
-	}()
-
-	return 120, nil
-}
-
-// launchInfraDelete acquires the concurrency semaphore, then launches
-// executeInfraDelete in a background goroutine. Returns a requeue delay
-// for the reconciler.
-func launchInfraDelete(config infraConfig) (int64, error) {
-	// acquire infrastructure concurrency semaphore
-	select {
-	case infraSemaphore <- struct{}{}:
-		// acquired slot
-	default:
-		config.Log.Info("infrastructure worker pool full, requeuing")
-		return 30, nil
-	}
-
-	// launch deletion in background goroutine
-	go func() {
-		defer func() { <-infraSemaphore }()
-		defer func() {
-			if r := recover(); r != nil {
-				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure delete goroutine")
-			}
-		}()
-		executeInfraDelete(config)
-	}()
-
-	return 300, nil
-}
-
-// executeInfraCreate runs the full infrastructure create lifecycle in a
-// goroutine. It handles state restoration, optional streaming for providers
-// that support it, and captures final state on success or failure.
-func executeInfraCreate(config infraConfig) {
-	// refresh the creation acknowledgement until this function returns
-	quitAck := make(chan bool, 1)
-	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
-	defer func() { quitAck <- true }()
-
-	// restore state from ResourceInventory if available (retry after failure
-	// or pod restart so the provider knows about previously created resources)
-	if hasExistingState(config.ExistingState) {
-		if err := config.Infra.SetStackState(config.ExistingState); err != nil {
-			config.Log.Error(err, "failed to restore stack state for retry")
-			persistFailure(config.Callbacks.PersistFailure, config.Log)
-			return
+		// honor the global infrastructure concurrency cap: if every slot is
+		// taken, requeue without kicking so another reconcile can make progress
+		// first. The next pass re-observes and tries again.
+		if !acquireInfraSlot() {
+			return requeueDeleting, nil
 		}
-		config.Log.Info("restored state from database for creation retry")
+		defer releaseInfraSlot()
 
-		// refresh state to sync with cloud reality if provider supports it
-		if refreshable, ok := config.Infra.(RefreshableProvider); ok {
-			if err := refreshable.RefreshStack(); err != nil {
-				config.Log.Error(err, "failed to refresh stack state")
-				persistFailure(config.Callbacks.PersistFailure, config.Log)
-				return
+		stepCtx, cancel := context.WithTimeout(ctx, stepDeadline)
+		defer cancel()
+
+		if err := infra.Destroy(stepCtx); err != nil {
+			// keep whatever state remains so the retry knows what is left
+			state, stateErr := infra.GetStackState()
+			if stateErr != nil {
+				log.Error(stateErr, "failed to capture state after failed destroy step")
 			}
-			config.Log.Info("refreshed stack state against cloud reality")
+			if updateErr := p.UpdateReconciliation(ReconciliationSnapshot{
+				ResourceInventory: state,
+			}); updateErr != nil {
+				log.Error(updateErr, "failed to persist state after failed destroy step")
+			}
+			log.Error(err, "destroy step failed, will retry")
+			return requeueAfterFailure, nil
 		}
-	}
 
-	// start state streaming if provider supports it
-	var quitStream chan bool
-	streamStopped := false
-	if streamable, ok := config.Infra.(StreamableProvider); ok {
-		quitStream = make(chan bool, 1)
-		go streamState(streamable, config.Callbacks.SaveState, quitStream, config.Log)
-		defer func() {
-			if !streamStopped {
-				quitStream <- true
-			}
-		}()
-	}
-
-	// create infrastructure
-	err := config.Infra.DeployInfra()
-
-	// stop the stream watcher before capturing final state to prevent
-	// a late fsnotify event from overwriting the authoritative state
-	if quitStream != nil && !streamStopped {
-		quitStream <- true
-		streamStopped = true
-	}
-
-	if err != nil {
-		config.Log.Error(err, "failed to create infrastructure")
-
-		// capture state even on failure so retries can restore it and
-		// avoid creating duplicate cloud resources
-		stateJSON, stateErr := config.Infra.GetStackState()
+		// persist the state the step produced and requeue to observe progress
+		state, stateErr := infra.GetStackState()
 		if stateErr != nil {
-			config.Log.Error(stateErr, "failed to get stack state after failed creation")
-		} else if stateJSON != nil {
-			if saveErr := config.Callbacks.SaveState(stateJSON); saveErr != nil {
-				config.Log.Error(saveErr, "failed to save partial state after failed creation")
-			}
+			log.Error(stateErr, "failed to capture state after destroy step")
 		}
-
-		persistFailure(config.Callbacks.PersistFailure, config.Log)
-		return
-	}
-
-	// capture final state
-	stateJSON, err := config.Infra.GetStackState()
-	if err != nil {
-		config.Log.Error(err, "failed to get stack state after creation")
-		persistFailure(config.Callbacks.PersistFailure, config.Log)
-		return
-	}
-
-	// verify state integrity before declaring success
-	if err := verifyState(stateJSON, config.Log); err != nil {
-		config.Log.Error(err, "state verification failed after creation")
-		persistFailure(config.Callbacks.PersistFailure, config.Log)
-		return
-	}
-
-	// call provider-specific success handler
-	if err := config.Callbacks.OnSuccess(stateJSON); err != nil {
-		config.Log.Error(err, "failed to execute success callback")
+		if err := p.UpdateReconciliation(ReconciliationSnapshot{
+			ResourceInventory: state,
+		}); err != nil {
+			return 0, fmt.Errorf("failed to persist state after destroy step: %w", err)
+		}
+		return requeueDeleting, nil
 	}
 }
 
-// executeInfraDelete runs the full infrastructure delete lifecycle in a
-// goroutine. It handles state restoration, optional refresh for providers
-// that support it, and captures updated state on failure.
-func executeInfraDelete(config infraConfig) {
-	// refresh the deletion acknowledgement until this function returns
-	quitAck := make(chan bool, 1)
-	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
-	defer func() { quitAck <- true }()
-
-	// restore state from ResourceInventory if available so the provider
-	// knows which cloud resources to destroy
-	if hasExistingState(config.ExistingState) {
-		// validate state JSON before restoring — corrupt/truncated state from
-		// a partial fsnotify write would cause SetStackState to fail
-		if !json.Valid(*config.ExistingState) {
-			config.Log.Error(
-				fmt.Errorf("existing state is not valid JSON (%d bytes)", len(*config.ExistingState)),
-				"skipping state restoration for delete, will attempt destroy without state",
-			)
-		} else {
-			if err := config.Infra.SetStackState(config.ExistingState); err != nil {
-				config.Log.Error(err, "failed to restore stack state for delete, proceeding without state")
-			} else {
-				config.Log.Info("restored state from database for deletion")
-
-				// refresh state to sync with cloud reality if provider supports it
-				if refreshable, ok := config.Infra.(RefreshableProvider); ok {
-					if err := refreshable.RefreshStack(); err != nil {
-						config.Log.Error(err, "failed to refresh stack state before delete, proceeding with destroy")
-					} else {
-						config.Log.Info("refreshed stack state against cloud reality")
-					}
-				}
-			}
-		}
-	}
-
-	// destroy infrastructure
-	if err := config.Infra.DestroyInfra(); err != nil {
-		config.Log.Error(err, "failed to delete infrastructure, will retry on next reconciliation")
-
-		// capture updated state so retries know which resources remain
-		stateJSON, stateErr := config.Infra.GetStackState()
-		if stateErr != nil {
-			config.Log.Error(stateErr, "failed to get stack state after failed deletion")
-		} else if stateJSON != nil {
-			if saveErr := config.Callbacks.SaveState(stateJSON); saveErr != nil {
-				config.Log.Error(saveErr, "failed to save state after failed deletion")
-			}
-		}
-		return
-	}
-
-	// call provider-specific success handler
-	if err := config.Callbacks.OnSuccess(nil); err != nil {
-		config.Log.Error(err, "failed to execute delete success callback")
-	}
-}
-
-// streamState watches the state file via fsnotify and pushes changes to the
-// API using the saveState callback on every Write/Create event. Only called
-// for providers that implement StreamableProvider.
-func streamState(
-	provider StreamableProvider,
-	saveState func(state *datatypes.JSON) error,
-	quit chan bool,
-	log *logr.Logger,
-) {
-	// get state file path and pre-create directory
-	stateFilePath, err := provider.GetStateFilePath()
-	if err != nil {
-		log.Error(err, "failed to get state file path for streaming")
-		return
-	}
-	stateDir := filepath.Dir(stateFilePath)
-	if err := os.MkdirAll(stateDir, 0755); err != nil {
-		log.Error(err, "failed to create state directory for watcher")
-		return
-	}
-
-	// create fsnotify watcher
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Error(err, "failed to create fsnotify watcher")
-		return
-	}
-	defer watcher.Close()
-
-	// watch the directory containing the state file
-	if err := watcher.Add(stateDir); err != nil {
-		log.Error(err, "failed to add directory to watcher")
-		return
-	}
-
-	stateFileName := filepath.Base(stateFilePath)
-
-	for {
-		select {
-		case <-quit:
-			return
-
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
-			}
-			// only react to write/create events for the state file
-			if filepath.Base(event.Name) != stateFileName {
-				continue
-			}
-			if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
-				continue
-			}
-
-			// read and upload state immediately
-			state, err := provider.ReadStateFile()
-			if err != nil {
-				log.Error(err, "failed to read state file during streaming")
-				continue
-			}
-			if state == nil {
-				continue
-			}
-
-			// validate JSON before uploading to prevent partial writes
-			// from overwriting good state in the database
-			if !json.Valid(*state) {
-				log.V(1).Info("skipping partial state file write (invalid JSON)")
-				continue
-			}
-
-			// push state via callback
-			if err := saveState(state); err != nil {
-				log.Error(err, "failed to update resource inventory during state streaming")
-			}
-
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return
-			}
-			log.Error(err, "fsnotify watcher error")
-		}
-	}
-}
-
-// refreshAck calls the provided refresh function every 60 seconds until told
-// to quit, preventing stale acknowledgement detection from re-launching the
-// operation while it is still running.
-func refreshAck(
-	refresh func() error,
-	quitChan chan bool,
-	log *logr.Logger,
-) {
-	for {
-		select {
-		case <-quitChan:
-			return
-		case <-time.After(60 * time.Second):
-			if err := refresh(); err != nil {
-				log.Error(err, "failed to refresh acknowledged timestamp")
-			}
-		}
-	}
-}
-
-// persistFailure calls the provided persist function to mark the operation as
-// failed. If the call fails, it is retried every 10 seconds up to 30 times
-// (5 minutes). After exhausting retries, the goroutine returns and stale ack
-// detection will recover the operation.
-func persistFailure(
-	persist func() error,
-	log *logr.Logger,
-) {
-	const maxRetries = 30
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if err := persist(); err != nil {
-			log.Error(err, "failed to persist creation failure - retrying in 10 sec",
-				"attempt", attempt+1, "maxRetries", maxRetries)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-		return
-	}
-	log.Error(
-		fmt.Errorf("exhausted %d retries", maxRetries),
-		"failed to persist creation failure, stale ack detection will recover",
-	)
-}
-
-// verifyState checks the integrity of a state JSON object to ensure it
-// represents a valid deployment with resources.
-func verifyState(state *datatypes.JSON, log *logr.Logger) error {
-	if state == nil {
-		return fmt.Errorf("state is nil")
-	}
-	if len(*state) == 0 {
-		return fmt.Errorf("state is empty")
-	}
-
-	// parse as generic JSON
-	var parsed map[string]interface{}
-	if err := json.Unmarshal(*state, &parsed); err != nil {
-		return fmt.Errorf("state is not valid JSON: %w", err)
-	}
-
-	// check for resources in either format:
-	// - checkpoint format: checkpoint.latest.resources
-	// - deployment format: deployment.resources
-	resourceCount := 0
-	if checkpoint, ok := parsed["checkpoint"].(map[string]interface{}); ok {
-		if latest, ok := checkpoint["latest"].(map[string]interface{}); ok {
-			if resources, ok := latest["resources"].([]interface{}); ok {
-				resourceCount = len(resources)
-			}
-		}
-	}
-	if resourceCount == 0 {
-		if deployment, ok := parsed["deployment"].(map[string]interface{}); ok {
-			if resources, ok := deployment["resources"].([]interface{}); ok {
-				resourceCount = len(resources)
-			}
-		}
-	}
-
-	if resourceCount == 0 {
-		return fmt.Errorf("state contains no resources")
-	}
-
-	log.Info("state verification passed", "resourceCount", resourceCount)
-	return nil
-}
-
-// inventoryCleared returns true if the ResourceInventory is nil, empty,
-// or contains only "{}" or "null".
-func inventoryCleared(inventory *datatypes.JSON) bool {
-	return inventory == nil ||
-		len(*inventory) == 0 ||
-		string(*inventory) == "{}" ||
-		string(*inventory) == "null"
-}
-
-// hasExistingState returns true if the state is non-nil, non-empty, and not
-// a placeholder value ("{}" or "null").
+// hasExistingState returns true if the state is non-nil, non-empty, and not a
+// placeholder value ("{}" or "null"). It gates whether SetStackState is called
+// before observing, so a fresh process restores resources an earlier process
+// created.
 func hasExistingState(state *datatypes.JSON) bool {
 	return state != nil &&
 		len(*state) > 0 &&

@@ -13,10 +13,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Check Base Branch
+      # dev-local change: dev-release and dev-pinned are this fork's
+      # customer-deployment integration branches, so PRs targeting them
+      # are expected. do not merge this allowance upstream.
       run: |
-        if [[ "${GITHUB_BASE_REF}" != "0.7" ]]; then
-          echo "Error: By default the pull request should be targeting the '0.7' branch but targets '${GITHUB_BASE_REF}' instead."
-          echo "You can ignore this error if you are adding a bug fix to an earlier minor version release"
-          exit 1
-        fi
+        case "${GITHUB_BASE_REF}" in
+          0.7|dev-release|dev-pinned)
+            ;;
+          *)
+            echo "Error: By default the pull request should be targeting the '0.7' branch but targets '${GITHUB_BASE_REF}' instead."
+            echo "You can ignore this error if you are adding a bug fix to an earlier minor version release"
+            exit 1
+            ;;
+        esac
 

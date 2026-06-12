@@ -12,6 +12,7 @@ import (
 	natsgo "github.com/nats-io/nats.go"
 	aws "github.com/threeport/threeport/internal/aws"
 	notif "github.com/threeport/threeport/internal/aws/notif"
+	provider "github.com/threeport/threeport/internal/provider"
 	version "github.com/threeport/threeport/internal/version"
 	tpclient_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
@@ -42,6 +43,11 @@ func main() {
 	var verbose = flag.Bool("verbose", false, "Write logs with v(1).InfoLevel and above")
 	var help = flag.Bool("help", false, "Show help info")
 	var authEnabled = flag.Bool("auth-enabled", true, "Enable client certificate authentication (default is true)")
+	var infraConcurrency = flag.Int(
+		"infra-concurrency",
+		5,
+		"Maximum number of infrastructure provisioning operations to run at once across this controller",
+	)
 	flag.Parse()
 
 	var log logr.Logger
@@ -123,6 +129,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// size the infrastructure concurrency semaphore from the operator flag
+	// before any reconciler launches; the cap is fixed at startup and not
+	// hot-reloadable, and is a no-op for controllers that never provision
+	// infrastructure
+	provider.SetInfraConcurrency(*infraConcurrency)
+
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
@@ -173,8 +185,14 @@ func main() {
 			Sub:              sub,
 		}
 
-		// start reconciler
-		go r.ReconcileFunc(&reconciler)
+		// start reconcile workers sharing this reconciler's pull subscription
+		concurrency := r.ConcurrentReconciles
+		if concurrency < 1 {
+			concurrency = 1
+		}
+		for w := 0; w < concurrency; w++ {
+			go r.ReconcileFunc(&reconciler)
+		}
 	}
 
 	log.Info(

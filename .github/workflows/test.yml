@@ -1,6 +1,6 @@
 # Native go build + thin Docker layer.
 #
-# Compilation happens via `mage build:allImagesDev` on the runner, NOT
+# Compilation happens via `mage build:allImages` on the runner, NOT
 # inside a Dockerfile RUN. Go's content-addressed build cache
 # (~/.cache/go-build, restored by actions/cache below) invalidates per
 # package, so a single-file edit only recompiles that package. Inside a
@@ -112,7 +112,7 @@ jobs:
     - name: Build and push control plane component images
       env:
         PARALLEL_IMAGE_BUILD: "4"
-      run: mage build:allImagesDev
+      run: mage build:allImages
 
     - name: Build tptctl
       run: mage build:tptctl

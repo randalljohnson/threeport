@@ -28,11 +28,12 @@ import (
 // stands in for any API type). Note the DELETE row: its HTTP method
 // is DELETE but the GORM call is Updates, the same as PATCH.
 //
-//	client signature                            | HTTP   | GORM    | semantic       | reason
-//	--------------------------------------------|--------|---------|----------------|-----------------------------
-//	ReplaceT(apiClient, apiAddr, *T) (*T, error)| PUT    | Save    | full replace   | every column lands
-//	UpdateT(apiClient, apiAddr, *T) (*T, error) | PATCH  | Updates | partial update | only sent fields land
-//	DeleteT(apiClient, apiAddr, id) (*T, error) | DELETE | Updates | partial update | only deletion-trigger flags
+//	client signature                            | HTTP   | GORM    | hook                           | semantic       | reason
+//	--------------------------------------------|--------|---------|--------------------------------|----------------|-----------------------------
+//	CreateT(apiClient, apiAddr, *T) (*T, error) | POST   | Create  | BeforeCreate                   | insert row     | same hook shape as PUT
+//	ReplaceT(apiClient, apiAddr, *T) (*T, error)| PUT    | Save    | BeforeUpdate                   | full replace   | every column lands
+//	UpdateT(apiClient, apiAddr, *T) (*T, error) | PATCH  | Updates | BeforeUpdate                   | partial update | only sent fields land
+//	DeleteT(apiClient, apiAddr, id) (*T, error) | DELETE | Updates | BeforeUpdate then BeforeDelete | partial update | only deletion-trigger flags
 //
 // Generated handlers pick the call shape from the HTTP method. The
 // UpdateT PATCH handlers use Updates so only fields the client
@@ -42,6 +43,17 @@ import (
 // reconciliation flag columns (DeletionScheduled, etc.) without
 // touching the rest of the row. GORM fires BeforeUpdate from
 // whatever call shape the caller used.
+//
+// The hook column shows which generated hook each call fires. CreateT
+// and ReplaceT reach different GORM methods (Create and Save) but
+// present the same full-object shape, so they are easy to conflate;
+// the shared shape, not a shared method, is the trap. DeleteT is
+// two-phase for reconciled types: the first call sets deletion-trigger
+// flags through Updates and fires BeforeUpdate, then once the
+// controller confirms, the final call soft deletes and fires
+// BeforeDelete. That soft delete writes deleted_at with an UPDATE, but
+// GORM keys hooks on the operation, so it runs the Delete hooks, not
+// the Update hooks.
 //
 // Under the hood the two call shapes differ in what the hook receiver
 // holds. The examples use `loaded` (a row pulled from the DB), `patch`

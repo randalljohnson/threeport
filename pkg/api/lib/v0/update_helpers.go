@@ -24,13 +24,15 @@ import (
 // The update hooks fire under two call shapes, and the receiver means
 // a different thing in each.
 //
-// The mental model starts with the two generated client signatures
-// (T stands in for any API type):
+// The mental model starts with the generated client signatures (T
+// stands in for any API type). Note the DELETE row: its HTTP method
+// is DELETE but the GORM call is Updates, the same as PATCH.
 //
-//	client signature                            | HTTP   | GORM
-//	--------------------------------------------|--------|--------
-//	UpdateT(apiClient, apiAddr, *T) (*T, error) | PATCH  | Updates
-//	ReplaceT(apiClient, apiAddr, *T) (*T, error)| PUT    | Save
+//	client signature                            | HTTP   | GORM    | semantic       | reason
+//	--------------------------------------------|--------|---------|----------------|-----------------------------
+//	ReplaceT(apiClient, apiAddr, *T) (*T, error)| PUT    | Save    | full replace   | every column lands
+//	UpdateT(apiClient, apiAddr, *T) (*T, error) | PATCH  | Updates | partial update | only sent fields land
+//	DeleteT(apiClient, apiAddr, id) (*T, error) | DELETE | Updates | partial update | only deletion-trigger flags
 //
 // Generated handlers pick the call shape from the HTTP method. The
 // UpdateT PATCH handlers use Updates so only fields the client
@@ -40,16 +42,6 @@ import (
 // reconciliation flag columns (DeletionScheduled, etc.) without
 // touching the rest of the row. GORM fires BeforeUpdate from
 // whatever call shape the caller used.
-//
-// Examples (all from pkg/api-server/v0/handlers/*_gen.go). Note the
-// DELETE row: the HTTP method is DELETE but the GORM call is Updates,
-// the same as PATCH:
-//
-//	type                        | function | HTTP   | GORM    | reason
-//	----------------------------|----------|--------|---------|-----------------------------
-//	KubernetesWorkloadInstance  | ReplaceT | PUT    | Save    | every column lands
-//	AttachedObjectReference     | UpdateT  | PATCH  | Updates | only sent fields land
-//	KubernetesRuntimeDefinition | DeleteT  | DELETE | Updates | only deletion-trigger flags
 //
 // Under the hood the two call shapes differ in what the hook receiver
 // holds. The examples use `loaded` (a row pulled from the DB), `patch`
@@ -98,12 +90,12 @@ import (
 // because it describes the GORM call shape directly without leaking
 // HTTP or client vocabulary, and carries no DELETE caveat.
 //
-//   layer             | true-for-PUT name | true-for-non-PUT name | DELETE caveat
-//   ------------------|-------------------|-----------------------|--------------
-//   GORM method       | IsSave            | IsUpdates             | no
-//   semantic (chosen) | IsFullReplace     | IsPartialUpdate       | no
-//   HTTP verb         | IsPut             | IsPatch               | yes
-//   threeport client  | IsReplace         | IsUpdate              | yes
+//   layer             | true on PUT   | true on PATCH or DELETE | DELETE caveat
+//   ------------------|---------------|-------------------------|--------------
+//   GORM method       | IsSave        | IsUpdates               | no
+//   semantic (chosen) | IsFullReplace | IsPartialUpdate         | no
+//   HTTP verb         | IsPut         | IsPatch                 | yes
+//   threeport client  | IsReplace     | IsUpdate                | yes
 
 // IsFieldChanged reports whether the named field is being modified by
 // the current GORM update. Reach for this first for any per-field

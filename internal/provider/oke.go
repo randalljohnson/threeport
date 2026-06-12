@@ -96,31 +96,50 @@ func (i *KubernetesRuntimeInfraOKE) Create() (*kube.KubeConnectionInfo, error) {
 	return i.CreateInfra()
 }
 
-// CreateInfra creates the compartment and provisions OKE cluster infrastructure via Pulumi.
-// It does not create IAM resources — call CreateIAM() first for the bootstrap path,
-// or set ServiceUserOCID/Fingerprint/PrivateKeyPEM directly for the controller path.
+// CreateInfra creates the compartment, provisions OKE cluster infrastructure via
+// Pulumi, and returns the cluster connection info. It is the bootstrap entry point
+// used by the CLI. It does not create IAM resources: call CreateIAM() first for
+// the bootstrap path, or set ServiceUserOCID/Fingerprint/PrivateKeyPEM directly for
+// the controller path.
 func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, error) {
+	if err := i.createInfra(context.Background()); err != nil {
+		return nil, err
+	}
+	return i.GetConnection()
+}
+
+// ensure KubernetesRuntimeInfraOKE implements the observe-and-requeue
+// infrastructure interface.
+var _ InfraProvider = (*KubernetesRuntimeInfraOKE)(nil)
+
+// createInfra creates the compartment and provisions OKE cluster infrastructure via
+// Pulumi. It runs a single Pulumi up pass under the supplied context deadline and
+// returns when that pass returns; it does not poll for cluster readiness or fetch
+// connection info. It does not create IAM resources: call CreateIAM() first for the
+// bootstrap path, or set ServiceUserOCID/Fingerprint/PrivateKeyPEM directly for the
+// controller path.
+func (i *KubernetesRuntimeInfraOKE) createInfra(ctx context.Context) error {
 	// derive tenancy OCID from config provider for Pulumi provider configuration
 	tenancyOCID, err := i.ConfigProvider.TenancyOCID()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tenancy OCID from config provider: %w", err)
+		return fmt.Errorf("failed to get tenancy OCID from config provider: %w", err)
 	}
 
 	// create compartment for resource isolation
 	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(i.ConfigProvider)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create identity client: %w", err)
+		return fmt.Errorf("failed to create identity client: %w", err)
 	}
 
 	// get home region for compartment creation (compartments must be created in home region)
 	homeRegion, err := i.getHomeRegion(identityClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get home region: %w", err)
+		return fmt.Errorf("failed to get home region: %w", err)
 	}
 	identityClient.SetRegion(homeRegion)
 
 	if err := i.createOCICompartment(identityClient); err != nil {
-		return nil, fmt.Errorf("failed to create compartment: %w", err)
+		return fmt.Errorf("failed to create compartment: %w", err)
 	}
 
 	// set up Pulumi workspace and get stack
@@ -616,39 +635,118 @@ func (i *KubernetesRuntimeInfraOKE) CreateInfra() (*kube.KubeConnectionInfo, err
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to set up Pulumi workspace: %w", err)
+		return fmt.Errorf("failed to set up Pulumi workspace: %w", err)
 	}
 
-	// create a context for the automation API
-	ctx := context.Background()
+	// deploy the stack under the supplied context deadline
+	if _, err = i.RunUp(ctx, stack); err != nil {
+		return fmt.Errorf("failed to deploy stack: %w", err)
+	}
 
-	// deploy the stack
-	_, err = i.RunUp(ctx, stack)
+	return nil
+}
+
+// Observe refreshes the persisted Pulumi state against OCI and reports the current
+// lifecycle phase. A refresh failure surfaces as an error so the caller requeues
+// without kicking a create or destroy; it is never reported as PhaseAbsent, which
+// would let Apply provision a duplicate cluster. Completeness is derived from the
+// refreshed resource inventory plus an active-cluster probe: an empty inventory
+// means absent, a non-empty inventory with no active cluster means provisioning,
+// and a non-empty inventory with an active cluster OCID means ready.
+func (i *KubernetesRuntimeInfraOKE) Observe(ctx context.Context) (Observation, error) {
+	// set up the workspace and refresh state against the cloud. A refresh error
+	// must not be swallowed into an empty state, so surface it to the caller.
+	stack, err := i.SetupStack(func(*pulumi.Context) error { return nil })
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy stack: %w", err)
+		return Observation{}, fmt.Errorf("failed to set up Pulumi workspace for observe: %w", err)
+	}
+	if _, err := i.runRefresh(ctx, stack); err != nil {
+		return Observation{}, fmt.Errorf("failed to refresh stack state: %w", err)
 	}
 
-	return i.GetConnection()
+	// export the refreshed state so the caller can persist it and so phase is
+	// derived from cloud reality rather than a stale persisted snapshot
+	state, err := i.GetStackState()
+	if err != nil {
+		return Observation{}, fmt.Errorf("failed to export refreshed stack state: %w", err)
+	}
+
+	// no managed resources remain in the refreshed state: genuinely absent
+	count, err := countManagedResources(state)
+	if err != nil {
+		return Observation{}, fmt.Errorf("failed to count resources in refreshed state: %w", err)
+	}
+	if count == 0 {
+		return Observation{Phase: PhaseAbsent}, nil
+	}
+
+	// resources exist; probe for an active cluster to tell provisioning from
+	// ready. A missing active cluster is expected while the cluster is still
+	// coming up or being torn down, so it maps to provisioning rather than an
+	// error: GetClusterOCID lists only clusters in the active lifecycle state.
+	if _, err := i.GetClusterOCID(i.RuntimeInstanceName); err != nil {
+		return Observation{
+			Phase:   PhaseProvisioning,
+			State:   state,
+			Message: fmt.Sprintf("cluster not yet active: %v", err),
+		}, nil
+	}
+
+	return Observation{Phase: PhaseReady, State: state}, nil
 }
 
-// DeployInfra creates the compartment and provisions OKE cluster infrastructure
-// via Pulumi, discarding the connection info. This satisfies the InfraProvider
-// interface for use with the shared infrastructure lifecycle abstraction.
-func (i *KubernetesRuntimeInfraOKE) DeployInfra() error {
-	_, err := i.CreateInfra()
-	return err
+// Apply advances the OKE create by running a single bounded Pulumi up pass under
+// the context deadline, creating the compartment first when it does not yet exist.
+// It returns without polling for readiness; the next Observe reports progress.
+// Apply is idempotent: run against partially-created infrastructure, the underlying
+// up diffs and converges rather than provisioning a second cluster.
+func (i *KubernetesRuntimeInfraOKE) Apply(ctx context.Context) error {
+	return i.createInfra(ctx)
 }
 
-// DestroyInfra destroys the OKE cluster infrastructure via Pulumi. This
-// satisfies the InfraProvider interface for use with the shared infrastructure
-// lifecycle abstraction.
-func (i *KubernetesRuntimeInfraOKE) DestroyInfra() error {
-	return i.Delete()
+// Destroy advances the OKE teardown by running a single bounded Pulumi destroy pass
+// under the context deadline. It does not delete the non-Pulumi OCI resources
+// (compartment, IAM, local config); that cleanup runs once after the inventory is
+// empty, in the lifecycle handler's post-deletion hook, so it is not repeated on
+// every destroy kick.
+func (i *KubernetesRuntimeInfraOKE) Destroy(ctx context.Context) error {
+	return i.destroyStack(ctx)
 }
 
-// Delete deletes an Oracle Cloud OKE cluster.
+// Delete deletes an Oracle Cloud OKE cluster's Pulumi-managed resources. It is the
+// bootstrap teardown path used by the CLI; the non-Pulumi OCI resource cleanup is
+// performed separately by the caller.
 func (i *KubernetesRuntimeInfraOKE) Delete() error {
-	return i.DestroyStack()
+	return i.destroyStack(context.Background())
+}
+
+// destroyStack sets up the workspace, refreshes against the cloud under the supplied
+// context, destroys the Pulumi-managed resources, and removes the local state
+// directory. It honors the context deadline so a single destroy kick stays bounded;
+// the shared workspace helper hardcodes a background context, so the teardown is
+// composed here instead.
+func (i *KubernetesRuntimeInfraOKE) destroyStack(ctx context.Context) error {
+	stack, err := i.SetupStack(func(*pulumi.Context) error { return nil })
+	if err != nil {
+		return fmt.Errorf("failed to set up Pulumi workspace for destroy: %w", err)
+	}
+
+	// refresh before destroy to clear stale pending operations and reconcile the
+	// recorded state with what actually exists; a refresh failure is logged but
+	// does not abort, since the destroy may still succeed.
+	if _, err := i.runRefresh(ctx, stack); err != nil {
+		i.logError(err, "failed to refresh stack before destroy, proceeding with destroy")
+	}
+
+	if _, err := i.RunDestroy(ctx, stack); err != nil {
+		return fmt.Errorf("failed to destroy stack: %w", err)
+	}
+
+	if err := os.RemoveAll(i.stateDir); err != nil {
+		return fmt.Errorf("failed to remove state directory: %w", err)
+	}
+
+	return nil
 }
 
 // GetClusterOCID gets the OCID of the OKE cluster.

@@ -1,11 +1,11 @@
 package gcp
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
-	"gorm.io/datatypes"
 
 	notif "github.com/threeport/threeport/internal/gcp/notif"
 	"github.com/threeport/threeport/internal/provider"
@@ -23,6 +23,10 @@ type gkeLifecycle struct {
 	instance   *v0.GcpGkeKubernetesRuntimeInstance
 	log        *logr.Logger
 }
+
+// ensure gkeLifecycle implements the lifecycle interface the infrastructure
+// handlers call.
+var _ provider.InfraLifecycleProvider = (*gkeLifecycle)(nil)
 
 // newGkeLifecycleProvider constructs an InfraLifecycleProvider for GKE.
 func newGkeLifecycleProvider(
@@ -52,14 +56,17 @@ func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 	if latest.CreationFailed != nil {
 		creationFailed = *latest.CreationFailed
 	}
+	reconciled := false
+	if latest.Reconciled != nil {
+		reconciled = *latest.Reconciled
+	}
 	return &provider.ReconciliationSnapshot{
-		CreationAcknowledged: latest.CreationAcknowledged,
-		CreationConfirmed:    latest.CreationConfirmed,
-		CreationFailed:       creationFailed,
-		DeletionScheduled:    latest.DeletionScheduled,
-		DeletionAcknowledged: latest.DeletionAcknowledged,
-		DeletionConfirmed:    latest.DeletionConfirmed,
-		ResourceInventory:    latest.ResourceInventory,
+		Reconciled:        reconciled,
+		CreationConfirmed: latest.CreationConfirmed,
+		CreationFailed:    creationFailed,
+		DeletionScheduled: latest.DeletionScheduled,
+		DeletionConfirmed: latest.DeletionConfirmed,
+		ResourceInventory: latest.ResourceInventory,
 	}, nil
 }
 
@@ -84,21 +91,31 @@ func (g *gkeLifecycle) BuildInfra() (provider.InfraProvider, error) {
 	return buildGkeInfra(g.r, latest, def, g.log)
 }
 
-// IsCreateComplete checks whether resource inventory has been persisted.
-func (g *gkeLifecycle) IsCreateComplete() (bool, error) {
-	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
+// UpdateReconciliation persists the next reconciliation snapshot in a single
+// PATCH. Pointer fields are written only when the handler set them; the boolean
+// reconciliation flags are always written from the snapshot, since their zero
+// value (not reconciled, not failed) is the correct in-progress state.
+func (g *gkeLifecycle) UpdateReconciliation(snapshot provider.ReconciliationSnapshot) error {
+	reconciled := snapshot.Reconciled
+	creationFailed := snapshot.CreationFailed
+	update := v0.GcpGkeKubernetesRuntimeInstance{
+		Common:            v0.Common{ID: &g.instanceID},
+		ResourceInventory: snapshot.ResourceInventory,
+		Reconciliation: v0.Reconciliation{
+			Reconciled:        &reconciled,
+			CreationFailed:    &creationFailed,
+			CreationConfirmed: snapshot.CreationConfirmed,
+			DeletionConfirmed: snapshot.DeletionConfirmed,
+		},
+	}
+	if _, err := client.UpdateGcpGkeKubernetesRuntimeInstance(
 		g.r.APIClient,
 		g.r.APIServer,
-		g.instanceID,
-	)
-	if err != nil {
-		return false, fmt.Errorf("failed to check GKE creation status: %w", err)
+		&update,
+	); err != nil {
+		return fmt.Errorf("failed to update GKE reconciliation state: %w", err)
 	}
-	if latest.ResourceInventory == nil {
-		return false, nil
-	}
-	inventory := *latest.ResourceInventory
-	return len(inventory) > 0 && string(inventory) != "{}" && string(inventory) != "null", nil
+	return nil
 }
 
 // OnCreateConfirmed gets connection info and updates the kubernetes runtime instance.
@@ -142,141 +159,19 @@ func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 	return nil
 }
 
-// SaveCreateOutputs saves the final Pulumi state.
-func (g *gkeLifecycle) SaveCreateOutputs(_ provider.InfraProvider, state *datatypes.JSON) error {
-	updatedInstance := v0.GcpGkeKubernetesRuntimeInstance{
-		Common:            v0.Common{ID: &g.instanceID},
-		ResourceInventory: state,
+// OnDeleteConfirmed performs provider-specific post-deletion cleanup once the
+// stack is empty: it removes the non-Pulumi GCP service account and IAM bindings.
+// Running it here, rather than on every destroy step, keeps the cleanup to a
+// single pass after teardown is confirmed.
+func (g *gkeLifecycle) OnDeleteConfirmed(infra provider.InfraProvider) error {
+	infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)
+	if !ok {
+		return fmt.Errorf("expected *provider.KubernetesRuntimeInfraGKE, got %T", infra)
 	}
-	if _, err := client.UpdateGcpGkeKubernetesRuntimeInstance(
-		g.r.APIClient,
-		g.r.APIServer,
-		&updatedInstance,
-	); err != nil {
-		return fmt.Errorf("failed to update GKE instance with resource inventory: %w", err)
+	if err := infraGKE.DeleteGCPResources(context.Background()); err != nil {
+		return fmt.Errorf("failed to clean up GCP resources: %w", err)
 	}
 	return nil
-}
-
-// OnDeleteConfirmed performs provider-specific post-deletion cleanup.
-func (g *gkeLifecycle) OnDeleteConfirmed(_ provider.InfraProvider) error {
-	return nil
-}
-
-// AckCreation sets CreationAcknowledged and clears CreationFailed.
-func (g *gkeLifecycle) AckCreation() error {
-	ackTimestamp := time.Now().UTC()
-	creationFailed := false
-	ackUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &g.instanceID},
-		Reconciliation: v0.Reconciliation{
-			CreationAcknowledged: &ackTimestamp,
-			CreationFailed:       &creationFailed,
-		},
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
-	return err
-}
-
-// RefreshCreationAck updates CreationAcknowledged to prevent stale detection.
-func (g *gkeLifecycle) RefreshCreationAck() error {
-	refreshTimestamp := time.Now().UTC()
-	ackUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &g.instanceID},
-		Reconciliation: v0.Reconciliation{
-			CreationAcknowledged: &refreshTimestamp,
-		},
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
-	return err
-}
-
-// SetCreationFailed marks CreationFailed=true in the API.
-func (g *gkeLifecycle) SetCreationFailed() error {
-	creationFailed := true
-	failedUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &g.instanceID},
-		Reconciliation: v0.Reconciliation{
-			CreationFailed: &creationFailed,
-		},
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
-	return err
-}
-
-// ConfirmCreation sets CreationConfirmed and Reconciled=true.
-func (g *gkeLifecycle) ConfirmCreation() error {
-	reconciled := true
-	timestamp := time.Now().UTC()
-	confirmedUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &g.instanceID},
-		Reconciliation: v0.Reconciliation{
-			Reconciled:        &reconciled,
-			CreationConfirmed: &timestamp,
-		},
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &confirmedUpdate)
-	return err
-}
-
-// AckDeletion sets DeletionAcknowledged in the API.
-func (g *gkeLifecycle) AckDeletion() error {
-	timestamp := time.Now().UTC()
-	ackUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &g.instanceID},
-		Reconciliation: v0.Reconciliation{
-			DeletionAcknowledged: &timestamp,
-		},
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
-	return err
-}
-
-// RefreshDeletionAck updates DeletionAcknowledged to prevent stale detection.
-func (g *gkeLifecycle) RefreshDeletionAck() error {
-	refreshTimestamp := time.Now().UTC()
-	ackUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &g.instanceID},
-		Reconciliation: v0.Reconciliation{
-			DeletionAcknowledged: &refreshTimestamp,
-		},
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
-	return err
-}
-
-// ConfirmDeletion sets DeletionConfirmed in the API.
-func (g *gkeLifecycle) ConfirmDeletion() error {
-	timestamp := time.Now().UTC()
-	confirmedUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &g.instanceID},
-		Reconciliation: v0.Reconciliation{
-			DeletionConfirmed: &timestamp,
-		},
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &confirmedUpdate)
-	return err
-}
-
-// SaveState persists intermediate Pulumi state to the API.
-func (g *gkeLifecycle) SaveState(state *datatypes.JSON) error {
-	stateUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common:            v0.Common{ID: &g.instanceID},
-		ResourceInventory: state,
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &stateUpdate)
-	return err
-}
-
-// ClearInventory sets ResourceInventory to "{}" to signal destroy complete.
-func (g *gkeLifecycle) ClearInventory() error {
-	emptyInventory := datatypes.JSON([]byte("{}"))
-	clearedUpdate := v0.GcpGkeKubernetesRuntimeInstance{
-		Common:            v0.Common{ID: &g.instanceID},
-		ResourceInventory: &emptyInventory,
-	}
-	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &clearedUpdate)
-	return err
 }
 
 // PublishCreateNotification publishes a NATS notification for creation.

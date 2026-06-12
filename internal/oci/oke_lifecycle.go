@@ -8,7 +8,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	ociidentity "github.com/oracle/oci-go-sdk/v65/identity"
-	"gorm.io/datatypes"
 
 	notif "github.com/threeport/threeport/internal/oci/notif"
 	"github.com/threeport/threeport/internal/provider"
@@ -28,6 +27,10 @@ type okeLifecycle struct {
 	instance   *v0.OciOkeKubernetesRuntimeInstance
 	log        *logr.Logger
 }
+
+// ensure okeLifecycle implements the lifecycle interface the infrastructure
+// handlers call.
+var _ provider.InfraLifecycleProvider = (*okeLifecycle)(nil)
 
 // newOkeLifecycleProvider constructs an InfraLifecycleProvider for OKE.
 func newOkeLifecycleProvider(
@@ -57,15 +60,45 @@ func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 	if latest.CreationFailed != nil {
 		creationFailed = *latest.CreationFailed
 	}
+	reconciled := false
+	if latest.Reconciled != nil {
+		reconciled = *latest.Reconciled
+	}
 	return &provider.ReconciliationSnapshot{
-		CreationAcknowledged: latest.CreationAcknowledged,
-		CreationConfirmed:    latest.CreationConfirmed,
-		CreationFailed:       creationFailed,
-		DeletionScheduled:    latest.DeletionScheduled,
-		DeletionAcknowledged: latest.DeletionAcknowledged,
-		DeletionConfirmed:    latest.DeletionConfirmed,
-		ResourceInventory:    latest.ResourceInventory,
+		Reconciled:        reconciled,
+		CreationConfirmed: latest.CreationConfirmed,
+		CreationFailed:    creationFailed,
+		DeletionScheduled: latest.DeletionScheduled,
+		DeletionConfirmed: latest.DeletionConfirmed,
+		ResourceInventory: latest.ResourceInventory,
 	}, nil
+}
+
+// UpdateReconciliation persists the next reconciliation snapshot in a single
+// PATCH. Pointer fields are written only when the handler set them; the boolean
+// reconciliation flags are always written from the snapshot, since their zero
+// value (not reconciled, not failed) is the correct in-progress state.
+func (o *okeLifecycle) UpdateReconciliation(snapshot provider.ReconciliationSnapshot) error {
+	reconciled := snapshot.Reconciled
+	creationFailed := snapshot.CreationFailed
+	update := v0.OciOkeKubernetesRuntimeInstance{
+		Common:            v0.Common{ID: &o.instanceID},
+		ResourceInventory: snapshot.ResourceInventory,
+		Reconciliation: v0.Reconciliation{
+			Reconciled:        &reconciled,
+			CreationFailed:    &creationFailed,
+			CreationConfirmed: snapshot.CreationConfirmed,
+			DeletionConfirmed: snapshot.DeletionConfirmed,
+		},
+	}
+	if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
+		o.r.APIClient,
+		o.r.APIServer,
+		&update,
+	); err != nil {
+		return fmt.Errorf("failed to update OKE reconciliation state: %w", err)
+	}
+	return nil
 }
 
 // BuildInfra constructs the OKE infrastructure provider from API objects.
@@ -89,22 +122,29 @@ func (o *okeLifecycle) BuildInfra() (provider.InfraProvider, error) {
 	return buildOkeInfra(o.r, latest, def, o.log)
 }
 
-// IsCreateComplete checks whether the OKE cluster OCID has been set.
-func (o *okeLifecycle) IsCreateComplete() (bool, error) {
-	latest, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
-		o.r.APIClient,
-		o.r.APIServer,
-		o.instanceID,
-	)
-	if err != nil {
-		return false, fmt.Errorf("failed to check OKE cluster creation status: %w", err)
-	}
-	return latest.ClusterOCID != nil && *latest.ClusterOCID != "", nil
-}
-
-// OnCreateConfirmed gets connection info and updates the kubernetes runtime instance.
+// OnCreateConfirmed records the cluster OCID, gets connection info, and updates the
+// kubernetes runtime instance. The cluster OCID is persisted here because the
+// handler's single reconciliation write carries only generic lifecycle fields; the
+// provider-specific OCID would otherwise be lost when the create is confirmed.
 func (o *okeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 	infraOKE := infra.(*provider.KubernetesRuntimeInfraOKE)
+
+	// get the cluster OCID so it can be persisted on the instance record
+	clusterOCID, err := infraOKE.GetClusterOCID(infraOKE.RuntimeInstanceName)
+	if err != nil {
+		return fmt.Errorf("failed to get OKE cluster OCID: %w", err)
+	}
+	ocidUpdate := v0.OciOkeKubernetesRuntimeInstance{
+		Common:      v0.Common{ID: &o.instanceID},
+		ClusterOCID: &clusterOCID,
+	}
+	if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
+		o.r.APIClient,
+		o.r.APIServer,
+		&ocidUpdate,
+	); err != nil {
+		return fmt.Errorf("failed to update OKE instance with cluster OCID: %w", err)
+	}
 
 	// get kubernetes cluster connection info
 	kubeConnectionInfo, err := infraOKE.GetConnection()
@@ -145,35 +185,6 @@ func (o *okeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 		kubernetesRuntimeInstance,
 	); err != nil {
 		return fmt.Errorf("failed to update kubernetes runtime instance with kube connection info: %w", err)
-	}
-
-	return nil
-}
-
-// SaveCreateOutputs saves the cluster OCID and final Pulumi state.
-func (o *okeLifecycle) SaveCreateOutputs(infra provider.InfraProvider, state *datatypes.JSON) error {
-	infraOKE := infra.(*provider.KubernetesRuntimeInfraOKE)
-
-	// get cluster OCID
-	clusterOCID, err := infraOKE.GetClusterOCID(infraOKE.RuntimeInstanceName)
-	if err != nil {
-		return fmt.Errorf("failed to get OKE cluster OCID: %w", err)
-	}
-
-	// update instance with final state and cluster OCID
-	updatedInstance := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{
-			ID: &o.instanceID,
-		},
-		ResourceInventory: state,
-		ClusterOCID:       &clusterOCID,
-	}
-	if _, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient,
-		o.r.APIServer,
-		&updatedInstance,
-	); err != nil {
-		return fmt.Errorf("failed to update OKE instance with resource inventory and cluster OCID: %w", err)
 	}
 
 	return nil
@@ -236,140 +247,6 @@ func (o *okeLifecycle) OnDeleteConfirmed(infra provider.InfraProvider) error {
 	}
 
 	return nil
-}
-
-// AckCreation sets CreationAcknowledged and clears CreationFailed.
-func (o *okeLifecycle) AckCreation() error {
-	ackTimestamp := time.Now().UTC()
-	creationFailed := false
-	ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &o.instanceID},
-		Reconciliation: v0.Reconciliation{
-			CreationAcknowledged: &ackTimestamp,
-			CreationFailed:       &creationFailed,
-		},
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &ackUpdate,
-	)
-	return err
-}
-
-// RefreshCreationAck updates CreationAcknowledged to prevent stale detection.
-func (o *okeLifecycle) RefreshCreationAck() error {
-	refreshTimestamp := time.Now().UTC()
-	ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &o.instanceID},
-		Reconciliation: v0.Reconciliation{
-			CreationAcknowledged: &refreshTimestamp,
-		},
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &ackUpdate,
-	)
-	return err
-}
-
-// SetCreationFailed marks CreationFailed=true in the API.
-func (o *okeLifecycle) SetCreationFailed() error {
-	creationFailed := true
-	failedUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &o.instanceID},
-		Reconciliation: v0.Reconciliation{
-			CreationFailed: &creationFailed,
-		},
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &failedUpdate,
-	)
-	return err
-}
-
-// ConfirmCreation sets CreationConfirmed and Reconciled=true.
-func (o *okeLifecycle) ConfirmCreation() error {
-	reconciled := true
-	timestamp := time.Now().UTC()
-	confirmedUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &o.instanceID},
-		Reconciliation: v0.Reconciliation{
-			Reconciled:        &reconciled,
-			CreationConfirmed: &timestamp,
-		},
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &confirmedUpdate,
-	)
-	return err
-}
-
-// AckDeletion sets DeletionAcknowledged in the API.
-func (o *okeLifecycle) AckDeletion() error {
-	timestamp := time.Now().UTC()
-	ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &o.instanceID},
-		Reconciliation: v0.Reconciliation{
-			DeletionAcknowledged: &timestamp,
-		},
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &ackUpdate,
-	)
-	return err
-}
-
-// RefreshDeletionAck updates DeletionAcknowledged to prevent stale detection.
-func (o *okeLifecycle) RefreshDeletionAck() error {
-	refreshTimestamp := time.Now().UTC()
-	ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &o.instanceID},
-		Reconciliation: v0.Reconciliation{
-			DeletionAcknowledged: &refreshTimestamp,
-		},
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &ackUpdate,
-	)
-	return err
-}
-
-// ConfirmDeletion sets DeletionConfirmed in the API.
-func (o *okeLifecycle) ConfirmDeletion() error {
-	timestamp := time.Now().UTC()
-	confirmedUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common: v0.Common{ID: &o.instanceID},
-		Reconciliation: v0.Reconciliation{
-			DeletionConfirmed: &timestamp,
-		},
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &confirmedUpdate,
-	)
-	return err
-}
-
-// SaveState persists intermediate Pulumi state to the API.
-func (o *okeLifecycle) SaveState(state *datatypes.JSON) error {
-	stateUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common:            v0.Common{ID: &o.instanceID},
-		ResourceInventory: state,
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &stateUpdate,
-	)
-	return err
-}
-
-// ClearInventory sets ResourceInventory to "{}" to signal destroy complete.
-func (o *okeLifecycle) ClearInventory() error {
-	emptyInventory := datatypes.JSON([]byte("{}"))
-	clearedUpdate := v0.OciOkeKubernetesRuntimeInstance{
-		Common:            v0.Common{ID: &o.instanceID},
-		ResourceInventory: &emptyInventory,
-	}
-	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
-		o.r.APIClient, o.r.APIServer, &clearedUpdate,
-	)
-	return err
 }
 
 // PublishCreateNotification publishes a NATS notification for creation.

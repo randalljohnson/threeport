@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi-gcp/sdk/v8/go/gcp/compute"
 	gkecontainer "github.com/pulumi/pulumi-gcp/sdk/v8/go/gcp/container"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -29,7 +30,6 @@ import (
 	"google.golang.org/api/iam/v1"
 	gcpiam "google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
-	gcpoption "google.golang.org/api/option"
 	"gorm.io/datatypes"
 
 	kube "github.com/threeport/threeport/pkg/kube/v0"
@@ -120,7 +120,7 @@ func (i *KubernetesRuntimeInfraGKE) syncStackConfigs() {
 // Create installs a Kubernetes cluster using Google Cloud GKE for threeport workloads.
 func (i *KubernetesRuntimeInfraGKE) Create() (*kube.KubeConnectionInfo, error) {
 	// ensure GCP authentication is in place
-	if err := EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
+	if err := i.ensureGCPAuth(); err != nil {
 		return nil, fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
@@ -143,55 +143,132 @@ func (i *KubernetesRuntimeInfraGKE) Create() (*kube.KubeConnectionInfo, error) {
 		return nil, fmt.Errorf("failed to create GCP service account: %w", err)
 	}
 
-	return i.CreateInfra()
-}
-
-// CreateInfra provisions GKE cluster infrastructure via Pulumi (network, cluster, node pool)
-// and configures Workload Identity. It does not create the Threeport GCP service account —
-// call createGCPServiceAccountAndCredentials first for the bootstrap path, or ensure
-// credentials and Workload Identity are already configured for the controller path.
-func (i *KubernetesRuntimeInfraGKE) CreateInfra() (*kube.KubeConnectionInfo, error) {
-	i.ensurePulumiProjectDefaults()
-	i.syncStackConfigs()
-
-	stack, err := i.SetupStack(i.pulumiProgram())
-	if err != nil {
-		return nil, fmt.Errorf("failed to set up Pulumi workspace: %w", err)
-	}
-
-	ctx := context.Background()
-	if _, err = i.RunUp(ctx, stack); err != nil {
-		return nil, fmt.Errorf("failed to deploy stack: %w", err)
-	}
-
-	// configure Workload Identity binding after cluster is created
-	// This allows Kubernetes service accounts to impersonate the GCP service account
-	if err := i.configureWorkloadIdentityBindingPostCreate(); err != nil {
-		return nil, fmt.Errorf("failed to configure Workload Identity binding: %w", err)
+	if err := i.CreateInfra(context.Background()); err != nil {
+		return nil, err
 	}
 
 	return i.GetConnection()
 }
 
-// DeployInfra runs CreateInfra and discards connection info. It satisfies InfraProvider
-// for the shared infrastructure lifecycle (same pattern as KubernetesRuntimeInfraOKE).
-func (i *KubernetesRuntimeInfraGKE) DeployInfra() error {
-	_, err := i.CreateInfra()
-	return err
+// ensure KubernetesRuntimeInfraGKE implements the observe-and-requeue
+// infrastructure interface.
+var _ InfraProvider = (*KubernetesRuntimeInfraGKE)(nil)
+
+// CreateInfra provisions GKE cluster infrastructure via Pulumi (network, cluster, node pool)
+// and configures Workload Identity. It does not create the Threeport GCP service account:
+// call createGCPServiceAccountAndCredentials first for the bootstrap path, or ensure
+// credentials and Workload Identity are already configured for the controller path. It runs
+// a single Pulumi up pass under the supplied context deadline and returns when that pass
+// returns; it does not poll for cluster readiness.
+func (i *KubernetesRuntimeInfraGKE) CreateInfra(ctx context.Context) error {
+	i.ensurePulumiProjectDefaults()
+	i.syncStackConfigs()
+
+	stack, err := i.SetupStack(i.pulumiProgram())
+	if err != nil {
+		return fmt.Errorf("failed to set up Pulumi workspace: %w", err)
+	}
+
+	if _, err = i.RunUp(ctx, stack); err != nil {
+		return fmt.Errorf("failed to deploy stack: %w", err)
+	}
+
+	// configure Workload Identity binding after cluster resources exist so
+	// Kubernetes service accounts can impersonate the GCP service account
+	if err := i.configureWorkloadIdentityBindingPostCreate(ctx); err != nil {
+		return fmt.Errorf("failed to configure Workload Identity binding: %w", err)
+	}
+
+	return nil
 }
 
-// DestroyInfra tears down GKE infrastructure via Delete. It satisfies InfraProvider.
-func (i *KubernetesRuntimeInfraGKE) DestroyInfra() error {
-	return i.Delete()
+// Observe refreshes the persisted Pulumi state against GCP and reports the current
+// lifecycle phase. A refresh failure surfaces as an error so the caller requeues
+// without kicking a create or destroy; it is never reported as PhaseAbsent, which
+// would let Apply provision a duplicate cluster. Completeness is derived from the
+// refreshed resource inventory plus a successful connection probe: an empty
+// inventory means absent, a non-empty inventory with an unreachable cluster means
+// provisioning, and a non-empty inventory with a reachable cluster means ready.
+func (i *KubernetesRuntimeInfraGKE) Observe(ctx context.Context) (Observation, error) {
+	i.ensurePulumiProjectDefaults()
+	i.syncStackConfigs()
+
+	// set up the workspace and refresh state against the cloud. A refresh error
+	// must not be swallowed into an empty state, so surface it to the caller.
+	stack, err := i.SetupStack(func(*pulumi.Context) error { return nil })
+	if err != nil {
+		return Observation{}, fmt.Errorf("failed to set up Pulumi workspace for observe: %w", err)
+	}
+	if _, err := i.runRefresh(ctx, stack); err != nil {
+		return Observation{}, fmt.Errorf("failed to refresh stack state: %w", err)
+	}
+
+	// export the refreshed state so the caller can persist it and so phase is
+	// derived from cloud reality rather than a stale persisted snapshot
+	state, err := i.GetStackState()
+	if err != nil {
+		return Observation{}, fmt.Errorf("failed to export refreshed stack state: %w", err)
+	}
+
+	// no managed resources remain in the refreshed state: genuinely absent
+	count, err := countManagedResources(state)
+	if err != nil {
+		return Observation{}, fmt.Errorf("failed to count resources in refreshed state: %w", err)
+	}
+	if count == 0 {
+		return Observation{Phase: PhaseAbsent}, nil
+	}
+
+	// resources exist; probe the cluster connection to tell provisioning from
+	// ready. A probe failure is expected while the cluster is still coming up or
+	// being torn down, so it maps to provisioning rather than an error.
+	if _, err := i.GetConnection(); err != nil {
+		return Observation{
+			Phase:   PhaseProvisioning,
+			State:   state,
+			Message: fmt.Sprintf("cluster not yet reachable: %v", err),
+		}, nil
+	}
+
+	return Observation{Phase: PhaseReady, State: state}, nil
+}
+
+// Apply advances the GKE create by running a single bounded Pulumi up pass under
+// the context deadline and configuring the Workload Identity binding. It returns
+// without polling for readiness; the next Observe reports progress. Apply is
+// idempotent: run against partially-created infrastructure, the underlying up
+// diffs and converges rather than provisioning a second cluster.
+func (i *KubernetesRuntimeInfraGKE) Apply(ctx context.Context) error {
+	return i.CreateInfra(ctx)
+}
+
+// Destroy advances the GKE teardown by running a single bounded Pulumi destroy
+// pass under the context deadline. It does not delete the non-Pulumi GCP service
+// account and IAM bindings; that cleanup runs once after the inventory is empty,
+// in the lifecycle handler's post-deletion hook, so it is not repeated on every
+// destroy kick.
+func (i *KubernetesRuntimeInfraGKE) Destroy(ctx context.Context) error {
+	i.ensurePulumiProjectDefaults()
+	i.syncStackConfigs()
+
+	return i.destroyStack(ctx)
 }
 
 // pulumiProgram defines the Pulumi resources for the GKE stack.
 func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
-		gcpProvider, err := gcp.NewProvider(ctx, "gcp-provider", &gcp.ProviderArgs{
+		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
-		})
+		}
+		// when explicit service account credentials are configured, pass them to
+		// the provider directly so the credential is scoped to this stack rather
+		// than discovered from a process-global environment variable shared by
+		// every concurrent stack in the controller.
+		if i.ServiceAccountCredentials != "" {
+			providerArgs.Credentials = pulumi.StringPtr(i.ServiceAccountCredentials)
+		}
+		gcpProvider, err := gcp.NewProvider(ctx, "gcp-provider", providerArgs)
 		if err != nil {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
@@ -330,9 +407,13 @@ func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 	}
 }
 
-// Delete deletes a GKE cluster and the threeport control plane with it.
+// Delete deletes a GKE cluster and the threeport control plane with it. This is
+// the bootstrap teardown path used by the CLI: it both destroys the Pulumi stack
+// and removes the non-Pulumi GCP service account and IAM bindings in one call. The
+// controller lifecycle splits these so the service-account cleanup runs once after
+// the stack is empty, not on every destroy step.
 func (i *KubernetesRuntimeInfraGKE) Delete() error {
-	if err := EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
+	if err := i.ensureGCPAuth(); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
@@ -343,11 +424,12 @@ func (i *KubernetesRuntimeInfraGKE) Delete() error {
 	i.ensurePulumiProjectDefaults()
 	i.syncStackConfigs()
 
-	if err := i.DestroyStack(); err != nil {
+	ctx := context.Background()
+	if err := i.destroyStack(ctx); err != nil {
 		return fmt.Errorf("failed to destroy Pulumi stack: %w", err)
 	}
 
-	if err := i.DeleteGCPResources(); err != nil {
+	if err := i.DeleteGCPResources(ctx); err != nil {
 		if i.Logger != nil {
 			i.Logger.Info("warning: failed to clean up GCP resources", "error", err.Error())
 		} else {
@@ -358,19 +440,48 @@ func (i *KubernetesRuntimeInfraGKE) Delete() error {
 	return nil
 }
 
-// DeleteGCPResources deletes all GCP resources created for this Threeport instance
-// that are not managed by Pulumi.
-func (i *KubernetesRuntimeInfraGKE) DeleteGCPResources() error {
-	ctx := context.Background()
+// destroyStack sets up the workspace, refreshes against the cloud under the
+// supplied context, destroys the Pulumi-managed resources, and removes the local
+// state directory. It honors the context deadline so a single destroy kick stays
+// bounded; the shared workspace helper hardcodes a background context, so the
+// teardown is composed here instead.
+func (i *KubernetesRuntimeInfraGKE) destroyStack(ctx context.Context) error {
+	stack, err := i.SetupStack(func(*pulumi.Context) error { return nil })
+	if err != nil {
+		return fmt.Errorf("failed to set up Pulumi workspace for destroy: %w", err)
+	}
 
-	// Create IAM service client
-	iamService, err := iam.NewService(ctx, option.WithScopes(iam.CloudPlatformScope))
+	// refresh before destroy to clear stale pending operations and reconcile the
+	// recorded state with what actually exists; a refresh failure is logged but
+	// does not abort, since the destroy may still succeed.
+	if _, err := i.runRefresh(ctx, stack); err != nil {
+		i.logError(err, "failed to refresh stack before destroy, proceeding with destroy")
+	}
+
+	if _, err := i.RunDestroy(ctx, stack); err != nil {
+		return fmt.Errorf("failed to destroy stack: %w", err)
+	}
+
+	if err := os.RemoveAll(i.stateDir); err != nil {
+		return fmt.Errorf("failed to remove state directory: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteGCPResources deletes all GCP resources created for this Threeport instance
+// that are not managed by Pulumi. The lifecycle handler calls it once after the
+// stack inventory is empty, via the post-deletion hook.
+func (i *KubernetesRuntimeInfraGKE) DeleteGCPResources(ctx context.Context) error {
+	// Create IAM service client scoped to the configured credentials so a
+	// concurrent instance with different credentials cannot bleed in.
+	iamService, err := iam.NewService(ctx, i.gcpClientOptions(iam.CloudPlatformScope)...)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM service client: %w", err)
 	}
 
 	// Create Cloud Resource Manager service client for IAM bindings
-	crmService, err := cloudresourcemanager.NewService(ctx, option.WithScopes(cloudresourcemanager.CloudPlatformScope))
+	crmService, err := cloudresourcemanager.NewService(ctx, i.gcpClientOptions(cloudresourcemanager.CloudPlatformScope)...)
 	if err != nil {
 		return fmt.Errorf("failed to create Cloud Resource Manager service client: %w", err)
 	}
@@ -388,13 +499,11 @@ func (i *KubernetesRuntimeInfraGKE) DeleteGCPResources() error {
 	return nil
 }
 
-// GetConnection returns the connection information for the GKE cluster.
+// GetConnection returns the connection information for the GKE cluster. It scopes
+// every GCP client and the access-token source to the configured service account
+// credentials when present, so a probe from one instance never authenticates with
+// another instance's credentials.
 func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, error) {
-	// ensure GCP authentication is in place
-	if err := EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
-		return nil, fmt.Errorf("failed to ensure GCP authentication: %w", err)
-	}
-
 	// load GCP configuration from gcloud CLI config or environment variables
 	if err := i.loadGCPConfig(); err != nil {
 		return nil, fmt.Errorf("failed to load GCP configuration: %w", err)
@@ -402,9 +511,9 @@ func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, e
 
 	ctx := context.Background()
 
-	// create GKE cluster manager client
-	// This uses Application Default Credentials (ADC)
-	clusterManagerClient, err := container.NewClusterManagerClient(ctx)
+	// create GKE cluster manager client scoped to the configured credentials,
+	// falling back to Application Default Credentials when none are set
+	clusterManagerClient, err := container.NewClusterManagerClient(ctx, i.gcpClientOptions()...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cluster manager client: %w", err)
 	}
@@ -434,7 +543,7 @@ func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, e
 	// get an access token for authentication
 	// TODO: Implement token refresh mechanism for long-running operations
 	// The token has a limited lifetime (typically 1 hour)
-	tokenSource, err := google.DefaultTokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
+	tokenSource, err := i.tokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token source: %w", err)
 	}
@@ -506,13 +615,55 @@ func (i *KubernetesRuntimeInfraGKE) SetStackState(state *datatypes.JSON) error {
 	return i.PulumiWorkspace.SetStackState(state)
 }
 
-// configureWorkloadIdentityBindingPostCreate sets up the Workload Identity binding
-// after the GKE cluster has been created.
-func (i *KubernetesRuntimeInfraGKE) configureWorkloadIdentityBindingPostCreate() error {
-	ctx := context.Background()
+// countManagedResources reports how many provider-managed cloud resources the
+// exported stack state holds, ignoring the synthetic root stack resource and any
+// resource already marked for deletion. A count of zero means the refreshed state
+// is genuinely empty, which the caller treats as absent infrastructure. A nil,
+// empty, or placeholder state ("{}", "null") trivially has no resources.
+func countManagedResources(state *datatypes.JSON) (int, error) {
+	if state == nil {
+		return 0, nil
+	}
+	raw := string(*state)
+	if len(raw) == 0 || raw == "{}" || raw == "null" {
+		return 0, nil
+	}
 
+	var deployment apitype.UntypedDeployment
+	if err := json.Unmarshal(*state, &deployment); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal stack state: %w", err)
+	}
+	if deployment.Deployment == nil {
+		return 0, nil
+	}
+
+	var snapshot apitype.DeploymentV3
+	if err := json.Unmarshal(deployment.Deployment, &snapshot); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal deployment snapshot: %w", err)
+	}
+
+	count := 0
+	for _, res := range snapshot.Resources {
+		// the root stack pseudo-resource is always present even for an empty
+		// stack; it is not a provider-managed cloud resource
+		if res.Type == "pulumi:pulumi:Stack" {
+			continue
+		}
+		// a resource pending deletion is on its way out, not present
+		if res.Delete {
+			continue
+		}
+		count++
+	}
+	return count, nil
+}
+
+// configureWorkloadIdentityBindingPostCreate sets up the Workload Identity binding
+// after the GKE cluster has been created. The IAM client is scoped to the
+// configured service account credentials when present.
+func (i *KubernetesRuntimeInfraGKE) configureWorkloadIdentityBindingPostCreate(ctx context.Context) error {
 	// Create IAM service client
-	iamService, err := gcpiam.NewService(ctx, gcpoption.WithScopes(gcpiam.CloudPlatformScope))
+	iamService, err := gcpiam.NewService(ctx, i.gcpClientOptions(gcpiam.CloudPlatformScope)...)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM service client: %w", err)
 	}
@@ -598,6 +749,16 @@ func (i *KubernetesRuntimeInfraGKE) loadGCPConfigFromFile() error {
 }
 
 // EnsureGCPAuth checks for valid GCP Application Default Credentials and initiates
+// the browser OAuth flow if none exist. It is the credentials-free entry point used
+// by standalone bootstrap helpers that authenticate as the calling user; the
+// instance lifecycle uses the receiver method to also handle a stored service
+// account credential.
+func EnsureGCPAuth(serviceAccountCredentials string) error {
+	infra := &KubernetesRuntimeInfraGKE{ServiceAccountCredentials: serviceAccountCredentials}
+	return infra.ensureGCPAuth()
+}
+
+// ensureGCPAuth checks for valid GCP Application Default Credentials and initiates
 // the OAuth flow if credentials are missing or invalid. This allows users to
 // authenticate without manually running `gcloud auth application-default login`.
 //
@@ -606,25 +767,25 @@ func (i *KubernetesRuntimeInfraGKE) loadGCPConfigFromFile() error {
 // 2. Controller in GKE: Uses Workload Identity (automatic via metadata server)
 // 3. Controller outside GCP: Uses service account credentials JSON
 //
-// The serviceAccountCredentials parameter should contain the JSON contents of a
-// GCP service account key file. If empty, the function will check for existing
-// credentials (scenarios 1 and 2) and fall back to browser-based auth if needed.
-func EnsureGCPAuth(serviceAccountCredentials string) error {
+// When ServiceAccountCredentials is set it is written to a temporary file whose
+// path is recorded on the receiver; no process environment variable is mutated, so
+// concurrent instances stay isolated. When empty, the receiver checks for existing
+// credentials (scenarios 1 and 2) and falls back to browser-based auth if needed.
+func (i *KubernetesRuntimeInfraGKE) ensureGCPAuth() error {
 	ctx := context.Background()
 
 	// FIRST: Check if valid credentials already exist
 	// This covers (in order of preference):
 	// - Workload Identity in GKE (scenario 2) - most secure, uses short-lived tokens
 	// - User credentials from gcloud auth (scenario 1)
-	// - Previously configured service account key file via GOOGLE_APPLICATION_CREDENTIALS
-	if hasValidGCPCredentials(ctx) {
+	if i.ServiceAccountCredentials == "" && hasValidGCPCredentials(ctx) {
 		return nil
 	}
 
-	// SECOND: If no valid credentials exist and service account credentials are
-	// provided, use them. This is the fallback for controllers running outside GCP.
-	if serviceAccountCredentials != "" {
-		if err := configureServiceAccountCredentials(serviceAccountCredentials); err != nil {
+	// SECOND: If service account credentials are provided, use them. This is the
+	// fallback for controllers running outside GCP.
+	if i.ServiceAccountCredentials != "" {
+		if err := i.configureServiceAccountCredentials(i.ServiceAccountCredentials); err != nil {
 			return fmt.Errorf("failed to configure service account credentials: %w", err)
 		}
 		return nil
@@ -644,10 +805,11 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 }
 
 // configureServiceAccountCredentials writes the service account JSON to a
-// temporary file and sets the GOOGLE_APPLICATION_CREDENTIALS environment
-// variable to point to it. This allows all GCP client libraries to automatically
-// use these credentials.
-func configureServiceAccountCredentials(credentialsJSON string) error {
+// temporary file and records its path on the receiver. It does not mutate the
+// process environment: every GCP client and the Pulumi provider receive the
+// credentials per call, so concurrent instances with different credentials stay
+// isolated rather than sharing one process-global environment variable.
+func (i *KubernetesRuntimeInfraGKE) configureServiceAccountCredentials(credentialsJSON string) error {
 	// create a temporary file for the credentials
 	tmpFile, err := os.CreateTemp("", "gcp-sa-*.json")
 	if err != nil {
@@ -666,10 +828,44 @@ func configureServiceAccountCredentials(credentialsJSON string) error {
 		return fmt.Errorf("failed to close temp credentials file: %w", err)
 	}
 
-	// set the environment variable so all GCP client libraries use these credentials
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", tmpFile.Name())
+	// record the path on the receiver for callers that need a credentials file
+	// rather than mutating a process-global environment variable
+	i.credentialsFilePath = tmpFile.Name()
 
 	return nil
+}
+
+// gcpClientOptions returns the client options used to construct GCP SDK clients
+// for this instance. When explicit service account credentials are configured it
+// returns them as a per-call option so the client never depends on a process-wide
+// environment variable; otherwise it returns only the requested scopes and the
+// client falls back to Application Default Credentials. Passing scopes is
+// optional: omit them to inherit the client's default scope.
+func (i *KubernetesRuntimeInfraGKE) gcpClientOptions(scopes ...string) []option.ClientOption {
+	var opts []option.ClientOption
+	if len(scopes) > 0 {
+		opts = append(opts, option.WithScopes(scopes...))
+	}
+	if i.ServiceAccountCredentials != "" {
+		opts = append(opts, option.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
+	}
+	return opts
+}
+
+// tokenSource returns an OAuth2 token source for the given scopes, derived from
+// the configured service account credentials when present and from Application
+// Default Credentials otherwise. Deriving from the in-memory credentials keeps
+// the token scoped to this instance instead of whatever the process default
+// resolves to.
+func (i *KubernetesRuntimeInfraGKE) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+	if i.ServiceAccountCredentials != "" {
+		creds, err := google.CredentialsFromJSON(ctx, []byte(i.ServiceAccountCredentials), scopes...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to derive credentials from service account JSON: %w", err)
+		}
+		return creds.TokenSource, nil
+	}
+	return google.DefaultTokenSource(ctx, scopes...)
 }
 
 // hasValidGCPCredentials checks if valid Application Default Credentials exist

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -13,13 +15,105 @@ import (
 	"gorm.io/datatypes"
 )
 
-// staleAckDurationSeconds is the threshold after which an acknowledgement
-// timestamp is considered stale, indicating the operation was interrupted.
-const staleAckDurationSeconds = 240
+// LifecycleConfig holds the tunable parameters of the infra
+// lifecycle state machine. Production uses the defaults; tests
+// override via setLifecycleConfig.
+type LifecycleConfig struct {
+	StaleAckThreshold time.Duration
+	RefreshInterval   time.Duration
+	SemaphoreCapacity int
+	PersistRetries    int
+	PersistRetryDelay time.Duration
+}
+
+// defaultLifecycleConfig is the production configuration.
+var defaultLifecycleConfig = LifecycleConfig{
+	StaleAckThreshold: 240 * time.Second,
+	RefreshInterval:   60 * time.Second,
+	SemaphoreCapacity: 5,
+	PersistRetries:    30,
+	PersistRetryDelay: 10 * time.Second,
+}
+
+// lifecycleMu guards lifecycleConfig and infraSemaphore. Production sets
+// them once at init and only reads, so the read lock is uncontended;
+// tests swap them via setLifecycleConfig, and the lock keeps that swap
+// from racing the background goroutines that read the values.
+var lifecycleMu sync.RWMutex
+
+// lifecycleConfig is the active configuration read by the lifecycle
+// state machine.
+var lifecycleConfig = defaultLifecycleConfig
 
 // infraSemaphore limits concurrent infrastructure operations to prevent OOM
 // from too many simultaneous deployments.
 var infraSemaphore = make(chan struct{}, 5)
+
+// currentConfig returns the active lifecycle configuration.
+func currentConfig() LifecycleConfig {
+	lifecycleMu.RLock()
+	defer lifecycleMu.RUnlock()
+	return lifecycleConfig
+}
+
+// currentSemaphore returns the active semaphore channel. Callers that
+// both acquire and release a slot must capture this once and reuse it,
+// so the release lands on the same channel even if a test swaps the
+// global in between.
+func currentSemaphore() chan struct{} {
+	lifecycleMu.RLock()
+	defer lifecycleMu.RUnlock()
+	return infraSemaphore
+}
+
+// setLifecycleConfig swaps the lifecycle tunables and re-creates the
+// semaphore channel at the new capacity. Returns a restore func for
+// t.Cleanup. Only for tests.
+func setLifecycleConfig(c LifecycleConfig) (restore func()) {
+	lifecycleMu.Lock()
+	oldConfig := lifecycleConfig
+	oldSemaphore := infraSemaphore
+	lifecycleConfig = c
+	infraSemaphore = make(chan struct{}, c.SemaphoreCapacity)
+	lifecycleMu.Unlock()
+	return func() {
+		lifecycleMu.Lock()
+		lifecycleConfig = oldConfig
+		infraSemaphore = oldSemaphore
+		lifecycleMu.Unlock()
+	}
+}
+
+// Clock abstracts wall-clock reads for stale-ack logic so tests can
+// inject a fixed or advanceable time.
+type Clock interface{ Now() time.Time }
+
+// realClock implements Clock using the system wall clock.
+type realClock struct{}
+
+func (realClock) Now() time.Time { return time.Now() }
+
+// lifecycleClock is the clock used for stale-ack checks.
+var lifecycleClock Clock = realClock{}
+
+// setLifecycleClock swaps the lifecycle clock. Returns a restore func
+// for t.Cleanup. Only for tests; not concurrency-safe, call before
+// spawning goroutines.
+func setLifecycleClock(c Clock) (restore func()) {
+	oldClock := lifecycleClock
+	lifecycleClock = c
+	return func() {
+		lifecycleClock = oldClock
+	}
+}
+
+// inFlightOps counts infrastructure create and delete operations
+// currently executing in background goroutines.
+var inFlightOps int64
+
+// inFlightCount returns the number of in-flight infrastructure
+// operations. Only for tests.
+func inFlightCount() int64 { return atomic.LoadInt64(&inFlightOps) }
 
 // ReconciliationSnapshot captures the reconciliation timestamps and resource
 // inventory for a provider instance at a point in time. This decouples the
@@ -359,17 +453,19 @@ type infraConfig struct {
 // checkStaleAck returns true if the given acknowledgement timestamp has gone
 // stale, indicating the operation was interrupted (e.g. pod restart).
 func checkStaleAck(ackTimestamp time.Time) bool {
-	duration := time.Now().UTC().Sub(ackTimestamp)
-	return duration.Seconds() > staleAckDurationSeconds
+	duration := lifecycleClock.Now().UTC().Sub(ackTimestamp)
+	return duration > currentConfig().StaleAckThreshold
 }
 
 // launchInfraCreate acquires the concurrency semaphore, then launches
 // executeInfraCreate in a background goroutine. Returns a requeue delay
 // for the reconciler.
 func launchInfraCreate(config infraConfig) (int64, error) {
-	// acquire infrastructure concurrency semaphore
+	// acquire infrastructure concurrency semaphore; capture the channel
+	// once so the release lands on the same channel
+	sem := currentSemaphore()
 	select {
-	case infraSemaphore <- struct{}{}:
+	case sem <- struct{}{}:
 		// acquired slot
 	default:
 		config.Log.Info("infrastructure worker pool full, requeuing")
@@ -378,7 +474,7 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 
 	// launch creation in background goroutine
 	go func() {
-		defer func() { <-infraSemaphore }()
+		defer func() { <-sem }()
 		defer func() {
 			if r := recover(); r != nil {
 				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure create goroutine")
@@ -395,9 +491,11 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 // executeInfraDelete in a background goroutine. Returns a requeue delay
 // for the reconciler.
 func launchInfraDelete(config infraConfig) (int64, error) {
-	// acquire infrastructure concurrency semaphore
+	// acquire infrastructure concurrency semaphore; capture the channel
+	// once so the release lands on the same channel
+	sem := currentSemaphore()
 	select {
-	case infraSemaphore <- struct{}{}:
+	case sem <- struct{}{}:
 		// acquired slot
 	default:
 		config.Log.Info("infrastructure worker pool full, requeuing")
@@ -406,7 +504,7 @@ func launchInfraDelete(config infraConfig) (int64, error) {
 
 	// launch deletion in background goroutine
 	go func() {
-		defer func() { <-infraSemaphore }()
+		defer func() { <-sem }()
 		defer func() {
 			if r := recover(); r != nil {
 				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure delete goroutine")
@@ -422,6 +520,10 @@ func launchInfraDelete(config infraConfig) (int64, error) {
 // goroutine. It handles state restoration, optional streaming for providers
 // that support it, and captures final state on success or failure.
 func executeInfraCreate(config infraConfig) {
+	// track in-flight operations for observability in tests
+	atomic.AddInt64(&inFlightOps, 1)
+	defer atomic.AddInt64(&inFlightOps, -1)
+
 	// refresh the creation acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
@@ -514,6 +616,10 @@ func executeInfraCreate(config infraConfig) {
 // goroutine. It handles state restoration, optional refresh for providers
 // that support it, and captures updated state on failure.
 func executeInfraDelete(config infraConfig) {
+	// track in-flight operations for observability in tests
+	atomic.AddInt64(&inFlightOps, 1)
+	defer atomic.AddInt64(&inFlightOps, -1)
+
 	// refresh the deletion acknowledgement until this function returns
 	quitAck := make(chan bool, 1)
 	go refreshAck(config.Callbacks.RefreshAck, quitAck, config.Log)
@@ -654,9 +760,9 @@ func streamState(
 	}
 }
 
-// refreshAck calls the provided refresh function every 60 seconds until told
-// to quit, preventing stale acknowledgement detection from re-launching the
-// operation while it is still running.
+// refreshAck calls the provided refresh function on the configured refresh
+// interval until told to quit, preventing stale acknowledgement detection
+// from re-launching the operation while it is still running.
 func refreshAck(
 	refresh func() error,
 	quitChan chan bool,
@@ -666,7 +772,7 @@ func refreshAck(
 		select {
 		case <-quitChan:
 			return
-		case <-time.After(60 * time.Second):
+		case <-time.After(currentConfig().RefreshInterval):
 			if err := refresh(); err != nil {
 				log.Error(err, "failed to refresh acknowledged timestamp")
 			}
@@ -675,19 +781,20 @@ func refreshAck(
 }
 
 // persistFailure calls the provided persist function to mark the operation as
-// failed. If the call fails, it is retried every 10 seconds up to 30 times
-// (5 minutes). After exhausting retries, the goroutine returns and stale ack
-// detection will recover the operation.
+// failed. If the call fails, it is retried on the configured delay up to the
+// configured retry count. After exhausting retries, the goroutine returns and
+// stale ack detection will recover the operation.
 func persistFailure(
 	persist func() error,
 	log *logr.Logger,
 ) {
-	const maxRetries = 30
+	cfg := currentConfig()
+	maxRetries := cfg.PersistRetries
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if err := persist(); err != nil {
 			log.Error(err, "failed to persist creation failure - retrying in 10 sec",
 				"attempt", attempt+1, "maxRetries", maxRetries)
-			time.Sleep(time.Second * 10)
+			time.Sleep(cfg.PersistRetryDelay)
 			continue
 		}
 		return

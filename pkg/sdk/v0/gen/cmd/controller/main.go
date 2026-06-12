@@ -140,6 +140,15 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				).Call(
 					Lit("auth-enabled").Op(",").Lit(true).Op(",").Lit("Enable client certificate authentication (default is true)"),
 				),
+				Var().Id("infraConcurrency").Op("=").Qual(
+					"github.com/namsral/flag",
+					"Int",
+				).Call(
+					Line().Lit("infra-concurrency"),
+					Line().Lit(5),
+					Line().Lit("Maximum number of infrastructure provisioning operations to run at once across this controller"),
+					Line(),
+				),
 				Qual(
 					"github.com/namsral/flag",
 					"Parse",
@@ -313,6 +322,15 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Qual("os", "Exit").Call(Lit(1)),
 				),
 
+				Line().Comment("// size the infrastructure concurrency semaphore from the operator flag\n"+
+					"// before any reconciler launches; the cap is fixed at startup and not\n"+
+					"// hot-reloadable, and is a no-op for controllers that never provision\n"+
+					"// infrastructure"),
+				Qual(
+					"github.com/threeport/threeport/internal/provider",
+					"SetInfraConcurrency",
+				).Call(Op("*").Id("infraConcurrency")),
+
 				Line().Comment("configure and start reconcilers"),
 				Var().Id("reconcilerConfigs").Index().Qual(
 					"github.com/threeport/threeport/pkg/controller/v0",
@@ -353,8 +371,14 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						}),
 					})
 
-					g.Line().Comment("start reconciler")
-					g.Id("go").Id("r").Dot("ReconcileFunc").Call(Op("&").Id("reconciler"))
+					g.Line().Comment("start reconcile workers sharing this reconciler's pull subscription")
+					g.Id("concurrency").Op(":=").Id("r").Dot("ConcurrentReconciles")
+					g.If(Id("concurrency").Op("<").Lit(1)).Block(
+						Id("concurrency").Op("=").Lit(1),
+					)
+					g.For(Id("w").Op(":=").Lit(0).Op(";").Id("w").Op("<").Id("concurrency").Op(";").Id("w").Op("++")).Block(
+						Id("go").Id("r").Dot("ReconcileFunc").Call(Op("&").Id("reconciler")),
+					)
 				}),
 				Line(),
 

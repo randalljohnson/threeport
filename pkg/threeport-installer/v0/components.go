@@ -1412,6 +1412,9 @@ func (cpi *ControlPlaneInstaller) getControllerArgs() []interface{} {
 		if cpi.Opts.Verbose {
 			args = append(args, "-verbose=true")
 		}
+		if cpi.Opts.InfraConcurrency > 0 {
+			args = append(args, fmt.Sprintf("-infra-concurrency=%d", cpi.Opts.InfraConcurrency))
+		}
 		return args
 	default:
 		args := []interface{}{}
@@ -1421,6 +1424,9 @@ func (cpi *ControlPlaneInstaller) getControllerArgs() []interface{} {
 		}
 		if cpi.Opts.Verbose {
 			args = append(args, "-verbose=true")
+		}
+		if cpi.Opts.InfraConcurrency > 0 {
+			args = append(args, fmt.Sprintf("-infra-concurrency=%d", cpi.Opts.InfraConcurrency))
 		}
 		return args
 	}

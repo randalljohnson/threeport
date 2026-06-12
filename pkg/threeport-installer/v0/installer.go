@@ -132,6 +132,12 @@ type Options struct {
 	// verbose logging
 	Verbose bool
 
+	// Maximum number of infrastructure provisioning operations a controller may
+	// run at once. Passed to every controller as -infra-concurrency; the cap
+	// only takes effect on controllers that provision cloud infrastructure. A
+	// value of zero leaves the controller's own default in place.
+	InfraConcurrency int
+
 	// provide any additional conditions to be added to aws IRSA
 	AdditionalAwsIrsaConditions []string
 

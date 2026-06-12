@@ -125,6 +125,7 @@ type ReconciliationSnapshot struct {
 	DeletionScheduled    *time.Time
 	DeletionAcknowledged *time.Time
 	DeletionConfirmed    *time.Time
+	DeletionFailed       bool
 	ResourceInventory    *datatypes.JSON
 }
 
@@ -169,6 +170,9 @@ type InfraLifecycleProvider interface {
 
 	// RefreshDeletionAck updates DeletionAcknowledged to prevent stale detection.
 	RefreshDeletionAck() error
+
+	// SetDeletionFailed marks DeletionFailed=true in the API.
+	SetDeletionFailed() error
 
 	// ConfirmDeletion sets DeletionConfirmed in the API.
 	ConfirmDeletion() error
@@ -346,8 +350,10 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		return 60, nil
 	}
 
-	// check if previously acknowledged
-	if snap.DeletionAcknowledged != nil {
+	// check if previously acknowledged and not failed; a failed destroy
+	// falls through to re-acknowledge and re-launch immediately rather than
+	// waiting for the acknowledgement to go stale
+	if snap.DeletionAcknowledged != nil && !snap.DeletionFailed {
 		// re-fetch to check if inventory has been cleared
 		latestSnap, err := p.GetReconciliation()
 		if err != nil {
@@ -390,6 +396,11 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		}
 	}
 
+	// one of the following is true:
+	// 1. deletion has not been acknowledged: new delete request
+	// 2. deletion has previously failed: time to retry
+	// 3. the last acknowledgement is stale: deletion was interrupted
+
 	// acknowledge deletion
 	if err := p.AckDeletion(); err != nil {
 		return 0, fmt.Errorf("failed to acknowledge deletion: %w", err)
@@ -409,8 +420,9 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 
 	// wire callbacks and launch goroutine
 	callbacks := infraCallbacks{
-		RefreshAck: p.RefreshDeletionAck,
-		SaveState:  p.SaveState,
+		RefreshAck:     p.RefreshDeletionAck,
+		SaveState:      p.SaveState,
+		PersistFailure: p.SetDeletionFailed,
 		OnSuccess: func(_ *datatypes.JSON) error {
 			// clear inventory to signal destroy complete
 			if err := p.ClearInventory(); err != nil {
@@ -445,7 +457,8 @@ type infraCallbacks struct {
 	SaveState func(state *datatypes.JSON) error
 
 	// PersistFailure marks the operation as failed in the API so the
-	// reconciler knows to retry. Set for create operations, nil for delete.
+	// reconciler knows to retry promptly. Create operations set
+	// CreationFailed; delete operations set DeletionFailed.
 	PersistFailure func() error
 
 	// OnSuccess is called after successful infrastructure create or delete.
@@ -528,6 +541,7 @@ func launchInfraDelete(config infraConfig) (int64, error) {
 		defer func() {
 			if r := recover(); r != nil {
 				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure delete goroutine")
+				persistFailure(config.Callbacks.PersistFailure, config.Log)
 			}
 		}()
 		executeInfraDelete(config)
@@ -686,6 +700,10 @@ func executeInfraDelete(config infraConfig) {
 				config.Log.Error(saveErr, "failed to save state after failed deletion")
 			}
 		}
+
+		// persist the failure so the next reconciliation retries promptly
+		// instead of waiting for the acknowledgement to go stale
+		persistFailure(config.Callbacks.PersistFailure, config.Log)
 		return
 	}
 
@@ -812,7 +830,7 @@ func persistFailure(
 	maxRetries := cfg.PersistRetries
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if err := persist(); err != nil {
-			log.Error(err, "failed to persist creation failure - retrying in 10 sec",
+			log.Error(err, "failed to persist operation failure, retrying after delay",
 				"attempt", attempt+1, "maxRetries", maxRetries)
 			time.Sleep(cfg.PersistRetryDelay)
 			continue
@@ -821,12 +839,18 @@ func persistFailure(
 	}
 	log.Error(
 		fmt.Errorf("exhausted %d retries", maxRetries),
-		"failed to persist creation failure, stale ack detection will recover",
+		"failed to persist operation failure, stale ack detection will recover",
 	)
 }
 
-// verifyState checks the integrity of a state JSON object to ensure it
-// represents a valid deployment with resources.
+// verifyState checks the integrity of a state JSON object to confirm it is a
+// recognizable, well-formed deployment record. It assumes Pulumi-stack-backed
+// state and inspects the two on-disk Pulumi schemas (checkpoint and
+// deployment); a backend with a different state layout would need its own
+// verification. A stack whose resource list is present but empty is treated as
+// a legitimately empty stack and passes, so a deployment that creates no
+// resources does not retry forever; only state that matches neither schema is
+// rejected.
 func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 	if state == nil {
 		return fmt.Errorf("state is nil")
@@ -841,13 +865,18 @@ func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 		return fmt.Errorf("state is not valid JSON: %w", err)
 	}
 
-	// check for resources in either format:
+	// look for a resources list in either Pulumi schema:
 	// - checkpoint format: checkpoint.latest.resources
 	// - deployment format: deployment.resources
+	// recognizedSchema records whether the state carried a resources list at
+	// all, distinguishing a legitimately empty stack from state that does not
+	// match a known Pulumi layout.
+	recognizedSchema := false
 	resourceCount := 0
 	if checkpoint, ok := parsed["checkpoint"].(map[string]interface{}); ok {
 		if latest, ok := checkpoint["latest"].(map[string]interface{}); ok {
 			if resources, ok := latest["resources"].([]interface{}); ok {
+				recognizedSchema = true
 				resourceCount = len(resources)
 			}
 		}
@@ -855,13 +884,16 @@ func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 	if resourceCount == 0 {
 		if deployment, ok := parsed["deployment"].(map[string]interface{}); ok {
 			if resources, ok := deployment["resources"].([]interface{}); ok {
+				recognizedSchema = true
 				resourceCount = len(resources)
 			}
 		}
 	}
 
-	if resourceCount == 0 {
-		return fmt.Errorf("state contains no resources")
+	// state that matches neither schema is unrecognized and rejected; an empty
+	// resource list under a recognized schema is a valid empty stack
+	if !recognizedSchema {
+		return fmt.Errorf("state does not match a known Pulumi stack schema")
 	}
 
 	log.Info("state verification passed", "resourceCount", resourceCount)

@@ -9,11 +9,11 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// This file holds the helpers for writing GORM update hooks that stay
+// This file holds the helpers for writing GORM hooks that stay
 // correct across the two call shapes GORM supports. The asymmetry
-// between the call shapes is easy to miss, so the next block explains
-// the mental model in full and the per-function docstrings stay
-// focused on what each helper does.
+// between the call shapes is easy to miss, so this block explains the
+// mental model in full and the per-function docstrings stay focused on
+// what each helper does.
 //
 // "Hook receiver" here means the *T receiver of the GORM lifecycle
 // hook methods (BeforeCreate, BeforeUpdate, BeforeDelete, AfterCreate,
@@ -21,23 +21,26 @@ import (
 // into *_validate_gen.go files. GORM calls them automatically when a
 // row is being created, updated, or deleted.
 //
-// The update hooks fire under two call shapes, and the receiver means
-// a different thing in each.
+// The update hooks fire under two call shapes (Updates and Save), and
+// the receiver means a different thing in each.
 //
-// The mental model starts with the generated client signatures (T
+// The mental model starts with the generated client functions (T
 // stands in for any API type). In the hook column, * stands for both
 // the Before and After hook, so *Create means BeforeCreate and
-// AfterCreate. Note the DELETE row: for reconciled types its first
-// GORM call is Updates, like PATCH, but the operation later ends in a
-// soft Delete that fires the Delete hooks (detailed below the table).
+// AfterCreate. The shape column is the receiver layout a hook sees:
+// full when the whole object is present (Model == Dest), partial when
+// it is a sparse patch over the loaded row (Model != Dest). Note the
+// DELETE row: for reconciled types its first GORM call is Updates,
+// like PATCH, but the operation later ends in a soft Delete that fires
+// the Delete hooks (detailed below the table).
 //
-//	client signature                            | HTTP   | GORM    | hook     | semantic       | reason
-//	--------------------------------------------|--------|---------|----------|----------------|-----------------------------------
-//	CreateT(apiClient, apiAddr, *T) (*T, error) | POST   | Create  | *Create  | insert row     | same hook shape as PUT
-//	ReplaceT(apiClient, apiAddr, *T) (*T, error)| PUT    | Save    | *Update  | full replace   | every column lands
-//	UpdateT(apiClient, apiAddr, *T) (*T, error) | PATCH  | Updates | *Update  | partial update | only sent fields land
-//	DeleteT(apiClient, apiAddr, id) (*T, error) | DELETE | Updates | *Update, | partial update | phase one flags, then soft delete
-//	                                            |        |         | *Delete
+//	client   | HTTP   | GORM     | hook     | shape    | effect
+//	---------|--------|----------|----------|----------|-------------------------
+//	CreateT  | POST   | Create   | *Create  | full     | inserts row
+//	ReplaceT | PUT    | Save     | *Update  | full     | writes every column
+//	UpdateT  | PATCH  | Updates  | *Update  | partial  | writes only sent fields
+//	DeleteT  | DELETE | Updates, | *Update, | partial, | schedules deletion,
+//	         |        | Delete   | *Delete  | n/a      | sets deleted_at
 //
 // Generated handlers pick the call shape from the HTTP method. The
 // UpdateT PATCH handlers use Updates so only fields the client
@@ -52,16 +55,16 @@ import (
 // and ReplaceT reach different GORM methods (Create and Save) but
 // present the same full-object shape, so they are easy to conflate;
 // the shared shape, not a shared method, is what misleads. DeleteT is
-// two-phase for reconciled types: the first call sets deletion-trigger
-// flags through Updates and fires the Update hooks, then once the
-// controller confirms, the final call soft deletes and fires the
-// Delete hooks. That soft delete writes deleted_at with an UPDATE, but
-// GORM keys hooks on the operation, so it runs the Delete hooks, not
-// the Update hooks.
+// two-phase for reconciled types: the first call schedules deletion
+// through Updates and fires the Update hooks, then once the controller
+// confirms, the final call soft deletes and fires the Delete hooks.
+// That soft delete writes deleted_at with an UPDATE, but GORM keys
+// hooks on the operation, so it runs the Delete hooks, not the Update
+// hooks.
 //
 // Under the hood the two call shapes differ in what the hook receiver
-// holds. The examples use `loaded` (a row pulled from the DB), `patch`
-// (the caller's partial payload), and `obj` (a complete inbound row).
+// holds. The examples use loaded (a row pulled from the DB), patch
+// (the caller's partial payload), and obj (a complete inbound row).
 //
 //   - Model(&loaded).Updates(&patch): the caller has a payload with
 //     only the fields it wants to change; GORM applies those over the
@@ -72,8 +75,8 @@ import (
 //     field persisted. Receiver and tx.Statement.Dest are the same
 //     inbound object that already holds the new values.
 //
-// Create has only the Save shape: receiver, Model, and Dest all
-// point at the inbound object.
+// Create uses the Create method but the Save shape: receiver, Model,
+// and Dest all point at the inbound object.
 //
 // Updates fire from either shape. GORM merges the incoming values
 // onto the receiver between the before-update and after-update
@@ -95,17 +98,9 @@ import (
 //
 // Layer choice for the PUT/PATCH naming
 //
-// The PUT/PATCH distinction can be named at four different layers, and
-// the layer matters because a reconciled DeleteX handler's first call
-// uses GORM's Updates to flip reconciliation flags before the later
-// soft Delete. Any name pulled from the HTTP-verb or
-// threeport-client-verb layer would therefore report true for that
-// DELETE phase too, which is misleading for hooks that want to reason
-// about "is this a partial update".
-//
-// We chose the semantic layer (IsFullReplace / IsPartialUpdate)
-// because it describes the GORM call shape directly without leaking
-// HTTP or client vocabulary, and carries no DELETE caveat.
+// The helpers name the distinction at the semantic layer (IsFullReplace
+// / IsPartialUpdate). It could have been named at any of three other
+// layers:
 //
 //   layer             | true on PUT   | true on PATCH or DELETE | DELETE caveat
 //   ------------------|---------------|-------------------------|--------------
@@ -113,6 +108,19 @@ import (
 //   semantic (chosen) | IsFullReplace | IsPartialUpdate         | no
 //   HTTP verb         | IsPut         | IsPatch                 | yes
 //   threeport client  | IsReplace     | IsUpdate                | yes
+//
+// The alternatives, and why each was passed over:
+//
+//   - HTTP verb (IsPatch) and threeport client (IsUpdate) read DELETE
+//     and DeleteT, neither PATCH nor UpdateT, so they answer false and
+//     miss a genuinely partial call. That false answer is the DELETE
+//     caveat.
+//   - GORM method (IsUpdates) is correct and carries no caveat, but it
+//     names the mechanism (Save versus Updates) rather than the intent.
+//
+// The semantic layer carries no caveat and names the call shape
+// directly, without HTTP, client, or GORM-method vocabulary, so the
+// helpers use it.
 
 // IsFieldChanged reports whether the named field is being modified by
 // the current GORM update. Reach for this first for any per-field
@@ -200,16 +208,17 @@ func LoadObjectFromDB(tx *gorm.DB) (interface{}, error) {
 }
 
 // IsFullReplace reports whether the current update is a PUT (Save,
-// where Model == Dest) rather than a PATCH (Updates, where they
-// differ). The distinction matters when a nil inbound field means an
-// explicit clear under PUT but absent-and-unchanged under PATCH.
+// where Model == Dest) rather than a PATCH or reconciled DELETE
+// flag-write (Updates, where Model != Dest). The distinction matters
+// when a nil inbound field means an explicit clear under PUT but
+// absent-and-unchanged under PATCH.
 func IsFullReplace(tx *gorm.DB) bool {
 	return tx.Statement.Model == tx.Statement.Dest
 }
 
 // IsPartialUpdate reports whether the current update is the
-// Updates-shape call that PATCH and DELETE handlers both use (where
-// Model != Dest).
+// Updates-shape call that PATCH and the reconciled DELETE flag-write
+// phase use (where Model != Dest).
 func IsPartialUpdate(tx *gorm.DB) bool {
 	return tx.Statement.Model != tx.Statement.Dest
 }

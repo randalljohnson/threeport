@@ -11,9 +11,9 @@ import (
 
 // This file holds the helpers for writing GORM update hooks that stay
 // correct across the two call shapes GORM supports. The asymmetry
-// between the call shapes is subtle and easy to miss, so the next
-// block explains the mental model once in depth and the per-function
-// docstrings below stay focused on what each helper does.
+// between the call shapes is easy to miss, so the next block explains
+// the mental model in full and the per-function docstrings stay
+// focused on what each helper does.
 //
 // "Hook receiver" here means the *T receiver of the GORM lifecycle
 // hook methods (BeforeCreate, BeforeUpdate, BeforeDelete, AfterCreate,
@@ -25,15 +25,18 @@ import (
 // a different thing in each.
 //
 // The mental model starts with the generated client signatures (T
-// stands in for any API type). Note the DELETE row: its HTTP method
-// is DELETE but the GORM call is Updates, the same as PATCH.
+// stands in for any API type). In the hook column, * stands for both
+// the Before and After hook, so *Create means BeforeCreate and
+// AfterCreate. Note the DELETE row: for reconciled types its first
+// GORM call is Updates, like PATCH, but the operation later ends in a
+// soft Delete that fires the Delete hooks (detailed below the table).
 //
 //	client signature                            | HTTP   | GORM    | hook     | semantic       | reason
-//	--------------------------------------------|--------|---------|----------|----------------|-----------------------------
+//	--------------------------------------------|--------|---------|----------|----------------|-----------------------------------
 //	CreateT(apiClient, apiAddr, *T) (*T, error) | POST   | Create  | *Create  | insert row     | same hook shape as PUT
 //	ReplaceT(apiClient, apiAddr, *T) (*T, error)| PUT    | Save    | *Update  | full replace   | every column lands
 //	UpdateT(apiClient, apiAddr, *T) (*T, error) | PATCH  | Updates | *Update  | partial update | only sent fields land
-//	DeleteT(apiClient, apiAddr, id) (*T, error) | DELETE | Updates | *Update, | partial update | only deletion-trigger flags
+//	DeleteT(apiClient, apiAddr, id) (*T, error) | DELETE | Updates | *Update, | partial update | phase one flags, then soft delete
 //	                                            |        |         | *Delete
 //
 // Generated handlers pick the call shape from the HTTP method. The
@@ -42,20 +45,19 @@ import (
 // every column on the bound row lands, including fields the caller
 // cleared. DeleteT handlers also use Updates to write only the
 // reconciliation flag columns (DeletionScheduled, etc.) without
-// touching the rest of the row. GORM fires BeforeUpdate from
+// touching the rest of the row. GORM fires the Update hooks from
 // whatever call shape the caller used.
 //
-// The hook column shows which generated hooks each call fires; *
-// stands for both the Before and After hook, so *Create is
-// BeforeCreate and AfterCreate. CreateT and ReplaceT reach different
-// GORM methods (Create and Save) but present the same full-object
-// shape, so they are easy to conflate; the shared shape, not a shared
-// method, is the trap. DeleteT is two-phase for reconciled types: the
-// first call sets deletion-trigger flags through Updates and fires the
-// Update hooks, then once the controller confirms, the final call soft
-// deletes and fires the Delete hooks. That soft delete writes
-// deleted_at with an UPDATE, but GORM keys hooks on the operation, so
-// it runs the Delete hooks, not the Update hooks.
+// The hook column shows which generated hooks each call fires. CreateT
+// and ReplaceT reach different GORM methods (Create and Save) but
+// present the same full-object shape, so they are easy to conflate;
+// the shared shape, not a shared method, is what misleads. DeleteT is
+// two-phase for reconciled types: the first call sets deletion-trigger
+// flags through Updates and fires the Update hooks, then once the
+// controller confirms, the final call soft deletes and fires the
+// Delete hooks. That soft delete writes deleted_at with an UPDATE, but
+// GORM keys hooks on the operation, so it runs the Delete hooks, not
+// the Update hooks.
 //
 // Under the hood the two call shapes differ in what the hook receiver
 // holds. The examples use `loaded` (a row pulled from the DB), `patch`
@@ -94,11 +96,12 @@ import (
 // Layer choice for the PUT/PATCH naming
 //
 // The PUT/PATCH distinction can be named at four different layers, and
-// the layer matters because threeport's DeleteX handlers also use
-// GORM's Updates internally to flip a few reconciliation flags. Any
-// name pulled from the HTTP-verb or threeport-client-verb layer would
-// therefore report true for DELETE too, which is misleading for hooks
-// that want to reason about "is this a partial update".
+// the layer matters because a reconciled DeleteX handler's first call
+// uses GORM's Updates to flip reconciliation flags before the later
+// soft Delete. Any name pulled from the HTTP-verb or
+// threeport-client-verb layer would therefore report true for that
+// DELETE phase too, which is misleading for hooks that want to reason
+// about "is this a partial update".
 //
 // We chose the semantic layer (IsFullReplace / IsPartialUpdate)
 // because it describes the GORM call shape directly without leaking
@@ -119,9 +122,7 @@ import (
 // Under PATCH (Updates), uses tx.Statement.Changed which correctly
 // compares the inbound patch against the loaded row (no DB read).
 // Under PUT (Save), loads the committed row via LoadObjectFromDB and
-// compares the named field by reflection. Each call may incur one DB
-// read under the PUT path; callers checking several fields in the
-// same hook will incur one read per call, which is fine in practice.
+// compares the named field by reflection, one DB read per call.
 //
 // Returns an error if the named field doesn't exist on the type, the
 // row has no ID, or the DB load fails. Callers in immutability hooks

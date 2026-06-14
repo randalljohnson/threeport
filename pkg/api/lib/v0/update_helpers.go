@@ -40,7 +40,7 @@ import (
 //	ReplaceT | PUT    | Save     | *Update  | full     | writes every column
 //	UpdateT  | PATCH  | Updates  | *Update  | partial  | writes only sent fields
 //	DeleteT  | DELETE | Updates, | *Update, | partial, | schedules deletion,
-//	         |        | Delete   | *Delete  | n/a      | sets deleted_at
+//	         |        | Delete   | *Delete  | full     | sets deleted_at
 //
 // Generated handlers pick the call shape from the HTTP method. The
 // UpdateT PATCH handlers use Updates so only fields the client

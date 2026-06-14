@@ -102,12 +102,12 @@ import (
 // / IsPartialUpdate). It could have been named at any of three other
 // layers:
 //
-//   layer             | true on PUT   | true on PATCH or DELETE | DELETE caveat
-//   ------------------|---------------|-------------------------|--------------
-//   GORM method       | IsSave        | IsUpdates               | no
-//   semantic (chosen) | IsFullReplace | IsPartialUpdate         | no
-//   HTTP verb         | IsPut         | IsPatch                 | yes
-//   threeport client  | IsReplace     | IsUpdate                | yes
+//   layer             | partial detector | on PATCH | on reconciled DELETE | caveat
+//   ------------------|------------------|----------|----------------------|-------
+//   GORM method       | IsUpdates        | true     | true                 | no
+//   semantic (chosen) | IsPartialUpdate  | true     | true                 | no
+//   HTTP verb         | IsPatch          | true     | false                | yes
+//   threeport client  | IsUpdate         | true     | false                | yes
 //
 // The alternatives, and why each was passed over:
 //
@@ -118,6 +118,11 @@ import (
 //     that is really a partial Updates. That miss is the DELETE caveat.
 //   - GORM method (IsUpdates) is correct and carries no caveat, but it
 //     names the mechanism (Save versus Updates) rather than the intent.
+//   - IsUpdates (GORM method) and IsUpdate (threeport client) are a
+//     single trailing s apart, yet they disagree on the reconciled
+//     DELETE: IsUpdates is true (the call is a GORM Updates), IsUpdate
+//     is false (the call is DeleteT, not UpdateT). Near-identical names
+//     that diverge exactly where it matters are easy to confuse.
 //
 // The semantic layer carries no caveat and names the call shape
 // directly, without HTTP, client, or GORM-method vocabulary, so the

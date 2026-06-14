@@ -111,10 +111,11 @@ import (
 //
 // The alternatives, and why each was passed over:
 //
-//   - HTTP verb (IsPatch) and threeport client (IsUpdate) read DELETE
-//     and DeleteT, neither PATCH nor UpdateT, so they answer false and
-//     miss a genuinely partial call. That false answer is the DELETE
-//     caveat.
+//   - HTTP verb (IsPatch) and threeport client (IsUpdate) look at the
+//     request verb and client call, not the GORM call underneath. A
+//     reconciled DELETE is an HTTP DELETE made via DeleteT, neither of
+//     which is PATCH or UpdateT, so both answer false and miss a call
+//     that is really a partial Updates. That miss is the DELETE caveat.
 //   - GORM method (IsUpdates) is correct and carries no caveat, but it
 //     names the mechanism (Save versus Updates) rather than the intent.
 //

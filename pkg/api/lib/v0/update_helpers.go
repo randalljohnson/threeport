@@ -112,12 +112,15 @@ import (
 // The alternatives, and why each was passed over:
 //
 //   - HTTP verb (IsPatch) and threeport client (IsUpdate) look at the
-//     request verb and client call, not the GORM call underneath. A
-//     reconciled DELETE is an HTTP DELETE made via DeleteT, neither of
-//     which is PATCH or UpdateT, so both answer false and miss a call
-//     that is really a partial Updates. That miss is the DELETE caveat.
-//   - GORM method (IsUpdates) is correct and carries no caveat, but it
-//     names the mechanism (Save versus Updates) rather than the intent.
+//     request verb and client call, not the GORM call underneath. On a
+//     reconciled DELETE, IsPatch checks the verb (DELETE, not PATCH)
+//     and IsUpdate checks the client call (DeleteT, not UpdateT), so
+//     both return false and miss a call that is partial underneath (a
+//     GORM Updates). That miss is the DELETE caveat.
+//   - GORM method (IsUpdates) is correct with no caveat, but it names
+//     the mechanism, not the intent. A hook only needs "full replace or
+//     partial?"; IsUpdates makes the reader map the GORM method onto
+//     that answer, where IsPartialUpdate just states it.
 //   - IsUpdates (GORM method) and IsUpdate (threeport client) are a
 //     single trailing s apart, yet they disagree on the reconciled
 //     DELETE: IsUpdates is true (the call is a GORM Updates), IsUpdate

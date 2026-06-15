@@ -3,11 +3,14 @@
 package v0
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
+
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
-	"net/http"
 )
 
 // GcpGceMachineRuntimeDefinitionConfig is a config abstraction for the GcpGceMachineRuntimeDefinition API object.
@@ -21,34 +24,50 @@ type GcpGceMachineRuntimeDefinitionConfig struct {
 // GcpGceMachineRuntimeDefinitionValues contains all the attributes needed to manage
 // the GcpGceMachineRuntimeDefinition API object.
 type GcpGceMachineRuntimeDefinitionValues struct {
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeDefinition
-	Name *string `json:",omitempty"`
-	Age  *string `json:",omitempty"`
+	Name        *string `json:",omitempty"`
+	MachineType *string `json:",omitempty"`
+	ImageID     *string `json:",omitempty"`
+	Age         *string `json:",omitempty"`
 }
 
 // Get gets gcp gce machine runtime definitions from the Threeport API.
+// If the name is set in the GcpGceMachineRuntimeDefinitionValues, it will return the gcp gce machine runtime definition with that name.
+// If the name is not set, it will return all gcp gce machine runtime definitions.
 func (g *GcpGceMachineRuntimeDefinitionConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*[]GcpGceMachineRuntimeDefinitionConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeDefinition
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeDefinition
+	gcpGceMachineRuntimeDefinitionValues := g.GcpGceMachineRuntimeDefinition
 
 	// get API objects
+	var gcpGceMachineRuntimeDefinitions *[]api_v0.GcpGceMachineRuntimeDefinition
+	switch {
+	// if name is provided, get gcp gce machine runtime definition by name
+	case gcpGceMachineRuntimeDefinitionValues.Name != nil:
+		gcpGceMachineRuntimeDefinition, err := client_v0.GetGcpGceMachineRuntimeDefinitionByName(apiClient, apiEndpoint, *gcpGceMachineRuntimeDefinitionValues.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get gcp gce machine runtime definition with name %s: %w", *gcpGceMachineRuntimeDefinitionValues.Name, err)
+		}
+		gcpGceMachineRuntimeDefinitions = &[]api_v0.GcpGceMachineRuntimeDefinition{*gcpGceMachineRuntimeDefinition}
 	// get all gcp gce machine runtime definitions
-	gcpGceMachineRuntimeDefinitions, err := client_v0.GetGcpGceMachineRuntimeDefinitions(apiClient, apiEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get gcp gce machine runtime definitions from Threeport API: %w", err)
+	default:
+		allGcpGceMachineRuntimeDefinitions, err := client_v0.GetGcpGceMachineRuntimeDefinitions(apiClient, apiEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get gcp gce machine runtime definitions from Threeport API: %w", err)
+		}
+		gcpGceMachineRuntimeDefinitions = allGcpGceMachineRuntimeDefinitions
 	}
 
 	// assemble config objects from API objects
 	var gcpGceMachineRuntimeDefinitionConfigs []GcpGceMachineRuntimeDefinitionConfig
 	for _, gcpGceMachineRuntimeDefinition := range *gcpGceMachineRuntimeDefinitions {
-		// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeDefinition
 		gcpGceMachineRuntimeDefinitionConfig := GcpGceMachineRuntimeDefinitionConfig{
 			GcpGceMachineRuntimeDefinition: GcpGceMachineRuntimeDefinitionValues{
-				Age: util.Ptr(util.GetAgeFormatted(gcpGceMachineRuntimeDefinition.CreatedAt))},
+				Name:        gcpGceMachineRuntimeDefinition.Name,
+				MachineType: gcpGceMachineRuntimeDefinition.MachineType,
+				ImageID:     gcpGceMachineRuntimeDefinition.ImageID,
+				Age:         util.Ptr(util.GetAgeFormatted(gcpGceMachineRuntimeDefinition.CreatedAt)),
+			},
 		}
 		gcpGceMachineRuntimeDefinitionConfigs = append(gcpGceMachineRuntimeDefinitionConfigs, gcpGceMachineRuntimeDefinitionConfig)
 	}
@@ -61,18 +80,40 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Create(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*GcpGceMachineRuntimeDefinitionConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeDefinition
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeDefinition
+	gcpGceMachineRuntimeDefinitionValues := g.GcpGceMachineRuntimeDefinition
 
 	// validate config
 	if err := g.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate values for gcp gce machine runtime definition: %w", err)
+		return nil, fmt.Errorf("failed to validate values for gcp gce machine runtime definition with name %s: %w", *gcpGceMachineRuntimeDefinitionValues.Name, err)
 	}
 
-	// construct gcp gce machine runtime definition object
-	// TODO: add API object fields as needed for GcpGceMachineRuntimeDefinition
-	gcpGceMachineRuntimeDefinition := api_v0.GcpGceMachineRuntimeDefinition{}
+	// construct machine runtime definition that the GCE definition marries; the
+	// GCE provisioning template fields are duplicated onto it so generic machine
+	// tooling can read them without a GCE-specific lookup.
+	machineRuntimeDefinition := api_v0.MachineRuntimeDefinition{
+		Definition: api_v0.Definition{
+			Name: gcpGceMachineRuntimeDefinitionValues.Name,
+		},
+		InfraProvider: util.Ptr("gce"),
+		MachineType:   gcpGceMachineRuntimeDefinitionValues.MachineType,
+		ImageID:       gcpGceMachineRuntimeDefinitionValues.ImageID,
+	}
+
+	// create machine runtime definition
+	createdMachineRuntimeDefinition, err := client_v0.CreateMachineRuntimeDefinition(apiClient, apiEndpoint, &machineRuntimeDefinition)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new machine runtime definition for GCP GCE definition: %w", err)
+	}
+
+	// construct GCP GCE machine runtime definition object
+	gcpGceMachineRuntimeDefinition := api_v0.GcpGceMachineRuntimeDefinition{
+		Definition: api_v0.Definition{
+			Name: gcpGceMachineRuntimeDefinitionValues.Name,
+		},
+		MachineType:                gcpGceMachineRuntimeDefinitionValues.MachineType,
+		ImageID:                    gcpGceMachineRuntimeDefinitionValues.ImageID,
+		MachineRuntimeDefinitionID: createdMachineRuntimeDefinition.ID,
+	}
 
 	// create gcp gce machine runtime definition
 	createdGcpGceMachineRuntimeDefinition, err := client_v0.CreateGcpGceMachineRuntimeDefinition(
@@ -85,10 +126,12 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Create(
 	}
 
 	// construct gcp gce machine runtime definition config
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeDefinition
 	createdGcpGceMachineRuntimeDefinitionConfig := &GcpGceMachineRuntimeDefinitionConfig{
 		GcpGceMachineRuntimeDefinition: GcpGceMachineRuntimeDefinitionValues{
-			Age: util.Ptr(util.GetAgeFormatted(createdGcpGceMachineRuntimeDefinition.CreatedAt)),
+			Age:         util.Ptr(util.GetAgeFormatted(createdGcpGceMachineRuntimeDefinition.CreatedAt)),
+			Name:        createdGcpGceMachineRuntimeDefinition.Name,
+			MachineType: createdGcpGceMachineRuntimeDefinition.MachineType,
+			ImageID:     createdGcpGceMachineRuntimeDefinition.ImageID,
 		},
 	}
 
@@ -97,38 +140,41 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Create(
 
 // Replace updates the entire gcp gce machine runtime definition object in the Threeport API.
 // This is a full replacement of all fields in the gcp gce machine runtime definition object.
+// This function takes a name parameter to identify the gcp gce machine runtime definition to replace.
+// This allows a different name to be provided in the values object for name changes.
 func (g *GcpGceMachineRuntimeDefinitionConfig) Replace(
 	apiClient *http.Client,
 	apiEndpoint string,
-	// NOTE: GcpGceMachineRuntimeDefinition has no name field,
-	name string, // TODO: replace name with another parameter that can uniquely identify a gcp gce machine runtime definition,
+	name string,
 ) (*GcpGceMachineRuntimeDefinitionConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeDefinition
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeDefinition
+	gcpGceMachineRuntimeDefinitionValues := g.GcpGceMachineRuntimeDefinition
 
 	// validate config
 	if err := g.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid gcp gce machine runtime definition config: %w", err)
 	}
 
-	// get existing gcp gce machine runtime definition
-	existingGcpGceMachineRuntimeDefinitions, err := client_v0.GetGcpGceMachineRuntimeDefinitionsByQueryString(
+	// get existing gcp gce machine runtime definition by name
+	existingGcpGceMachineRuntimeDefinition, err := client_v0.GetGcpGceMachineRuntimeDefinitionByName(
 		apiClient,
 		apiEndpoint,
-		fmt.Sprintf("name=%s", name), // TODO: replace name with another parameter that can uniquely identify a gcp gce machine runtime definition,
+		name,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find gcp gce machine runtime definition with name %s: %w", name, err)
 	}
-	// TODO: add check for zero or multiple gcp gce machine runtime definitions found
 
 	// construct updated gcp gce machine runtime definition object
-	// TODO: add API object fields as needed for GcpGceMachineRuntimeDefinition
 	updatedGcpGceMachineRuntimeDefinition := &api_v0.GcpGceMachineRuntimeDefinition{
 		Common: api_v0.Common{
-			ID: (*existingGcpGceMachineRuntimeDefinitions)[0].ID,
+			ID: existingGcpGceMachineRuntimeDefinition.ID,
 		},
+		Definition: api_v0.Definition{
+			Name: gcpGceMachineRuntimeDefinitionValues.Name,
+		},
+		MachineType:                gcpGceMachineRuntimeDefinitionValues.MachineType,
+		ImageID:                    gcpGceMachineRuntimeDefinitionValues.ImageID,
+		MachineRuntimeDefinitionID: existingGcpGceMachineRuntimeDefinition.MachineRuntimeDefinitionID,
 	}
 
 	// replace gcp gce machine runtime definition
@@ -142,10 +188,12 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Replace(
 	}
 
 	// construct updated gcp gce machine runtime definition config
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeDefinition
 	updatedGcpGceMachineRuntimeDefinitionConfig := &GcpGceMachineRuntimeDefinitionConfig{
 		GcpGceMachineRuntimeDefinition: GcpGceMachineRuntimeDefinitionValues{
-			Age: util.Ptr(util.GetAgeFormatted(replacedGcpGceMachineRuntimeDefinition.CreatedAt)),
+			Age:         util.Ptr(util.GetAgeFormatted(replacedGcpGceMachineRuntimeDefinition.CreatedAt)),
+			Name:        replacedGcpGceMachineRuntimeDefinition.Name,
+			MachineType: replacedGcpGceMachineRuntimeDefinition.MachineType,
+			ImageID:     replacedGcpGceMachineRuntimeDefinition.ImageID,
 		},
 	}
 
@@ -157,35 +205,47 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Delete(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*GcpGceMachineRuntimeDefinitionConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeDefinition
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeDefinition
+	gcpGceMachineRuntimeDefinitionValues := g.GcpGceMachineRuntimeDefinition
 
-	// get gcp gce machine runtime definition
-	gcpGceMachineRuntimeDefinition, err := client_v0.GetGcpGceMachineRuntimeDefinitionsByQueryString(
+	// get gcp gce machine runtime definition by name
+	gcpGceMachineRuntimeDefinition, err := client_v0.GetGcpGceMachineRuntimeDefinitionByName(
 		apiClient,
 		apiEndpoint,
-		fmt.Sprintf("name=%s", "value"), // TODO: replace name with another parameter that can uniquely identify a gcp gce machine runtime definition,
+		*gcpGceMachineRuntimeDefinitionValues.Name,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find gcp gce machine runtime definition: %w", err)
+		return nil, fmt.Errorf("failed to find gcp gce machine runtime definition with name %s: %w", *gcpGceMachineRuntimeDefinitionValues.Name, err)
 	}
-	// TODO: add check for zero or multiple gcp gce machine runtime definitions found
+
+	// delete associated machine runtime definition
+	if gcpGceMachineRuntimeDefinition.MachineRuntimeDefinitionID != nil {
+		_, err = client_v0.DeleteMachineRuntimeDefinition(
+			apiClient,
+			apiEndpoint,
+			*gcpGceMachineRuntimeDefinition.MachineRuntimeDefinitionID,
+		)
+		if err != nil && !errors.Is(err, client_lib.ErrObjectNotFound) {
+			return nil, fmt.Errorf("failed to delete associated machine runtime definition: %w", err)
+		}
+	}
 
 	// delete gcp gce machine runtime definition
-	_, err = client_v0.DeleteGcpGceMachineRuntimeDefinition(
+	deletedGcpGceMachineRuntimeDefinition, err := client_v0.DeleteGcpGceMachineRuntimeDefinition(
 		apiClient,
 		apiEndpoint,
-		*(*gcpGceMachineRuntimeDefinition)[0].ID,
+		*gcpGceMachineRuntimeDefinition.ID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete gcp gce machine runtime definition from Threeport API: %w", err)
 	}
 
 	// construct deleted gcp gce machine runtime definition config
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeDefinition
 	deletedGcpGceMachineRuntimeDefinitionConfig := &GcpGceMachineRuntimeDefinitionConfig{
-		GcpGceMachineRuntimeDefinition: GcpGceMachineRuntimeDefinitionValues{},
+		GcpGceMachineRuntimeDefinition: GcpGceMachineRuntimeDefinitionValues{
+			Name:        deletedGcpGceMachineRuntimeDefinition.Name,
+			MachineType: deletedGcpGceMachineRuntimeDefinition.MachineType,
+			ImageID:     deletedGcpGceMachineRuntimeDefinition.ImageID,
+		},
 	}
 
 	return deletedGcpGceMachineRuntimeDefinitionConfig, nil
@@ -193,12 +253,23 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Delete(
 
 // Validate validates inputs to create gcp gce machine runtime definitions.
 func (g *GcpGceMachineRuntimeDefinitionConfig) Validate() error {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeDefinition
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeDefinition
+	gcpGceMachineRuntimeDefinitionValues := g.GcpGceMachineRuntimeDefinition
 	multiError := util.MultiError{}
 
-	// TODO: add additional validation as needed
+	// ensure name is set
+	if gcpGceMachineRuntimeDefinitionValues.Name == nil {
+		multiError.AppendError(errors.New("missing required field in config: Name"))
+	}
+
+	// ensure machine type is set
+	if gcpGceMachineRuntimeDefinitionValues.MachineType == nil {
+		multiError.AppendError(errors.New("missing required field in config: MachineType"))
+	}
+
+	// ensure image identifier is set
+	if gcpGceMachineRuntimeDefinitionValues.ImageID == nil {
+		multiError.AppendError(errors.New("missing required field in config: ImageID"))
+	}
 
 	return multiError.Error()
 }

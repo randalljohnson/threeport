@@ -4,8 +4,9 @@ package v0
 
 import (
 	"fmt"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	"net/http"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // GcpGceMachineRuntimeConfig is a container for a GcpGceMachineRuntime which is a config abstraction for
@@ -20,9 +21,16 @@ type GcpGceMachineRuntimeConfig struct {
 // GcpGceMachineRuntimeDefinition and GcpGceMachineRuntimeInstance API objects
 // together with a single operation.
 type GcpGceMachineRuntimeValues struct {
-	// TODO: add fields needed for user to manage a GcpGceMachineRuntimeDefinition and GcpGceMachineRuntimeInstance together
-	Name *string `json:",omitempty"`
-	Age  *string `json:",omitempty"`
+	Name            *string `json:",omitempty"`
+	GcpProviderName *string `json:",omitempty"`
+	Region          *string `json:",omitempty"`
+	Zone            *string `json:",omitempty"`
+	NetworkID       *string `json:",omitempty"`
+	SSHUser         *string `json:",omitempty"`
+	MachineType     *string `json:",omitempty"`
+	ImageID         *string `json:",omitempty"`
+	Reconciled      *bool   `json:",omitempty"`
+	Age             *string `json:",omitempty"`
 }
 
 // Get gets a gcp gce machine runtime definition and instance from the Threeport API.
@@ -132,7 +140,6 @@ func (g *GcpGceMachineRuntimeConfig) GetOperations(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*util.Operations, *[]GcpGceMachineRuntimeDefinitionConfig, *[]GcpGceMachineRuntimeInstanceConfig) {
-	gcpGceMachineRuntimeValues := g.GcpGceMachineRuntime
 	var err error
 	var operatedGcpGceMachineRuntimeDefinitions []GcpGceMachineRuntimeDefinitionConfig
 	var operatedGcpGceMachineRuntimeInstances []GcpGceMachineRuntimeInstanceConfig
@@ -140,18 +147,18 @@ func (g *GcpGceMachineRuntimeConfig) GetOperations(
 	operations := util.Operations{}
 
 	// add gcp gce machine runtime definition operation
-	// TODO: add appropriate fields to definition values object
 	gcpGceMachineRuntimeDefinitionConfig := GcpGceMachineRuntimeDefinitionConfig{
 		GcpGceMachineRuntimeDefinition: GcpGceMachineRuntimeDefinitionValues{
-			Age:  gcpGceMachineRuntimeValues.Age,
-			Name: gcpGceMachineRuntimeValues.Name,
+			Name:        g.GcpGceMachineRuntime.Name,
+			MachineType: g.GcpGceMachineRuntime.MachineType,
+			ImageID:     g.GcpGceMachineRuntime.ImageID,
 		},
 	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
 			gcpGceMachineRuntimeDefinition, err := gcpGceMachineRuntimeDefinitionConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create gcp gce machine runtime definition with name %s: %w", *gcpGceMachineRuntimeValues.Name, err)
+				return fmt.Errorf("failed to create gcp gce machine runtime definition with name %s: %w", *g.GcpGceMachineRuntime.Name, err)
 			}
 			operatedGcpGceMachineRuntimeDefinitions = append(operatedGcpGceMachineRuntimeDefinitions, *gcpGceMachineRuntimeDefinition)
 			return nil
@@ -159,7 +166,7 @@ func (g *GcpGceMachineRuntimeConfig) GetOperations(
 		Delete: func() error {
 			_, err = gcpGceMachineRuntimeDefinitionConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete gcp gce machine runtime definition with name %s: %w", *gcpGceMachineRuntimeValues.Name, err)
+				return fmt.Errorf("failed to delete gcp gce machine runtime definition with name %s: %w", *g.GcpGceMachineRuntime.Name, err)
 			}
 			return nil
 		},
@@ -183,18 +190,24 @@ func (g *GcpGceMachineRuntimeConfig) GetOperations(
 	})
 
 	// add gcp gce machine runtime instance operation
-	// TODO: add appropriate fields to instance values object
 	gcpGceMachineRuntimeInstanceConfig := GcpGceMachineRuntimeInstanceConfig{
 		GcpGceMachineRuntimeInstance: GcpGceMachineRuntimeInstanceValues{
-			Age:  gcpGceMachineRuntimeValues.Age,
-			Name: gcpGceMachineRuntimeValues.Name,
+			Name:            g.GcpGceMachineRuntime.Name,
+			GcpProviderName: g.GcpGceMachineRuntime.GcpProviderName,
+			Region:          g.GcpGceMachineRuntime.Region,
+			Zone:            g.GcpGceMachineRuntime.Zone,
+			NetworkID:       g.GcpGceMachineRuntime.NetworkID,
+			SSHUser:         g.GcpGceMachineRuntime.SSHUser,
+			GcpGceMachineRuntimeDefinition: &GcpGceMachineRuntimeDefinitionValues{
+				Name: g.GcpGceMachineRuntime.Name,
+			},
 		},
 	}
 	operations.AppendOperation(util.Operation{
 		Create: func() error {
 			gcpGceMachineRuntimeInstance, err := gcpGceMachineRuntimeInstanceConfig.Create(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to create gcp gce machine runtime instance with name %s: %w", *gcpGceMachineRuntimeValues.Name, err)
+				return fmt.Errorf("failed to create gcp gce machine runtime instance with name %s: %w", *g.GcpGceMachineRuntime.Name, err)
 			}
 			operatedGcpGceMachineRuntimeInstances = append(operatedGcpGceMachineRuntimeInstances, *gcpGceMachineRuntimeInstance)
 			return nil
@@ -202,7 +215,7 @@ func (g *GcpGceMachineRuntimeConfig) GetOperations(
 		Delete: func() error {
 			_, err = gcpGceMachineRuntimeInstanceConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
-				return fmt.Errorf("failed to delete gcp gce machine runtime instance with name %s: %w", *gcpGceMachineRuntimeValues.Name, err)
+				return fmt.Errorf("failed to delete gcp gce machine runtime instance with name %s: %w", *g.GcpGceMachineRuntime.Name, err)
 			}
 			return nil
 		},
@@ -241,12 +254,19 @@ func mapToGcpGceMachineRuntimeDefinedInstances(
 			defName := *def.GcpGceMachineRuntimeDefinition.Name
 			// a defined instance must have matching names for definition and instance
 			// and the definition must be associated with the instance
-			if instName == defName && *inst.GcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinition.Name == *def.GcpGceMachineRuntimeDefinition.Name {
-				// TODO: add fields needed for user to manage a GcpGceMachineRuntimeDefinition and GcpGceMachineRuntimeInstance together
+			if instName == defName && inst.GcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinition != nil && *inst.GcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinition.Name == *def.GcpGceMachineRuntimeDefinition.Name {
 				gcpGceMachineRuntimeConfig := GcpGceMachineRuntimeConfig{
 					GcpGceMachineRuntime: GcpGceMachineRuntimeValues{
-						Age:  inst.GcpGceMachineRuntimeInstance.Age,
-						Name: inst.GcpGceMachineRuntimeInstance.Name,
+						Name:            inst.GcpGceMachineRuntimeInstance.Name,
+						GcpProviderName: inst.GcpGceMachineRuntimeInstance.GcpProviderName,
+						Region:          inst.GcpGceMachineRuntimeInstance.Region,
+						Zone:            inst.GcpGceMachineRuntimeInstance.Zone,
+						NetworkID:       inst.GcpGceMachineRuntimeInstance.NetworkID,
+						SSHUser:         inst.GcpGceMachineRuntimeInstance.SSHUser,
+						MachineType:     def.GcpGceMachineRuntimeDefinition.MachineType,
+						ImageID:         def.GcpGceMachineRuntimeDefinition.ImageID,
+						Reconciled:      inst.GcpGceMachineRuntimeInstance.Reconciled,
+						Age:             inst.GcpGceMachineRuntimeInstance.Age,
 					},
 				}
 				gcpGceMachineRuntimeConfigs = append(gcpGceMachineRuntimeConfigs, gcpGceMachineRuntimeConfig)

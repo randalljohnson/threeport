@@ -15,6 +15,7 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // gceMachineLifecycle implements provider.InfraLifecycleProvider for GCP GCE
@@ -107,10 +108,46 @@ func (g *gceMachineLifecycle) IsCreateComplete() (bool, error) {
 	return true, nil
 }
 
-// OnCreateConfirmed performs provider-specific post-creation work. A GCE VM has
-// no kubernetes endpoint to fetch, so this is a minimal nil-return; the surfaced
-// hostname, external IP, and SSH key are persisted by SaveCreateOutputs.
+// OnCreateConfirmed populates the married machine runtime instance once the VM
+// is provisioned. By this point SaveCreateOutputs has persisted the external IP,
+// SSH user, and SSH key onto the GCE instance, so this fetches that record,
+// copies the connection fields onto the related machine runtime instance, and
+// clears its Reconciled flag so the machine workload SSH install can proceed.
 func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error {
+	latest, err := client.GetGcpGceMachineRuntimeInstanceByID(
+		g.r.APIClient,
+		g.r.APIServer,
+		g.instanceID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get GCE instance for machine runtime update: %w", err)
+	}
+	if latest.MachineRuntimeInstanceID == nil {
+		return fmt.Errorf("GCE instance missing required field MachineRuntimeInstanceID")
+	}
+
+	machineRuntimeInstance, err := client.GetMachineRuntimeInstanceByID(
+		g.r.APIClient,
+		g.r.APIServer,
+		*latest.MachineRuntimeInstanceID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get machine runtime instance: %w", err)
+	}
+
+	// the machine is reached at its external IP; the machine runtime instance
+	// hostname carries that address so the workload SSH install can connect.
+	machineRuntimeInstance.Hostname = latest.ExternalIP
+	machineRuntimeInstance.SSHUser = latest.SSHUser
+	machineRuntimeInstance.SSHKey = latest.SSHKey
+	machineRuntimeInstance.Reconciled = util.Ptr(false)
+	if _, err = client.UpdateMachineRuntimeInstance(
+		g.r.APIClient,
+		g.r.APIServer,
+		machineRuntimeInstance,
+	); err != nil {
+		return fmt.Errorf("failed to update machine runtime instance with connection info: %w", err)
+	}
 	return nil
 }
 
@@ -313,6 +350,9 @@ func buildGceMachineInfra(
 	instance *v0.GcpGceMachineRuntimeInstance,
 	log *logr.Logger,
 ) (*machine.GceMachineInfra, error) {
+	if instance.Name == nil {
+		return nil, fmt.Errorf("GCE instance missing required field Name")
+	}
 	if instance.GcpProviderID == nil {
 		return nil, fmt.Errorf("GCE instance missing required field GcpProviderID")
 	}
@@ -329,9 +369,11 @@ func buildGceMachineInfra(
 		return nil, fmt.Errorf("GCP provider missing required field ProjectID")
 	}
 
-	infraGce := &machine.GceMachineInfra{
-		ProjectID: *gcpProvider.ProjectID,
-	}
+	// construct through the provider constructor so the embedded workspace and
+	// runtime instance name are set; the provider validates the name first and
+	// fails before any cloud call when it is empty.
+	infraGce := machine.NewGceMachineInfra(*instance.Name)
+	infraGce.ProjectID = *gcpProvider.ProjectID
 
 	// the machine type and image identifier live on the definition that
 	// configures this instance; fetch it and copy the provisioning template

@@ -15,8 +15,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	yaml "sigs.k8s.io/yaml"
 	"gorm.io/datatypes"
+	yaml "sigs.k8s.io/yaml"
 
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -42,10 +42,44 @@ type PulumiWorkspace struct {
 	// stateDir is the path to the Pulumi state directory on disk.
 	stateDir string
 
+	// stateDirRoot is an optional override for the root directory under
+	// which the per-instance state dir is built. When empty, the default
+	// runtime state dir is used.
+	stateDirRoot string
+
 	// Logger enables structured logging for Pulumi operations.
 	// When nil, ProgressStreams(os.Stdout) is used (CLI path).
 	// When set, EventStreams is used with structured logr output (controller path).
 	Logger *logr.Logger
+}
+
+// PulumiWorkspaceOption configures a PulumiWorkspace created by
+// NewPulumiWorkspace.
+type PulumiWorkspaceOption func(*PulumiWorkspace)
+
+// WithStateDirRoot overrides the root directory under which the
+// workspace builds its per-instance state dir. Tests pass a temp
+// dir; the machine provider passes its own root.
+func WithStateDirRoot(root string) PulumiWorkspaceOption {
+	return func(w *PulumiWorkspace) {
+		w.stateDirRoot = root
+	}
+}
+
+// NewPulumiWorkspace returns a workspace for the named runtime
+// instance under the given pulumi project. Both values are
+// required: the state file path resolves to
+// stateDir/.pulumi/stacks/<project>/<name>.json, so an empty
+// project produces a malformed path.
+func NewPulumiWorkspace(name, project string, opts ...PulumiWorkspaceOption) *PulumiWorkspace {
+	w := &PulumiWorkspace{
+		RuntimeInstanceName: name,
+		ProjectName:         project,
+	}
+	for _, opt := range opts {
+		opt(w)
+	}
+	return w
 }
 
 // logInfo logs an informational message using the structured logger if
@@ -173,6 +207,12 @@ func (w *PulumiWorkspace) SetStackState(state *datatypes.JSON) error {
 
 // GetStateFilePath returns the path to the Pulumi state JSON file on disk.
 func (w *PulumiWorkspace) GetStateFilePath() (string, error) {
+	// guard against empty instance names so two unnamed instances cannot
+	// collide on the same state file
+	if w.RuntimeInstanceName == "" {
+		return "", fmt.Errorf("runtime instance name is empty; refusing to build state file path")
+	}
+
 	if err := w.setStateDir(); err != nil {
 		return "", fmt.Errorf("failed to set state directory: %w", err)
 	}
@@ -486,11 +526,17 @@ func (w *PulumiWorkspace) getEnvVars() (map[string]string, error) {
 
 // setStateDir sets the state directory for the Pulumi stack.
 func (w *PulumiWorkspace) setStateDir() error {
-	dir, err := GetPulumiRuntimeStateDir(w.RuntimeInstanceName)
-	if err != nil {
-		return err
+	// resolve the state dir from the injected root when set, otherwise
+	// fall back to the default runtime state dir
+	if w.stateDirRoot != "" {
+		w.stateDir = filepath.Join(w.stateDirRoot, w.RuntimeInstanceName)
+	} else {
+		dir, err := GetPulumiRuntimeStateDir(w.RuntimeInstanceName)
+		if err != nil {
+			return err
+		}
+		w.stateDir = dir
 	}
-	w.stateDir = dir
 	if err := os.MkdirAll(w.stateDir, 0755); err != nil {
 		return fmt.Errorf("failed to create state directory: %w", err)
 	}

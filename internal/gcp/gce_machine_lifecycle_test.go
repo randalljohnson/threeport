@@ -36,6 +36,10 @@ const gceTestProviderID uint = 7
 // gceTestDefinitionID is the GCE definition ID referenced by test instances.
 const gceTestDefinitionID uint = 11
 
+// gceTestMachineRuntimeInstanceID is the married machine runtime instance ID
+// referenced by test instances.
+const gceTestMachineRuntimeInstanceID uint = 19
+
 // gceAPIStub wraps an httptest.Server with the http.Client and base address the
 // threeport client helpers expect, and records every PATCH body keyed by path.
 type gceAPIStub struct {
@@ -205,6 +209,57 @@ func (s *gceAPIStub) gceHandleDefinition500(t *testing.T, id uint) {
 	s.mux.HandleFunc(gceDefinitionPath(id), func(w http.ResponseWriter, r *http.Request) {
 		gceWriteResponse(t, w, http.StatusInternalServerError, []apiserver_lib.Object{})
 	})
+}
+
+// gceMachineRuntimeInstancePath returns the GET/PATCH path for a machine runtime
+// instance ID.
+func gceMachineRuntimeInstancePath(id uint) string {
+	return fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, id)
+}
+
+// gceHandleMachineRuntimeInstance registers a handler for a machine runtime
+// instance path that returns the supplied object on GET and records the body on
+// PATCH (echoing it back).
+func (s *gceAPIStub) gceHandleMachineRuntimeInstance(t *testing.T, id uint, get *v0.MachineRuntimeInstance) {
+	t.Helper()
+	path := gceMachineRuntimeInstancePath(id)
+	s.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			gceWriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{get})
+		case http.MethodPatch:
+			body, _ := io.ReadAll(r.Body)
+			s.gceRecordPatch(path, body)
+			var updated v0.MachineRuntimeInstance
+			require.NoError(t, json.Unmarshal(body, &updated))
+			updated.ID = gcePtr(id)
+			gceWriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&updated})
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	})
+}
+
+// gceLastMachineRuntimeInstancePatch returns the most recently captured PATCH
+// body for the machine runtime instance path.
+func (s *gceAPIStub) gceLastMachineRuntimeInstancePatch(t *testing.T, path string) v0.MachineRuntimeInstance {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	bodies := s.patches[path]
+	require.NotEmpty(t, bodies, "expected at least one PATCH to %s", path)
+	var updated v0.MachineRuntimeInstance
+	require.NoError(t, json.Unmarshal(bodies[len(bodies)-1], &updated))
+	return updated
+}
+
+// gceBaseMachineRuntimeInstance returns a married machine runtime instance with
+// the given ID and name.
+func gceBaseMachineRuntimeInstance(id uint, name string) *v0.MachineRuntimeInstance {
+	return &v0.MachineRuntimeInstance{
+		Common:   v0.Common{ID: gcePtr(id)},
+		Instance: v0.Instance{Name: gcePtr(name)},
+	}
 }
 
 // gceBaseProvider returns a GCP provider with project ID and credentials set.
@@ -494,11 +549,8 @@ func TestGceSaveCreateOutputsWritesHostnameIPKey(t *testing.T) {
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
-	gceInfra := &machine.GceMachineInfra{
-		Hostname:   "vm.example",
-		ExternalIP: "203.0.113.7",
-		SSHKey:     "PRIVATE-KEY",
-	}
+	gceInfra := machine.NewGceMachineInfra(gceTestInstanceName)
+	gceInfra.SetCreateOutputs("vm.example", "203.0.113.7", "PRIVATE-KEY")
 	state := datatypes.JSON([]byte(`{"checkpoint":{}}`))
 
 	require.NoError(t, g.SaveCreateOutputs(gceInfra, &state))
@@ -519,7 +571,8 @@ func TestGceSaveCreateOutputsUpdateErrorWraps(t *testing.T) {
 	s.gceHandleInstance500(t, gceTestInstanceID)
 
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
-	gceInfra := &machine.GceMachineInfra{Hostname: "h", ExternalIP: "ip", SSHKey: "k"}
+	gceInfra := machine.NewGceMachineInfra(gceTestInstanceName)
+	gceInfra.SetCreateOutputs("h", "ip", "k")
 	state := datatypes.JSON([]byte(`{}`))
 
 	err := g.SaveCreateOutputs(gceInfra, &state)
@@ -693,12 +746,65 @@ func TestGceLifecycleOnDeleteConfirmed(t *testing.T) {
 	assert.NoError(t, g.OnDeleteConfirmed(nil))
 }
 
-func TestGceLifecycleOnCreateConfirmed(t *testing.T) {
-	// a GCE VM has no kubernetes endpoint, so the minimal nil-return is the
-	// complete behavior; no API write is expected.
+func TestGceLifecycleOnCreateConfirmedWritesHostnameSSHOntoMarriedInstance(t *testing.T) {
+	// stub a fully provisioned GCE instance carrying the married runtime instance
+	// ID and the connection fields persisted earlier from the VM
 	s := gceNewAPIStub(t)
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.MachineRuntimeInstanceID = gcePtr(gceTestMachineRuntimeInstanceID)
+	latest.ExternalIP = gcePtr("203.0.113.7")
+	latest.SSHUser = gcePtr("threeport")
+	latest.SSHKey = gcePtr("PRIVATE-KEY")
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+	// stub the married machine runtime instance the connection fields copy onto
+	s.gceHandleMachineRuntimeInstance(t, gceTestMachineRuntimeInstanceID, gceBaseMachineRuntimeInstance(gceTestMachineRuntimeInstanceID, gceTestInstanceName))
+
+	// run post-create confirmation against the stubbed instance
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
-	assert.NoError(t, g.OnCreateConfirmed(nil))
+	require.NoError(t, g.OnCreateConfirmed(nil))
+
+	// inspect the PATCH sent to the married machine runtime instance
+	patch := s.gceLastMachineRuntimeInstancePatch(t, gceMachineRuntimeInstancePath(gceTestMachineRuntimeInstanceID))
+	// confirm the external IP lands on the hostname
+	require.NotNil(t, patch.Hostname)
+	assert.Equal(t, "203.0.113.7", *patch.Hostname)
+	// confirm the ssh user carries across
+	require.NotNil(t, patch.SSHUser)
+	assert.Equal(t, "threeport", *patch.SSHUser)
+	// confirm the ssh key carries across
+	require.NotNil(t, patch.SSHKey)
+	assert.Equal(t, "PRIVATE-KEY", *patch.SSHKey)
+	// confirm reconciled is cleared so the workload ssh install runs next
+	require.NotNil(t, patch.Reconciled)
+	assert.False(t, *patch.Reconciled)
+}
+
+func TestGceLifecycleOnCreateConfirmedNilMarriedIDReturnsError(t *testing.T) {
+	// stub a GCE instance with no married machine runtime instance ID
+	s := gceNewAPIStub(t)
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.MachineRuntimeInstanceID = nil
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+
+	// run post-create confirmation against the unmarried instance
+	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	err := g.OnCreateConfirmed(nil)
+	// confirm the missing married ID surfaces as an error naming the absent field
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MachineRuntimeInstanceID")
+}
+
+func TestGceLifecycleOnCreateConfirmedInstanceGETErrorWraps(t *testing.T) {
+	// stub the GCE instance GET to fail
+	s := gceNewAPIStub(t)
+	s.gceHandleInstance500(t, gceTestInstanceID)
+
+	// run post-create confirmation while the instance fetch is failing
+	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	err := g.OnCreateConfirmed(nil)
+	// confirm the fetch failure is wrapped with context naming the failed lookup
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get GCE instance for machine runtime update")
 }
 
 func TestGceLifecyclePublishCreateNotification(t *testing.T) {

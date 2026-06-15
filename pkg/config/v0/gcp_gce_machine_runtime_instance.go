@@ -3,12 +3,28 @@
 package v0
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
-	"net/http"
 )
+
+// gcePendingHostname is the placeholder hostname stored on the married machine
+// runtime instance at create time. The GCE machine runtime reconciler overwrites
+// it with the VM external IP once provisioning completes; the machine runtime
+// instance hostname column is not-null, so a non-empty placeholder is required.
+const gcePendingHostname = "pending"
+
+// gcePendingSSHKey is the placeholder SSH key stored on the married machine
+// runtime instance at create time, before any real key exists. The GCE machine
+// runtime reconciler overwrites it with the generated key once the VM is
+// provisioned.
+const gcePendingSSHKey = "pending"
 
 // GcpGceMachineRuntimeInstanceConfig is a config abstraction for the GcpGceMachineRuntimeInstance API object.
 // This abstraction allows users to manage API objects with a simplified set of attributes
@@ -21,35 +37,117 @@ type GcpGceMachineRuntimeInstanceConfig struct {
 // GcpGceMachineRuntimeInstanceValues contains all the attributes needed to manage
 // the GcpGceMachineRuntimeInstance API object.
 type GcpGceMachineRuntimeInstanceValues struct {
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeInstance
 	Name                           *string                               `json:",omitempty"`
+	GcpProviderName                *string                               `json:",omitempty"`
+	Region                         *string                               `json:",omitempty"`
+	Zone                           *string                               `json:",omitempty"`
+	NetworkID                      *string                               `json:",omitempty"`
+	SSHUser                        *string                               `json:",omitempty"`
 	GcpGceMachineRuntimeDefinition *GcpGceMachineRuntimeDefinitionValues `json:",omitempty"`
+	MachineRuntimeInstance         *MachineRuntimeInstanceValues         `json:",omitempty"`
+	Reconciled                     *bool                                 `json:",omitempty"`
 	Age                            *string                               `json:",omitempty"`
 }
 
 // Get gets gcp gce machine runtime instances from the Threeport API.
+// If the name is set in the GcpGceMachineRuntimeInstanceValues, it will return the gcp gce machine runtime instance with that name.
+// If the name is not set, it will return all gcp gce machine runtime instances.
 func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*[]GcpGceMachineRuntimeInstanceConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeInstance
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeInstance
+	gcpGceMachineRuntimeInstanceValues := g.GcpGceMachineRuntimeInstance
 
 	// get API objects
+	var gcpGceMachineRuntimeInstances *[]api_v0.GcpGceMachineRuntimeInstance
+	switch {
+	// if name is provided, get gcp gce machine runtime instance by name
+	case gcpGceMachineRuntimeInstanceValues.Name != nil:
+		gcpGceMachineRuntimeInstance, err := client_v0.GetGcpGceMachineRuntimeInstanceByName(apiClient, apiEndpoint, *gcpGceMachineRuntimeInstanceValues.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get gcp gce machine runtime instance with name %s: %w", *gcpGceMachineRuntimeInstanceValues.Name, err)
+		}
+		gcpGceMachineRuntimeInstances = &[]api_v0.GcpGceMachineRuntimeInstance{*gcpGceMachineRuntimeInstance}
 	// get all gcp gce machine runtime instances
-	gcpGceMachineRuntimeInstances, err := client_v0.GetGcpGceMachineRuntimeInstances(apiClient, apiEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get gcp gce machine runtime instances from Threeport API: %w", err)
+	default:
+		allGcpGceMachineRuntimeInstances, err := client_v0.GetGcpGceMachineRuntimeInstances(apiClient, apiEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get gcp gce machine runtime instances from Threeport API: %w", err)
+		}
+		gcpGceMachineRuntimeInstances = allGcpGceMachineRuntimeInstances
 	}
 
 	// assemble config objects from API objects
 	var gcpGceMachineRuntimeInstanceConfigs []GcpGceMachineRuntimeInstanceConfig
 	for _, gcpGceMachineRuntimeInstance := range *gcpGceMachineRuntimeInstances {
-		// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeInstance
+		// related objects
+		var gcpGceMachineRuntimeDefinition *GcpGceMachineRuntimeDefinitionValues
+		var machineRuntimeInstance *MachineRuntimeInstanceValues
+		var gcpProviderName *string
+
+		// get GCP provider name from instance
+		if gcpGceMachineRuntimeInstance.GcpProviderID != nil {
+			gcpProvider, err := client_v0.GetGcpProviderByID(
+				apiClient,
+				apiEndpoint,
+				*gcpGceMachineRuntimeInstance.GcpProviderID,
+			)
+			if err == nil {
+				gcpProviderName = gcpProvider.Name
+			}
+		}
+
+		// get GCP GCE machine runtime definition
+		if gcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinitionID != nil {
+			gcpGceMachineRuntimeDefinitionObj, err := client_v0.GetGcpGceMachineRuntimeDefinitionByID(
+				apiClient,
+				apiEndpoint,
+				*gcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinitionID,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to get GCP GCE machine runtime definition with ID %d: %w",
+					*gcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinitionID,
+					err,
+				)
+			}
+			gcpGceMachineRuntimeDefinition = &GcpGceMachineRuntimeDefinitionValues{
+				Name: gcpGceMachineRuntimeDefinitionObj.Name,
+			}
+		}
+
+		// get machine runtime instance
+		if gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID != nil {
+			machineRuntimeInstanceObj, err := client_v0.GetMachineRuntimeInstanceByID(
+				apiClient,
+				apiEndpoint,
+				*gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to get machine runtime instance with ID %d: %w",
+					*gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID,
+					err,
+				)
+			}
+			machineRuntimeInstance = &MachineRuntimeInstanceValues{
+				Name: machineRuntimeInstanceObj.Name,
+			}
+		}
+
 		gcpGceMachineRuntimeInstanceConfig := GcpGceMachineRuntimeInstanceConfig{
 			GcpGceMachineRuntimeInstance: GcpGceMachineRuntimeInstanceValues{
-				Age: util.Ptr(util.GetAgeFormatted(gcpGceMachineRuntimeInstance.CreatedAt))},
+				Name:                           gcpGceMachineRuntimeInstance.Name,
+				GcpProviderName:                gcpProviderName,
+				Region:                         gcpGceMachineRuntimeInstance.Region,
+				Zone:                           gcpGceMachineRuntimeInstance.Zone,
+				NetworkID:                      gcpGceMachineRuntimeInstance.NetworkID,
+				SSHUser:                        gcpGceMachineRuntimeInstance.SSHUser,
+				GcpGceMachineRuntimeDefinition: gcpGceMachineRuntimeDefinition,
+				MachineRuntimeInstance:         machineRuntimeInstance,
+				Reconciled:                     gcpGceMachineRuntimeInstance.Reconciled,
+				Age:                            util.Ptr(util.GetAgeFormatted(gcpGceMachineRuntimeInstance.CreatedAt)),
+			},
 		}
 		gcpGceMachineRuntimeInstanceConfigs = append(gcpGceMachineRuntimeInstanceConfigs, gcpGceMachineRuntimeInstanceConfig)
 	}
@@ -62,18 +160,62 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Create(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*GcpGceMachineRuntimeInstanceConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeInstance
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeInstance
+	gcpGceMachineRuntimeInstanceValues := g.GcpGceMachineRuntimeInstance
 
 	// validate config
 	if err := g.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate values for gcp gce machine runtime instance: %w", err)
+		return nil, fmt.Errorf("failed to validate values for gcp gce machine runtime instance with name %s: %w", *gcpGceMachineRuntimeInstanceValues.Name, err)
 	}
 
-	// construct gcp gce machine runtime instance object
-	// TODO: add API object fields as needed for GcpGceMachineRuntimeInstance
-	gcpGceMachineRuntimeInstance := api_v0.GcpGceMachineRuntimeInstance{}
+	// look up GCP GCE machine runtime definition by name
+	gcpGceMachineRuntimeDefinition, err := client_v0.GetGcpGceMachineRuntimeDefinitionByName(apiClient, apiEndpoint, *gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find GCP GCE machine runtime definition with name %s: %w", *gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition.Name, err)
+	}
+
+	// look up GCP provider by name
+	gcpProvider, err := client_v0.GetGcpProviderByName(apiClient, apiEndpoint, *gcpGceMachineRuntimeInstanceValues.GcpProviderName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find GCP provider with name %s: %w", *gcpGceMachineRuntimeInstanceValues.GcpProviderName, err)
+	}
+
+	// construct machine runtime instance object with placeholder connection
+	// fields; the GCE machine runtime reconciler populates the real hostname and
+	// SSH key once the VM is provisioned.
+	machineRuntimeInstance := api_v0.MachineRuntimeInstance{
+		Instance: api_v0.Instance{
+			Name: gcpGceMachineRuntimeInstanceValues.Name,
+		},
+		Reconciliation: api_v0.Reconciliation{
+			Reconciled: util.Ptr(true),
+		},
+		Hostname:                   util.Ptr(gcePendingHostname),
+		SSHUser:                    gcpGceMachineRuntimeInstanceValues.SSHUser,
+		SSHKey:                     util.Ptr(gcePendingSSHKey),
+		Region:                     gcpGceMachineRuntimeInstanceValues.Region,
+		NetworkID:                  gcpGceMachineRuntimeInstanceValues.NetworkID,
+		MachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.MachineRuntimeDefinitionID,
+	}
+
+	// create machine runtime instance
+	createdMachineRuntimeInstance, err := client_v0.CreateMachineRuntimeInstance(apiClient, apiEndpoint, &machineRuntimeInstance)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create machine runtime instance for GCP GCE instance: %w", err)
+	}
+
+	// construct GCP GCE machine runtime instance object
+	gcpGceMachineRuntimeInstance := api_v0.GcpGceMachineRuntimeInstance{
+		Instance: api_v0.Instance{
+			Name: gcpGceMachineRuntimeInstanceValues.Name,
+		},
+		GcpProviderID:                    gcpProvider.ID,
+		Region:                           gcpGceMachineRuntimeInstanceValues.Region,
+		Zone:                             gcpGceMachineRuntimeInstanceValues.Zone,
+		NetworkID:                        gcpGceMachineRuntimeInstanceValues.NetworkID,
+		SSHUser:                          gcpGceMachineRuntimeInstanceValues.SSHUser,
+		MachineRuntimeInstanceID:         createdMachineRuntimeInstance.ID,
+		GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
+	}
 
 	// create gcp gce machine runtime instance
 	createdGcpGceMachineRuntimeInstance, err := client_v0.CreateGcpGceMachineRuntimeInstance(
@@ -86,10 +228,17 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Create(
 	}
 
 	// construct gcp gce machine runtime instance config
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeInstance
 	createdGcpGceMachineRuntimeInstanceConfig := &GcpGceMachineRuntimeInstanceConfig{
 		GcpGceMachineRuntimeInstance: GcpGceMachineRuntimeInstanceValues{
-			Age: util.Ptr(util.GetAgeFormatted(createdGcpGceMachineRuntimeInstance.CreatedAt)),
+			Age:                            util.Ptr(util.GetAgeFormatted(createdGcpGceMachineRuntimeInstance.CreatedAt)),
+			Name:                           createdGcpGceMachineRuntimeInstance.Name,
+			GcpProviderName:                gcpGceMachineRuntimeInstanceValues.GcpProviderName,
+			Region:                         createdGcpGceMachineRuntimeInstance.Region,
+			Zone:                           createdGcpGceMachineRuntimeInstance.Zone,
+			NetworkID:                      createdGcpGceMachineRuntimeInstance.NetworkID,
+			SSHUser:                        createdGcpGceMachineRuntimeInstance.SSHUser,
+			GcpGceMachineRuntimeDefinition: gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition,
+			Reconciled:                     createdGcpGceMachineRuntimeInstance.Reconciled,
 		},
 	}
 
@@ -98,38 +247,44 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Create(
 
 // Replace updates the entire gcp gce machine runtime instance object in the Threeport API.
 // This is a full replacement of all fields in the gcp gce machine runtime instance object.
+// This function takes a name parameter to identify the gcp gce machine runtime instance to replace.
+// This allows a different name to be provided in the values object for name changes.
 func (g *GcpGceMachineRuntimeInstanceConfig) Replace(
 	apiClient *http.Client,
 	apiEndpoint string,
-	// NOTE: GcpGceMachineRuntimeInstance has no name field,
-	name string, // TODO: replace name with another parameter that can uniquely identify a gcp gce machine runtime instance,
+	name string,
 ) (*GcpGceMachineRuntimeInstanceConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeInstance
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeInstance
+	gcpGceMachineRuntimeInstanceValues := g.GcpGceMachineRuntimeInstance
 
 	// validate config
 	if err := g.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid gcp gce machine runtime instance config: %w", err)
 	}
 
-	// get existing gcp gce machine runtime instance
-	existingGcpGceMachineRuntimeInstances, err := client_v0.GetGcpGceMachineRuntimeInstancesByQueryString(
+	// get existing gcp gce machine runtime instance by name
+	existingGcpGceMachineRuntimeInstance, err := client_v0.GetGcpGceMachineRuntimeInstanceByName(
 		apiClient,
 		apiEndpoint,
-		fmt.Sprintf("name=%s", name), // TODO: replace name with another parameter that can uniquely identify a gcp gce machine runtime instance,
+		name,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find gcp gce machine runtime instance with name %s: %w", name, err)
 	}
-	// TODO: add check for zero or multiple gcp gce machine runtime instances found
 
 	// construct updated gcp gce machine runtime instance object
-	// TODO: add API object fields as needed for GcpGceMachineRuntimeInstance
 	updatedGcpGceMachineRuntimeInstance := &api_v0.GcpGceMachineRuntimeInstance{
 		Common: api_v0.Common{
-			ID: (*existingGcpGceMachineRuntimeInstances)[0].ID,
+			ID: existingGcpGceMachineRuntimeInstance.ID,
 		},
+		Instance: api_v0.Instance{
+			Name: gcpGceMachineRuntimeInstanceValues.Name,
+		},
+		Region:                           gcpGceMachineRuntimeInstanceValues.Region,
+		Zone:                             gcpGceMachineRuntimeInstanceValues.Zone,
+		NetworkID:                        gcpGceMachineRuntimeInstanceValues.NetworkID,
+		SSHUser:                          gcpGceMachineRuntimeInstanceValues.SSHUser,
+		MachineRuntimeInstanceID:         existingGcpGceMachineRuntimeInstance.MachineRuntimeInstanceID,
+		GcpGceMachineRuntimeDefinitionID: existingGcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinitionID,
 	}
 
 	// replace gcp gce machine runtime instance
@@ -143,10 +298,16 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Replace(
 	}
 
 	// construct updated gcp gce machine runtime instance config
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeInstance
 	updatedGcpGceMachineRuntimeInstanceConfig := &GcpGceMachineRuntimeInstanceConfig{
 		GcpGceMachineRuntimeInstance: GcpGceMachineRuntimeInstanceValues{
-			Age: util.Ptr(util.GetAgeFormatted(replacedGcpGceMachineRuntimeInstance.CreatedAt)),
+			Age:                            util.Ptr(util.GetAgeFormatted(replacedGcpGceMachineRuntimeInstance.CreatedAt)),
+			Name:                           replacedGcpGceMachineRuntimeInstance.Name,
+			Region:                         replacedGcpGceMachineRuntimeInstance.Region,
+			Zone:                           replacedGcpGceMachineRuntimeInstance.Zone,
+			NetworkID:                      replacedGcpGceMachineRuntimeInstance.NetworkID,
+			SSHUser:                        replacedGcpGceMachineRuntimeInstance.SSHUser,
+			GcpGceMachineRuntimeDefinition: gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition,
+			Reconciled:                     replacedGcpGceMachineRuntimeInstance.Reconciled,
 		},
 	}
 
@@ -158,35 +319,87 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Delete(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) (*GcpGceMachineRuntimeInstanceConfig, error) {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeInstance
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeInstance
+	gcpGceMachineRuntimeInstanceValues := g.GcpGceMachineRuntimeInstance
 
-	// get gcp gce machine runtime instance
-	gcpGceMachineRuntimeInstance, err := client_v0.GetGcpGceMachineRuntimeInstancesByQueryString(
+	// get gcp gce machine runtime instance by name
+	gcpGceMachineRuntimeInstance, err := client_v0.GetGcpGceMachineRuntimeInstanceByName(
 		apiClient,
 		apiEndpoint,
-		fmt.Sprintf("name=%s", "value"), // TODO: replace name with another parameter that can uniquely identify a gcp gce machine runtime instance,
+		*gcpGceMachineRuntimeInstanceValues.Name,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find gcp gce machine runtime instance: %w", err)
+		return nil, fmt.Errorf("failed to find gcp gce machine runtime instance with name %s: %w", *gcpGceMachineRuntimeInstanceValues.Name, err)
 	}
-	// TODO: add check for zero or multiple gcp gce machine runtime instances found
 
 	// delete gcp gce machine runtime instance
-	_, err = client_v0.DeleteGcpGceMachineRuntimeInstance(
+	deletedGcpGceMachineRuntimeInstance, err := client_v0.DeleteGcpGceMachineRuntimeInstance(
 		apiClient,
 		apiEndpoint,
-		*(*gcpGceMachineRuntimeInstance)[0].ID,
+		*gcpGceMachineRuntimeInstance.ID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete gcp gce machine runtime instance from Threeport API: %w", err)
 	}
 
+	// wait for GCP GCE machine runtime instance to be deleted
+	util.Retry(90, 10, func() error {
+		if _, err := client_v0.GetGcpGceMachineRuntimeInstanceByName(
+			apiClient,
+			apiEndpoint,
+			*gcpGceMachineRuntimeInstance.Name,
+		); err == nil {
+			return errors.New("GCP GCE machine runtime instance not deleted")
+		}
+		return nil
+	})
+
+	// get machine runtime instance
+	if gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID != nil {
+		machineRuntimeInstance, err := client_v0.GetMachineRuntimeInstanceByID(
+			apiClient,
+			apiEndpoint,
+			*gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID,
+		)
+		if err != nil {
+			// if the machine runtime instance wasn't found, there's no more to do
+			if !errors.Is(err, client_lib.ErrObjectNotFound) {
+				return nil, fmt.Errorf("failed to get associated machine runtime instance: %w", err)
+			}
+		}
+		// if machine runtime instance found, remove it
+		if err == nil {
+			// set the deletion confirmed timestamp so the machine runtime instance
+			// can be deleted without triggering unnecessary reconciliation
+			now := time.Now().UTC()
+			machineRuntimeInstance.DeletionConfirmed = &now
+			_, err = client_v0.UpdateMachineRuntimeInstance(
+				apiClient,
+				apiEndpoint,
+				machineRuntimeInstance,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to update associated machine runtime instance to set deletion confirmed: %w", err)
+			}
+
+			// delete machine runtime instance
+			_, err = client_v0.DeleteMachineRuntimeInstance(
+				apiClient,
+				apiEndpoint,
+				*gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to delete associated machine runtime instance: %w", err)
+			}
+		}
+	}
+
 	// construct deleted gcp gce machine runtime instance config
-	// TODO: add config abstraction fields needed for user to manage a GcpGceMachineRuntimeInstance
 	deletedGcpGceMachineRuntimeInstanceConfig := &GcpGceMachineRuntimeInstanceConfig{
-		GcpGceMachineRuntimeInstance: GcpGceMachineRuntimeInstanceValues{},
+		GcpGceMachineRuntimeInstance: GcpGceMachineRuntimeInstanceValues{
+			Name:       deletedGcpGceMachineRuntimeInstance.Name,
+			Region:     deletedGcpGceMachineRuntimeInstance.Region,
+			Reconciled: deletedGcpGceMachineRuntimeInstance.Reconciled,
+		},
 	}
 
 	return deletedGcpGceMachineRuntimeInstanceConfig, nil
@@ -194,12 +407,38 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Delete(
 
 // Validate validates inputs to create gcp gce machine runtime instances.
 func (g *GcpGceMachineRuntimeInstanceConfig) Validate() error {
-	// TODO: use the config abstraction values once the GcpGceMachineRuntimeInstance
-	// fields are filled in above; for now the scaffold leaves this unreferenced.
-	_ = g.GcpGceMachineRuntimeInstance
+	gcpGceMachineRuntimeInstanceValues := g.GcpGceMachineRuntimeInstance
 	multiError := util.MultiError{}
 
-	// TODO: add additional validation as needed
+	// ensure name is set
+	if gcpGceMachineRuntimeInstanceValues.Name == nil {
+		multiError.AppendError(errors.New("missing required field in config: Name"))
+	}
+
+	// ensure region is set
+	if gcpGceMachineRuntimeInstanceValues.Region == nil {
+		multiError.AppendError(errors.New("missing required field in config: Region"))
+	}
+
+	// ensure zone is set
+	if gcpGceMachineRuntimeInstanceValues.Zone == nil {
+		multiError.AppendError(errors.New("missing required field in config: Zone"))
+	}
+
+	// ensure ssh user is set
+	if gcpGceMachineRuntimeInstanceValues.SSHUser == nil {
+		multiError.AppendError(errors.New("missing required field in config: SSHUser"))
+	}
+
+	// ensure gcp provider name is set
+	if gcpGceMachineRuntimeInstanceValues.GcpProviderName == nil {
+		multiError.AppendError(errors.New("missing required field in config: GcpProviderName"))
+	}
+
+	// ensure gcp gce machine runtime definition is set
+	if gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition == nil || gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition.Name == nil {
+		multiError.AppendError(errors.New("missing required field in config: GcpGceMachineRuntimeDefinition.Name"))
+	}
 
 	return multiError.Error()
 }

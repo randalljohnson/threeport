@@ -16,6 +16,8 @@ func AddVersions() {
 	AddGatewayHttpPortVersions()
 	AddGatewayInstanceVersions()
 	AddGatewayTcpPortVersions()
+	AddGcpGceMachineRuntimeDefinitionVersions()
+	AddGcpGceMachineRuntimeInstanceVersions()
 	AddGcpGkeKubernetesRuntimeDefinitionVersions()
 	AddGcpGkeKubernetesRuntimeInstanceVersions()
 	AddGcpProviderVersions()

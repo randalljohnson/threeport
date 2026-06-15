@@ -17529,12 +17529,24 @@ const docTemplate = `{
                 "Name"
             ],
             "properties": {
+                "ImageID": {
+                    "description": "The provider image identifier used to boot the machine.",
+                    "type": "string"
+                },
+                "InfraProvider": {
+                    "description": "The infrastructure provider that provisions machines from this\ndefinition. Empty for imported machines that already exist.",
+                    "type": "string"
+                },
                 "MachineRuntimeInstances": {
                     "description": "The associated machine runtime instances that are deployed from this\ndefinition.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.MachineRuntimeInstance"
                     }
+                },
+                "MachineType": {
+                    "description": "The provider-specific machine/instance type to provision.",
+                    "type": "string"
                 },
                 "Name": {
                     "description": "An arbitrary name for the definition.",
@@ -17553,9 +17565,7 @@ const docTemplate = `{
         "v0.MachineRuntimeInstance": {
             "type": "object",
             "required": [
-                "Hostname",
-                "Name",
-                "SSHUser"
+                "Name"
             ],
             "properties": {
                 "CreationAcknowledged": {
@@ -17587,7 +17597,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Hostname": {
-                    "description": "The hostname or IP address used to reach the machine.",
+                    "description": "The hostname or IP address used to reach the machine. Optional at\ncreate so the abstract instance can exist before the machine is\nprovisioned; populated once the machine is reachable.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
@@ -17609,6 +17619,10 @@ const docTemplate = `{
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
+                "NetworkID": {
+                    "description": "The provider network identifier the machine attaches to.",
+                    "type": "string"
+                },
                 "Port": {
                     "description": "The SSH port on the machine.",
                     "type": "integer"
@@ -17616,6 +17630,18 @@ const docTemplate = `{
                 "Reconciled": {
                     "description": "Indicates if object is considered to be reconciled by the object's controller.",
                     "type": "boolean"
+                },
+                "Region": {
+                    "description": "The provider region in which the machine is provisioned.",
+                    "type": "string"
+                },
+                "ResourceInventory": {
+                    "description": "An inventory of all provider resources backing this machine, used for\ncrash recovery and deprovisioning.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "SSHKey": {
                     "description": "The SSH private key for authenticating to the machine.",
@@ -17626,7 +17652,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "SSHUser": {
-                    "description": "The SSH username for authenticating to the machine.",
+                    "description": "The SSH username for authenticating to the machine. Optional at create\nfor the same reason as the hostname; populated once the machine is\nprovisioned.",
                     "type": "string"
                 },
                 "Status": {

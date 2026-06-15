@@ -1663,6 +1663,14 @@ definitions:
     type: object
   v0.MachineRuntimeDefinition:
     properties:
+      ImageID:
+        description: The provider image identifier used to boot the machine.
+        type: string
+      InfraProvider:
+        description: |-
+          The infrastructure provider that provisions machines from this
+          definition. Empty for imported machines that already exist.
+        type: string
       MachineRuntimeInstances:
         description: |-
           The associated machine runtime instances that are deployed from this
@@ -1670,6 +1678,9 @@ definitions:
         items:
           $ref: '#/definitions/v0.MachineRuntimeInstance'
         type: array
+      MachineType:
+        description: The provider-specific machine/instance type to provision.
+        type: string
       Name:
         description: An arbitrary name for the definition.
         type: string
@@ -1720,7 +1731,10 @@ definitions:
           connection. If not provided, captured on first connection.
         type: string
       Hostname:
-        description: The hostname or IP address used to reach the machine.
+        description: |-
+          The hostname or IP address used to reach the machine. Optional at
+          create so the abstract instance can exist before the machine is
+          provisioned; populated once the machine is reachable.
         type: string
       InterruptReconciliation:
         description: |-
@@ -1743,6 +1757,9 @@ definitions:
       Name:
         description: An arbitrary name the instance
         type: string
+      NetworkID:
+        description: The provider network identifier the machine attaches to.
+        type: string
       Port:
         description: The SSH port on the machine.
         type: integer
@@ -1750,6 +1767,15 @@ definitions:
         description: Indicates if object is considered to be reconciled by the object's
           controller.
         type: boolean
+      Region:
+        description: The provider region in which the machine is provisioned.
+        type: string
+      ResourceInventory:
+        allOf:
+        - $ref: '#/definitions/datatypes.JSON'
+        description: |-
+          An inventory of all provider resources backing this machine, used for
+          crash recovery and deprovisioning.
       SSHKey:
         description: The SSH private key for authenticating to the machine.
         type: string
@@ -1757,7 +1783,10 @@ definitions:
         description: The SSH password for authenticating to the machine.
         type: string
       SSHUser:
-        description: The SSH username for authenticating to the machine.
+        description: |-
+          The SSH username for authenticating to the machine. Optional at create
+          for the same reason as the hostname; populated once the machine is
+          provisioned.
         type: string
       Status:
         description: |-
@@ -1765,9 +1794,7 @@ definitions:
           TODO: use a custom type
         type: string
     required:
-    - Hostname
     - Name
-    - SSHUser
     type: object
   v0.MachineWorkloadDefinition:
     properties:

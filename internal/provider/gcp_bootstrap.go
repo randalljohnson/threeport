@@ -36,6 +36,8 @@ var threeportServiceAccountRoles = []string{
 	"roles/container.admin",
 	// Compute Engine resources (for VPC, subnets, firewalls)
 	"roles/compute.networkAdmin",
+	// Compute Engine instances (least privilege for machine provider)
+	"roles/compute.instanceAdmin.v1",
 	// IAM management for creating service accounts for workloads
 	"roles/iam.serviceAccountAdmin",
 	"roles/iam.serviceAccountUser",

@@ -1,9 +1,14 @@
 package v0
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -26,26 +31,44 @@ var ModRouter = ModuleRouter{
 // those route paths so that API requests using the module object REST paths
 // are proxied to the module API.  It then instructs the echo server to use
 // the ServeModuleRoutes method as middleware so that module paths are
-// checked first when API requests are received.
+// checked first when API requests are received.  When authEnabled is true the
+// proxy reaches each module over https and presents the control plane client
+// certificate so the module's caller-capture middleware reads the control
+// plane organizational unit; when false it proxies over plain http.
 func InitModuleRouter(
 	db *gorm.DB,
 	e *echo.Echo,
+	authEnabled bool,
 ) error {
 	var moduleApis []ModuleApi
 	if result := db.Preload("ModuleApiRoutes").Where("core = ?", false).Find(&moduleApis); result.Error != nil {
 		return fmt.Errorf("failed to query module APIs from database: %w", result.Error)
 	}
 
+	// build the transport that presents the control plane client certificate
+	// and trusts the control plane certificate authority so module proxy
+	// requests authenticate as the control plane over https
+	transport, err := moduleProxyTransport(authEnabled)
+	if err != nil {
+		return fmt.Errorf("failed to build module proxy transport: %w", err)
+	}
+
+	scheme := "http"
+	if authEnabled {
+		scheme = "https"
+	}
+
 	for _, modApi := range moduleApis {
 		for _, apiRoute := range modApi.ModuleApiRoutes {
 			ModRouter.AddRoute(*apiRoute.Path, func(c echo.Context) error {
 				proxyUrl, err := url.Parse(
-					fmt.Sprintf("http://%s", *modApi.Endpoint),
+					fmt.Sprintf("%s://%s", scheme, *modApi.Endpoint),
 				)
 				if err != nil {
 					return fmt.Errorf("failed to parse module's proxy target URL: %w", err)
 				}
 				proxy := httputil.NewSingleHostReverseProxy(proxyUrl)
+				proxy.Transport = transport
 				proxy.ServeHTTP(c.Response().Writer, c.Request())
 				return nil
 			})
@@ -55,6 +78,44 @@ func InitModuleRouter(
 	e.Use(ModRouter.ServeModuleRoutes)
 
 	return nil
+}
+
+// moduleProxyTransport returns the http transport the module proxy uses to
+// reach module API servers.  When authEnabled is false it returns the default
+// transport for plain http.  When true it loads the control plane client
+// certificate and certificate authority from the mounted secret and returns a
+// transport that presents the client certificate over https so the module API
+// server reads the control plane organizational unit from the peer certificate.
+func moduleProxyTransport(authEnabled bool) (http.RoundTripper, error) {
+	if !authEnabled {
+		return http.DefaultTransport, nil
+	}
+
+	configDir := "/etc/threeport"
+
+	// load the control plane client certificate and private key
+	cert, err := tls.LoadX509KeyPair(
+		filepath.Join(configDir, "cert/tls.crt"),
+		filepath.Join(configDir, "cert/tls.key"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load control plane client certificate: %w", err)
+	}
+
+	// load the certificate authority used to verify the module API server
+	caCert, err := os.ReadFile(filepath.Join(configDir, "ca/tls.crt"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load certificate authority: %w", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      caCertPool,
+		},
+	}, nil
 }
 
 // AddRoute adds a new route to the dynamic route map

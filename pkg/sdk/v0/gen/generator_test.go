@@ -450,3 +450,122 @@ func TestHasFieldWithTagValue_NoMatch(t *testing.T) {
 	assert.False(t, group.HasFieldWithTagValue("Foo", "encrypt", "true"), "tag key absent")
 	assert.False(t, group.HasFieldWithTagValue("Foo", "persist", "false"), "tag present with wrong value")
 }
+
+// indexOf reports the position of name in names, or -1 when absent.
+func indexOf(names []string, name string) int {
+	for i, n := range names {
+		if n == name {
+			return i
+		}
+	}
+	return -1
+}
+
+// sortFixture builds a *Generator carrying only the relationship-dependency
+// graph the migration sort reads. Keys are referencing types; values are the
+// types their foreign keys reference.
+func sortFixture(dependencies map[string][]string) *Generator {
+	return &Generator{RelationshipDependencies: dependencies}
+}
+
+// TestSortDatabaseInitNamesByDependency_ReferencedBeforeReferencing covers
+// the core ordering guarantee: a type whose foreign key references another
+// type in the list is emitted after the type it references.
+//
+//	type RouterMachineInstance struct {
+//	    RouterMachineSetInstanceID *uint `relationship:"requires"`
+//	}
+//
+// Expected: RouterMachineSetInstance precedes RouterMachineInstance even
+// though it sorts later alphabetically.
+func TestSortDatabaseInitNamesByDependency_ReferencedBeforeReferencing(t *testing.T) {
+	// the referencing type carries a relationship-tagged foreign key whose
+	// field name derives the referenced type by stripping the ID suffix
+	g := sortFixture(map[string][]string{
+		"RouterMachineInstance": {"RouterMachineSetInstance"},
+	})
+
+	// sort the list passed in declaration order, referencing type first
+	sorted := g.SortDatabaseInitNamesByDependency([]string{
+		"RouterMachineInstance",
+		"RouterMachineSetInstance",
+	})
+
+	// the referenced table must land ahead of the table that references it
+	setIdx := indexOf(sorted, "RouterMachineSetInstance")
+	instIdx := indexOf(sorted, "RouterMachineInstance")
+	require.NotEqual(t, -1, setIdx)
+	require.NotEqual(t, -1, instIdx)
+	assert.Less(t, setIdx, instIdx, "referenced table must precede referencing table")
+}
+
+// TestSortDatabaseInitNamesByDependency_TransitiveChain covers a multi-hop
+// chain: A references B and B references C, so the emitted order must be
+// C, B, A regardless of input order.
+func TestSortDatabaseInitNamesByDependency_TransitiveChain(t *testing.T) {
+	// A depends on B, B depends on C, forming a three-link chain
+	g := sortFixture(map[string][]string{
+		"A": {"B"},
+		"B": {"C"},
+	})
+
+	// pass the chain in reverse dependency order
+	sorted := g.SortDatabaseInitNamesByDependency([]string{"A", "B", "C"})
+
+	// the leaf table comes first, the root table last
+	assert.Equal(t, []string{"C", "B", "A"}, sorted)
+}
+
+// TestSortDatabaseInitNamesByDependency_IgnoresExternalReference covers a
+// foreign key that points at a type not in the migration list: the edge is
+// dropped so external references do not perturb the ordering.
+//
+//	type Local struct {
+//	    ExternalThingID *uint `relationship:"requires"`
+//	}
+//
+// Expected: with only Local and Other in the list, alphabetical order holds.
+func TestSortDatabaseInitNamesByDependency_IgnoresExternalReference(t *testing.T) {
+	// Local references a type that is not part of the migration list
+	g := sortFixture(map[string][]string{
+		"Local": {"ExternalThing"},
+	})
+
+	// the referenced ExternalThing is absent from the list passed in
+	sorted := g.SortDatabaseInitNamesByDependency([]string{"Other", "Local"})
+
+	// with no in-list edge, the deterministic alphabetical tie-break applies
+	assert.Equal(t, []string{"Local", "Other"}, sorted)
+}
+
+// TestSortDatabaseInitNamesByDependency_Deterministic covers tie-breaking:
+// independent types come out in alphabetical order regardless of input order
+// so the generated migration is stable across runs.
+func TestSortDatabaseInitNamesByDependency_Deterministic(t *testing.T) {
+	// three types with no relationship edges between them
+	g := sortFixture(map[string][]string{})
+
+	// pass the names in non-alphabetical order
+	sorted := g.SortDatabaseInitNamesByDependency([]string{"Charlie", "Bravo", "Alpha"})
+
+	// independent types come out alphabetically sorted
+	assert.Equal(t, []string{"Alpha", "Bravo", "Charlie"}, sorted)
+}
+
+// TestSortDatabaseInitNamesByDependency_CycleFallback covers a true
+// dependency cycle: rather than failing, the remaining cyclic names are
+// appended in alphabetical order so generation still produces deterministic
+// output.
+func TestSortDatabaseInitNamesByDependency_CycleFallback(t *testing.T) {
+	// two types reference each other, forming a cycle the sort cannot break
+	g := sortFixture(map[string][]string{
+		"Yin":  {"Yang"},
+		"Yang": {"Yin"},
+	})
+
+	// neither type can be emitted first, triggering the cycle fallback
+	sorted := g.SortDatabaseInitNamesByDependency([]string{"Yin", "Yang"})
+
+	// the fallback emits the cyclic names in deterministic alphabetical order
+	assert.Equal(t, []string{"Yang", "Yin"}, sorted)
+}

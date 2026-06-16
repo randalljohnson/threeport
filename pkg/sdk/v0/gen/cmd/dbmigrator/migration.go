@@ -86,7 +86,10 @@ func GenDbMigratorMigration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error 
 	).Block(
 		Return().Index().Interface().BlockFunc(func(g *Group) {
 			for _, version := range gen.GlobalVersionConfig.Versions {
-				for _, name := range version.DatabaseInitNames {
+				// emit referenced tables before the tables that reference them
+				// so gorm AutoMigrate can build each foreign-key constraint
+				sortedNames := gen.SortDatabaseInitNamesByDependency(version.DatabaseInitNames)
+				for _, name := range sortedNames {
 					g.List(
 						Op("&").Qual(
 							fmt.Sprintf(

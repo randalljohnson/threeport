@@ -4,6 +4,7 @@ package machineruntime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,6 +34,10 @@ var unpopulatedRequeueDelaySeconds int64 = 15
 // sshOperationTimeout bounds the SSH operations of one reconcile pass.
 // Package-level so tests can shrink it to exercise the timeout path.
 var sshOperationTimeout = 30 * time.Second
+
+// defaultSSHUser is the ssh account the GCE provisioner authorizes when the
+// abstract instance leaves the ssh user unset.
+const defaultSSHUser = "threeport"
 
 // newReconcileContext returns the context that bounds one reconcile pass's
 // SSH operations. Package-level so tests can swap in a context that is
@@ -246,7 +251,9 @@ func reconcileProviderInstance(
 			return sshRetryDelaySeconds, nil
 		}
 
-		// look up the GCP provider by name or fall back to the default
+		// look up the GCP provider by name or fall back to the default; when no
+		// default is marked, fall back to the sole provider so a single-account
+		// deployment provisions without extra configuration
 		var gcpProvider v0.GcpProvider
 		if def.InfraProviderAccountName != nil {
 			provider, err := client.GetGcpProviderByName(r.APIClient, r.APIServer, *def.InfraProviderAccountName)
@@ -255,11 +262,17 @@ func reconcileProviderInstance(
 			}
 			gcpProvider = *provider
 		} else {
-			provider, err := client.GetGcpProviderByDefaultProvider(r.APIClient, r.APIServer)
+			provider, err := resolveDefaultGcpProvider(r)
 			if err != nil {
-				return 0, fmt.Errorf("failed to get GCP provider by default: %w", err)
+				return 0, err
 			}
 			gcpProvider = *provider
+		}
+
+		// require an abstract location before mapping to a region so the
+		// deref below cannot panic on an unset location
+		if machineRuntimeInstance.Location == nil || *machineRuntimeInstance.Location == "" {
+			return 0, errors.New("failed to resolve provider instance: Location is required")
 		}
 
 		// map the abstract location to a GCP region; a GCE VM is zonal, so
@@ -302,10 +315,13 @@ func reconcileProviderInstance(
 		}
 
 		// propagate ssh credentials from the abstract instance so the GCE
-		// provisioner can authorize the user and inject the key; copy only
-		// when present to leave the married columns null otherwise
-		if machineRuntimeInstance.SSHUser != nil {
+		// provisioner can authorize the user and inject the key; default the
+		// ssh user so the provisioner always has an account to authorize, and
+		// copy the key only when present to leave that column null otherwise
+		if machineRuntimeInstance.SSHUser != nil && *machineRuntimeInstance.SSHUser != "" {
 			gcpGceMachineRuntimeInstance.SSHUser = util.Ptr(*machineRuntimeInstance.SSHUser)
+		} else {
+			gcpGceMachineRuntimeInstance.SSHUser = util.Ptr(defaultSSHUser)
 		}
 		if machineRuntimeInstance.SSHKey != nil {
 			gcpGceMachineRuntimeInstance.SSHKey = util.Ptr(*machineRuntimeInstance.SSHKey)
@@ -321,6 +337,34 @@ func reconcileProviderInstance(
 		return sshRetryDelaySeconds, nil
 	default:
 		return 0, fmt.Errorf("infra provider %s not supported", *def.InfraProvider)
+	}
+}
+
+// resolveDefaultGcpProvider returns the GCP provider to provision on when no
+// account name is supplied. It prefers the provider marked default, falls back
+// to the sole provider when none is marked, and returns an actionable error
+// when several providers exist with no default.
+func resolveDefaultGcpProvider(r *controller.Reconciler) (*v0.GcpProvider, error) {
+	// prefer the explicitly marked default provider
+	provider, err := client.GetGcpProviderByDefaultProvider(r.APIClient, r.APIServer)
+	if err == nil {
+		return provider, nil
+	}
+
+	// no default is marked; inspect every provider to decide the fallback
+	providers, listErr := client.GetGcpProviders(r.APIClient, r.APIServer)
+	if listErr != nil {
+		return nil, fmt.Errorf("failed to list GCP providers: %w", listErr)
+	}
+
+	switch len(*providers) {
+	case 0:
+		return nil, fmt.Errorf("failed to get GCP provider by default: %w", err)
+	case 1:
+		// a single-account deployment has one unambiguous choice
+		return &(*providers)[0], nil
+	default:
+		return nil, errors.New("failed to resolve GCP provider: multiple GCP providers exist and none is marked default; mark a default provider or set InfraProviderAccountName on the machine runtime definition")
 	}
 }
 

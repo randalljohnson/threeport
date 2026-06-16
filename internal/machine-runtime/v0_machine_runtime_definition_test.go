@@ -150,3 +150,69 @@ func TestMachineRuntimeDefinitionCreated_CreatesWhenMissing(t *testing.T) {
 	// verify exactly one married definition was created
 	assert.Equal(t, int64(1), atomic.LoadInt64(&createCalls), "a missing married definition must be created once")
 }
+
+// TestMachineRuntimeDefinitionCreated_DefaultsUnsetFields covers the defaulting
+// path at the create site: a provider-provisioned definition that leaves the
+// profile, size, and image unset resolves a machine type from the documented
+// profile and size defaults and stamps the documented boot image, so resolution
+// never dereferences a nil pointer and provisioning never fails on a missing
+// image.
+func TestMachineRuntimeDefinitionCreated_DefaultsUnsetFields(t *testing.T) {
+	defID := uint(503)
+
+	// arrange a definition with no profile, size, or image so the create path
+	// must apply every default
+	mrd := &v0.MachineRuntimeDefinition{
+		Common:        v0.Common{ID: util.Ptr(defID)},
+		Definition:    v0.Definition{Name: util.Ptr("mrd-default")},
+		InfraProvider: util.Ptr(v0.MachineRuntimeInfraProviderGCE),
+	}
+
+	api := machinetest.NewAPIStub(t)
+
+	// the GET query returns no existing definition, so the handler creates one;
+	// capture the created married definition to assert the defaulted image
+	var created v0.GcpGceMachineRuntimeDefinition
+	api.Mux.HandleFunc(v0.PathGcpGceMachineRuntimeDefinitions, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			machinetest.WriteResponse(t, w, http.StatusOK, nil)
+		case http.MethodPost:
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &created))
+			created.ID = util.Ptr(uint(603))
+			machinetest.WriteResponse(t, w, http.StatusCreated, []apiserver_lib.Object{&created})
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	})
+
+	api.Mux.HandleFunc(fmt.Sprintf("%s/%d", v0.PathMachineRuntimeDefinitions, defID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		var updated v0.MachineRuntimeDefinition
+		require.NoError(t, json.Unmarshal(body, &updated))
+		updated.ID = util.Ptr(defID)
+		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&updated})
+	})
+
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient: api.Client,
+		APIServer: api.Addr,
+	}
+
+	// run the Created hook against the definition with every field unset
+	delay, err := v0MachineRuntimeDefinitionCreated(r, mrd, &log)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), delay)
+	// verify the machine type resolved from the documented profile and size
+	// defaults rather than panicking on the nil pointers
+	require.NotNil(t, created.MachineType)
+	assert.NotEmpty(t, *created.MachineType)
+	// verify the boot image defaulted to the documented image
+	require.NotNil(t, created.ImageID)
+	assert.Equal(t, defaultMachineImageID, *created.ImageID)
+}

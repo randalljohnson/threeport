@@ -19,6 +19,10 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// defaultGceImageID is the boot image used when a GCE machine runtime
+// definition leaves the image identifier unset.
+const defaultGceImageID = "debian-cloud/debian-12"
+
 // gceMachineLifecycle implements provider.InfraLifecycleProvider for GCP GCE
 // machine runtime instances. It wires the reusable GCE VM provider into the
 // shared create and delete state machines.
@@ -396,8 +400,12 @@ func buildGceMachineInfra(
 	if definition.MachineType != nil {
 		infraGce.MachineType = *definition.MachineType
 	}
-	if definition.ImageID != nil {
+	// default the boot image when the definition leaves it unset so the
+	// provider never fails on a missing image identifier
+	if definition.ImageID != nil && *definition.ImageID != "" {
 		infraGce.ImageID = *definition.ImageID
+	} else {
+		infraGce.ImageID = defaultGceImageID
 	}
 
 	if instance.Region != nil {

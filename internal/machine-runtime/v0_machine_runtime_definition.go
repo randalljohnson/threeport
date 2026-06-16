@@ -15,6 +15,20 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+const (
+	// defaultMachineProfile is the CPU-to-memory ratio applied when a machine
+	// runtime definition leaves the profile unset.
+	defaultMachineProfile = "Balanced"
+
+	// defaultMachineSize is the compute capacity applied when a machine runtime
+	// definition leaves the size unset.
+	defaultMachineSize = "Medium"
+
+	// defaultMachineImageID is the boot image applied to a provider-provisioned
+	// machine when its definition leaves the image identifier unset.
+	defaultMachineImageID = "debian-cloud/debian-12"
+)
+
 // v0MachineRuntimeDefinitionCreated resolves the abstract machine size and
 // profile to a provider machine type and creates the married provider machine
 // runtime definition.
@@ -49,16 +63,34 @@ func v0MachineRuntimeDefinitionCreated(
 			return 0, fmt.Errorf("failed to check for existing GCE machine runtime definition: %w", err)
 		}
 		if len(*existing) < 1 {
+			// default the abstract profile and size to the documented defaults
+			// when unset so resolution never dereferences a nil pointer
+			machineProfile := defaultMachineProfile
+			if machineRuntimeDefinition.MachineProfile != nil && *machineRuntimeDefinition.MachineProfile != "" {
+				machineProfile = *machineRuntimeDefinition.MachineProfile
+			}
+			machineSize := defaultMachineSize
+			if machineRuntimeDefinition.MachineSize != nil && *machineRuntimeDefinition.MachineSize != "" {
+				machineSize = *machineRuntimeDefinition.MachineSize
+			}
+
 			// map the abstract size and profile to a Google Cloud Platform
 			// machine type; the mapping keys on the cloud provider token, not
 			// the machine runtime infra provider token
 			machineType, err := mapping.GetMachineType(
 				util.GcpProvider,
-				*machineRuntimeDefinition.MachineProfile,
-				*machineRuntimeDefinition.MachineSize,
+				machineProfile,
+				machineSize,
 			)
 			if err != nil {
 				return 0, fmt.Errorf("failed to map machine size and profile to GCP machine type: %w", err)
+			}
+
+			// default the boot image to the documented image when unset so
+			// provisioning never fails on a missing image identifier
+			imageID := machineRuntimeDefinition.ImageID
+			if imageID == nil || *imageID == "" {
+				imageID = util.Ptr(defaultMachineImageID)
 			}
 
 			// create the married GCE machine runtime definition
@@ -67,7 +99,7 @@ func v0MachineRuntimeDefinitionCreated(
 					Name: machineRuntimeDefinition.Name,
 				},
 				MachineType:                &machineType,
-				ImageID:                    machineRuntimeDefinition.ImageID,
+				ImageID:                    imageID,
 				MachineRuntimeDefinitionID: machineRuntimeDefinition.ID,
 			}
 			if _, err := client.CreateGcpGceMachineRuntimeDefinition(

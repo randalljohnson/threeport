@@ -990,3 +990,94 @@ func TestMachineRuntimeInstanceCreated_ManyConcurrent_NoConnLeak(t *testing.T) {
 		return runtime.NumGoroutine() <= baseline+10
 	}, 10*time.Second, 20*time.Millisecond, "goroutines must return to baseline after the burst")
 }
+
+// gcpProvidersHandler registers a handler on the GCP providers path that serves
+// the marked default when queried with defaultprovider=true and the full set
+// otherwise, so a single registration drives both the default lookup and the
+// list fallback.
+func gcpProvidersHandler(t *testing.T, api *machinetest.APIStub, providers []v0.GcpProvider) {
+	t.Helper()
+	api.Mux.HandleFunc(v0.PathGcpProviders, func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		if r.URL.Query().Get("defaultprovider") == "true" {
+			var defaults []apiserver_lib.Object
+			for i := range providers {
+				if providers[i].DefaultProvider != nil && *providers[i].DefaultProvider {
+					p := providers[i]
+					defaults = append(defaults, &p)
+				}
+			}
+			machinetest.WriteResponse(t, w, http.StatusOK, defaults)
+			return
+		}
+		var all []apiserver_lib.Object
+		for i := range providers {
+			p := providers[i]
+			all = append(all, &p)
+		}
+		machinetest.WriteResponse(t, w, http.StatusOK, all)
+	})
+}
+
+// TestResolveDefaultGcpProvider_PrefersMarkedDefault asserts the resolver
+// returns the provider marked default even when several providers exist.
+func TestResolveDefaultGcpProvider_PrefersMarkedDefault(t *testing.T) {
+	// arrange two providers, one of which is marked default
+	providers := []v0.GcpProvider{
+		{Common: v0.Common{ID: util.Ptr(uint(1))}, Name: util.Ptr("alpha")},
+		{Common: v0.Common{ID: util.Ptr(uint(2))}, Name: util.Ptr("beta"), DefaultProvider: util.Ptr(true)},
+	}
+	api := machinetest.NewAPIStub(t)
+	gcpProvidersHandler(t, api, providers)
+
+	r := &controller.Reconciler{APIClient: api.Client, APIServer: api.Addr}
+
+	// resolve the default provider with no account name supplied
+	provider, err := resolveDefaultGcpProvider(r)
+	require.NoError(t, err)
+	// verify the marked default was chosen
+	require.NotNil(t, provider.Name)
+	assert.Equal(t, "beta", *provider.Name)
+}
+
+// TestResolveDefaultGcpProvider_FallsBackToSoleProvider asserts the resolver
+// uses the only provider when none is marked default.
+func TestResolveDefaultGcpProvider_FallsBackToSoleProvider(t *testing.T) {
+	// arrange a single provider with no default marked
+	providers := []v0.GcpProvider{
+		{Common: v0.Common{ID: util.Ptr(uint(1))}, Name: util.Ptr("solo")},
+	}
+	api := machinetest.NewAPIStub(t)
+	gcpProvidersHandler(t, api, providers)
+
+	r := &controller.Reconciler{APIClient: api.Client, APIServer: api.Addr}
+
+	// resolve with no default marked and a single provider present
+	provider, err := resolveDefaultGcpProvider(r)
+	require.NoError(t, err)
+	// verify the sole provider was chosen
+	require.NotNil(t, provider.Name)
+	assert.Equal(t, "solo", *provider.Name)
+}
+
+// TestResolveDefaultGcpProvider_RejectsAmbiguousMultiple rejects the case where
+// several providers exist and none is marked default, returning an actionable
+// error that names both remedies.
+func TestResolveDefaultGcpProvider_RejectsAmbiguousMultiple(t *testing.T) {
+	// arrange two providers with no default marked, leaving the choice ambiguous
+	providers := []v0.GcpProvider{
+		{Common: v0.Common{ID: util.Ptr(uint(1))}, Name: util.Ptr("alpha")},
+		{Common: v0.Common{ID: util.Ptr(uint(2))}, Name: util.Ptr("beta")},
+	}
+	api := machinetest.NewAPIStub(t)
+	gcpProvidersHandler(t, api, providers)
+
+	r := &controller.Reconciler{APIClient: api.Client, APIServer: api.Addr}
+
+	// resolve with no default marked and several providers present
+	_, err := resolveDefaultGcpProvider(r)
+	// verify the ambiguity is rejected with an actionable error
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "InfraProviderAccountName")
+	assert.Contains(t, err.Error(), "default")
+}

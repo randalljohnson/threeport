@@ -44,21 +44,27 @@ func RetryOnSerializationFailure(write func() *gorm.DB) *gorm.DB {
 }
 
 // isSerializationFailure reports whether err is a CockroachDB or PostgreSQL
-// serialization conflict, which is retryable. It checks the driver error code
-// first and falls back to the error text so the detection still holds when the
-// code is wrapped or the underlying type is not surfaced.
+// serialization conflict, which is retryable. It trusts the typed driver error
+// code when present and otherwise falls back to the error text, so detection
+// still holds when the underlying driver type is not surfaced.
 func isSerializationFailure(err error) bool {
 	if err == nil {
 		return false
 	}
 
+	// trust the driver error code when the typed error is present anywhere in
+	// the chain; a different code is not a serialization conflict even if the
+	// message text happens to carry the digits 40001.
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == serializationFailureCode {
-		return true
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == serializationFailureCode
 	}
 
+	// fall back to the error text only when no typed driver error is present,
+	// matching the SQLSTATE on a bordered token so a value carried in the
+	// message cannot be mistaken for the code.
 	msg := err.Error()
-	return strings.Contains(msg, serializationFailureCode) ||
+	return strings.Contains(msg, "(SQLSTATE "+serializationFailureCode+")") ||
 		strings.Contains(msg, "RETRY_SERIALIZABLE") ||
 		strings.Contains(msg, "TransactionRetryWithProtoRefreshError")
 }

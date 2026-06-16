@@ -38,6 +38,19 @@ func TestIsSerializationFailureClassifies(t *testing.T) {
 			expected: false,
 		},
 		{
+			// a non-40001 driver error stays non-retryable even when its
+			// message text embeds the serialization digits
+			name:     "pg error with another code and 40001 in text is not retryable",
+			err:      &pgconn.PgError{Code: "23505", Message: "value host-40001 already exists"},
+			expected: false,
+		},
+		{
+			// a bare error carrying 40001 as data is not a serialization failure
+			name:     "untyped error with 40001 in data is not retryable",
+			err:      errors.New("failed to provision host-40001"),
+			expected: false,
+		},
+		{
 			// an unrelated error is not retryable
 			name:     "unrelated error is not retryable",
 			err:      errors.New("record not found"),

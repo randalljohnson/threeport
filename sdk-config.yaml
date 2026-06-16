@@ -188,6 +188,7 @@ ApiObjectGroups:
     - Name: MachineRuntimeDefinition
       Versions:
         - v0
+      Reconcilable: true
       Tptctl:
         Enabled: true
     - Name: MachineRuntimeInstance

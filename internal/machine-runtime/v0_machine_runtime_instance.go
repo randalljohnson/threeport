@@ -295,6 +295,9 @@ func reconcileProviderInstance(
 			Zone:                             &zone,
 			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
 			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
+			// default to the provider default network so the instance and its
+			// firewall have a network to attach to
+			NetworkID: util.Ptr("default"),
 		}
 		if _, err := client.CreateGcpGceMachineRuntimeInstance(
 			r.APIClient,

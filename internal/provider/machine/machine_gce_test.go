@@ -71,8 +71,9 @@ func (m *recordingMocks) byType(typeToken string) []recordedResource {
 }
 
 const (
-	instanceTypeToken = "gcp:compute/instance:Instance"
-	firewallTypeToken = "gcp:compute/firewall:Firewall"
+	instanceTypeToken    = "gcp:compute/instance:Instance"
+	firewallTypeToken    = "gcp:compute/firewall:Firewall"
+	gcpProviderTypeToken = "pulumi:providers:gcp"
 )
 
 // newTestInfra builds a fully-configured provider for program-level tests.
@@ -612,4 +613,116 @@ func equalStringSlices(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel asserts every
+// labelable resource the GCE program registers carries the managed-by label set
+// to the threeport value, while resources that cannot carry labels are the
+// documented exemptions: the firewall, whose type has no labels field, and the
+// cloud-provider meta-resource, which carries no user labels. It rejects any
+// resource type the allowlist does not account for, so a future resource cannot
+// ship unlabeled without a conscious decision.
+func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T) {
+	// build a fully-configured provider and a deterministic key pair so the
+	// program runs without touching the network
+	i := newTestInfra("label-audit")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+
+	// run the real program under the recording monitor so the audit sees the
+	// exact inputs every resource is registered with
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+
+	// the program must register at least one resource; an empty graph would let
+	// every per-resource assertion below pass vacuously
+	if len(mocks.resources) == 0 {
+		t.Fatal("program registered no resources; nothing to audit")
+	}
+
+	// classify each registered type as labelable or exempt; a type missing from
+	// this map fails the audit so a new resource forces a labelable-or-exempt
+	// decision rather than slipping through unlabeled
+	type labelExpectation struct {
+		labelable    bool
+		exemptReason string
+	}
+	allowlist := map[string]labelExpectation{
+		instanceTypeToken: {labelable: true},
+		firewallTypeToken: {
+			labelable:    false,
+			exemptReason: "firewall rules have no labels field, so the managed-by label cannot be applied",
+		},
+		gcpProviderTypeToken: {
+			labelable:    false,
+			exemptReason: "the cloud-provider meta-resource carries no user labels",
+		},
+	}
+
+	// track that the labelable instance and the exempt firewall both appeared,
+	// so a program that silently stops creating either still fails the audit
+	sawLabelable := false
+	sawFirewall := false
+
+	for _, r := range mocks.resources {
+		// reject any resource type the allowlist does not account for
+		exp, ok := allowlist[r.typeToken]
+		if !ok {
+			t.Errorf("resource %q (%s) is not in the label allowlist; classify it as labelable or exempt", r.name, r.typeToken)
+			continue
+		}
+
+		// exempt types must declare a reason and are skipped without a label check
+		if !exp.labelable {
+			if r.typeToken == firewallTypeToken {
+				sawFirewall = true
+			}
+			if exp.exemptReason == "" {
+				t.Errorf("resource type %s is exempt but carries no documented reason", r.typeToken)
+			}
+			continue
+		}
+
+		// labelable types must carry the managed-by label set to the threeport value
+		sawLabelable = true
+		labels := instanceLabels(t, r)
+		if got := labels[provider.ManagedByLabelKey]; got != provider.ManagedByLabelValue {
+			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.ManagedByLabelKey, got, provider.ManagedByLabelValue)
+		}
+	}
+
+	// confirm both the labelable instance and the exempt firewall were observed
+	if !sawLabelable {
+		t.Error("no labelable resource was registered; expected at least the VM instance")
+	}
+	if !sawFirewall {
+		t.Error("the exempt firewall resource was not registered")
+	}
+}
+
+// instanceLabels extracts the labels input of a recorded resource as a
+// map[string]string, failing the test when the input is absent or the wrong
+// shape so a missing labels map surfaces as a clear assertion, not a nil panic.
+func instanceLabels(t *testing.T, r recordedResource) map[string]string {
+	t.Helper()
+	raw, ok := r.inputs["labels"]
+	if !ok {
+		t.Fatalf("resource %q (%s) has no labels input", r.name, r.typeToken)
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("resource %q labels is not a map: %T", r.name, raw)
+	}
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		s, ok := v.(string)
+		if !ok {
+			t.Fatalf("resource %q label %q is not a string: %T", r.name, k, v)
+		}
+		out[k] = s
+	}
+	return out
 }

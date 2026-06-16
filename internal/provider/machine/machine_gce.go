@@ -260,7 +260,9 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
 
-		// SSH-allow firewall rule scoped to the configured source ranges
+		// SSH-allow firewall rule scoped to the configured source ranges.
+		// The firewall resource has no labels field, so the managed-by label
+		// is applied only to labelable resources such as the instance.
 		sourceRanges := pulumi.ToStringArray(i.sshSourceRanges())
 		_, err = compute.NewFirewall(pctx, fmt.Sprintf("%s-ssh", i.RuntimeInstanceName), &compute.FirewallArgs{
 			Name:    pulumi.String(fmt.Sprintf("%s-ssh", i.RuntimeInstanceName)),
@@ -303,6 +305,10 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 					i.SSHUser,
 					strings.TrimSpace(i.sshPublicKeyAuthorized),
 				)),
+			},
+			// mark the instance as managed by threeport.
+			Labels: pulumi.StringMap{
+				provider.ManagedByLabelKey: pulumi.String(provider.ManagedByLabelValue),
 			},
 		}, pulumi.Provider(gcpProvider))
 		if err != nil {

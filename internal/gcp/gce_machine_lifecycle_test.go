@@ -22,6 +22,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 )
 
 // gceTestInstanceID is the default API ID used by single-instance test cases.
@@ -43,12 +44,13 @@ const gceTestMachineRuntimeInstanceID uint = 19
 // gceAPIStub wraps an httptest.Server with the http.Client and base address the
 // threeport client helpers expect, and records every PATCH body keyed by path.
 type gceAPIStub struct {
-	server  *httptest.Server
-	mux     *http.ServeMux
-	client  *http.Client
-	addr    string
-	mu      sync.Mutex
-	patches map[string][][]byte
+	server        *httptest.Server
+	mux           *http.ServeMux
+	client        *http.Client
+	addr          string
+	mu            sync.Mutex
+	patches       map[string][][]byte
+	encryptionKey string
 }
 
 // gceNewAPIStub returns a gceAPIStub with an empty mux. The addr has the
@@ -60,20 +62,24 @@ func gceNewAPIStub(t *testing.T) *gceAPIStub {
 	mux := http.NewServeMux()
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
+	key, err := encryption.GenerateKey()
+	require.NoError(t, err)
 	return &gceAPIStub{
-		server:  srv,
-		mux:     mux,
-		client:  &http.Client{},
-		addr:    strings.TrimPrefix(srv.URL, "http://"),
-		patches: make(map[string][][]byte),
+		server:        srv,
+		mux:           mux,
+		client:        &http.Client{},
+		addr:          strings.TrimPrefix(srv.URL, "http://"),
+		patches:       make(map[string][][]byte),
+		encryptionKey: key,
 	}
 }
 
 // gceReconciler builds a controller.Reconciler pointed at the stub.
 func (s *gceAPIStub) gceReconciler() *controller.Reconciler {
 	return &controller.Reconciler{
-		APIClient: s.client,
-		APIServer: s.addr,
+		APIClient:     s.client,
+		APIServer:     s.addr,
+		EncryptionKey: s.encryptionKey,
 	}
 }
 
@@ -262,13 +268,13 @@ func gceBaseMachineRuntimeInstance(id uint, name string) *v0.MachineRuntimeInsta
 	}
 }
 
-// gceBaseProvider returns a GCP provider with project ID and credentials set.
+// gceBaseProvider returns a GCP provider with project ID set.
 func gceBaseProvider() *v0.GcpProvider {
 	return &v0.GcpProvider{
 		Common:                    v0.Common{ID: gcePtr(gceTestProviderID)},
 		Name:                      gcePtr("test-provider"),
 		ProjectID:                 gcePtr("test-project"),
-		ServiceAccountCredentials: gcePtr("creds-json"),
+		ServiceAccountCredentials: nil,
 	}
 }
 
@@ -370,7 +376,11 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		latest.SSHUser = gcePtr("threeport")
 		latest.SSHSourceRanges = gcePtr([]string{"10.0.0.0/8", "192.168.0.0/16"})
 		s.gceHandleInstance(t, gceTestInstanceID, latest)
-		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+		prov := gceBaseProvider()
+		enc, err := encryption.Encrypt(s.encryptionKey, "creds-json")
+		require.NoError(t, err)
+		prov.ServiceAccountCredentials = gcePtr(enc)
+		s.gceHandleProvider(t, gceTestProviderID, prov)
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
 
 		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))

@@ -34,10 +34,12 @@ const (
 var threeportServiceAccountRoles = []string{
 	// GKE cluster management
 	"roles/container.admin",
-	// Compute Engine resources (for VPC, subnets, firewalls)
+	// Compute Engine networking: VPC, subnets, routes
 	"roles/compute.networkAdmin",
 	// Compute Engine instances (least privilege for machine provider)
 	"roles/compute.instanceAdmin.v1",
+	// Compute Engine firewall rules, which networkAdmin does not grant
+	"roles/compute.securityAdmin",
 	// IAM management for creating service accounts for workloads
 	"roles/iam.serviceAccountAdmin",
 	"roles/iam.serviceAccountUser",

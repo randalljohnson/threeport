@@ -388,6 +388,16 @@ func reconcileProviderInstance(
 			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
 			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
 		}
+
+		// propagate ssh credentials from the abstract instance so the GCE
+		// provisioner can authorize the user and inject the key; copy only
+		// when present to leave the married columns null otherwise
+		if machineRuntimeInstance.SSHUser != nil {
+			gcpGceMachineRuntimeInstance.SSHUser = util.Ptr(*machineRuntimeInstance.SSHUser)
+		}
+		if machineRuntimeInstance.SSHKey != nil {
+			gcpGceMachineRuntimeInstance.SSHKey = util.Ptr(*machineRuntimeInstance.SSHKey)
+		}
 		if _, err := client.CreateGcpGceMachineRuntimeInstance(
 			r.APIClient,
 			r.APIServer,

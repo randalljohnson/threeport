@@ -440,6 +440,7 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 			MachineType:     "m",
 			ImageID:         "img",
 			SSHUser:         "u",
+			NetworkID:       "default",
 		}
 	}
 	cases := []struct {
@@ -453,6 +454,7 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 		{"missing machine type", func(i *GceMachineInfra) { i.MachineType = "" }, "MachineType"},
 		{"missing image id", func(i *GceMachineInfra) { i.ImageID = "" }, "ImageID"},
 		{"missing ssh user", func(i *GceMachineInfra) { i.SSHUser = "" }, "SSHUser"},
+		{"missing network id", func(i *GceMachineInfra) { i.NetworkID = "" }, "NetworkID"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -466,6 +468,28 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 				t.Errorf("error %q does not name the missing field %q", err.Error(), tc.field)
 			}
 		})
+	}
+}
+
+// TestDeployInfra_ReportsAllMissingFields asserts the validation collects every
+// missing required field into one error rather than stopping at the first.
+func TestDeployInfra_ReportsAllMissingFields(t *testing.T) {
+	// build an infra missing several required fields at once
+	i := &GceMachineInfra{
+		PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: "validate"},
+		ProjectID:       "p",
+		ImageID:         "img",
+	}
+	// validation runs before any cloud call and returns a single error
+	err := i.DeployInfra()
+	if err == nil {
+		t.Fatal("expected error for multiple missing fields, got nil")
+	}
+	// the one error names every field left empty, not just the first
+	for _, field := range []string{"Zone", "MachineType", "SSHUser", "NetworkID"} {
+		if !strings.Contains(err.Error(), field) {
+			t.Errorf("error %q does not name missing field %q", err.Error(), field)
+		}
 	}
 }
 

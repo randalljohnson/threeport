@@ -141,19 +141,32 @@ func (i *GceMachineInfra) sshSourceRanges() []string {
 // field that is empty, so a misconfigured provider fails fast before any auth
 // or cloud call rather than mid-deploy inside the Pulumi engine.
 func (i *GceMachineInfra) validateRequiredFields() error {
-	switch {
-	case i.RuntimeInstanceName == "":
-		return fmt.Errorf("RuntimeInstanceName is required")
-	case i.ProjectID == "":
-		return fmt.Errorf("ProjectID is required")
-	case i.Zone == "":
-		return fmt.Errorf("Zone is required")
-	case i.MachineType == "":
-		return fmt.Errorf("MachineType is required")
-	case i.ImageID == "":
-		return fmt.Errorf("ImageID is required")
-	case i.SSHUser == "":
-		return fmt.Errorf("SSHUser is required")
+	// collect every missing field so the caller fixes them in one pass rather
+	// than rediscovering them one failed deploy at a time
+	var missing []string
+	if i.RuntimeInstanceName == "" {
+		missing = append(missing, "RuntimeInstanceName")
+	}
+	if i.ProjectID == "" {
+		missing = append(missing, "ProjectID")
+	}
+	if i.Zone == "" {
+		missing = append(missing, "Zone")
+	}
+	if i.MachineType == "" {
+		missing = append(missing, "MachineType")
+	}
+	if i.ImageID == "" {
+		missing = append(missing, "ImageID")
+	}
+	if i.SSHUser == "" {
+		missing = append(missing, "SSHUser")
+	}
+	if i.NetworkID == "" {
+		missing = append(missing, "NetworkID")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("missing required fields: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }

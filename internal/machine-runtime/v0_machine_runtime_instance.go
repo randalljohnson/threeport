@@ -10,6 +10,7 @@ import (
 	logr "github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
@@ -101,10 +102,24 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// defer the ssh dial until the machine has a hostname. the abstract
-	// instance can be created before the machine is provisioned, so requeue
-	// without erroring and leave Reconciled unset until the hostname is
-	// populated and the machine is confirmed reachable
+	// when the instance is provider-provisioned and has no hostname yet, create
+	// the married provider instance and requeue so the ssh path below waits for
+	// the provider reconciler to write back the hostname
+	if machineRuntimeInstance.MachineRuntimeDefinitionID != nil &&
+		(machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "") {
+		requeue, err := reconcileProviderInstance(r, machineRuntimeInstance, log)
+		if err != nil {
+			return 0, err
+		}
+		if requeue != 0 {
+			return requeue, nil
+		}
+	}
+
+	// defer the ssh dial until the machine has a hostname. an imported machine
+	// with no definition, or a provider machine still being provisioned, may
+	// reach this point before the hostname is populated; requeue without
+	// erroring and leave Reconciled unset until the hostname is set
 	if machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "" {
 		return unpopulatedRequeueDelaySeconds, nil
 	}
@@ -190,6 +205,109 @@ func v0MachineRuntimeInstanceCreated(
 	}
 
 	return 0, nil
+}
+
+// reconcileProviderInstance creates the married provider machine runtime
+// instance for a provider-provisioned machine. It returns a requeue delay once
+// the married object exists so the caller waits for the provider reconciler to
+// populate the hostname.
+func reconcileProviderInstance(
+	r *controller.Reconciler,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	log *logr.Logger,
+) (int64, error) {
+	// fetch the parent definition to learn the provider
+	def, err := client.GetMachineRuntimeDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineRuntimeInstance.MachineRuntimeDefinitionID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get machine runtime definition by ID: %w", err)
+	}
+	if def.InfraProvider == nil || *def.InfraProvider == "" {
+		return 0, nil
+	}
+
+	switch *def.InfraProvider {
+	case v0.MachineRuntimeInfraProviderGCE:
+		// when the married provider instance already exists, wait for its
+		// hostname instead of creating a second one
+		existing, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
+			r.APIClient,
+			r.APIServer,
+			fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to check for existing GCE machine runtime instance: %w", err)
+		}
+		if len(*existing) > 0 {
+			return sshRetryDelaySeconds, nil
+		}
+
+		// look up the GCP provider by name or fall back to the default
+		var gcpProvider v0.GcpProvider
+		if def.InfraProviderAccountName != nil {
+			provider, err := client.GetGcpProviderByName(r.APIClient, r.APIServer, *def.InfraProviderAccountName)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get GCP provider by name: %w", err)
+			}
+			gcpProvider = *provider
+		} else {
+			provider, err := client.GetGcpProviderByDefaultProvider(r.APIClient, r.APIServer)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get GCP provider by default: %w", err)
+			}
+			gcpProvider = *provider
+		}
+
+		// map the abstract location to a GCP region; a GCE VM is zonal, so
+		// derive a zone within that region. the mapping keys on the cloud
+		// provider token, not the machine runtime infra provider token
+		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
+		if err != nil {
+			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
+		}
+		zone := region + "-a"
+
+		// fetch the married provider definition
+		gcpGceMachineRuntimeDefinitions, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
+			r.APIClient,
+			r.APIServer,
+			fmt.Sprintf("machineruntimedefinitionid=%d", *def.ID),
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get GCE machine runtime definition by machine runtime definition ID: %w", err)
+		}
+		if len(*gcpGceMachineRuntimeDefinitions) < 1 {
+			return 0, fmt.Errorf("no GCE machine runtime definition found for machine runtime definition %d", *def.ID)
+		}
+		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
+
+		// create the married provider instance; leave Reconciled unset so the
+		// ssh path requeues until the provider reconciler writes back the host
+		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
+			Instance: v0.Instance{
+				Name: machineRuntimeInstance.Name,
+			},
+			GcpProviderID:                    gcpProvider.ID,
+			Region:                           &region,
+			Zone:                             &zone,
+			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
+			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
+		}
+		if _, err := client.CreateGcpGceMachineRuntimeInstance(
+			r.APIClient,
+			r.APIServer,
+			&gcpGceMachineRuntimeInstance,
+		); err != nil {
+			return 0, fmt.Errorf("failed to create GCE machine runtime instance: %w", err)
+		}
+
+		return sshRetryDelaySeconds, nil
+	default:
+		return 0, fmt.Errorf("infra provider %s not supported", *def.InfraProvider)
+	}
 }
 
 // v0MachineRuntimeInstanceUpdated performs reconciliation when a v0 MachineRuntimeInstance

@@ -5,14 +5,28 @@ import "gorm.io/datatypes"
 // MachineRuntimeDefinition is the configuration for a machine runtime.  It
 // serves as a template for provisioning machine runtime instances.
 type MachineRuntimeDefinition struct {
-	Common     `swaggerignore:"true" mapstructure:",squash"`
-	Definition `mapstructure:",squash"`
+	Common         `swaggerignore:"true" mapstructure:",squash"`
+	Definition     `mapstructure:",squash"`
+	Reconciliation `mapstructure:",squash"`
 
 	// The infrastructure provider that provisions machines from this
 	// definition. Empty for imported machines that already exist.
 	InfraProvider *string `json:",omitempty" validate:"optional"`
 
-	// The provider-specific machine/instance type to provision.
+	// The provider account name that selects which account the machine is
+	// provisioned on. Empty falls back to the default provider account.
+	InfraProviderAccountName *string `json:",omitempty" validate:"optional"`
+
+	// The compute capacity of the machine. Resolved server-side together with
+	// the machine profile to a provider machine type.
+	MachineSize *string `json:",omitempty" validate:"optional" gorm:"default:Medium"`
+
+	// The CPU-to-memory ratio of the machine. Resolved server-side together
+	// with the machine size to a provider machine type.
+	MachineProfile *string `json:",omitempty" validate:"optional" gorm:"default:Balanced"`
+
+	// The provider-specific machine type. Populated by the controller from the
+	// machine size and profile; not supplied for provider-provisioned machines.
 	MachineType *string `json:",omitempty" validate:"optional"`
 
 	// The provider image identifier used to boot the machine.
@@ -54,6 +68,11 @@ type MachineRuntimeInstance struct {
 
 	// The provider region in which the machine is provisioned.
 	Region *string `json:",omitempty" validate:"optional"`
+
+	// The abstract threeport location for the machine. Mapped server-side to a
+	// provider region and zone. Optional so imported machines that supply a
+	// concrete region directly still validate.
+	Location *string `json:",omitempty" validate:"optional"`
 
 	// The provider network identifier the machine attaches to.
 	NetworkID *string `json:",omitempty" validate:"optional"`

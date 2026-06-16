@@ -79,7 +79,9 @@ func (h Handler) AddLoggingDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&loggingDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&loggingDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -322,7 +324,9 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingLoggingDefinition).Updates(&updatedLoggingDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingLoggingDefinition).Updates(&updatedLoggingDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -411,7 +415,9 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedLoggingDefinition.ID = existingLoggingDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLoggingDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLoggingDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -498,7 +504,9 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&loggingDefinition).Updates(&scheduledLoggingDefinition); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&loggingDefinition).Updates(&scheduledLoggingDefinition)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -524,7 +532,9 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&loggingDefinition); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&loggingDefinition)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -622,7 +632,9 @@ func (h Handler) AddLoggingInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&loggingInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&loggingInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -865,7 +877,9 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingLoggingInstance).Updates(&updatedLoggingInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingLoggingInstance).Updates(&updatedLoggingInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -954,7 +968,9 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedLoggingInstance.ID = existingLoggingInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLoggingInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLoggingInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1035,7 +1051,9 @@ func (h Handler) DeleteLoggingInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&loggingInstance).Updates(&scheduledLoggingInstance); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&loggingInstance).Updates(&scheduledLoggingInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1061,7 +1079,9 @@ func (h Handler) DeleteLoggingInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&loggingInstance); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&loggingInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -1159,7 +1179,9 @@ func (h Handler) AddMetricsDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&metricsDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&metricsDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1402,7 +1424,9 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingMetricsDefinition).Updates(&updatedMetricsDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingMetricsDefinition).Updates(&updatedMetricsDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1491,7 +1515,9 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedMetricsDefinition.ID = existingMetricsDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMetricsDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMetricsDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1578,7 +1604,9 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&metricsDefinition).Updates(&scheduledMetricsDefinition); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&metricsDefinition).Updates(&scheduledMetricsDefinition)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1604,7 +1632,9 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&metricsDefinition); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&metricsDefinition)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -1702,7 +1732,9 @@ func (h Handler) AddMetricsInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&metricsInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&metricsInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1945,7 +1977,9 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingMetricsInstance).Updates(&updatedMetricsInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingMetricsInstance).Updates(&updatedMetricsInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2034,7 +2068,9 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedMetricsInstance.ID = existingMetricsInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMetricsInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedMetricsInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2115,7 +2151,9 @@ func (h Handler) DeleteMetricsInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&metricsInstance).Updates(&scheduledMetricsInstance); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&metricsInstance).Updates(&scheduledMetricsInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -2141,7 +2179,9 @@ func (h Handler) DeleteMetricsInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&metricsInstance); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&metricsInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -2239,7 +2279,9 @@ func (h Handler) AddObservabilityDashboardDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&observabilityDashboardDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&observabilityDashboardDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2482,7 +2524,9 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingObservabilityDashboardDefinition).Updates(&updatedObservabilityDashboardDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingObservabilityDashboardDefinition).Updates(&updatedObservabilityDashboardDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2571,7 +2615,9 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedObservabilityDashboardDefinition.ID = existingObservabilityDashboardDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityDashboardDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityDashboardDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -2658,7 +2704,9 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&observabilityDashboardDefinition).Updates(&scheduledObservabilityDashboardDefinition); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&observabilityDashboardDefinition).Updates(&scheduledObservabilityDashboardDefinition)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -2684,7 +2732,9 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&observabilityDashboardDefinition); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&observabilityDashboardDefinition)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -2782,7 +2832,9 @@ func (h Handler) AddObservabilityDashboardInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&observabilityDashboardInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&observabilityDashboardInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3025,7 +3077,9 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingObservabilityDashboardInstance).Updates(&updatedObservabilityDashboardInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingObservabilityDashboardInstance).Updates(&updatedObservabilityDashboardInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3114,7 +3168,9 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedObservabilityDashboardInstance.ID = existingObservabilityDashboardInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityDashboardInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityDashboardInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3195,7 +3251,9 @@ func (h Handler) DeleteObservabilityDashboardInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&observabilityDashboardInstance).Updates(&scheduledObservabilityDashboardInstance); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&observabilityDashboardInstance).Updates(&scheduledObservabilityDashboardInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -3221,7 +3279,9 @@ func (h Handler) DeleteObservabilityDashboardInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&observabilityDashboardInstance); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&observabilityDashboardInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -3319,7 +3379,9 @@ func (h Handler) AddObservabilityStackDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&observabilityStackDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&observabilityStackDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3562,7 +3624,9 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingObservabilityStackDefinition).Updates(&updatedObservabilityStackDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingObservabilityStackDefinition).Updates(&updatedObservabilityStackDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3651,7 +3715,9 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedObservabilityStackDefinition.ID = existingObservabilityStackDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityStackDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityStackDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -3738,7 +3804,9 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&observabilityStackDefinition).Updates(&scheduledObservabilityStackDefinition); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&observabilityStackDefinition).Updates(&scheduledObservabilityStackDefinition)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -3764,7 +3832,9 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&observabilityStackDefinition); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&observabilityStackDefinition)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -3862,7 +3932,9 @@ func (h Handler) AddObservabilityStackInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&observabilityStackInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&observabilityStackInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -4105,7 +4177,9 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingObservabilityStackInstance).Updates(&updatedObservabilityStackInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingObservabilityStackInstance).Updates(&updatedObservabilityStackInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -4194,7 +4268,9 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedObservabilityStackInstance.ID = existingObservabilityStackInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityStackInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedObservabilityStackInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -4275,7 +4351,9 @@ func (h Handler) DeleteObservabilityStackInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&observabilityStackInstance).Updates(&scheduledObservabilityStackInstance); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&observabilityStackInstance).Updates(&scheduledObservabilityStackInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -4301,7 +4379,9 @@ func (h Handler) DeleteObservabilityStackInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&observabilityStackInstance); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&observabilityStackInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError

@@ -548,6 +548,17 @@ func executeInfraCreate(config infraConfig) {
 			}
 			config.Log.Info("refreshed stack state against cloud reality")
 		}
+	} else if adoptable, ok := config.Infra.(AdoptableProvider); ok {
+		// no usable state means the create may have been interrupted after the
+		// cloud resources were made but before state reached the database. for
+		// providers with deterministic names, adopt any orphans so the deploy
+		// re-acquires them instead of colliding on the same name.
+		if err := adoptable.DiscoverAndAdopt(); err != nil {
+			config.Log.Error(err, "failed to discover and adopt orphaned resources")
+			persistFailure(config.Callbacks.PersistFailure, config.Log)
+			return
+		}
+		config.Log.Info("discovered and adopted any orphaned resources before create")
 	}
 
 	// start state streaming if provider supports it

@@ -14,6 +14,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -415,7 +416,11 @@ func buildGceMachineInfra(
 	}
 
 	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
-		infraGce.ServiceAccountCredentials = *gcpProvider.ServiceAccountCredentials
+		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+		}
+		infraGce.ServiceAccountCredentials = decryptedCredentials
 	}
 
 	return infraGce, nil

@@ -104,10 +104,10 @@ import (
 //
 //   layer             | partial detector | on PATCH | on reconciled DELETE | caveat
 //   ------------------|------------------|----------|----------------------|-------
-//   GORM method       | IsUpdates        | true     | true                 | no
 //   semantic (chosen) | IsPartialUpdate  | true     | true                 | no
-//   HTTP verb         | IsPatch          | true     | false                | yes
+//   GORM method       | IsUpdates        | true     | true                 | no
 //   threeport client  | IsUpdate         | true     | false                | yes
+//   HTTP verb         | IsPatch          | true     | false                | yes
 //
 // The alternatives, and why each was passed over:
 //

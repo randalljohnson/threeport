@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -57,6 +58,15 @@ type Generator struct {
 	// per-struct effective-key set.
 	// Shape: typeName -> fieldName -> tagKey -> tagValue.
 	EmbedTypes map[string]map[string]map[string]string
+
+	// RelationshipDependencies maps each API type to the API types its
+	// relationship-tagged foreign keys reference. Built by scanning every
+	// model source file, so it captures types whose tags do not land in any
+	// ApiObjectGroup's StructTags (route-excluded types and types split into
+	// auxiliary source files). The migration sort reads this to order
+	// referenced tables ahead of referencing tables.
+	// Shape: referencingType -> []referencedType.
+	RelationshipDependencies map[string][]string
 }
 
 // GlobalVersionConfig contains all API versions for which code is being
@@ -436,6 +446,21 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 					g.EmbedTypes[typeName][fieldName] = util.ParseStructTag(field.Tag.Value)
 				}
 			}
+		}
+	}
+
+	//////////////// populate Generator.RelationshipDependencies ////////////////
+	// scan every model source file per version so the foreign-key dependency
+	// graph captures route-excluded types and types split into auxiliary
+	// files, which never reach any ApiObjectGroup's StructTags
+	g.RelationshipDependencies = map[string][]string{}
+	for version := range versionObjMap {
+		versionDeps, err := parseRelationshipDependencies(filepath.Join("pkg", "api", version))
+		if err != nil {
+			return fmt.Errorf("failed to parse relationship dependencies for version %s: %w", version, err)
+		}
+		for typeName, referenced := range versionDeps {
+			g.RelationshipDependencies[typeName] = referenced
 		}
 	}
 
@@ -1130,6 +1155,161 @@ func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]st
 		modifiers[k] = v
 	}
 	return
+}
+
+// SortDatabaseInitNamesByDependency returns names reordered so that every
+// referenced type precedes the types whose relationship-tagged foreign keys
+// point at it. gorm AutoMigrate creates each model's foreign-key constraints
+// as it walks the slice, so a referenced table must appear before any model
+// that references it or the migration fails with a missing-relation error.
+// Ties are broken alphabetically so the generated order is stable across runs.
+// Names not present in the input are ignored; if a true cycle exists, the
+// remaining names are appended in alphabetical order so generation still
+// produces deterministic output.
+func (g *Generator) SortDatabaseInitNamesByDependency(names []string) []string {
+	// build the set of names being migrated so cross-module references
+	// (types migrated elsewhere) do not introduce edges into this list
+	inList := make(map[string]bool, len(names))
+	for _, name := range names {
+		inList[name] = true
+	}
+
+	// dependsOn[name] holds the in-list types that name's foreign keys
+	// reference; each such type must be migrated before name
+	dependsOn := make(map[string]map[string]bool, len(names))
+	for _, name := range names {
+		dependsOn[name] = make(map[string]bool)
+		for _, referenced := range g.RelationshipDependencies[name] {
+			if inList[referenced] && referenced != name {
+				dependsOn[name][referenced] = true
+			}
+		}
+	}
+
+	// Kahn's algorithm: repeatedly emit the alphabetically-first name whose
+	// dependencies have all been emitted, so referenced tables land ahead of
+	// the tables that reference them
+	emitted := make(map[string]bool, len(names))
+	sorted := make([]string, 0, len(names))
+	for len(sorted) < len(names) {
+		var ready []string
+		for _, name := range names {
+			if emitted[name] {
+				continue
+			}
+			allDepsEmitted := true
+			for dep := range dependsOn[name] {
+				if !emitted[dep] {
+					allDepsEmitted = false
+					break
+				}
+			}
+			if allDepsEmitted {
+				ready = append(ready, name)
+			}
+		}
+		if len(ready) == 0 {
+			// remaining names form a dependency cycle; append them in
+			// alphabetical order so output stays deterministic
+			var remaining []string
+			for _, name := range names {
+				if !emitted[name] {
+					remaining = append(remaining, name)
+				}
+			}
+			sort.Strings(remaining)
+			sorted = append(sorted, remaining...)
+			break
+		}
+		sort.Strings(ready)
+		next := ready[0]
+		sorted = append(sorted, next)
+		emitted[next] = true
+	}
+
+	return sorted
+}
+
+// parseRelationshipDependencies scans every model source file in dir and
+// returns each struct's relationship-tagged foreign-key references, keyed by
+// struct name. Generated, validation, and test files are skipped so only
+// hand-authored model definitions contribute. The referenced type comes from
+// the relationship tag's type modifier when present, otherwise from the field
+// name with its ID suffix stripped, matching the foreign-key naming
+// convention.
+func parseRelationshipDependencies(dir string) (map[string][]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		// a missing version directory is not fatal; nothing to scan
+		if os.IsNotExist(err) {
+			return map[string][]string{}, nil
+		}
+		return nil, fmt.Errorf("failed to read model directory %s: %w", dir, err)
+	}
+
+	dependencies := map[string][]string{}
+	for _, entry := range entries {
+		fileName := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(fileName, ".go") {
+			continue
+		}
+		// skip non-model files: generated code, validators, and tests carry
+		// no hand-authored relationship tags
+		if strings.HasSuffix(fileName, "_gen.go") ||
+			strings.HasSuffix(fileName, "_test.go") ||
+			strings.HasSuffix(fileName, "_validate.go") {
+			continue
+		}
+
+		filePath := filepath.Join(dir, fileName)
+		fset := token.NewFileSet()
+		parsedFile, err := parser.ParseFile(fset, filePath, nil, parser.AllErrors)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse model file %s: %w", filePath, err)
+		}
+
+		for _, decl := range parsedFile.Decls {
+			genDecl, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range genDecl.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				structType, ok := typeSpec.Type.(*ast.StructType)
+				if !ok {
+					continue
+				}
+				typeName := typeSpec.Name.Name
+				for _, field := range structType.Fields.List {
+					if field.Tag == nil || len(field.Names) == 0 {
+						continue
+					}
+					tagMap := util.ParseStructTag(field.Tag.Value)
+					rel, ok := tagMap[string(lib.RelationshipTag)]
+					if !ok || rel == "" {
+						continue
+					}
+					fieldName := field.Names[0].Name
+					_, modifiers, _ := ParseRelationshipTagValue(rel)
+					if referenced, hasType := modifiers[lib.RelationshipTypeKey]; hasType {
+						dependencies[typeName] = append(dependencies[typeName], referenced)
+						continue
+					}
+					if strings.HasSuffix(fieldName, "ID") {
+						dependencies[typeName] = append(
+							dependencies[typeName],
+							strings.TrimSuffix(fieldName, "ID"),
+						)
+					}
+				}
+			}
+		}
+	}
+
+	return dependencies, nil
 }
 
 // validateRelationshipTag returns one error per problem in a relationship

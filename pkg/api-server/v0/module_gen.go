@@ -1344,10 +1344,11 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 
 	// registering object MachineRuntimeDefinition
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("MachineRuntimeDefinition is the configuration for a machine runtime. It serves as a template for provisioning machine runtime instances."),
-		ModuleApiID: moduleApi.ID,
-		Name:        util.Ptr("MachineRuntimeDefinition"),
-		Version:     util.Ptr("v0"),
+		Description:        util.Ptr("MachineRuntimeDefinition is the configuration for a machine runtime. It serves as a template for provisioning machine runtime instances."),
+		ModuleApiID:        moduleApi.ID,
+		ModuleControllerID: controller.ID,
+		Name:               util.Ptr("MachineRuntimeDefinition"),
+		Version:            util.Ptr("v0"),
 	}
 	result = db.Where(api_v0.ModuleObject{
 		ModuleApiID: moduleApi.ID,

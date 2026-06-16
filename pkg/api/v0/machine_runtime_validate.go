@@ -10,6 +10,12 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+const (
+	// MachineRuntimeInfraProviderGCE selects Google Compute Engine as the
+	// machine runtime provider.
+	MachineRuntimeInfraProviderGCE = "gce"
+)
+
 // beforeCreate validates the MachineRuntimeDefinition before create.
 func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
@@ -53,8 +59,9 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 //   - at least one of SSHKey or SSHPassword must be provided so the
 //     reconciler has a credential to authenticate with the machine.
 //   - when the referenced machine runtime definition has an infra provider
-//     set, the instance must supply a region so the provider knows where to
-//     provision the machine.
+//     set, the instance must supply a location or a region so the provider
+//     knows where to provision the machine. The controller maps a location to
+//     a provider region and zone; a concrete region serves imported machines.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	if m.SSHKey == nil && m.SSHPassword == nil {
 		return util.NewBadRequestError(
@@ -77,10 +84,12 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 			)
 		}
 		if def.InfraProvider != nil && *def.InfraProvider != "" {
-			if m.Region == nil || *m.Region == "" {
+			locationEmpty := m.Location == nil || *m.Location == ""
+			regionEmpty := m.Region == nil || *m.Region == ""
+			if locationEmpty && regionEmpty {
 				return util.NewBadRequestError(
 					fmt.Sprintf(
-						"machine runtime instance %s must have a region when the definition specifies an infra provider",
+						"machine runtime instance %s must have a location or region when the definition specifies an infra provider",
 						*m.Name,
 					),
 				)

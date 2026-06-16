@@ -3,6 +3,8 @@ package machine
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"golang.org/x/crypto/ssh"
+	"google.golang.org/api/googleapi"
 	"gorm.io/datatypes"
 
 	"github.com/threeport/threeport/internal/provider"
@@ -29,12 +32,15 @@ func requirePulumi(t *testing.T) {
 	}
 }
 
-// recordedResource captures the type token, logical name, and inputs of one
-// resource registered during a mocked Pulumi program run.
+// recordedResource captures the type token, logical name, inputs, and import
+// ID of one resource registered during a mocked Pulumi program run. The import
+// ID is the physical identifier Pulumi passes when a resource carries a
+// pulumi.Import option, so tests can assert the adopt path attached it.
 type recordedResource struct {
 	typeToken string
 	name      string
 	inputs    map[string]any
+	importID  string
 }
 
 // recordingMocks is a MockResourceMonitor that records every NewResource call
@@ -50,6 +56,7 @@ func (m *recordingMocks) NewResource(args pulumi.MockResourceArgs) (string, reso
 		typeToken: args.TypeToken,
 		name:      args.Name,
 		inputs:    args.Inputs.Mappable(),
+		importID:  args.ID,
 	})
 	m.mu.Unlock()
 	return args.Name + "-id", args.Inputs, nil
@@ -256,6 +263,118 @@ func TestPulumiProgram_DoesNotExportPrivateKey(t *testing.T) {
 		if containsPrivateKey(r.inputs, i.sshPrivateKeyPEM) {
 			t.Fatalf("resource %s (%s) inputs contain the private key", r.name, r.typeToken)
 		}
+	}
+}
+
+// TestResourceOptions_AttachesImportWhenAdopting asserts the program attaches a
+// pulumi.Import option carrying the recorded import ID to a resource whose
+// logical name DiscoverAndAdopt found in the cloud, and leaves resources with
+// no recorded ID untouched so a partial adopt imports only the orphan.
+func TestResourceOptions_AttachesImportWhenAdopting(t *testing.T) {
+	// build a configured provider and seed an adopt ID for the instance only,
+	// modeling an interrupted create where the VM was made but the firewall was not
+	i := newTestInfra("adopt-test")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+	wantInstanceID := "projects/test-project/zones/us-central1-a/instances/adopt-test"
+	i.adoptImportIDs = map[string]string{
+		i.instanceLogicalName(): wantInstanceID,
+	}
+
+	// run the program under the recording monitor so the import ID Pulumi
+	// receives for each resource is observable
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+
+	// the instance carries the seeded import ID, marking it adopted not created
+	instances := mocks.byType(instanceTypeToken)
+	if len(instances) != 1 {
+		t.Fatalf("expected exactly 1 instance, got %d", len(instances))
+	}
+	if instances[0].importID != wantInstanceID {
+		t.Errorf("instance importID = %q, want %q", instances[0].importID, wantInstanceID)
+	}
+
+	// the firewall has no recorded ID, so it is created fresh with no import
+	firewalls := mocks.byType(firewallTypeToken)
+	if len(firewalls) != 1 {
+		t.Fatalf("expected exactly 1 firewall, got %d", len(firewalls))
+	}
+	if firewalls[0].importID != "" {
+		t.Errorf("firewall importID = %q, want empty (no adopt)", firewalls[0].importID)
+	}
+}
+
+// TestResourceOptions_NoImportOnCleanCreate asserts that with no recorded adopt
+// IDs the program imports nothing, so an ordinary create still creates both
+// resources rather than attempting to import absent cloud resources.
+func TestResourceOptions_NoImportOnCleanCreate(t *testing.T) {
+	// a provider with an empty adopt map models a clean first create
+	i := newTestInfra("clean-create")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+
+	// run the program and confirm no resource received an import ID
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+	for _, r := range mocks.resources {
+		if r.importID != "" {
+			t.Errorf("resource %q (%s) carried importID %q on a clean create", r.name, r.typeToken, r.importID)
+		}
+	}
+}
+
+// TestAdoptTargets_DeterministicLogicalNames asserts the adopt targets pair each
+// resource kind with the same logical name the program registers it under, so a
+// found import ID lands on the resource that gets imported.
+func TestAdoptTargets_DeterministicLogicalNames(t *testing.T) {
+	// the instance and firewall names derive deterministically from the runtime
+	// instance name, which is what makes constructed import IDs valid
+	i := newTestInfra("targets")
+	targets := i.adoptTargets()
+	if len(targets) != 2 {
+		t.Fatalf("expected 2 adopt targets, got %d", len(targets))
+	}
+
+	// each kind maps to its program logical name
+	byKind := map[adoptResourceKind]string{}
+	for _, target := range targets {
+		byKind[target.kind] = target.logicalName
+	}
+	if got := byKind[adoptInstance]; got != "targets" {
+		t.Errorf("instance target logical name = %q, want %q", got, "targets")
+	}
+	if got := byKind[adoptFirewall]; got != "targets-ssh" {
+		t.Errorf("firewall target logical name = %q, want %q", got, "targets-ssh")
+	}
+}
+
+// TestIsNotFound_DistinguishesFourOhFour asserts only a 404 from the compute API
+// reads as not found, so DiscoverAndAdopt skips an absent resource yet surfaces
+// other API errors instead of silently treating them as not found.
+func TestIsNotFound_DistinguishesFourOhFour(t *testing.T) {
+	// a 404 is the not-found signal that lets adopt skip a missing resource
+	if !isNotFound(&googleapi.Error{Code: 404}) {
+		t.Error("expected a 404 googleapi error to read as not found")
+	}
+	// a 403 is a real failure, not a not-found, and must not be swallowed
+	if isNotFound(&googleapi.Error{Code: 403}) {
+		t.Error("a 403 googleapi error must not read as not found")
+	}
+	// a wrapped 404 still reads as not found via errors.As unwrapping
+	wrapped := fmt.Errorf("get instance: %w", &googleapi.Error{Code: 404})
+	if !isNotFound(wrapped) {
+		t.Error("expected a wrapped 404 to read as not found")
+	}
+	// a non-api error is not a not-found
+	if isNotFound(errors.New("connection reset")) {
+		t.Error("a plain error must not read as not found")
 	}
 }
 

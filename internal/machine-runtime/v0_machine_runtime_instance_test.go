@@ -21,6 +21,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -651,6 +652,227 @@ func TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources(t *testing.T) {
 		assert.Equal(t, int64(0), delay)
 		assert.Empty(t, recorder.GetReasons(), "imported machines have nothing to deprovision")
 	})
+}
+
+// registerMarriedQuery registers a collection GET handler for the GCE machine
+// runtime instances path that returns the supplied married instances for any
+// query string, so the abstract Updated handler can resolve the child it diffs
+// against.
+func registerMarriedQuery(t *testing.T, api *machinetest.APIStub, married []v0.GcpGceMachineRuntimeInstance) {
+	t.Helper()
+	api.Mux.HandleFunc(v0.PathGcpGceMachineRuntimeInstances, func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		objs := make([]apiserver_lib.Object, len(married))
+		for i := range married {
+			m := married[i]
+			objs[i] = &m
+		}
+		machinetest.WriteResponse(t, w, http.StatusOK, objs)
+	})
+}
+
+// registerMarriedPatchCounter registers a PATCH handler for the married GCE
+// instance with the given id that records every PATCH body and replies with a
+// valid envelope, so tests can assert what the abstract Updated handler
+// propagated to the child.
+func registerMarriedPatchCounter(t *testing.T, api *machinetest.APIStub, id uint) *[][]byte {
+	t.Helper()
+	var (
+		bodies [][]byte
+		mu     sync.Mutex
+	)
+	out := &bodies
+	api.Mux.HandleFunc(fmt.Sprintf("%s/%d", v0.PathGcpGceMachineRuntimeInstances, id), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		mu.Lock()
+		bodies = append(bodies, body)
+		out = &bodies
+		mu.Unlock()
+		var updated v0.GcpGceMachineRuntimeInstance
+		require.NoError(t, json.Unmarshal(body, &updated))
+		updated.ID = util.Ptr(id)
+		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&updated})
+	})
+	return out
+}
+
+// TestMachineRuntimeInstanceUpdated_ImportedSSHKeyChange_VerifiesReachable
+// covers the imported-machine update path: an instance with no definition has
+// no married provider instance, so a credential change is validated by
+// re-running the ssh connect and ping, which records SSHReachable when the
+// machine answers.
+func TestMachineRuntimeInstanceUpdated_ImportedSSHKeyChange_VerifiesReachable(t *testing.T) {
+	key := machinetest.NewEncryptionKey(t)
+	signer := machinetest.NewSigner(t)
+	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 0})
+	defer stop()
+
+	// arrange an imported instance (no definition) whose host key is pinned so
+	// the connect runs in verification mode
+	mri := machinetest.NewMRIWithInfra(t, 201, "mri-imported-update", addr, "u", "p", key, machinetest.MRIInfraOpts{
+		HostKey: machinetest.HostKeyFromSigner(signer),
+	})
+
+	api := machinetest.NewAPIStub(t)
+	recorder := machinetest.NewFakeRecorder()
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient:      api.Client,
+		APIServer:      api.Addr,
+		EncryptionKey:  key,
+		EventsRecorder: recorder,
+	}
+
+	// run the Updated hook against the imported instance
+	delay, err := v0MachineRuntimeInstanceUpdated(r, mri, &log)
+	// verify the connectivity re-check succeeds without error or requeue
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), delay)
+	// verify the re-check records reachability rather than a married-instance patch
+	assert.Equal(t, []string{"SSHReachable"}, recorder.GetReasons())
+}
+
+// TestMachineRuntimeInstanceUpdated_SSHUserChange_PropagatesToMarried covers
+// the provisioned-machine update path: when the fetched ssh user differs from
+// the value last propagated to the married provider instance, the handler
+// patches the married instance's ssh user with Reconciled=false so the child
+// reconciler runs a pulumi up that applies the new metadata in place.
+func TestMachineRuntimeInstanceUpdated_SSHUserChange_PropagatesToMarried(t *testing.T) {
+	key := machinetest.NewEncryptionKey(t)
+
+	// arrange a provisioned instance whose ssh user was changed to "newuser";
+	// no hostname so the post-propagation key check would defer rather than dial
+	mri := &v0.MachineRuntimeInstance{
+		Common:                     v0.Common{ID: util.Ptr(uint(202))},
+		Instance:                   v0.Instance{Name: util.Ptr("mri-user-update")},
+		MachineRuntimeDefinitionID: util.Ptr(uint(7)),
+		SSHUser:                    util.Ptr("newuser"),
+	}
+
+	// the married child still carries the old ssh user, so the users differ
+	married := v0.GcpGceMachineRuntimeInstance{
+		Common:                   v0.Common{ID: util.Ptr(uint(303))},
+		Instance:                 v0.Instance{Name: util.Ptr("mri-user-update")},
+		MachineRuntimeInstanceID: util.Ptr(uint(202)),
+		SSHUser:                  util.Ptr("olduser"),
+	}
+
+	api := machinetest.NewAPIStub(t)
+	registerMarriedQuery(t, api, []v0.GcpGceMachineRuntimeInstance{married})
+	patches := registerMarriedPatchCounter(t, api, 303)
+	recorder := machinetest.NewFakeRecorder()
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient:      api.Client,
+		APIServer:      api.Addr,
+		EncryptionKey:  key,
+		EventsRecorder: recorder,
+	}
+
+	// run the Updated hook against the user-changed instance
+	delay, err := v0MachineRuntimeInstanceUpdated(r, mri, &log)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), delay)
+	// verify the handler records the ssh user update
+	assert.Equal(t, []string{"SSHUserUpdated"}, recorder.GetReasons())
+	// verify exactly one PATCH carried the new ssh user and cleared Reconciled
+	require.Len(t, *patches, 1, "expected one PATCH to propagate the ssh user")
+	body := string((*patches)[0])
+	assert.Contains(t, body, "newuser", "PATCH must carry the new ssh user")
+	assert.Contains(t, body, `"Reconciled":false`, "PATCH must clear Reconciled so the married update notification fires")
+}
+
+// TestMachineRuntimeInstanceUpdated_NoChange_NoMarriedPatch covers the
+// no-op update: when the fetched ssh user and ssh key match the married
+// instance, the handler patches nothing and records no event.
+func TestMachineRuntimeInstanceUpdated_NoChange_NoMarriedPatch(t *testing.T) {
+	key := machinetest.NewEncryptionKey(t)
+	sameKey := machinetest.NewEncryptionKey(t)
+
+	// arrange a provisioned instance whose ssh user and key already match the
+	// married child, so nothing has changed
+	mri := &v0.MachineRuntimeInstance{
+		Common:                     v0.Common{ID: util.Ptr(uint(204))},
+		Instance:                   v0.Instance{Name: util.Ptr("mri-nochange")},
+		MachineRuntimeDefinitionID: util.Ptr(uint(7)),
+		SSHUser:                    util.Ptr("u"),
+		SSHKey:                     util.Ptr(encryptKeyForTest(t, key, sameKey)),
+	}
+	married := v0.GcpGceMachineRuntimeInstance{
+		Common:                   v0.Common{ID: util.Ptr(uint(305))},
+		Instance:                 v0.Instance{Name: util.Ptr("mri-nochange")},
+		MachineRuntimeInstanceID: util.Ptr(uint(204)),
+		SSHUser:                  util.Ptr("u"),
+		SSHKey:                   util.Ptr(encryptKeyForTest(t, key, sameKey)),
+	}
+
+	api := machinetest.NewAPIStub(t)
+	registerMarriedQuery(t, api, []v0.GcpGceMachineRuntimeInstance{married})
+	patches := registerMarriedPatchCounter(t, api, 305)
+	recorder := machinetest.NewFakeRecorder()
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient:      api.Client,
+		APIServer:      api.Addr,
+		EncryptionKey:  key,
+		EventsRecorder: recorder,
+	}
+
+	// run the Updated hook against the unchanged instance
+	delay, err := v0MachineRuntimeInstanceUpdated(r, mri, &log)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), delay)
+	// verify no event and no PATCH when nothing changed
+	assert.Empty(t, recorder.GetReasons(), "no event may fire when ssh user and key are unchanged")
+	assert.Empty(t, *patches, "no PATCH may land when nothing changed")
+}
+
+// TestMachineRuntimeInstanceUpdated_NoMarriedInstance_Requeues covers the race
+// where the abstract create path has not yet created the married child: the
+// query returns nothing, so the handler requeues on the ssh-retry delay rather
+// than erroring.
+func TestMachineRuntimeInstanceUpdated_NoMarriedInstance_Requeues(t *testing.T) {
+	overrideRetryDelay(t, 4)
+	key := machinetest.NewEncryptionKey(t)
+
+	mri := &v0.MachineRuntimeInstance{
+		Common:                     v0.Common{ID: util.Ptr(uint(206))},
+		Instance:                   v0.Instance{Name: util.Ptr("mri-no-married")},
+		MachineRuntimeDefinitionID: util.Ptr(uint(7)),
+		SSHUser:                    util.Ptr("u"),
+	}
+
+	api := machinetest.NewAPIStub(t)
+	// the married query returns an empty set
+	registerMarriedQuery(t, api, nil)
+	recorder := machinetest.NewFakeRecorder()
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient:      api.Client,
+		APIServer:      api.Addr,
+		EncryptionKey:  key,
+		EventsRecorder: recorder,
+	}
+
+	// run the Updated hook before the married child exists
+	delay, err := v0MachineRuntimeInstanceUpdated(r, mri, &log)
+	require.NoError(t, err)
+	// verify it requeues on the ssh-retry delay rather than erroring
+	assert.Equal(t, int64(4), delay)
+	assert.Empty(t, recorder.GetReasons())
+}
+
+// encryptKeyForTest encrypts plaintext with the given encryption key so a test
+// fixture carries a ciphertext the handler can decrypt. The plaintext argument
+// is itself an encryption key string only to give each fixture distinct,
+// deterministic content; any string would do.
+func encryptKeyForTest(t *testing.T, encryptionKey, plaintext string) string {
+	t.Helper()
+	ct, err := encryption.Encrypt(encryptionKey, plaintext)
+	require.NoError(t, err)
+	return ct
 }
 
 // TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace runs many

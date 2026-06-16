@@ -36,33 +36,47 @@ func v0MachineRuntimeDefinitionCreated(
 
 	switch *machineRuntimeDefinition.InfraProvider {
 	case v0.MachineRuntimeInfraProviderGCE:
-		// map the abstract size and profile to a Google Cloud Platform machine
-		// type; the mapping keys on the cloud provider token, not the machine
-		// runtime infra provider token
-		machineType, err := mapping.GetMachineType(
-			util.GcpProvider,
-			*machineRuntimeDefinition.MachineProfile,
-			*machineRuntimeDefinition.MachineSize,
-		)
-		if err != nil {
-			return 0, fmt.Errorf("failed to map machine size and profile to GCP machine type: %w", err)
-		}
-
-		// create the married GCE machine runtime definition
-		gcpGceMachineRuntimeDefinition := v0.GcpGceMachineRuntimeDefinition{
-			Definition: v0.Definition{
-				Name: machineRuntimeDefinition.Name,
-			},
-			MachineType:                &machineType,
-			ImageID:                    machineRuntimeDefinition.ImageID,
-			MachineRuntimeDefinitionID: machineRuntimeDefinition.ID,
-		}
-		if _, err := client.CreateGcpGceMachineRuntimeDefinition(
+		// when the married provider definition already exists for this parent,
+		// adopt it instead of creating a second one; a create that succeeded
+		// before the parent recorded its reconciled state leaves a child that a
+		// retry would otherwise duplicate
+		existing, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
 			r.APIClient,
 			r.APIServer,
-			&gcpGceMachineRuntimeDefinition,
-		); err != nil {
-			return 0, fmt.Errorf("failed to create GCE machine runtime definition: %w", err)
+			fmt.Sprintf("machineruntimedefinitionid=%d", *machineRuntimeDefinition.ID),
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to check for existing GCE machine runtime definition: %w", err)
+		}
+		if len(*existing) < 1 {
+			// map the abstract size and profile to a Google Cloud Platform
+			// machine type; the mapping keys on the cloud provider token, not
+			// the machine runtime infra provider token
+			machineType, err := mapping.GetMachineType(
+				util.GcpProvider,
+				*machineRuntimeDefinition.MachineProfile,
+				*machineRuntimeDefinition.MachineSize,
+			)
+			if err != nil {
+				return 0, fmt.Errorf("failed to map machine size and profile to GCP machine type: %w", err)
+			}
+
+			// create the married GCE machine runtime definition
+			gcpGceMachineRuntimeDefinition := v0.GcpGceMachineRuntimeDefinition{
+				Definition: v0.Definition{
+					Name: machineRuntimeDefinition.Name,
+				},
+				MachineType:                &machineType,
+				ImageID:                    machineRuntimeDefinition.ImageID,
+				MachineRuntimeDefinitionID: machineRuntimeDefinition.ID,
+			}
+			if _, err := client.CreateGcpGceMachineRuntimeDefinition(
+				r.APIClient,
+				r.APIServer,
+				&gcpGceMachineRuntimeDefinition,
+			); err != nil {
+				return 0, fmt.Errorf("failed to create GCE machine runtime definition: %w", err)
+			}
 		}
 	default:
 		return 0, fmt.Errorf("infra provider %s not supported", *machineRuntimeDefinition.InfraProvider)

@@ -113,6 +113,7 @@ func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 		column string
 		name   string
 	}{
+		{"Location", "location"},
 		{"Region", "region"},
 		{"NetworkID", "network id"},
 	}

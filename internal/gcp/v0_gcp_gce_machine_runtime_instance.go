@@ -4,6 +4,7 @@ package gcp
 
 import (
 	"fmt"
+	"time"
 
 	logr "github.com/go-logr/logr"
 	"gorm.io/datatypes"
@@ -58,23 +59,29 @@ func v0GcpGceMachineRuntimeInstanceUpdated(
 }
 
 // gceMachineUpdateLifecycle adapts the create lifecycle for an update pass by
-// reporting the creation as unconfirmed and unacknowledged. The resource
+// reopening the create state machine against the existing stack. The resource
 // inventory is preserved so the create goroutine restores the saved stack state
-// and the up applies a diff rather than provisioning fresh. The save callback
-// is overridden to mark the instance reconciled once the up succeeds, since the
-// update pass relaunches the up but never reaches the confirm step that a first
-// create uses to settle the object.
+// and the up applies a diff rather than provisioning fresh. Completion is read
+// from the reconciled flag rather than the carried-over inventory, and the save
+// callback marks the instance reconciled once the up succeeds, since the update
+// pass relaunches the up but never reaches the confirm step that a first create
+// uses to settle the object.
 type gceMachineUpdateLifecycle struct {
 	*gceMachineLifecycle
 }
 
 // GetReconciliation fetches the latest reconciliation state and, while the
-// instance is unreconciled, clears the creation confirmation and acknowledgement
-// so the create state machine falls through to re-acknowledge and re-launch the
-// up rather than short-circuiting on the prior create. The resource inventory is
-// left intact so the up diffs against the saved stack state. Once the up settles
-// and marks the instance reconciled, the snapshot is returned unchanged so a
-// requeued update pass no-ops instead of relaunching the up indefinitely.
+// instance is unreconciled, clears the creation confirmation so the create state
+// machine falls through to re-acknowledge and re-launch the up rather than
+// short-circuiting on the prior create. The acknowledgement is cleared only on
+// the first update pass, when the persisted ack still belongs to the settled
+// create; once an update pass has acknowledged and launched the up, the fresh
+// ack is left intact so the create state machine's not-stale short-circuit
+// requeues instead of launching a second concurrent up against the same stack.
+// The resource inventory is left intact so the up diffs against the saved stack
+// state. Once the up settles and marks the instance reconciled, the snapshot is
+// returned unchanged so a requeued update pass no-ops instead of relaunching the
+// up indefinitely.
 func (g *gceMachineUpdateLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
 	snap, err := g.gceMachineLifecycle.GetReconciliation()
 	if err != nil {
@@ -96,9 +103,56 @@ func (g *gceMachineUpdateLifecycle) GetReconciliation() (*provider.Reconciliatio
 		return snap, nil
 	}
 
+	// reopen the create state machine by hiding the prior confirmation; the
+	// persisted confirmation timestamp cannot be cleared through the patch path,
+	// so the reset lives in the snapshot the create handler reads
 	snap.CreationConfirmed = nil
+
+	// clear the acknowledgement only while it still belongs to the settled
+	// create, so the first update pass falls through to acknowledge and launch
+	// the up. A create acknowledges before it confirms, so an ack at or before
+	// the confirmation timestamp predates this update; once an update pass has
+	// acknowledged, its ack post-dates the confirmation and is left intact so
+	// the create handler sees a fresh ack and requeues rather than launching a
+	// second concurrent up. Staleness recovery for a genuinely interrupted up
+	// stays with the create handler's own stale-ack check.
+	if updateAckPending(snap.CreationAcknowledged, latest.CreationConfirmed) {
+		return snap, nil
+	}
 	snap.CreationAcknowledged = nil
 	return snap, nil
+}
+
+// updateAckPending reports whether an update pass has already acknowledged the
+// creation and launched the up. It is true when the acknowledgement timestamp
+// post-dates the persisted creation confirmation, which a settled create's own
+// acknowledgement never does.
+func updateAckPending(acknowledged, confirmed *time.Time) bool {
+	if acknowledged == nil || confirmed == nil {
+		return false
+	}
+	return acknowledged.After(*confirmed)
+}
+
+// IsCreateComplete reports the create as incomplete while the instance is
+// unreconciled. A first create reads completion from the persisted resource
+// inventory, but an update carries the prior create's inventory forward so the
+// up can diff against the saved stack state, which would read as complete and
+// confirm prematurely. The up's save callback marks the instance reconciled when
+// the diff is applied, so completion is deferred to that flag: while unreconciled
+// the create handler sees the in-flight ack as fresh and requeues rather than
+// confirming, and once reconciled the snapshot keeps its confirmation and the
+// create handler short-circuits before reaching this check.
+func (g *gceMachineUpdateLifecycle) IsCreateComplete() (bool, error) {
+	latest, err := client.GetGcpGceMachineRuntimeInstanceByID(
+		g.gceMachineLifecycle.r.APIClient,
+		g.gceMachineLifecycle.r.APIServer,
+		g.gceMachineLifecycle.instanceID,
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to get GCE instance reconciled state: %w", err)
+	}
+	return latest.Reconciled != nil && *latest.Reconciled, nil
 }
 
 // SaveCreateOutputs persists the surfaced outputs as the create lifecycle does,

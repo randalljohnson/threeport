@@ -514,14 +514,21 @@ func verifyMachineReachable(
 	return 0, nil
 }
 
+// deprovisionRequeueDelaySeconds is the requeue delay (in seconds) returned
+// while attached workloads or the married provider instance are still tearing
+// down, so the abstract deletion is not confirmed until they are gone.
+// Package-level so tests can shrink it.
+var deprovisionRequeueDelaySeconds int64 = 30
+
 // v0MachineRuntimeInstanceDeleted performs reconciliation when a v0
-// MachineRuntimeInstance has been deleted.  Imported machines (no associated
-// definition) have no provisioned infrastructure, so deletion is a clean
-// no-op for them.  A provider-provisioned machine that still carries a
-// resource inventory has live provider resources that this control plane
-// cannot tear down on its own, so deletion records a warning instructing the
-// operator to reclaim them, then completes; the inventory is the record of
-// what to reclaim.
+// MachineRuntimeInstance has been deleted. Imported machines (no associated
+// definition) have no provisioned infrastructure, so deletion is a clean no-op
+// for them. A provider-provisioned machine first deletes its attached machine
+// workload instances and awaits their removal so their on-machine uninstall
+// scripts run while the machine is still reachable, then deletes the married
+// provider instance and awaits its removal so the provider reconciler destroys
+// the backing cloud resources. The abstract deletion is never confirmed while
+// an attached workload or a provider machine is still live.
 func v0MachineRuntimeInstanceDeleted(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
@@ -532,26 +539,156 @@ func v0MachineRuntimeInstanceDeleted(
 		return 0, nil
 	}
 
-	// a provisioned machine with no recorded resources never had any backing
-	// infrastructure to reclaim, so deletion is clean
-	if machineRuntimeInstance.ResourceInventory == nil {
+	// tear down the attached machine workload instances first so their delete
+	// scripts run while the machine is still reachable; requeue until they are
+	// all gone before deprovisioning the machine out from under them
+	requeue, err := deprovisionAttachedWorkloads(r, machineRuntimeInstance, log)
+	if err != nil {
+		return 0, err
+	}
+	if requeue != 0 {
+		return requeue, nil
+	}
+
+	// fetch the base definition to learn which provider backs this machine
+	def, err := client.GetMachineRuntimeDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineRuntimeInstance.MachineRuntimeDefinitionID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get machine runtime definition by ID: %w", err)
+	}
+
+	// a definition with no infra provider provisions no cloud resources, so
+	// deletion is clean once the attached workloads are gone
+	if def.InfraProvider == nil || *def.InfraProvider == "" {
 		return 0, nil
 	}
 
-	// the provider resources recorded in the inventory remain live; warn the
-	// operator to reclaim them so they are not silently abandoned, then let
-	// deletion proceed
-	if eventErr := r.EventsRecorder.RecordEvent(
-		&v0.Event{
-			Type:   util.Ptr(event.TypeWarning),
-			Reason: util.Ptr("ProviderResourcesNotReclaimed"),
-			Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s was deleted while still holding provider resources; reclaim them using the recorded resource inventory to avoid orphaned infrastructure", *machineRuntimeInstance.Name)),
-		},
-		*machineRuntimeInstance.ID,
-		machineRuntimeInstance.GetFullyQualifiedType(),
-	); eventErr != nil {
-		log.Error(eventErr, "failed to record event for unreclaimed provider resources")
+	switch *def.InfraProvider {
+	case v0.MachineRuntimeInfraProviderGCE:
+		return deprovisionGceMachine(r, machineRuntimeInstance, log)
+	default:
+		return 0, fmt.Errorf("infra provider %s not supported", *def.InfraProvider)
+	}
+}
+
+// deprovisionAttachedWorkloads deletes the machine workload instances attached
+// to the machine and requeues until they are all gone. It deletes any instance
+// that has not yet been scheduled for deletion so its reconciler runs the
+// on-machine uninstall script while the machine is still reachable, then
+// requeues while any remain so the machine is never torn down out from under a
+// workload that is still uninstalling.
+func deprovisionAttachedWorkloads(
+	r *controller.Reconciler,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	log *logr.Logger,
+) (int64, error) {
+	// list the workload instances attached to this machine; an empty result
+	// means they have all been fully removed
+	attached, err := client.GetMachineWorkloadInstancesByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get attached machine workload instances: %w", err)
 	}
 
-	return 0, nil
+	// the attached workloads are gone, so their delete scripts have run and the
+	// machine is safe to deprovision
+	if len(*attached) == 0 {
+		return 0, nil
+	}
+
+	// delete any attached workload that has not yet been scheduled for deletion
+	// so its reconciler runs the on-machine uninstall script; a second delete
+	// while the teardown is in flight would conflict, so only schedule once
+	for _, machineWorkloadInstance := range *attached {
+		if machineWorkloadInstance.DeletionScheduled != nil {
+			continue
+		}
+		if _, err := client.DeleteMachineWorkloadInstance(
+			r.APIClient,
+			r.APIServer,
+			*machineWorkloadInstance.ID,
+		); err != nil {
+			return 0, fmt.Errorf("failed to delete attached machine workload instance: %w", err)
+		}
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeNormal),
+				Reason: util.Ptr("AttachedWorkloadDeleting"),
+				Note:   util.Ptr(fmt.Sprintf("deleting attached machine workload instance before deprovisioning machine runtime instance %s", *machineRuntimeInstance.Name)),
+			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for attached workload deletion")
+		}
+	}
+
+	// attached workloads still exist, so requeue without confirming the abstract
+	// deletion until they have all run their delete scripts and been removed
+	return deprovisionRequeueDelaySeconds, nil
+}
+
+// deprovisionGceMachine drives the teardown of the married GCE machine runtime
+// instance and requeues until it is gone. It deletes the married instance on
+// the first pass so its reconciler runs the pulumi destroy, requeues while the
+// destroy is in flight, and confirms the abstract deletion only once the
+// married instance no longer exists, so a provider machine is never orphaned. A
+// destroy that never completes leaves the married instance present, so this
+// keeps requeuing rather than confirming deletion over live resources.
+func deprovisionGceMachine(
+	r *controller.Reconciler,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	log *logr.Logger,
+) (int64, error) {
+	// look up the married provider instance for this machine; an empty result
+	// means it has been fully torn down and its row removed
+	married, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get married GCE machine runtime instance: %w", err)
+	}
+
+	// the married instance is gone, so the provider machine has been destroyed;
+	// the abstract deletion is now safe to confirm
+	if len(*married) == 0 {
+		return 0, nil
+	}
+	gcpGceMachineRuntimeInstance := (*married)[0]
+
+	// when the married instance has not yet been scheduled for deletion, delete
+	// it so its reconciler runs the pulumi destroy; a second delete while the
+	// teardown is in flight would conflict, so only the first pass deletes
+	if gcpGceMachineRuntimeInstance.DeletionScheduled == nil {
+		if _, err := client.DeleteGcpGceMachineRuntimeInstance(
+			r.APIClient,
+			r.APIServer,
+			*gcpGceMachineRuntimeInstance.ID,
+		); err != nil {
+			return 0, fmt.Errorf("failed to delete married GCE machine runtime instance: %w", err)
+		}
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeNormal),
+				Reason: util.Ptr("ProviderResourcesDeprovisioning"),
+				Note:   util.Ptr(fmt.Sprintf("deprovisioning provider resources for machine runtime instance %s", *machineRuntimeInstance.Name)),
+			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for provider resource deprovisioning")
+		}
+	}
+
+	// the married instance still exists, so the provider machine may still be
+	// live; requeue without confirming the abstract deletion until it is gone
+	return deprovisionRequeueDelaySeconds, nil
 }

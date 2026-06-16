@@ -108,8 +108,8 @@ func v0MachineRuntimeDefinitionUpdated(
 
 // v0MachineRuntimeDefinitionDeleted performs reconciliation when a v0
 // MachineRuntimeDefinition has been deleted. The married provider definition is
-// torn down by its own reconciler, so the abstract definition only confirms the
-// deletion was scheduled.
+// non-reconcilable, so it is deleted here directly; the delete completes
+// synchronously and needs no await before the abstract deletion is confirmed.
 func v0MachineRuntimeDefinitionDeleted(
 	r *controller.Reconciler,
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
@@ -123,6 +123,26 @@ func v0MachineRuntimeDefinitionDeleted(
 	// nothing to do once deletion is already confirmed
 	if machineRuntimeDefinition.DeletionConfirmed != nil {
 		return 0, nil
+	}
+
+	// delete the married provider definition; it is non-reconcilable, so the
+	// delete removes its row synchronously with no teardown to await
+	gcpGceMachineRuntimeDefinitions, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimedefinitionid=%d", *machineRuntimeDefinition.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get married GCE machine runtime definition: %w", err)
+	}
+	for _, gcpGceMachineRuntimeDefinition := range *gcpGceMachineRuntimeDefinitions {
+		if _, err := client.DeleteGcpGceMachineRuntimeDefinition(
+			r.APIClient,
+			r.APIServer,
+			*gcpGceMachineRuntimeDefinition.ID,
+		); err != nil {
+			return 0, fmt.Errorf("failed to delete married GCE machine runtime definition: %w", err)
+		}
 	}
 
 	return 0, nil

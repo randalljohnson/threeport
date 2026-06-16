@@ -581,23 +581,147 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())
 }
 
-// TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources covers the
-// Deleted hook: a provider-provisioned MRI that still holds a resource
-// inventory records a warning so the operator reclaims the live provider
-// resources, a provisioned MRI with no inventory is a clean no-op, and an
-// imported machine is a clean no-op.
-func TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources(t *testing.T) {
+// registerDefinitionGet registers a GET handler for the machine runtime
+// definition with the given id that replies with a definition carrying the
+// supplied infra provider, so the abstract Deleted handler can learn which
+// provider backs the machine.
+func registerDefinitionGet(t *testing.T, api *machinetest.APIStub, id uint, infraProvider string) {
+	t.Helper()
+	api.Mux.HandleFunc(fmt.Sprintf("%s/%d", v0.PathMachineRuntimeDefinitions, id), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		def := v0.MachineRuntimeDefinition{
+			Common:        v0.Common{ID: util.Ptr(id)},
+			InfraProvider: util.Ptr(infraProvider),
+		}
+		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&def})
+	})
+}
+
+// registerMarriedDeleteCounter registers a DELETE handler for the married GCE
+// instance with the given id that counts calls and replies with a valid
+// envelope, so tests can assert the abstract Deleted handler scheduled the
+// married teardown exactly once.
+func registerMarriedDeleteCounter(t *testing.T, api *machinetest.APIStub, id uint) *int64 {
+	t.Helper()
+	var count int64
+	api.Mux.HandleFunc(fmt.Sprintf("%s/%d", v0.PathGcpGceMachineRuntimeInstances, id), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodDelete, r.Method)
+		atomic.AddInt64(&count, 1)
+		deleted := v0.GcpGceMachineRuntimeInstance{Common: v0.Common{ID: util.Ptr(id)}}
+		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&deleted})
+	})
+	return &count
+}
+
+// registerAttachedWorkloadQuery registers a collection GET handler for the
+// machine workload instances path that returns the supplied attached workloads
+// for any query string, so the abstract Deleted handler can find the workloads
+// to tear down before deprovisioning the machine.
+func registerAttachedWorkloadQuery(t *testing.T, api *machinetest.APIStub, attached []v0.MachineWorkloadInstance) {
+	t.Helper()
+	api.Mux.HandleFunc(v0.PathMachineWorkloadInstances, func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		objs := make([]apiserver_lib.Object, len(attached))
+		for i := range attached {
+			a := attached[i]
+			objs[i] = &a
+		}
+		machinetest.WriteResponse(t, w, http.StatusOK, objs)
+	})
+}
+
+// registerAttachedWorkloadDeleteCounter registers a DELETE handler for the
+// attached machine workload instance with the given id that counts calls and
+// replies with a valid envelope, so tests can assert the handler scheduled the
+// attached workload teardown exactly once.
+func registerAttachedWorkloadDeleteCounter(t *testing.T, api *machinetest.APIStub, id uint) *int64 {
+	t.Helper()
+	var count int64
+	api.Mux.HandleFunc(fmt.Sprintf("%s/%d", v0.PathMachineWorkloadInstances, id), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodDelete, r.Method)
+		atomic.AddInt64(&count, 1)
+		deleted := v0.MachineWorkloadInstance{Common: v0.Common{ID: util.Ptr(id)}}
+		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&deleted})
+	})
+	return &count
+}
+
+// overrideDeprovisionRequeueDelay sets the deprovision requeue delay for one
+// test and restores it on cleanup.
+func overrideDeprovisionRequeueDelay(t *testing.T, seconds int64) {
+	t.Helper()
+	prev := deprovisionRequeueDelaySeconds
+	deprovisionRequeueDelaySeconds = seconds
+	t.Cleanup(func() { deprovisionRequeueDelaySeconds = prev })
+}
+
+// TestMachineRuntimeInstanceDeleted_DeprovisionsAttachedAndProvider covers the
+// Deleted hook teardown ordering: an attached workload still present is deleted
+// and the handler requeues before touching the provider; once the attached
+// workloads are gone the married provider instance is deleted and the handler
+// requeues without confirming; a married instance already scheduled for
+// deletion is requeued without a second delete; once the married instance is
+// gone the abstract deletion is confirmed; and an imported machine is a clean
+// no-op. The invariant under test is that deletion is never confirmed while an
+// attached workload or a provider VM may still be live.
+func TestMachineRuntimeInstanceDeleted_DeprovisionsAttachedAndProvider(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
-	api := machinetest.NewAPIStub(t)
 	log := logr.Discard()
 
-	t.Run("provisioned with inventory warns to reclaim resources", func(t *testing.T) {
-		// arrange a provider-provisioned mri that still holds a resource inventory
+	t.Run("attached workload present deletes it and requeues before provider", func(t *testing.T) {
+		overrideDeprovisionRequeueDelay(t, 5)
+		// arrange a provider-provisioned mri with one attached workload still
+		// present and not yet scheduled for deletion
+		mri := machinetest.NewMRIWithInfra(t, 60, "mri-del-attached", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
+			MachineRuntimeDefinitionID: 7,
+			Region:                     "us-central1",
+		})
+		workload := v0.MachineWorkloadInstance{
+			Common:                   v0.Common{ID: util.Ptr(uint(401))},
+			MachineRuntimeInstanceID: util.Ptr(uint(60)),
+		}
+
+		api := machinetest.NewAPIStub(t)
+		registerAttachedWorkloadQuery(t, api, []v0.MachineWorkloadInstance{workload})
+		workloadDeleteCount := registerAttachedWorkloadDeleteCounter(t, api, 401)
+		recorder := machinetest.NewFakeRecorder()
+		r := &controller.Reconciler{
+			APIClient:      api.Client,
+			APIServer:      api.Addr,
+			EncryptionKey:  key,
+			EventsRecorder: recorder,
+		}
+
+		// run the Deleted hook while an attached workload is still present
+		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
+		require.NoError(t, err)
+		// verify it requeues without reaching the provider while a workload lives
+		assert.Equal(t, int64(5), delay, "delete must requeue while an attached workload is still present")
+		// verify the attached workload was deleted exactly once to run its delete script
+		assert.Equal(t, int64(1), atomic.LoadInt64(workloadDeleteCount), "the attached workload must be deleted to run its uninstall script")
+		// verify the attached-workload-deleting event is recorded
+		assert.Equal(t, []string{"AttachedWorkloadDeleting"}, recorder.GetReasons())
+	})
+
+	t.Run("married present deletes it and requeues without confirming", func(t *testing.T) {
+		overrideDeprovisionRequeueDelay(t, 5)
+		// arrange a provider-provisioned mri whose attached workloads are gone and
+		// whose married GCE instance is still present and not yet scheduled
 		mri := machinetest.NewMRIWithInfra(t, 61, "mri-del-provisioned", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
 			MachineRuntimeDefinitionID: 7,
 			Region:                     "us-central1",
-			ResourceInventory:          `{"vmId":"i-123"}`,
 		})
+		married := v0.GcpGceMachineRuntimeInstance{
+			Common:                   v0.Common{ID: util.Ptr(uint(301))},
+			Instance:                 v0.Instance{Name: util.Ptr("mri-del-provisioned")},
+			MachineRuntimeInstanceID: util.Ptr(uint(61)),
+		}
+
+		api := machinetest.NewAPIStub(t)
+		registerAttachedWorkloadQuery(t, api, nil)
+		registerDefinitionGet(t, api, 7, v0.MachineRuntimeInfraProviderGCE)
+		registerMarriedQuery(t, api, []v0.GcpGceMachineRuntimeInstance{married})
+		deleteCount := registerMarriedDeleteCounter(t, api, 301)
 		recorder := machinetest.NewFakeRecorder()
 		r := &controller.Reconciler{
 			APIClient:      api.Client,
@@ -609,18 +733,35 @@ func TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources(t *testing.T) {
 		// run the Deleted hook against the provisioned instance
 		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
 		require.NoError(t, err)
-		// verify delete finishes instead of blocking on the live provider resources
-		assert.Equal(t, int64(0), delay, "delete must complete rather than block on live resources")
-		// verify the operator is warned to reclaim the still-live resources
-		assert.Equal(t, []string{"ProviderResourcesNotReclaimed"}, recorder.GetReasons())
+		// verify the handler requeues rather than confirming while the VM is live
+		assert.Equal(t, int64(5), delay, "delete must requeue, not confirm, while the married instance is present")
+		// verify the married instance was deleted exactly once to drive the destroy
+		assert.Equal(t, int64(1), atomic.LoadInt64(deleteCount), "the married instance must be deleted to trigger deprovision")
+		// verify the deprovision-in-progress event is recorded
+		assert.Equal(t, []string{"ProviderResourcesDeprovisioning"}, recorder.GetReasons())
 	})
 
-	t.Run("provisioned without inventory is a no-op", func(t *testing.T) {
-		// arrange a provider-provisioned mri that holds no resource inventory
-		mri := machinetest.NewMRIWithInfra(t, 63, "mri-del-no-inventory", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
+	t.Run("married already scheduled requeues without a second delete", func(t *testing.T) {
+		overrideDeprovisionRequeueDelay(t, 5)
+		// arrange a married instance whose deletion is already underway so the
+		// handler must not delete it again
+		mri := machinetest.NewMRIWithInfra(t, 65, "mri-del-inflight", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
 			MachineRuntimeDefinitionID: 7,
 			Region:                     "us-central1",
 		})
+		scheduled := time.Now().UTC()
+		married := v0.GcpGceMachineRuntimeInstance{
+			Common:                   v0.Common{ID: util.Ptr(uint(305))},
+			Instance:                 v0.Instance{Name: util.Ptr("mri-del-inflight")},
+			MachineRuntimeInstanceID: util.Ptr(uint(65)),
+			Reconciliation:           v0.Reconciliation{DeletionScheduled: &scheduled},
+		}
+
+		api := machinetest.NewAPIStub(t)
+		registerAttachedWorkloadQuery(t, api, nil)
+		registerDefinitionGet(t, api, 7, v0.MachineRuntimeInfraProviderGCE)
+		registerMarriedQuery(t, api, []v0.GcpGceMachineRuntimeInstance{married})
+		deleteCount := registerMarriedDeleteCounter(t, api, 305)
 		recorder := machinetest.NewFakeRecorder()
 		r := &controller.Reconciler{
 			APIClient:      api.Client,
@@ -629,16 +770,52 @@ func TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources(t *testing.T) {
 			EventsRecorder: recorder,
 		}
 
-		// run the Deleted hook against the inventory-free instance
+		// run the Deleted hook while the teardown is in flight
 		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
 		require.NoError(t, err)
-		assert.Equal(t, int64(0), delay)
-		// verify no warning fires when there are no recorded resources to reclaim
-		assert.Empty(t, recorder.GetReasons(), "a provisioned machine with no recorded resources has nothing to reclaim")
+		// verify it requeues without confirming
+		assert.Equal(t, int64(5), delay, "an in-flight teardown must requeue, not confirm")
+		// verify no second delete is issued against the already-scheduled instance
+		assert.Equal(t, int64(0), atomic.LoadInt64(deleteCount), "an already-scheduled married instance must not be re-deleted")
+		// verify no event fires when nothing new happened this pass
+		assert.Empty(t, recorder.GetReasons(), "no event may fire while waiting on an in-flight teardown")
+	})
+
+	t.Run("married gone confirms deletion", func(t *testing.T) {
+		// arrange a provisioned mri whose attached workloads and married instance
+		// have been fully torn down, so both queries return empty sets
+		mri := machinetest.NewMRIWithInfra(t, 64, "mri-del-gone", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
+			MachineRuntimeDefinitionID: 7,
+			Region:                     "us-central1",
+		})
+
+		api := machinetest.NewAPIStub(t)
+		registerAttachedWorkloadQuery(t, api, nil)
+		registerDefinitionGet(t, api, 7, v0.MachineRuntimeInfraProviderGCE)
+		registerMarriedQuery(t, api, nil)
+		recorder := machinetest.NewFakeRecorder()
+		r := &controller.Reconciler{
+			APIClient:      api.Client,
+			APIServer:      api.Addr,
+			EncryptionKey:  key,
+			EventsRecorder: recorder,
+		}
+
+		// run the Deleted hook once the attached workloads and married instance are gone
+		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
+		require.NoError(t, err)
+		// verify the abstract deletion is now confirmed
+		assert.Equal(t, int64(0), delay, "deletion must confirm once the provider VM is gone")
+		// verify no event fires on the confirming pass
+		assert.Empty(t, recorder.GetReasons())
 	})
 
 	t.Run("imported machine is a no-op", func(t *testing.T) {
+		// arrange an imported machine with no definition, so there is nothing to
+		// deprovision
 		mri := machinetest.MRIFromAddr(t, 62, "mri-del-imported", "127.0.0.1:22", "u", "p", key)
+
+		api := machinetest.NewAPIStub(t)
 		recorder := machinetest.NewFakeRecorder()
 		r := &controller.Reconciler{
 			APIClient:      api.Client,
@@ -647,8 +824,10 @@ func TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources(t *testing.T) {
 			EventsRecorder: recorder,
 		}
 
+		// run the Deleted hook against the imported instance
 		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
 		require.NoError(t, err)
+		// verify deletion confirms immediately with no deprovision work
 		assert.Equal(t, int64(0), delay)
 		assert.Empty(t, recorder.GetReasons(), "imported machines have nothing to deprovision")
 	})

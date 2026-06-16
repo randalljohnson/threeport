@@ -374,6 +374,9 @@ func buildGceMachineInfra(
 	// runtime instance name are set; the provider validates the name first and
 	// fails before any cloud call when it is empty.
 	infraGce := machine.NewGceMachineInfra(*instance.Name)
+	// route pulumi up, refresh, and destroy output through the structured
+	// logger so the engine streams events instead of raw stdout text.
+	infraGce.Logger = log
 	infraGce.ProjectID = *gcpProvider.ProjectID
 
 	// the machine type and image identifier live on the definition that

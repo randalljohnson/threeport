@@ -907,8 +907,91 @@ func TestGceInstanceCreatedRequeuesWhenAckedNotStale(t *testing.T) {
 	assert.Equal(t, int64(120), delay)
 }
 
-func TestGceInstanceUpdatedNoop(t *testing.T) {
+// gceNewUpdateLifecycle constructs the update-pass adapter against the stub for
+// a given instance.
+func gceNewUpdateLifecycle(s *gceAPIStub, instance *v0.GcpGceMachineRuntimeInstance) *gceMachineUpdateLifecycle {
+	return &gceMachineUpdateLifecycle{gceMachineLifecycle: gceNewLifecycle(s, instance)}
+}
+
+// TestGceUpdateLifecycleGetReconciliationClearsConfirmation asserts the update
+// adapter reports the creation as unconfirmed and unacknowledged while leaving
+// the resource inventory intact, so the create state machine relaunches the up
+// against the saved stack state rather than short-circuiting or provisioning
+// fresh.
+func TestGceUpdateLifecycleGetReconciliationClearsConfirmation(t *testing.T) {
 	s := gceNewAPIStub(t)
+	// the latest state shows a fully confirmed prior create with saved inventory
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(time.Now().UTC())
+	latest.CreationAcknowledged = gcePtr(time.Now().UTC())
+	inventory := datatypes.JSON([]byte(`{"checkpoint":{}}`))
+	latest.ResourceInventory = &inventory
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+
+	g := gceNewUpdateLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	snap, err := g.GetReconciliation()
+	require.NoError(t, err)
+	// verify the confirmation fields are cleared so the create handler reopens
+	assert.Nil(t, snap.CreationConfirmed, "confirmation must be cleared to reopen the create state machine")
+	assert.Nil(t, snap.CreationAcknowledged, "acknowledgement must be cleared so the create handler relaunches the up")
+	// verify the saved inventory survives so the up diffs rather than provisions fresh
+	require.NotNil(t, snap.ResourceInventory)
+	assert.JSONEq(t, `{"checkpoint":{}}`, string(*snap.ResourceInventory))
+}
+
+// TestGceUpdateLifecycleSaveCreateOutputsMarksReconciled asserts the update
+// adapter persists the surfaced outputs and then marks the instance reconciled,
+// since the update pass relaunches the up but never reaches the confirm step a
+// first create uses to settle the object.
+func TestGceUpdateLifecycleSaveCreateOutputsMarksReconciled(t *testing.T) {
+	s := gceNewAPIStub(t)
+	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+
+	g := gceNewUpdateLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	gceInfra := machine.NewGceMachineInfra(gceTestInstanceName)
+	gceInfra.SetCreateOutputs("vm.example", "203.0.113.7", "PRIVATE-KEY")
+	state := datatypes.JSON([]byte(`{"checkpoint":{}}`))
+
+	require.NoError(t, g.SaveCreateOutputs(gceInfra, &state))
+
+	// the last PATCH must carry Reconciled=true so the update settles the object
+	patch := s.gceLastPatch(t, gceInstancePath(gceTestInstanceID))
+	require.NotNil(t, patch.Reconciled)
+	assert.True(t, *patch.Reconciled, "the update pass must mark the instance reconciled after the up succeeds")
+}
+
+// TestGceUpdateLifecycleGetReconciliationReconciledNoop asserts the update
+// adapter leaves the confirmation intact once the instance is reconciled, so a
+// requeued update pass short-circuits instead of relaunching the up
+// indefinitely.
+func TestGceUpdateLifecycleGetReconciliationReconciledNoop(t *testing.T) {
+	s := gceNewAPIStub(t)
+	// the latest state shows a confirmed, reconciled instance from a settled
+	// prior update
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(time.Now().UTC())
+	latest.CreationAcknowledged = gcePtr(time.Now().UTC())
+	latest.Reconciled = gcePtr(true)
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+
+	g := gceNewUpdateLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	snap, err := g.GetReconciliation()
+	require.NoError(t, err)
+	// verify the confirmation survives so the create handler short-circuits
+	assert.NotNil(t, snap.CreationConfirmed, "a reconciled instance must keep its confirmation so the update no-ops")
+}
+
+// TestGceInstanceUpdatedReconciledNoop drives the Updated reconciler against a
+// reconciled instance and asserts it returns cleanly without launching an up,
+// proving a requeue after a settled update does not loop.
+func TestGceInstanceUpdatedReconciledNoop(t *testing.T) {
+	s := gceNewAPIStub(t)
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(time.Now().UTC())
+	latest.CreationAcknowledged = gcePtr(time.Now().UTC())
+	latest.Reconciled = gcePtr(true)
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+
 	log := logr.Discard()
 	delay, err := v0GcpGceMachineRuntimeInstanceUpdated(
 		s.gceReconciler(),
@@ -916,7 +999,34 @@ func TestGceInstanceUpdatedNoop(t *testing.T) {
 		&log,
 	)
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
+	assert.Equal(t, int64(0), delay, "a reconciled instance must no-op on update rather than relaunch the up")
+}
+
+// TestGceInstanceUpdatedAbortsWhenDeletionScheduled drives the Updated
+// reconciler through the create state machine to the deletion-abort branch:
+// with the creation confirmation cleared by the update adapter and a deletion
+// already scheduled, the handler returns cleanly without launching an up.
+func TestGceInstanceUpdatedAbortsWhenDeletionScheduled(t *testing.T) {
+	s := gceNewAPIStub(t)
+	// the latest state has a deletion scheduled, so the create handler aborts
+	// after acknowledging rather than launching the up
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(time.Now().UTC())
+	latest.CreationAcknowledged = gcePtr(time.Now().UTC())
+	latest.DeletionScheduled = gcePtr(time.Now().UTC())
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+	// BuildInfra reads the provider and definition before the deletion re-check
+	s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+	s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
+
+	log := logr.Discard()
+	delay, err := v0GcpGceMachineRuntimeInstanceUpdated(
+		s.gceReconciler(),
+		gceBaseInstance(gceTestInstanceID, gceTestInstanceName),
+		&log,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), delay, "a scheduled deletion aborts the update up")
 }
 
 func TestGceInstanceDeletedConfirmedNoop(t *testing.T) {

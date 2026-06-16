@@ -14,6 +14,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
 	machine "github.com/threeport/threeport/pkg/machine/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -323,13 +324,193 @@ func reconcileProviderInstance(
 	}
 }
 
-// v0MachineRuntimeInstanceUpdated performs reconciliation when a v0 MachineRuntimeInstance
-// has been updated.
+// v0MachineRuntimeInstanceUpdated performs reconciliation when a v0
+// MachineRuntimeInstance has been updated. There is no separate update-infra
+// path: the location fields are immutable, so the only mutable connection
+// fields are the ssh user and ssh key. A changed ssh user is propagated to the
+// married provider instance, whose own reconciler runs a pulumi up that applies
+// the new ssh metadata in place. A changed ssh key only affects how this
+// control plane authenticates, so it is validated by re-running the ssh connect
+// and ping against the machine.
 func v0MachineRuntimeInstanceUpdated(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// imported machines have no married provider instance, so the only update
+	// to act on is an ssh credential change validated by re-running connect
+	// and ping
+	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
+		return verifyMachineReachable(r, machineRuntimeInstance, log)
+	}
+
+	// fetch the married provider instance to diff the fetched abstract instance
+	// against the values last propagated to the provider; the controller hook
+	// receives no transaction, so the change is detected by comparing fetched
+	// state with child state rather than with the lib field-change helper
+	gcpGceMachineRuntimeInstances, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get married GCE machine runtime instance: %w", err)
+	}
+
+	// the married instance has not been created yet, so there is nothing to
+	// propagate to; requeue so the abstract create path can create it first
+	if len(*gcpGceMachineRuntimeInstances) < 1 {
+		return sshRetryDelaySeconds, nil
+	}
+	gcpGceMachineRuntimeInstance := (*gcpGceMachineRuntimeInstances)[0]
+
+	// propagate a changed ssh user to the married instance so its reconciler
+	// runs a pulumi up that applies the new ssh metadata in place; clear
+	// Reconciled so the resulting patch publishes an update notification
+	if sshUserChanged(machineRuntimeInstance.SSHUser, gcpGceMachineRuntimeInstance.SSHUser) {
+		if _, err := client.UpdateGcpGceMachineRuntimeInstance(
+			r.APIClient,
+			r.APIServer,
+			&v0.GcpGceMachineRuntimeInstance{
+				Common:         v0.Common{ID: gcpGceMachineRuntimeInstance.ID},
+				Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(false)},
+				SSHUser:        machineRuntimeInstance.SSHUser,
+			},
+		); err != nil {
+			return controller.RetryOnNetworkErr(err, "failed to propagate ssh user to married GCE machine runtime instance")
+		}
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeNormal),
+				Reason: util.Ptr("SSHUserUpdated"),
+				Note:   util.Ptr(fmt.Sprintf("propagated updated ssh user to machine runtime instance %s", *machineRuntimeInstance.Name)),
+			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh user update")
+		}
+	}
+
+	// a changed ssh key only affects how this control plane authenticates, so
+	// validate it by re-running connect and ping against the machine
+	keyChanged, err := sshKeyChanged(r.EncryptionKey, machineRuntimeInstance.SSHKey, gcpGceMachineRuntimeInstance.SSHKey)
+	if err != nil {
+		return 0, fmt.Errorf("failed to compare ssh keys: %w", err)
+	}
+	if keyChanged {
+		return verifyMachineReachable(r, machineRuntimeInstance, log)
+	}
+
+	return 0, nil
+}
+
+// sshUserChanged reports whether the fetched ssh user differs from the value
+// last propagated to the married provider instance. A nil pointer is treated as
+// no value so a clear and an unset compare equal.
+func sshUserChanged(fetched, propagated *string) bool {
+	fetchedVal := ""
+	if fetched != nil {
+		fetchedVal = *fetched
+	}
+	propagatedVal := ""
+	if propagated != nil {
+		propagatedVal = *propagated
+	}
+	return fetchedVal != propagatedVal
+}
+
+// sshKeyChanged reports whether the fetched ssh key differs from the value last
+// propagated to the married provider instance. Both keys are stored encrypted
+// with non-deterministic ciphertext, so they are decrypted before comparison; a
+// nil pointer is treated as an empty key so a clear and an unset compare equal.
+func sshKeyChanged(encryptionKey string, fetched, propagated *string) (bool, error) {
+	fetchedKey := ""
+	if fetched != nil && *fetched != "" {
+		decrypted, err := encryption.Decrypt(encryptionKey, *fetched)
+		if err != nil {
+			return false, fmt.Errorf("failed to decrypt fetched ssh key: %w", err)
+		}
+		fetchedKey = decrypted
+	}
+	propagatedKey := ""
+	if propagated != nil && *propagated != "" {
+		decrypted, err := encryption.Decrypt(encryptionKey, *propagated)
+		if err != nil {
+			return false, fmt.Errorf("failed to decrypt propagated ssh key: %w", err)
+		}
+		propagatedKey = decrypted
+	}
+	return fetchedKey != propagatedKey, nil
+}
+
+// verifyMachineReachable re-runs the ssh connect and ping against the machine
+// to confirm the current credentials reach it, recording an event reflecting
+// the result. It defers the dial until the machine has a hostname so an
+// instance updated before provisioning requeues without erroring.
+func verifyMachineReachable(
+	r *controller.Reconciler,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	log *logr.Logger,
+) (int64, error) {
+	// defer the ssh dial until the machine has a hostname so an instance
+	// updated before provisioning requeues without erroring
+	if machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "" {
+		return unpopulatedRequeueDelaySeconds, nil
+	}
+
+	// bound all ssh operations in this reconcile pass so a partitioned or
+	// hanging host cannot stall the reconciler indefinitely
+	ctx, cancel := newReconcileContext()
+	defer cancel()
+
+	// establish an ssh connection to the machine with the current credentials
+	sshClient, _, err := getClientWithContext(ctx, machineRuntimeInstance, r.EncryptionKey)
+	if err != nil {
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHConnectFailed"),
+				Note:   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)),
+			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh connect error")
+		}
+		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+	}
+	defer sshClient.Close()
+
+	// verify the connection is usable
+	if err := pingWithContext(ctx, sshClient); err != nil {
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHPingFailed"),
+				Note:   util.Ptr(fmt.Sprintf("failed to ping machine runtime instance: %s", err)),
+			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh ping error")
+		}
+		return sshRetryDelaySeconds, fmt.Errorf("failed to ping machine runtime instance: %w", err)
+	}
+
+	// record successful reachability event
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr("SSHReachable"),
+			Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s is reachable via ssh", *machineRuntimeInstance.Name)),
+		},
+		*machineRuntimeInstance.ID,
+		machineRuntimeInstance.GetFullyQualifiedType(),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for ssh reachable")
+	}
+
 	return 0, nil
 }
 

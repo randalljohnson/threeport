@@ -3,11 +3,16 @@
 package gcp
 
 import (
+	"fmt"
+
 	logr "github.com/go-logr/logr"
+	"gorm.io/datatypes"
 
 	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // v0GcpGceMachineRuntimeInstanceCreated performs reconciliation when a v0 GcpGceMachineRuntimeInstance
@@ -26,14 +31,97 @@ func v0GcpGceMachineRuntimeInstanceCreated(
 	return provider.HandleInfraCreate(p, &reconLog)
 }
 
-// v0GcpGceMachineRuntimeInstanceUpdated performs reconciliation when a v0 GcpGceMachineRuntimeInstance
-// has been updated.
+// v0GcpGceMachineRuntimeInstanceUpdated performs reconciliation when a v0
+// GcpGceMachineRuntimeInstance has been updated. There is no separate
+// update-infra path: a pulumi up against the existing stack applies any diff in
+// the in-place-mutable fields (the ssh source ranges that shape the firewall
+// and the ssh user that shapes the instance metadata). The reconciler re-enters
+// the create state machine with the creation confirmation cleared so it
+// re-acknowledges and re-launches the create goroutine, which restores the
+// saved stack state and runs the up that applies the diff.
 func v0GcpGceMachineRuntimeInstanceUpdated(
 	r *controller.Reconciler,
 	gcpGceMachineRuntimeInstance *v0.GcpGceMachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	return 0, nil
+	reconLog := log.WithValues(
+		"gcpGceMachineRuntimeInstanceID", *gcpGceMachineRuntimeInstance.ID,
+		"gcpGceMachineRuntimeInstanceName", *gcpGceMachineRuntimeInstance.Name,
+	)
+
+	// re-enter the create state machine through an adapter that reports the
+	// creation as unconfirmed so the up re-applies the diff; the persisted
+	// confirmation timestamp cannot be cleared through the patch path, so the
+	// reset lives in the snapshot the create handler reads
+	base := newGceMachineLifecycleProvider(r, gcpGceMachineRuntimeInstance, &reconLog)
+	return provider.HandleInfraCreate(&gceMachineUpdateLifecycle{gceMachineLifecycle: base}, &reconLog)
+}
+
+// gceMachineUpdateLifecycle adapts the create lifecycle for an update pass by
+// reporting the creation as unconfirmed and unacknowledged. The resource
+// inventory is preserved so the create goroutine restores the saved stack state
+// and the up applies a diff rather than provisioning fresh. The save callback
+// is overridden to mark the instance reconciled once the up succeeds, since the
+// update pass relaunches the up but never reaches the confirm step that a first
+// create uses to settle the object.
+type gceMachineUpdateLifecycle struct {
+	*gceMachineLifecycle
+}
+
+// GetReconciliation fetches the latest reconciliation state and, while the
+// instance is unreconciled, clears the creation confirmation and acknowledgement
+// so the create state machine falls through to re-acknowledge and re-launch the
+// up rather than short-circuiting on the prior create. The resource inventory is
+// left intact so the up diffs against the saved stack state. Once the up settles
+// and marks the instance reconciled, the snapshot is returned unchanged so a
+// requeued update pass no-ops instead of relaunching the up indefinitely.
+func (g *gceMachineUpdateLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
+	snap, err := g.gceMachineLifecycle.GetReconciliation()
+	if err != nil {
+		return nil, err
+	}
+
+	// the latest reconciled flag distinguishes a pending update from a settled
+	// one; an in-place field change clears it to request the up, and the up's
+	// save callback sets it once the diff is applied
+	latest, err := client.GetGcpGceMachineRuntimeInstanceByID(
+		g.gceMachineLifecycle.r.APIClient,
+		g.gceMachineLifecycle.r.APIServer,
+		g.gceMachineLifecycle.instanceID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GCE instance reconciled state: %w", err)
+	}
+	if latest.Reconciled != nil && *latest.Reconciled {
+		return snap, nil
+	}
+
+	snap.CreationConfirmed = nil
+	snap.CreationAcknowledged = nil
+	return snap, nil
+}
+
+// SaveCreateOutputs persists the surfaced outputs as the create lifecycle does,
+// then marks the instance reconciled so the update settles. The first create
+// defers the reconciled flag to its confirm step, but the update pass relaunches
+// the up without reaching that step, so the flag is set here once the up
+// succeeds.
+func (g *gceMachineUpdateLifecycle) SaveCreateOutputs(infra provider.InfraProvider, state *datatypes.JSON) error {
+	if err := g.gceMachineLifecycle.SaveCreateOutputs(infra, state); err != nil {
+		return err
+	}
+	reconciledUpdate := v0.GcpGceMachineRuntimeInstance{
+		Common:         v0.Common{ID: g.gceMachineLifecycle.instance.ID},
+		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+	}
+	if _, err := client.UpdateGcpGceMachineRuntimeInstance(
+		g.gceMachineLifecycle.r.APIClient,
+		g.gceMachineLifecycle.r.APIServer,
+		&reconciledUpdate,
+	); err != nil {
+		return fmt.Errorf("failed to mark GCE instance reconciled after update: %w", err)
+	}
+	return nil
 }
 
 // v0GcpGceMachineRuntimeInstanceDeleted performs reconciliation when a v0 GcpGceMachineRuntimeInstance

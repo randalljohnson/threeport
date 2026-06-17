@@ -187,9 +187,23 @@ func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, st
 	return nil
 }
 
-// OnDeleteConfirmed performs provider-specific post-deletion cleanup.
-func (g *gceMachineLifecycle) OnDeleteConfirmed(_ provider.InfraProvider) error {
-	return nil
+// OnDeleteConfirmed validates against the compute API that the machine's VM and
+// firewall are actually gone after destroy, and reclaims any the destroy left
+// behind, so a checkpoint that drifted out of sync with the cloud cannot confirm
+// a deletion that abandoned a live resource.
+func (g *gceMachineLifecycle) OnDeleteConfirmed(infra provider.InfraProvider) error {
+	gceInfra, ok := infra.(*machine.GceMachineInfra)
+	if !ok {
+		return fmt.Errorf(
+			"failed to reclaim GCE orphans: expected *machine.GceMachineInfra, got %T",
+			infra,
+		)
+	}
+	cloud, err := newComputeOrphanReclaimCloud(gceInfra)
+	if err != nil {
+		return err
+	}
+	return reclaimOrphans(cloud)
 }
 
 // AckCreation sets CreationAcknowledged and clears CreationFailed.

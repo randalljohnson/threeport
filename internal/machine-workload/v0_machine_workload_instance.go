@@ -16,6 +16,7 @@ import (
 
 	status "github.com/threeport/threeport/internal/kubernetes-workload/status"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
@@ -151,10 +152,18 @@ func v0MachineWorkloadInstanceUpdated(
 	return 0, nil
 }
 
+// unreachableDeleteGracePeriod bounds how long the delete path keeps retrying
+// while the host is unreachable. Once deletion has been scheduled for longer
+// than this, the host is treated as gone and the delete is allowed to confirm
+// rather than requeue forever. Package-level so tests can shrink it.
+var unreachableDeleteGracePeriod = 15 * time.Minute
+
 // v0MachineWorkloadInstanceDeleted performs reconciliation when a v0
-// MachineWorkloadInstance has been deleted.  It runs the delete script from the
+// MachineWorkloadInstance has been deleted. It runs the delete script from the
 // associated definition before the generated reconciler removes the instance
-// from the database.
+// from the database. When the host machine has already been deleted, or when
+// the host stays unreachable past the grace period, it lets the delete confirm
+// so a workload is not stuck waiting on a machine that is gone.
 func v0MachineWorkloadInstanceDeleted(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
@@ -170,17 +179,75 @@ func v0MachineWorkloadInstanceDeleted(
 		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
 	}
 
-	// get related machine runtime instance
+	// the delete script is a required column, but guard against a nil pointer so
+	// a malformed definition returns an error rather than panicking on deref
+	if mwd.DeleteScript == nil {
+		return 0, fmt.Errorf("machine workload definition %d has no delete script", *mwd.ID)
+	}
+
+	// get related machine runtime instance; when the host has already been
+	// deleted, there is nothing to run the delete script against, so record an
+	// info event and let the delete confirm
 	mri, err := client.GetMachineRuntimeInstanceByID(
 		r.APIClient,
 		r.APIServer,
 		*machineWorkloadInstance.MachineRuntimeInstanceID,
 	)
 	if err != nil {
+		if errors.Is(err, client_lib.ErrObjectNotFound) {
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeNormal),
+					Reason: util.Ptr("MachineRuntimeGone"),
+					Note:   util.Ptr("host machine runtime instance is already deleted; confirming machine workload instance deletion without running the delete script"),
+				},
+				*machineWorkloadInstance.ID,
+				machineWorkloadInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for missing host machine runtime instance")
+			}
+			return 0, nil
+		}
 		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
 	}
 
-	// run the delete script and record results
+	// probe reachability before running the delete script so an unreachable
+	// host is handled distinctly from a script that ran and failed. when the
+	// host stays unreachable past the grace period since deletion was scheduled,
+	// allow the delete to confirm so a workload is not stuck forever waiting on
+	// a host that will not come back
+	probeClient, _, err := machine.GetClient(mri, r.EncryptionKey)
+	if err != nil {
+		if deletionScheduledExceeds(machineWorkloadInstance.DeletionScheduled, unreachableDeleteGracePeriod) {
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeWarning),
+					Reason: util.Ptr("DeleteScriptSkipped"),
+					Note:   util.Ptr("host stayed unreachable past the delete grace period; confirming deletion without a successful delete script run"),
+				},
+				*machineWorkloadInstance.ID,
+				machineWorkloadInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for skipped delete script")
+			}
+			return 0, nil
+		}
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHConnectFailed"),
+				Note:   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance to run delete script: %s", err)),
+			},
+			*machineWorkloadInstance.ID,
+			machineWorkloadInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh connect error")
+		}
+		return 30, fmt.Errorf("failed to connect to machine runtime instance to run delete script: %w", err)
+	}
+	probeClient.Close()
+
+	// host is reachable, so run the delete script and record results
 	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
 
 	// requeue in 30s on failure so the script is retried
@@ -189,6 +256,16 @@ func v0MachineWorkloadInstanceDeleted(
 	}
 
 	return 0, nil
+}
+
+// deletionScheduledExceeds reports whether the time since deletion was
+// scheduled is greater than grace. A nil timestamp means deletion has not been
+// recorded as scheduled yet, so the grace period has not been exceeded.
+func deletionScheduledExceeds(deletionScheduled *time.Time, grace time.Duration) bool {
+	if deletionScheduled == nil {
+		return false
+	}
+	return time.Since(*deletionScheduled) > grace
 }
 
 // runScript establishes an SSH connection to the machine runtime, executes the

@@ -561,6 +561,13 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 			"install %s API server service",
 			moduleNameKebab,
 		))
+		g.Comment("serve mtls over https when auth is enabled, plain http otherwise")
+		g.Id("apiServicePortName").Op(":=").Lit("http")
+		g.Id("apiServicePort").Op(":=").Lit(80)
+		g.If(Id("i").Dot("AuthEnabled")).Block(
+			Id("apiServicePortName").Op("=").Lit("https"),
+			Id("apiServicePort").Op("=").Lit(443),
+		)
 		g.Var().Id(fmt.Sprintf(
 			"%sApiService",
 			moduleNameLowerCamel,
@@ -581,8 +588,8 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 				Lit("spec"): Map(String()).Interface().Values(Dict{
 					Lit("ports"): Index().Interface().Values(
 						Line().Map(String()).Interface().Values(Dict{
-							Lit("name"):       Lit("http"),
-							Lit("port"):       Lit(80),
+							Lit("name"):       Id("apiServicePortName"),
+							Lit("port"):       Id("apiServicePort"),
 							Lit("protocol"):   Lit("TCP"),
 							Lit("targetPort"): Lit(1323),
 						}).Op(",").Line(),

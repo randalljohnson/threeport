@@ -382,3 +382,21 @@ func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey s
 	i.externalIP = externalIP
 	i.sshPrivateKeyPEM = sshPrivateKey
 }
+
+// SeedSSHKeyPair seeds a previously persisted private key onto the provider and
+// derives its authorized-keys public form, so a rebuilt provider reuses the
+// stored key on the next deploy instead of minting a fresh pair and rotating
+// the instance's authorized key away from it. The public key is derived rather
+// than persisted separately so no extra stored field is needed.
+func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
+	if sshPrivateKeyPEM == "" {
+		return fmt.Errorf("cannot seed SSH key pair from empty private key")
+	}
+	signer, err := ssh.ParsePrivateKey([]byte(sshPrivateKeyPEM))
+	if err != nil {
+		return fmt.Errorf("failed to parse persisted SSH private key: %w", err)
+	}
+	i.sshPrivateKeyPEM = sshPrivateKeyPEM
+	i.sshPublicKeyAuthorized = string(ssh.MarshalAuthorizedKey(signer.PublicKey()))
+	return nil
+}

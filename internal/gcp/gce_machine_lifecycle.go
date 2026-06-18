@@ -423,5 +423,20 @@ func buildGceMachineInfra(
 		infraGce.ServiceAccountCredentials = decryptedCredentials
 	}
 
+	// rehydrate the persisted SSH key onto the rebuilt provider so a re-deploy
+	// reuses it instead of minting a fresh pair and rotating the instance's
+	// authorized key away from the key this control plane holds. The stored key
+	// is encrypted at rest, so decrypt it first; it is unset on a clean first
+	// create, in which case the provider generates a new pair.
+	if instance.SSHKey != nil && *instance.SSHKey != "" {
+		decryptedKey, err := encryption.Decrypt(r.EncryptionKey, *instance.SSHKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt persisted GCE SSH key: %w", err)
+		}
+		if err := infraGce.SeedSSHKeyPair(decryptedKey); err != nil {
+			return nil, fmt.Errorf("failed to seed persisted GCE SSH key: %w", err)
+		}
+	}
+
 	return infraGce, nil
 }

@@ -275,7 +275,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							},
 						),
 						If(
-							Id("result").Op(":=").Do(func(s *Statement) {
+							Id("result").Op(":=").Add(wrapSerializationRetry(Do(func(s *Statement) {
 								if gen.Module {
 									s.Id("h").Dot("Handler")
 								} else {
@@ -285,7 +285,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)),
 							).Dot("Updates").Call(
 								Op("&").Id(fmt.Sprintf("scheduled%s", apiObject.TypeName)),
-							),
+							))),
 							Id("result").Dot("Error").Op("!=").Nil(),
 						).BlockFunc(func(h *Group) {
 							if gen.Module {
@@ -370,13 +370,13 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Comment("object scheduled for deletion and confirmed - it can be deleted"),
 							Comment("from DB"),
 							If(
-								Id("result").Op(":=").Do(func(s *Statement) {
+								Id("result").Op(":=").Add(wrapSerializationRetry(Do(func(s *Statement) {
 									if gen.Module {
 										s.Id("h").Dot("Handler")
 									} else {
 										s.Id("h")
 									}
-								}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
+								}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))))),
 								Id("result").Dot("Error").Op("!=").Nil(),
 							).BlockFunc(func(h *Group) {
 								if gen.Module {
@@ -420,13 +420,13 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					deleteObjectExecution = Comment("delete object")
 					deleteObjectExecution.Line()
 					deleteObjectExecution.If(
-						Id("result").Op(":=").Do(func(s *Statement) {
+						Id("result").Op(":=").Add(wrapSerializationRetry(Do(func(s *Statement) {
 							if gen.Module {
 								s.Id("h").Dot("Handler")
 							} else {
 								s.Id("h")
 							}
-						}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))),
+						}).Dot("RequestDB").Call(Id("c")).Dot("Delete").Call(Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName))))),
 						Id("result").Dot("Error").Op("!=").Nil(),
 					).BlockFunc(func(h *Group) {
 						if gen.Module {
@@ -820,7 +820,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					g.Line()
 					g.Add(checkDuplicateNames)
 					g.Comment("persist to DB")
-					g.If(Id("result").Op(":=").Do(func(s *Statement) {
+					g.If(Id("result").Op(":=").Add(wrapSerializationRetry(Do(func(s *Statement) {
 						if gen.Module {
 							s.Id("h").Dot("Handler")
 						} else {
@@ -828,7 +828,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						}
 					}).Dot("RequestDB").Call(Id("c")).Dot("Create").Call(
 						Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)),
-					).Op(";").Id("result").Dot("Error").Op("!=").Nil()).BlockFunc(func(h *Group) {
+					))).Op(";").Id("result").Dot("Error").Op("!=").Nil()).BlockFunc(func(h *Group) {
 						if gen.Module {
 							h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
 								Lit("handler error: error creating object"),
@@ -1633,7 +1633,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					g.Line()
 					g.Comment("update object in database")
 					g.If(
-						Id("result").Op(":=").Do(func(s *Statement) {
+						Id("result").Op(":=").Add(wrapSerializationRetry(Do(func(s *Statement) {
 							if gen.Module {
 								s.Id("h").Dot("Handler")
 							} else {
@@ -1643,7 +1643,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)),
 						).Dot("Updates").Call(
 							Op("&").Id(fmt.Sprintf("updated%s", apiObject.TypeName)),
-						).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
+						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
 							if gen.Module {
 								h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
 									Lit("handler error: error updating object"),
@@ -1965,7 +1965,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					g.Comment("persist provided data")
 					g.Id(fmt.Sprintf("updated%s", apiObject.TypeName)).Dot("ID").Op("=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("ID")
 					g.If(
-						Id("result").Op(":=").Do(func(s *Statement) {
+						Id("result").Op(":=").Add(wrapSerializationRetry(Do(func(s *Statement) {
 							if gen.Module {
 								s.Id("h").Dot("Handler")
 							} else {
@@ -1981,7 +1981,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Lit("CreatedAt").Op(",").Lit("DeletedAt"),
 						).Dot("Save").Call(
 							Op("&").Id(fmt.Sprintf("updated%s", apiObject.TypeName)),
-						).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
+						))).Op(";").Id("result").Dot("Error").Op("!=").Nil().BlockFunc(func(h *Group) {
 							if gen.Module {
 								h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
 									Lit("handler error: error persisting object"),
@@ -2328,4 +2328,19 @@ func emitPreCheckBlockingRefs(s *Statement, objVar string, module bool) {
 		).Call(Id("c"), Nil(), Id("checkErr"), Id("objectType"))),
 	)
 	s.Line()
+}
+
+// wrapSerializationRetry wraps a database write expression so the generated
+// handler re-runs it when CockroachDB aborts the transaction with a
+// serialization conflict. The wrapped call returns the *gorm.DB of the final
+// attempt, so the caller keeps inspecting result.Error as before.
+func wrapSerializationRetry(writeChain *Statement) *Statement {
+	return Qual(
+		"github.com/threeport/threeport/pkg/api-server/lib/v0",
+		"RetryOnSerializationFailure",
+	).Call(
+		Func().Params().Op("*").Qual("gorm.io/gorm", "DB").Block(
+			Return(writeChain),
+		),
+	)
 }

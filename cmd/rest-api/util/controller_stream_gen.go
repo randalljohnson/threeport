@@ -18,6 +18,7 @@ import (
 	notif "github.com/threeport/threeport/internal/oci/notif"
 	secret_notif "github.com/threeport/threeport/internal/secret/notif"
 	terraform_notif "github.com/threeport/threeport/internal/terraform/notif"
+	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 )
 
 // Initialize the NATS Jet stream context with controller streams
@@ -27,109 +28,109 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		return nil, fmt.Errorf("failed to create jetstream context: %w", err)
 	}
 
-	// add controller streams
-	_, err = js.AddStream(&nats.StreamConfig{
+	// add controller streams idempotently so a rest-api restart succeeds
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     secret_notif.SecretStreamName,
 		Subjects: secret_notif.GetSecretSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", secret_notif.SecretStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", secret_notif.SecretStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     aws_notif.AwsStreamName,
 		Subjects: aws_notif.GetAwsSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", aws_notif.AwsStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", aws_notif.AwsStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     notif.OciStreamName,
 		Subjects: notif.GetOciSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", notif.OciStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", notif.OciStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     notif1.GcpStreamName,
 		Subjects: notif1.GetGcpSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", notif1.GcpStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", notif1.GcpStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     controlplane_notif.ControlPlaneStreamName,
 		Subjects: controlplane_notif.GetControlPlaneSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", controlplane_notif.ControlPlaneStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", controlplane_notif.ControlPlaneStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     gateway_notif.GatewayStreamName,
 		Subjects: gateway_notif.GetGatewaySubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", gateway_notif.GatewayStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", gateway_notif.GatewayStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     helmworkload_notif.HelmWorkloadStreamName,
 		Subjects: helmworkload_notif.GetHelmWorkloadSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", helmworkload_notif.HelmWorkloadStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", helmworkload_notif.HelmWorkloadStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     notif2.MachineRuntimeStreamName,
 		Subjects: notif2.GetMachineRuntimeSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", notif2.MachineRuntimeStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", notif2.MachineRuntimeStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     notif3.MachineWorkloadStreamName,
 		Subjects: notif3.GetMachineWorkloadSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", notif3.MachineWorkloadStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", notif3.MachineWorkloadStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     kubernetesruntime_notif.KubernetesRuntimeStreamName,
 		Subjects: kubernetesruntime_notif.GetKubernetesRuntimeSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", kubernetesruntime_notif.KubernetesRuntimeStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", kubernetesruntime_notif.KubernetesRuntimeStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     observability_notif.ObservabilityStreamName,
 		Subjects: observability_notif.GetObservabilitySubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", observability_notif.ObservabilityStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", observability_notif.ObservabilityStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     terraform_notif.TerraformStreamName,
 		Subjects: terraform_notif.GetTerraformSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", terraform_notif.TerraformStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", terraform_notif.TerraformStreamName, err)
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
+	err = notifications.EnsureStream(js, &nats.StreamConfig{
 		Name:     kubernetesworkload_notif.KubernetesWorkloadStreamName,
 		Subjects: kubernetesworkload_notif.GetKubernetesWorkloadSubjects(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not add stream %s: %w", kubernetesworkload_notif.KubernetesWorkloadStreamName, err)
+		return nil, fmt.Errorf("could not ensure stream %s: %w", kubernetesworkload_notif.KubernetesWorkloadStreamName, err)
 	}
 
 	return &js, nil

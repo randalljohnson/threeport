@@ -3,7 +3,10 @@ package v0
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+
+	"github.com/nats-io/nats.go"
 )
 
 // NotificationOperation informs a reconciler what operation was performed in
@@ -39,6 +42,29 @@ type Notification struct {
 	// version of the object has been delivered in the notification payload so
 	// as to process it properly.
 	ObjectVersion string
+}
+
+// EnsureStream adds the JetStream stream described by config, reconciling its
+// settings when the stream already exists so that initialization is idempotent
+// across rest-api restarts. A stream persists in JetStream independent of the
+// pod, so a plain add on every start fails once the stream has been created on a
+// prior start.
+func EnsureStream(js nats.JetStreamContext, config *nats.StreamConfig) error {
+	// add the stream on first start
+	_, err := js.AddStream(config)
+	if err == nil {
+		return nil
+	}
+
+	// treat an already-existing stream as success and reconcile its config
+	if errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
+		if _, updateErr := js.UpdateStream(config); updateErr != nil {
+			return fmt.Errorf("failed to update existing stream %s: %w", config.Name, updateErr)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("failed to add stream %s: %w", config.Name, err)
 }
 
 // ConsumeMessage generates a Notificatiion object from a json notification from

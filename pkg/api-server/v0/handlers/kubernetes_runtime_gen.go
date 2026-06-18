@@ -79,7 +79,9 @@ func (h Handler) AddKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&kubernetesRuntimeDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&kubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -322,7 +324,9 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingKubernetesRuntimeDefinition).Updates(&updatedKubernetesRuntimeDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingKubernetesRuntimeDefinition).Updates(&updatedKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -411,7 +415,9 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedKubernetesRuntimeDefinition.ID = existingKubernetesRuntimeDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -498,7 +504,9 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&kubernetesRuntimeDefinition).Updates(&scheduledKubernetesRuntimeDefinition); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&kubernetesRuntimeDefinition).Updates(&scheduledKubernetesRuntimeDefinition)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -524,7 +532,9 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&kubernetesRuntimeDefinition); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&kubernetesRuntimeDefinition)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -622,7 +632,9 @@ func (h Handler) AddKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&kubernetesRuntimeInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&kubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -865,7 +877,9 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingKubernetesRuntimeInstance).Updates(&updatedKubernetesRuntimeInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingKubernetesRuntimeInstance).Updates(&updatedKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -954,7 +968,9 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedKubernetesRuntimeInstance.ID = existingKubernetesRuntimeInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1035,7 +1051,9 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&kubernetesRuntimeInstance).Updates(&scheduledKubernetesRuntimeInstance); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&kubernetesRuntimeInstance).Updates(&scheduledKubernetesRuntimeInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -1061,7 +1079,9 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&kubernetesRuntimeInstance); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&kubernetesRuntimeInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError

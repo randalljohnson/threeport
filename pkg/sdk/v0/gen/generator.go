@@ -14,8 +14,8 @@ import (
 	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
-	api "github.com/threeport/threeport/pkg/api/v0"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	sdkutil "github.com/threeport/threeport/pkg/sdk/v0/util"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -59,12 +59,14 @@ type Generator struct {
 	// Shape: typeName -> fieldName -> tagKey -> tagValue.
 	EmbedTypes map[string]map[string]map[string]string
 
-	// RelationshipDependencies maps each API type to the API types its
-	// relationship-tagged foreign keys reference. Built by scanning every
-	// model source file, so it captures types whose tags do not land in any
-	// ApiObjectGroup's StructTags (route-excluded types and types split into
-	// auxiliary source files). The migration sort reads this to order
-	// referenced tables ahead of referencing tables.
+	// RelationshipDependencies maps each API type to the API types its table's
+	// foreign-key columns reference, following where gorm places those columns:
+	// a has-many slice keys the child, a belongs-to association keys the owning
+	// struct, and a bare key column with no association field adds no edge.
+	// Built by scanning every model source file, so it captures types whose
+	// associations do not land in any ApiObjectGroup's StructTags (route-excluded
+	// types and types split into auxiliary source files). The migration sort
+	// reads this to order referenced tables ahead of referencing tables.
 	// Shape: referencingType -> []referencedType.
 	RelationshipDependencies map[string][]string
 }
@@ -1164,8 +1166,8 @@ func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]st
 }
 
 // SortDatabaseInitNamesByDependency returns names reordered so that every
-// referenced type precedes the types whose relationship-tagged foreign keys
-// point at it. gorm AutoMigrate creates each model's foreign-key constraints
+// referenced type precedes the types whose foreign-key columns point at it.
+// gorm AutoMigrate creates each model's foreign-key constraints
 // as it walks the slice, so a referenced table must appear before any model
 // that references it or the migration fails with a missing-relation error.
 // Ties are broken alphabetically so the generated order is stable across runs.
@@ -1237,30 +1239,92 @@ func (g *Generator) SortDatabaseInitNamesByDependency(names []string) []string {
 }
 
 // parseRelationshipDependencies scans every model source file in dir and
-// returns each struct's relationship-tagged foreign-key references, keyed by
-// struct name. Generated, validation, and test files are skipped so only
-// hand-authored model definitions contribute. The referenced type comes from
-// the relationship tag's type modifier when present, otherwise from the field
-// name with its ID suffix stripped, matching the foreign-key naming
-// convention.
+// returns each struct's foreign-key dependencies keyed by struct name, where a
+// dependency means the struct's table carries a foreign-key column referencing
+// the named type and so must be migrated after it. The edges mirror where gorm
+// places foreign-key columns rather than the relationship tags: a has-many
+// slice field puts the key on the child, and a belongs-to association field
+// puts the key on the owning struct. A bare key field with no association field
+// is a plain column that gorm does not constrain, so it contributes no edge.
+// Generated, validation, and test files are skipped so only hand-authored model
+// definitions contribute.
 func parseRelationshipDependencies(dir string) (map[string][]string, error) {
+	structs, err := parseModelStructs(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	// the set of model type names in this directory bounds association
+	// detection: only fields whose element or singular type names another
+	// local model produce a gorm foreign key inside this migration list
+	modelNames := make(map[string]bool, len(structs))
+	for name := range structs {
+		modelNames[name] = true
+	}
+
+	dependencies := map[string][]string{}
+	for typeName, structType := range structs {
+		// collect the struct's key field names so a singular association can
+		// be confirmed to carry a matching XID column before it counts as a
+		// belongs-to that places the foreign key on this struct
+		keyFields := make(map[string]bool)
+		for _, field := range structType.Fields.List {
+			for _, name := range field.Names {
+				if strings.HasSuffix(name.Name, "ID") {
+					keyFields[name.Name] = true
+				}
+			}
+		}
+
+		for _, field := range structType.Fields.List {
+			// embedded fields carry no name and never declare an association
+			if len(field.Names) == 0 {
+				continue
+			}
+
+			// a has-many slice puts the foreign key on the child, so the child
+			// depends on this parent
+			if child, ok := sliceElementModel(field.Type, modelNames); ok {
+				dependencies[child] = append(dependencies[child], typeName)
+				continue
+			}
+
+			// a belongs-to singular association puts the foreign key on this
+			// struct, so this struct depends on the referenced type; require a
+			// matching XID key field so a plain unconstrained column does not
+			// register as an association
+			if referenced, ok := singularModel(field.Type, modelNames); ok {
+				if keyFields[referenced+"ID"] {
+					dependencies[typeName] = append(dependencies[typeName], referenced)
+				}
+			}
+		}
+	}
+
+	return dependencies, nil
+}
+
+// parseModelStructs returns every hand-authored struct type declared in dir
+// keyed by type name. Generated, validation, and test files are skipped so the
+// set matches the model definitions that drive migration ordering.
+func parseModelStructs(dir string) (map[string]*ast.StructType, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		// a missing version directory is not fatal; nothing to scan
 		if os.IsNotExist(err) {
-			return map[string][]string{}, nil
+			return map[string]*ast.StructType{}, nil
 		}
 		return nil, fmt.Errorf("failed to read model directory %s: %w", dir, err)
 	}
 
-	dependencies := map[string][]string{}
+	structs := map[string]*ast.StructType{}
 	for _, entry := range entries {
 		fileName := entry.Name()
 		if entry.IsDir() || !strings.HasSuffix(fileName, ".go") {
 			continue
 		}
 		// skip non-model files: generated code, validators, and tests carry
-		// no hand-authored relationship tags
+		// no hand-authored model definitions
 		if strings.HasSuffix(fileName, "_gen.go") ||
 			strings.HasSuffix(fileName, "_test.go") ||
 			strings.HasSuffix(fileName, "_validate.go") {
@@ -1288,34 +1352,51 @@ func parseRelationshipDependencies(dir string) (map[string][]string, error) {
 				if !ok {
 					continue
 				}
-				typeName := typeSpec.Name.Name
-				for _, field := range structType.Fields.List {
-					if field.Tag == nil || len(field.Names) == 0 {
-						continue
-					}
-					tagMap := util.ParseStructTag(field.Tag.Value)
-					rel, ok := tagMap[string(lib.RelationshipTag)]
-					if !ok || rel == "" {
-						continue
-					}
-					fieldName := field.Names[0].Name
-					_, modifiers, _ := ParseRelationshipTagValue(rel)
-					if referenced, hasType := modifiers[lib.RelationshipTypeKey]; hasType {
-						dependencies[typeName] = append(dependencies[typeName], referenced)
-						continue
-					}
-					if strings.HasSuffix(fieldName, "ID") {
-						dependencies[typeName] = append(
-							dependencies[typeName],
-							strings.TrimSuffix(fieldName, "ID"),
-						)
-					}
-				}
+				structs[typeSpec.Name.Name] = structType
 			}
 		}
 	}
 
-	return dependencies, nil
+	return structs, nil
+}
+
+// sliceElementModel reports the local model type named by a has-many slice
+// field. It matches []*Model and []Model element types and ignores slices of
+// non-model or cross-package element types, which place no foreign key inside
+// this migration list.
+func sliceElementModel(expr ast.Expr, modelNames map[string]bool) (string, bool) {
+	arrayType, ok := expr.(*ast.ArrayType)
+	if !ok || arrayType.Len != nil {
+		return "", false
+	}
+	if name, ok := identModel(arrayType.Elt, modelNames); ok {
+		return name, true
+	}
+	return "", false
+}
+
+// singularModel reports the local model type named by a singular association
+// field. It matches *Model and Model field types and ignores embedded or
+// cross-package types, which carry a package qualifier rather than a bare
+// identifier.
+func singularModel(expr ast.Expr, modelNames map[string]bool) (string, bool) {
+	return identModel(expr, modelNames)
+}
+
+// identModel reports the model type named by a bare identifier or pointer to a
+// bare identifier when that name belongs to the local model set.
+func identModel(expr ast.Expr, modelNames map[string]bool) (string, bool) {
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	ident, ok := expr.(*ast.Ident)
+	if !ok {
+		return "", false
+	}
+	if modelNames[ident.Name] {
+		return ident.Name, true
+	}
+	return "", false
 }
 
 // validateRelationshipTag returns one error per problem in a relationship

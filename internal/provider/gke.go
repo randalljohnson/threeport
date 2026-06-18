@@ -188,10 +188,21 @@ func (i *KubernetesRuntimeInfraGKE) DestroyInfra() error {
 // pulumiProgram defines the Pulumi resources for the GKE stack.
 func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
-		gcpProvider, err := gcp.NewProvider(ctx, "gcp-provider", &gcp.ProviderArgs{
+		// thread service account credentials directly into the GCP provider
+
+		// for this stack rather than relying on a process-global env var.
+		// Two concurrent GKE creates for different service accounts each get
+		// their own provider credentials, matching how the OKE provider
+		// threads its config provider per stack.
+		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
-		})
+		}
+		if i.ServiceAccountCredentials != "" {
+			providerArgs.Credentials = pulumi.String(i.ServiceAccountCredentials)
+		}
+
+		gcpProvider, err := gcp.NewProvider(ctx, "gcp-provider", providerArgs)
 		if err != nil {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
@@ -364,13 +375,13 @@ func (i *KubernetesRuntimeInfraGKE) DeleteGCPResources() error {
 	ctx := context.Background()
 
 	// Create IAM service client
-	iamService, err := iam.NewService(ctx, option.WithScopes(iam.CloudPlatformScope))
+	iamService, err := iam.NewService(ctx, i.gcpClientOptions(option.WithScopes(iam.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM service client: %w", err)
 	}
 
 	// Create Cloud Resource Manager service client for IAM bindings
-	crmService, err := cloudresourcemanager.NewService(ctx, option.WithScopes(cloudresourcemanager.CloudPlatformScope))
+	crmService, err := cloudresourcemanager.NewService(ctx, i.gcpClientOptions(option.WithScopes(cloudresourcemanager.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create Cloud Resource Manager service client: %w", err)
 	}
@@ -402,9 +413,11 @@ func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, e
 
 	ctx := context.Background()
 
-	// create GKE cluster manager client
-	// This uses Application Default Credentials (ADC)
-	clusterManagerClient, err := container.NewClusterManagerClient(ctx)
+	// create GKE cluster manager client; service account
+	// credentials are threaded per call so concurrent connects
+	// for different accounts do not race a shared process-global,
+	// falling back to Application Default Credentials when unset
+	clusterManagerClient, err := container.NewClusterManagerClient(ctx, i.gcpClientOptions()...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cluster manager client: %w", err)
 	}
@@ -434,7 +447,11 @@ func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, e
 	// get an access token for authentication
 	// TODO: Implement token refresh mechanism for long-running operations
 	// The token has a limited lifetime (typically 1 hour)
-	tokenSource, err := google.DefaultTokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
+	//
+	// derive the token source from this instance's service account
+	// credentials when set so the token belongs to the right account,
+	// falling back to Application Default Credentials when unset
+	tokenSource, err := i.tokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token source: %w", err)
 	}
@@ -511,8 +528,10 @@ func (i *KubernetesRuntimeInfraGKE) SetStackState(state *datatypes.JSON) error {
 func (i *KubernetesRuntimeInfraGKE) configureWorkloadIdentityBindingPostCreate() error {
 	ctx := context.Background()
 
-	// Create IAM service client
-	iamService, err := gcpiam.NewService(ctx, gcpoption.WithScopes(gcpiam.CloudPlatformScope))
+	// Create IAM service client with this instance's service account
+	// credentials threaded per call so the post-create binding runs against
+	// the right account even while another create is in flight
+	iamService, err := gcpiam.NewService(ctx, i.gcpClientOptions(gcpoption.WithScopes(gcpiam.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM service client: %w", err)
 	}
@@ -644,9 +663,11 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 }
 
 // configureServiceAccountCredentials writes the service account JSON to a
-// temporary file and sets the GOOGLE_APPLICATION_CREDENTIALS environment
-// variable to point to it. This allows all GCP client libraries to automatically
-// use these credentials.
+// temporary file used by the browser-based Application Default Credentials fallback. It deliberately does
+// not set a process-global credentials env var: the GKE create, connect, and
+// delete paths thread their service account credentials per call through
+// gcpClientOptions and the Pulumi provider, so a global would only invite the
+// concurrency hazard those per-call options were added to remove.
 func configureServiceAccountCredentials(credentialsJSON string) error {
 	// create a temporary file for the credentials
 	tmpFile, err := os.CreateTemp("", "gcp-sa-*.json")
@@ -666,10 +687,36 @@ func configureServiceAccountCredentials(credentialsJSON string) error {
 		return fmt.Errorf("failed to close temp credentials file: %w", err)
 	}
 
-	// set the environment variable so all GCP client libraries use these credentials
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", tmpFile.Name())
-
 	return nil
+}
+
+// gcpClientOptions returns the client options for GCP SDK clients built on
+// behalf of this instance. When ServiceAccountCredentials is set, the JSON key
+// is threaded in per call so that two concurrent operations for different
+// service accounts authenticate independently rather than racing a shared
+// process-global credentials env var. Base options (scopes, endpoints) are
+// preserved ahead of the credentials option.
+func (i *KubernetesRuntimeInfraGKE) gcpClientOptions(base ...gcpoption.ClientOption) []gcpoption.ClientOption {
+	if i.ServiceAccountCredentials == "" {
+		return base
+	}
+	return append(base, gcpoption.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
+}
+
+// tokenSource returns an OAuth2 token source for the given scopes scoped to
+// this instance's service account credentials when set, falling back to
+// Application Default Credentials when unset. Threading the credentials per
+// call keeps two concurrent connects for different accounts from minting a
+// token against whichever credentials a shared global last held.
+func (i *KubernetesRuntimeInfraGKE) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+	if i.ServiceAccountCredentials == "" {
+		return google.DefaultTokenSource(ctx, scopes...)
+	}
+	creds, err := google.CredentialsFromJSON(ctx, []byte(i.ServiceAccountCredentials), scopes...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build credentials from service account JSON: %w", err)
+	}
+	return creds.TokenSource, nil
 }
 
 // hasValidGCPCredentials checks if valid Application Default Credentials exist

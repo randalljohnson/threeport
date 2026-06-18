@@ -214,13 +214,29 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		}
 
 		if complete {
+			// re-fetch immediately before the post-creation work so a
+			// confirmation that landed since the first fetch (a concurrent
+			// reconcile or another replica) short-circuits here. The
+			// post-creation work is not idempotent: it mints a fresh
+			// connection token and flips the runtime instance back to
+			// unreconciled, so it must run at most once per confirmation.
+			confirmSnap, err := p.GetReconciliation()
+			if err != nil {
+				return 0, fmt.Errorf("failed to re-check reconciliation before confirmation: %w", err)
+			}
+			if confirmSnap.CreationConfirmed != nil {
+				return 0, nil
+			}
+
 			// build infra for post-creation work (e.g., GetConnection)
 			infra, err := p.BuildInfra()
 			if err != nil {
 				return 0, fmt.Errorf("failed to build infra for create confirmation: %w", err)
 			}
 
-			// perform provider-specific post-creation work
+			// perform provider-specific post-creation work, then confirm
+			// creation as the very next call so the crash window between the
+			// two is as narrow as possible
 			if err := p.OnCreateConfirmed(infra); err != nil {
 				return 0, fmt.Errorf("failed to run post-creation work: %w", err)
 			}
@@ -245,6 +261,20 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 	// 2. creation has previously failed — time to retry
 	// 3. the last acknowledgement is stale — creation was interrupted
 
+	// check if deletion was scheduled before acknowledging creation. The
+	// acknowledgement must come after this check: a fresh acknowledgement
+	// written ahead of a scheduled delete would trip the delete handler's
+	// cross-replica guard and stall the delete for the full stale-ack
+	// window.
+	snap, err = p.GetReconciliation()
+	if err != nil {
+		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
+	}
+	if snap.DeletionScheduled != nil {
+		log.Info("deletion scheduled, aborting create to let delete handler proceed")
+		return 0, nil
+	}
+
 	// acknowledge creation
 	if err := p.AckCreation(); err != nil {
 		return 0, fmt.Errorf("failed to acknowledge creation: %w", err)
@@ -254,16 +284,6 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 	infra, err := p.BuildInfra()
 	if err != nil {
 		return 0, fmt.Errorf("failed to build infra for create: %w", err)
-	}
-
-	// check if deletion was scheduled while we were preparing to create
-	snap, err = p.GetReconciliation()
-	if err != nil {
-		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
-	}
-	if snap.DeletionScheduled != nil {
-		log.Info("deletion scheduled, aborting create to let delete handler proceed")
-		return 0, nil
 	}
 
 	// wire callbacks and launch goroutine

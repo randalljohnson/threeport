@@ -227,9 +227,11 @@ func TestHandleInfraCreate_AckCreationError(t *testing.T) {
 }
 
 // TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts covers the
-// pre-launch deletion check: when the second reconciliation fetch shows
-// DeletionScheduled set, the handler aborts with (0, nil) and never
-// deploys, leaving the field clear for the delete handler.
+// pre-acknowledge deletion check: when the second reconciliation fetch shows
+// DeletionScheduled set, the handler aborts with (0, nil) before
+// acknowledging creation or building infra, so it deploys nothing and leaves
+// no fresh acknowledgement for the delete handler's cross-replica guard to
+// trip on.
 func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
 	fi := newFakeInfra()
 	fl := newFakeLifecycle(
@@ -244,8 +246,8 @@ func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), requeue)
-	assert.Equal(t, 1, fl.callCount("AckCreation"))
-	assert.Equal(t, 1, fl.callCount("BuildInfra"))
+	assert.Equal(t, 0, fl.callCount("AckCreation"))
+	assert.Equal(t, 0, fl.callCount("BuildInfra"))
 	assert.Equal(t, 2, fl.callCount("GetReconciliation"))
 	assert.Equal(t, 0, fi.deployCallCount())
 	assert.Equal(t, int64(0), inFlightCount())

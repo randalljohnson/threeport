@@ -10,8 +10,8 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 
-	"github.com/threeport/threeport/internal/provider"
 	machine "github.com/threeport/threeport/internal/provider/machine"
+	gcpauth "github.com/threeport/threeport/pkg/auth/v0"
 )
 
 // orphanReclaimCloud is the cloud surface the post-destroy reclaim probes and
@@ -90,7 +90,7 @@ func newComputeOrphanReclaimCloud(gceInfra *machine.GceMachineInfra) (*computeOr
 		return nil, fmt.Errorf("orphan reclaim missing required fields: %s", strings.Join(missing, ", "))
 	}
 
-	if err := provider.EnsureGCPAuth(gceInfra.ServiceAccountCredentials); err != nil {
+	if err := gcpauth.EnsureGCPAuth(gceInfra.ServiceAccountCredentials); err != nil {
 		return nil, fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 

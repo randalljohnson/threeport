@@ -29,6 +29,7 @@ import (
 	"gorm.io/datatypes"
 
 	"github.com/threeport/threeport/internal/provider"
+	gcpauth "github.com/threeport/threeport/pkg/auth/v0"
 )
 
 // compile-time guarantees that GceMachineInfra satisfies the infra provider
@@ -218,7 +219,7 @@ func (i *GceMachineInfra) createInfra() error {
 		return fmt.Errorf("invalid GCE machine configuration: %w", err)
 	}
 
-	if err := provider.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
+	if err := gcpauth.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
@@ -249,7 +250,7 @@ func (i *GceMachineInfra) createInfra() error {
 
 // DestroyInfra tears down the GCE VM infrastructure. It satisfies InfraProvider.
 func (i *GceMachineInfra) DestroyInfra() error {
-	if err := provider.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
+	if err := gcpauth.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
@@ -405,7 +406,7 @@ func (i *GceMachineInfra) DiscoverAndAdopt() error {
 		return fmt.Errorf("invalid GCE machine configuration: %w", err)
 	}
 
-	if err := provider.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
+	if err := gcpauth.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 

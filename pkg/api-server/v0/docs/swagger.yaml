@@ -802,6 +802,9 @@ definitions:
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
         type: string
+      DeletionFailed:
+        description: Gets set to true if deletion process fails.
+        type: boolean
       DeletionScheduled:
         description: |-
           Used to inform reconcilers that an object is being deleted so they may
@@ -1857,6 +1860,9 @@ definitions:
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
         type: string
+      DeletionFailed:
+        description: Gets set to true if deletion process fails.
+        type: boolean
       DeletionScheduled:
         description: |-
           Used to inform reconcilers that an object is being deleted so they may

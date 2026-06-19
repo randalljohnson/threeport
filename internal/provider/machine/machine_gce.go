@@ -393,7 +393,7 @@ func (i *GceMachineInfra) DiscoverAndAdopt() error {
 		return fmt.Errorf("invalid GCE machine configuration: %w", err)
 	}
 
-	if err := provider.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
+	if err := gcpauth.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 

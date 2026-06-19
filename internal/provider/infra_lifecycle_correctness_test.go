@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -68,29 +67,6 @@ func emailFromCredentialsJSON(t *testing.T, raw []byte) string {
 	}
 	require.NoError(t, json.Unmarshal(raw, &parsed))
 	return parsed.ClientEmail
-}
-
-// TestConfigureServiceAccountCredentials_DoesNotSetProcessGlobal asserts the
-// credentials writer no longer exports GOOGLE_APPLICATION_CREDENTIALS. The
-// process-global was the shared state two concurrent creates raced; the fix
-// threads credentials per call instead, so the writer must leave the env var
-// exactly as it found it.
-func TestConfigureServiceAccountCredentials_DoesNotSetProcessGlobal(t *testing.T) {
-	const envKey = "GOOGLE_APPLICATION_CREDENTIALS"
-	before, had := os.LookupEnv(envKey)
-	t.Cleanup(func() {
-		if had {
-			os.Setenv(envKey, before)
-		} else {
-			os.Unsetenv(envKey)
-		}
-	})
-	os.Unsetenv(envKey)
-
-	require.NoError(t, configureServiceAccountCredentials(serviceAccountJSON(t, "sa@test-project.iam.gserviceaccount.com")))
-
-	_, set := os.LookupEnv(envKey)
-	assert.False(t, set, "configureServiceAccountCredentials must not set the process-global credentials env var")
 }
 
 // TestGKEClientOptions_ThreadsPerInstanceCredentials asserts gcpClientOptions

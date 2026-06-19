@@ -68,7 +68,12 @@ func (m *MachineWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
 	if !changed {
 		return nil
 	}
-	return validateEnv(lib.IncomingValues(tx).(*MachineWorkloadDefinition).Env)
+	incoming := lib.IncomingValues(tx)
+	def, ok := incoming.(*MachineWorkloadDefinition)
+	if !ok {
+		return fmt.Errorf("failed to validate env: unexpected payload type %T", incoming)
+	}
+	return validateEnv(def.Env)
 }
 
 // beforeDelete validates the MachineWorkloadDefinition before delete.
@@ -102,7 +107,12 @@ func (m *MachineWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
 	if !changed {
 		return nil
 	}
-	return validateEnv(lib.IncomingValues(tx).(*MachineWorkloadInstance).Env)
+	incoming := lib.IncomingValues(tx)
+	inst, ok := incoming.(*MachineWorkloadInstance)
+	if !ok {
+		return fmt.Errorf("failed to validate env: unexpected payload type %T", incoming)
+	}
+	return validateEnv(inst.Env)
 }
 
 // beforeDelete validates the MachineWorkloadInstance before delete.

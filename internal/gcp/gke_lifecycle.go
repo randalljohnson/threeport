@@ -2,6 +2,7 @@ package gcp
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -13,6 +14,7 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	kube "github.com/threeport/threeport/pkg/kube/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 )
 
@@ -79,6 +81,9 @@ func (g *gkeLifecycle) BuildInfra() (provider.InfraProvider, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GKE instance for infra build: %w", err)
 	}
+	if latest.GcpGkeKubernetesRuntimeDefinitionID == nil {
+		return nil, fmt.Errorf("GKE instance missing required field GcpGkeKubernetesRuntimeDefinitionID")
+	}
 	def, err := client.GetGcpGkeKubernetesRuntimeDefinitionByID(
 		g.r.APIClient,
 		g.r.APIServer,
@@ -103,16 +108,44 @@ func (g *gkeLifecycle) IsCreateComplete() (bool, error) {
 	if latest.ResourceInventory == nil {
 		return false, nil
 	}
-	inventory := *latest.ResourceInventory
-	return len(inventory) > 0 && string(inventory) != "{}" && string(inventory) != "null", nil
+	// trim whitespace and reject the placeholder forms that signal an empty or
+	// cleared inventory. this is intentionally stricter than the provider
+	// lifecycle's cleared-inventory check, which compares raw bytes and handles
+	// neither padding, arrays, nor a quoted null; the two deliberately diverge
+	inventory := strings.TrimSpace(string(*latest.ResourceInventory))
+	switch inventory {
+	case "", "{}", "null", `"null"`, "[]":
+		return false, nil
+	}
+	return true, nil
 }
 
 // OnCreateConfirmed gets connection info and updates the kubernetes runtime instance.
 func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
-	infraGKE := infra.(*provider.KubernetesRuntimeInfraGKE)
+	infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)
+	if !ok {
+		return fmt.Errorf("expected a GKE infra provider but got %T", infra)
+	}
 	kubeConnectionInfo, err := infraGKE.GetConnection()
 	if err != nil {
 		return fmt.Errorf("failed to get Kubernetes API connection info: %w", err)
+	}
+	return g.updateKubeRuntimeConnection(kubeConnectionInfo)
+}
+
+// updateKubeRuntimeConnection writes the GKE cluster connection info onto the
+// linked kubernetes runtime instance. It is split out from OnCreateConfirmed so
+// it can be unit tested without the environment-dependent GetConnection call.
+func (g *gkeLifecycle) updateKubeRuntimeConnection(kubeConnectionInfo *kube.KubeConnectionInfo) error {
+	// reject partial connection info so a transient cloud read cannot write
+	// empty connection fields onto the kubernetes runtime instance; the
+	// resulting error requeues the confirmation for a later retry
+	if kubeConnectionInfo.APIEndpoint == "" ||
+		kubeConnectionInfo.CACertificate == "" ||
+		kubeConnectionInfo.Token == "" {
+		return fmt.Errorf(
+			"incomplete kube connection info for GKE cluster: API endpoint, CA certificate, and token are all required",
+		)
 	}
 
 	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
@@ -122,6 +155,9 @@ func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get GKE instance for connection update: %w", err)
+	}
+	if latest.KubernetesRuntimeInstanceID == nil {
+		return fmt.Errorf("GKE instance missing required field KubernetesRuntimeInstanceID")
 	}
 	kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
 		g.r.APIClient,
@@ -343,6 +379,19 @@ func buildGkeInfra(
 	definition *v0.GcpGkeKubernetesRuntimeDefinition,
 	log *logr.Logger,
 ) (*provider.KubernetesRuntimeInfraGKE, error) {
+	// validate required pointers before dereference so a malformed API
+	// object yields an error instead of panicking the create goroutine
+	switch {
+	case instance.GcpProviderID == nil:
+		return nil, fmt.Errorf("GKE instance missing required field GcpProviderID")
+	case instance.Name == nil:
+		return nil, fmt.Errorf("GKE instance missing required field Name")
+	case instance.Region == nil:
+		return nil, fmt.Errorf("GKE instance missing required field Region")
+	case definition.DefaultNodeGroupInitialSize == nil:
+		return nil, fmt.Errorf("GKE definition missing required field DefaultNodeGroupInitialSize")
+	}
+
 	gcpProvider, err := client.GetGcpProviderByID(
 		r.APIClient,
 		r.APIServer,
@@ -350,6 +399,9 @@ func buildGkeInfra(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve GCP provider by ID: %w", err)
+	}
+	if gcpProvider.ProjectID == nil {
+		return nil, fmt.Errorf("GCP provider missing required field ProjectID")
 	}
 
 	infraGKE := &provider.KubernetesRuntimeInfraGKE{

@@ -247,6 +247,19 @@ func (g *gceMachineLifecycle) SetCreationFailed() error {
 	return err
 }
 
+// SetDeletionFailed marks DeletionFailed=true in the API.
+func (g *gceMachineLifecycle) SetDeletionFailed() error {
+	deletionFailed := true
+	failedUpdate := v0.GcpGceMachineRuntimeInstance{
+		Common: v0.Common{ID: &g.instanceID},
+		Reconciliation: v0.Reconciliation{
+			DeletionFailed: &deletionFailed,
+		},
+	}
+	_, err := client.UpdateGcpGceMachineRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
+	return err
+}
+
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.
 func (g *gceMachineLifecycle) ConfirmCreation() error {
 	reconciled := true

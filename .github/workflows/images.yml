@@ -1,9 +1,11 @@
-# Fork-only: builds per-component multi-arch images on push/PR to
-# dev-release and pushes them to ghcr.io/randalljohnson.
+# Fork-only: builds per-component multi-arch images on push to dev and
+# dev-release (and on PRs to dev-release), pushing them to
+# ghcr.io/randalljohnson.
 #
 # Tag scheme (multi-arch manifest list published by the manifest job
 # in _build-images.yml; lack of -<arch> suffix implies multi-arch):
 #   - PR event             -> <image>:dev-<short-sha>
+#   - push to dev          -> <image>:dev-<short-sha>
 #   - push to dev-release  -> <image>:dev-release-<short-sha>
 #
 # Per-arch single-platform tags pushed by each matrix cell are suffixed
@@ -20,7 +22,7 @@ on:
   pull_request:
     branches: [dev-release]
   push:
-    branches: [dev-release]
+    branches: [dev, dev-release]
 
 permissions:
   contents: read
@@ -47,7 +49,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "value=dev-$short" >> "$GITHUB_OUTPUT"
           else
-            echo "value=dev-release-$short" >> "$GITHUB_OUTPUT"
+            echo "value=${{ github.ref_name }}-$short" >> "$GITHUB_OUTPUT"
           fi
 
   build:

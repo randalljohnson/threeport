@@ -7,14 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
 var ErrObjectNotFound = errors.New("object not found")
 var ErrUnauthorized = errors.New("unauthorized")
 var ErrForbidden = errors.New("forbidden")
 var ErrConflict = errors.New("conflict")
+var ErrBadRequest = errors.New("bad request")
+var ErrObjectOwned = errors.New("object owned externally")
 
 // GetResponse calls the threeport API and returns a response.
 func GetResponse(
@@ -86,6 +90,11 @@ func GetResponse(
 		// return specific errors that need to be identified with `errors.As`
 		// elsewhere
 		switch resp.StatusCode {
+		case http.StatusBadRequest:
+			if strings.Contains(errMessage, api_v0.ErrMsgExternalUpdateBlocked) {
+				return nil, fmt.Errorf("%w: %s", ErrObjectOwned, errMessage)
+			}
+			return nil, fmt.Errorf("%w: %s", ErrBadRequest, errMessage)
 		case http.StatusNotFound:
 			return nil, fmt.Errorf("%w: %s", ErrObjectNotFound, errMessage)
 		case http.StatusUnauthorized:

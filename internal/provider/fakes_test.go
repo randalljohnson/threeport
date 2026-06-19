@@ -542,6 +542,11 @@ func (f *fakeLifecycle) RefreshDeletionAck() error {
 	return f.recordSimple("RefreshDeletionAck")
 }
 
+// SetDeletionFailed counts the call and returns its injected error.
+func (f *fakeLifecycle) SetDeletionFailed() error {
+	return f.recordSimple("SetDeletionFailed")
+}
+
 // ConfirmDeletion counts the call and returns its injected error.
 func (f *fakeLifecycle) ConfirmDeletion() error {
 	return f.recordSimple("ConfirmDeletion")

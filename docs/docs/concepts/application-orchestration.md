@@ -62,7 +62,7 @@ unit and end-to-end tests for.
 
 Below is a diagram that illustrates a pretty typical use of GitOps.
 
-![GitOps Delivery](../img/GitOpsDelivery.png)
+![GitOps Delivery](../img/GitOpsDelivery.drawio.svg)
 
 1. Ahead of time, the GitOps team builds the GitOps pipeline which generally
    includes Helm templates and Kustomize overlays.  The pipeline itself also must
@@ -155,7 +155,7 @@ pipeline-driven systems:
 The following diagram illustrates software delivery using app orchestration with
 Threeport.
 
-![Software Delivery Orchestration](../img/SoftwareDeliveryOrchestration.png)
+![Software Delivery Orchestration](../img/SoftwareDeliveryOrchestration.drawio.svg)
 
 1. Ahead of time, the DevOps team sets up definitions and defaults for apps
    and their dependencies.  These provide the guardrails and rules leveraged

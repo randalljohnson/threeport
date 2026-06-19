@@ -27,6 +27,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	"github.com/threeport/threeport/pkg/encryption/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -91,14 +92,11 @@ func GetClient(
 		return nil, nil, fmt.Errorf("failed to create dynamic kube client: %w", err)
 	}
 
-	// get the discovery client using rest config
-	discoveryClient, err := GetDiscoveryClient(
-		runtime,
-		threeportControlPlane,
-		threeportAPIClient,
-		threeportAPIEndpoint,
-		encryptionKey,
-	)
+	// build the discovery client from the rest config already computed above.
+	// GetDiscoveryClient would call GetRestConfig a second time on the same runtime
+	// pointer; if a token refresh occurred above, that pointer now holds the raw
+	// (unencrypted) token and a second Decrypt call would fail.
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get discovery client for kube API: %w", err)
 	}
@@ -495,8 +493,6 @@ func refreshGKEConnection(
 	ctx := context.Background()
 
 	// get a new access token using Google Application Default Credentials
-	// this relies on ADC being configured (via gcloud auth application-default login
-	// or GOOGLE_APPLICATION_CREDENTIALS environment variable)
 	tokenSource, err := google.DefaultTokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Google token source: %w", err)
@@ -525,7 +521,16 @@ func refreshGKEConnection(
 		runtimeInstance,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update kubernetes runtime instance kubernetes connection info: %w", err)
+		if errors.Is(err, client_lib.ErrObjectOwned) {
+			// the runtime instance is owned by a controller and cannot be updated
+			// directly; the refreshed token is still valid for this request
+			util.CliOutputWarning(fmt.Sprintf(
+				"could not persist refreshed GKE connection token to Threeport API"+
+					" (runtime instance is controller-owned): %v", err,
+			))
+		} else {
+			return nil, fmt.Errorf("failed to update kubernetes runtime instance kubernetes connection info: %w", err)
+		}
 	}
 
 	return &restConfig, nil

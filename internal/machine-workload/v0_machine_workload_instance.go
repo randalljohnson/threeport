@@ -250,8 +250,25 @@ func v0MachineWorkloadInstanceDeleted(
 	// host is reachable, so run the delete script and record results
 	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
 
-	// requeue in 30s on failure so the script is retried
+	// requeue in 30s on failure so the script is retried; once the failures
+	// persist past the grace period, confirm the deletion anyway so a delete
+	// script that can never succeed does not strand the upstream machine and its
+	// backing vm
 	if wlStatus != status.WorkloadInstanceStatusHealthy {
+		if deletionScheduledExceeds(machineWorkloadInstance.DeletionScheduled, unreachableDeleteGracePeriod) {
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeWarning),
+					Reason: util.Ptr("DeleteScriptFailedGraceExceeded"),
+					Note:   util.Ptr("delete script kept failing past the delete grace period; confirming deletion without a successful delete script run"),
+				},
+				*machineWorkloadInstance.ID,
+				machineWorkloadInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for skipped delete script")
+			}
+			return 0, nil
+		}
 		return 30, fmt.Errorf("delete script failed with status %s", wlStatus)
 	}
 

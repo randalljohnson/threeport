@@ -49,6 +49,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -398,12 +399,20 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 	t.Run("happy path projects all fields", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
-		prov.ServiceAccountCredentials = util.Ptr(`{"type":"service_account"}`)
+		// seed the credential encrypted with a fresh key so BuildInfra decrypts it
+		key, err := encryption.GenerateKey()
+		require.NoError(t, err)
+		enc, err := encryption.Encrypt(key, `{"type":"service_account"}`)
+		require.NoError(t, err)
+		prov.ServiceAccountCredentials = util.Ptr(enc)
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
 		gkeServeProvider(t, api, prov, http.StatusOK)
 
-		infra, err := gkeNewLifecycle(api, inst).BuildInfra()
+		// wire the matching key into the reconciler so the decrypt succeeds
+		lc := gkeNewLifecycle(api, inst)
+		lc.r.EncryptionKey = key
+		infra, err := lc.BuildInfra()
 		require.NoError(t, err)
 
 		infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)

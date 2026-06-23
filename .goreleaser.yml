@@ -5,13 +5,13 @@ builds:
     main: cmd/tptctl/main.go
     goos:
       - linux
-      - windows
-      - darwin
     env:
       - CGO_ENABLED=0
   - id: threeport-sdk
     binary: threeport-sdk
     main: cmd/sdk/main.go
+    goos:
+      - linux
     env:
       - CGO_ENABLED=0
 archives:

@@ -36,9 +36,9 @@ jobs:
       uses: goreleaser/goreleaser-action@v5.0.0
       with:
         version: v1.26.2
-        # serialize the per-target builds; goreleaser defaults to one build
-        # per cpu, and several concurrent threeport compiles exhaust the
-        # runner's memory and drop it from the server.
-        args: release --clean --parallelism 1 -f ./.goreleaser.yml
+        # cap concurrent target builds at 2; the default is one per cpu, and
+        # several simultaneous threeport compiles exhaust the runner's memory
+        # and drop it from the server.
+        args: release --clean --parallelism 2 -f ./.goreleaser.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

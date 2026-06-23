@@ -39,11 +39,11 @@ func init() {
 }
 
 // Up000002 renames the workload tables and their foreign-key columns to their
-// kubernetes workload names, drops the removed workload event table, then runs
-// AutoMigrate to add the tables and columns introduced since the initial schema.
-// The renames run before AutoMigrate so AutoMigrate adopts the existing rows
-// rather than creating empty kubernetes workload tables. HasTable and HasColumn
-// guards make every step a no-op on a fresh database and keep the SQL portable.
+// kubernetes workload names, drops the removed workload event table, then adds
+// the tables and columns introduced since the initial schema. The renames run
+// first so the additive step adopts the existing rows rather than creating empty
+// kubernetes workload tables. Every step is a no-op on a fresh database, where
+// the initial migration already created the current schema.
 func Up000002(ctx context.Context, db *sql.DB) error {
 	gormDb, err := getGormDbFromContext(ctx)
 	if err != nil {
@@ -54,11 +54,47 @@ func Up000002(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// add the tables and columns introduced since the initial schema
-	if err := gormDb.AutoMigrate(dbInterfaces000002()...); err != nil {
-		return fmt.Errorf("could not run gorm AutoMigrate: %w", err)
+	if err := addMissingSchema(gormDb, dbInterfaces000002()); err != nil {
+		return err
 	}
 
+	return nil
+}
+
+// addMissingSchema brings the database up to the current model set without
+// re-altering existing columns: it creates any table the database is missing
+// and adds any column an existing table lacks. A plain AutoMigrate is avoided
+// because, re-run over an existing CockroachDB schema, it emits a no-op
+// "ALTER COLUMN TYPE int -> int" that CockroachDB rejects outside experimental
+// mode. On a fresh database every table and column already exists, so this is a
+// no-op; an in-place upgrade gets exactly the tables and columns added since the
+// deployed schema.
+func addMissingSchema(gormDb *gorm.DB, models []interface{}) error {
+	migrator := gormDb.Migrator()
+	for _, model := range models {
+		if !migrator.HasTable(model) {
+			if err := migrator.CreateTable(model); err != nil {
+				return fmt.Errorf("failed to create table: %w", err)
+			}
+			continue
+		}
+		stmt := &gorm.Statement{DB: gormDb}
+		if err := stmt.Parse(model); err != nil {
+			return fmt.Errorf("failed to parse model schema: %w", err)
+		}
+		for _, field := range stmt.Schema.Fields {
+			// skip fields that are not stored columns, such as associations
+			if field.DBName == "" {
+				continue
+			}
+			if migrator.HasColumn(model, field.DBName) {
+				continue
+			}
+			if err := migrator.AddColumn(model, field.Name); err != nil {
+				return fmt.Errorf("failed to add column %s: %w", field.DBName, err)
+			}
+		}
+	}
 	return nil
 }
 

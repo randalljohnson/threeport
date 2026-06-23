@@ -71,20 +71,46 @@ func TestRenameWorkloadSchema(t *testing.T) {
 	}
 }
 
-func TestAutoMigrateIsPortable(t *testing.T) {
+func TestAddMissingSchemaCreatesNewTables(t *testing.T) {
 	gormDb := newSqlite(t)
 
-	// AutoMigrate of the full model set must run on sqlite for the migration to
-	// be portable; a fresh empty database has no rows to trip a not-null add.
-	if err := gormDb.AutoMigrate(dbInterfaces000002()...); err != nil {
-		t.Fatalf("AutoMigrate of the full model set failed on sqlite: %v", err)
+	// an empty database stands in for an upgrade missing every table; each is
+	// created from its model. A fresh install already has them all, so this is a
+	// no-op there.
+	if err := addMissingSchema(gormDb, dbInterfaces000002()); err != nil {
+		t.Fatalf("addMissingSchema on an empty database: %v", err)
 	}
 	m := gormDb.Migrator()
 	if !m.HasTable("v0_gcp_gce_machine_runtime_instances") {
-		t.Error("AutoMigrate should have created v0_gcp_gce_machine_runtime_instances")
+		t.Error("addMissingSchema should have created v0_gcp_gce_machine_runtime_instances")
 	}
 	if !m.HasTable("v0_kubernetes_workload_definitions") {
-		t.Error("AutoMigrate should have created v0_kubernetes_workload_definitions")
+		t.Error("addMissingSchema should have created v0_kubernetes_workload_definitions")
+	}
+}
+
+// TestAddMissingSchemaAddsMissingColumn covers addMissingSchema adding a column
+// an existing table lacks without re-creating the table; this is how an in-place
+// upgrade picks up a column added to a model since the deployed schema.
+func TestAddMissingSchemaAddsMissingColumn(t *testing.T) {
+	gormDb := newSqlite(t)
+
+	// create the full schema, then drop a column to mimic a deployed database
+	// that predates it: deletion_failed was added to the reconciliation embed.
+	if err := addMissingSchema(gormDb, dbInterfaces000002()); err != nil {
+		t.Fatalf("initial addMissingSchema: %v", err)
+	}
+	const table = "v0_gcp_gce_machine_runtime_instances"
+	if err := gormDb.Exec("ALTER TABLE " + table + " DROP COLUMN deletion_failed").Error; err != nil {
+		t.Fatalf("drop deletion_failed: %v", err)
+	}
+
+	// re-running adds the dropped column back without re-creating the table
+	if err := addMissingSchema(gormDb, dbInterfaces000002()); err != nil {
+		t.Fatalf("addMissingSchema: %v", err)
+	}
+	if err := gormDb.Exec("SELECT deletion_failed FROM " + table).Error; err != nil {
+		t.Errorf("addMissingSchema should have re-added deletion_failed: %v", err)
 	}
 }
 

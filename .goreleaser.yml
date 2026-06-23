@@ -9,6 +9,9 @@ builds:
     goarch:
       - amd64
       - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
     env:
       - CGO_ENABLED=0
   - id: threeport-sdk
@@ -20,6 +23,9 @@ builds:
     goarch:
       - amd64
       - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
     env:
       - CGO_ENABLED=0
 archives:

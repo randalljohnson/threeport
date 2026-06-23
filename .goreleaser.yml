@@ -5,6 +5,10 @@ builds:
     main: cmd/tptctl/main.go
     goos:
       - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
     env:
       - CGO_ENABLED=0
   - id: threeport-sdk
@@ -12,6 +16,10 @@ builds:
     main: cmd/sdk/main.go
     goos:
       - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
     env:
       - CGO_ENABLED=0
 archives:

@@ -15,13 +15,8 @@ on:
   pull_request:
     types:
       - opened
-      - edited
       - synchronize
       - reopened
-  # dev-only: run the full unit + integration suite on every push to the
-  # dev integration branch.
-  push:
-    branches: [dev]
 
 permissions:
   contents: read

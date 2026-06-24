@@ -68,6 +68,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6.0.3
 
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        sudo docker image prune -af || true
+        df -h
+
     - name: Set up Go
       uses: actions/setup-go@v6.4.0
       with:
@@ -86,12 +92,14 @@ jobs:
           ~/go/pkg/mod
         # save key: unique per run, so the end-of-job save always writes a fresh
         # entry (Actions caches are immutable; a fixed key would never update).
-        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        key: go-${{ runner.os }}-${{ github.run_id }}
         # restore fallback: the run-id key above never matches a prior run, so
-        # restore prefix-matches these, newest cache for this go.sum first, then
-        # any for this OS. this prefix match is where the cache hit happens.
+        # restore prefix-matches this, the newest cache for this OS. the key
+        # deliberately carries neither go.sum nor the Go version: Go's build
+        # cache already keys every action on the compiler version and its
+        # inputs, so it reuses only what is still valid and recompiles the rest.
+        # letting Go own invalidation avoids a stale token we must remember to bump.
         restore-keys: |
-          go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-
           go-${{ runner.os }}-
 
     # Derive -p from the runner's RAM so the same step auto-sizes: -p=1 on a
@@ -147,7 +155,7 @@ jobs:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        key: go-${{ runner.os }}-${{ github.run_id }}
 
   manifest:
     name: manifest

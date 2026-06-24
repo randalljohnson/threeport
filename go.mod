@@ -1,8 +1,6 @@
 module github.com/threeport/threeport
 
-go 1.24.0
-
-toolchain go1.24.6
+go 1.26.4
 
 require (
 	cloud.google.com/go/container v1.45.0

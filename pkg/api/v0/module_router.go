@@ -26,6 +26,14 @@ var ModRouter = ModuleRouter{
 	routes: sync.Map{},
 }
 
+// moduleRouteScheme and moduleRouteTransport carry the scheme and transport the
+// module proxy uses. They are set when module routes are initialized so the
+// runtime afterCreate hook reaches module API servers the same way the startup
+// path does: over https with the control plane client certificate when auth is
+// enabled, plain http otherwise.
+var moduleRouteScheme = "http"
+var moduleRouteTransport http.RoundTripper = http.DefaultTransport
+
 // InitModuleRouter initializes an module router.  It first queries the
 // database for any existing module APIs and their routes.  It then adds
 // those route paths so that API requests using the module object REST paths
@@ -57,6 +65,8 @@ func InitModuleRouter(
 	if authEnabled {
 		scheme = "https"
 	}
+	moduleRouteScheme = scheme
+	moduleRouteTransport = transport
 
 	for _, modApi := range moduleApis {
 		for _, apiRoute := range modApi.ModuleApiRoutes {

@@ -45,15 +45,35 @@ jobs:
     # Primary cache for the workflow. Restoring Go's build + module cache
     # is what makes warm runs fast; the Docker layer cache further down
     # (integration-tests job) only covers the cheap COPY+alpine tail.
-    - name: Cache Go build + module cache
-      uses: actions/cache@v5.0.5
+    # Restore the Go build + module cache; the matching save runs at job end
+    # (even on failure) so a cold or failed build still banks compiled objects.
+    # The run-id suffix makes each run save a fresh entry that the next run's
+    # restore-keys prefix picks up, so the cache accretes toward warm.
+    - name: Restore Go build + module cache
+      uses: actions/cache/restore@v5.0.5
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        # save key: unique per run, so the end-of-job save always writes a fresh
+        # entry (Actions caches are immutable; a fixed key would never update).
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        # restore fallback: the run-id key above never matches a prior run, so
+        # restore prefix-matches these, newest cache for this go.sum first, then
+        # any for this OS. this prefix match is where the cache hit happens.
         restore-keys: |
+          go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-
           go-${{ runner.os }}-
+
+    # Derive -p from the runner's RAM so the same step auto-sizes: -p=1 on a
+    # 7 GB runner, -p=4 on a 16 GB one, with no per-runner hardcoding.
+    - name: Derive go build parallelism from runner memory
+      run: |
+        mem_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)    # usable RAM, in kB
+        by_mem=$(( mem_kb / (1024 * 1024 * 7 / 2) ))               # one worker per ~3.5 GB
+        cpus=$(nproc)                                              # but never exceed the CPU count
+        p=$(( by_mem < 1 ? 1 : (by_mem > cpus ? cpus : by_mem) ))  # clamp to [1, cpus]
+        echo "GOFLAGS=-p=$p" >> "$GITHUB_ENV"                      # later go/mage/test steps inherit it
 
     - name: Install mage
       run: go install github.com/magefile/mage@v1.17.2
@@ -69,6 +89,16 @@ jobs:
 
     - name: Unit tests
       run: go test -count=1 ./pkg/... ./internal/... ./cmd/...
+
+    # Save the Go cache even on failure so partial compile progress persists.
+    - name: Save Go build + module cache
+      if: always()  # run even when a prior step failed; default would skip it
+      uses: actions/cache/save@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
 
   integration-tests:
     name: Integration Tests
@@ -88,15 +118,35 @@ jobs:
     # Primary cache for the workflow. Restoring Go's build + module cache
     # is what makes warm runs fast; the Docker layer cache further down
     # (integration-tests job) only covers the cheap COPY+alpine tail.
-    - name: Cache Go build + module cache
-      uses: actions/cache@v5.0.5
+    # Restore the Go build + module cache; the matching save runs at job end
+    # (even on failure) so a cold or failed build still banks compiled objects.
+    # The run-id suffix makes each run save a fresh entry that the next run's
+    # restore-keys prefix picks up, so the cache accretes toward warm.
+    - name: Restore Go build + module cache
+      uses: actions/cache/restore@v5.0.5
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        # save key: unique per run, so the end-of-job save always writes a fresh
+        # entry (Actions caches are immutable; a fixed key would never update).
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        # restore fallback: the run-id key above never matches a prior run, so
+        # restore prefix-matches these, newest cache for this go.sum first, then
+        # any for this OS. this prefix match is where the cache hit happens.
         restore-keys: |
+          go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-
           go-${{ runner.os }}-
+
+    # Derive -p from the runner's RAM so the same step auto-sizes: -p=1 on a
+    # 7 GB runner, -p=4 on a 16 GB one, with no per-runner hardcoding.
+    - name: Derive go build parallelism from runner memory
+      run: |
+        mem_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)    # usable RAM, in kB
+        by_mem=$(( mem_kb / (1024 * 1024 * 7 / 2) ))               # one worker per ~3.5 GB
+        cpus=$(nproc)                                              # but never exceed the CPU count
+        p=$(( by_mem < 1 ? 1 : (by_mem > cpus ? cpus : by_mem) ))  # clamp to [1, cpus]
+        echo "GOFLAGS=-p=$p" >> "$GITHUB_ENV"                      # later go/mage/test steps inherit it
 
     - name: Install mage
       run: go install github.com/magefile/mage@v1.17.2
@@ -126,3 +176,13 @@ jobs:
 
     - name: Integration tests
       run: mage test:integration
+
+    # Save the Go cache even on failure so partial compile progress persists.
+    - name: Save Go build + module cache
+      if: always()  # run even when a prior step failed; default would skip it
+      uses: actions/cache/save@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}

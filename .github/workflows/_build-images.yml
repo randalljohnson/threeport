@@ -74,15 +74,35 @@ jobs:
         go-version: '1.26'
         cache: false
 
-    - name: Cache Go build + module cache
-      uses: actions/cache@v5.0.5
+    # Restore the Go build + module cache; the matching save runs at job end
+    # (even on failure) so a cold or failed build still banks compiled objects.
+    # The run-id suffix makes each run save a fresh entry that the next run's
+    # restore-keys prefix picks up, so the cache accretes toward warm.
+    - name: Restore Go build + module cache
+      uses: actions/cache/restore@v5.0.5
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        # save key: unique per run, so the end-of-job save always writes a fresh
+        # entry (Actions caches are immutable; a fixed key would never update).
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        # restore fallback: the run-id key above never matches a prior run, so
+        # restore prefix-matches these, newest cache for this go.sum first, then
+        # any for this OS. this prefix match is where the cache hit happens.
         restore-keys: |
+          go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-
           go-${{ runner.os }}-
+
+    # Derive -p from the runner's RAM so the same step auto-sizes: -p=1 on a
+    # 7 GB runner, -p=4 on a 16 GB one, with no per-runner hardcoding.
+    - name: Derive go build parallelism from runner memory
+      run: |
+        mem_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)    # usable RAM, in kB
+        by_mem=$(( mem_kb / (1024 * 1024 * 7 / 2) ))               # one worker per ~3.5 GB
+        cpus=$(nproc)                                              # but never exceed the CPU count
+        p=$(( by_mem < 1 ? 1 : (by_mem > cpus ? cpus : by_mem) ))  # clamp to [1, cpus]
+        echo "GOFLAGS=-p=$p" >> "$GITHUB_ENV"                      # later go/mage/test steps inherit it
 
     - name: Install mage
       run: go install github.com/magefile/mage@v1.17.2
@@ -104,10 +124,6 @@ jobs:
     # parallelization win.
     - name: Build and push all components for ${{ matrix.arch }}
       env:
-        # PARALLEL_GO_BUILD caps go build's compile workers. Only one
-        # go build runs at a time within a cell, so 4 saturates the
-        # 4 vCPU runner.
-        PARALLEL_GO_BUILD: "4"
         # PARALLEL_IMAGE_BUILD controls how many image-package (buildx)
         # tasks run concurrently after binaries are pre-compiled.
         PARALLEL_IMAGE_BUILD: "4"
@@ -122,6 +138,16 @@ jobs:
       run: |
         export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         mage build:allImages
+
+    # Save the Go cache even on failure so partial compile progress persists.
+    - name: Save Go build + module cache
+      if: always()  # run even when a prior step failed; default would skip it
+      uses: actions/cache/save@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
 
   manifest:
     name: manifest

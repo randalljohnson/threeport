@@ -606,93 +606,6 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 		)
 		g.Line()
 
-		// emit the readiness poll: the module API server is reached through the
-		// Threeport API, so poll one of the module's collection routes through the
-		// Threeport API client until it returns HTTP 200. Until the module API
-		// server is serving, the proxied call returns an empty or error body rather
-		// than a decodable response, so the retry keeps waiting before the install
-		// returns.
-		if readinessRoutePathConst != "" {
-			readinessRoutePackage := fmt.Sprintf(
-				"%s/pkg/api/%s",
-				gen.ModulePath,
-				readinessRouteVersion,
-			)
-			g.Comment("wait for the module API server to start serving")
-			g.Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
-				Qual("fmt", "Sprintf").Call(
-					Lit(fmt.Sprintf(
-						"Waiting for %s module API to start running at %%s",
-						moduleNameKebab,
-					)),
-					Id("i").Dot("ApiEndpoint"),
-				),
-			)
-			g.Id("attemptsMax").Op(":=").Lit(60)
-			g.Id("waitDurationSeconds").Op(":=").Lit(5)
-			g.If(
-				Err().Op(":=").Qual(
-					"github.com/threeport/threeport/pkg/util/v0",
-					"Retry",
-				).Call(
-					Line().Id("attemptsMax"),
-					Line().Id("waitDurationSeconds"),
-					Line().Func().Params().Error().Block(
-						List(Id("_"), Err()).Op(":=").Qual(
-							"github.com/threeport/threeport/pkg/client/lib/v0",
-							"GetResponse",
-						).Call(
-							Line().Id("i").Dot("ApiClient"),
-							Line().Qual("fmt", "Sprintf").Call(
-								Lit("%s%s"),
-								Id("i").Dot("ApiEndpoint"),
-								Qual(readinessRoutePackage, readinessRoutePathConst),
-							),
-							Line().Qual("net/http", "MethodGet"),
-							Line().Qual("bytes", "NewBuffer").Call(Index().Byte().Values()),
-							Line().Map(String()).String().Values(),
-							Line().Qual("net/http", "StatusOK"),
-							Line(),
-						),
-						If(Err().Op("!=").Nil()).Block(
-							Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
-								Qual("fmt", "Sprintf").Call(
-									Lit("Connection attempt result: %s"),
-									Err(),
-								),
-							),
-							Return(Qual("fmt", "Errorf").Call(
-								Lit(fmt.Sprintf(
-									"failed to reach %s module API: %%w",
-									moduleNameKebab,
-								)),
-								Err(),
-							)),
-						),
-						Return(Nil()),
-					),
-					Line(),
-				),
-				Err().Op("!=").Nil(),
-			).Block(
-				Return(Qual("fmt", "Errorf").Call(
-					Lit(fmt.Sprintf(
-						"timed out after %%d seconds waiting for 200 response from %s module API: %%w",
-						moduleNameKebab,
-					)),
-					Id("attemptsMax").Op("*").Id("waitDurationSeconds"),
-					Err(),
-				)),
-			)
-			g.Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
-				Lit(fmt.Sprintf(
-					"%s module API is running",
-					moduleNameCamel,
-				)),
-			)
-			g.Line()
-		}
-
 		g.Comment(fmt.Sprintf(
 			"install %s API server service",
 			moduleNameKebab,
@@ -900,6 +813,95 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 			)
 			g.Line()
 		}
+
+		// emit the readiness poll last so it confirms the whole module is serving:
+		// the module API server is reached through the Threeport API, so poll one of
+		// the module's collection routes through the Threeport API client until it
+		// returns HTTP 200. The API server Service and controllers are created above,
+		// so by the time the poll runs the proxied request can reach a serving pod;
+		// until then the proxied call returns an empty or error body rather than a
+		// decodable response, so the retry keeps waiting before the install returns.
+		if readinessRoutePathConst != "" {
+			readinessRoutePackage := fmt.Sprintf(
+				"%s/pkg/api/%s",
+				gen.ModulePath,
+				readinessRouteVersion,
+			)
+			g.Comment("wait for the module API server to start serving")
+			g.Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
+				Qual("fmt", "Sprintf").Call(
+					Lit(fmt.Sprintf(
+						"Waiting for %s module API to start running at %%s",
+						moduleNameKebab,
+					)),
+					Id("i").Dot("ApiEndpoint"),
+				),
+			)
+			g.Id("attemptsMax").Op(":=").Lit(60)
+			g.Id("waitDurationSeconds").Op(":=").Lit(5)
+			g.If(
+				Err().Op(":=").Qual(
+					"github.com/threeport/threeport/pkg/util/v0",
+					"Retry",
+				).Call(
+					Line().Id("attemptsMax"),
+					Line().Id("waitDurationSeconds"),
+					Line().Func().Params().Error().Block(
+						List(Id("_"), Err()).Op(":=").Qual(
+							"github.com/threeport/threeport/pkg/client/lib/v0",
+							"GetResponse",
+						).Call(
+							Line().Id("i").Dot("ApiClient"),
+							Line().Qual("fmt", "Sprintf").Call(
+								Lit("%s%s"),
+								Id("i").Dot("ApiEndpoint"),
+								Qual(readinessRoutePackage, readinessRoutePathConst),
+							),
+							Line().Qual("net/http", "MethodGet"),
+							Line().Qual("bytes", "NewBuffer").Call(Index().Byte().Values()),
+							Line().Map(String()).String().Values(),
+							Line().Qual("net/http", "StatusOK"),
+							Line(),
+						),
+						If(Err().Op("!=").Nil()).Block(
+							Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
+								Qual("fmt", "Sprintf").Call(
+									Lit("Connection attempt result: %s"),
+									Err(),
+								),
+							),
+							Return(Qual("fmt", "Errorf").Call(
+								Lit(fmt.Sprintf(
+									"failed to reach %s module API: %%w",
+									moduleNameKebab,
+								)),
+								Err(),
+							)),
+						),
+						Return(Nil()),
+					),
+					Line(),
+				),
+				Err().Op("!=").Nil(),
+			).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit(fmt.Sprintf(
+						"timed out after %%d seconds waiting for 200 response from %s module API: %%w",
+						moduleNameKebab,
+					)),
+					Id("attemptsMax").Op("*").Id("waitDurationSeconds"),
+					Err(),
+				)),
+			)
+			g.Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
+				Lit(fmt.Sprintf(
+					"%s module API is running",
+					moduleNameCamel,
+				)),
+			)
+			g.Line()
+		}
+
 		g.Return(Nil())
 	})
 	f.Line()

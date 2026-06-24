@@ -75,8 +75,38 @@ func (Build) restApiImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push rest-api image: %w", err)
+	}
+
+	return nil
+}
+
+// restApiImageLoad packages a pre-built REST API binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) restApiImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"rest-api",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-rest-api",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load rest-api image: %w", err)
 	}
 
 	return nil
@@ -149,8 +179,38 @@ func (Build) dbMigratorImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push database-migrator image: %w", err)
+	}
+
+	return nil
+}
+
+// dbMigratorImageLoad packages a pre-built database migrator binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) dbMigratorImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"database-migrator",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-database-migrator",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load database-migrator image: %w", err)
 	}
 
 	return nil
@@ -223,8 +283,38 @@ func (Build) agentImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push agent image: %w", err)
+	}
+
+	return nil
+}
+
+// agentImageLoad packages a pre-built agent binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) agentImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"agent",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-agent",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load agent image: %w", err)
 	}
 
 	return nil
@@ -297,8 +387,38 @@ func (Build) secretControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push secret-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// secretControllerImageLoad packages a pre-built secret-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) secretControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"secret-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-secret-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load secret-controller image: %w", err)
 	}
 
 	return nil
@@ -371,8 +491,38 @@ func (Build) awsControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push aws-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// awsControllerImageLoad packages a pre-built aws-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) awsControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"aws-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-aws-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load aws-controller image: %w", err)
 	}
 
 	return nil
@@ -445,8 +595,38 @@ func (Build) ociControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push oci-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// ociControllerImageLoad packages a pre-built oci-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) ociControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release-pulumi",
+		arch,
+		"oci-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-oci-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load oci-controller image: %w", err)
 	}
 
 	return nil
@@ -519,8 +699,38 @@ func (Build) gcpControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push gcp-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// gcpControllerImageLoad packages a pre-built gcp-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) gcpControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release-pulumi",
+		arch,
+		"gcp-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-gcp-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load gcp-controller image: %w", err)
 	}
 
 	return nil
@@ -593,8 +803,38 @@ func (Build) controlPlaneControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push control-plane-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// controlPlaneControllerImageLoad packages a pre-built control-plane-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) controlPlaneControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"control-plane-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-control-plane-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load control-plane-controller image: %w", err)
 	}
 
 	return nil
@@ -667,8 +907,38 @@ func (Build) gatewayControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push gateway-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// gatewayControllerImageLoad packages a pre-built gateway-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) gatewayControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"gateway-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-gateway-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load gateway-controller image: %w", err)
 	}
 
 	return nil
@@ -741,8 +1011,38 @@ func (Build) helmWorkloadControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push helm-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// helmWorkloadControllerImageLoad packages a pre-built helm-workload-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) helmWorkloadControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release-helm",
+		arch,
+		"helm-workload-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-helm-workload-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load helm-workload-controller image: %w", err)
 	}
 
 	return nil
@@ -815,8 +1115,38 @@ func (Build) machineRuntimeControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push machine-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// machineRuntimeControllerImageLoad packages a pre-built machine-runtime-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) machineRuntimeControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"machine-runtime-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-machine-runtime-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load machine-runtime-controller image: %w", err)
 	}
 
 	return nil
@@ -889,8 +1219,38 @@ func (Build) machineWorkloadControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push machine-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// machineWorkloadControllerImageLoad packages a pre-built machine-workload-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) machineWorkloadControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"machine-workload-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-machine-workload-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load machine-workload-controller image: %w", err)
 	}
 
 	return nil
@@ -963,8 +1323,38 @@ func (Build) kubernetesRuntimeControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push kubernetes-runtime-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// kubernetesRuntimeControllerImageLoad packages a pre-built kubernetes-runtime-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) kubernetesRuntimeControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"kubernetes-runtime-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-kubernetes-runtime-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load kubernetes-runtime-controller image: %w", err)
 	}
 
 	return nil
@@ -1037,8 +1427,38 @@ func (Build) observabilityControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push observability-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// observabilityControllerImageLoad packages a pre-built observability-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) observabilityControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"observability-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-observability-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load observability-controller image: %w", err)
 	}
 
 	return nil
@@ -1111,8 +1531,38 @@ func (Build) terraformControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push terraform-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// terraformControllerImageLoad packages a pre-built terraform-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) terraformControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release-terraform",
+		arch,
+		"terraform-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-terraform-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load terraform-controller image: %w", err)
 	}
 
 	return nil
@@ -1185,8 +1635,38 @@ func (Build) kubernetesWorkloadControllerImagePackage(
 		true,
 		false,
 		"",
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and push kubernetes-workload-controller image: %w", err)
+	}
+
+	return nil
+}
+
+// kubernetesWorkloadControllerImageLoad packages a pre-built kubernetes-workload-controller binary into a dev container image,
+// loads it to the given kind cluster, and removes the local image and binary.
+func (Dev) kubernetesWorkloadControllerImageLoad(
+	workingDir string,
+	arch string,
+	kindClusterName string,
+) error {
+	if err := util.BuildImage(
+		workingDir,
+		"Dockerfile",
+		"release",
+		arch,
+		"kubernetes-workload-controller",
+		"bin",
+		nil,
+		installer.DevImageNamespace,
+		"threeport-kubernetes-workload-controller",
+		version.GetVersion(),
+		false,
+		true,
+		kindClusterName,
+		true,
+	); err != nil {
+		return fmt.Errorf("failed to build and load kubernetes-workload-controller image: %w", err)
 	}
 
 	return nil
@@ -1487,11 +1967,90 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 		false,
 		true,
 		kindClusterName,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to build and load image: %w", err)
 	}
 
 	return nil
+}
+
+// LoadAllImages builds every component binary with one go build, then
+// packages and loads each component image to the provided kind cluster in
+// parallel. After each component is loaded, the local docker image and
+// the built binary are removed to free disk on space-constrained runners.
+// Set PARALLEL_IMAGE_BUILD >= 1 to cap packaging concurrency (e.g.
+// `PARALLEL_IMAGE_BUILD=4 mage dev:loadAllImages my-cluster`).
+func (Dev) LoadAllImages(kindClusterName string) error {
+	_, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get local CPU architecture: %w", err)
+	}
+
+	workingDir, arch, err := getBuildVals()
+	if err != nil {
+		return fmt.Errorf("failed to get build values: %w", err)
+	}
+
+	// pre-compile every binary for every requested arch in one go build
+	// per arch (arches run in parallel) so dependency compilation is
+	// shared across components within an arch. Each per-image task
+	// below then only packages the pre-built binary.
+	arches := util.ParseArches(arch)
+
+	packageDirs := []string{
+		"cmd/rest-api",
+		"cmd/database-migrator",
+		"cmd/agent",
+		"cmd/secret-controller",
+		"cmd/aws-controller",
+		"cmd/oci-controller",
+		"cmd/gcp-controller",
+		"cmd/control-plane-controller",
+		"cmd/gateway-controller",
+		"cmd/helm-workload-controller",
+		"cmd/machine-runtime-controller",
+		"cmd/machine-workload-controller",
+		"cmd/kubernetes-runtime-controller",
+		"cmd/observability-controller",
+		"cmd/terraform-controller",
+		"cmd/kubernetes-workload-controller",
+	}
+
+	if err := util.BuildBinaries(
+		workingDir,
+		arches,
+		packageDirs,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to pre-build binaries: %w", err)
+	}
+
+	dev := Dev{}
+	wrap := func(fn func(string, string, string) error) func() error {
+		return func() error {
+			return fn(workingDir, arch, kindClusterName)
+		}
+	}
+	tasks := []func() error{
+		wrap(dev.restApiImageLoad),
+		wrap(dev.dbMigratorImageLoad),
+		wrap(dev.agentImageLoad),
+		wrap(dev.secretControllerImageLoad),
+		wrap(dev.awsControllerImageLoad),
+		wrap(dev.ociControllerImageLoad),
+		wrap(dev.gcpControllerImageLoad),
+		wrap(dev.controlPlaneControllerImageLoad),
+		wrap(dev.gatewayControllerImageLoad),
+		wrap(dev.helmWorkloadControllerImageLoad),
+		wrap(dev.machineRuntimeControllerImageLoad),
+		wrap(dev.machineWorkloadControllerImageLoad),
+		wrap(dev.kubernetesRuntimeControllerImageLoad),
+		wrap(dev.observabilityControllerImageLoad),
+		wrap(dev.terraformControllerImageLoad),
+		wrap(dev.kubernetesWorkloadControllerImageLoad),
+	}
+	return util.RunParallel(parallelFromEnv(), tasks)
 }
 
 // GenerateSwaggerDocs generates the API server swagger documentation served by the API.

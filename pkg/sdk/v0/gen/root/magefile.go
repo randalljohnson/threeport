@@ -21,11 +21,12 @@ import (
 // name of the generated package-only function that the AllImages* tasks
 // call to skip redundant compile work.
 type componentSpec struct {
-	BinaryName       string
-	PackageDir       string
-	ImageName        string
-	PackageFuncName  string
-	DockerfileTarget string
+	BinaryName          string
+	PackageDir          string
+	ImageName           string
+	PackageFuncName     string
+	LoadPackageFuncName string
+	DockerfileTarget    string
 }
 
 // GenMagefile generates the source code for mage which is a Make-like tool
@@ -81,14 +82,17 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	}
 	apiPackageFuncName := "restApiImagePackage"
+	apiLoadPackageFuncName := "restApiImageLoad"
 	allComponents = append(allComponents, componentSpec{
-		BinaryName:       "rest-api",
-		PackageDir:       "cmd/rest-api",
-		ImageName:        apiImageName,
-		PackageFuncName:  apiPackageFuncName,
-		DockerfileTarget: "release",
+		BinaryName:          "rest-api",
+		PackageDir:          "cmd/rest-api",
+		ImageName:           apiImageName,
+		PackageFuncName:     apiPackageFuncName,
+		LoadPackageFuncName: apiLoadPackageFuncName,
+		DockerfileTarget:    "release",
 	})
 	emitImagePackageFunc(f, apiPackageFuncName, "REST API", "release", "rest-api", apiImageName)
+	emitImageLoadFunc(f, apiLoadPackageFuncName, "REST API", "release", "rest-api", apiImageName, installerPkg, gen.ModulePath)
 	emitImageFunc(f, buildApiImageFuncName, "REST API", "rest-api", "cmd/rest-api", apiPackageFuncName, installerPkg, gen.ModulePath)
 
 	// binary build function for database migrator
@@ -102,14 +106,17 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	}
 	dbMigratorPackageFuncName := "dbMigratorImagePackage"
+	dbMigratorLoadPackageFuncName := "dbMigratorImageLoad"
 	allComponents = append(allComponents, componentSpec{
-		BinaryName:       "database-migrator",
-		PackageDir:       "cmd/database-migrator",
-		ImageName:        dbMigratorImageName,
-		PackageFuncName:  dbMigratorPackageFuncName,
-		DockerfileTarget: "release",
+		BinaryName:          "database-migrator",
+		PackageDir:          "cmd/database-migrator",
+		ImageName:           dbMigratorImageName,
+		PackageFuncName:     dbMigratorPackageFuncName,
+		LoadPackageFuncName: dbMigratorLoadPackageFuncName,
+		DockerfileTarget:    "release",
 	})
 	emitImagePackageFunc(f, dbMigratorPackageFuncName, "database migrator", "release", "database-migrator", dbMigratorImageName)
+	emitImageLoadFunc(f, dbMigratorLoadPackageFuncName, "database migrator", "release", "database-migrator", dbMigratorImageName, installerPkg, gen.ModulePath)
 	emitImageFunc(f, buildDbMigratorImageFuncName, "database migrator", "database-migrator", "cmd/database-migrator", dbMigratorPackageFuncName, installerPkg, gen.ModulePath)
 
 	if !gen.Module {
@@ -119,14 +126,17 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		emitBinFunc(f, buildAgentFuncName, "agent", "agent", "cmd/agent")
 
 		agentPackageFuncName := "agentImagePackage"
+		agentLoadPackageFuncName := "agentImageLoad"
 		allComponents = append(allComponents, componentSpec{
-			BinaryName:       "agent",
-			PackageDir:       "cmd/agent",
-			ImageName:        "threeport-agent",
-			PackageFuncName:  agentPackageFuncName,
-			DockerfileTarget: "release",
+			BinaryName:          "agent",
+			PackageDir:          "cmd/agent",
+			ImageName:           "threeport-agent",
+			PackageFuncName:     agentPackageFuncName,
+			LoadPackageFuncName: agentLoadPackageFuncName,
+			DockerfileTarget:    "release",
 		})
 		emitImagePackageFunc(f, agentPackageFuncName, "agent", "release", "agent", "threeport-agent")
+		emitImageLoadFunc(f, agentLoadPackageFuncName, "agent", "release", "agent", "threeport-agent", installerPkg, gen.ModulePath)
 		emitImageFunc(f, buildAgentImageFuncName, "agent", "agent", "cmd/agent", agentPackageFuncName, installerPkg, gen.ModulePath)
 	}
 
@@ -149,18 +159,21 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			emitBinFunc(f, buildFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir)
 
 			packageFuncName := fmt.Sprintf("%sControllerImagePackage", strcase.ToLowerCamel(objGroup.ControllerDomain))
+			loadPackageFuncName := fmt.Sprintf("%sControllerImageLoad", strcase.ToLowerCamel(objGroup.ControllerDomain))
 			allComponents = append(allComponents, componentSpec{
-				BinaryName:       objGroup.ControllerName,
-				PackageDir:       packageDir,
-				ImageName:        imageName,
-				PackageFuncName:  packageFuncName,
-				DockerfileTarget: objGroup.DockerfileTarget,
+				BinaryName:          objGroup.ControllerName,
+				PackageDir:          packageDir,
+				ImageName:           imageName,
+				PackageFuncName:     packageFuncName,
+				LoadPackageFuncName: loadPackageFuncName,
+				DockerfileTarget:    objGroup.DockerfileTarget,
 			})
 			target := objGroup.DockerfileTarget
 			if target == "" {
 				target = "release"
 			}
 			emitImagePackageFunc(f, packageFuncName, objGroup.ControllerName, target, objGroup.ControllerName, imageName)
+			emitImageLoadFunc(f, loadPackageFuncName, objGroup.ControllerName, target, objGroup.ControllerName, imageName, installerPkg, gen.ModulePath)
 			emitImageFunc(f, buildImageFuncName, objGroup.ControllerName, objGroup.ControllerName, packageDir, packageFuncName, installerPkg, gen.ModulePath)
 		}
 	}
@@ -446,6 +459,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Line().False(),
 			Line().True(),
 			Line().Id("kindClusterName"),
+			Line().False(),
 			Line(),
 		).Op(";").Err().Op("!=").Nil()).Block(
 			Return(Qual("fmt", "Errorf").Call(Lit("failed to build and load image: %w"), Id("err"))),
@@ -453,6 +467,46 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		g.Line()
 
 		g.Return(Nil())
+	})
+	f.Line()
+
+	// dev image build and parallel load for all components with cleanup
+	loadAllImagesFuncName := "LoadAllImages"
+	f.Comment(fmt.Sprintf("%s builds every component binary with one go build, then", loadAllImagesFuncName))
+	f.Comment("packages and loads each component image to the provided kind cluster in")
+	f.Comment("parallel. After each component is loaded, the local docker image and")
+	f.Comment("the built binary are removed to free disk on space-constrained runners.")
+	f.Comment("Set PARALLEL_IMAGE_BUILD >= 1 to cap packaging concurrency (e.g.")
+	f.Comment("`PARALLEL_IMAGE_BUILD=4 mage dev:loadAllImages my-cluster`).")
+	f.Func().Params(Id("Dev")).Id(loadAllImagesFuncName).Params(
+		Id("kindClusterName").String(),
+	).Error().BlockFunc(func(g *Group) {
+		g.List(Id("_"), Id("arch"), Id("err")).Op(":=").Id("getBuildVals").Call()
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to get local CPU architecture: %w"), Id("err"))),
+		)
+		g.Line()
+
+		emitPrebuildBlock(g, allComponents)
+
+		g.Id("dev").Op(":=").Id("Dev").Values()
+		g.Id("wrap").Op(":=").Func().Params(
+			Id("fn").Func().Params(String(), String(), String()).Error(),
+		).Func().Params().Error().Block(
+			Return().Func().Params().Error().Block(
+				Return().Id("fn").Call(Id("workingDir"), Id("arch"), Id("kindClusterName")),
+			),
+		)
+		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
+			for _, c := range allComponents {
+				v.Line().Id("wrap").Call(Id("dev").Dot(c.LoadPackageFuncName))
+			}
+			v.Line()
+		})
+		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
+			Id("parallelFromEnv").Call(),
+			Id("tasks"),
+		)
 	})
 	f.Line()
 
@@ -786,10 +840,57 @@ func emitImagePackageFunc(f *File, packageFuncName, displayName, target, binaryN
 			Line().True(),
 			Line().False(),
 			Line().Lit(""),
+			Line().False(),
 			Line(),
 		), Err().Op("!=").Nil()).Block(
 			Return(Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
 				"failed to build and push %s image: %%w", binaryName,
+			)), Err())),
+		),
+		Line(),
+
+		Return(Nil()),
+	)
+	f.Line()
+}
+
+// emitImageLoadFunc writes a private `(Dev).<loadFuncName>` method that
+// takes a pre-built binary at bin/<arch>/<binaryName>, packages it into a
+// dev container image via util.BuildImage, loads it to the given kind
+// cluster, and removes the local image and binary afterward. LoadAllImages
+// calls this directly after the upfront BuildBinaries so packaging and
+// loading run in parallel without a redundant per-component compile.
+func emitImageLoadFunc(f *File, loadFuncName, displayName, target, binaryName, imageName, installerPkg, modulePath string) {
+	f.Comment(fmt.Sprintf("%s packages a pre-built %s binary into a dev container image,", loadFuncName, displayName))
+	f.Comment("loads it to the given kind cluster, and removes the local image and binary.")
+	f.Func().Params(Id("Dev")).Id(loadFuncName).Params(
+		Line().Id("workingDir").String(),
+		Line().Id("arch").String(),
+		Line().Id("kindClusterName").String(),
+		Line(),
+	).Parens(Error()).Block(
+		If(Err().Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"BuildImage",
+		).Call(
+			Line().Id("workingDir"),
+			Line().Lit("Dockerfile"),
+			Line().Lit(target),
+			Line().Id("arch"),
+			Line().Lit(binaryName),
+			Line().Lit("bin"),
+			Line().Nil(),
+			Line().Qual(installerPkg, "DevImageNamespace"),
+			Line().Lit(imageName),
+			Line().Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call(),
+			Line().False(),
+			Line().True(),
+			Line().Id("kindClusterName"),
+			Line().True(),
+			Line(),
+		), Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
+				"failed to build and load %s image: %%w", binaryName,
 			)), Err())),
 		),
 		Line(),

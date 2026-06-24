@@ -112,7 +112,14 @@ control planes if they are used to create or are created by another control plan
 		// narrow the controller list when --apis is set so the install
 		// brings up only the requested apis' controllers alongside the
 		// rest-api and agent.
-		if upApis != "" {
+		switch {
+		case upApis == "none":
+			// install zero optional controllers; the rest-api,
+			// database-migrator, agent, and datastore dependencies are
+			// installed separately and remain unaffected.
+			cli.Info("installing zero optional controllers")
+			cpi.Opts.ControllerList = nil
+		case upApis != "":
 			selected, err := threeport.SelectControllersByGroup(
 				threeport.ParseApis(upApis),
 				cpi.Opts.ControllerList,
@@ -252,6 +259,6 @@ func init() {
 	)
 	UpCmd.Flags().StringVar(
 		&upApis,
-		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the install to those apis' controllers. Defaults to empty, which installs all controllers.",
+		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the install to those apis' controllers. Use \"none\" to install zero optional controllers. Defaults to empty, which installs all controllers.",
 	)
 }

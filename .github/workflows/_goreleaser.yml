@@ -21,16 +21,45 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6.0.3
       with:
         # goreleaser needs full history to generate the changelog
         fetch-depth: 0
         ref: ${{ inputs.ref }}
 
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        sudo docker image prune -af || true
+        df -h
+
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6.4.0
       with:
         go-version: '1.26'
+        cache: false
+
+    # Restore the Go build + module cache; the matching save runs at job end
+    # (even on failure) so a cold or failed build still banks compiled objects.
+    - name: Restore Go build + module cache
+      uses: actions/cache/restore@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ github.run_id }}
+        restore-keys: |
+          go-${{ runner.os }}-
+
+    # Cap the compiler's package parallelism by runner memory so the cold
+    # full-module build does not exhaust RAM and get the runner killed.
+    - name: Derive go build parallelism from runner memory
+      run: |
+        mem_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)    # usable RAM, in kB
+        by_mem=$(( mem_kb / (1024 * 1024 * 7 / 2) ))               # one worker per ~3.5 GB
+        cpus=$(nproc)                                              # but never exceed the CPU count
+        p=$(( by_mem < 1 ? 1 : (by_mem > cpus ? cpus : by_mem) ))  # clamp to [1, cpus]
+        echo "GOFLAGS=-p=$p" >> "$GITHUB_ENV"                      # goreleaser's go build inherits it
 
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v5.0.0
@@ -43,3 +72,13 @@ jobs:
         args: release --clean --parallelism 1 -f ./.goreleaser.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Save the Go cache even on failure so partial compile progress persists.
+    - name: Save Go build + module cache
+      if: always()  # run even when a prior step failed; default would skip it
+      uses: actions/cache/save@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ github.run_id }}

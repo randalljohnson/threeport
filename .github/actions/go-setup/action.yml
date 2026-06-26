@@ -63,4 +63,6 @@ runs:
 
     - name: Install mage
       shell: bash
-      run: go install github.com/magefile/mage@v1.17.2
+      # no version pin: run inside the module so go install builds mage at the
+      # version go.mod requires, keeping the CLI matched to the magefiles' dep
+      run: go install github.com/magefile/mage

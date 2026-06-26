@@ -36,9 +36,10 @@ jobs:
       with:
         # the goreleaser binary version to install, not the Go version
         version: v1.26.2
-        # size the per-target build concurrency to the runner's memory via
-        # PARALLEL_GO_BUILD from go-setup; the default is one per cpu, which
-        # can exhaust a runner's memory during concurrent threeport compiles.
-        args: release --clean --parallelism ${{ env.PARALLEL_GO_BUILD }} -f ./.goreleaser.yml
+        # build one target at a time. Each goreleaser target is a full
+        # threeport compile (the sdk imports the whole tree and jen), so
+        # building several concurrently exhausts the runner's memory. The
+        # per-target compile workers still come from GOFLAGS (-p), set by ci:env.
+        args: release --clean --parallelism 1 -f ./.goreleaser.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

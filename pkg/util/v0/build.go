@@ -2,7 +2,6 @@ package v0
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,10 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 // memBytesPerWorker is the runner memory budgeted per build worker, about
@@ -515,26 +510,40 @@ func gitOutput(workingDir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// DiscoverArches lists imageRef's repository tags and returns the arch
-// suffixes of every <baseTag>-<arch> tag, sorted. It lets a manifest stitch
-// assemble whatever single-arch images a build pushed without being told the
-// arch set. imageRef is a repository with no tag, e.g.
-// "ghcr.io/owner/threeport-rest-api".
+// DiscoverArches lists imageRef's repository tags via the crane CLI and
+// returns the sorted, unique arch suffixes of every <baseTag>-<arch> tag. It
+// lets a manifest stitch assemble whatever single-arch images a build pushed
+// without being told the arch set. imageRef is a repository with no tag, e.g.
+// "ghcr.io/owner/threeport-rest-api". crane authenticates from the ambient
+// docker config, so no auth is configured here. A repository with no matching
+// tags yields an empty slice and no error.
 func DiscoverArches(imageRef, baseTag string) ([]string, error) {
-	repo, err := name.NewRepository(imageRef)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse image repository %q: %w", imageRef, err)
+	cmd := exec.Command("crane", "ls", imageRef)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to list tags for %q with output %q: %w", imageRef, strings.TrimSpace(stderr.String()), err)
 	}
-	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(context.Background()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list tags for %q: %w", imageRef, err)
-	}
+
+	// keep tags shaped <baseTag>-<arch>, collecting each distinct arch suffix
 	prefix := baseTag + "-"
+	seen := map[string]struct{}{}
 	arches := []string{}
-	for _, tag := range tags {
-		if suffix := strings.TrimPrefix(tag, prefix); suffix != tag && suffix != "" {
-			arches = append(arches, suffix)
+	for _, line := range strings.Split(stdout.String(), "\n") {
+		tag := strings.TrimSpace(line)
+		if tag == "" {
+			continue
 		}
+		suffix := strings.TrimPrefix(tag, prefix)
+		if suffix == tag || suffix == "" {
+			continue
+		}
+		if _, ok := seen[suffix]; ok {
+			continue
+		}
+		seen[suffix] = struct{}{}
+		arches = append(arches, suffix)
 	}
 	sort.Strings(arches)
 	return arches, nil

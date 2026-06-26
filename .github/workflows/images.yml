@@ -86,6 +86,12 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    # package:allManifests shells out to crane to discover the per-arch tags
+    # pushed for each component. This action downloads a prebuilt crane binary
+    # (no compile) and crane reads the ghcr credentials the login step wrote.
+    - name: Install crane
+      uses: imjasonh/setup-crane@v0.4 # prebuilt-binary crane installer
+
     # mage self-derives the same repo and base tag the build job used, so the
     # manifest list stitches the single-arch tags under the canonical bare tag.
     # package:allManifests discovers the per-arch tags from the registry and

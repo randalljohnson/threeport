@@ -31,6 +31,40 @@ type Dev mg.Namespace
 // Package provides a type for methods that implement package targets.
 type Package mg.Namespace
 
+// Unit runs the unit tests across the threeport packages.
+func (Test) Unit() error {
+	cmd := "go"
+	args := []string{
+		"test",
+		"-count=1",
+		"./pkg/...",
+		"./internal/...",
+		"./cmd/...",
+		"./magefiles/...",
+	}
+	if err := util.RunCommandStreamOutput(cmd, args...); err != nil {
+		return fmt.Errorf("failed to run unit tests: %w", err)
+	}
+
+	return nil
+}
+
+// Integration runs integration tests against an existing Threeport control plane.
+func (Test) Integration() error {
+	cmd := "go"
+	args := []string{
+		"test",
+		"-v",
+		"./test/integration",
+		"-count=1",
+	}
+	if err := util.RunCommandStreamOutput(cmd, args...); err != nil {
+		return fmt.Errorf("failed to run integration tests: %w", err)
+	}
+
+	return nil
+}
+
 // ApiBin builds the REST API binary for the arch(es) in the ARCH env
 // var, defaulting to the local CPU architecture.
 func (Build) ApiBin() error {

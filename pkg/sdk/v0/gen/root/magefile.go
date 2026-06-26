@@ -70,6 +70,10 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		f.Line()
 	}
 
+	// test targets shared by every repo that runs the generator
+	emitTestUnitFunc(f)
+	emitTestIntegrationFunc(f)
+
 	// binary build function for API
 	emitBinFunc(f, buildApiFuncName, "REST API", "rest-api", "cmd/rest-api")
 
@@ -707,6 +711,61 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 		Qual("fmt", "Printf").Call(
 			Lit(fmt.Sprintf("%s binary built for arch(es): %%s\n", binaryName)),
 			Qual("strings", "Join").Call(Id("arches"), Lit(", ")),
+		),
+		Line(),
+
+		Return().Nil(),
+	)
+	f.Line()
+}
+
+// emitTestUnitFunc writes a no-arg `func (Test) Unit() error` that runs the
+// unit tests across the threeport packages via util.RunCommandStreamOutput.
+func emitTestUnitFunc(f *File) {
+	f.Comment("Unit runs the unit tests across the threeport packages.")
+	f.Func().Params(Id("Test")).Id("Unit").Params().Error().Block(
+		Id("cmd").Op(":=").Lit("go"),
+		Id("args").Op(":=").Index().String().Values(
+			Line().Lit("test"),
+			Line().Lit("-count=1"),
+			Line().Lit("./pkg/..."),
+			Line().Lit("./internal/..."),
+			Line().Lit("./cmd/..."),
+			Line().Lit("./magefiles/..."),
+			Line(),
+		),
+		If(Err().Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"RunCommandStreamOutput",
+		).Call(Id("cmd"), Id("args").Op("...")).Op(";").Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to run unit tests: %w"), Err())),
+		),
+		Line(),
+
+		Return().Nil(),
+	)
+	f.Line()
+}
+
+// emitTestIntegrationFunc writes a no-arg `func (Test) Integration() error`
+// that runs the integration tests against an existing Threeport control plane
+// via util.RunCommandStreamOutput.
+func emitTestIntegrationFunc(f *File) {
+	f.Comment("Integration runs integration tests against an existing Threeport control plane.")
+	f.Func().Params(Id("Test")).Id("Integration").Params().Error().Block(
+		Id("cmd").Op(":=").Lit("go"),
+		Id("args").Op(":=").Index().String().Values(
+			Line().Lit("test"),
+			Line().Lit("-v"),
+			Line().Lit("./test/integration"),
+			Line().Lit("-count=1"),
+			Line(),
+		),
+		If(Err().Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"RunCommandStreamOutput",
+		).Call(Id("cmd"), Id("args").Op("...")).Op(";").Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to run integration tests: %w"), Err())),
 		),
 		Line(),
 

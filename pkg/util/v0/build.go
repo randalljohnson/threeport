@@ -8,11 +8,69 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// memBytesPerWorker is the runner memory budgeted per build worker, about
+// 3.5 GB. Dividing available memory by this yields a memory-bound worker
+// count that a small CI runner can sustain without an out-of-memory kill.
+const memBytesPerWorker = 1024 * 1024 * 1024 * 7 / 2
+
+// BuildParallelism derives a build worker count from the runner's available
+// memory, budgeting roughly one worker per 3.5 GB and clamping the result to
+// the range [1, NumCPU]. It reads MemAvailable from /proc/meminfo on Linux;
+// where that file is unreadable (non-Linux runners), it falls back to the CPU
+// count. The result is always at least 1.
+func BuildParallelism() int {
+	cpus := runtime.NumCPU()
+	if cpus < 1 {
+		cpus = 1
+	}
+
+	memBytes, ok := availableMemoryBytes()
+	if !ok {
+		return cpus
+	}
+
+	workers := int(memBytes / memBytesPerWorker)
+	if workers < 1 {
+		return 1
+	}
+	if workers > cpus {
+		return cpus
+	}
+	return workers
+}
+
+// availableMemoryBytes returns the runner's available memory in bytes by
+// reading MemAvailable from /proc/meminfo, reporting false when the file is
+// unreadable or the field is absent (non-Linux runners).
+func availableMemoryBytes() (int64, bool) {
+	contents, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0, false
+	}
+	for _, line := range strings.Split(string(contents), "\n") {
+		if !strings.HasPrefix(line, "MemAvailable:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, false
+		}
+		kb, err := strconv.ParseInt(fields[1], 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		return kb * 1024, true
+	}
+	return 0, false
+}
 
 // BuildBinaries compiles every binary for every arch with one go build
 // invocation per arch. Arches run in parallel, and within each arch all
@@ -334,9 +392,9 @@ func BuildImage(
 
 // buildxBuildArgs assembles the docker buildx invocation argv, the full
 // image ref, and the short component name used for log prefixes. Reads
-// GIT_REVISION / GIT_TAG / BUILD_CREATED for OCI image labels, falling
-// back to git probes for the unset label values. Emits no other side
-// effects.
+// GIT_REVISION / GIT_TAG / BUILD_CREATED for OCI image labels; an unset
+// GIT_TAG falls back to the image tag, the others to git probes and the
+// current time. Emits no other side effects.
 func buildxBuildArgs(
 	threeportPath string,
 	dockerfilePath string,
@@ -385,6 +443,11 @@ func buildxBuildArgs(
 		return gitOutput(threeportPath, "rev-parse", "HEAD")
 	})
 	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
+		// self-derived builds leave GIT_TAG unset; fall back to the tag the
+		// image is published under so the OCI version label is never blank.
+		if imageTag != "" {
+			return imageTag
+		}
 		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
 	})
 	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {

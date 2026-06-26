@@ -188,8 +188,9 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// build and push all images
 	buildAllImagesFuncName := "AllImages"
 	f.Comment(fmt.Sprintf("%s builds and pushes images for all components. Repo and tag", buildAllImagesFuncName))
-	f.Comment("default to the dev namespace and current version; override with the")
-	f.Comment("IMAGE_REPO and IMAGE_TAG env vars. Arch comes from the ARCH env var or")
+	f.Comment("derive from the CI context when GITHUB_ACTIONS is set, otherwise the dev")
+	f.Comment("namespace and current version; the IMAGE_REPO and IMAGE_TAG env vars")
+	f.Comment("override either way. Arch comes from the ARCH env var or")
 	f.Comment("the local CPU architecture. Pre-compiles binaries for every requested")
 	f.Comment("arch in parallel, then packages each component image in parallel. A")
 	f.Comment("comma-separated ARCH value (e.g. amd64,arm64) produces a multi-arch")
@@ -200,13 +201,12 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Func().Params(Id("Build")).Id(buildAllImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
 		emitPrebuildBlock(g, allComponents)
 
-		g.Id("imageRepo").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_REPO"),
+		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
 			Qual(installerPkg, "DevImageNamespace"),
-		)
-		g.Id("imageTag").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_TAG"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Id("err"))),
 		)
 		g.Line()
 
@@ -228,9 +228,10 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// Package.Manifest stitches per-arch image tags into a multi-arch
 	// manifest list under the canonical tag.
 	f.Comment("Manifest stitches per-arch images for one component into a multi-arch")
-	f.Comment("manifest list under the canonical tag. Repo and tag default to the dev")
-	f.Comment("namespace and current version (override with IMAGE_REPO / IMAGE_TAG);")
-	f.Comment("arches come from the ARCH env var or the local CPU architecture. Sources")
+	f.Comment("manifest list under the canonical tag. Repo and tag derive from the CI")
+	f.Comment("context when GITHUB_ACTIONS is set, otherwise the dev namespace and")
+	f.Comment("current version; IMAGE_REPO and IMAGE_TAG override either way.")
+	f.Comment("Arches come from the ARCH env var or the local CPU architecture. Sources")
 	f.Comment("are looked up at <repo>/<image>:<tag>-<arch> for each arch and combined")
 	f.Comment("into <repo>/<image>:<tag> via `docker buildx imagetools create`.")
 	f.Func().Params(Id("Package")).Id("Manifest").Params(Id("imageName").String()).Error().Block(
@@ -240,13 +241,12 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
-		Id("imageRepo").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_REPO"),
+		List(Id("imageRepo"), Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
 			Qual(installerPkg, "DevImageNamespace"),
-		),
-		Id("imageTag").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_TAG"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Err())),
 		),
 		Line(),
 
@@ -264,8 +264,9 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Comment("AllManifests stitches multi-arch manifest lists for every component")
 	f.Comment("in parallel, sourced from the installer's authoritative controller")
 	f.Comment("list so adding a new controller automatically extends coverage. Repo")
-	f.Comment("and tag default to the dev namespace and current version (override with")
-	f.Comment("IMAGE_REPO / IMAGE_TAG); arches come from the ARCH env var or the local")
+	f.Comment("and tag derive from the CI context when GITHUB_ACTIONS is set, otherwise")
+	f.Comment("the dev namespace and current version; IMAGE_REPO and IMAGE_TAG override")
+	f.Comment("either way. Arches come from the ARCH env var or the local")
 	f.Comment("CPU architecture. Set PARALLEL_IMAGE_BUILD >= 1 to control worker")
 	f.Comment("concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage package:allManifests`).")
 	f.Func().Params(Id("Package")).Id("AllManifests").Params().Error().BlockFunc(func(g *Group) {
@@ -275,13 +276,12 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 		g.Line()
 
-		g.Id("imageRepo").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_REPO"),
+		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
 			Qual(installerPkg, "DevImageNamespace"),
-		)
-		g.Id("imageTag").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_TAG"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Id("err"))),
 		)
 		g.Line()
 		// gather every component image. For threeport-core, source from
@@ -341,12 +341,14 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	})
 	f.Line()
 
-	// helper: parse the PARALLEL_IMAGE_BUILD env var, default to 1
-	f.Comment("parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int, defaulting to 1.")
+	// helper: parse the PARALLEL_IMAGE_BUILD env var, self-compute when unset
+	f.Comment("parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int. When")
+	f.Comment("unset or empty it self-computes twice the memory-derived build worker count,")
+	f.Comment("since packaging and pushing images is lighter than compiling.")
 	f.Func().Id("parallelFromEnv").Params().Int().BlockFunc(func(g *Group) {
 		g.Id("v").Op(":=").Qual("os", "Getenv").Call(Lit("PARALLEL_IMAGE_BUILD"))
 		g.If(Id("v").Op("==").Lit("")).Block(
-			Return(Lit(1)),
+			Return(Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call().Op("*").Lit(2)),
 		)
 		g.List(Id("n"), Err()).Op(":=").Qual("strconv", "Atoi").Call(Id("v"))
 		g.If(Err().Op("!=").Nil().Op("||").Id("n").Op("<").Lit(1)).Block(
@@ -709,8 +711,9 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 // emitImageFunc writes a no-arg `func (Build) <ImageFunc>() error` that
 // compiles the binary for the resolved arch(es) via BuildBinaries, then
 // delegates packaging to the per-component package function. Repo and tag
-// default to the dev namespace and current version (override with IMAGE_REPO
-// / IMAGE_TAG); arch comes from the ARCH env var or the local CPU arch. When
+// derive from the CI context when GITHUB_ACTIONS is set, otherwise the dev
+// namespace and current version; IMAGE_REPO and IMAGE_TAG override either way.
+// Arch comes from the ARCH env var or the local CPU arch. When
 // called from AllImages the BuildBinaries call is a Go cache hit (AllImages
 // pre-compiled the same package earlier); standalone it does the compile.
 func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packageFuncName, installerPkg, modulePath string) {
@@ -722,13 +725,12 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packa
 		),
 		Line(),
 
-		Id("imageRepo").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_REPO"),
+		List(Id("imageRepo"), Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
 			Qual(installerPkg, "DevImageNamespace"),
-		),
-		Id("imageTag").Op(":=").Id("envOr").Call(
-			Lit("IMAGE_TAG"),
 			Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call(),
+		),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Err())),
 		),
 		Line(),
 

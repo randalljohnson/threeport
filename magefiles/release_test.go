@@ -92,3 +92,63 @@ func TestFormatVersionChannelAndGa(t *testing.T) {
 		t.Errorf("formatVersion ga = %q, want v0.7.0", got)
 	}
 }
+
+// TestJoinImageTagUsesRefNameOnTag covers joinImageTag() returning the git
+// tag verbatim on a tag build, so the released image matches the git tag.
+func TestJoinImageTagUsesRefNameOnTag(t *testing.T) {
+	// a tag build supplies the tag ref name and ignores version and sha
+	got := joinImageTag("tag", "v0.7.0", "v0.7.0-dev", "abc1234")
+	// the tag ref name wins outright
+	if got != "v0.7.0" {
+		t.Errorf("joinImageTag(tag) = %q, want v0.7.0", got)
+	}
+}
+
+// TestJoinImageTagJoinsVersionAndSha covers joinImageTag() on a non-tag
+// build joining the version base to the short sha with a dot.
+func TestJoinImageTagJoinsVersionAndSha(t *testing.T) {
+	// a branch build leaves ref type empty and falls through to the join
+	got := joinImageTag("branch", "dev", "v0.7.0-dev", "abc1234")
+	// the version and sha join with a dot, yielding the dev image tag
+	if got != "v0.7.0-dev.abc1234" {
+		t.Errorf("joinImageTag(branch) = %q, want v0.7.0-dev.abc1234", got)
+	}
+	// an unset ref type also falls through to the join
+	if got := joinImageTag("", "", "v0.7.0-dev", "abc1234"); got != "v0.7.0-dev.abc1234" {
+		t.Errorf("joinImageTag(unset) = %q, want v0.7.0-dev.abc1234", got)
+	}
+}
+
+// TestBaseFromVersionStripsPrefixAndSuffix covers baseFromVersion() reducing
+// a full version to the bare X.Y.Z core by dropping the leading v and the
+// prerelease suffix from the first hyphen.
+func TestBaseFromVersionStripsPrefixAndSuffix(t *testing.T) {
+	// each input pairs a version string with the bare base it reduces to
+	cases := []struct{ in, want string }{
+		{"v0.7.0-dev", "0.7.0"},
+		{"v0.7.0", "0.7.0"},
+		{"0.7.0-dev", "0.7.0"},
+		{"v1.2.3-rc.4", "1.2.3"},
+	}
+	for _, c := range cases {
+		// the action under test: reduce the version to its base
+		if got := baseFromVersion(c.in); got != c.want {
+			t.Errorf("baseFromVersion(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+// TestBaseFromVersionFeedsValidateBase covers the parse output validating as
+// a clean base, the contract cutRelease() relies on.
+func TestBaseFromVersionFeedsValidateBase(t *testing.T) {
+	// derive the base from a prerelease version the way cutRelease does
+	base := baseFromVersion("v0.7.0-dev")
+	// the derived base must pass validation and come back unchanged
+	got, err := validateBase(base)
+	if err != nil {
+		t.Errorf("validateBase(%q) returned error: %v", base, err)
+	}
+	if got != "0.7.0" {
+		t.Errorf("validateBase(%q) = %q, want 0.7.0", base, got)
+	}
+}

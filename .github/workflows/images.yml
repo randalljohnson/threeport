@@ -3,7 +3,7 @@
 # own namespace with no edits.
 #
 # Triggers:
-#   - push to dev -> <image>:dev-<short-sha>
+#   - push to dev -> <image>:v<version>.<short-sha>
 #   - push of a version tag (v*) -> <image>:<tag>
 #
 # Two phases: the build matrix runs one cell per arch (amd64, arm64),
@@ -23,34 +23,8 @@ permissions:
   packages: write
 
 jobs:
-  setup:
-    runs-on: ubuntu-24.04
-    outputs:
-      tag: ${{ steps.meta.outputs.tag }}
-      repo: ${{ steps.meta.outputs.repo }}
-    steps:
-      # A version tag publishes under the tag itself so the released image
-      # never drifts from the git tag; a push to dev publishes a
-      # dev-<short-sha> build. The image repo derives from the repo's own
-      # owner so a fork needs no edits.
-      - name: Determine tag and image repo
-        id: meta
-        env:
-          SHA: ${{ github.sha }}
-          OWNER: ${{ github.repository_owner }}
-        run: |
-          short="${SHA:0:7}"
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=dev-$short" >> "$GITHUB_OUTPUT"
-          fi
-          # ghcr requires a lowercase owner
-          echo "repo=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
-
   build:
     name: build-${{ matrix.arch }}
-    needs: setup
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -82,23 +56,28 @@ jobs:
     # build:allImages with a single arch pushes single-arch tags only; the
     # manifest job below stitches them via package:allManifests. amd64 and
     # arm64 don't share buildx or Go build cache, so separate runners are a
-    # free parallelization win.
+    # free parallelization win. The tag comes from mage imagetag (the git tag
+    # on a tag build, else v<version>.<sha>) and the repo from the lowercased
+    # owner, so a fork publishes to its own namespace with no edits.
     - name: Build and push all components for ${{ matrix.arch }}
       env:
+        OWNER: ${{ github.repository_owner }}
         # OCI image label values. BuildImage reads these and stamps them
         # onto the release stage via Dockerfile ARG/LABEL.
         GIT_REVISION: ${{ github.sha }}
-        GIT_TAG: ${{ needs.setup.outputs.tag }}
       run: |
         export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        tag="$(mage imagetag)"
+        repo="ghcr.io/${OWNER,,}"
+        export GIT_TAG="$tag"
         mage build:allImages \
-          ${{ needs.setup.outputs.repo }} \
-          ${{ needs.setup.outputs.tag }}-${{ matrix.arch }} \
+          "$repo" \
+          "$tag-${{ matrix.arch }}" \
           ${{ matrix.arch }}
 
   manifest:
     name: manifest
-    needs: [setup, build]
+    needs: build
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
@@ -119,9 +98,15 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    # Derive the same repo and tag the build job used so the manifest list
+    # stitches the single-arch tags under the canonical bare tag.
     - name: Create multi-arch manifests
+      env:
+        OWNER: ${{ github.repository_owner }}
       run: |
+        tag="$(mage imagetag)"
+        repo="ghcr.io/${OWNER,,}"
         mage package:allManifests \
-          ${{ needs.setup.outputs.repo }} \
-          ${{ needs.setup.outputs.tag }} \
+          "$repo" \
+          "$tag" \
           amd64,arm64

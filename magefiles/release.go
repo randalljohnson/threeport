@@ -17,31 +17,83 @@ type Release mg.Namespace
 // baseVersionPattern matches a bare X.Y.Z release version.
 var baseVersionPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 
-// Dev cuts the next dev build under the given base release, tagging the
+// versionFile holds the version string read by imagetag and the release
+// targets, relative to the repo root mage runs from.
+const versionFile = "internal/version/version.txt"
+
+// Imagetag prints the image tag for the current build: the git tag itself
+// on a tag build, otherwise the version file's base joined to the short
+// commit sha as v<base>-dev.<sha>.
+func Imagetag() error {
+	sha, err := gitOutput("rev-parse", "--short=7", "HEAD")
+	if err != nil {
+		return fmt.Errorf("failed to read short commit sha: %w", err)
+	}
+	v, err := readVersion()
+	if err != nil {
+		return err
+	}
+	fmt.Println(joinImageTag(os.Getenv("GITHUB_REF_TYPE"), os.Getenv("GITHUB_REF_NAME"), v, sha))
+	return nil
+}
+
+// joinImageTag returns refName on a tag build, otherwise version joined to
+// sha with a dot, yielding v<base>-dev.<sha>.
+func joinImageTag(refType, refName, version, sha string) string {
+	if refType == "tag" {
+		return refName
+	}
+	return version + "." + sha
+}
+
+// readVersion returns the trimmed contents of the version file.
+func readVersion() (string, error) {
+	contents, err := os.ReadFile(versionFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to read %s: %w", versionFile, err)
+	}
+	return strings.TrimSpace(string(contents)), nil
+}
+
+// baseFromVersion derives the bare X.Y.Z base from a version string by
+// stripping a leading v and any prerelease suffix from the first hyphen.
+func baseFromVersion(version string) string {
+	version = strings.TrimPrefix(version, "v")
+	if i := strings.Index(version, "-"); i >= 0 {
+		version = version[:i]
+	}
+	return version
+}
+
+// Dev cuts the next dev build under the version file's base, tagging the
 // latest dev commit as v<base>-dev.<next N> and pushing the tag.
-func (Release) Dev(base string) error {
-	return cutRelease(base, "dev", false)
+func (Release) Dev() error {
+	return cutRelease("dev", false)
 }
 
-// Rc cuts the next release candidate under the given base release, tagging
+// Rc cuts the next release candidate under the version file's base, tagging
 // the latest dev commit as v<base>-rc.<next N> and pushing the tag.
-func (Release) Rc(base string) error {
-	return cutRelease(base, "rc", false)
+func (Release) Rc() error {
+	return cutRelease("rc", false)
 }
 
-// Ga cuts the general-availability release for the given base, tagging the
-// latest dev commit as v<base> and pushing the tag.
-func (Release) Ga(base string) error {
-	return cutRelease(base, "", true)
+// Ga cuts the general-availability release for the version file's base,
+// tagging the latest dev commit as v<base> and pushing the tag.
+func (Release) Ga() error {
+	return cutRelease("", true)
 }
 
 // cutRelease tags the latest pushed dev commit as a release and pushes the
-// tag, which triggers the release and image workflows. A channel build
-// auto-increments the per-channel counter under the base; a ga build tags
-// the bare base. The push remote defaults to origin, overridable with
-// RELEASE_REMOTE.
-func cutRelease(base, channel string, ga bool) error {
-	base, err := validateBase(base)
+// tag, which triggers the release and image workflows. The base comes from
+// the version file. A channel build auto-increments the per-channel counter
+// under the base; a ga build tags the bare base. The push remote defaults to
+// origin, overridable with RELEASE_REMOTE.
+func cutRelease(channel string, ga bool) error {
+	fileVersion, err := readVersion()
+	if err != nil {
+		return err
+	}
+	base, err := validateBase(baseFromVersion(fileVersion))
 	if err != nil {
 		return err
 	}

@@ -2,8 +2,9 @@
 # The tag's prerelease segment selects the channel: v0.7.0-dev.N is a dev
 # build, v0.7.0-rc.N a release candidate, v0.7.0 a GA release; goreleaser
 # marks prerelease tags as GitHub pre-releases. Cut one with a mage target
-# (e.g. mage release:dev 0.7.0), which tags dev and pushes. Component images
-# are built separately by the images workflow on the same v* tag.
+# (mage release:dev, release:rc, or release:ga); the base comes from
+# version.txt with no argument. It tags dev and pushes. Component images are
+# built separately by the images workflow on the same v* tag.
 
 name: Release
 

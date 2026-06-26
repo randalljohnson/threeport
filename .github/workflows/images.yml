@@ -33,8 +33,6 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-    env:
-      GOPATH: /home/runner/go
     steps:
     - name: Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -71,19 +69,12 @@ jobs:
         ARCH: ${{ matrix.arch }}
         # per-arch push decoration: the base tag becomes <tag>-<arch>
         IMAGE_TAG_SUFFIX: -${{ matrix.arch }}
-        # OCI image label value. BuildImage reads this and stamps it onto the
-        # release stage via Dockerfile ARG/LABEL.
-        GIT_REVISION: ${{ github.sha }}
-      run: |
-        export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        mage build:allImages
+      run: mage build:allImages
 
   manifest:
     name: manifest
     needs: build
     runs-on: ubuntu-24.04
-    env:
-      GOPATH: /home/runner/go
     steps:
     - name: Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

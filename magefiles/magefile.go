@@ -123,23 +123,6 @@ func (Install) Sdk() error {
 	return nil
 }
 
-// Integration runs integration tests against an existing Threeport control
-// plane.
-func (Test) Integration() error {
-	cmd := "go"
-	args := []string{
-		"test",
-		"-v",
-		"./test/integration",
-		"-count=1",
-	}
-	if err := util.RunCommandStreamOutput(cmd, args...); err != nil {
-		return fmt.Errorf("failed to run integration tests: %w", err)
-	}
-
-	return nil
-}
-
 // Tptdev builds tptdev binary.
 func (Build) Tptdev() error {
 	buildTptdevCmd := exec.Command(

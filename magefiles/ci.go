@@ -11,14 +11,14 @@ import (
 type Ci mg.Namespace
 
 // Env prints KEY=value lines for the workflow to append to GITHUB_ENV. It emits
-// only the values that non-mage steps consume: GOFLAGS and PARALLEL_GO_BUILD,
-// both set to the memory-derived build worker count. The go test steps inherit
-// GOFLAGS, and the goreleaser step reads PARALLEL_GO_BUILD for its per-target
-// parallelism. Values mage itself consumes (image repo, tag, image-build
-// parallelism) are self-derived at use and are not emitted here.
+// only the values that non-mage steps consume: GOFLAGS, the memory-derived
+// go-build worker count inherited by the non-mage go test step and by
+// goreleaser's per-target compiles, and GORELEASER_PARALLELISM, half that
+// worker count, the number of whole-binary targets goreleaser builds at once
+// since each links the full tree. mage's own build targets self-derive their
+// parallelism, so no build-worker count is emitted for them.
 func (Ci) Env() error {
-	parallel := util.BuildParallelism()
-	fmt.Printf("GOFLAGS=-p=%d\n", parallel)
-	fmt.Printf("PARALLEL_GO_BUILD=%d\n", parallel)
+	fmt.Printf("GOFLAGS=-p=%d\n", util.BuildParallelism())
+	fmt.Printf("GORELEASER_PARALLELISM=%d\n", util.ReleaseParallelism())
 	return nil
 }

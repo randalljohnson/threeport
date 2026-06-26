@@ -166,7 +166,6 @@ var buildCmd = &cobra.Command{
 						push,
 						load,
 						kindClusterName,
-						false,
 					); err != nil {
 						cli.Error("failed to build image:", err)
 						os.Exit(1)

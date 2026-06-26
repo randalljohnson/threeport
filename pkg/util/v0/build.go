@@ -264,9 +264,6 @@ func ensureMultiArchBuilder() error {
 // Multi-arch builds require pushImage because buildx cannot --load
 // multiple platforms into a single docker daemon. loadImage drives
 // `kind load docker-image` against loadClusterName after the build.
-// cleanupAfterLoad, when true and the image was kind-loaded, removes the
-// local docker image and the built binary file once the load completes,
-// to free disk on space-constrained runners.
 //
 // Build args. BINARY is always set from the `binary` parameter.
 // GIT_REVISION, GIT_TAG, and BUILD_CREATED are filled from env vars of
@@ -292,7 +289,6 @@ func BuildImage(
 	pushImage bool,
 	loadImage bool,
 	loadClusterName string,
-	cleanupAfterLoad bool,
 ) error {
 	// parse arch list into linux/<arch> platforms and validate push/load combos
 	platforms := []string{}
@@ -389,39 +385,6 @@ func BuildImage(
 			)
 		}
 		fmt.Printf("%s image loaded to kind cluster\n", image)
-
-		// free local disk after the load by removing the docker image and
-		// the built binaries for every loaded arch
-		if cleanupAfterLoad {
-			if err := cleanupLoadedImage(threeportPath, binDir, binary, image, platforms); err != nil {
-				return fmt.Errorf("failed to clean up after loading image %s: %w", image, err)
-			}
-		}
-	}
-
-	return nil
-}
-
-// cleanupLoadedImage removes a kind-loaded docker image and the per-arch
-// binaries it was packaged from, freeing local disk. Binaries are removed
-// at <threeportPath>/<binDir>/<arch>/<binary> for each platform.
-func cleanupLoadedImage(threeportPath, binDir, binary, image string, platforms []string) error {
-	rmiCmd := exec.Command("docker", "rmi", image)
-	if output, err := rmiCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf(
-			"failed to remove docker image %s with output '%s': %w",
-			image,
-			string(output),
-			err,
-		)
-	}
-
-	for _, p := range platforms {
-		arch := strings.TrimPrefix(p, "linux/")
-		binaryPath := filepath.Join(threeportPath, binDir, arch, binary)
-		if err := os.Remove(binaryPath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("failed to remove built binary %s: %w", binaryPath, err)
-		}
 	}
 
 	return nil

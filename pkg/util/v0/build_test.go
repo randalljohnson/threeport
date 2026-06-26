@@ -148,21 +148,21 @@ func buildxArgsFixture() (threeportPath, dockerfilePath, target string, platform
 }
 
 func TestBuildImage_EmptyArchRejected(t *testing.T) {
-	err := BuildImage("/repo", "Dockerfile", "release", "", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", true, false, "", false)
+	err := BuildImage("/repo", "Dockerfile", "release", "", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", true, false, "")
 	if err == nil || !strings.Contains(err.Error(), "--arch is required") {
 		t.Fatalf("expected --arch is required, got %v", err)
 	}
 }
 
 func TestBuildImage_MultiArchRequiresPush(t *testing.T) {
-	err := BuildImage("/repo", "Dockerfile", "release", "amd64,arm64", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", false, true, "kind", false)
+	err := BuildImage("/repo", "Dockerfile", "release", "amd64,arm64", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", false, true, "kind")
 	if err == nil || !strings.Contains(err.Error(), "multi-arch builds require --push") {
 		t.Fatalf("expected multi-arch-requires-push error, got %v", err)
 	}
 }
 
 func TestBuildImage_PushAndLoadMutuallyExclusive(t *testing.T) {
-	err := BuildImage("/repo", "Dockerfile", "release", "amd64", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", true, true, "kind", false)
+	err := BuildImage("/repo", "Dockerfile", "release", "amd64", "rest-api", "bin", nil, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", true, true, "kind")
 	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
 		t.Fatalf("expected push/load exclusive error, got %v", err)
 	}

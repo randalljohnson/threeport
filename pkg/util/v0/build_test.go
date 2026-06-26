@@ -302,3 +302,14 @@ func TestBuildxArgs_ContextAndDockerfilePathsJoined(t *testing.T) {
 		t.Errorf("expected -f /repo/subdir/Dockerfile, got args: %v", args)
 	}
 }
+
+// TestBuildParallelismIsPositive covers BuildParallelism returning at least one
+// worker on any runner, whether it reads /proc/meminfo or falls back to the CPU
+// count.
+func TestBuildParallelismIsPositive(t *testing.T) {
+	// the action under test: derive a worker count for the current runner
+	if got := BuildParallelism(); got < 1 {
+		// the count must never collapse to zero, which would stall the pool
+		t.Errorf("BuildParallelism() = %d, want >= 1", got)
+	}
+}

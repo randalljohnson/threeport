@@ -89,8 +89,10 @@ func (Build) ApiImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -163,8 +165,10 @@ func (Build) DbMigratorImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -237,8 +241,10 @@ func (Build) AgentImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -311,8 +317,10 @@ func (Build) SecretControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -385,8 +393,10 @@ func (Build) AwsControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -459,8 +469,10 @@ func (Build) OciControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -533,8 +545,10 @@ func (Build) GcpControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -607,8 +621,10 @@ func (Build) ControlPlaneControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -681,8 +697,10 @@ func (Build) GatewayControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -755,8 +773,10 @@ func (Build) HelmWorkloadControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -829,8 +849,10 @@ func (Build) MachineRuntimeControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -903,8 +925,10 @@ func (Build) MachineWorkloadControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -977,8 +1001,10 @@ func (Build) KubernetesRuntimeControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -1051,8 +1077,10 @@ func (Build) ObservabilityControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -1125,8 +1153,10 @@ func (Build) TerraformControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -1199,8 +1229,10 @@ func (Build) KubernetesWorkloadControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	arches := util.ParseArches(arch)
 	if err := util.BuildBinaries(
@@ -1287,8 +1319,9 @@ func (Build) AllBins() error {
 }
 
 // AllImages builds and pushes images for all components. Repo and tag
-// default to the dev namespace and current version; override with the
-// IMAGE_REPO and IMAGE_TAG env vars. Arch comes from the ARCH env var or
+// derive from the CI context when GITHUB_ACTIONS is set, otherwise the dev
+// namespace and current version; the IMAGE_REPO and IMAGE_TAG env vars
+// override either way. Arch comes from the ARCH env var or
 // the local CPU architecture. Pre-compiles binaries for every requested
 // arch in parallel, then packages each component image in parallel. A
 // comma-separated ARCH value (e.g. amd64,arm64) produces a multi-arch
@@ -1336,8 +1369,10 @@ func (Build) AllImages() error {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	build := Build{}
 	wrap := func(fn func(string, string, string, string) error) func() error {
@@ -1367,9 +1402,10 @@ func (Build) AllImages() error {
 }
 
 // Manifest stitches per-arch images for one component into a multi-arch
-// manifest list under the canonical tag. Repo and tag default to the dev
-// namespace and current version (override with IMAGE_REPO / IMAGE_TAG);
-// arches come from the ARCH env var or the local CPU architecture. Sources
+// manifest list under the canonical tag. Repo and tag derive from the CI
+// context when GITHUB_ACTIONS is set, otherwise the dev namespace and
+// current version; IMAGE_REPO and IMAGE_TAG override either way.
+// Arches come from the ARCH env var or the local CPU architecture. Sources
 // are looked up at <repo>/<image>:<tag>-<arch> for each arch and combined
 // into <repo>/<image>:<tag> via `docker buildx imagetools create`.
 func (Package) Manifest(imageName string) error {
@@ -1378,8 +1414,10 @@ func (Package) Manifest(imageName string) error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	return util.PushMultiArchManifest(imageRepo, imageName, imageTag, arch)
 }
@@ -1387,8 +1425,9 @@ func (Package) Manifest(imageName string) error {
 // AllManifests stitches multi-arch manifest lists for every component
 // in parallel, sourced from the installer's authoritative controller
 // list so adding a new controller automatically extends coverage. Repo
-// and tag default to the dev namespace and current version (override with
-// IMAGE_REPO / IMAGE_TAG); arches come from the ARCH env var or the local
+// and tag derive from the CI context when GITHUB_ACTIONS is set, otherwise
+// the dev namespace and current version; IMAGE_REPO and IMAGE_TAG override
+// either way. Arches come from the ARCH env var or the local
 // CPU architecture. Set PARALLEL_IMAGE_BUILD >= 1 to control worker
 // concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage package:allManifests`).
 func (Package) AllManifests() error {
@@ -1397,8 +1436,10 @@ func (Package) AllManifests() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo := envOr("IMAGE_REPO", installer.DevImageNamespace)
-	imageTag := envOr("IMAGE_TAG", version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
 
 	// gather every component image: rest-api, db migrator, agent, and
 	// all controllers from the installer's authoritative list
@@ -1422,11 +1463,13 @@ func (Package) AllManifests() error {
 	return util.RunParallel(parallelFromEnv(), tasks)
 }
 
-// parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int, defaulting to 1.
+// parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int. When
+// unset or empty it self-computes twice the memory-derived build worker count,
+// since packaging and pushing images is lighter than compiling.
 func parallelFromEnv() int {
 	v := os.Getenv("PARALLEL_IMAGE_BUILD")
 	if v == "" {
-		return 1
+		return util.BuildParallelism() * 2
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil || n < 1 {

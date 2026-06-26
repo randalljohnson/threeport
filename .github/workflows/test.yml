@@ -27,8 +27,6 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-24.04
-    env:
-      GOPATH: /home/runner/go
     steps:
     - name: Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -43,7 +41,7 @@ jobs:
       run: mage install:sdk
 
     - name: Run threeport-sdk
-      run: ${{ env.GOPATH }}/bin/threeport-sdk gen --config sdk-config.yaml
+      run: threeport-sdk gen --config sdk-config.yaml
 
     - name: Verify codegen is idempotent
       run: git diff --exit-code
@@ -55,7 +53,6 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-24.04
     env:
-      GOPATH: /home/runner/go
       # target the local registry for both the image build and the install/
       # test:up step; mage self-derives the base tag (no per-arch suffix), so
       # build and install resolve the same <localhost:5001>/<image>:<tag>.

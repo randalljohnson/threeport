@@ -28,7 +28,8 @@ jobs:
     - name: Go setup
       uses: ./.github/actions/go-setup
 
-    # emit go-parallelism env so the goreleaser step resolves PARALLEL_GO_BUILD
+    # emit go-parallelism env so the goreleaser step resolves
+    # GORELEASER_PARALLELISM and GOFLAGS
     - run: mage ci:env >> "$GITHUB_ENV"
 
     - name: Run GoReleaser
@@ -36,10 +37,10 @@ jobs:
       with:
         # the goreleaser binary version to install, not the Go version
         version: v1.26.2
-        # build one target at a time. Each goreleaser target is a full
-        # threeport compile (the sdk imports the whole tree and jen), so
-        # building several concurrently exhausts the runner's memory. The
-        # per-target compile workers still come from GOFLAGS (-p), set by ci:env.
-        args: release --clean --parallelism 1 -f ./.goreleaser.yml
+        # the number of whole-binary targets built at once comes from
+        # GORELEASER_PARALLELISM (memory-derived, half the go-build worker
+        # count, since each release target links the full tree); the per-target
+        # compile workers come from GOFLAGS (-p). Both are set by ci:env.
+        args: release --clean --parallelism ${{ env.GORELEASER_PARALLELISM }} -f ./.goreleaser.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

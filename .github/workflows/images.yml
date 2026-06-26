@@ -7,8 +7,8 @@
 #   - push of a version tag (v*) -> <image>:<tag>
 #
 # Two phases: the build matrix runs one cell per arch (amd64, arm64),
-# pushing single-arch tags <image>:v<version>.<sha>-<arch> per cell (the
-# matrix sets IMAGE_TAG_SUFFIX to -<arch>); the manifest job stitches them
+# pushing single-arch tags <image>:v<version>.<sha>-<arch> per cell (each
+# cell derives the -<arch> suffix from ARCH); the manifest job stitches them
 # into the bare <image>:v<version>.<sha> manifest list via
 # mage package:allManifests. mage self-derives the repo and base tag from
 # the CI context, so this workflow passes no positional args. The component
@@ -44,10 +44,6 @@ jobs:
         # shared Go build cache entry
         cache-arch: ${{ matrix.arch }}
 
-    # emit go-parallelism env (GOFLAGS, PARALLEL_GO_BUILD) for the non-mage
-    # steps; mage self-derives the image-build values it consumes.
-    - run: mage ci:env >> "$GITHUB_ENV"
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
@@ -63,12 +59,10 @@ jobs:
     # arm64 don't share buildx or Go build cache, so separate runners are a
     # free parallelization win. mage self-derives the repo (ghcr.io/<owner>)
     # and base tag (the git tag on a tag build, else v<version>.<sha>) from
-    # the CI context; IMAGE_TAG_SUFFIX decorates the push tag with -<arch>.
+    # the CI context; the per-arch -<arch> push suffix is derived from ARCH.
     - name: Build and push all components for ${{ matrix.arch }}
       env:
         ARCH: ${{ matrix.arch }}
-        # per-arch push decoration: the base tag becomes <tag>-<arch>
-        IMAGE_TAG_SUFFIX: -${{ matrix.arch }}
       run: mage build:allImages
 
   manifest:
@@ -82,10 +76,6 @@ jobs:
     - name: Go setup
       uses: ./.github/actions/go-setup
 
-    # emit go-parallelism env (GOFLAGS, PARALLEL_GO_BUILD) for the non-mage
-    # steps; mage self-derives the image-build values it consumes.
-    - run: mage ci:env >> "$GITHUB_ENV"
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
@@ -96,10 +86,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    # mage self-derives the same repo and base tag the build job used, with no
-    # IMAGE_TAG_SUFFIX, so the manifest list stitches the single-arch tags
-    # under the canonical bare tag. ARCH lists both arches to stitch.
+    # mage self-derives the same repo and base tag the build job used, so the
+    # manifest list stitches the single-arch tags under the canonical bare tag.
+    # package:allManifests discovers the per-arch tags from the registry and
+    # stitches whatever it finds, so no arch list is passed.
     - name: Create multi-arch manifests
-      env:
-        ARCH: amd64,arm64
       run: mage package:allManifests

@@ -18,6 +18,8 @@ on:
       - edited
       - synchronize
       - reopened
+  push:
+    branches: [dev]
 
 permissions:
   contents: read

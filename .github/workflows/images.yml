@@ -1,62 +1,114 @@
-# Fork-only: builds per-component multi-arch images on push to dev and
-# dev-release (and on PRs to dev-release), pushing them to
-# ghcr.io/randalljohnson.
+# Builds and publishes threeport's component images as multi-arch manifest
+# lists to ghcr.io under the repo's own owner, so a fork publishes to its
+# own namespace with no edits.
 #
-# Tag scheme (multi-arch manifest list published by the manifest job
-# in _build-images.yml; lack of -<arch> suffix implies multi-arch):
-#   - PR event             -> <image>:dev-<short-sha>
-#   - push to dev          -> <image>:dev-<short-sha>
-#   - push to dev-release  -> <image>:dev-release-<short-sha>
+# Triggers:
+#   - push to dev -> <image>:v<version>.<short-sha>
+#   - push of a version tag (v*) -> <image>:<tag>
 #
-# Per-arch single-platform tags pushed by each matrix cell are suffixed
-# with -<arch> by _build-images.yml (e.g. dev-<sha>-amd64); the
-# manifest job stitches them into the bare <image>:<tag> manifest list
-# above via `docker buildx imagetools create` (wrapped by
-# `mage package:allManifests`).
-#
-# Thin caller over the shared reusable workflow at _build-images.yml.
+# Two phases: the build matrix runs one cell per arch (amd64, arm64),
+# pushing single-arch tags <image>:v<version>.<sha>-<arch> per cell (the
+# matrix sets IMAGE_TAG_SUFFIX to -<arch>); the manifest job stitches them
+# into the bare <image>:v<version>.<sha> manifest list via
+# mage package:allManifests. mage self-derives the repo and base tag from
+# the CI context, so this workflow passes no positional args. The component
+# list is owned by mage, so this workflow does not maintain it.
 
 name: Images
 
 on:
-  pull_request:
-    branches: [dev-release]
   push:
-    branches: [dev-release]
+    branches: [dev]
+    tags: ['v*']
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  setup:
-    runs-on: ubuntu-24.04
-    outputs:
-      tag: ${{ steps.tag.outputs.value }}
-    steps:
-      # For pull_request events, github.sha points at GHA's ephemeral
-      # merge commit, which doesn't exist on the source branch. Prefer
-      # github.event.pull_request.head.sha so the tag matches what
-      # `git rev-parse --short=7 HEAD` returns on the developer's
-      # worktree. For push events the head.sha context is unset, so
-      # fall back to github.sha.
-      - name: Determine tag
-        id: tag
-        env:
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          short="${SHA:0:7}"
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "value=dev-$short" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=${{ github.ref_name }}-$short" >> "$GITHUB_OUTPUT"
-          fi
-
   build:
-    needs: setup
-    uses: ./.github/workflows/_build-images.yml
-    with:
-      tag: ${{ needs.setup.outputs.tag }}
-      image_repo: ghcr.io/randalljohnson
-      arches: amd64,arm64
-    secrets: inherit
+    name: build-${{ matrix.arch }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+    - name: Go setup
+      uses: ./.github/actions/go-setup
+      with:
+        # cache per arch so the amd64 and arm64 cells don't overwrite one
+        # shared Go build cache entry
+        cache-arch: ${{ matrix.arch }}
+
+    # emit go-parallelism env (GOFLAGS, PARALLEL_GO_BUILD) for the non-mage
+    # steps; mage self-derives the image-build values it consumes.
+    - run: mage ci:env >> "$GITHUB_ENV"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # build:allImages with a single arch pushes single-arch tags only; the
+    # manifest job below stitches them via package:allManifests. amd64 and
+    # arm64 don't share buildx or Go build cache, so separate runners are a
+    # free parallelization win. mage self-derives the repo (ghcr.io/<owner>)
+    # and base tag (the git tag on a tag build, else v<version>.<sha>) from
+    # the CI context; IMAGE_TAG_SUFFIX decorates the push tag with -<arch>.
+    - name: Build and push all components for ${{ matrix.arch }}
+      env:
+        ARCH: ${{ matrix.arch }}
+        # per-arch push decoration: the base tag becomes <tag>-<arch>
+        IMAGE_TAG_SUFFIX: -${{ matrix.arch }}
+        # OCI image label value. BuildImage reads this and stamps it onto the
+        # release stage via Dockerfile ARG/LABEL.
+        GIT_REVISION: ${{ github.sha }}
+      run: |
+        export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        mage build:allImages
+
+  manifest:
+    name: manifest
+    needs: build
+    runs-on: ubuntu-24.04
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+    - name: Go setup
+      uses: ./.github/actions/go-setup
+
+    # emit go-parallelism env (GOFLAGS, PARALLEL_GO_BUILD) for the non-mage
+    # steps; mage self-derives the image-build values it consumes.
+    - run: mage ci:env >> "$GITHUB_ENV"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # mage self-derives the same repo and base tag the build job used, with no
+    # IMAGE_TAG_SUFFIX, so the manifest list stitches the single-arch tags
+    # under the canonical bare tag. ARCH lists both arches to stitch.
+    - name: Create multi-arch manifests
+      env:
+        ARCH: amd64,arm64
+      run: mage package:allManifests

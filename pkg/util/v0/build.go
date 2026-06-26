@@ -2,6 +2,7 @@ package v0
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 // memBytesPerWorker is the runner memory budgeted per build worker, about
@@ -45,6 +50,17 @@ func BuildParallelism() int {
 		return cpus
 	}
 	return workers
+}
+
+// ReleaseParallelism reports how many whole-binary targets a release build
+// should compile at once. Each release target links the full tree, roughly
+// twice the memory of one package-compile worker, so it halves
+// BuildParallelism and never returns less than one.
+func ReleaseParallelism() int {
+	if p := BuildParallelism() / 2; p > 1 {
+		return p
+	}
+	return 1
 }
 
 // availableMemoryBytes returns the runner's available memory in bytes by
@@ -119,13 +135,9 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 	if noCache {
 		args = append(args, "-a")
 	}
-	// PARALLEL_GO_BUILD caps concurrent compile workers per go build
-	// invocation. CI sets it (e.g. 2) to keep memory bounded on small
-	// runners; locally we leave it unset so the Go default (GOMAXPROCS)
-	// uses every available core.
-	if p := os.Getenv("PARALLEL_GO_BUILD"); p != "" {
-		args = append(args, "-p="+p)
-	}
+	// size compile workers to the runner's memory so a small CI runner does
+	// not run out of memory; on a roomy machine this is the CPU count.
+	args = append(args, fmt.Sprintf("-p=%d", BuildParallelism()))
 	args = append(args, "-o", filepath.Join("bin", arch)+string(os.PathSeparator))
 	// prefix each package dir with ./ so go build treats them as local
 	// import paths rather than stdlib lookups.
@@ -501,6 +513,31 @@ func gitOutput(workingDir string, args ...string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// DiscoverArches lists imageRef's repository tags and returns the arch
+// suffixes of every <baseTag>-<arch> tag, sorted. It lets a manifest stitch
+// assemble whatever single-arch images a build pushed without being told the
+// arch set. imageRef is a repository with no tag, e.g.
+// "ghcr.io/owner/threeport-rest-api".
+func DiscoverArches(imageRef, baseTag string) ([]string, error) {
+	repo, err := name.NewRepository(imageRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse image repository %q: %w", imageRef, err)
+	}
+	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(context.Background()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tags for %q: %w", imageRef, err)
+	}
+	prefix := baseTag + "-"
+	arches := []string{}
+	for _, tag := range tags {
+		if suffix := strings.TrimPrefix(tag, prefix); suffix != tag && suffix != "" {
+			arches = append(arches, suffix)
+		}
+	}
+	sort.Strings(arches)
+	return arches, nil
 }
 
 // ParseArches splits a comma-separated arch string into a clean slice,

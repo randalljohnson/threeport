@@ -1404,22 +1404,24 @@ func (Build) AllImages() error {
 // Manifest stitches per-arch images for one component into a multi-arch
 // manifest list under the canonical tag. Repo and tag derive from the CI
 // context when GITHUB_ACTIONS is set, otherwise the dev namespace and
-// current version; IMAGE_REPO and IMAGE_TAG override either way.
-// Arches come from the ARCH env var or the local CPU architecture. Sources
-// are looked up at <repo>/<image>:<tag>-<arch> for each arch and combined
-// into <repo>/<image>:<tag> via `docker buildx imagetools create`.
+// current version; IMAGE_REPO and IMAGE_TAG override either way. The arch
+// set is discovered from the per-arch tags already pushed to the registry,
+// so the stitch covers whatever single-arch images the build produced.
+// Sources are looked up at <repo>/<image>:<tag>-<arch> for each discovered
+// arch and combined into <repo>/<image>:<tag> via
+// `docker buildx imagetools create`.
 func (Package) Manifest(imageName string) error {
-	_, arch, err := getBuildVals()
-	if err != nil {
-		return fmt.Errorf("failed to get build values: %w", err)
-	}
-
 	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
 
-	return util.PushMultiArchManifest(imageRepo, imageName, imageTag, arch)
+	arches, err := util.DiscoverArches(imageRepo+"/"+imageName, imageTag)
+	if err != nil {
+		return fmt.Errorf("failed to discover arches: %w", err)
+	}
+
+	return util.PushMultiArchManifest(imageRepo, imageName, imageTag, strings.Join(arches, ","))
 }
 
 // AllManifests stitches multi-arch manifest lists for every component
@@ -1427,15 +1429,11 @@ func (Package) Manifest(imageName string) error {
 // list so adding a new controller automatically extends coverage. Repo
 // and tag derive from the CI context when GITHUB_ACTIONS is set, otherwise
 // the dev namespace and current version; IMAGE_REPO and IMAGE_TAG override
-// either way. Arches come from the ARCH env var or the local
-// CPU architecture. Set PARALLEL_IMAGE_BUILD >= 1 to control worker
-// concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage package:allManifests`).
+// either way. Each component's arch set is discovered from the per-arch
+// tags already pushed to the registry. Set PARALLEL_IMAGE_BUILD >= 1 to
+// control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage
+// package:allManifests`).
 func (Package) AllManifests() error {
-	_, arch, err := getBuildVals()
-	if err != nil {
-		return fmt.Errorf("failed to get build values: %w", err)
-	}
-
 	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
@@ -1456,7 +1454,11 @@ func (Package) AllManifests() error {
 	for _, image := range images {
 		image := image
 		tasks = append(tasks, func() error {
-			return util.PushMultiArchManifest(imageRepo, image, imageTag, arch)
+			arches, err := util.DiscoverArches(imageRepo+"/"+image, imageTag)
+			if err != nil {
+				return fmt.Errorf("failed to discover arches: %w", err)
+			}
+			return util.PushMultiArchManifest(imageRepo, image, imageTag, strings.Join(arches, ","))
 		})
 	}
 

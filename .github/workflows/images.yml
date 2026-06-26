@@ -1,0 +1,127 @@
+# Builds and publishes threeport's component images as multi-arch manifest
+# lists to ghcr.io under the repo's own owner, so a fork publishes to its
+# own namespace with no edits.
+#
+# Triggers:
+#   - push to dev -> <image>:dev-<short-sha>
+#   - push of a version tag (v*) -> <image>:<tag>
+#
+# Two phases: the build matrix runs one cell per arch (amd64, arm64),
+# pushing single-arch tags <image>:<tag>-<arch>; the manifest job stitches
+# them into the bare <image>:<tag> manifest list via mage package:allManifests.
+# The component list is owned by mage, so this workflow does not maintain it.
+
+name: Images
+
+on:
+  push:
+    branches: [dev]
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      repo: ${{ steps.meta.outputs.repo }}
+    steps:
+      # A version tag publishes under the tag itself so the released image
+      # never drifts from the git tag; a push to dev publishes a
+      # dev-<short-sha> build. The image repo derives from the repo's own
+      # owner so a fork needs no edits.
+      - name: Determine tag and image repo
+        id: meta
+        env:
+          SHA: ${{ github.sha }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          short="${SHA:0:7}"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=dev-$short" >> "$GITHUB_OUTPUT"
+          fi
+          # ghcr requires a lowercase owner
+          echo "repo=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build-${{ matrix.arch }}
+    needs: setup
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+    - name: Go setup
+      uses: ./.github/actions/go-setup
+      with:
+        # cache per arch so the amd64 and arm64 cells don't overwrite one
+        # shared Go build cache entry
+        cache-arch: ${{ matrix.arch }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # build:allImages with a single arch pushes single-arch tags only; the
+    # manifest job below stitches them via package:allManifests. amd64 and
+    # arm64 don't share buildx or Go build cache, so separate runners are a
+    # free parallelization win.
+    - name: Build and push all components for ${{ matrix.arch }}
+      env:
+        # OCI image label values. BuildImage reads these and stamps them
+        # onto the release stage via Dockerfile ARG/LABEL.
+        GIT_REVISION: ${{ github.sha }}
+        GIT_TAG: ${{ needs.setup.outputs.tag }}
+      run: |
+        export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        mage build:allImages \
+          ${{ needs.setup.outputs.repo }} \
+          ${{ needs.setup.outputs.tag }}-${{ matrix.arch }} \
+          ${{ matrix.arch }}
+
+  manifest:
+    name: manifest
+    needs: [setup, build]
+    runs-on: ubuntu-24.04
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+    - name: Go setup
+      uses: ./.github/actions/go-setup
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create multi-arch manifests
+      run: |
+        mage package:allManifests \
+          ${{ needs.setup.outputs.repo }} \
+          ${{ needs.setup.outputs.tag }} \
+          amd64,arm64

@@ -1,22 +1,40 @@
+# Publishes a release of threeport when a version tag is pushed.
+# The tag's prerelease segment selects the channel: v0.7.0-dev.N is a dev
+# build, v0.7.0-rc.N a release candidate, v0.7.0 a GA release; goreleaser
+# marks prerelease tags as GitHub pre-releases. Cut one with a mage target
+# (e.g. mage release:dev 0.7.0), which tags dev and pushes. Component images
+# are built separately by the images workflow on the same v* tag.
+
 name: Release
 
 on:
   push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+    tags: ['v*']
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
   goreleaser:
-    uses: ./.github/workflows/_goreleaser.yml
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      with:
+        # goreleaser needs full history to generate the changelog
+        fetch-depth: 0
 
-  images:
-    needs: goreleaser
-    uses: ./.github/workflows/_build-images.yml
-    with:
-      tag: ${{ github.ref_name }}
-      image_repo: ghcr.io/threeport
-    secrets: inherit
+    - name: Go setup
+      uses: ./.github/actions/go-setup
+
+    - name: Run GoReleaser
+      uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+      with:
+        # the goreleaser binary version to install, not the Go version
+        version: v1.26.2
+        # size the per-target build concurrency to the runner's memory via
+        # PARALLEL_GO_BUILD from go-setup; the default is one per cpu, which
+        # can exhaust a runner's memory during concurrent threeport compiles.
+        args: release --clean --parallelism ${{ env.PARALLEL_GO_BUILD }} -f ./.goreleaser.yml
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

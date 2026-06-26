@@ -7,9 +7,12 @@
 #   - push of a version tag (v*) -> <image>:<tag>
 #
 # Two phases: the build matrix runs one cell per arch (amd64, arm64),
-# pushing single-arch tags <image>:<tag>-<arch>; the manifest job stitches
-# them into the bare <image>:<tag> manifest list via mage package:allManifests.
-# The component list is owned by mage, so this workflow does not maintain it.
+# pushing single-arch tags <image>:v<version>.<sha>-<arch> per cell (the
+# matrix sets IMAGE_TAG_SUFFIX to -<arch>); the manifest job stitches them
+# into the bare <image>:v<version>.<sha> manifest list via
+# mage package:allManifests. mage self-derives the repo and base tag from
+# the CI context, so this workflow passes no positional args. The component
+# list is owned by mage, so this workflow does not maintain it.
 
 name: Images
 
@@ -43,6 +46,10 @@ jobs:
         # shared Go build cache entry
         cache-arch: ${{ matrix.arch }}
 
+    # emit go-parallelism env (GOFLAGS, PARALLEL_GO_BUILD) for the non-mage
+    # steps; mage self-derives the image-build values it consumes.
+    - run: mage ci:env >> "$GITHUB_ENV"
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
@@ -56,24 +63,20 @@ jobs:
     # build:allImages with a single arch pushes single-arch tags only; the
     # manifest job below stitches them via package:allManifests. amd64 and
     # arm64 don't share buildx or Go build cache, so separate runners are a
-    # free parallelization win. The tag comes from mage imagetag (the git tag
-    # on a tag build, else v<version>.<sha>) and the repo from the lowercased
-    # owner, so a fork publishes to its own namespace with no edits.
+    # free parallelization win. mage self-derives the repo (ghcr.io/<owner>)
+    # and base tag (the git tag on a tag build, else v<version>.<sha>) from
+    # the CI context; IMAGE_TAG_SUFFIX decorates the push tag with -<arch>.
     - name: Build and push all components for ${{ matrix.arch }}
       env:
-        OWNER: ${{ github.repository_owner }}
-        # OCI image label values. BuildImage reads these and stamps them
-        # onto the release stage via Dockerfile ARG/LABEL.
+        ARCH: ${{ matrix.arch }}
+        # per-arch push decoration: the base tag becomes <tag>-<arch>
+        IMAGE_TAG_SUFFIX: -${{ matrix.arch }}
+        # OCI image label value. BuildImage reads this and stamps it onto the
+        # release stage via Dockerfile ARG/LABEL.
         GIT_REVISION: ${{ github.sha }}
       run: |
         export BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        tag="$(mage imagetag)"
-        repo="ghcr.io/${OWNER,,}"
-        export GIT_TAG="$tag"
-        mage build:allImages \
-          "$repo" \
-          "$tag-${{ matrix.arch }}" \
-          ${{ matrix.arch }}
+        mage build:allImages
 
   manifest:
     name: manifest
@@ -88,6 +91,10 @@ jobs:
     - name: Go setup
       uses: ./.github/actions/go-setup
 
+    # emit go-parallelism env (GOFLAGS, PARALLEL_GO_BUILD) for the non-mage
+    # steps; mage self-derives the image-build values it consumes.
+    - run: mage ci:env >> "$GITHUB_ENV"
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
@@ -98,15 +105,10 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    # Derive the same repo and tag the build job used so the manifest list
-    # stitches the single-arch tags under the canonical bare tag.
+    # mage self-derives the same repo and base tag the build job used, with no
+    # IMAGE_TAG_SUFFIX, so the manifest list stitches the single-arch tags
+    # under the canonical bare tag. ARCH lists both arches to stitch.
     - name: Create multi-arch manifests
       env:
-        OWNER: ${{ github.repository_owner }}
-      run: |
-        tag="$(mage imagetag)"
-        repo="ghcr.io/${OWNER,,}"
-        mage package:allManifests \
-          "$repo" \
-          "$tag" \
-          amd64,arm64
+        ARCH: amd64,arm64
+      run: mage package:allManifests

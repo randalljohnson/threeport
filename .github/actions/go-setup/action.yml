@@ -2,11 +2,12 @@
 #
 # Bundles the steps every Go-building job repeats: free runner disk so a
 # full build does not run out of space, install Go, restore and save the Go
-# build + module cache, size the compiler's package parallelism to the
-# runner's RAM, and install mage.
+# build + module cache, and install mage. Build parallelism is sized in mage:
+# the ci:env target emits go-parallelism env for non-mage steps, and
+# build:allImages self-computes its image-packaging concurrency.
 
 name: Go setup
-description: Free disk, install Go, cache the Go dirs, size build parallelism, install mage.
+description: Free disk, install Go, cache the Go dirs, install mage.
 
 inputs:
   cache-arch:
@@ -59,22 +60,6 @@ runs:
         # this prefix and pulls the newest existing cache for this runner OS + arch.
         restore-keys: |
           go-${{ runner.os }}-${{ inputs.cache-arch }}-
-
-    # Derive one parallelism factor from the runner's RAM so the same step
-    # auto-sizes: 1 on a 7 GB runner, 4 on a 16 GB one, with no per-runner
-    # hardcoding. It feeds the Go compiler (-p), goreleaser's per-target
-    # builds (PARALLEL_GO_BUILD, equally memory-bound), and the image
-    # packaging fan-out (PARALLEL_IMAGE_BUILD), so none are tuned by hand.
-    - name: Derive build parallelism from runner memory
-      shell: bash
-      run: |
-        mem_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)    # usable RAM, in kB
-        by_mem=$(( mem_kb / (1024 * 1024 * 7 / 2) ))               # one worker per ~3.5 GB
-        cpus=$(nproc)                                              # but never exceed the CPU count
-        p=$(( by_mem < 1 ? 1 : (by_mem > cpus ? cpus : by_mem) ))  # clamp to [1, cpus]
-        echo "GOFLAGS=-p=$p" >> "$GITHUB_ENV"                      # go/mage/test steps inherit it
-        echo "PARALLEL_GO_BUILD=$p" >> "$GITHUB_ENV"               # goreleaser --parallelism; full compiles, memory-bound like -p
-        echo "PARALLEL_IMAGE_BUILD=$(( p * 2 ))" >> "$GITHUB_ENV"  # 2x: packaging+pushing images is lighter than compiling
 
     - name: Install mage
       shell: bash

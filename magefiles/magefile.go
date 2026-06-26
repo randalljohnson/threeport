@@ -308,14 +308,21 @@ func (Test) Commits() error {
 }
 
 // Up spins up a control plane using tptctl and a local registry for testing.
+// It resolves the same image repo and tag the image build self-derives, so
+// the control plane pulls the images that build:allImages just pushed.
 func (Test) Up() error {
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
+
 	testUp := exec.Command(
 		"./bin/tptctl",
 		"up",
 		"-r",
-		installer.DevImageNamespace,
+		imageRepo,
 		"-t",
-		version.GetVersion(),
+		imageTag,
 		"-n",
 		"dev-0",
 		"--local-registry",

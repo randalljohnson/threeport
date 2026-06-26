@@ -1,8 +1,8 @@
 # Publishes a release of threeport when a version tag is pushed.
 # The tag's prerelease segment selects the channel: v0.7.0-dev.N is a dev
 # build, v0.7.0-rc.N a release candidate, v0.7.0 a GA release; goreleaser
-# marks prerelease tags as GitHub pre-releases. Cut one with a mage target
-# (mage release:dev, release:rc, or release:ga); the base comes from
+# marks prerelease tags as GitHub pre-releases. Cut a release with a mage
+# target (mage release:dev, release:rc, or release:ga); the base comes from
 # version.txt with no argument. It tags dev and pushes. Component images are
 # built separately by the images workflow on the same v* tag.
 
@@ -37,10 +37,10 @@ jobs:
       with:
         # the goreleaser binary version to install, not the Go version
         version: v1.26.2
-        # the number of whole-binary targets built at once comes from
-        # GORELEASER_PARALLELISM (memory-derived, half the go-build worker
-        # count, since each release target links the full tree); the per-target
-        # compile workers come from GOFLAGS (-p). Both are set by ci:env.
+        # the number of whole-tree targets built at once comes from
+        # GORELEASER_PARALLELISM (memory-derived, a quarter of the go-build
+        # worker count, since each release target links the full tree); the
+        # per-target compile workers come from GOFLAGS (-p). Both are set by ci:env.
         args: release --clean --parallelism ${{ env.GORELEASER_PARALLELISM }} -f ./.goreleaser.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -53,11 +53,11 @@ func BuildParallelism() int {
 }
 
 // ReleaseParallelism reports how many whole-binary targets a release build
-// should compile at once. Each release target links the full tree, roughly
-// twice the memory of one package-compile worker, so it halves
-// BuildParallelism and never returns less than one.
+// should compile at once. Each release target links the full tree, whose peak
+// memory is several times a single package-compile worker's, so it scales
+// BuildParallelism down by four and never returns less than one.
 func ReleaseParallelism() int {
-	if p := BuildParallelism() / 2; p > 1 {
+	if p := BuildParallelism() / 4; p > 1 {
 		return p
 	}
 	return 1

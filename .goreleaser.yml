@@ -25,6 +25,11 @@ archives:
     allow_different_binary_count: true
 checksum:
   name_template: 'checksums.txt'
+# Mark dev and rc prerelease tags as GitHub pre-releases so they stay off
+# the Latest badge; a plain SemVer GA tag with no prerelease segment
+# publishes as a full release.
+release:
+  prerelease: auto
 snapshot:
   name_template: "{{ .Version }}-snapshot-{{.ShortCommit}}"
 changelog:

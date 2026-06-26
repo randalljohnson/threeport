@@ -50,9 +50,9 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-24.04
     env:
-      # target the local registry for both the image build and the install/
-      # test:up step; mage self-derives the base tag (no per-arch suffix), so
-      # build and install resolve the same <localhost:5001>/<image>:<tag>.
+      # target the local registry for both the image build and the install
+      # step; mage self-derives the base tag (no per-arch suffix), so build and
+      # install resolve the same localhost:5001/<image>:<tag>.
       IMAGE_REPO: localhost:5001
     steps:
     - name: Checkout
@@ -64,8 +64,8 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
       with:
-        # share host network so buildx reaches the local registry in the
-        # next step.
+        # share host network so buildx reaches the local registry started in
+        # the next step.
         driver-opts: network=host
 
     - name: Create local container registry

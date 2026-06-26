@@ -17,6 +17,8 @@ on:
       - opened
       - synchronize
       - reopened
+  push:
+    branches: [dev]
 
 permissions:
   contents: read

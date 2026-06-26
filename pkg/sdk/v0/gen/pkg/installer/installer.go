@@ -130,6 +130,12 @@ func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Comment("a moving tag like 'dev-amd64' and want the cluster to pick up"),
 		Comment("the latest push without rotating tags."),
 		Id("Debug").Bool(),
+
+		Line().Comment("Path to a docker config JSON file. When set, the installer"),
+		Comment("creates a dockerconfigjson Secret from it and references that"),
+		Comment("Secret from each component's imagePullSecrets so the kubelet"),
+		Comment("can pull images from a private registry."),
+		Id("ImagePullSecretFile").String(),
 	)
 
 	// emit getImagePullPolicy() helper on Installer so the per-deployment
@@ -272,6 +278,64 @@ THREEPORT_AUTH_ENABLED=%%[3]t
 				Err(),
 			)),
 		)
+		g.Line()
+
+		g.Comment("optional image pull secret: when a docker config file is given,")
+		g.Comment("create a dockerconfigjson Secret from it and reference it from")
+		g.Comment("each component below so the kubelet can pull private images")
+		g.Var().Id("imagePullSecrets").Op("=").Index().Interface().Values()
+		g.If(Id("i").Dot("ImagePullSecretFile").Op("!=").Lit("")).BlockFunc(func(g *Group) {
+			g.List(Id("dockerConfig"), Err()).Op(":=").Qual("os", "ReadFile").Call(
+				Id("i").Dot("ImagePullSecretFile"),
+			)
+			g.If(Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("failed to read image pull secret file: %w"),
+					Err(),
+				)),
+			)
+			g.Var().Id("imagePullSecret").Op("=").Op("&").Qual(
+				"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+				"Unstructured",
+			).Values(Dict{
+				Line().Id("Object"): Map(String()).Interface().Values(Dict{
+					Lit("apiVersion"): Lit("v1"),
+					Lit("kind"):       Lit("Secret"),
+					Lit("type"):       Lit("kubernetes.io/dockerconfigjson"),
+					Lit("metadata"): Map(String()).Interface().Values(Dict{
+						Lit("name"): Lit(fmt.Sprintf(
+							"threeport-%s-image-pull-secret",
+							moduleNameKebab,
+						)),
+						Lit("namespace"): Id("i.ModuleNamespace"),
+					}),
+					Lit("stringData"): Map(String()).Interface().Values(Dict{
+						Line().Lit(".dockerconfigjson"): String().Call(Id("dockerConfig")).Op(",").Line(),
+					}),
+				}).Op(",").Line(),
+			})
+			g.If(List(Id("_"), Err()).Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/kube/v0",
+				"CreateOrUpdateResource",
+			).Call(
+				Id("imagePullSecret"),
+				Id("i.KubeClient"),
+				Op("*").Id("i.KubeRestMapper"),
+			), Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("failed to create/update image pull secret: %w"),
+					Err(),
+				)),
+			)
+			g.Id("imagePullSecrets").Op("=").Index().Interface().Values(
+				Line().Map(String()).Interface().Values(Dict{
+					Line().Lit("name"): Lit(fmt.Sprintf(
+						"threeport-%s-image-pull-secret",
+						moduleNameKebab,
+					)).Op(",").Line(),
+				}).Op(",").Line(),
+			)
+		})
 		g.Line()
 
 		moduleDbName := fmt.Sprintf("threeport_%s_api", moduleNameSnake)
@@ -578,6 +642,7 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 							Lit("restartPolicy"):                 Lit("Always"),
 							Lit("terminationGracePeriodSeconds"): Lit(30),
 							Lit("volumes"):                       Id("apiVolumes"),
+							Lit("imagePullSecrets"):              Id("imagePullSecrets"),
 						}),
 					}),
 				}),
@@ -785,6 +850,7 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 								Lit("restartPolicy"):                 Lit("Always"),
 								Lit("terminationGracePeriodSeconds"): Lit(30),
 								Lit("volumes"):                       Id("tpAuthVolumes"),
+								Lit("imagePullSecrets"):              Id("imagePullSecrets"),
 							}),
 						}),
 					}),

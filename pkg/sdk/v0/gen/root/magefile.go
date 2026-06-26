@@ -230,17 +230,13 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Comment("Manifest stitches per-arch images for one component into a multi-arch")
 	f.Comment("manifest list under the canonical tag. Repo and tag derive from the CI")
 	f.Comment("context when GITHUB_ACTIONS is set, otherwise the dev namespace and")
-	f.Comment("current version; IMAGE_REPO and IMAGE_TAG override either way.")
-	f.Comment("Arches come from the ARCH env var or the local CPU architecture. Sources")
-	f.Comment("are looked up at <repo>/<image>:<tag>-<arch> for each arch and combined")
-	f.Comment("into <repo>/<image>:<tag> via `docker buildx imagetools create`.")
+	f.Comment("current version; IMAGE_REPO and IMAGE_TAG override either way. The arch")
+	f.Comment("set is discovered from the per-arch tags already pushed to the registry,")
+	f.Comment("so the stitch covers whatever single-arch images the build produced.")
+	f.Comment("Sources are looked up at <repo>/<image>:<tag>-<arch> for each discovered")
+	f.Comment("arch and combined into <repo>/<image>:<tag> via")
+	f.Comment("`docker buildx imagetools create`.")
 	f.Func().Params(Id("Package")).Id("Manifest").Params(Id("imageName").String()).Error().Block(
-		List(Id("_"), Id("arch"), Err()).Op(":=").Id("getBuildVals").Call(),
-		If(Err().Op("!=").Nil()).Block(
-			Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Err())),
-		),
-		Line(),
-
 		List(Id("imageRepo"), Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
@@ -250,10 +246,19 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
+		List(Id("arches"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "DiscoverArches").Call(
+			Id("imageRepo").Op("+").Lit("/").Op("+").Id("imageName"),
+			Id("imageTag"),
+		),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to discover arches: %w"), Err())),
+		),
+		Line(),
+
 		Return().Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"PushMultiArchManifest",
-		).Call(Id("imageRepo"), Id("imageName"), Id("imageTag"), Id("arch")),
+		).Call(Id("imageRepo"), Id("imageName"), Id("imageTag"), Qual("strings", "Join").Call(Id("arches"), Lit(","))),
 	)
 	f.Line()
 
@@ -266,16 +271,11 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Comment("list so adding a new controller automatically extends coverage. Repo")
 	f.Comment("and tag derive from the CI context when GITHUB_ACTIONS is set, otherwise")
 	f.Comment("the dev namespace and current version; IMAGE_REPO and IMAGE_TAG override")
-	f.Comment("either way. Arches come from the ARCH env var or the local")
-	f.Comment("CPU architecture. Set PARALLEL_IMAGE_BUILD >= 1 to control worker")
-	f.Comment("concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage package:allManifests`).")
+	f.Comment("either way. Each component's arch set is discovered from the per-arch")
+	f.Comment("tags already pushed to the registry. Set PARALLEL_IMAGE_BUILD >= 1 to")
+	f.Comment("control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage")
+	f.Comment("package:allManifests`).")
 	f.Func().Params(Id("Package")).Id("AllManifests").Params().Error().BlockFunc(func(g *Group) {
-		g.List(Id("_"), Id("arch"), Id("err")).Op(":=").Id("getBuildVals").Call()
-		g.If(Id("err").Op("!=").Nil()).Block(
-			Return(Qual("fmt", "Errorf").Call(Lit("failed to get build values: %w"), Id("err"))),
-		)
-		g.Line()
-
 		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
@@ -325,10 +325,17 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Id("tasks").Op("=").Append(
 				Id("tasks"),
 				Func().Params().Error().Block(
+					List(Id("arches"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "DiscoverArches").Call(
+						Id("imageRepo").Op("+").Lit("/").Op("+").Id("image"),
+						Id("imageTag"),
+					),
+					If(Err().Op("!=").Nil()).Block(
+						Return(Qual("fmt", "Errorf").Call(Lit("failed to discover arches: %w"), Err())),
+					),
 					Return().Qual(
 						"github.com/threeport/threeport/pkg/util/v0",
 						"PushMultiArchManifest",
-					).Call(Id("imageRepo"), Id("image"), Id("imageTag"), Id("arch")),
+					).Call(Id("imageRepo"), Id("image"), Id("imageTag"), Qual("strings", "Join").Call(Id("arches"), Lit(","))),
 				),
 			),
 		)

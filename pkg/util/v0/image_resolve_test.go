@@ -46,7 +46,7 @@ func TestResolveImageTagPrefersExplicitOverride(t *testing.T) {
 	// an explicit tag override under CI
 	t.Setenv("IMAGE_TAG", "v9.9.9")
 	t.Setenv("GITHUB_ACTIONS", "true")
-	t.Setenv("IMAGE_TAG_SUFFIX", "")
+	t.Setenv("ARCH", "")
 	// the override wins
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
@@ -65,7 +65,7 @@ func TestResolveImageTagEchoesRefNameOnTagBuild(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("GITHUB_REF_TYPE", "tag")
 	t.Setenv("GITHUB_REF_NAME", "v0.1.0-dev.3")
-	t.Setenv("IMAGE_TAG_SUFFIX", "")
+	t.Setenv("ARCH", "")
 	// the tag build echoes the ref name verbatim
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
@@ -82,7 +82,7 @@ func TestResolveImageTagReturnsVersionOutsideCI(t *testing.T) {
 	// no override, not in CI
 	t.Setenv("IMAGE_TAG", "")
 	t.Setenv("GITHUB_ACTIONS", "")
-	t.Setenv("IMAGE_TAG_SUFFIX", "")
+	t.Setenv("ARCH", "")
 	// the version default passes through untouched
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
@@ -93,14 +93,14 @@ func TestResolveImageTagReturnsVersionOutsideCI(t *testing.T) {
 	}
 }
 
-// TestResolveImageTagAppendsSuffix covers ResolveImageTag appending a
-// non-empty IMAGE_TAG_SUFFIX to the resolved tag, the per-arch push decoration.
-func TestResolveImageTagAppendsSuffix(t *testing.T) {
-	// an explicit override plus the per-arch suffix a matrix cell sets
+// TestResolveImageTagDecoratesSingleArch covers ResolveImageTag decorating the
+// resolved tag with -<arch> when ARCH names a single arch.
+func TestResolveImageTagDecoratesSingleArch(t *testing.T) {
+	// an explicit override plus a single-arch ARCH
 	t.Setenv("IMAGE_TAG", "v9.9.9")
 	t.Setenv("GITHUB_ACTIONS", "true")
-	t.Setenv("IMAGE_TAG_SUFFIX", "-arm64")
-	// the suffix decorates the resolved tag
+	t.Setenv("ARCH", "arm64")
+	// the arch decorates the resolved tag
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
@@ -110,14 +110,14 @@ func TestResolveImageTagAppendsSuffix(t *testing.T) {
 	}
 }
 
-// TestResolveImageTagSuffixAppliesToVersionDefault covers the suffix landing on
-// the plain version default outside CI, so the suffix applies on every branch.
-func TestResolveImageTagSuffixAppliesToVersionDefault(t *testing.T) {
-	// no override, not in CI, with the per-arch suffix set
+// TestResolveImageTagSingleArchAppliesToVersionDefault covers the -<arch>
+// decoration landing on the plain version default outside CI.
+func TestResolveImageTagSingleArchAppliesToVersionDefault(t *testing.T) {
+	// no override, not in CI, with a single-arch ARCH set
 	t.Setenv("IMAGE_TAG", "")
 	t.Setenv("GITHUB_ACTIONS", "")
-	t.Setenv("IMAGE_TAG_SUFFIX", "-amd64")
-	// the version default carries the suffix through
+	t.Setenv("ARCH", "amd64")
+	// the version default carries the arch decoration through
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
@@ -127,14 +127,14 @@ func TestResolveImageTagSuffixAppliesToVersionDefault(t *testing.T) {
 	}
 }
 
-// TestResolveImageTagEmptySuffixIsNoOp covers an unset IMAGE_TAG_SUFFIX leaving
-// the resolved tag undecorated, the bare-tag path the manifest job consumes.
-func TestResolveImageTagEmptySuffixIsNoOp(t *testing.T) {
-	// an override with no suffix set
+// TestResolveImageTagCommaListArchIsBare covers a comma-list ARCH leaving the
+// resolved tag undecorated, the bare-tag path the manifest job consumes.
+func TestResolveImageTagCommaListArchIsBare(t *testing.T) {
+	// an override with a comma-list ARCH, as the manifest stitch sets
 	t.Setenv("IMAGE_TAG", "v9.9.9")
 	t.Setenv("GITHUB_ACTIONS", "true")
-	t.Setenv("IMAGE_TAG_SUFFIX", "")
-	// the bare tag passes through untouched
+	t.Setenv("ARCH", "amd64,arm64")
+	// the bare tag passes through undecorated
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)

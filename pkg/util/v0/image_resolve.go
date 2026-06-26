@@ -25,15 +25,21 @@ func ResolveImageRepo(devDefault string) string {
 // ResolveImageTag returns the image tag for the current build. An explicit
 // IMAGE_TAG env var wins. Under GitHub Actions it echoes the pushed ref on a
 // tag build, otherwise it joins versionDefault to the short commit sha as
-// <version>.<sha>. Outside CI it returns versionDefault unchanged. A non-empty
-// IMAGE_TAG_SUFFIX is appended to the resolved tag, the per-arch push
-// decoration a matrix cell sets as -<arch>.
+// <version>.<sha>. Outside CI it returns versionDefault unchanged. A
+// single-arch ARCH env var (one arch, no comma) decorates the resolved tag
+// with -<arch>; a comma-list ARCH and an unset ARCH both leave the bare tag.
 func ResolveImageTag(versionDefault string) (string, error) {
 	tag, err := resolveBaseImageTag(versionDefault)
 	if err != nil {
 		return "", err
 	}
-	return tag + os.Getenv("IMAGE_TAG_SUFFIX"), nil
+	// a single-arch build decorates the tag with -<arch> so each arch pushes a
+	// distinct single-arch tag; a comma-list ARCH (used when stitching a
+	// manifest) and an unset ARCH both leave the bare tag.
+	if arch := strings.TrimSpace(os.Getenv("ARCH")); arch != "" && !strings.Contains(arch, ",") {
+		return tag + "-" + arch, nil
+	}
+	return tag, nil
 }
 
 // resolveBaseImageTag resolves the image tag before any per-arch suffix is

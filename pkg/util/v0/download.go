@@ -9,12 +9,41 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-// linuxAssetSuffix is the goreleaser archive name suffix for the Linux amd64
-// build that the download path extracts from.
-const linuxAssetSuffix = "_Linux_x86_64.tar.gz"
+// releaseArchSuffix maps a GOARCH value to the architecture token goreleaser
+// embeds in archive names: amd64 to x86_64, 386 to i386, and every other
+// architecture to the GOARCH string verbatim.
+func releaseArchSuffix(goarch string) string {
+	switch goarch {
+	case "amd64":
+		return "x86_64"
+	case "386":
+		return "i386"
+	default:
+		return goarch
+	}
+}
+
+// releaseAssetInfix returns the OS and architecture token goreleaser embeds in
+// archive names for goos and goarch, for example "Linux_x86_64" or
+// "Darwin_arm64". The OS is title-cased and the architecture follows the
+// goreleaser mapping.
+func releaseAssetInfix(goos, goarch string) string {
+	return titleCaseOS(goos) + "_" + releaseArchSuffix(goarch)
+}
+
+// titleCaseOS upper-cases the first letter of a GOOS value to match the
+// title-cased OS token goreleaser embeds in archive names, for example linux to
+// Linux.
+func titleCaseOS(goos string) string {
+	if goos == "" {
+		return goos
+	}
+	return strings.ToUpper(goos[:1]) + goos[1:]
+}
 
 // githubRelease is the subset of the GitHub release API response the download
 // path reads.
@@ -33,7 +62,8 @@ type githubReleaseAsset struct {
 // "owner/name" path on github.com) and installs it executable into destDir.
 // token may be empty for public repos.
 func DownloadReleaseBinary(repo, tag, binaryName, destDir, token string) error {
-	// resolve the Linux archive asset from the tagged release
+	// resolve the archive asset matching the running OS and architecture
+	assetSuffix := "_" + releaseAssetInfix(runtime.GOOS, runtime.GOARCH) + ".tar.gz"
 	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/tags/%s", repo, tag)
 	req, err := http.NewRequest(http.MethodGet, releaseURL, nil)
 	if err != nil {
@@ -59,16 +89,16 @@ func DownloadReleaseBinary(repo, tag, binaryName, destDir, token string) error {
 		return fmt.Errorf("failed to decode release metadata: %w", err)
 	}
 
-	// select the Linux archive asset by name suffix
+	// select the archive asset by name suffix
 	var downloadURL string
 	for _, asset := range release.Assets {
-		if strings.HasSuffix(asset.Name, linuxAssetSuffix) {
+		if strings.HasSuffix(asset.Name, assetSuffix) {
 			downloadURL = asset.BrowserDownloadURL
 			break
 		}
 	}
 	if downloadURL == "" {
-		return fmt.Errorf("failed to find release asset ending in %s for %s %s", linuxAssetSuffix, repo, tag)
+		return fmt.Errorf("failed to find release asset ending in %s for %s %s", assetSuffix, repo, tag)
 	}
 
 	// stream the archive and extract the requested binary

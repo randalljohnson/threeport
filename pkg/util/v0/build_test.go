@@ -313,3 +313,240 @@ func TestBuildParallelismIsPositive(t *testing.T) {
 		t.Errorf("BuildParallelism() = %d, want >= 1", got)
 	}
 }
+
+// TestParseMemAvailableReadsKilobytesToBytes covers parseMemAvailable parsing
+// the MemAvailable line and converting its kilobyte value to bytes.
+func TestParseMemAvailableReadsKilobytesToBytes(t *testing.T) {
+	// a /proc/meminfo snippet carrying a well-formed MemAvailable line
+	contents := "MemTotal:       32660320 kB\nMemAvailable:   16331640 kB\nBuffers:          123456 kB\n"
+	// the action under test: parse the available-memory line
+	got, ok := parseMemAvailable(contents)
+	// the kilobyte value converts to bytes and reports success
+	if !ok {
+		t.Fatalf("parseMemAvailable reported failure on a valid line")
+	}
+	if want := int64(16331640) * 1024; got != want {
+		t.Errorf("parseMemAvailable = %d, want %d", got, want)
+	}
+}
+
+// TestParseMemAvailableRejectsMissingAndMalformed covers parseMemAvailable
+// reporting failure when the field is absent, has too few columns, or carries a
+// non-integer value.
+func TestParseMemAvailableRejectsMissingAndMalformed(t *testing.T) {
+	// each case is a /proc/meminfo snippet that yields no usable value
+	cases := []struct {
+		name     string
+		contents string
+	}{
+		// no MemAvailable line at all
+		{"no MemAvailable line", "MemTotal:       32660320 kB\nBuffers: 123456 kB\n"},
+		// the line has fewer than two whitespace-separated fields
+		{"too few fields", "MemAvailable:\n"},
+		// the value column is not an integer
+		{"non-integer value", "MemAvailable:   sixteen kB\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// the action under test: parse the unusable snippet
+			got, ok := parseMemAvailable(c.contents)
+			// a missing or malformed field reports failure and a zero value
+			if ok || got != 0 {
+				t.Errorf("parseMemAvailable(%q) = (%d, %v), want (0, false)", c.contents, got, ok)
+			}
+		})
+	}
+}
+
+// TestClampWorkersClampsToRange covers clampWorkers flooring at one worker,
+// capping at the CPU count, falling back to the CPU count on a non-positive
+// memory reading, and honoring the exact per-worker memory boundary.
+func TestClampWorkersClampsToRange(t *testing.T) {
+	// each case names the clamp behavior the memory and CPU inputs exercise
+	cases := []struct {
+		name     string
+		memBytes int64
+		cpus     int
+		want     int
+	}{
+		// less than one worker's worth of memory floors at one worker
+		{"below one floors to one", memBytesPerWorker - 1, 8, 1},
+		// more memory than CPUs would allow caps at the CPU count
+		{"above cpus caps at cpus", memBytesPerWorker * 100, 4, 4},
+		// a non-positive reading falls back to the CPU count
+		{"zero memory falls back to cpus", 0, 6, 6},
+		{"negative memory falls back to cpus", -1, 6, 6},
+		// exactly one worker's worth of memory yields one worker
+		{"exact one-worker boundary", memBytesPerWorker, 8, 1},
+		// just under two workers' worth still yields one worker
+		{"just under two workers", memBytesPerWorker*2 - 1, 8, 1},
+		// just over two workers' worth yields two workers
+		{"just over two workers", memBytesPerWorker*2 + 1, 8, 2},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// the action under test: clamp the memory-derived worker count
+			if got := clampWorkers(c.memBytes, c.cpus); got != c.want {
+				t.Errorf("clampWorkers(%d, %d) = %d, want %d", c.memBytes, c.cpus, got, c.want)
+			}
+		})
+	}
+}
+
+// TestReleaseParallelismScalesAndFloors covers ReleaseParallelism dividing the
+// build worker count by four and never returning less than one, including the
+// floor boundary at four versus five effective workers.
+func TestReleaseParallelismScalesAndFloors(t *testing.T) {
+	// ReleaseParallelism is positive and at most a quarter of the build count,
+	// floored at one, on whatever runner the test runs on
+	got := ReleaseParallelism()
+	if got < 1 {
+		t.Errorf("ReleaseParallelism() = %d, want >= 1", got)
+	}
+	build := BuildParallelism()
+	want := build / 4
+	if want < 1 {
+		want = 1
+	}
+	// the result tracks the documented divide-by-four-then-floor relationship
+	if got != want {
+		t.Errorf("ReleaseParallelism() = %d, want %d (BuildParallelism=%d)", got, want, build)
+	}
+	// four effective build workers still floor to one release target
+	if build == 4 && got != 1 {
+		t.Errorf("at BuildParallelism=4, ReleaseParallelism() = %d, want 1", got)
+	}
+	// five effective build workers cross the floor to one release target
+	if build == 5 && got != 1 {
+		t.Errorf("at BuildParallelism=5, ReleaseParallelism() = %d, want 1", got)
+	}
+}
+
+// TestArchSuffixesReturnsSortedUniqueArches covers archSuffixes keeping only
+// <baseTag>-<arch> tags and returning their arch suffixes sorted.
+func TestArchSuffixesReturnsSortedUniqueArches(t *testing.T) {
+	// a clean tag set carries two arch-suffixed tags under the base
+	tags := []string{"v0.7.0-arm64", "v0.7.0-amd64"}
+	// the action under test: extract the arch suffixes
+	got := archSuffixes(tags, "v0.7.0")
+	// the suffixes come back sorted regardless of input order
+	if want := []string{"amd64", "arm64"}; !slices.Equal(got, want) {
+		t.Errorf("archSuffixes = %v, want %v", got, want)
+	}
+}
+
+// TestArchSuffixesDropsNonMatchingTags covers archSuffixes dropping tags that
+// lack the prefix, the bare base, and the empty-suffix base-with-dash.
+func TestArchSuffixesDropsNonMatchingTags(t *testing.T) {
+	// a noisy tag set: a non-prefix tag, the bare base, the dangling dash, and
+	// one real arch tag
+	tags := []string{"latest", "v0.7.0", "v0.7.0-", "v0.7.0-amd64", "other-arm64"}
+	// the action under test: extract the arch suffixes
+	got := archSuffixes(tags, "v0.7.0")
+	// only the genuine arch suffix survives
+	if want := []string{"amd64"}; !slices.Equal(got, want) {
+		t.Errorf("archSuffixes = %v, want %v", got, want)
+	}
+}
+
+// TestArchSuffixesDoesNotCrossContaminatePrefixBases covers archSuffixes not
+// treating a longer base's tags as suffixes of a shorter base that prefixes it.
+func TestArchSuffixesDoesNotCrossContaminatePrefixBases(t *testing.T) {
+	// v0.7.0 prefixes v0.7.0-dev, so a dev arch tag must not leak into the base
+	tags := []string{"v0.7.0-amd64", "v0.7.0-dev-arm64"}
+	// extracting suffixes for the longer base sees only its own arch tag
+	got := archSuffixes(tags, "v0.7.0-dev")
+	if want := []string{"arm64"}; !slices.Equal(got, want) {
+		t.Errorf("archSuffixes(v0.7.0-dev) = %v, want %v", got, want)
+	}
+	// and extracting for the shorter base picks up its own arch tag plus the
+	// dev tag's full suffix, never the dev arch alone
+	got = archSuffixes(tags, "v0.7.0")
+	if want := []string{"amd64", "dev-arm64"}; !slices.Equal(got, want) {
+		t.Errorf("archSuffixes(v0.7.0) = %v, want %v", got, want)
+	}
+}
+
+// TestArchSuffixesSortsRegardlessOfInputOrder covers archSuffixes returning a
+// sorted result even when the input tags arrive in reverse order.
+func TestArchSuffixesSortsRegardlessOfInputOrder(t *testing.T) {
+	// the same arches supplied in descending order
+	tags := []string{"v0.7.0-s390x", "v0.7.0-arm64", "v0.7.0-amd64"}
+	// the action under test: extract and sort the suffixes
+	got := archSuffixes(tags, "v0.7.0")
+	// the output is sorted independent of input order
+	if want := []string{"amd64", "arm64", "s390x"}; !slices.Equal(got, want) {
+		t.Errorf("archSuffixes = %v, want %v", got, want)
+	}
+}
+
+// TestParseArchesSplitsAndCleans covers ParseArches splitting on commas,
+// trimming whitespace, and dropping empty and trailing-comma entries.
+func TestParseArchesSplitsAndCleans(t *testing.T) {
+	// each case pairs a raw arch string with the cleaned slice it parses to
+	cases := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		// a clean comma list splits into its two arches
+		{"clean list", "amd64,arm64", []string{"amd64", "arm64"}},
+		// surrounding whitespace on each entry is trimmed
+		{"whitespace trimmed", " amd64 , arm64 ", []string{"amd64", "arm64"}},
+		// empty entries and a trailing comma drop out
+		{"empties and trailing comma dropped", "amd64,,arm64,", []string{"amd64", "arm64"}},
+		// an empty string yields an empty slice
+		{"empty string", "", []string{}},
+		// a whitespace-only string yields an empty slice
+		{"whitespace only", "   ", []string{}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// the action under test: split and clean the arch string
+			got := ParseArches(c.in)
+			if !slices.Equal(got, c.want) {
+				t.Errorf("ParseArches(%q) = %v, want %v", c.in, got, c.want)
+			}
+		})
+	}
+}
+
+// TestImagetoolsArgsBuildsTargetAndSources covers imagetoolsArgs producing the
+// canonical target tag and one per-arch source in order.
+func TestImagetoolsArgsBuildsTargetAndSources(t *testing.T) {
+	// a repo, image, tag, and ordered arch set
+	args, target, err := imagetoolsArgs("ghcr.io/threeport", "threeport-rest-api", "v0.7.0", []string{"amd64", "arm64"})
+	// the action under test succeeds and yields the canonical target
+	if err != nil {
+		t.Fatalf("imagetoolsArgs returned error: %v", err)
+	}
+	if want := "ghcr.io/threeport/threeport-rest-api:v0.7.0"; target != want {
+		t.Errorf("target = %q, want %q", target, want)
+	}
+	// the argv leads with the buildx imagetools create subcommand and the tag
+	wantArgs := []string{
+		"buildx", "imagetools", "create", "--tag",
+		"ghcr.io/threeport/threeport-rest-api:v0.7.0",
+		"ghcr.io/threeport/threeport-rest-api:v0.7.0-amd64",
+		"ghcr.io/threeport/threeport-rest-api:v0.7.0-arm64",
+	}
+	// the per-arch sources follow the target in input order
+	if !slices.Equal(args, wantArgs) {
+		t.Errorf("args = %v, want %v", args, wantArgs)
+	}
+}
+
+// TestImagetoolsArgsRejectsEmptyArches covers imagetoolsArgs erroring when no
+// arches are supplied, since a manifest needs at least one source.
+func TestImagetoolsArgsRejectsEmptyArches(t *testing.T) {
+	// an empty arch slice cannot stitch a manifest
+	args, target, err := imagetoolsArgs("ghcr.io/threeport", "threeport-rest-api", "v0.7.0", nil)
+	// the action under test surfaces the required-arches error
+	if err == nil || !strings.Contains(err.Error(), "--arches is required") {
+		t.Fatalf("expected --arches is required, got %v", err)
+	}
+	// and returns no argv or target on the error path
+	if args != nil || target != "" {
+		t.Errorf("on error args = %v, target = %q, want nil and empty", args, target)
+	}
+}

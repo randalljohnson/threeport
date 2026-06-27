@@ -42,6 +42,17 @@ func BuildParallelism() int {
 		return cpus
 	}
 
+	return clampWorkers(memBytes, cpus)
+}
+
+// clampWorkers derives a memory-bound worker count by dividing memBytes by the
+// per-worker memory budget, clamping the result to the range [1, cpus]. It
+// falls back to cpus when memBytes is non-positive, since a missing memory
+// reading should not starve the build.
+func clampWorkers(memBytes int64, cpus int) int {
+	if memBytes <= 0 {
+		return cpus
+	}
 	workers := int(memBytes / memBytesPerWorker)
 	if workers < 1 {
 		return 1
@@ -71,7 +82,14 @@ func availableMemoryBytes() (int64, bool) {
 	if err != nil {
 		return 0, false
 	}
-	for _, line := range strings.Split(string(contents), "\n") {
+	return parseMemAvailable(string(contents))
+}
+
+// parseMemAvailable extracts the MemAvailable value from /proc/meminfo
+// contents and returns it in bytes, reporting false when the field is absent,
+// malformed, or non-numeric.
+func parseMemAvailable(contents string) (int64, bool) {
+	for _, line := range strings.Split(contents, "\n") {
 		if !strings.HasPrefix(line, "MemAvailable:") {
 			continue
 		}
@@ -529,6 +547,14 @@ func DiscoverArches(imageRef, baseTag string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tags for %q: %w", imageRef, err)
 	}
+	return archSuffixes(tags, baseTag), nil
+}
+
+// archSuffixes returns the sorted arch suffixes of every tag shaped
+// <baseTag>-<arch>. Tags without the <baseTag>- prefix, the bare baseTag, and
+// an empty suffix are dropped, so a base that prefixes a longer base does not
+// cross-contaminate.
+func archSuffixes(tags []string, baseTag string) []string {
 	prefix := baseTag + "-"
 	arches := []string{}
 	for _, tag := range tags {
@@ -537,7 +563,7 @@ func DiscoverArches(imageRef, baseTag string) ([]string, error) {
 		}
 	}
 	sort.Strings(arches)
-	return arches, nil
+	return arches
 }
 
 // ParseArches splits a comma-separated arch string into a clean slice,
@@ -553,6 +579,28 @@ func ParseArches(arch string) []string {
 	return out
 }
 
+// imagetoolsArgs assembles the docker buildx imagetools create argv and the
+// canonical target tag <repo>/<image>:<tag>, with one per-arch source
+// <repo>/<image>:<tag>-<arch> for each arch in order. An empty arches slice is
+// an error, since a manifest needs at least one source.
+func imagetoolsArgs(repo, image, tag string, arches []string) (args []string, target string, err error) {
+	if len(arches) == 0 {
+		return nil, "", errors.New("--arches is required")
+	}
+
+	// build the canonical target tag and the per-arch source tags
+	target = fmt.Sprintf("%s/%s:%s", repo, image, tag)
+	sources := make([]string, 0, len(arches))
+	for _, a := range arches {
+		sources = append(sources, fmt.Sprintf("%s/%s:%s-%s", repo, image, tag, a))
+	}
+
+	// assemble the buildx imagetools create invocation
+	args = []string{"buildx", "imagetools", "create", "--tag", target}
+	args = append(args, sources...)
+	return args, target, nil
+}
+
 // PushMultiArchManifest stitches per-arch image tags into a multi-arch
 // manifest list and pushes the result under the canonical tag. Sources
 // are assumed to already exist at <repo>/<image>:<tag>-<arch> for each
@@ -561,21 +609,10 @@ func ParseArches(arch string) []string {
 // create`, which reads the source manifests from the registry and
 // writes a fan-in manifest list back without re-uploading any blobs.
 func PushMultiArchManifest(imageRepo, imageName, imageTag, arches string) error {
-	archList := ParseArches(arches)
-	if len(archList) == 0 {
-		return errors.New("--arches is required")
+	args, target, err := imagetoolsArgs(imageRepo, imageName, imageTag, ParseArches(arches))
+	if err != nil {
+		return err
 	}
-
-	// build the canonical target tag and the per-arch source tags
-	target := fmt.Sprintf("%s/%s:%s", imageRepo, imageName, imageTag)
-	sources := make([]string, 0, len(archList))
-	for _, a := range archList {
-		sources = append(sources, fmt.Sprintf("%s/%s:%s-%s", imageRepo, imageName, imageTag, a))
-	}
-
-	// assemble the buildx imagetools create invocation
-	args := []string{"buildx", "imagetools", "create", "--tag", target}
-	args = append(args, sources...)
 
 	// run with prefixed stdout/stderr so concurrent component runs
 	// stay disambiguated in interleaved CI output

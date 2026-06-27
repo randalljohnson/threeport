@@ -44,15 +44,10 @@ jobs:
         # shared Go build cache entry
         cache-arch: ${{ matrix.arch }}
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-
-    - name: Log in to ghcr.io
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+    - name: Docker login
+      uses: ./.github/actions/docker-login
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     # build:allImages with a single arch pushes single-arch tags only; the
     # manifest job below stitches them via package:allManifests. amd64 and
@@ -76,15 +71,10 @@ jobs:
     - name: Go setup
       uses: ./.github/actions/go-setup
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-
-    - name: Log in to ghcr.io
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+    - name: Docker login
+      uses: ./.github/actions/docker-login
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     # mage self-derives the same repo and base tag the build job used, so the
     # manifest list stitches the single-arch tags under the canonical bare tag.

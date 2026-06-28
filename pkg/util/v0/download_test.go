@@ -38,6 +38,32 @@ func gzippedTar(t *testing.T, name string, content []byte) *bytes.Buffer {
 	return buf
 }
 
+// TestReleaseAssetInfix_MapsOSAndArch asserts releaseAssetInfix reproduces the
+// goreleaser archive naming: amd64 to x86_64, arm64 verbatim, 386 to i386, and
+// title-cased OS tokens for linux and darwin.
+func TestReleaseAssetInfix_MapsOSAndArch(t *testing.T) {
+	// each case pairs a GOOS/GOARCH input with the expected goreleaser infix
+	cases := []struct {
+		goos   string
+		goarch string
+		want   string
+	}{
+		{"linux", "amd64", "Linux_x86_64"},   // amd64 maps to x86_64
+		{"linux", "arm64", "Linux_arm64"},    // arm64 passes through verbatim
+		{"linux", "386", "Linux_i386"},       // 386 maps to i386
+		{"darwin", "amd64", "Darwin_x86_64"}, // darwin title-cases to Darwin
+		{"darwin", "arm64", "Darwin_arm64"},  // darwin with arm64 passthrough
+	}
+
+	// assert each input produces the goreleaser infix
+	for _, c := range cases {
+		got := releaseAssetInfix(c.goos, c.goarch)
+		if got != c.want {
+			t.Errorf("releaseAssetInfix(%q, %q)=%q, want %q", c.goos, c.goarch, got, c.want)
+		}
+	}
+}
+
 // TestExtractBinary_InstallsExecutableFromVersionedDir asserts extractBinary
 // strips the versioned top-level directory, writes the binary executable, and
 // preserves its contents.

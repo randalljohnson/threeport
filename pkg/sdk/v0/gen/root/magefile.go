@@ -47,6 +47,11 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.ImportAlias(installerPkg, "installer")
 	f.ImportAlias("github.com/threeport/threeport/pkg/cli/v0", "cli")
 
+	// the module ci targets read the embedded version
+	if gen.Module {
+		f.ImportAlias(fmt.Sprintf("%s/internal/version", gen.ModulePath), "version")
+	}
+
 	// collect specs for every per-component image function so AllImages
 	// can pre-build the binaries up front in one go build per arch.
 	var allComponents []componentSpec
@@ -68,6 +73,20 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		))
 		f.Type().Id(ns).Qual("github.com/magefile/mage/mg", "Namespace")
 		f.Line()
+	}
+
+	// modules emit a Ci namespace whose targets feed values to CI workflow
+	// steps and tear down what an integration job leaves behind. The core
+	// threeport repo keeps its hand-written ci targets, so this stays gated on
+	// the module case.
+	if gen.Module {
+		f.Comment("Ci provides a type for methods that emit values for CI workflow steps.")
+		f.Type().Id("Ci").Qual("github.com/magefile/mage/mg", "Namespace")
+		f.Line()
+
+		emitCiEnvFunc(f, gen.ModulePath)
+		emitCiTeardownFunc(f)
+		emitTeardownStepFunc(f)
 	}
 
 	// test targets shared by every repo that runs the generator
@@ -1145,4 +1164,117 @@ func emitWrapHelper(g *Group, repo, tag Code) {
 			Return().Id("fn").Call(Id("workingDir"), repo, tag, Id("arch")),
 		),
 	)
+}
+
+// emitCiEnvFunc writes a no-arg `func (Ci) Env() error` that prints the
+// KEY=value lines the non-mage CI steps consume. The modulePath qualifies the
+// embedded version package the module image tag derives from.
+func emitCiEnvFunc(f *File, modulePath string) {
+	f.Comment("Env prints KEY=value lines for the workflow to append to GITHUB_ENV. It emits")
+	f.Comment("only the values that non-mage steps consume: the pinned threeport repo,")
+	f.Comment("version, and ghcr namespace the gh release download and tptctl up steps read;")
+	f.Comment("the module's own image tag the tptctl router install step reads; GOFLAGS, the")
+	f.Comment("memory-derived go-build worker count the non-mage steps inherit; and")
+	f.Comment("GORELEASER_PARALLELISM, a quarter of that worker count, the number of")
+	f.Comment("whole-tree targets goreleaser builds at once since each links the full tree.")
+	f.Comment("Values mage itself consumes (image repo, build-time image tag, image-build")
+	f.Comment("parallelism) are self-derived at use and are not emitted here.")
+	f.Func().Params(Id("Ci")).Id("Env").Params().Error().Block(
+		List(Id("repo"), Id("namespace"), Id("ver"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveThreeportPin").Call(),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Err()),
+		),
+		Line(),
+
+		List(Id("moduleTag"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
+		).Call(Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call()),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve module image tag: %w"), Err())),
+		),
+		Line(),
+
+		Qual("fmt", "Printf").Call(Lit("THREEPORT_REPO=%s\n"), Id("repo")),
+		Qual("fmt", "Printf").Call(Lit("THREEPORT_IMAGE_TAG=%s\n"), Id("ver")),
+		Qual("fmt", "Printf").Call(Lit("THREEPORT_IMAGE_NAMESPACE=%s\n"), Id("namespace")),
+		Qual("fmt", "Printf").Call(Lit("MODULE_IMAGE_TAG=%s\n"), Id("moduleTag")),
+		Qual("fmt", "Printf").Call(
+			Lit("GOFLAGS=-p=%d\n"),
+			Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call(),
+		),
+		Qual("fmt", "Printf").Call(
+			Lit("GORELEASER_PARALLELISM=%d\n"),
+			Qual("github.com/threeport/threeport/pkg/util/v0", "ReleaseParallelism").Call(),
+		),
+		Return(Nil()),
+	)
+	f.Line()
+}
+
+// emitCiTeardownFunc writes a no-arg `func (Ci) Teardown() error` that removes
+// what an integration job leaves behind. The body calls the generated Dev local
+// registry target, which lives in the same generated file.
+func emitCiTeardownFunc(f *File) {
+	f.Comment("Teardown removes what an integration job leaves behind: the test control")
+	f.Comment("plane and its kind cluster, the threeport client config, the local image")
+	f.Comment("registry, and dangling docker data. It force-removes the cluster and config")
+	f.Comment("directly rather than trusting tptctl down, which cannot clear its")
+	f.Comment("control-plane entry once a failed test has left the cluster gone. Running")
+	f.Comment("unconditionally keeps every subsequent run starting clean. Gated on the CI")
+	f.Comment("env var so it never runs against a local environment.")
+	f.Func().Params(Id("Ci")).Id("Teardown").Params().Error().Block(
+		If(Qual("os", "Getenv").Call(Lit("CI")).Op("!=").Lit("true")).Block(
+			Qual("fmt", "Println").Call(Lit("ci:teardown: not running in CI, skipping")),
+			Return(Nil()),
+		),
+		Comment("best-effort graceful teardown of the control plane, then force-delete the"),
+		Comment("kind cluster in case the graceful path failed"),
+		Id("teardownStep").Call(Lit("tptctl"), Lit("down"), Lit("--name"), Lit("test")),
+		Id("teardownStep").Call(Lit("kind"), Lit("delete"), Lit("cluster"), Lit("--name"), Lit("threeport-test")),
+		Comment("force-remove the threeport client config; a failed run leaves tptctl down"),
+		Comment("unable to clear its control-plane entry, which would block the next"),
+		Comment("bring-up"),
+		If(List(Id("home"), Err()).Op(":=").Qual("os", "UserHomeDir").Call().Op(";").Err().Op("==").Nil()).Block(
+			Id("teardownStep").Call(
+				Lit("rm"),
+				Lit("-f"),
+				Qual("path/filepath", "Join").Call(Id("home"), Lit(".threeport"), Lit("config.yaml")),
+			),
+		),
+		Comment("remove the local image registry"),
+		If(Err().Op(":=").Parens(Id("Dev").Values()).Dot("LocalRegistryDown").Call().Op(";").Err().Op("!=").Nil()).Block(
+			Qual("fmt", "Printf").Call(Lit("ci:teardown: remove local registry: %v\n"), Err()),
+		),
+		Comment("reclaim dangling images, stopped containers, and build cache"),
+		Id("teardownStep").Call(Lit("docker"), Lit("system"), Lit("prune"), Lit("-f")),
+		Return(Nil()),
+	)
+	f.Line()
+}
+
+// emitTeardownStepFunc writes the variadic `teardownStep` helper that runs a
+// cleanup command best-effort, logging on failure so one failed command does
+// not abort the rest of teardown.
+func emitTeardownStepFunc(f *File) {
+	f.Comment("teardownStep runs a cleanup command best-effort, logging on failure so one")
+	f.Comment("failed command does not abort the rest of teardown.")
+	f.Func().Id("teardownStep").Params(
+		Id("name").String(),
+		Id("args").Op("...").String(),
+	).Block(
+		If(
+			List(Id("out"), Err()).Op(":=").Qual("os/exec", "Command").Call(
+				Id("name"), Id("args").Op("..."),
+			).Dot("CombinedOutput").Call().Op(";").Err().Op("!=").Nil(),
+		).Block(
+			Qual("fmt", "Printf").Call(
+				Lit("ci:teardown: %s %v failed: %v (%s)\n"),
+				Id("name"),
+				Id("args"),
+				Err(),
+				Id("out"),
+			),
+		),
+	)
+	f.Line()
 }

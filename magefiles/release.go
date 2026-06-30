@@ -132,7 +132,6 @@ func cutRelease(channel string, ga bool) error {
 	}
 
 	fmt.Printf("pushed %s via %s\n", version, remote)
-	fmt.Println("watch: gh run list")
 	return nil
 }
 

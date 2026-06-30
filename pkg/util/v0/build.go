@@ -21,16 +21,21 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
-// memBytesPerWorker is the runner memory budgeted per build worker, about
-// 3.5 GB. Dividing available memory by this yields a memory-bound worker
-// count that a small CI runner can sustain without an out-of-memory kill.
-const memBytesPerWorker = 1024 * 1024 * 1024 * 7 / 2
+// memBytesPerWorker is the runner memory budgeted per build worker, 5 GB.
+// Observed per-link peak is ~4.5 GB when go links the static binaries, so
+// budgeting 5 GB per worker keeps an 8 GB container at -p=1 (the kubelet
+// eviction threshold can't tolerate more) and still scales up on a roomier
+// runner. Dividing available memory by this yields a memory-bound worker
+// count that the runner can sustain without an out-of-memory kill.
+const memBytesPerWorker = 1024 * 1024 * 1024 * 5
 
 // BuildParallelism derives a build worker count from the runner's available
-// memory, budgeting roughly one worker per 3.5 GB and clamping the result to
-// the range [1, NumCPU]. It reads MemAvailable from /proc/meminfo on Linux;
-// where that file is unreadable (non-Linux runners), it falls back to the CPU
-// count. The result is always at least 1.
+// memory, budgeting roughly one worker per 5 GB and clamping the result to
+// the range [1, NumCPU]. Available memory is the smaller of /proc/meminfo
+// MemAvailable (host view) and the cgroup memory limit (container budget),
+// so a pod on a roomy node still sizes parallelism to its own limit rather
+// than the node's total memory. Where neither source is readable (non-Linux
+// runners), it falls back to the CPU count. The result is always at least 1.
 func BuildParallelism() int {
 	cpus := runtime.NumCPU()
 	if cpus < 1 {
@@ -74,15 +79,89 @@ func ReleaseParallelism() int {
 	return 1
 }
 
-// availableMemoryBytes returns the runner's available memory in bytes by
-// reading MemAvailable from /proc/meminfo, reporting false when the file is
-// unreadable or the field is absent (non-Linux runners).
+// availableMemoryBytes returns the runner's available memory budget — the
+// smaller of /proc/meminfo MemAvailable (host view) and the cgroup memory
+// limit (container budget). Reporting the lower of the two means a pod
+// running on a beefy node still sizes parallelism to its own limit rather
+// than the node's total memory, which would otherwise drive the build into
+// an OOM-kill. Reports false when neither source yields a usable value
+// (non-Linux runners without a cgroup memory limit).
 func availableMemoryBytes() (int64, bool) {
+	host, hostOK := procMemAvailable()
+	limit, limitOK := cgroupMemoryLimit()
+	switch {
+	case hostOK && limitOK:
+		if limit < host {
+			return limit, true
+		}
+		return host, true
+	case hostOK:
+		return host, true
+	case limitOK:
+		return limit, true
+	default:
+		return 0, false
+	}
+}
+
+// procMemAvailable returns the host's available memory in bytes by reading
+// MemAvailable from /proc/meminfo, reporting false when the file is
+// unreadable or the field is absent (non-Linux runners). On a container,
+// /proc/meminfo reflects the node, not the container — see
+// cgroupMemoryLimit for the container-budget reading.
+func procMemAvailable() (int64, bool) {
 	contents, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
 		return 0, false
 	}
 	return parseMemAvailable(string(contents))
+}
+
+// cgroupMemoryLimit returns the cgroup memory limit in bytes, preferring
+// cgroup v2 (/sys/fs/cgroup/memory.max) and falling back to v1
+// (/sys/fs/cgroup/memory/memory.limit_in_bytes). It reports false when
+// neither file is readable, when v2 reports "max" (unlimited), or when v1
+// reports the sentinel near-int64-max value cgroup v1 uses for "no limit".
+// In a container with a memory limit this returns the container's budget;
+// outside a container or on an unconstrained cgroup it returns false so
+// the host reading takes over.
+func cgroupMemoryLimit() (int64, bool) {
+	if b, err := os.ReadFile("/sys/fs/cgroup/memory.max"); err == nil {
+		return parseCgroupV2Max(string(b))
+	}
+	if b, err := os.ReadFile("/sys/fs/cgroup/memory/memory.limit_in_bytes"); err == nil {
+		return parseCgroupV1Limit(string(b))
+	}
+	return 0, false
+}
+
+// parseCgroupV2Max parses a cgroup v2 memory.max file's contents. The
+// literal "max" indicates unlimited and reports false; anything else is a
+// byte count. Returns false on parse failure or a non-positive value.
+func parseCgroupV2Max(contents string) (int64, bool) {
+	s := strings.TrimSpace(contents)
+	if s == "max" {
+		return 0, false
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || v <= 0 {
+		return 0, false
+	}
+	return v, true
+}
+
+// parseCgroupV1Limit parses a cgroup v1 memory.limit_in_bytes file's
+// contents. cgroup v1 represents "no limit" with a sentinel near int64
+// max (typically 9223372036854771712); values at or above 1<<62 are
+// treated as unlimited and report false. Returns false on parse failure
+// or a non-positive value.
+func parseCgroupV1Limit(contents string) (int64, bool) {
+	s := strings.TrimSpace(contents)
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || v <= 0 || v >= (1<<62) {
+		return 0, false
+	}
+	return v, true
 }
 
 // parseMemAvailable extracts the MemAvailable value from /proc/meminfo

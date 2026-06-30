@@ -358,6 +358,79 @@ func TestParseMemAvailableRejectsMissingAndMalformed(t *testing.T) {
 	}
 }
 
+// TestParseCgroupV2MaxReadsBytesAndRejectsMax covers parseCgroupV2Max
+// returning the byte count for a numeric memory.max and reporting false for
+// the "max" sentinel that cgroup v2 uses for "no limit", plus the usual
+// malformed-input cases.
+func TestParseCgroupV2MaxReadsBytesAndRejectsMax(t *testing.T) {
+	// each case pairs a memory.max snippet with its expected (value, ok)
+	cases := []struct {
+		name     string
+		contents string
+		want     int64
+		wantOK   bool
+	}{
+		// a numeric limit comes back as a byte count
+		{"numeric limit", "8589934592\n", 8589934592, true},
+		// surrounding whitespace and a missing trailing newline are tolerated
+		{"trimmed whitespace", "  8589934592  ", 8589934592, true},
+		// the "max" sentinel means unlimited and reports false
+		{"max sentinel", "max\n", 0, false},
+		// non-numeric content reports false
+		{"non-numeric", "eight gigs\n", 0, false},
+		// a non-positive value is treated as no limit
+		{"zero rejected", "0\n", 0, false},
+		// an empty file reports false
+		{"empty", "", 0, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, ok := parseCgroupV2Max(c.contents)
+			if got != c.want || ok != c.wantOK {
+				t.Errorf("parseCgroupV2Max(%q) = (%d, %v), want (%d, %v)", c.contents, got, ok, c.want, c.wantOK)
+			}
+		})
+	}
+}
+
+// TestParseCgroupV1LimitReadsBytesAndRejectsSentinel covers parseCgroupV1Limit
+// returning the byte count for a real limit and reporting false for the
+// near-int64-max sentinel that cgroup v1 uses for "no limit", plus the usual
+// malformed-input cases.
+func TestParseCgroupV1LimitReadsBytesAndRejectsSentinel(t *testing.T) {
+	// each case pairs a memory.limit_in_bytes snippet with its expected
+	// (value, ok)
+	cases := []struct {
+		name     string
+		contents string
+		want     int64
+		wantOK   bool
+	}{
+		// a real limit comes back as a byte count
+		{"numeric limit", "8589934592\n", 8589934592, true},
+		// surrounding whitespace is tolerated
+		{"trimmed whitespace", "  8589934592  ", 8589934592, true},
+		// the cgroup-v1 "no limit" sentinel (close to int64 max) reports false
+		{"sentinel near int64 max", "9223372036854771712\n", 0, false},
+		// any value at or above 1<<62 is treated as unlimited
+		{"at one-shifted-62 rejected", "4611686018427387904\n", 0, false},
+		// non-numeric content reports false
+		{"non-numeric", "eight gigs\n", 0, false},
+		// a non-positive value is treated as no limit
+		{"zero rejected", "0\n", 0, false},
+		// an empty file reports false
+		{"empty", "", 0, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, ok := parseCgroupV1Limit(c.contents)
+			if got != c.want || ok != c.wantOK {
+				t.Errorf("parseCgroupV1Limit(%q) = (%d, %v), want (%d, %v)", c.contents, got, ok, c.want, c.wantOK)
+			}
+		})
+	}
+}
+
 // TestClampWorkersClampsToRange covers clampWorkers flooring at one worker,
 // capping at the CPU count, falling back to the CPU count on a non-positive
 // memory reading, and honoring the exact per-worker memory boundary.

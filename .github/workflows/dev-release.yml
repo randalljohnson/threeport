@@ -21,7 +21,7 @@ jobs:
   # v[0-9]+.[0-9]+.[0-9]+ regex, so pushing the tag does not retrigger
   # the upstream release workflow.
   tag:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     outputs:
       value: ${{ steps.tag.outputs.value }}
     steps:
@@ -52,7 +52,7 @@ jobs:
   # real release tags inherited from upstream.
   cleanup:
     needs: goreleaser
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     steps:
     - name: Prune old dev snapshots
       env:

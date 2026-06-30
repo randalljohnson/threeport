@@ -18,11 +18,35 @@ inputs:
 runs:
   using: composite
   steps:
+    # Self-hosted runners on the genesis-dev-1 cluster mount a per-node
+    # hostPath at /opt/hostpath-cache that survives pod churn. When present
+    # and writable, point Go's build/module caches and the GitHub Actions
+    # tool cache at it so subsequent runs on the same node skip the
+    # download/extract dance entirely. The marker ARC_HOSTPATH_CACHE=1 also
+    # lets later steps skip the hosted-only branches (the free-disk-space
+    # purge would wipe our shared dind layer cache, and actions/cache
+    # round-trips to GitHub artifact storage are pointless when the cache
+    # already persists on the host).
+    - name: Detect shared hostPath cache
+      shell: bash
+      run: |
+        if [ -d /opt/hostpath-cache ] && [ -w /opt/hostpath-cache ]; then
+          echo "ARC_HOSTPATH_CACHE=1" >> "$GITHUB_ENV"
+          echo "GOCACHE=/opt/hostpath-cache/go-build" >> "$GITHUB_ENV"
+          echo "GOMODCACHE=/opt/hostpath-cache/go-mod" >> "$GITHUB_ENV"
+          echo "RUNNER_TOOL_CACHE=/opt/hostpath-cache/runner-tool-cache" >> "$GITHUB_ENV"
+          echo "::notice::Using shared hostPath cache at /opt/hostpath-cache"
+        fi
+
     # Free runner disk so a full Go build does not run out of space. The fast
     # removals (tool cache, Android, .NET, Haskell, Docker images) clear
     # tens of GB in seconds; large-packages is disabled because purging apt
-    # packages adds minutes for little extra room a Go build needs.
+    # packages adds minutes for little extra room a Go build needs. Skipped
+    # on self-hosted runners — they have none of the preinstalled bulk to
+    # clear, and docker-images=true would `docker rmi` against our shared
+    # dind layer cache.
     - name: Free disk space
+      if: env.ARC_HOSTPATH_CACHE != '1'
       uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
       with:
         tool-cache: true
@@ -34,7 +58,10 @@ runs:
         swap-storage: false   # keep swap so a tight runner has an oom cushion
 
     # go-version-file reads the version from the caller repo's go.mod (resolved
-    # against the workspace root after checkout)
+    # against the workspace root after checkout). On self-hosted runners
+    # this resolves to RUNNER_TOOL_CACHE on the shared hostPath, so the
+    # toolchain unpacks once per node per Go version and is a cache hit
+    # forever after.
     - name: Set up Go
       uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
       with:
@@ -46,8 +73,11 @@ runs:
     # version on purpose: Go's build cache already keys every compiled action on
     # the compiler version and its inputs, so it reuses what is still valid and
     # recompiles the rest. Letting Go own invalidation avoids a stale token
-    # someone must bump.
+    # someone must bump. Skipped on self-hosted — GOCACHE / GOMODCACHE already
+    # live on the shared hostPath, so a GitHub-side cache round-trip is pure
+    # overhead.
     - name: Cache Go build + module dirs
+      if: env.ARC_HOSTPATH_CACHE != '1'
       uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
       with:
         path: |

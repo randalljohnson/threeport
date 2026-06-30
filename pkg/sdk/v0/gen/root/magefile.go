@@ -747,6 +747,10 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 
 // emitTestUnitFunc writes a no-arg `func (Test) Unit() error` that runs the
 // unit tests across the threeport packages via util.RunCommandStreamOutput.
+// -p is sized at runtime from util.BuildParallelism() — the cgo-enabled
+// go-sqlite3 build pulls per-package memory above the default GOMAXPROCS
+// concurrency on small CI runners, so honoring the same memory-aware worker
+// count the build targets use keeps `go test` from OOM-killing the pod.
 func emitTestUnitFunc(f *File) {
 	f.Comment("Unit runs the unit tests across the threeport packages.")
 	f.Func().Params(Id("Test")).Id("Unit").Params().Error().Block(
@@ -754,6 +758,10 @@ func emitTestUnitFunc(f *File) {
 		Id("args").Op(":=").Index().String().Values(
 			Line().Lit("test"),
 			Line().Lit("-count=1"),
+			Line().Qual("fmt", "Sprintf").Call(
+				Lit("-p=%d"),
+				Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call(),
+			),
 			Line().Lit("./pkg/..."),
 			Line().Lit("./internal/..."),
 			Line().Lit("./cmd/..."),
@@ -775,7 +783,9 @@ func emitTestUnitFunc(f *File) {
 
 // emitTestIntegrationFunc writes a no-arg `func (Test) Integration() error`
 // that runs the integration tests against an existing Threeport control plane
-// via util.RunCommandStreamOutput.
+// via util.RunCommandStreamOutput. -p mirrors emitTestUnitFunc so the
+// compile concurrency stays consistent across both test entry points; the
+// integration tests share the cgo-enabled test binary build path.
 func emitTestIntegrationFunc(f *File) {
 	f.Comment("Integration runs integration tests against an existing Threeport control plane.")
 	f.Func().Params(Id("Test")).Id("Integration").Params().Error().Block(
@@ -783,6 +793,10 @@ func emitTestIntegrationFunc(f *File) {
 		Id("args").Op(":=").Index().String().Values(
 			Line().Lit("test"),
 			Line().Lit("-v"),
+			Line().Qual("fmt", "Sprintf").Call(
+				Lit("-p=%d"),
+				Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call(),
+			),
 			Line().Lit("./test/integration"),
 			Line().Lit("-count=1"),
 			Line(),

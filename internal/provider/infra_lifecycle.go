@@ -45,9 +45,64 @@ var lifecycleMu sync.RWMutex
 // state machine.
 var lifecycleConfig = defaultLifecycleConfig
 
-// infraSemaphore limits concurrent infrastructure operations to prevent OOM
-// from too many simultaneous deployments.
+// infraSemaphore caps the total number of concurrent infrastructure
+// operations across every stack, guarding overall memory use when many
+// distinct stacks reconcile at once.
 var infraSemaphore = make(chan struct{}, 5)
+
+// stackLocksMu guards stackLocks and its reference counts. The map is
+// small, only holds entries for keys currently being operated on, and is
+// pruned when a key's reference count drops to zero so a long-running
+// controller does not accumulate stale entries.
+var stackLocksMu sync.Mutex
+
+// stackLocks holds one entry per stack key that has at least one active
+// or waiting operation. Serializing acquisition on a per-key mutex
+// prevents two operations on the same stack from launching concurrent
+// deploys, which would race on the local pulumi state file and on the
+// cloud backend's own stack lock.
+var stackLocks = make(map[string]*stackLock)
+
+// stackLock is the per-stack serialization primitive plus a reference
+// count so the entry can be removed from stackLocks once the last waiter
+// releases it.
+type stackLock struct {
+	mu       sync.Mutex
+	refCount int
+}
+
+// tryAcquireStackLock atomically checks whether any operation is
+// currently in flight for the given stack; if none, creates the entry
+// and holds the lock in a single critical section so callers never
+// block. Returns (nil, false) when another operation already owns the
+// stack; the caller should treat that the same as a full-pool
+// rejection and requeue. Every successful acquire must be paired with
+// releaseStackLock so the entry is pruned.
+func tryAcquireStackLock(key string) (*stackLock, bool) {
+	stackLocksMu.Lock()
+	defer stackLocksMu.Unlock()
+	if _, ok := stackLocks[key]; ok {
+		return nil, false
+	}
+	sl := &stackLock{refCount: 1}
+	sl.mu.Lock()
+	stackLocks[key] = sl
+	return sl, true
+}
+
+// releaseStackLock releases the per-key mutex and removes the entry
+// from stackLocks so a long-running controller does not accumulate
+// dead entries for stacks it once operated on.
+func releaseStackLock(key string, sl *stackLock) {
+	sl.mu.Unlock()
+
+	stackLocksMu.Lock()
+	sl.refCount--
+	if sl.refCount == 0 {
+		delete(stackLocks, key)
+	}
+	stackLocksMu.Unlock()
+}
 
 // currentConfig returns the active lifecycle configuration.
 func currentConfig() LifecycleConfig {
@@ -134,6 +189,13 @@ type ReconciliationSnapshot struct {
 // provider implements this interface; the lifecycle handler does everything
 // else (ack/confirm checks, stale detection, goroutine wiring).
 type InfraLifecycleProvider interface {
+	// StackKey returns a stable identifier for the backing infrastructure
+	// stack. The lifecycle handler serializes create and delete operations
+	// per key so two reconciles for the same stack cannot run concurrent
+	// deploys and race on shared state (pulumi state file, cloud API rate
+	// limits, or state-lock contention).
+	StackKey() string
+
 	// GetReconciliation fetches the latest reconciliation state and resource
 	// inventory from the API.
 	GetReconciliation() (*ReconciliationSnapshot, error)
@@ -314,6 +376,7 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 	}
 
 	return launchInfraCreate(infraConfig{
+		StackKey:      p.StackKey(),
 		Infra:         infra,
 		ExistingState: snap.ResourceInventory,
 		Callbacks:     callbacks,
@@ -439,6 +502,7 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 	}
 
 	return launchInfraDelete(infraConfig{
+		StackKey:      p.StackKey(),
 		Infra:         infra,
 		ExistingState: snap.ResourceInventory,
 		Callbacks:     callbacks,
@@ -469,6 +533,10 @@ type infraCallbacks struct {
 // infraConfig contains all parameters needed to launch an infrastructure
 // create or delete operation in a background goroutine.
 type infraConfig struct {
+	// StackKey identifies the backing stack for per-key serialization.
+	// Two operations sharing a key cannot launch concurrent deploys.
+	StackKey string
+
 	// Infra is the provider's infrastructure object that implements InfraProvider.
 	Infra InfraProvider
 
@@ -490,23 +558,41 @@ func checkStaleAck(ackTimestamp time.Time) bool {
 	return duration > currentConfig().StaleAckThreshold
 }
 
-// launchInfraCreate acquires the concurrency semaphore, then launches
-// executeInfraCreate in a background goroutine. Returns a requeue delay
-// for the reconciler.
+// launchInfraCreate tries the per-stack lock non-blockingly, then the
+// global cap, and only launches when both succeed. A second call for
+// the same stack while its deploy is still running is rejected the same
+// as a full pool and requeued at 30, so the reconciler never blocks and
+// two reconciles cannot race concurrent deploys on the same stack.
+// Returns a requeue delay for the reconciler.
 func launchInfraCreate(config infraConfig) (int64, error) {
-	// acquire infrastructure concurrency semaphore; capture the channel
-	// once so the release lands on the same channel
+	// reject non-blockingly if the stack already has an operation in
+	// flight; the running goroutine will release the lock when it
+	// finishes and the next reconcile pass can pick it up
+	sl, ok := tryAcquireStackLock(config.StackKey)
+	if !ok {
+		config.Log.Info("stack operation already in flight, requeuing")
+		return 30, nil
+	}
+
+	// acquire the global concurrency cap; capture the channel once so the
+	// release lands on the same channel even if a test swaps the global.
+	// On rejection, release the per-stack lock here since no goroutine will
+	// pick up its release
 	sem := currentSemaphore()
 	select {
 	case sem <- struct{}{}:
 		// acquired slot
 	default:
+		releaseStackLock(config.StackKey, sl)
 		config.Log.Info("infrastructure worker pool full, requeuing")
 		return 30, nil
 	}
 
-	// launch creation in background goroutine
+	// launch creation in background goroutine; the goroutine releases the
+	// per-stack lock when the deploy returns, so a queued caller waiting on
+	// the same key unblocks only after this deploy is done
 	go func() {
+		defer releaseStackLock(config.StackKey, sl)
 		defer func() { <-sem }()
 		defer func() {
 			if r := recover(); r != nil {
@@ -520,23 +606,41 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 	return 120, nil
 }
 
-// launchInfraDelete acquires the concurrency semaphore, then launches
-// executeInfraDelete in a background goroutine. Returns a requeue delay
-// for the reconciler.
+// launchInfraDelete tries the per-stack lock non-blockingly, then the
+// global cap, and only launches when both succeed. A second call for
+// the same stack while its destroy is still running is rejected the
+// same as a full pool and requeued at 30, so the reconciler never
+// blocks and two reconciles cannot race concurrent destroys on the
+// same stack. Returns a requeue delay for the reconciler.
 func launchInfraDelete(config infraConfig) (int64, error) {
-	// acquire infrastructure concurrency semaphore; capture the channel
-	// once so the release lands on the same channel
+	// reject non-blockingly if the stack already has an operation in
+	// flight; the running goroutine will release the lock when it
+	// finishes and the next reconcile pass can pick it up
+	sl, ok := tryAcquireStackLock(config.StackKey)
+	if !ok {
+		config.Log.Info("stack operation already in flight, requeuing")
+		return 30, nil
+	}
+
+	// acquire the global concurrency cap; capture the channel once so the
+	// release lands on the same channel even if a test swaps the global.
+	// On rejection, release the per-stack lock here since no goroutine will
+	// pick up its release
 	sem := currentSemaphore()
 	select {
 	case sem <- struct{}{}:
 		// acquired slot
 	default:
+		releaseStackLock(config.StackKey, sl)
 		config.Log.Info("infrastructure worker pool full, requeuing")
 		return 30, nil
 	}
 
-	// launch deletion in background goroutine
+	// launch deletion in background goroutine; the goroutine releases the
+	// per-stack lock when the destroy returns, so a queued caller waiting on
+	// the same key unblocks only after this destroy is done
 	go func() {
+		defer releaseStackLock(config.StackKey, sl)
 		defer func() { <-sem }()
 		defer func() {
 			if r := recover(); r != nil {
@@ -630,6 +734,16 @@ func executeInfraCreate(config infraConfig) {
 			if saveErr := config.Callbacks.SaveState(stateJSON); saveErr != nil {
 				config.Log.Error(saveErr, "failed to save partial state after failed creation")
 			}
+		}
+
+		// classify the error: a transient error is expected to clear on
+		// the next reconcile pass, so leave CreationFailed unset and let
+		// the natural requeue re-fire. Flipping CreationFailed=true on a
+		// transient error widens the reconciler into a permanent-failure
+		// path that short-circuits subsequent reconciles.
+		if isTransientPulumiError(err) {
+			config.Log.Info("treating create error as transient; deferring to next reconcile pass")
+			return
 		}
 
 		persistFailure(config.Callbacks.PersistFailure, config.Log)

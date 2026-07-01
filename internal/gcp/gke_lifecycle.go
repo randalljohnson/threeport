@@ -41,6 +41,15 @@ func newGkeLifecycleProvider(
 	}
 }
 
+// StackKey returns the runtime instance name so per-stack serialization
+// keys off the same identifier that names the pulumi stack on disk.
+func (g *gkeLifecycle) StackKey() string {
+	if g.instance == nil || g.instance.Name == nil {
+		return ""
+	}
+	return *g.instance.Name
+}
+
 // GetReconciliation fetches the latest reconciliation state from the API.
 func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
 	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(

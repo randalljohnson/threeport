@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
@@ -20,6 +21,55 @@ import (
 
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// transientPulumiErrorMarkers lists substrings that identify errors the
+// pulumi automation surface is expected to recover from on its own next
+// pass. A transient error must not flip CreationFailed=true because that
+// widens the reconciler's retry into a permanent-failure path; instead
+// the natural requeue re-fires and the operation converges.
+var transientPulumiErrorMarkers = []string{
+	// pulumi's cross-process stack lock: another goroutine or another
+	// controller replica is holding the local state lock. The next pass
+	// will find it released.
+	"stack is currently locked",
+
+	// upstream cloud API call hit its own deadline: the next reconcile
+	// pass gets a fresh deadline
+	"context deadline exceeded",
+
+	// grpc timeout wrapping the same class of error
+	"DeadlineExceeded",
+
+	// google cloud rate-limit and internal transient responses; a fresh
+	// pulumi up retries against a settled backend
+	"quotaExceeded",
+	"rateLimitExceeded",
+	"backendError",
+	"internalError",
+
+	// transport-level retryable
+	"connection reset by peer",
+	"i/o timeout",
+	"TLS handshake timeout",
+}
+
+// isTransientPulumiError reports whether the error looks like one the
+// next reconcile pass will resolve without operator intervention. A true
+// result tells the lifecycle handler to leave CreationFailed unset so the
+// next requeue reruns the create without flipping into a permanent-failure
+// path that widens retries and confuses downstream consumers.
+func isTransientPulumiError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	for _, marker := range transientPulumiErrorMarkers {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
+}
 
 // PulumiWorkspace encapsulates all Pulumi workspace, stack, and state management
 // logic that is provider-agnostic. Embed this struct in provider-specific infra

@@ -43,6 +43,15 @@ func newOkeLifecycleProvider(
 	}
 }
 
+// StackKey returns the runtime instance name so per-stack serialization
+// keys off the same identifier that names the pulumi stack on disk.
+func (o *okeLifecycle) StackKey() string {
+	if o.instance == nil || o.instance.Name == nil {
+		return ""
+	}
+	return *o.instance.Name
+}
+
 // GetReconciliation fetches the latest reconciliation state from the API.
 func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
 	latest, err := client.GetOciOkeKubernetesRuntimeInstanceByID(

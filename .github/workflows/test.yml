@@ -84,3 +84,11 @@ jobs:
 
     - name: Integration tests
       run: mage test:integration
+
+    # Always run: tear down the kind cluster + tptctl state + local registry
+    # so a failed run doesn't leave orphaned containers/networks in the
+    # shared /opt/dind-storage hostPath that would trip the next run on the
+    # same node with a "node(s) already exist for a cluster" error.
+    - name: Teardown
+      if: always()
+      run: mage ci:teardown

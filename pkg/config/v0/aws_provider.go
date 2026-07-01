@@ -24,19 +24,23 @@ type AwsProviderConfig struct {
 }
 
 // AwsProviderValues contains all the attributes needed to manage
-// the AwsProvider API object.
+// the AwsProvider API object. For sensitive values, the *File variants
+// take a path to a file whose contents are read at API-call time and
+// encrypted at rest by the server.
 type AwsProviderValues struct {
-	Name             *string `json:",omitempty"`
-	AccountID        *string `json:",omitempty"`
-	DefaultProvider  *bool   `json:",omitempty"`
-	DefaultRegion    *string `json:",omitempty"`
-	AccessKeyID      *string `json:",omitempty"`
-	SecretAccessKey  *string `json:",omitempty"`
-	RoleArn          *string `json:",omitempty"`
-	LocalConfig      *string `json:",omitempty"`
-	LocalCredentials *string `json:",omitempty"`
-	LocalProfile     *string `json:",omitempty"`
-	Age              *string `json:",omitempty"`
+	Name                *string `json:",omitempty"`
+	AccountID           *string `json:",omitempty"`
+	DefaultProvider     *bool   `json:",omitempty"`
+	DefaultRegion       *string `json:",omitempty"`
+	AccessKeyID         *string `json:",omitempty"`
+	AccessKeyIDFile     *string `json:",omitempty"`
+	SecretAccessKey     *string `json:",omitempty"`
+	SecretAccessKeyFile *string `json:",omitempty"`
+	RoleArn             *string `json:",omitempty"`
+	LocalConfig         *string `json:",omitempty"`
+	LocalCredentials    *string `json:",omitempty"`
+	LocalProfile        *string `json:",omitempty"`
+	Age                 *string `json:",omitempty"`
 }
 
 // Get gets aws providers from the Threeport API.
@@ -111,6 +115,22 @@ func (a *AwsProviderConfig) Create(
 	// validate config
 	if err := a.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate values for aws provider with name %s: %w", *awsProviderValues.Name, err)
+	}
+
+	// resolve *File fields into their inline counterparts
+	if awsProviderValues.AccessKeyID == nil && awsProviderValues.AccessKeyIDFile != nil {
+		v, err := resolveFileField("AccessKeyID", *awsProviderValues.AccessKeyIDFile)
+		if err != nil {
+			return nil, err
+		}
+		awsProviderValues.AccessKeyID = v
+	}
+	if awsProviderValues.SecretAccessKey == nil && awsProviderValues.SecretAccessKeyFile != nil {
+		v, err := resolveFileField("SecretAccessKey", *awsProviderValues.SecretAccessKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		awsProviderValues.SecretAccessKey = v
 	}
 
 	// validate that no other default AWS provider exists
@@ -215,6 +235,23 @@ func (a *AwsProviderConfig) Replace(
 	// validate config
 	if err := a.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid aws provider config: %w", err)
+	}
+
+	// resolve *File fields into their inline counterparts so a full replacement
+	// does not null persisted secrets supplied only by file
+	if awsProviderValues.AccessKeyID == nil && awsProviderValues.AccessKeyIDFile != nil {
+		v, err := resolveFileField("AccessKeyID", *awsProviderValues.AccessKeyIDFile)
+		if err != nil {
+			return nil, err
+		}
+		awsProviderValues.AccessKeyID = v
+	}
+	if awsProviderValues.SecretAccessKey == nil && awsProviderValues.SecretAccessKeyFile != nil {
+		v, err := resolveFileField("SecretAccessKey", *awsProviderValues.SecretAccessKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		awsProviderValues.SecretAccessKey = v
 	}
 
 	// get existing aws provider by name
@@ -334,7 +371,9 @@ LocalConfig, LocalCredentials and LocalProfile
 	if awsProviderValues.LocalConfig != nil && awsProviderValues.LocalCredentials != nil && awsProviderValues.LocalProfile != nil {
 		localConfig = true
 	}
-	if awsProviderValues.DefaultRegion != nil && awsProviderValues.AccessKeyID != nil && awsProviderValues.SecretAccessKey != nil {
+	accessKeyProvided := awsProviderValues.AccessKeyID != nil || awsProviderValues.AccessKeyIDFile != nil
+	secretAccessKeyProvided := awsProviderValues.SecretAccessKey != nil || awsProviderValues.SecretAccessKeyFile != nil
+	if awsProviderValues.DefaultRegion != nil && accessKeyProvided && secretAccessKeyProvided {
 		explicitConfig = true
 	}
 	switch {

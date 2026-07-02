@@ -424,30 +424,33 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, `{"type":"service_account"}`, infraGKE.ServiceAccountCredentials)
 	})
 
-	t.Run("nil credentials leave field empty", func(t *testing.T) {
+	t.Run("nil credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
+		// nil credentials must fail-fast so a misconfigured provider does not
+		// defer the failure to the gke create and hang on interactive oauth
 		prov.ServiceAccountCredentials = nil
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
 		gkeServeProvider(t, api, prov, http.StatusOK)
 
-		infra, err := gkeNewLifecycle(api, inst).BuildInfra()
-		require.NoError(t, err)
-		assert.Empty(t, infra.(*provider.KubernetesRuntimeInfraGKE).ServiceAccountCredentials)
+		_, err := gkeNewLifecycle(api, inst).BuildInfra()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no service account credentials")
 	})
 
-	t.Run("empty credentials leave field empty", func(t *testing.T) {
+	t.Run("empty credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
+		// empty credentials must fail-fast the same as nil
 		prov.ServiceAccountCredentials = util.Ptr("")
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
 		gkeServeProvider(t, api, prov, http.StatusOK)
 
-		infra, err := gkeNewLifecycle(api, inst).BuildInfra()
-		require.NoError(t, err)
-		assert.Empty(t, infra.(*provider.KubernetesRuntimeInfraGKE).ServiceAccountCredentials)
+		_, err := gkeNewLifecycle(api, inst).BuildInfra()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no service account credentials")
 	})
 
 	t.Run("instance fetch error", func(t *testing.T) {

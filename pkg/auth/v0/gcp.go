@@ -44,32 +44,45 @@ type adcCredentials struct {
 	Type         string `json:"type"`
 }
 
-// EnsureGCPAuth checks for valid GCP Application Default Credentials and initiates
-// the OAuth flow if credentials are missing or invalid. This allows users to
-// authenticate without manually running `gcloud auth application-default login`.
+// EnsureGCPAuth prepares GCP credentials for a controller-side caller and never
+// falls back to the interactive browser OAuth flow. It first accepts any valid
+// ambient credentials (Workload Identity in GKE, or a previously configured
+// GOOGLE_APPLICATION_CREDENTIALS file), then, when a service account JSON is
+// provided, writes it to a temp file and points the Google SDK at it.
 //
-// This function handles three authentication scenarios:
-//  1. CLI usage (tptctl): Uses browser-based OAuth flow for user authentication
-//  2. Controller in GKE: Uses Workload Identity (automatic via metadata server)
-//  3. Controller outside GCP: Uses service account credentials JSON
-//
-// The serviceAccountCredentials parameter should contain the JSON contents of a
-// GCP service account key file. If empty, the function will check for existing
-// credentials (scenarios 1 and 2) and fall back to browser-based auth if needed.
+// When neither an ambient credential nor a service account JSON is available,
+// this returns a descriptive error instead of hanging on the browser flow: a
+// controller pod has no browser and would otherwise wait the full 5 minute OAuth
+// timeout before giving up. CLI callers that legitimately want the browser flow
+// call EnsureGCPAuthWithBrowser instead.
 func EnsureGCPAuth(serviceAccountCredentials string) error {
+	return ensureGCPAuth(serviceAccountCredentials, false)
+}
+
+// EnsureGCPAuthWithBrowser prepares GCP credentials for an interactive CLI
+// caller. It handles the same ambient and service account paths as EnsureGCPAuth
+// and additionally falls back to the browser-based OAuth flow when neither is
+// available, so tptctl can prompt the user to sign in. Controller code paths
+// must never use this: no browser is available in the pod and the fallback
+// hangs for 5 minutes before timing out.
+func EnsureGCPAuthWithBrowser(serviceAccountCredentials string) error {
+	return ensureGCPAuth(serviceAccountCredentials, true)
+}
+
+// ensureGCPAuth is the shared implementation behind EnsureGCPAuth and
+// EnsureGCPAuthWithBrowser. When interactive is false and no ambient or
+// service account credentials are available, it returns an error rather than
+// invoking the browser OAuth flow.
+func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	ctx := context.Background()
 
-	// FIRST: Check if valid credentials already exist.
-	// This covers (in order of preference):
-	// - Workload Identity in GKE (scenario 2) — most secure, uses short-lived tokens
-	// - User credentials from gcloud auth (scenario 1)
-	// - Previously configured service account key file via GOOGLE_APPLICATION_CREDENTIALS
+	// accept any valid ambient credentials first, in this order of preference:
+	// workload identity in gke, user credentials from gcloud auth, or a
+	// previously configured service account key file via GOOGLE_APPLICATION_CREDENTIALS
 	if hasValidGCPCredentials(ctx) {
-		// Only increment the ref count if a temp SA file is actually in use.
-		// If Workload Identity or user ADC provided the valid credentials,
-		// gcpCredTempFile is empty and no cleanup pairing is needed — the
-		// conditional defer in the caller will fire but CleanupGCPCredentials
-		// is a no-op when refCount is already zero.
+		// only increment the ref count when a temp sa file is actually in use.
+		// when workload identity or user adc provided the valid credentials,
+		// gcpCredTempFile is empty and no cleanup pairing is needed.
 		if serviceAccountCredentials != "" {
 			gcpCredMu.Lock()
 			if gcpCredTempFile != "" {
@@ -80,8 +93,9 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 		return nil
 	}
 
-	// SECOND: If no valid credentials exist and service account credentials are
-	// provided, use them. This is the fallback for controllers running outside GCP.
+	// when no ambient credentials exist and a service account json is provided,
+	// write it to a temp file and point the google sdk at it. this is the
+	// controller path for a controller running outside gcp.
 	if serviceAccountCredentials != "" {
 		if err := configureServiceAccountCredentials(serviceAccountCredentials); err != nil {
 			return fmt.Errorf("failed to configure service account credentials: %w", err)
@@ -89,8 +103,14 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 		return nil
 	}
 
-	// THIRD: Fall back to browser-based OAuth flow (scenario 1 — CLI only).
-	// This only works for CLI usage (tptctl), not for controllers.
+	// non-interactive callers (controllers) must not fall through to the
+	// browser oauth flow: there is no browser in the pod and the flow would
+	// hang for 5 minutes before timing out. fail fast with a descriptive error.
+	if !interactive {
+		return fmt.Errorf("gcp authentication unavailable: no application default credentials and no service account credentials configured on GcpProvider")
+	}
+
+	// interactive callers (tptctl) fall back to the browser oauth flow.
 	util.CliOutputInfo("GCP credentials not found or expired. Initiating authentication...")
 
 	if err := performGCPOAuthFlow(ctx); err != nil {

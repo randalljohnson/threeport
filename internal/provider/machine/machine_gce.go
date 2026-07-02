@@ -285,10 +285,19 @@ func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 // public key injected into the instance ssh-keys metadata.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
-		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", &gcp.ProviderArgs{
+		// thread service account credentials directly into the gcp provider
+		// for this stack rather than relying on a process-global env var, so
+		// two concurrent gce creates for different service accounts each get
+		// their own provider credentials
+		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
-		})
+		}
+		if i.ServiceAccountCredentials != "" {
+			providerArgs.Credentials = pulumi.String(i.ServiceAccountCredentials)
+		}
+
+		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", providerArgs)
 		if err != nil {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}

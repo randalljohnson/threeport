@@ -461,13 +461,21 @@ func buildGceMachineInfra(
 		infraGce.SSHSourceRanges = append([]string(nil), *instance.SSHSourceRanges...)
 	}
 
-	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
-		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	// require service account credentials on the gcp provider so a
+	// misconfigured provider fails at buildinfra time rather than deferring the
+	// failure to the adopt step, where an empty credential silently drops the
+	// caller into the interactive oauth path and hangs for 5 minutes
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		if gcpProvider.ID == nil {
+			return nil, fmt.Errorf("gcp provider has no service account credentials")
 		}
-		infraGce.ServiceAccountCredentials = decryptedCredentials
+		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
 	}
+	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	}
+	infraGce.ServiceAccountCredentials = decryptedCredentials
 
 	// rehydrate the persisted SSH key onto the rebuilt provider so a re-deploy
 	// reuses it instead of minting a fresh pair and rotating the instance's

@@ -437,19 +437,34 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to retrieve GCP provider by ID")
 	})
 
-	t.Run("empty service account credentials left empty", func(t *testing.T) {
+	t.Run("empty service account credentials rejected", func(t *testing.T) {
 		s := gceNewAPIStub(t)
 		s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 		prov := gceBaseProvider()
+		// empty credentials must fail-fast so a misconfigured provider does
+		// not defer the failure to the adopt step and hang on interactive oauth
 		prov.ServiceAccountCredentials = gcePtr("")
 		s.gceHandleProvider(t, gceTestProviderID, prov)
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
 
 		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
-		infra, err := g.BuildInfra()
-		require.NoError(t, err)
-		gceInfra := infra.(*machine.GceMachineInfra)
-		assert.Equal(t, "", gceInfra.ServiceAccountCredentials)
+		_, err := g.BuildInfra()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no service account credentials")
+	})
+
+	t.Run("nil service account credentials rejected", func(t *testing.T) {
+		s := gceNewAPIStub(t)
+		s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+		// gceBaseProvider defaults ServiceAccountCredentials to nil, which must
+		// fail-fast the same as an empty string
+		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
+
+		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+		_, err := g.BuildInfra()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no service account credentials")
 	})
 
 	t.Run("nil SSHSourceRanges left empty", func(t *testing.T) {
@@ -457,7 +472,13 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
 		latest.SSHSourceRanges = nil
 		s.gceHandleInstance(t, gceTestInstanceID, latest)
-		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+		// seed valid encrypted credentials so BuildInfra clears the fail-fast
+		// gate and reaches the SSH source ranges assertion
+		prov := gceBaseProvider()
+		enc, err := encryption.Encrypt(s.encryptionKey, "creds-json")
+		require.NoError(t, err)
+		prov.ServiceAccountCredentials = gcePtr(enc)
+		s.gceHandleProvider(t, gceTestProviderID, prov)
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
 
 		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))

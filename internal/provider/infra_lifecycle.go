@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -573,7 +574,7 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 	sl, ok := tryAcquireStackLock(config.StackKey)
 	if !ok {
 		config.Log.V(1).Info("stack operation already in flight, requeuing")
-		return 90, nil
+		return 30, nil
 	}
 
 	// acquire the global concurrency cap; capture the channel once so the
@@ -587,7 +588,7 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 	default:
 		releaseStackLock(config.StackKey, sl)
 		config.Log.V(1).Info("infrastructure worker pool full, requeuing")
-		return 90, nil
+		return 30, nil
 	}
 
 	// launch creation in background goroutine; the goroutine releases the
@@ -829,9 +830,17 @@ func executeInfraDelete(config infraConfig) {
 	}
 }
 
-// streamState watches the state file via fsnotify and pushes changes to the
-// API using the saveState callback on every Write/Create event. Only called
-// for providers that implement StreamableProvider.
+// streamState watches the state file via fsnotify and pushes changes to
+// the API. On every Write/Create event it reads the file and compares
+// its bytes against the last bytes it successfully saved; equal reads
+// skip the API call. Only writes that actually change the state file
+// trigger a PATCH, which keeps the persisted state in tight sync with
+// the file without triggering an API PATCH per fsnotify tick during a
+// pulumi run. Pulumi rewrites its state file many times with unchanged
+// content and each redundant PATCH republishes an update notification
+// that wakes the reconciler; skipping the equal writes breaks that
+// self-triggering loop while adding no polling cost. Only called for
+// providers that implement StreamableProvider.
 func streamState(
 	provider StreamableProvider,
 	saveState func(state *datatypes.JSON) error,
@@ -865,6 +874,11 @@ func streamState(
 	}
 
 	stateFileName := filepath.Base(stateFilePath)
+
+	// lastSaved holds the bytes we most recently pushed via saveState.
+	// This goroutine is the only writer for this stack's state field so
+	// the cache is authoritative without polling the API.
+	var lastSaved []byte
 
 	for {
 		select {
@@ -900,10 +914,22 @@ func streamState(
 				continue
 			}
 
+			// skip the save when the file bytes match the last bytes
+			// we already persisted from this goroutine; pulumi
+			// rewrites the state file many times per resource op with
+			// identical content, and each unnecessary save
+			// republishes an update notification that wakes the
+			// reconciler
+			if bytes.Equal([]byte(*state), lastSaved) {
+				continue
+			}
+
 			// push state via callback
 			if err := saveState(state); err != nil {
 				log.Error(err, "failed to update resource inventory during state streaming")
+				continue
 			}
+			lastSaved = append(lastSaved[:0], (*state)...)
 
 		case err, ok := <-watcher.Errors:
 			if !ok {

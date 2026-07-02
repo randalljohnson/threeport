@@ -569,6 +569,30 @@ func operationCase(
 			)
 		})
 		h.If(Id("operationErr").Op("!=").Nil()).Block(
+			// treat 409 conflict as a soft requeue: a child object is still being
+			// deleted and the reconciler should wait rather than loop on errors
+			If(Qual("errors", "Is").Call(
+				Id("operationErr"),
+				Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
+			)).Block(
+				Id("log").Dot("V").Call(Lit(1)).Dot("Info").Call(
+					Line().Lit(fmt.Sprintf(
+						"%s %s deferred pending in-flight deletion, requeueing",
+						strcase.ToDelimited(obj.Name, ' '),
+						op,
+					)),
+					Line().Lit("cause"), Id("operationErr").Dot("Error").Call(),
+					Line(),
+				),
+				Id("r").Dot("UnlockAndRequeue").Call(
+					Line().Id(varObjectName),
+					Line().Lit(int64(30)),
+					Line().Id("lockReleased"),
+					Line().Id("msg"),
+					Line(),
+				),
+				Continue(),
+			),
 			Id("errorMsg").Op(":=").Lit(fmt.Sprintf(
 				"failed to reconcile %s %s object",
 				lowerOpPast,
@@ -691,6 +715,29 @@ func operationCase(
 				Line(),
 			)
 			h.If(Id("err").Op("!=").Nil()).Block(
+				// treat 409 conflict as a soft requeue: another reconciliation loop
+				// is already draining this object; wait rather than loop on errors
+				If(Qual("errors", "Is").Call(
+					Id("err"),
+					Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
+				)).Block(
+					Id("log").Dot("V").Call(Lit(1)).Dot("Info").Call(
+						Line().Lit(fmt.Sprintf(
+							"%s deletion already in progress, requeueing",
+							strcase.ToDelimited(obj.Name, ' '),
+						)),
+						Line().Lit("cause"), Id("err").Dot("Error").Call(),
+						Line(),
+					),
+					Id("r").Dot("UnlockAndRequeue").Call(
+						Line().Id(varObjectName),
+						Line().Lit(int64(30)),
+						Line().Id("lockReleased"),
+						Line().Id("msg"),
+						Line(),
+					),
+					Continue(),
+				),
 				Id("log").Dot("Error").Call(Id("err"), Lit(fmt.Sprintf(
 					"failed to delete %s",
 					strcase.ToDelimited(obj.Name, ' '),

@@ -99,12 +99,12 @@ func (o *orderRecordingInfra) DeployInfra() error {
 	return o.fakeRefreshableInfra.DeployInfra()
 }
 
-// TestSemaphoreBackpressure_Requeue30 covers the non-blocking semaphore
+// TestSemaphoreBackpressure_Requeue90 covers the non-blocking semaphore
 // acquire: with capacity 2 and blocking deploys, the first two creates
-// get slots and requeue at 120, the next three get (30, nil) without
+// get slots and requeue at 120, the next three get (90, nil) without
 // launching a goroutine, and slots freed by completed deploys can be
 // acquired by a subsequent call.
-func TestSemaphoreBackpressure_Requeue30(t *testing.T) {
+func TestSemaphoreBackpressure_Requeue90(t *testing.T) {
 	configureSemaphoreTest(t, 2)
 	log := newTestLogger()
 
@@ -131,7 +131,7 @@ func TestSemaphoreBackpressure_Requeue30(t *testing.T) {
 	}
 
 	// the slot acquire is synchronous, so exactly the first two launch
-	require.Equal(t, [5]int64{120, 120, 30, 30, 30}, requeues)
+	require.Equal(t, [5]int64{120, 120, 90, 90, 90}, requeues)
 
 	// the two slot holders reach their deploys
 	deadline := time.Now().Add(10 * time.Second)
@@ -387,7 +387,7 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 
 // TestSemaphoreSerializesPerStack asserts that a second HandleInfraCreate
 // call pointed at a stack that already has an operation in flight is
-// rejected non-blockingly with the 30-second requeue delay, without
+// rejected non-blockingly with the 90-second requeue delay, without
 // launching a competing deploy. The reconciler is a poll loop that must
 // never block, so per-stack serialization is enforced by short-circuit
 // requeue, not by holding the caller until the running deploy finishes.
@@ -437,7 +437,7 @@ func TestSemaphoreSerializesPerStack(t *testing.T) {
 	// launch a competing deploy
 	requeue2, err := HandleInfraCreate(fl2, log)
 	require.NoError(t, err)
-	require.Equal(t, int64(30), requeue2, "second call for in-flight stack must non-blockingly requeue at 30")
+	require.Equal(t, int64(90), requeue2, "second call for in-flight stack must non-blockingly requeue at 90")
 	require.Equal(t, 0, fi2.deployCallCount(), "second stack-mate must not deploy while first still holds per-stack lock")
 
 	// release fi1's deploy so its goroutine returns and releases the

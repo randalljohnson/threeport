@@ -34,8 +34,12 @@ const (
 var threeportServiceAccountRoles = []string{
 	// GKE cluster management
 	"roles/container.admin",
-	// Compute Engine resources (for VPC, subnets, firewalls)
+	// Compute Engine networking: VPC, subnets, routes
 	"roles/compute.networkAdmin",
+	// Compute Engine instances (least privilege for machine provider)
+	"roles/compute.instanceAdmin.v1",
+	// Compute Engine firewall rules, which networkAdmin does not grant
+	"roles/compute.securityAdmin",
 	// IAM management for creating service accounts for workloads
 	"roles/iam.serviceAccountAdmin",
 	"roles/iam.serviceAccountUser",
@@ -436,8 +440,9 @@ func (i *KubernetesRuntimeInfraGKE) getServiceAccountEmail() string {
 func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceAccountWithKey, error) {
 	ctx := context.Background()
 
-	// Ensure GCP authentication is in place (uses browser flow if needed for CLI)
-	if err := gcpauth.EnsureGCPAuth(""); err != nil {
+	// ensure gcp authentication is in place; this runs under tptctl so the
+	// browser oauth fallback is allowed when no ambient credentials exist
+	if err := gcpauth.EnsureGCPAuthWithBrowser(""); err != nil {
 		return nil, fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
@@ -505,8 +510,9 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 func DeleteGCPServiceAccountWithKey(projectID, accountName string) error {
 	ctx := context.Background()
 
-	// Ensure GCP authentication is in place (uses browser flow if needed for CLI)
-	if err := gcpauth.EnsureGCPAuth(""); err != nil {
+	// ensure gcp authentication is in place; this runs under tptctl so the
+	// browser oauth fallback is allowed when no ambient credentials exist
+	if err := gcpauth.EnsureGCPAuthWithBrowser(""); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 

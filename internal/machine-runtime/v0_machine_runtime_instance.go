@@ -450,18 +450,20 @@ func v0MachineRuntimeInstanceUpdated(
 }
 
 // sshUserChanged reports whether the fetched ssh user differs from the value
-// last propagated to the married provider instance. A nil pointer is treated as
-// no value so a clear and an unset compare equal.
+// last propagated to the married provider instance. A nil or empty parent
+// value means the abstract row leaves the ssh user unset; the child was
+// defaulted at create time and stays at that default, so a nil parent is not
+// a change to propagate. A change is only reported when the parent carries a
+// non-empty value that differs from the propagated one.
 func sshUserChanged(fetched, propagated *string) bool {
-	fetchedVal := ""
-	if fetched != nil {
-		fetchedVal = *fetched
+	if fetched == nil || *fetched == "" {
+		return false
 	}
 	propagatedVal := ""
 	if propagated != nil {
 		propagatedVal = *propagated
 	}
-	return fetchedVal != propagatedVal
+	return *fetched != propagatedVal
 }
 
 // sshKeyChanged reports whether the fetched ssh key differs from the value last

@@ -97,14 +97,14 @@ func TestReconcilerLoop_2000Instances_SemaphoreCapped(t *testing.T) {
 	log := newTestLogger()
 
 	// drive several full passes over every instance; with blocking
-	// deploys only k slots ever fill and the rest requeue at 90
+	// deploys only k slots ever fill and the rest requeue at 30
 	for pass := 0; pass < 5; pass++ {
 		for i := 0; i < n; i++ {
 			requeue, err := HandleInfraCreate(fls[i], log)
 			require.NoError(t, err)
 			// a launched instance requeues at 120; a pool-full instance
-			// at 90; never anything else on this path
-			require.Contains(t, []int64{90, 120}, requeue)
+			// at 30; never anything else on this path
+			require.Contains(t, []int64{30, 120}, requeue)
 		}
 	}
 

@@ -567,11 +567,13 @@ func checkStaleAck(ackTimestamp time.Time) bool {
 func launchInfraCreate(config infraConfig) (int64, error) {
 	// reject non-blockingly if the stack already has an operation in
 	// flight; the running goroutine will release the lock when it
-	// finishes and the next reconcile pass can pick it up
+	// finishes and the next reconcile pass can pick it up. The log is
+	// at debug level so a poll-heavy reconciler does not spam it once
+	// per rejected reconcile
 	sl, ok := tryAcquireStackLock(config.StackKey)
 	if !ok {
-		config.Log.Info("stack operation already in flight, requeuing")
-		return 30, nil
+		config.Log.V(1).Info("stack operation already in flight, requeuing")
+		return 90, nil
 	}
 
 	// acquire the global concurrency cap; capture the channel once so the
@@ -584,8 +586,8 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 		// acquired slot
 	default:
 		releaseStackLock(config.StackKey, sl)
-		config.Log.Info("infrastructure worker pool full, requeuing")
-		return 30, nil
+		config.Log.V(1).Info("infrastructure worker pool full, requeuing")
+		return 90, nil
 	}
 
 	// launch creation in background goroutine; the goroutine releases the

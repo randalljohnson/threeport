@@ -192,7 +192,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						loggingDefinition,
 						customRequeueDelay,
@@ -239,7 +239,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						loggingDefinition,
 						customRequeueDelay,
@@ -286,7 +286,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						loggingDefinition,
 						customRequeueDelay,

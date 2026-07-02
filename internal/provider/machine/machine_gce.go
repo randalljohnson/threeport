@@ -502,7 +502,7 @@ func generateSSHKeyPair() (privPEM, pubAuthorized string, err error) {
 		Bytes: privDER,
 	})
 	if privPEMBytes == nil {
-		return "", "", fmt.Errorf("failed to encode private key to PEM")
+		return "", "", errors.New("failed to encode private key to PEM")
 	}
 
 	pub, err := ssh.NewPublicKey(&key.PublicKey)
@@ -570,7 +570,7 @@ func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey s
 // than persisted separately so no extra stored field is needed.
 func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	if sshPrivateKeyPEM == "" {
-		return fmt.Errorf("cannot seed SSH key pair from empty private key")
+		return errors.New("cannot seed SSH key pair from empty private key")
 	}
 	signer, err := ssh.ParsePrivateKey([]byte(sshPrivateKeyPEM))
 	if err != nil {

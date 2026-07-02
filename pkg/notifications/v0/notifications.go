@@ -67,7 +67,7 @@ func EnsureStream(js nats.JetStreamContext, config *nats.StreamConfig) error {
 	return fmt.Errorf("failed to add stream %s: %w", config.Name, err)
 }
 
-// EnsureConsumer adds the JetStream consumer described by config, reconciling
+// EnsureConsumer() adds the JetStream consumer described by config, reconciling
 // its settings when the consumer already exists so that initialization is
 // idempotent across controller restarts. A consumer persists in JetStream
 // independent of the pod, so a plain add on every start fails with

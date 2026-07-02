@@ -387,7 +387,7 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 
 // TestSemaphoreSerializesPerStack asserts that a second HandleInfraCreate
 // call pointed at a stack that already has an operation in flight is
-// rejected non-blockingly with the 90-second requeue delay, without
+// rejected non-blockingly with the 30-second requeue delay, without
 // launching a competing deploy. The reconciler is a poll loop that must
 // never block, so per-stack serialization is enforced by short-circuit
 // requeue, not by holding the caller until the running deploy finishes.

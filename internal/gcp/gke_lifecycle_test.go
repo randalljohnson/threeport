@@ -3,27 +3,20 @@
 // a small fake provider.InfraProvider; no GCP, Pulumi, or NATS infrastructure is
 // touched.
 //
-// Coverage contract (every reachable branch in the two hand-written adapter
-// files): GetReconciliation field mapping + nil-CreationFailed guard + GET
-// error; BuildInfra / buildGkeInfra projection, each fetch error, the
-// credentials gate, and nil-required-field validation; IsCreateComplete edge
-// cases + GET error; OnCreateConfirmed wrong-infra-type error; the extracted
+// Coverage spans every reachable branch in the two hand-written adapter files:
+// GetReconciliation field mapping plus nil-CreationFailed guard and GET error;
+// BuildInfra / buildGkeInfra projection, each fetch error, the credentials
+// gate, and nil-required-field validation; IsCreateComplete edge cases plus
+// GET error; OnCreateConfirmed wrong-infra-type error; the extracted
 // updateKubeRuntimeConnection helper (PATCH target, five fields, every error
 // path, incomplete-connection guard); the ten reconciliation-update methods
-// (exact PATCH body + error); OnDeleteConfirmed nil; the two publish methods
-// (success subject + publish error); the reconciler entry points (Created
-// confirmed-noop, Updated noop, Deleted scheduled-and-confirmed noop, Deleted
-// not-scheduled error); and N-instance concurrency under -race.
+// (exact PATCH body plus error); OnDeleteConfirmed nil; the two publish
+// methods (success subject plus publish error); the reconciler entry points
+// (Created confirmed-noop, Updated noop, Deleted scheduled-and-confirmed noop,
+// Deleted not-scheduled error); and N-instance concurrency under -race.
 //
-// DEFERRED / accepted gaps: the GetConnection call line in OnCreateConfirmed is
-// environment-dependent (real GCP auth + cluster-manager client) and covered
-// indirectly via the helper; the NotificationPayload marshal-error branch is
-// not forced (would require an artificial invalid inventory); semaphore, stale-
-// ack, requeue, goroutine-leak, fsnotify, and context behavior live in
-// internal/provider and belong to PR1. This PR makes none of those claims.
-//
-// Same-package collision rule (PR6 adds GCE tests to this package): every
-// package-level identifier here is gke-prefixed and there is no TestMain.
+// Every package-level identifier is gke-prefixed and there is no TestMain, so
+// GCE tests sharing this package do not collide.
 package gcp
 
 import (

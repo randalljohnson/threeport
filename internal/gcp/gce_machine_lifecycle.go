@@ -1,6 +1,7 @@
 package gcp
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -36,7 +37,7 @@ type gceMachineLifecycle struct {
 // compile-time assertion that the adapter implements all interface methods.
 var _ provider.InfraLifecycleProvider = (*gceMachineLifecycle)(nil)
 
-// StackKey returns the runtime-instance name so the shared state machine
+// StackKey() returns the runtime-instance name so the shared state machine
 // can serialize infra operations per stack. Two reconciles for the same
 // instance name resolve to the same key and cannot spawn racing pulumi
 // subprocesses against the same local state directory. A malformed instance
@@ -144,7 +145,7 @@ func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error 
 		return fmt.Errorf("failed to get GCE instance for machine runtime update: %w", err)
 	}
 	if latest.MachineRuntimeInstanceID == nil {
-		return fmt.Errorf("GCE instance missing required field MachineRuntimeInstanceID")
+		return errors.New("GCE instance missing required field MachineRuntimeInstanceID")
 	}
 
 	machineRuntimeInstance, err := client.GetMachineRuntimeInstanceByID(
@@ -179,10 +180,7 @@ func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error 
 func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, state *datatypes.JSON) error {
 	gceInfra, ok := infra.(*machine.GceMachineInfra)
 	if !ok {
-		return fmt.Errorf(
-			"failed to save GCE create outputs: expected *machine.GceMachineInfra, got %T",
-			infra,
-		)
+		return errors.New("failed to save GCE create outputs: expected *machine.GceMachineInfra")
 	}
 
 	hostname, externalIP, sshKey := gceInfra.CreateOutputs()
@@ -210,10 +208,7 @@ func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, st
 func (g *gceMachineLifecycle) OnDeleteConfirmed(infra provider.InfraProvider) error {
 	gceInfra, ok := infra.(*machine.GceMachineInfra)
 	if !ok {
-		return fmt.Errorf(
-			"failed to reclaim GCE orphans: expected *machine.GceMachineInfra, got %T",
-			infra,
-		)
+		return errors.New("failed to reclaim GCE orphans: expected *machine.GceMachineInfra")
 	}
 	cloud, err := newComputeOrphanReclaimCloud(gceInfra)
 	if err != nil {
@@ -399,10 +394,10 @@ func buildGceMachineInfra(
 	log *logr.Logger,
 ) (*machine.GceMachineInfra, error) {
 	if instance.Name == nil {
-		return nil, fmt.Errorf("GCE instance missing required field Name")
+		return nil, errors.New("GCE instance missing required field Name")
 	}
 	if instance.GcpProviderID == nil {
-		return nil, fmt.Errorf("GCE instance missing required field GcpProviderID")
+		return nil, errors.New("GCE instance missing required field GcpProviderID")
 	}
 
 	gcpProvider, err := client.GetGcpProviderByID(
@@ -414,7 +409,7 @@ func buildGceMachineInfra(
 		return nil, fmt.Errorf("failed to retrieve GCP provider by ID: %w", err)
 	}
 	if gcpProvider.ProjectID == nil {
-		return nil, fmt.Errorf("GCP provider missing required field ProjectID")
+		return nil, errors.New("GCP provider missing required field ProjectID")
 	}
 
 	// construct through the provider constructor so the embedded workspace and
@@ -430,7 +425,7 @@ func buildGceMachineInfra(
 	// configures this instance; fetch it and copy the provisioning template
 	// fields, nil-guarding both the foreign key and the fetched fields.
 	if instance.GcpGceMachineRuntimeDefinitionID == nil {
-		return nil, fmt.Errorf("GCE instance missing required field GcpGceMachineRuntimeDefinitionID")
+		return nil, errors.New("GCE instance missing required field GcpGceMachineRuntimeDefinitionID")
 	}
 	definition, err := client.GetGcpGceMachineRuntimeDefinitionByID(
 		r.APIClient,
@@ -475,7 +470,7 @@ func buildGceMachineInfra(
 	// caller into the interactive oauth path and hangs for 5 minutes
 	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
 		if gcpProvider.ID == nil {
-			return nil, fmt.Errorf("gcp provider has no service account credentials")
+			return nil, errors.New("gcp provider has no service account credentials")
 		}
 		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -107,7 +108,7 @@ func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	// browser oauth flow: there is no browser in the pod and the flow would
 	// hang for 5 minutes before timing out. fail fast with a descriptive error.
 	if !interactive {
-		return fmt.Errorf("gcp authentication unavailable: no application default credentials and no service account credentials configured on GcpProvider")
+		return errors.New("gcp authentication unavailable: no ambient application default credentials and no service account credentials configured")
 	}
 
 	// interactive callers (tptctl) fall back to the browser oauth flow.

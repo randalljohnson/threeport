@@ -1,6 +1,7 @@
 package gcp
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -91,7 +92,7 @@ func (g *gkeLifecycle) BuildInfra() (provider.InfraProvider, error) {
 		return nil, fmt.Errorf("failed to get GKE instance for infra build: %w", err)
 	}
 	if latest.GcpGkeKubernetesRuntimeDefinitionID == nil {
-		return nil, fmt.Errorf("GKE instance missing required field GcpGkeKubernetesRuntimeDefinitionID")
+		return nil, errors.New("GKE instance missing required field GcpGkeKubernetesRuntimeDefinitionID")
 	}
 	def, err := client.GetGcpGkeKubernetesRuntimeDefinitionByID(
 		g.r.APIClient,
@@ -133,7 +134,7 @@ func (g *gkeLifecycle) IsCreateComplete() (bool, error) {
 func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 	infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)
 	if !ok {
-		return fmt.Errorf("expected a GKE infra provider but got %T", infra)
+		return errors.New("expected a GKE infra provider")
 	}
 	kubeConnectionInfo, err := infraGKE.GetConnection()
 	if err != nil {
@@ -152,7 +153,7 @@ func (g *gkeLifecycle) updateKubeRuntimeConnection(kubeConnectionInfo *kube.Kube
 	if kubeConnectionInfo.APIEndpoint == "" ||
 		kubeConnectionInfo.CACertificate == "" ||
 		kubeConnectionInfo.Token == "" {
-		return fmt.Errorf(
+		return errors.New(
 			"incomplete kube connection info for GKE cluster: API endpoint, CA certificate, and token are all required",
 		)
 	}
@@ -166,7 +167,7 @@ func (g *gkeLifecycle) updateKubeRuntimeConnection(kubeConnectionInfo *kube.Kube
 		return fmt.Errorf("failed to get GKE instance for connection update: %w", err)
 	}
 	if latest.KubernetesRuntimeInstanceID == nil {
-		return fmt.Errorf("GKE instance missing required field KubernetesRuntimeInstanceID")
+		return errors.New("GKE instance missing required field KubernetesRuntimeInstanceID")
 	}
 	kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
 		g.r.APIClient,
@@ -392,13 +393,13 @@ func buildGkeInfra(
 	// object yields an error instead of panicking the create goroutine
 	switch {
 	case instance.GcpProviderID == nil:
-		return nil, fmt.Errorf("GKE instance missing required field GcpProviderID")
+		return nil, errors.New("GKE instance missing required field GcpProviderID")
 	case instance.Name == nil:
-		return nil, fmt.Errorf("GKE instance missing required field Name")
+		return nil, errors.New("GKE instance missing required field Name")
 	case instance.Region == nil:
-		return nil, fmt.Errorf("GKE instance missing required field Region")
+		return nil, errors.New("GKE instance missing required field Region")
 	case definition.DefaultNodeGroupInitialSize == nil:
-		return nil, fmt.Errorf("GKE definition missing required field DefaultNodeGroupInitialSize")
+		return nil, errors.New("GKE definition missing required field DefaultNodeGroupInitialSize")
 	}
 
 	gcpProvider, err := client.GetGcpProviderByID(
@@ -410,7 +411,7 @@ func buildGkeInfra(
 		return nil, fmt.Errorf("failed to retrieve GCP provider by ID: %w", err)
 	}
 	if gcpProvider.ProjectID == nil {
-		return nil, fmt.Errorf("GCP provider missing required field ProjectID")
+		return nil, errors.New("GCP provider missing required field ProjectID")
 	}
 
 	infraGKE := &provider.KubernetesRuntimeInfraGKE{
@@ -429,7 +430,7 @@ func buildGkeInfra(
 	// caller into the interactive oauth path and hangs for 5 minutes
 	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
 		if gcpProvider.ID == nil {
-			return nil, fmt.Errorf("gcp provider has no service account credentials")
+			return nil, errors.New("gcp provider has no service account credentials")
 		}
 		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
 	}

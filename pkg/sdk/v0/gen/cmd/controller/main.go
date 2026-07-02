@@ -30,6 +30,7 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			f.ImportAlias("github.com/threeport/threeport/pkg/event/v0", "event")
 			f.ImportAlias("github.com/threeport/threeport/pkg/encryption/v0", "encryption")
 			f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
+			f.ImportAlias("github.com/threeport/threeport/pkg/notifications/v0", "notifications")
 
 			concurrencyFlags := &Statement{}
 			for _, obj := range objGroup.ReconciledObjects {
@@ -474,26 +475,83 @@ func ConfigurePullSubscription(
 	consumer := Lit("")
 	if durable {
 		consumer = Id("consumer")
-		g.Line().Comment("create JetStream consumer")
-		g.Id("consumer").Op(":=").Id("r").Dot("Name").Op("+").Lit("Consumer")
-		g.Id("js").Dot("AddConsumer").Call(Qual(
+		streamName := Qual(
 			fmt.Sprintf(
 				"%s/internal/%s/notif",
 				modulePath,
 				objGroup.ControllerShortName,
 			),
 			objGroup.StreamName,
-		).Op(",").Op("&").Qual(
+		)
+
+		g.Line().Comment("create JetStream consumer")
+		g.Id("consumer").Op(":=").Id("r").Dot("Name").Op("+").Lit("Consumer")
+
+		// build the consumer config so it can be logged after the ensure call
+		g.Id("consumerConfig").Op(":=").Op("&").Qual(
 			"github.com/nats-io/nats.go",
 			"ConsumerConfig",
 		).Values(Dict{
-			Id("Durable"): consumer,
+			Id("Durable"): Id("consumer"),
 			Id("AckPolicy"): Qual(
 				"github.com/nats-io/nats.go",
 				"AckExplicitPolicy",
 			),
+			// deliver every message on the stream from the earliest available
+			// sequence so a fresh consumer picks up unacked backlog
+			Id("DeliverPolicy"): Qual(
+				"github.com/nats-io/nats.go",
+				"DeliverAllPolicy",
+			),
 			Id("FilterSubject"): Id("r").Dot("NotifSubject"),
-		}),
+			// cap redelivery attempts so a persistently failing message is
+			// eventually parked rather than retried forever
+			Id("MaxDeliver"): Lit(100),
+			// scale inflight capacity with concurrency so the consumer does
+			// not stall behind the default 1000 ack-pending ceiling
+			Id("MaxAckPending"): Id("r").Dot("ConcurrentReconciles").Op("*").Lit(100),
+			// NATS server coerces AckWait to BackOff[0] when BackOff is set; BackOff[0]=5m is the effective initial ack window.
+			Id("BackOff"): Index().Qual("time", "Duration").Values(
+				Lit(5).Op("*").Qual("time", "Minute"),
+				Lit(30).Op("*").Qual("time", "Second"),
+				Lit(60).Op("*").Qual("time", "Second"),
+				Lit(120).Op("*").Qual("time", "Second"),
+				Lit(240).Op("*").Qual("time", "Second"),
+				Lit(300).Op("*").Qual("time", "Second"),
+			),
+		})
+
+		// ensure the consumer on every controller boot so config changes in
+		// the emitted code actually reach the live consumer
+		g.List(Id("consumerInfo"), Id("err")).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/notifications/v0",
+			"EnsureConsumer",
+		).Call(
+			Id("js"),
+			streamName,
+			Id("consumerConfig"),
+		)
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Id("log").Dot("Error").Call(
+				Id("err"),
+				Lit("failed to ensure JetStream consumer"),
+				Lit("reconcilerName"),
+				Id("r").Dot("Name"),
+			),
+			Qual("os", "Exit").Call(Lit(1)),
+		)
+
+		// surface the live consumer settings so an operator can confirm on
+		// pod boot that the emitted config took effect
+		g.Id("log").Dot("Info").Call(
+			Line().Lit("JetStream consumer ready"),
+			Line().Lit("reconcilerName"), Id("r").Dot("Name"),
+			Line().Lit("consumer"), Id("consumerInfo").Dot("Config").Dot("Durable"),
+			Line().Lit("ackWait"), Id("consumerInfo").Dot("Config").Dot("AckWait"),
+			Line().Lit("maxDeliver"), Id("consumerInfo").Dot("Config").Dot("MaxDeliver"),
+			Line().Lit("maxAckPending"), Id("consumerInfo").Dot("Config").Dot("MaxAckPending"),
+			Line().Lit("filterSubject"), Id("consumerInfo").Dot("Config").Dot("FilterSubject"),
+			Line(),
 		)
 	}
 

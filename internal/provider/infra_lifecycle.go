@@ -367,9 +367,11 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 				return nil
 			}
 
-			// publish notification
+			// publish notification; return the error so the caller triggers
+			// persistFailure and requeues, otherwise downstream subscribers
+			// never fire and the object stalls until an unrelated event
 			if err := p.PublishCreateNotification(); err != nil {
-				log.Error(err, "failed to publish create notification")
+				return fmt.Errorf("failed to publish create notification: %w", err)
 			}
 
 			return nil
@@ -493,9 +495,11 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 				log.Error(err, "failed to clear resource inventory after deletion")
 			}
 
-			// publish notification
+			// publish notification; return the error so the caller triggers
+			// persistFailure and requeues, otherwise downstream subscribers
+			// never fire and the teardown chain stalls until an unrelated event
 			if err := p.PublishDeleteNotification(); err != nil {
-				log.Error(err, "failed to publish delete notification")
+				return fmt.Errorf("failed to publish delete notification: %w", err)
 			}
 
 			return nil
@@ -757,9 +761,13 @@ func executeInfraCreate(config infraConfig) {
 		return
 	}
 
-	// call provider-specific success handler
+	// call provider-specific success handler; a failure here (e.g. inability
+	// to publish the create notification) means downstream subscribers never
+	// fire, so mark the operation failed to trigger a prompt requeue rather
+	// than stalling until an unrelated event nudges the object
 	if err := config.Callbacks.OnSuccess(stateJSON); err != nil {
 		config.Log.Error(err, "failed to execute success callback")
+		persistFailure(config.Callbacks.PersistFailure, config.Log)
 	}
 }
 
@@ -824,9 +832,13 @@ func executeInfraDelete(config infraConfig) {
 		return
 	}
 
-	// call provider-specific success handler
+	// call provider-specific success handler; a failure here (e.g. inability
+	// to publish the delete notification) means the teardown chain never
+	// fires, so mark the operation failed to trigger a prompt requeue rather
+	// than stalling until an unrelated event nudges the object
 	if err := config.Callbacks.OnSuccess(nil); err != nil {
 		config.Log.Error(err, "failed to execute delete success callback")
+		persistFailure(config.Callbacks.PersistFailure, config.Log)
 	}
 }
 

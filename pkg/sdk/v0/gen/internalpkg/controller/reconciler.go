@@ -607,7 +607,7 @@ func operationCase(
 			Continue(),
 		)
 		h.If(Id("customRequeueDelay").Op("!=").Lit(0)).Block(
-			Id("log").Dot("Info").Call(
+			Id("log").Dot("V").Call(Lit(1)).Dot("Info").Call(
 				Lit(fmt.Sprintf(
 					"%s requeued for future reconciliation",
 					op,

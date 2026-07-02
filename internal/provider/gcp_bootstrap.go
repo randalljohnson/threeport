@@ -347,6 +347,15 @@ func (i *KubernetesRuntimeInfraGKE) validateGCPServiceAccountPropagation(
 		close(statusChan)
 	}()
 
+	// Drain status updates into statusMap until all goroutines finish
+	// and the closer goroutine closes the channel. Without this drain,
+	// workers block on send once the buffer fills and statusMap is never
+	// populated, so the failure check below sees no failures and swallows
+	// real IAM propagation errors.
+	for update := range statusChan {
+		statusMap[update.serviceID] = &update.status
+	}
+
 	// Check for failures
 	for _, status := range statusMap {
 		if status.Failed {

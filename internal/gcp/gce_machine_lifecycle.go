@@ -39,8 +39,16 @@ var _ provider.InfraLifecycleProvider = (*gceMachineLifecycle)(nil)
 // StackKey returns the runtime-instance name so the shared state machine
 // can serialize infra operations per stack. Two reconciles for the same
 // instance name resolve to the same key and cannot spawn racing pulumi
-// subprocesses against the same local state directory.
+// subprocesses against the same local state directory. A malformed instance
+// with a nil Name returns an empty key and logs a warning so the caller
+// requeues rather than panicking the reconciler worker.
 func (g *gceMachineLifecycle) StackKey() string {
+	if g.instance == nil || g.instance.Name == nil {
+		if g.log != nil {
+			g.log.Info("GCE machine runtime instance missing name; returning empty stack key")
+		}
+		return ""
+	}
 	return *g.instance.Name
 }
 

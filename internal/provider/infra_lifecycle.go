@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,11 +29,19 @@ type LifecycleConfig struct {
 	PersistRetryDelay time.Duration
 }
 
+// defaultSemaphoreCapacity is the fallback concurrency cap applied when
+// PULUMI_CONCURRENCY is unset, unparseable, or out of range.
+const defaultSemaphoreCapacity = 20
+
+// maxSemaphoreCapacity is the upper bound enforced on PULUMI_CONCURRENCY;
+// values above this are clamped down with a warning log.
+const maxSemaphoreCapacity = 100
+
 // defaultLifecycleConfig is the production configuration.
 var defaultLifecycleConfig = LifecycleConfig{
 	StaleAckThreshold: 240 * time.Second,
 	RefreshInterval:   60 * time.Second,
-	SemaphoreCapacity: 5,
+	SemaphoreCapacity: defaultSemaphoreCapacity,
 	PersistRetries:    30,
 	PersistRetryDelay: 10 * time.Second,
 }
@@ -48,8 +58,43 @@ var lifecycleConfig = defaultLifecycleConfig
 
 // infraSemaphore caps the total number of concurrent infrastructure
 // operations across every stack, guarding overall memory use when many
-// distinct stacks reconcile at once.
-var infraSemaphore = make(chan struct{}, 5)
+// distinct stacks reconcile at once. The capacity is initialized in init
+// from lifecycleConfig.SemaphoreCapacity so PULUMI_CONCURRENCY overrides
+// apply before any operation runs.
+var infraSemaphore chan struct{}
+
+// init reads the PULUMI_CONCURRENCY override, applies it to
+// lifecycleConfig, and sizes infraSemaphore to match.
+func init() {
+	// PULUMI_CONCURRENCY caps how many concurrent pulumi stack operations may run per controller instance.
+	lifecycleConfig.SemaphoreCapacity = resolveSemaphoreCapacity()
+	infraSemaphore = make(chan struct{}, lifecycleConfig.SemaphoreCapacity)
+}
+
+// resolveSemaphoreCapacity reads PULUMI_CONCURRENCY and returns a valid
+// concurrency cap. An unset or unparseable value falls back to the
+// default; a value below 1 is raised to 1 with a warning; a value above
+// maxSemaphoreCapacity is clamped down with a warning.
+func resolveSemaphoreCapacity() int {
+	raw := os.Getenv("PULUMI_CONCURRENCY")
+	if raw == "" {
+		return defaultSemaphoreCapacity
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil {
+		log.Printf("PULUMI_CONCURRENCY=%q is not a valid integer, using default %d", raw, defaultSemaphoreCapacity)
+		return defaultSemaphoreCapacity
+	}
+	if parsed < 1 {
+		log.Printf("PULUMI_CONCURRENCY=%d is below minimum, using 1", parsed)
+		return 1
+	}
+	if parsed > maxSemaphoreCapacity {
+		log.Printf("PULUMI_CONCURRENCY=%d exceeds maximum, using %d", parsed, maxSemaphoreCapacity)
+		return maxSemaphoreCapacity
+	}
+	return parsed
+}
 
 // stackLocksMu guards stackLocks and its reference counts. The map is
 // small, only holds entries for keys currently being operated on, and is

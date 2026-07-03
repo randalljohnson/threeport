@@ -138,3 +138,4 @@ func TestEventsJoin_CrossTypeFilterSurfacesAllMatches(t *testing.T) {
 
 	assert.Len(t, rows, 3, "Cartesian filter surfaces every event whose subject is one of the resolved (type, id) pairs")
 }
+

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -51,64 +52,68 @@ func writeJSONResponse(t *testing.T, w http.ResponseWriter, data []apiserver_lib
 	_, _ = w.Write(body)
 }
 
-// TestGetNamesFromModule_HappyPath drives one GET per id and folds
-// each module response's Name field into the returned map.
+// TestGetNamesFromModule_HappyPath drives one batched list GET for the
+// whole id set and folds each returned row's Name into the map keyed by
+// its ID.
 func TestGetNamesFromModule_HappyPath(t *testing.T) {
 	var gotURLs []string
 	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
 		gotURLs = append(gotURLs, r.URL.String())
-		switch r.URL.Path {
-		case "/example.com/v0/widgets/1":
-			writeJSONResponse(t, w, []apiserver_lib.Object{map[string]interface{}{"Name": "widget-one"}})
-		case "/example.com/v0/widgets/2":
-			writeJSONResponse(t, w, []apiserver_lib.Object{map[string]interface{}{"Name": "widget-two"}})
-		default:
+		if r.URL.Path != "/example.com/v0/widgets" {
 			http.NotFound(w, r)
+			return
 		}
+		writeJSONResponse(t, w, []apiserver_lib.Object{
+			map[string]interface{}{"ID": float64(1), "Name": "widget-one"},
+			map[string]interface{}{"ID": float64(2), "Name": "widget-two"},
+		})
 	})
 	defer restore()
 
-	out, err := getNamesFromModule(endpoint, "/example.com/v0/widgets", []uint{1, 2}, false)
+	out, err := getNamesFromModule(context.Background(), endpoint, "/example.com/v0/widgets", []uint{1, 2}, false)
 	require.NoError(t, err)
 	assert.Equal(t, map[uint]string{1: "widget-one", 2: "widget-two"}, out)
-	assert.Len(t, gotURLs, 2, "exactly one GET per id")
+	require.Len(t, gotURLs, 1, "one batched GET for the whole id list")
+	assert.Contains(t, gotURLs[0], apiserver_lib.QueryParamIDs+"=1,2")
+	assert.Contains(t, gotURLs[0], apiserver_lib.QueryParamLimit+"=2")
 }
 
 // TestGetNamesFromModule_IncludeDeleted appends the
-// IncludeDeleted query param when the caller opts in. Soft-delete
-// gating is otherwise transparent.
+// IncludeDeleted query param alongside the batched ids= filter when the
+// caller opts in. Soft-delete gating is otherwise transparent.
 func TestGetNamesFromModule_IncludeDeleted(t *testing.T) {
 	var gotQuery string
 	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
-		writeJSONResponse(t, w, []apiserver_lib.Object{map[string]interface{}{"Name": "widget-one"}})
+		writeJSONResponse(t, w, []apiserver_lib.Object{
+			map[string]interface{}{"ID": float64(1), "Name": "widget-one"},
+		})
 	})
 	defer restore()
 
-	_, err := getNamesFromModule(endpoint, "/example.com/v0/widgets", []uint{1}, true)
+	_, err := getNamesFromModule(context.Background(), endpoint, "/example.com/v0/widgets", []uint{1}, true)
 	require.NoError(t, err)
-	assert.Equal(t, apiserver_lib.QueryParamIncludeDeleted+"=true", gotQuery)
+	assert.Contains(t, gotQuery, apiserver_lib.QueryParamIncludeDeleted+"=true")
 }
 
-// TestGetNamesFromModule_PartialFailure skips ids whose module
-// lookups fail or return empty payloads, returning a map with just
+// TestGetNamesFromModule_PartialFailure keeps ids whose row is present
+// in the batched response and drops the rest, returning a map with just
 // the successful entries rather than failing the whole batch.
 func TestGetNamesFromModule_PartialFailure(t *testing.T) {
 	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/example.com/v0/widgets/1":
-			writeJSONResponse(t, w, []apiserver_lib.Object{map[string]interface{}{"Name": "widget-one"}})
-		case "/example.com/v0/widgets/2":
-			http.Error(w, "boom", http.StatusInternalServerError)
-		case "/example.com/v0/widgets/3":
-			writeJSONResponse(t, w, []apiserver_lib.Object{})
-		default:
+		if r.URL.Path != "/example.com/v0/widgets" {
 			http.NotFound(w, r)
+			return
 		}
+		// module returns only the row for id 1; ids 2 and 3 are absent
+		// from the response so they drop out of the resolved name map
+		writeJSONResponse(t, w, []apiserver_lib.Object{
+			map[string]interface{}{"ID": float64(1), "Name": "widget-one"},
+		})
 	})
 	defer restore()
 
-	out, err := getNamesFromModule(endpoint, "/example.com/v0/widgets", []uint{1, 2, 3}, false)
+	out, err := getNamesFromModule(context.Background(), endpoint, "/example.com/v0/widgets", []uint{1, 2, 3}, false)
 	require.NoError(t, err)
 	assert.Equal(t, map[uint]string{1: "widget-one"}, out, "only successful lookups appear")
 }
@@ -129,7 +134,7 @@ func TestGetNamesFromModule_DropsEmptyName(t *testing.T) {
 	})
 	defer restore()
 
-	out, err := getNamesFromModule(endpoint, "/example.com/v0/widgets", []uint{1, 2}, false)
+	out, err := getNamesFromModule(context.Background(), endpoint, "/example.com/v0/widgets", []uint{1, 2}, false)
 	require.NoError(t, err)
 	assert.Empty(t, out)
 }

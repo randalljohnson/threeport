@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -14,6 +15,13 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// materializedViewThresholdFloor is the minimum total-count above which
+// the event listing spins up a materialized view for cursor pagination.
+// Below the floor (or below limit*10 when the caller asks for larger
+// pages), return the whole result set in a single query and skip the
+// CREATE MATERIALIZED VIEW / DROP MATERIALIZED VIEW round trip.
+const materializedViewThresholdFloor = 5000
 
 // eventJoinAttachedObjectReferenceClause is the inner join from
 // v0_events to v0_attached_object_references on the polymorphic
@@ -156,7 +164,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 		// look up the named object across every matched fully qualified type; each
 		// fully qualified type may yield zero or more ids - name uniqueness is not
-		// enforced at the database level
+		// enforced at the database level.
 		for _, fqt := range fullyQualifiedTypes {
 			moreIds, lookupErr := GetObjectIDsByName(h.DB, fqt, targetName)
 			if lookupErr == nil {
@@ -220,9 +228,19 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
-		// total greater than the limit means the client will need to
-		// page through the result set; HasMore signals that
-		pagination.HasMore = totalCount > pagination.Limit
+		// only spin up a materialized view when the result set is large
+		// enough that keyset paging over a stable snapshot is worth the
+		// CREATE MATERIALIZED VIEW cost. Under the threshold, return
+		// everything in one shot and skip the view machinery entirely.
+		// Threshold is max(limit*10, 5000): scales with client-requested
+		// limit so a caller asking for larger pages still gets multi-page
+		// behavior, and a hard floor keeps small result sets on the
+		// single-shot path even when limit is low.
+		threshold := pagination.Limit * 10
+		if threshold < materializedViewThresholdFloor {
+			threshold = materializedViewThresholdFloor
+		}
+		pagination.HasMore = totalCount > threshold
 
 		switch pagination.HasMore {
 		case false:
@@ -364,12 +382,24 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// returnedCount >= limit means there's likely another page; a
 		// smaller-than-limit page means we hit the tail
 		pagination.HasMore = returnedCount >= pagination.Limit
+
+		// drop the materialized view inline the moment the client walks
+		// off the end of the result set so the backing storage is freed
+		// immediately, not deferred to the TTL sweeper. Failures here are
+		// logged, not returned: the response body is already correct, and
+		// the TTL sweeper still drops the view on its next pass.
+		if !pagination.HasMore {
+			dropQuery := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", viewName)
+			if result := h.DB.Exec(dropQuery); result.Error != nil {
+				h.Logger.Error("handler error: error dropping materialized view on last page", zap.String("viewName", viewName), zap.Error(result.Error))
+			}
+		}
 	}
 
 	// enrich records with attached object reference fields and resolved
 	// object names; failures are logged so events still come back when
-	// resolution can't fully complete
-	if err := enrichEventsWithObjectInfo(h.DB, *records, h.Logger); err != nil {
+	// resolution can't fully complete.
+	if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger); err != nil {
 		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
 	}
 
@@ -393,7 +423,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName
 // on each event from the joined attached object reference and a per-type
 // batched name lookup.
-func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger) error {
+func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Event, log *zap.Logger) error {
 	// no events to enrich - nothing to do
 	if len(events) == 0 {
 		return nil
@@ -476,14 +506,14 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 
 	// dispatch each type to core sql or module http and collect
 	// resolved names; failures are logged so events still come back
-	// (rendered id-only) when name resolution fails for some types
+	// (rendered id-only) when name resolution fails for some types.
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
 		ids := make([]uint, 0, len(idSet))
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		names, err := GetObjectNames(db, typ, ids, true)
+		names, err := GetObjectNames(ctx, db, typ, ids, true)
 		if err != nil {
 			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
 			continue

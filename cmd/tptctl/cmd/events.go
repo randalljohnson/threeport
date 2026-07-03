@@ -56,7 +56,7 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		}
 
 		// fetch events
-		events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(apiClient, apiEndpoint, queryString)
+		events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(apiClient, apiEndpoint, queryString, eventsLimit)
 		if err != nil {
 			cli.Error("failed to retrieve events", err)
 			os.Exit(1)

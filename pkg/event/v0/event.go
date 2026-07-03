@@ -83,6 +83,7 @@ func (r *EventRecorder) RecordEvent(
 		r.APIClient,
 		r.APIServer,
 		query,
+		0,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get events by object id %d: %w", objectId, err)

@@ -507,13 +507,18 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 	// dispatch each type to core sql or module http and collect
 	// resolved names; failures are logged so events still come back
 	// (rendered id-only) when name resolution fails for some types.
+	// routeCache memoizes module_api_routes lookups keyed by fully
+	// qualified type; positive and negative hits alike short-circuit
+	// the 4-way JOIN so a page mixing many attached-object types stays
+	// bounded to one JOIN per distinct type per request.
+	routeCache := make(map[string]*moduleRouteEntry, len(idsByType))
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
 		ids := make([]uint, 0, len(idSet))
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		names, err := GetObjectNames(ctx, db, typ, ids, true)
+		names, err := getObjectNamesCached(ctx, db, typ, ids, true, routeCache)
 		if err != nil {
 			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
 			continue

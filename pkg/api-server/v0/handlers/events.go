@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	echo "github.com/labstack/echo/v4"
 	zap "go.uber.org/zap"
@@ -17,6 +19,36 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// stepLogger emits one structured "events_handler_step" line per
+// checkpoint, tracking delta_ms since the previous checkpoint so a
+// reader can grep the message name from kubectl logs and read the
+// per-step timings straight off the field set.
+type stepLogger struct {
+	log  *zap.Logger
+	last time.Time
+}
+
+// newStepLogger anchors the first checkpoint at now(); the first
+// checkpoint's delta_ms is therefore 0.
+func newStepLogger(log *zap.Logger) *stepLogger {
+	return &stepLogger{log: log, last: time.Now()}
+}
+
+// checkpoint emits one line for the named step with the elapsed time
+// since the previous checkpoint and any caller-provided extras.
+func (s *stepLogger) checkpoint(name string, extra ...zap.Field) {
+	now := time.Now()
+	delta := now.Sub(s.last).Milliseconds()
+	s.last = now
+	fields := make([]zap.Field, 0, 2+len(extra))
+	fields = append(fields,
+		zap.String("checkpoint", name),
+		zap.Int64("delta_ms", delta),
+	)
+	fields = append(fields, extra...)
+	s.log.Info("events_handler_step", fields...)
+}
 
 // materializedViewThresholdFloor is the minimum total-count above which
 // the event listing spins up a materialized view for cursor pagination.
@@ -59,6 +91,11 @@ func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventTyp
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/events-join-attached-object-references [GET]
 func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
+	// per-layer timing tracker; each checkpoint emits a structured
+	// "events_handler_step" log line with delta_ms from the prior step
+	steps := newStepLogger(h.Logger)
+	steps.checkpoint("t0_request_received")
+
 	objectType := v0.ObjectTypeEvent
 
 	// fully qualified type of Event - written to AOR.AttachedObjectType when an event
@@ -71,6 +108,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	if err != nil {
 		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
+	steps.checkpoint("t1_pagination_params_parsed")
 
 	// bind filter
 	var filter v0.Event
@@ -242,6 +280,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 		pagination.HasMore = int64(len(*records)) > threshold
+		steps.checkpoint("t2_count_probe_returned",
+			zap.Int("event_count", len(*records)),
+			zap.Bool("has_more", pagination.HasMore),
+		)
 
 		switch pagination.HasMore {
 		case false:
@@ -391,10 +433,12 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 	}
 
+	steps.checkpoint("t3_records_loaded", zap.Int("event_count", len(*records)))
+
 	// enrich records with attached object reference fields and resolved
 	// object names; failures are logged so events still come back when
 	// resolution can't fully complete.
-	if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger); err != nil {
+	if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger, steps); err != nil {
 		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
 	}
 
@@ -408,7 +452,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	w := c.Response()
 	w.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	w.WriteHeader(http.StatusOK)
-	return json.NewEncoder(w).Encode(struct {
+	encodeErr := json.NewEncoder(w).Encode(struct {
 		Meta   apiserver_lib.Meta
 		Type   string
 		Data   []v0.Event
@@ -419,12 +463,16 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		Data:   *records,
 		Status: apiserver_lib.Status{Code: http.StatusOK, Message: http.StatusText(http.StatusOK)},
 	})
+	steps.checkpoint("t8_response_written", zap.Int("event_count", len(*records)))
+	return encodeErr
 }
 
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName
 // on each event from the joined attached object reference and a per-type
-// batched name lookup.
-func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Event, log *zap.Logger) error {
+// batched name lookup. steps receives per-layer timing checkpoints so the
+// caller can render enrichment latency next to the surrounding query
+// layers on one grep.
+func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Event, log *zap.Logger, steps *stepLogger) error {
 	// no events to enrich - nothing to do
 	if len(events) == 0 {
 		return nil
@@ -464,6 +512,10 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		Find(&aors).Error; err != nil {
 		return fmt.Errorf("failed to load attached object references: %w", err)
 	}
+	steps.checkpoint("t4_aor_query_returned",
+		zap.Int("event_count", len(events)),
+		zap.Int("aor_count", len(aors)),
+	)
 
 	// build an event-id -> AOR map so the per-event projection step
 	// below is O(1) per lookup
@@ -490,6 +542,7 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		e.ObjectType = a.ObjectType
 		e.ObjectID = a.ObjectID
 	}
+	steps.checkpoint("t5_aor_projected", zap.Int("event_count", len(events)))
 
 	// group object ids by their qualified type so the name lookup can
 	// fan out one batch per type (each batch hits either core SQL or
@@ -504,6 +557,15 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		}
 		idsByType[*e.ObjectType][*e.ObjectID] = struct{}{}
 	}
+	steps.checkpoint("t6_enrichment_fanout_start",
+		zap.Int("type_count", len(idsByType)),
+	)
+
+	// totals accumulate module HTTP call count and duration across every
+	// per-type call so t7 can report request-wide resolver load
+	totals := &moduleLookupTotals{}
+	baseCtx := contextWithLookupTotals(ctx, totals)
+	var totalCacheHits int
 
 	// consult the in-process name cache first, then dispatch the
 	// remaining misses to core sql or module http; failures are logged
@@ -521,8 +583,17 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 			}
 			misses = append(misses, id)
 		}
+		totalCacheHits += len(resolved)
 		if len(misses) > 0 {
-			fetched, err := GetObjectNames(ctx, db, typ, misses, true)
+			// attach per-type telemetry so getNamesFromModule can log a
+			// structured line naming the type, id_count, cache_hits for
+			// that type, module_http_ms, and the wall-clock start/end
+			typeCtx := contextWithLookupTelemetry(baseCtx, moduleLookupTelemetry{
+				Logger:     log,
+				ObjectType: typ,
+				CacheHits:  len(resolved),
+			})
+			fetched, err := GetObjectNames(typeCtx, db, typ, misses, true)
 			if err != nil {
 				log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
 				// keep any cache-hit names for this type so partial
@@ -555,6 +626,15 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 			e.ObjectName = util.Ptr(name)
 		}
 	}
+
+	moduleCalls := atomic.LoadInt64(&totals.Calls)
+	moduleDurationMs := atomic.LoadInt64(&totals.DurationNs) / int64(time.Millisecond)
+	steps.checkpoint("t7_enrichment_complete",
+		zap.Int("event_count", len(events)),
+		zap.Int("cache_hits", totalCacheHits),
+		zap.Int64("module_http_calls", moduleCalls),
+		zap.Int64("module_http_ms", moduleDurationMs),
+	)
 
 	return nil
 }

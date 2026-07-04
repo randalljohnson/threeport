@@ -150,7 +150,7 @@ func setupEventsPerfHarness(tb testing.TB) (
 			fresh[i].ObjectID = nil
 			fresh[i].ObjectName = nil
 		}
-		return enrichEventsWithObjectInfo(context.Background(), d, fresh, logger)
+		return enrichEventsWithObjectInfo(context.Background(), d, fresh, logger, newStepLogger(logger))
 	}
 	teardown = func() { server.Close() }
 	return d, enrich, &counter, teardown

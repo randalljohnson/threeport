@@ -90,58 +90,12 @@ func moduleClientCertsMounted() bool {
 	return true
 }
 
-// moduleRouteEntry caches the (endpoint, path) resolved by
-// apiserver_lib.GetModuleRouteForType for a fully qualified type. A nil
-// *moduleRouteEntry stored under a type key represents a negative cache
-// hit: the type has been looked up once and no owning module was found,
-// so subsequent lookups in the same request skip the 4-way JOIN.
-type moduleRouteEntry struct {
-	endpoint string
-	path     string
-}
-
-// lookupModuleRouteCached returns the memoized (endpoint, path) for the
-// given fully qualified type and whether a prior lookup has been
-// recorded. A recorded lookup with an empty endpoint is the negative
-// cache; the caller treats it the same as a fresh miss with no owning
-// module and skips the module HTTP dispatch.
-func lookupModuleRouteCached(cache map[string]*moduleRouteEntry, objectType string) (endpoint, path string, hit bool) {
-	if cache == nil {
-		return "", "", false
-	}
-	entry, ok := cache[objectType]
-	if !ok {
-		return "", "", false
-	}
-	if entry == nil {
-		return "", "", true
-	}
-	return entry.endpoint, entry.path, true
-}
-
 // GetObjectNames returns id->name for each id of the given object type,
 // dispatching to core SQL or the owning module's API as needed. Returns
 // an empty map if the type has no resolver. includeDeleted=true includes
 // soft-deleted rows. ctx bounds the overall lookup so a slow module
 // endpoint can't stall response formatting.
 func GetObjectNames(ctx context.Context, db *gorm.DB, objectType string, ids []uint, includeDeleted bool) (map[uint]string, error) {
-	return getObjectNamesCached(ctx, db, objectType, ids, includeDeleted, nil)
-}
-
-// getObjectNamesCached is the shared body of GetObjectNames with an
-// optional per-request routeCache. When non-nil, module route lookups
-// for a given fully qualified type run at most once per request:
-// positive hits reuse the memoized (endpoint, path), negative hits
-// short-circuit before the 4-way JOIN. A nil cache preserves the
-// original behavior for callers that don't opt in.
-func getObjectNamesCached(
-	ctx context.Context,
-	db *gorm.DB,
-	objectType string,
-	ids []uint,
-	includeDeleted bool,
-	routeCache map[string]*moduleRouteEntry,
-) (map[uint]string, error) {
 	// nothing to look up
 	if len(ids) == 0 {
 		return map[uint]string{}, nil
@@ -159,23 +113,10 @@ func getObjectNamesCached(
 		return nil, err
 	}
 
-	// core doesn't know this type; consult the per-request route cache
-	// before issuing the 4-way JOIN, and record the outcome so repeat
-	// lookups of the same type in this request short-circuit
-	endpoint, path, hit := lookupModuleRouteCached(routeCache, objectType)
-	if !hit {
-		var lookupErr error
-		endpoint, path, lookupErr = apiserver_lib.GetModuleRouteForType(db, objectType)
-		if lookupErr != nil {
-			return nil, lookupErr
-		}
-		if routeCache != nil {
-			if endpoint == "" {
-				routeCache[objectType] = nil
-			} else {
-				routeCache[objectType] = &moduleRouteEntry{endpoint: endpoint, path: path}
-			}
-		}
+	// core doesn't know this type; look up which module owns it
+	endpoint, path, err := apiserver_lib.GetModuleRouteForType(db, objectType)
+	if err != nil {
+		return nil, err
 	}
 
 	// no module owns it either; return empty so callers can degrade

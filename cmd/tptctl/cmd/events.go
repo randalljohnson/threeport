@@ -19,6 +19,7 @@ var (
 	eventsOutput string
 	eventsSort   string
 	eventsLimit  int
+	eventsRaw    bool
 )
 
 // GetEventsCmd represents the command 'tptctl get events'
@@ -53,6 +54,17 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		if err != nil {
 			cli.Error("failed to build events query", err)
 			os.Exit(1)
+		}
+
+		// opt out of server-side enrichment when --raw. skips the per-type name
+		// fan-out (core sql + module http), returning id-only object columns
+		// but a much faster response.
+		if eventsRaw {
+			if queryString == "" {
+				queryString = "enrich=false"
+			} else {
+				queryString = queryString + "&enrich=false"
+			}
 		}
 
 		// fetch events
@@ -143,6 +155,10 @@ func init() {
 	GetEventsCmd.Flags().IntVar(
 		&eventsLimit,
 		"limit", 0, "Maximum number of events to display after sort. 0 means no cap.",
+	)
+	GetEventsCmd.Flags().BoolVar(
+		&eventsRaw,
+		"raw", false, "Skip server-side object-name resolution. Renders id-only object columns; much faster on large result sets.",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,

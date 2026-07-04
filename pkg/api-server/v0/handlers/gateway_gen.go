@@ -158,21 +158,15 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
+			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			viewName, qid, err := h.CreateMaterializedView(queryTable)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = qid
-
-			// fetch records from the new materialized view
-			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-			if err != nil {
-				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
+			pagination.QueryId = queryId
+			returnedCount = count
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -185,22 +179,15 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		// continuation: dispatch to the configured pagination strategy to fetch the next page
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// set the query ID for the next page of results
-		pagination.QueryId = pageParams.QueryId
+		pagination.QueryId = queryId
+		returnedCount = count
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -636,21 +623,15 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
+			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			viewName, qid, err := h.CreateMaterializedView(queryTable)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = qid
-
-			// fetch records from the new materialized view
-			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-			if err != nil {
-				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
+			pagination.QueryId = queryId
+			returnedCount = count
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -663,22 +644,15 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		// continuation: dispatch to the configured pagination strategy to fetch the next page
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// set the query ID for the next page of results
-		pagination.QueryId = pageParams.QueryId
+		pagination.QueryId = queryId
+		returnedCount = count
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -1173,21 +1147,15 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
+			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			viewName, qid, err := h.CreateMaterializedView(queryTable)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = qid
-
-			// fetch records from the new materialized view
-			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-			if err != nil {
-				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
+			pagination.QueryId = queryId
+			returnedCount = count
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -1200,22 +1168,15 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		// continuation: dispatch to the configured pagination strategy to fetch the next page
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// set the query ID for the next page of results
-		pagination.QueryId = pageParams.QueryId
+		pagination.QueryId = queryId
+		returnedCount = count
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -1686,21 +1647,15 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
+			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			viewName, qid, err := h.CreateMaterializedView(queryTable)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = qid
-
-			// fetch records from the new materialized view
-			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-			if err != nil {
-				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
+			pagination.QueryId = queryId
+			returnedCount = count
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -1713,22 +1668,15 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		// continuation: dispatch to the configured pagination strategy to fetch the next page
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// set the query ID for the next page of results
-		pagination.QueryId = pageParams.QueryId
+		pagination.QueryId = queryId
+		returnedCount = count
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -2158,21 +2106,15 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
+			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			viewName, qid, err := h.CreateMaterializedView(queryTable)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = qid
-
-			// fetch records from the new materialized view
-			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-			if err != nil {
-				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
+			pagination.QueryId = queryId
+			returnedCount = count
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -2185,22 +2127,15 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		// continuation: dispatch to the configured pagination strategy to fetch the next page
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// set the query ID for the next page of results
-		pagination.QueryId = pageParams.QueryId
+		pagination.QueryId = queryId
+		returnedCount = count
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -2665,21 +2600,15 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
+			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			viewName, qid, err := h.CreateMaterializedView(queryTable)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = qid
-
-			// fetch records from the new materialized view
-			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-			if err != nil {
-				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
+			pagination.QueryId = queryId
+			returnedCount = count
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -2692,22 +2621,15 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		// continuation: dispatch to the configured pagination strategy to fetch the next page
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
 		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// set the query ID for the next page of results
-		pagination.QueryId = pageParams.QueryId
+		pagination.QueryId = queryId
+		returnedCount = count
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {

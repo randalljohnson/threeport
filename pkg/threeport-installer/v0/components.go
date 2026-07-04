@@ -1497,6 +1497,9 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 		if !cpi.Opts.AuthEnabled {
 			args = append(args, "-auth-enabled=false")
 		}
+		if cpi.Opts.PaginationMode != nil && *cpi.Opts.PaginationMode != "" {
+			args = append(args, fmt.Sprintf("-pagination-mode=%s", *cpi.Opts.PaginationMode))
+		}
 		return args
 	default:
 		args := []interface{}{
@@ -1506,6 +1509,9 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 		// disable auth if authConfig is not set in tptctl
 		if !cpi.Opts.AuthEnabled {
 			args = append(args, "-auth-enabled=false")
+		}
+		if cpi.Opts.PaginationMode != nil && *cpi.Opts.PaginationMode != "" {
+			args = append(args, fmt.Sprintf("-pagination-mode=%s", *cpi.Opts.PaginationMode))
 		}
 		return args
 	}

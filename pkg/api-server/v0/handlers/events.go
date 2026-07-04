@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	echo "github.com/labstack/echo/v4"
 	zap "go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
@@ -506,21 +508,33 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 	}
 
 	// dispatch each type to core sql or module http and collect
-	// resolved names; failures are logged so events still come back
-	// (rendered id-only) when name resolution fails for some types.
+	// resolved names; per-type lookups run in parallel so slow module
+	// endpoints do not serialize the whole enrichment pass. failures
+	// are logged so events still come back (rendered id-only) when
+	// name resolution fails for some types.
 	namesByType := make(map[string]map[uint]string, len(idsByType))
+	var mu sync.Mutex
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(8)
 	for typ, idSet := range idsByType {
+		typ, idSet := typ, idSet
 		ids := make([]uint, 0, len(idSet))
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		names, err := GetObjectNames(ctx, db, typ, ids, true)
-		if err != nil {
-			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
-			continue
-		}
-		namesByType[typ] = names
+		g.Go(func() error {
+			names, err := GetObjectNames(gctx, db, typ, ids, true)
+			if err != nil {
+				log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
+				return nil
+			}
+			mu.Lock()
+			namesByType[typ] = names
+			mu.Unlock()
+			return nil
+		})
 	}
+	_ = g.Wait()
 
 	// project the resolved name onto each event row when available;
 	// events whose subject lookup failed keep ObjectName=nil

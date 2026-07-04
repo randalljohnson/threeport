@@ -12,75 +12,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	gorm "gorm.io/gorm"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 )
-
-// moduleLookupTelemetry carries per-call observability context (logger,
-// object type, cache hits for that type) into the module lookup helper.
-// Attached to the request context so callers can opt into logging
-// without changing the helper's signature; absence produces silent
-// operation for tests and unrelated callers.
-type moduleLookupTelemetry struct {
-	Logger     *zap.Logger
-	ObjectType string
-	CacheHits  int
-}
-
-// moduleLookupTotals accumulates module HTTP call counts and durations
-// across every getNamesFromModule invocation for one request. Enrichment
-// initializes it, plumbs it through the context, and reads the summed
-// totals to log t7. Updated atomically since it is shared across
-// sequential per-type calls; a single call's internal fan-out completes
-// before the caller adds to totals.
-type moduleLookupTotals struct {
-	Calls      int64
-	DurationNs int64
-}
-
-// ctxKeyLookupTelemetry keys the per-call telemetry struct on the
-// request context.
-type ctxKeyLookupTelemetry struct{}
-
-// ctxKeyLookupTotals keys the request-wide totals accumulator on the
-// request context.
-type ctxKeyLookupTotals struct{}
-
-// contextWithLookupTelemetry returns ctx with the per-call telemetry
-// bundle attached so getNamesFromModule can log a structured line for
-// this specific type.
-func contextWithLookupTelemetry(ctx context.Context, t moduleLookupTelemetry) context.Context {
-	return context.WithValue(ctx, ctxKeyLookupTelemetry{}, t)
-}
-
-// lookupTelemetryFromContext extracts the per-call telemetry bundle,
-// reporting ok=false when the caller did not attach one (tests, unrelated
-// handlers) so the callee stays silent.
-func lookupTelemetryFromContext(ctx context.Context) (moduleLookupTelemetry, bool) {
-	t, ok := ctx.Value(ctxKeyLookupTelemetry{}).(moduleLookupTelemetry)
-	return t, ok
-}
-
-// contextWithLookupTotals returns ctx with the request-wide totals
-// accumulator attached so downstream calls can add their per-call
-// duration to it.
-func contextWithLookupTotals(ctx context.Context, totals *moduleLookupTotals) context.Context {
-	return context.WithValue(ctx, ctxKeyLookupTotals{}, totals)
-}
-
-// lookupTotalsFromContext returns the request-wide totals accumulator,
-// or nil when the caller did not attach one.
-func lookupTotalsFromContext(ctx context.Context) *moduleLookupTotals {
-	t, _ := ctx.Value(ctxKeyLookupTotals{}).(*moduleLookupTotals)
-	return t
-}
 
 // moduleLookupOverallTimeout caps the total wall-clock time spent
 // resolving a batch of module names, keeping a slow or unreachable
@@ -233,31 +172,6 @@ func GetObjectIDsByName(db *gorm.DB, objectType, name string) ([]uint, error) {
 // the whole fan-out is bounded by moduleLookupOverallTimeout (or an
 // earlier deadline on ctx).
 func getNamesFromModule(ctx context.Context, endpoint, path string, ids []uint, includeDeleted bool) (map[uint]string, error) {
-	// record start so the deferred log below can report call duration
-	// and update the request-wide totals accumulator
-	callStarted := time.Now()
-	telemetry, telemetryOK := lookupTelemetryFromContext(ctx)
-	totals := lookupTotalsFromContext(ctx)
-	defer func() {
-		callReturned := time.Now()
-		dur := callReturned.Sub(callStarted)
-		if totals != nil {
-			atomic.AddInt64(&totals.Calls, 1)
-			atomic.AddInt64(&totals.DurationNs, dur.Nanoseconds())
-		}
-		if telemetryOK && telemetry.Logger != nil {
-			telemetry.Logger.Info("events_handler_step",
-				zap.String("checkpoint", "module_lookup"),
-				zap.String("type", telemetry.ObjectType),
-				zap.Int("id_count", len(ids)),
-				zap.Int("cache_hits", telemetry.CacheHits),
-				zap.Int64("module_http_ms", dur.Milliseconds()),
-				zap.Time("module_call_started", callStarted),
-				zap.Time("module_call_returned", callReturned),
-			)
-		}
-	}()
-
 	// preallocate the result map at the upper bound; ids that fail
 	// lookup simply won't appear in it
 	out := make(map[uint]string, len(ids))

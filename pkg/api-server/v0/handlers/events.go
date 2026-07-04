@@ -52,7 +52,6 @@ func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventTyp
 // @Param objectversion query string false "narrow objecttypename match to one version (e.g. 'v0')"
 // @Param objectnamespace query string false "narrow objecttypename match to one api namespace (e.g. 'threeport.io')"
 // @Param objectname query string false "filter events by object name (with objecttypename)"
-// @Param enrich query string false "set to 'false' to skip resolving object names and return events raw (much faster)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -392,13 +391,9 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 	// enrich records with attached object reference fields and resolved
 	// object names; failures are logged so events still come back when
-	// resolution can't fully complete. callers that don't need names can
-	// pass ?enrich=false to skip the per-type AOR fetch and module HTTP
-	// fan-out, trading rendered names for a much faster response.
-	if c.QueryParam("enrich") != "false" {
-		if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger); err != nil {
-			h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
-		}
+	// resolution can't fully complete.
+	if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger); err != nil {
+		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
 	}
 
 	// construct response

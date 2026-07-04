@@ -505,21 +505,39 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		idsByType[*e.ObjectType][*e.ObjectID] = struct{}{}
 	}
 
-	// dispatch each type to core sql or module http and collect
-	// resolved names; failures are logged so events still come back
-	// (rendered id-only) when name resolution fails for some types.
+	// consult the in-process name cache first, then dispatch the
+	// remaining misses to core sql or module http; failures are logged
+	// so events still come back (rendered id-only) when name resolution
+	// fails for some types. Cache hits skip the resolver round trip
+	// entirely so a hot repeat page pays only for the AOR load above.
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
-		ids := make([]uint, 0, len(idSet))
+		resolved := make(map[uint]string, len(idSet))
+		misses := make([]uint, 0, len(idSet))
 		for id := range idSet {
-			ids = append(ids, id)
+			if cached, ok := moduleNameCache.Get(typ, id); ok {
+				resolved[id] = cached
+				continue
+			}
+			misses = append(misses, id)
 		}
-		names, err := GetObjectNames(ctx, db, typ, ids, true)
-		if err != nil {
-			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
-			continue
+		if len(misses) > 0 {
+			fetched, err := GetObjectNames(ctx, db, typ, misses, true)
+			if err != nil {
+				log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
+				// keep any cache-hit names for this type so partial
+				// resolution still degrades better than id-only
+				if len(resolved) > 0 {
+					namesByType[typ] = resolved
+				}
+				continue
+			}
+			for id, name := range fetched {
+				resolved[id] = name
+				moduleNameCache.Put(typ, id, name)
+			}
 		}
-		namesByType[typ] = names
+		namesByType[typ] = resolved
 	}
 
 	// project the resolved name onto each event row when available;

@@ -36,8 +36,13 @@ func newStepLogger(log *zap.Logger) *stepLogger {
 }
 
 // checkpoint emits one line for the named step with the elapsed time
-// since the previous checkpoint and any caller-provided extras.
+// since the previous checkpoint and any caller-provided extras. Skips
+// all work when the logger's core is below debug level so callers pay
+// nothing for the instrumentation in production configurations.
 func (s *stepLogger) checkpoint(name string, extra ...zap.Field) {
+	if !s.log.Core().Enabled(zap.DebugLevel) {
+		return
+	}
 	now := time.Now()
 	delta := now.Sub(s.last).Milliseconds()
 	s.last = now
@@ -627,14 +632,19 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		}
 	}
 
-	moduleCalls := atomic.LoadInt64(&totals.Calls)
-	moduleDurationMs := atomic.LoadInt64(&totals.DurationNs) / int64(time.Millisecond)
-	steps.checkpoint("t7_enrichment_complete",
-		zap.Int("event_count", len(events)),
-		zap.Int("cache_hits", totalCacheHits),
-		zap.Int64("module_http_calls", moduleCalls),
-		zap.Int64("module_http_ms", moduleDurationMs),
-	)
+	// skip the totals load and summary emit when the logger is below
+	// debug level; the checkpoint call would no-op inside but the
+	// atomic loads and field construction still cost a few allocs
+	if log.Core().Enabled(zap.DebugLevel) {
+		moduleCalls := atomic.LoadInt64(&totals.Calls)
+		moduleDurationMs := atomic.LoadInt64(&totals.DurationNs) / int64(time.Millisecond)
+		steps.checkpoint("t7_enrichment_complete",
+			zap.Int("event_count", len(events)),
+			zap.Int("cache_hits", totalCacheHits),
+			zap.Int64("module_http_calls", moduleCalls),
+			zap.Int64("module_http_ms", moduleDurationMs),
+		)
+	}
 
 	return nil
 }

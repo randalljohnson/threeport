@@ -245,7 +245,10 @@ func getNamesFromModule(ctx context.Context, endpoint, path string, ids []uint, 
 			atomic.AddInt64(&totals.Calls, 1)
 			atomic.AddInt64(&totals.DurationNs, dur.Nanoseconds())
 		}
-		if telemetryOK && telemetry.Logger != nil {
+		// skip the structured emit when the logger's core is below
+		// debug level so a production configuration pays nothing for
+		// the per-call telemetry line
+		if telemetryOK && telemetry.Logger != nil && telemetry.Logger.Core().Enabled(zap.DebugLevel) {
 			telemetry.Logger.Info("events_handler_step",
 				zap.String("checkpoint", "module_lookup"),
 				zap.String("type", telemetry.ObjectType),

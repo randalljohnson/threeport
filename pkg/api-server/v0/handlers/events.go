@@ -213,21 +213,6 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// first-page request: no QueryId means the client is asking
 		// for the start of a fresh result set, not a continuation
 
-		// count total objects to decide whether pagination is needed.
-		// The JOIN matches each event row to its reference row on
-		// attached_object_type + attached_object_id. The soft-delete
-		// predicate is explicit; gorm's automatic deleted_at filter
-		// does not apply to raw .Joins() clauses.
-		var totalCount int64
-		countQuery := JoinEventsToAttachedObjectReferences(
-			h.DB.Model(&v0.Event{}),
-			fullyQualifiedEventType,
-		)
-		if result := applyObjectIdFilter(countQuery).Where(&filter).Count(&totalCount); result.Error != nil {
-			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-		}
-
 		// only spin up a materialized view when the result set is large
 		// enough that keyset paging over a stable snapshot is worth the
 		// CREATE MATERIALIZED VIEW cost. Under the threshold, return
@@ -240,24 +225,32 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		if threshold < materializedViewThresholdFloor {
 			threshold = materializedViewThresholdFloor
 		}
-		pagination.HasMore = totalCount > threshold
+
+		// probe the result set with a LIMIT threshold+1 fetch so the
+		// pagination decision is made from returned row count instead
+		// of a separate Count query duplicating the JOIN. When the row
+		// count fits under the threshold, serve the fetched records
+		// directly and skip the materialized view path.
+		findQuery := JoinEventsToAttachedObjectReferences(
+			h.DB.Order("ID asc").Limit(int(threshold)+1),
+			fullyQualifiedEventType,
+		)
+		if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
+			h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+		}
+		pagination.HasMore = int64(len(*records)) > threshold
 
 		switch pagination.HasMore {
 		case false:
-			// small result set: skip the materialized view machinery
-			// and return everything in one shot. Same JOIN shape and
-			// soft-delete predicate as the count query above.
-			findQuery := JoinEventsToAttachedObjectReferences(
-				h.DB.Order("ID asc"),
-				fullyQualifiedEventType,
-			)
-			if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
-				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-			}
+			// small result set: everything already loaded in the probe
+			// fetch above; return it in one shot
 			returnedCount = int64(len(*records))
 
 		case true:
+			// large result set: discard the probe fetch and rebuild
+			// through the materialized view path for stable pagination
+			*records = (*records)[:0]
 			// large result set: materialize the join so subsequent
 			// cursor-based page requests can scan a stable view
 			// instead of re-running the join each time

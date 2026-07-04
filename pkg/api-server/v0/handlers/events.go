@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -396,21 +398,27 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
 	}
 
-	// construct response
-	response, err := apiserver_lib.CreateResponse(
-		&apiserver_lib.Meta{
-			Pagination:  *pagination,
-			ObjectCount: returnedCount,
-		},
-		*records,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus200(c, *response)
+	// stream the response directly to the wire instead of round-tripping
+	// through CreateResponse. CreateResponse builds a parallel []Object
+	// slice by reflect-copying every event into an interface{}; on large
+	// pages that boxing loop plus the follow-on per-element type reflection
+	// inside encoding/json dominates the handler's tail latency.
+	// Marshalling the concrete []v0.Event lets json cache the type once and
+	// avoids the intermediate slice entirely.
+	w := c.Response()
+	w.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(struct {
+		Meta   apiserver_lib.Meta
+		Type   string
+		Data   []v0.Event
+		Status apiserver_lib.Status
+	}{
+		Meta:   apiserver_lib.Meta{Pagination: *pagination, ObjectCount: returnedCount},
+		Type:   objectType,
+		Data:   *records,
+		Status: apiserver_lib.Status{Code: http.StatusOK, Message: http.StatusText(http.StatusOK)},
+	})
 }
 
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName

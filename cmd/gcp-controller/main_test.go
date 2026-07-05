@@ -12,6 +12,11 @@ import (
 // showHelpAndExit rather than run the parent test logic.
 const helperEnvVar = "GCP_CTRL_HELP_EXIT_CODE"
 
+// mainHelpEnvVar signals to the test binary that it should invoke main()
+// with a synthesized argv rather than run the parent test logic, so the
+// help path through flag parsing can be observed end-to-end.
+const mainHelpEnvVar = "GCP_CTRL_MAIN_HELP"
+
 // TestMain intercepts the process before the testing framework starts
 // so a re-exec of this binary under helperEnvVar exercises
 // showHelpAndExit directly. showHelpAndExit terminates the process
@@ -26,6 +31,14 @@ func TestMain(m *testing.M) {
 		}
 		showHelpAndExit(code)
 		// unreachable; showHelpAndExit calls os.Exit.
+		return
+	}
+	// if the main-help env var is set, drive main() with a -help argv so
+	// flag parsing and the *help branch execute in the same process.
+	if _, ok := os.LookupEnv(mainHelpEnvVar); ok {
+		os.Args = []string{"threeport-gcp-controller", "-help"}
+		main()
+		// unreachable; main() reaches showHelpAndExit which calls os.Exit.
 		return
 	}
 	// normal path: run the package tests.
@@ -98,6 +111,53 @@ func TestShowHelpAndExitPrintsUsage(t *testing.T) {
 	// verify the options header is emitted so flag.PrintDefaults is invoked.
 	if !strings.Contains(stdout, "options:") {
 		t.Fatalf("stdout missing options header: %q", stdout)
+	}
+}
+
+// runMainHelp re-execs the test binary in main-help mode so main() runs
+// under a -help argv and terminates through showHelpAndExit.
+func runMainHelp(t *testing.T) (stdout string, exitErr *exec.ExitError, err error) {
+	t.Helper()
+	// invoke self with a no-match test filter so only TestMain's main branch runs.
+	cmd := exec.Command(os.Args[0], "-test.run=^$")
+	cmd.Env = append(os.Environ(), mainHelpEnvVar+"=1")
+	out, runErr := cmd.Output()
+	if runErr != nil {
+		ee, ok := runErr.(*exec.ExitError)
+		if !ok {
+			return string(out), nil, runErr
+		}
+		return string(out), ee, nil
+	}
+	return string(out), nil, nil
+}
+
+// TestMainHelpFlagExitsZero verifies driving main() with -help reaches
+// showHelpAndExit(0) so the --help user flow terminates cleanly.
+func TestMainHelpFlagExitsZero(t *testing.T) {
+	// re-exec with the main-help env var; main() parses -help and exits 0.
+	_, exitErr, err := runMainHelp(t)
+	if err != nil {
+		t.Fatalf("failed to run main helper: %v", err)
+	}
+	// showHelpAndExit(0) surfaces as a nil *ExitError from cmd.Output.
+	if exitErr != nil {
+		t.Fatalf("expected exit code 0, got %d", exitErr.ExitCode())
+	}
+}
+
+// TestMainHelpFlagPrintsUsage verifies driving main() with -help produces
+// the usage banner, confirming flag parsing routes into showHelpAndExit.
+func TestMainHelpFlagPrintsUsage(t *testing.T) {
+	// capture stdout from main() and confirm the usage banner is emitted.
+	stdout, _, err := runMainHelp(t)
+	if err != nil {
+		t.Fatalf("failed to run main helper: %v", err)
+	}
+	// verify the leading banner names the binary.
+	wantPrefix := "Usage: threeport-gcp-controller [options]"
+	if !strings.HasPrefix(stdout, wantPrefix) {
+		t.Fatalf("stdout prefix = %q, want prefix %q", stdout, wantPrefix)
 	}
 }
 

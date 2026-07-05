@@ -12,6 +12,12 @@ import (
 // showHelpAndExit rather than run the parent test logic.
 const helperEnvVar = "TERRAFORM_CTRL_HELP_EXIT_CODE"
 
+// helperMainVar signals to the test binary that it should invoke main()
+// with the -help flag so the top of main runs and exits fast via the
+// help branch. That path exercises flag registration, flag parsing, and
+// the encryption key lookup before terminating.
+const helperMainVar = "TERRAFORM_CTRL_MAIN_HELP"
+
 // TestMain intercepts the process before the testing framework starts
 // so a re-exec of this binary under helperEnvVar exercises
 // showHelpAndExit directly. showHelpAndExit terminates the process
@@ -26,6 +32,14 @@ func TestMain(m *testing.M) {
 		}
 		showHelpAndExit(code)
 		// unreachable; showHelpAndExit calls os.Exit.
+		return
+	}
+	// if the main-help helper env var is set, invoke main() with -help so
+	// it exits at the help branch before touching NATS or the API server.
+	if _, ok := os.LookupEnv(helperMainVar); ok {
+		os.Args = []string{"terraform-controller", "-help=true"}
+		main()
+		// unreachable; main calls showHelpAndExit which calls os.Exit.
 		return
 	}
 	// normal path: run the package tests.
@@ -112,5 +126,27 @@ func TestShowHelpAndExitEndsWithNewline(t *testing.T) {
 	}
 	if !strings.HasSuffix(stdout, "\n") {
 		t.Fatalf("stdout missing trailing newline: %q", stdout)
+	}
+}
+
+// TestMainHelpFlagExitsCleanly verifies main() reaches the help branch
+// when invoked with -help=true so the flag registration and parsing at
+// the top of main are exercised without blocking on NATS or the API.
+func TestMainHelpFlagExitsCleanly(t *testing.T) {
+	// re-exec the test binary in main-help mode; a no-match test filter
+	// prevents any real test from running before TestMain hands off to main().
+	cmd := exec.Command(os.Args[0], "-test.run=^$")
+	cmd.Env = append(os.Environ(), helperMainVar+"=1")
+	out, runErr := cmd.Output()
+	// main() -> showHelpAndExit(0) -> os.Exit(0) surfaces as a nil ExitError.
+	if runErr != nil {
+		if ee, ok := runErr.(*exec.ExitError); ok {
+			t.Fatalf("expected exit 0 from main -help, got %d, stderr=%q", ee.ExitCode(), string(ee.Stderr))
+		}
+		t.Fatalf("failed to run helper: %v", runErr)
+	}
+	// verify main routed through showHelpAndExit's usage banner.
+	if !strings.Contains(string(out), "Usage: threeport-terraform-controller") {
+		t.Fatalf("main -help stdout missing usage banner: %q", string(out))
 	}
 }

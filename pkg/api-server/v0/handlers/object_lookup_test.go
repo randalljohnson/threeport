@@ -9,8 +9,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // fakeModuleServer returns an httptest server that fakes the module
@@ -216,4 +219,153 @@ func TestParseRowID(t *testing.T) {
 			assert.Equal(t, tc.wantID, id)
 		})
 	}
+}
+
+// setupObjectLookupDB migrates every table GetObjectIDsByName may
+// consult: a core lookup type (ControlPlaneDefinition) plus the module
+// registry tables (v0_module_apis, v0_module_api_routes,
+// v0_module_objects) that GetModuleRouteForType joins over. The
+// AttachedObjectReference table is present because the core type's
+// afterCreate hooks reference it under a non-SkipHooks session; seeds
+// below use SkipHooks so it can stay empty.
+func setupObjectLookupDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db := newHandlersTestDB(t)
+	require.NoError(t, db.AutoMigrate(
+		&api_v0.ControlPlaneDefinition{},
+		&api_v0.AttachedObjectReference{},
+		&api_v0.ModuleApi{},
+		&api_v0.ModuleApiRoute{},
+		&api_v0.ModuleObject{},
+	))
+	return db
+}
+
+// TestGetObjectIDsByName_CoreType covers the core-SQL branch: a
+// registered core object type resolves via GetCoreObjectIDsByName
+// without touching the module registry. Two rows with the same name are
+// seeded so the multi-id return path is exercised - name uniqueness is
+// not enforced at the database layer.
+func TestGetObjectIDsByName_CoreType(t *testing.T) {
+	// setup: DB with core + registry tables, three rows (two "shared",
+	// one "other") on ControlPlaneDefinition
+	db := setupObjectLookupDB(t)
+	tx := db.Session(&gorm.Session{SkipHooks: true})
+	for _, name := range []string{"shared", "shared", "other"} {
+		require.NoError(t, tx.Create(&api_v0.ControlPlaneDefinition{
+			Definition: api_v0.Definition{Name: util.Ptr(name)},
+		}).Error)
+	}
+
+	// action: look up the shared name under the core-owned qualified type
+	ids, err := GetObjectIDsByName(db, "threeport.io/v0.ControlPlaneDefinition", "shared")
+
+	// assert: both matching ids come back; the "other" row is excluded
+	require.NoError(t, err)
+	assert.Len(t, ids, 2, "both rows named shared are returned")
+}
+
+// TestGetObjectIDsByName_UnknownTypeErrors covers the last-resort
+// branch: a type unknown to core AND unowned by any registered module
+// returns a hard error so the caller can't silently degrade a
+// name-based lookup to no-op.
+func TestGetObjectIDsByName_UnknownTypeErrors(t *testing.T) {
+	// setup: registry tables present but empty, so GetModuleRouteForType
+	// returns endpoint="" and the caller falls into the hard-error branch
+	db := setupObjectLookupDB(t)
+
+	// action: look up a type no one owns
+	ids, err := GetObjectIDsByName(db, "example.com/v0.Widget", "any")
+
+	// assert: nil result and an error message that names the missing owner
+	require.Error(t, err)
+	assert.Nil(t, ids)
+	assert.Contains(t, err.Error(), "not owned by core or any registered module")
+}
+
+// TestGetObjectIDsByName_DispatchesToModule covers the module-owned
+// branch: an unknown core type gets its owning module looked up in the
+// registry, then a name-filtered list GET is dispatched to the module's
+// CRUD endpoint. Returned IDs come from the module's response body.
+func TestGetObjectIDsByName_DispatchesToModule(t *testing.T) {
+	// setup: fake module server that returns two matching rows for the
+	// name-filtered list request, capturing the URL so the test can pin
+	// the CRUD path shape
+	db := setupObjectLookupDB(t)
+	var gotURL string
+	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotURL = r.URL.String()
+		writeJSONResponse(t, w, []apiserver_lib.Object{
+			map[string]interface{}{"ID": float64(3), "Name": "widget"},
+			map[string]interface{}{"ID": float64(4), "Name": "widget"},
+		})
+	})
+	defer restore()
+
+	// seed a module registration for example.com/v0.Widget pointing at
+	// the fake server. SkipHooks avoids tagged-field emitters unrelated
+	// to the lookup under test.
+	tx := db.Session(&gorm.Session{SkipHooks: true})
+	moduleApi := &api_v0.ModuleApi{
+		Name:         util.Ptr("example-com-api"),
+		ApiNamespace: util.Ptr("example.com"),
+		Endpoint:     util.Ptr(endpoint),
+		Core:         util.Ptr(false),
+	}
+	require.NoError(t, tx.Create(moduleApi).Error)
+	moduleObject := &api_v0.ModuleObject{
+		Name:        util.Ptr("Widget"),
+		Version:     util.Ptr("v0"),
+		ModuleApiID: moduleApi.ID,
+	}
+	require.NoError(t, tx.Create(moduleObject).Error)
+	crudRoute := &api_v0.ModuleApiRoute{
+		Path:        util.Ptr("/example.com/v0/widgets"),
+		ModuleApiID: moduleApi.ID,
+	}
+	require.NoError(t, tx.Create(crudRoute).Error)
+	require.NoError(t, tx.Model(crudRoute).Association("ModuleObjects").Append(moduleObject))
+	// register the /versions discovery route too so GetModuleRouteForType
+	// exercises its CRUD-vs-versions filter
+	versionsRoute := &api_v0.ModuleApiRoute{
+		Path:        util.Ptr("/example.com/widgets/versions"),
+		ModuleApiID: moduleApi.ID,
+	}
+	require.NoError(t, tx.Create(versionsRoute).Error)
+	require.NoError(t, tx.Model(versionsRoute).Association("ModuleObjects").Append(moduleObject))
+
+	// action: look up "widget" under a type owned by the registered module
+	ids, err := GetObjectIDsByName(db, "example.com/v0.Widget", "widget")
+
+	// assert: both ids come back and the fake server saw the name-filtered
+	// CRUD path (not the /versions discovery path)
+	require.NoError(t, err)
+	assert.Equal(t, []uint{3, 4}, ids)
+	assert.Equal(t, "/example.com/v0/widgets?name=widget", gotURL)
+}
+
+// TestGetObjectIDsByName_CoreLookupErrorSurfaces covers the
+// non-"unknown core type" error path: when GetCoreObjectIDsByName
+// returns an error other than ErrUnknownCoreType (e.g. the underlying
+// SQL query fails), the error is surfaced verbatim without falling
+// through to a module lookup.
+func TestGetObjectIDsByName_CoreLookupErrorSurfaces(t *testing.T) {
+	// setup: DB where only the registry tables are migrated. Looking up a
+	// core type whose backing table is missing forces the core SQL query
+	// to fail with a real error rather than ErrUnknownCoreType.
+	db := newHandlersTestDB(t)
+	require.NoError(t, db.AutoMigrate(
+		&api_v0.ModuleApi{},
+		&api_v0.ModuleApiRoute{},
+		&api_v0.ModuleObject{},
+	))
+
+	// action: look up a name under a core type whose table doesn't exist
+	ids, err := GetObjectIDsByName(db, "threeport.io/v0.ControlPlaneDefinition", "any")
+
+	// assert: the real DB error propagates (not silently swallowed as
+	// unknown-type and rerouted through the module registry)
+	require.Error(t, err)
+	assert.Nil(t, ids)
+	assert.Contains(t, err.Error(), "ControlPlaneDefinition")
 }

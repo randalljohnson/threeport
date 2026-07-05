@@ -31,7 +31,7 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-var ErrThreeportConfigAlreadyExists = errors.New("threeport config already contains deployed control planes")
+var ErrThreeportConfigAlreadyExists = errors.New("threeport config already contains a control plane with the requested name")
 
 // GenesisControlPlaneCLIArgs is the set of control plane arguments passed to one of
 // the CLI tools.
@@ -206,9 +206,6 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		cleanConfig:       util.Ptr(true),
 	}
 
-	// check threeport config to see if it is empty
-	threeportInstanceConfigEmpty := threeportConfig.CheckThreeportConfigEmpty()
-
 	var threeportControlPlaneConfig *ControlPlane
 	genesis := true
 
@@ -223,12 +220,22 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			threeportControlPlaneConfig = &ControlPlane{}
 		}
 	} else {
-		// for fresh installs, check if config already exists
-		if !threeportInstanceConfigEmpty && !cpi.Opts.ForceOverwriteConfig {
-			return ErrThreeportConfigAlreadyExists
+		// fresh install: only block or overwrite an existing entry that
+		// matches the requested control plane name, leaving other entries
+		// untouched so multiple named instances can coexist.
+		if _, err := threeportConfig.GetControlPlaneConfig(cpi.Opts.ControlPlaneName); err == nil {
+			if !cpi.Opts.ForceOverwriteConfig {
+				return fmt.Errorf(
+					"control plane named %q: %w; use --force-overwrite-config to overwrite it",
+					cpi.Opts.ControlPlaneName, ErrThreeportConfigAlreadyExists,
+				)
+			}
+			// drop the existing entry with the same name; other entries stay in place
+			threeportConfig.ControlPlanes = slices.DeleteFunc(
+				threeportConfig.ControlPlanes,
+				func(c ControlPlane) bool { return c.Name == cpi.Opts.ControlPlaneName },
+			)
 		}
-		// reset config and create fresh control plane config
-		threeportConfig.ControlPlanes = []ControlPlane{}
 		threeportControlPlaneConfig = &ControlPlane{}
 	}
 

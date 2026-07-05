@@ -64,6 +64,7 @@ type GenesisControlPlaneCLIArgs struct {
 	ClusterName           string
 	InfraOnly             bool
 	KindPortMappings      []string
+	ApiServerHostPort     int
 	LocalRegistry         bool
 }
 
@@ -173,6 +174,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.TeardownOnFailure = a.TeardownOnFailure
 	cpi.Opts.LocalRegistry = a.LocalRegistry
 	cpi.Opts.KindPortMappings = a.KindPortMappings
+	cpi.Opts.ApiServerHostPort = a.ApiServerHostPort
 
 	return cpi, nil
 }
@@ -1354,6 +1356,8 @@ func runtimeInstanceName(opts threeport.Options) string {
 		//     name, matching clusters tptctl provisions itself
 		return opts.ClusterName
 	}
-	// new cluster, named with the threeport- prefix
+	// new cluster: callers pass just the identifier (--name 1) and
+	// ThreeportRuntimeName enforces the "threeport-" prefix so every
+	// tptctl-provisioned cluster is discoverable by that convention.
 	return provider.ThreeportRuntimeName(opts.ControlPlaneName)
 }

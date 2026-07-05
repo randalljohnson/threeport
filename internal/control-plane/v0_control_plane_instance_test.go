@@ -261,6 +261,123 @@ func TestV0ControlPlaneInstanceCreated_RuntimeInstanceNotReconciled(t *testing.T
 	}
 }
 
+// TestV0ControlPlaneInstanceCreated_GetRuntimeDefinitionFails covers the branch
+// where the runtime instance is reconciled and the follow-up runtime-definition
+// fetch fails.
+func TestV0ControlPlaneInstanceCreated_GetRuntimeDefinitionFails(t *testing.T) {
+	// stand up a stub API that returns a reconciled definition and runtime instance,
+	// then 500s on the runtime-definition fetch
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, v0.PathControlPlaneDefinitions):
+			def := v0.ControlPlaneDefinition{
+				Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+			}
+			newJSONResponse(t, w, http.StatusOK, def)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, v0.PathKubernetesRuntimeInstances):
+			ri := v0.KubernetesRuntimeInstance{
+				Common:                        v0.Common{ID: util.Ptr(uint(3))},
+				Reconciliation:                v0.Reconciliation{Reconciled: util.Ptr(true)},
+				KubernetesRuntimeDefinitionID: util.Ptr(uint(9)),
+			}
+			newJSONResponse(t, w, http.StatusOK, ri)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, v0.PathKubernetesRuntimeDefinitions):
+			resp := apiserver_lib.Response{Status: apiserver_lib.Status{Error: "boom"}}
+			body, _ := json.Marshal(resp)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(body)
+		default:
+			t.Errorf("unexpected request to %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	// build an acknowledged instance so the reconciler moves past the update branch
+	now := time.Now().UTC()
+	inst := &v0.ControlPlaneInstance{
+		Common:                      v0.Common{ID: util.Ptr(uint(1))},
+		Reconciliation:              v0.Reconciliation{CreationAcknowledged: &now},
+		ControlPlaneDefinitionID:    util.Ptr(uint(2)),
+		KubernetesRuntimeInstanceID: util.Ptr(uint(3)),
+	}
+
+	// invoke reconciler; the runtime definition fetch should surface a wrap error
+	requeue, err := v0ControlPlaneInstanceCreated(newTestReconciler(server), inst, newDefinitionTestLogger())
+
+	// assert error wrap prefix and zero requeue
+	if err == nil {
+		t.Fatalf("expected error from runtime definition fetch failure")
+	}
+	if !strings.HasPrefix(err.Error(), "failed to get control plane kubernetesRuntime definition by ID") {
+		t.Fatalf("expected runtime definition wrap prefix, got %q", err.Error())
+	}
+	if requeue != 0 {
+		t.Fatalf("expected 0 requeue delay, got %d", requeue)
+	}
+}
+
+// TestV0ControlPlaneInstanceCreated_GetSelfInstanceFails covers the branch
+// where the runtime definition is retrieved and the follow-up self-instance
+// lookup fails.
+func TestV0ControlPlaneInstanceCreated_GetSelfInstanceFails(t *testing.T) {
+	// stand up a stub API that satisfies every prior fetch, then 500s on the self-instance query
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, v0.PathControlPlaneDefinitions):
+			def := v0.ControlPlaneDefinition{
+				Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+			}
+			newJSONResponse(t, w, http.StatusOK, def)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, v0.PathKubernetesRuntimeInstances):
+			ri := v0.KubernetesRuntimeInstance{
+				Common:                        v0.Common{ID: util.Ptr(uint(3))},
+				Reconciliation:                v0.Reconciliation{Reconciled: util.Ptr(true)},
+				KubernetesRuntimeDefinitionID: util.Ptr(uint(9)),
+			}
+			newJSONResponse(t, w, http.StatusOK, ri)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, v0.PathKubernetesRuntimeDefinitions):
+			kd := v0.KubernetesRuntimeDefinition{
+				Common:        v0.Common{ID: util.Ptr(uint(9))},
+				InfraProvider: util.Ptr(v0.KubernetesRuntimeInfraProviderKind),
+			}
+			newJSONResponse(t, w, http.StatusOK, kd)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, v0.PathControlPlaneInstances):
+			resp := apiserver_lib.Response{Status: apiserver_lib.Status{Error: "boom"}}
+			body, _ := json.Marshal(resp)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(body)
+		default:
+			t.Errorf("unexpected request to %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	// build an acknowledged instance so the reconciler moves past the update branch
+	now := time.Now().UTC()
+	inst := &v0.ControlPlaneInstance{
+		Common:                      v0.Common{ID: util.Ptr(uint(1))},
+		Reconciliation:              v0.Reconciliation{CreationAcknowledged: &now},
+		ControlPlaneDefinitionID:    util.Ptr(uint(2)),
+		KubernetesRuntimeInstanceID: util.Ptr(uint(3)),
+	}
+
+	// invoke reconciler; the self-instance lookup should surface a wrap error
+	requeue, err := v0ControlPlaneInstanceCreated(newTestReconciler(server), inst, newDefinitionTestLogger())
+
+	// assert error wrap prefix and zero requeue
+	if err == nil {
+		t.Fatalf("expected error from self instance fetch failure")
+	}
+	if !strings.HasPrefix(err.Error(), "failed to get self control plane instance") {
+		t.Fatalf("expected self instance wrap prefix, got %q", err.Error())
+	}
+	if requeue != 0 {
+		t.Fatalf("expected 0 requeue delay, got %d", requeue)
+	}
+}
+
 // TestV0ControlPlaneInstanceDeleted_GetRuntimeInstanceFails covers the delete
 // path's first error branch: a failed runtime-instance fetch surfaces a wrap
 // error.

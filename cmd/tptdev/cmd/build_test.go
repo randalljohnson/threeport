@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 )
 
 // TestImageBuildTarget covers imageBuildTarget()'s routing of component names
@@ -192,5 +197,148 @@ func TestGitBranchNameNoRepo(t *testing.T) {
 	}
 	if got != "" {
 		t.Errorf("gitBranchName() = %q, want empty string on error", got)
+	}
+}
+
+// newDynamicClientForTest wires a dynamic.DynamicClient to a fake API server
+// URL. The returned client makes real HTTP calls, which lets tests exercise
+// the concrete *dynamic.DynamicClient parameter that detectAuthEnabled takes.
+func newDynamicClientForTest(t *testing.T, serverURL string) *dynamic.DynamicClient {
+	t.Helper()
+	client, err := dynamic.NewForConfig(&rest.Config{Host: serverURL})
+	if err != nil {
+		t.Fatalf("failed to build dynamic client for test: %v", err)
+	}
+	return client
+}
+
+// deploymentJSON returns a minimal apps/v1 Deployment body the fake server can
+// serve. args populates the first container's args slice; when nil, the args
+// key is omitted so the not-found branch is exercised.
+func deploymentJSON(args []string) string {
+	argsField := ""
+	if args != nil {
+		quoted := make([]string, 0, len(args))
+		for _, a := range args {
+			quoted = append(quoted, `"`+a+`"`)
+		}
+		argsField = `,"args":[` + strings.Join(quoted, ",") + `]`
+	}
+	return `{
+		"apiVersion":"apps/v1","kind":"Deployment",
+		"metadata":{"name":"threeport-api-server","namespace":"threeport-control-plane"},
+		"spec":{"template":{"spec":{"containers":[{"name":"rest-api"` + argsField + `}]}}}
+	}`
+}
+
+// TestDetectAuthEnabledDefaultsTrueOnGetError covers the safe-default branch:
+// when the API server returns an error for the deployment fetch, the function
+// returns true so callers do not accidentally drop auth on a healthy cluster.
+func TestDetectAuthEnabledDefaultsTrueOnGetError(t *testing.T) {
+	// setup: server always returns 500 so the Get() call errors
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	client := newDynamicClientForTest(t, srv.URL)
+
+	// action under test: fetch fails, function must fall through to the safe default
+	got := detectAuthEnabled(client)
+
+	// assert: safe-default true so a partial failure never silently disables auth
+	if !got {
+		t.Fatalf("detectAuthEnabled() = false on Get error, want true (safe default)")
+	}
+}
+
+// TestDetectAuthEnabledFalseWhenFlagPresent covers the disable path: when the
+// deployment's first container args include -auth-enabled=false the function
+// returns false, letting the debug/build restart path skip auth wiring.
+func TestDetectAuthEnabledFalseWhenFlagPresent(t *testing.T) {
+	// setup: server returns a deployment whose args include the disable flag
+	body := deploymentJSON([]string{"-auth-enabled=false", "-log-level=info"})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	client := newDynamicClientForTest(t, srv.URL)
+
+	// action under test: parse args, match on -auth-enabled=false
+	got := detectAuthEnabled(client)
+
+	// assert: false so the caller mirrors the running deployment's disabled auth
+	if got {
+		t.Fatalf("detectAuthEnabled() = true, want false when -auth-enabled=false is in args")
+	}
+}
+
+// TestDetectAuthEnabledTrueWhenFlagAbsent covers the normal-args path: when
+// the deployment's args do not include the disable flag, the function returns
+// true, matching the default enabled-auth deployment shape.
+func TestDetectAuthEnabledTrueWhenFlagAbsent(t *testing.T) {
+	// setup: server returns a deployment with args that do not include the disable flag
+	body := deploymentJSON([]string{"-log-level=info", "-metrics=true"})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	client := newDynamicClientForTest(t, srv.URL)
+
+	// action under test: iterate args, no disable flag present
+	got := detectAuthEnabled(client)
+
+	// assert: true so the caller reflects the default enabled-auth deployment
+	if !got {
+		t.Fatalf("detectAuthEnabled() = false, want true when disable flag is absent")
+	}
+}
+
+// TestDetectAuthEnabledTrueWhenArgsMissing covers the missing-args branch: a
+// deployment without any args field on its first container still returns true,
+// since detectAuthEnabled cannot prove auth is off and defaults to safe.
+func TestDetectAuthEnabledTrueWhenArgsMissing(t *testing.T) {
+	// setup: server returns a deployment whose container has no args field
+	body := deploymentJSON(nil)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	client := newDynamicClientForTest(t, srv.URL)
+
+	// action under test: unstructured nested lookup for args returns found=false
+	got := detectAuthEnabled(client)
+
+	// assert: true so the safe-default kicks in when args cannot be inspected
+	if !got {
+		t.Fatalf("detectAuthEnabled() = false, want true when args field is absent")
+	}
+}
+
+// TestDetectAuthEnabledTrueWhenContainersEmpty covers the empty-containers
+// branch: a deployment whose template lists no containers still returns true,
+// since detectAuthEnabled has nothing to inspect and must not disable auth.
+func TestDetectAuthEnabledTrueWhenContainersEmpty(t *testing.T) {
+	// setup: server returns a deployment with an empty containers list
+	body := `{
+		"apiVersion":"apps/v1","kind":"Deployment",
+		"metadata":{"name":"threeport-api-server","namespace":"threeport-control-plane"},
+		"spec":{"template":{"spec":{"containers":[]}}}
+	}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	client := newDynamicClientForTest(t, srv.URL)
+
+	// action under test: nested containers slice is empty, len==0 branch fires
+	got := detectAuthEnabled(client)
+
+	// assert: true so an empty container list falls through to the safe default
+	if !got {
+		t.Fatalf("detectAuthEnabled() = false, want true when containers list is empty")
 	}
 }

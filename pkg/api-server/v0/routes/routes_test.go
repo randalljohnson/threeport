@@ -152,3 +152,116 @@ func TestAddCustomRoutes_NilHandlerDoesNotPanic(t *testing.T) {
 	assert.True(t, registered["GET "+v0.PathModuleObjectsWithModuleApiRoutes])
 	assert.True(t, registered["GET "+v0.PathModuleObjectsWithModuleApiRoutes+"/:id"])
 }
+
+// TestAddRoutes_RegistersEveryGeneratedRouteGroup covers AddRoutes()'s
+// enumeration of the generated per-object route setup functions: after
+// invocation every object's version, list, and id-scoped CRUD endpoints
+// must be present on the echo router, and the call must not panic.
+func TestAddRoutes_RegistersEveryGeneratedRouteGroup(t *testing.T) {
+	// fresh echo instance and a zero-value handler
+	e := echo.New()
+	h := &handlers.Handler{}
+
+	// invoke the function under test; must not panic across all
+	// generated route setup functions
+	require.NotPanics(t, func() {
+		AddRoutes(e, h)
+	})
+
+	// index registered routes by "METHOD PATH" for lookup by expectation
+	registered := map[string]bool{}
+	for _, r := range e.Routes() {
+		registered[r.Method+" "+r.Path] = true
+	}
+
+	// each generated route group publishes a versions endpoint,
+	// a POST/GET collection pair, and PATCH/PUT/DELETE by id;
+	// probe a representative sample so a regression in any one
+	// generated file surfaces
+	assert.True(t, registered["GET "+v0.PathEventVersions])
+	assert.True(t, registered["POST "+v0.PathEvents])
+	assert.True(t, registered["GET "+v0.PathEvents])
+	assert.True(t, registered["GET "+v0.PathEvents+"/:id"])
+	assert.True(t, registered["PATCH "+v0.PathEvents+"/:id"])
+	assert.True(t, registered["PUT "+v0.PathEvents+"/:id"])
+	assert.True(t, registered["DELETE "+v0.PathEvents+"/:id"])
+
+	// attached object references cover the second per-object group
+	assert.True(t, registered["GET "+v0.PathAttachedObjectReferenceVersions])
+	assert.True(t, registered["POST "+v0.PathAttachedObjectReferences])
+	assert.True(t, registered["DELETE "+v0.PathAttachedObjectReferences+"/:id"])
+
+	// module api routes exercise a third distinct generated file
+	assert.True(t, registered["GET "+v0.PathModuleApiVersions])
+	assert.True(t, registered["POST "+v0.PathModuleApis])
+	assert.True(t, registered["DELETE "+v0.PathModuleApis+"/:id"])
+}
+
+// TestEventRoutes_RegistersCrudAndVersions covers EventRoutes(): the
+// individual generator output must attach the versions endpoint plus
+// the standard POST/GET/PATCH/PUT/DELETE quintet to the echo router.
+func TestEventRoutes_RegistersCrudAndVersions(t *testing.T) {
+	// fresh echo, zero handler
+	e := echo.New()
+	h := &handlers.Handler{}
+
+	// invoke the function under test
+	EventRoutes(e, h)
+
+	// collect method+path keys and assert the expected registrations
+	registered := map[string]bool{}
+	for _, r := range e.Routes() {
+		registered[r.Method+" "+r.Path] = true
+	}
+	assert.True(t, registered["GET "+v0.PathEventVersions])
+	assert.True(t, registered["POST "+v0.PathEvents])
+	assert.True(t, registered["GET "+v0.PathEvents])
+	assert.True(t, registered["GET "+v0.PathEvents+"/:id"])
+	assert.True(t, registered["PATCH "+v0.PathEvents+"/:id"])
+	assert.True(t, registered["PUT "+v0.PathEvents+"/:id"])
+	assert.True(t, registered["DELETE "+v0.PathEvents+"/:id"])
+}
+
+// TestAttachedObjectReferenceRoutes_RegistersCrudAndVersions covers
+// AttachedObjectReferenceRoutes(): the generated file must register
+// the versions endpoint and the CRUD quintet for attached object
+// references on the echo router.
+func TestAttachedObjectReferenceRoutes_RegistersCrudAndVersions(t *testing.T) {
+	// fresh echo, zero handler
+	e := echo.New()
+	h := &handlers.Handler{}
+
+	// invoke the function under test
+	AttachedObjectReferenceRoutes(e, h)
+
+	// collect method+path keys and assert the expected registrations
+	registered := map[string]bool{}
+	for _, r := range e.Routes() {
+		registered[r.Method+" "+r.Path] = true
+	}
+	assert.True(t, registered["GET "+v0.PathAttachedObjectReferenceVersions])
+	assert.True(t, registered["POST "+v0.PathAttachedObjectReferences])
+	assert.True(t, registered["GET "+v0.PathAttachedObjectReferences])
+	assert.True(t, registered["GET "+v0.PathAttachedObjectReferences+"/:id"])
+	assert.True(t, registered["PATCH "+v0.PathAttachedObjectReferences+"/:id"])
+	assert.True(t, registered["PUT "+v0.PathAttachedObjectReferences+"/:id"])
+	assert.True(t, registered["DELETE "+v0.PathAttachedObjectReferences+"/:id"])
+}
+
+// TestSwaggerRoutes_RegistersDocsWildcard covers SwaggerRoutes(): a
+// single GET wildcard under /swagger must land on the echo router so
+// the swagger UI and its assets are served.
+func TestSwaggerRoutes_RegistersDocsWildcard(t *testing.T) {
+	// fresh echo
+	e := echo.New()
+
+	// invoke the function under test
+	SwaggerRoutes(e)
+
+	// the wildcard registration should appear as GET /swagger/*
+	registered := map[string]bool{}
+	for _, r := range e.Routes() {
+		registered[r.Method+" "+r.Path] = true
+	}
+	assert.True(t, registered["GET /swagger/*"], "expected GET /swagger/* to be registered")
+}

@@ -86,8 +86,9 @@ func (Release) Ga() error {
 // cutRelease tags the latest pushed dev commit as a release and pushes the
 // tag, which triggers the release and image workflows. The base comes from
 // the version file. A channel build auto-increments the per-channel counter
-// under the base; a ga build tags the bare base. The push remote defaults to
-// origin, overridable with RELEASE_REMOTE.
+// under the base; a ga build tags the bare base. The push remote resolves to
+// the RELEASE_REMOTE env override, otherwise to the remote the local dev
+// branch tracks, otherwise to origin.
 func cutRelease(channel string, ga bool) error {
 	fileVersion, err := readVersion()
 	if err != nil {
@@ -98,10 +99,7 @@ func cutRelease(channel string, ga bool) error {
 		return err
 	}
 
-	remote := os.Getenv("RELEASE_REMOTE")
-	if remote == "" {
-		remote = "origin"
-	}
+	remote := resolveReleaseRemote()
 
 	// fetch first so the counter and the tag target see the latest pushed dev
 	if err := git("fetch", remote, "dev", "--tags"); err != nil {
@@ -178,6 +176,21 @@ func highestCounter(tags []string, prefix string) int {
 		}
 	}
 	return highest
+}
+
+// resolveReleaseRemote picks the remote to fetch dev from and push the tag
+// to. RELEASE_REMOTE overrides everything so a caller can force a specific
+// remote; without it, the remote the local dev branch tracks fits any clone
+// whose remote is not named origin (a fork, an internal mirror, a rename);
+// origin is the final fallback for a fresh clone with no tracking set.
+func resolveReleaseRemote() string {
+	if r := os.Getenv("RELEASE_REMOTE"); r != "" {
+		return r
+	}
+	if r, err := gitOutput("config", "--get", "branch.dev.remote"); err == nil && r != "" {
+		return r
+	}
+	return "origin"
 }
 
 // git runs a git command and surfaces its combined output on failure.

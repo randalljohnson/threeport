@@ -189,7 +189,7 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonFailedCreate),
-							Type:   util.Ptr(event.TypeNormal),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						machineWorkloadInstance.GetId(),
 						machineWorkloadInstance.GetFullyQualifiedType(),
@@ -249,7 +249,7 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonFailedUpdate),
-							Type:   util.Ptr(event.TypeNormal),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						machineWorkloadInstance.GetId(),
 						machineWorkloadInstance.GetFullyQualifiedType(),
@@ -309,7 +309,7 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonFailedDelete),
-							Type:   util.Ptr(event.TypeNormal),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						machineWorkloadInstance.GetId(),
 						machineWorkloadInstance.GetFullyQualifiedType(),

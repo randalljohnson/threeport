@@ -28,23 +28,11 @@ var (
 	eventsSort       string
 	eventsLimit      int
 	eventsTopLevel   bool
-	eventsVerbose    bool
 	eventsWide       bool
 	eventsReverse    bool
 	eventsSince      time.Duration
 	eventsType       string
 )
-
-// bootNoiseReasons lists Reason values considered low-signal boot-time
-// noise. Rows carrying these Reasons are hidden by default and revealed
-// with --verbose; Warning-type events are always shown regardless.
-var bootNoiseReasons = map[string]bool{
-	"HostKeyCaptured":                 true,
-	"SSHReachable":                    true,
-	"ProviderResourcesProvisioning":   true,
-	"ProviderResourcesDeprovisioning": true,
-	"ScriptSucceeded":                 true,
-}
 
 // topLevelObjectKinds lists the core API type names considered
 // top-level for the --top-level filter. Sub-object types
@@ -126,10 +114,7 @@ var GetEventsCmd = &cobra.Command{
   tptctl get events --wide
 
   # newest events first (equivalent to --sort=newest)
-  tptctl get events -r
-
-  # include the boot-noise reasons hidden by default
-  tptctl get events --verbose`,
+  tptctl get events -r`,
 	Long: `Get events from the system.
 
 Use --for [<namespace>/][<version>.]<kind>/<name> to filter events to a specific object. <namespace> and <version> are optional; <kind> and <name> are required. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.
@@ -153,8 +138,6 @@ Use --since=<duration> to filter events by recency (e.g. --since=10m). Zero disa
 Use --type Normal|Warning to filter events by type. Empty disables the filter.
 
 Use --wide to widen the MESSAGE column to the terminal width so long notes render inline.
-
-Use --verbose to include the boot-noise reasons that are hidden by default: HostKeyCaptured, SSHReachable, ProviderResourcesProvisioning, ProviderResourcesDeprovisioning, ScriptSucceeded. Warning-type events are always shown regardless of --verbose.
 
 Full event notes (including captured script stdout/stderr) can be viewed with -o yaml.`,
 	PreRun: CommandPreRunFunc,
@@ -204,23 +187,6 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 			events = &filtered
 		}
 
-		// hide boot-noise Reasons by default; --verbose reveals them.
-		// Warning-type events are always shown; matches pkg/event/v0.TypeWarning.
-		// hiddenBootNoise counts how many rows were suppressed so the
-		// footer hint can offer --verbose as the escape hatch.
-		hiddenBootNoise := 0
-		if !eventsVerbose {
-			filtered := make([]v0.Event, 0, len(*events))
-			for _, e := range *events {
-				if util.DerefString(e.Type) != "Warning" && bootNoiseReasons[util.DerefString(e.Reason)] {
-					hiddenBootNoise++
-					continue
-				}
-				filtered = append(filtered, e)
-			}
-			events = &filtered
-		}
-
 		// drop events older than --since ago when the flag is set
 		if eventsSince > 0 {
 			cutoff := time.Now().Add(-eventsSince)
@@ -263,11 +229,6 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		}
 
 		if len(*events) == 0 {
-			// still surface the boot-noise escape hatch when everything
-			// was filtered away so a user who over-narrowed can back off
-			if !eventsVerbose && hiddenBootNoise > 0 {
-				fmt.Printf("%d event(s) hidden by boot-noise filter; use --verbose to include\n", hiddenBootNoise)
-			}
 			cli.Info(fmt.Sprintf(
 				"no events found that are currently managed by %s threeport control plane",
 				requestedControlPlane,
@@ -315,16 +276,10 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 			events = &truncated
 		}
 
-		// write output. For tabular the verbose hint prints BEFORE the
-		// table so the terminal read order is verbose-hint, table,
-		// truncation-hint (the last printed inside outputEventsTable
-		// after the tabwriter flush). yaml and json outputs never mix
-		// hints with the payload.
+		// dispatch on output format: tabular prints via tabwriter with an
+		// in-body truncation hint; yaml and json emit the raw payload.
 		switch eventsOutput {
 		case "tabular":
-			if !eventsVerbose && hiddenBootNoise > 0 {
-				fmt.Printf("%d event(s) hidden by boot-noise filter; use --verbose to include\n", hiddenBootNoise)
-			}
 			if err := outputEventsTable(events, eventsWide); err != nil {
 				cli.Error("failed to produce output", err)
 				os.Exit(1)
@@ -387,10 +342,6 @@ func init() {
 	GetEventsCmd.Flags().IntVar(
 		&eventsLimit,
 		"limit", 0, "Maximum number of events to display after sort. 0 means no cap.",
-	)
-	GetEventsCmd.Flags().BoolVar(
-		&eventsVerbose,
-		"verbose", false, "Show low-value boot-noise events (HostKeyCaptured, SSHReachable, ProviderResourcesProvisioning, ProviderResourcesDeprovisioning, ScriptSucceeded) that are hidden by default.",
 	)
 	GetEventsCmd.Flags().DurationVar(
 		&eventsSince,

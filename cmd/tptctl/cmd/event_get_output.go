@@ -211,6 +211,14 @@ func computeWideMessageCap(
 		// tabwriter is configured with minwidth=4, tabwidth=4, padding=4;
 		// the actual inter-column gap is padding characters wide
 		tabwriterPadding = 4
+		// TruncateString appends "..." when it truncates, so a truncated
+		// MESSAGE cell renders 3 chars wider than the cap; reserve budget
+		// for the suffix so the row still fits in termWidth.
+		truncateSuffixLen = 3
+		// reserve one column of headroom for terminals that defer-wrap on
+		// the final column (tmux over mosh); without it the trailing "..."
+		// spills onto its own line even when the arithmetic looks tight.
+		terminalSafetyMargin = 1
 	)
 
 	// piped or redirected output has no terminal width; use a fixed
@@ -231,7 +239,7 @@ func computeWideMessageCap(
 		nonMessage += countW
 	}
 	// numCols - 1 inter-column gaps between all columns including MESSAGE
-	budget := termWidth - nonMessage - tabwriterPadding*(numCols-1)
+	budget := termWidth - nonMessage - tabwriterPadding*(numCols-1) - truncateSuffixLen - terminalSafetyMargin
 	if budget < wideMinCap {
 		return wideMinCap
 	}

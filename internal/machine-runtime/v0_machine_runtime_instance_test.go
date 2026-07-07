@@ -25,13 +25,16 @@ import (
 // TestMachineRuntimeInstanceCreated_HappyPath drives a full Created
 // reconcile against the in-process SSH server. The MRI has HostKey set to
 // the server's actual key (no capture path); GetClient succeeds, Ping
-// succeeds, and a single SSHReachable event is recorded.
+// succeeds, and the reachability signal lands as a log statement (the
+// wrapper's SuccessfulCreate event still records the outcome).
 func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 0})
 	defer stop()
 
+	// pin the MRI's HostKey to the server's real key so GetClient
+	// verifies rather than captures
 	mri := machinetest.MRIFromAddr(t, 42, "mri-happy", addr, "u", "p", key)
 	mri.HostKey = util.Ptr(hostKeyBase64(signer))
 
@@ -46,16 +49,23 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
+	// drive the Created reconciler against the running SSH server
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
+
+	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
-	assert.Equal(t, []string{"SSHReachable"}, recorder.GetReasons())
+
+	// reconciler emits no Normal event on the success path; the wrapper
+	// covers the outcome and reachability is a log line
+	assert.Empty(t, recorder.GetReasons(), "reconciler emits no Normal event on the success path; the wrapper covers the outcome and reachability is a log line")
 }
 
 // TestMachineRuntimeInstanceCreated_HostKeyCaptured covers the first-connect
-// path: HostKey is nil, so GetClient captures the server's key, the
-// reconciler PATCHes the MRI to persist it, and emits HostKeyCaptured +
-// SSHReachable in order.
+// path: HostKey is nil, so GetClient captures the server's key and the
+// reconciler PATCHes the MRI to persist it with Reconciled=true. The
+// captured key and reachability signals land as log statements; the
+// reconciler no longer emits boot-noise events on the create path.
 func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)
@@ -92,11 +102,19 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
+	// drive the Created reconciler against the running SSH server
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
+
+	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
-	assert.Equal(t, []string{"HostKeyCaptured", "SSHReachable"}, recorder.GetReasons())
 
+	// reconciler no longer emits boot-noise events on the create path;
+	// the captured key persists via PATCH and both signals land as logs
+	assert.Empty(t, recorder.GetReasons(), "reconciler no longer emits boot-noise events on the create path")
+
+	// PATCH persists the captured host key with Reconciled=true so the
+	// resulting update notification does not retrigger reconciliation
 	patchesMu.Lock()
 	defer patchesMu.Unlock()
 	require.Len(t, patches, 1, "expected exactly one PATCH to persist the captured host key")

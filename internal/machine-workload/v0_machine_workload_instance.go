@@ -279,9 +279,6 @@ func runScript(
 		message = fmt.Sprintf("%s script connection error: %s", scriptName, connectionErr.Error())
 	case exitCode == 0:
 		wlStatus = status.WorkloadInstanceStatusHealthy
-		reason = "ScriptSucceeded"
-		eventType = event.TypeNormal
-		message = fmt.Sprintf("%s script completed successfully (stdout: %s)", scriptName, truncateMessage(sanitizeScriptOutput(stdout)))
 	default:
 		wlStatus = status.WorkloadInstanceStatusUnhealthy
 		reason = "ScriptFailed"
@@ -289,21 +286,16 @@ func runScript(
 		message = fmt.Sprintf("%s script failed with exit code %d (stderr: %s)", scriptName, exitCode, truncateMessage(sanitizeScriptOutput(stderr)))
 	}
 
-	// success path emits a Normal event directly; failure paths defer to the
-	// wrapper via ErrWithEvent so the specific reason replaces the generic
-	// FailedCreate / FailedUpdate / FailedDelete event
+	// success path logs completion; failure paths defer to the wrapper via
+	// ErrWithEvent so the specific reason replaces the generic FailedCreate
+	// / FailedUpdate / FailedDelete event
 	if wlStatus == status.WorkloadInstanceStatusHealthy {
-		if eventErr := r.EventsRecorder.RecordEvent(
-			&v0.Event{
-				Type:   util.Ptr(eventType),
-				Reason: util.Ptr(reason),
-				Note:   util.Ptr(truncateMessage(message)),
-			},
-			*mwi.ID,
-			mwi.GetFullyQualifiedType(),
-		); eventErr != nil {
-			log.Error(eventErr, "failed to record event")
-		}
+		log.Info(
+			"machine workload script completed successfully",
+			"machineWorkloadInstance", *mwi.ID,
+			"script", scriptName,
+			"stdout", truncateMessage(sanitizeScriptOutput(stdout)),
+		)
 		return wlStatus, nil
 	}
 	return wlStatus, &tp_errors.ErrWithEvent{

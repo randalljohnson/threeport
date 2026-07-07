@@ -55,17 +55,11 @@ func v0MachineRuntimeInstanceCreated(
 		}); err != nil {
 			return controller.RetryOnNetworkErr(err, "failed to save captured host key")
 		}
-		if eventErr := r.EventsRecorder.RecordEvent(
-			&v0.Event{
-				Type:   util.Ptr(event.TypeNormal),
-				Reason: util.Ptr("HostKeyCaptured"),
-				Note:   util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
-			},
-			*machineRuntimeInstance.ID,
-			machineRuntimeInstance.GetFullyQualifiedType(),
-		); eventErr != nil {
-			log.Error(eventErr, "failed to record event for host key capture")
-		}
+		log.Info(
+			"captured ssh host key",
+			"machineRuntimeInstance", *machineRuntimeInstance.Name,
+			"id", *machineRuntimeInstance.ID,
+		)
 	}
 
 	// verify the connection is usable
@@ -84,18 +78,12 @@ func v0MachineRuntimeInstanceCreated(
 		}
 	}
 
-	// record successful reachability event
-	if eventErr := r.EventsRecorder.RecordEvent(
-		&v0.Event{
-			Type:   util.Ptr(event.TypeNormal),
-			Reason: util.Ptr("SSHReachable"),
-			Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s is reachable via ssh", *machineRuntimeInstance.Name)),
-		},
-		*machineRuntimeInstance.ID,
-		machineRuntimeInstance.GetFullyQualifiedType(),
-	); eventErr != nil {
-		log.Error(eventErr, "failed to record event for ssh reachable")
-	}
+	// log successful reachability
+	log.Info(
+		"machine runtime instance is reachable via ssh",
+		"machineRuntimeInstance", *machineRuntimeInstance.Name,
+		"id", *machineRuntimeInstance.ID,
+	)
 
 	return 0, nil
 }

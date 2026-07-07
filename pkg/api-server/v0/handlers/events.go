@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -14,6 +17,13 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// materializedViewThresholdFloor is the minimum total-count above which
+// the event listing spins up a materialized view for cursor pagination.
+// Below the floor (or below limit*10 when the caller asks for larger
+// pages), return the whole result set in a single query and skip the
+// CREATE MATERIALIZED VIEW / DROP MATERIALIZED VIEW round trip.
+const materializedViewThresholdFloor = 5000
 
 // eventJoinAttachedObjectReferenceClause is the inner join from
 // v0_events to v0_attached_object_references on the polymorphic
@@ -156,7 +166,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 		// look up the named object across every matched fully qualified type; each
 		// fully qualified type may yield zero or more ids - name uniqueness is not
-		// enforced at the database level
+		// enforced at the database level.
 		for _, fqt := range fullyQualifiedTypes {
 			moreIds, lookupErr := GetObjectIDsByName(h.DB, fqt, targetName)
 			if lookupErr == nil {
@@ -205,41 +215,44 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// first-page request: no QueryId means the client is asking
 		// for the start of a fresh result set, not a continuation
 
-		// count total objects to decide whether pagination is needed.
-		// The JOIN matches each event row to its reference row on
-		// attached_object_type + attached_object_id. The soft-delete
-		// predicate is explicit; gorm's automatic deleted_at filter
-		// does not apply to raw .Joins() clauses.
-		var totalCount int64
-		countQuery := JoinEventsToAttachedObjectReferences(
-			h.DB.Model(&v0.Event{}),
-			fullyQualifiedEventType,
-		)
-		if result := applyObjectIdFilter(countQuery).Where(&filter).Count(&totalCount); result.Error != nil {
-			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+		// only spin up a materialized view when the result set is large
+		// enough that keyset paging over a stable snapshot is worth the
+		// CREATE MATERIALIZED VIEW cost. Under the threshold, return
+		// everything in one shot and skip the view machinery entirely.
+		// Threshold is max(limit*10, 5000): scales with client-requested
+		// limit so a caller asking for larger pages still gets multi-page
+		// behavior, and a hard floor keeps small result sets on the
+		// single-shot path even when limit is low.
+		threshold := pagination.Limit * 10
+		if threshold < materializedViewThresholdFloor {
+			threshold = materializedViewThresholdFloor
 		}
 
-		// total greater than the limit means the client will need to
-		// page through the result set; HasMore signals that
-		pagination.HasMore = totalCount > pagination.Limit
+		// probe the result set with a LIMIT threshold+1 fetch so the
+		// pagination decision is made from returned row count instead
+		// of a separate Count query duplicating the JOIN. When the row
+		// count fits under the threshold, serve the fetched records
+		// directly and skip the materialized view path.
+		findQuery := JoinEventsToAttachedObjectReferences(
+			h.DB.Order("ID asc").Limit(int(threshold)+1),
+			fullyQualifiedEventType,
+		)
+		if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
+			h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+		}
+		pagination.HasMore = int64(len(*records)) > threshold
 
 		switch pagination.HasMore {
 		case false:
-			// small result set: skip the materialized view machinery
-			// and return everything in one shot. Same JOIN shape and
-			// soft-delete predicate as the count query above.
-			findQuery := JoinEventsToAttachedObjectReferences(
-				h.DB.Order("ID asc"),
-				fullyQualifiedEventType,
-			)
-			if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
-				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-			}
+			// small result set: everything already loaded in the probe
+			// fetch above; return it in one shot
 			returnedCount = int64(len(*records))
 
 		case true:
+			// large result set: discard the probe fetch and rebuild
+			// through the materialized view path for stable pagination
+			*records = (*records)[:0]
 			// large result set: materialize the join so subsequent
 			// cursor-based page requests can scan a stable view
 			// instead of re-running the join each time
@@ -364,36 +377,54 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// returnedCount >= limit means there's likely another page; a
 		// smaller-than-limit page means we hit the tail
 		pagination.HasMore = returnedCount >= pagination.Limit
+
+		// drop the materialized view inline the moment the client walks
+		// off the end of the result set so the backing storage is freed
+		// immediately, not deferred to the TTL sweeper. Failures here are
+		// logged, not returned: the response body is already correct, and
+		// the TTL sweeper still drops the view on its next pass.
+		if !pagination.HasMore {
+			dropQuery := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", viewName)
+			if result := h.DB.Exec(dropQuery); result.Error != nil {
+				h.Logger.Error("handler error: error dropping materialized view on last page", zap.String("viewName", viewName), zap.Error(result.Error))
+			}
+		}
 	}
 
 	// enrich records with attached object reference fields and resolved
 	// object names; failures are logged so events still come back when
-	// resolution can't fully complete
-	if err := enrichEventsWithObjectInfo(h.DB, *records, h.Logger); err != nil {
+	// resolution can't fully complete.
+	if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger); err != nil {
 		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
 	}
 
-	// construct response
-	response, err := apiserver_lib.CreateResponse(
-		&apiserver_lib.Meta{
-			Pagination:  *pagination,
-			ObjectCount: returnedCount,
-		},
-		*records,
-		objectType,
-	)
-	if err != nil {
-		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-	}
-
-	return apiserver_lib.ResponseStatus200(c, *response)
+	// stream the response directly to the wire instead of round-tripping
+	// through CreateResponse. CreateResponse builds a parallel []Object
+	// slice by reflect-copying every event into an interface{}; on large
+	// pages that boxing loop plus the follow-on per-element type reflection
+	// inside encoding/json dominates the handler's tail latency.
+	// Marshalling the concrete []v0.Event lets json cache the type once and
+	// avoids the intermediate slice entirely.
+	w := c.Response()
+	w.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(struct {
+		Meta   apiserver_lib.Meta
+		Type   string
+		Data   []v0.Event
+		Status apiserver_lib.Status
+	}{
+		Meta:   apiserver_lib.Meta{Pagination: *pagination, ObjectCount: returnedCount},
+		Type:   objectType,
+		Data:   *records,
+		Status: apiserver_lib.Status{Code: http.StatusOK, Message: http.StatusText(http.StatusOK)},
+	})
 }
 
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName
 // on each event from the joined attached object reference and a per-type
 // batched name lookup.
-func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger) error {
+func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Event, log *zap.Logger) error {
 	// no events to enrich - nothing to do
 	if len(events) == 0 {
 		return nil
@@ -474,21 +505,39 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		idsByType[*e.ObjectType][*e.ObjectID] = struct{}{}
 	}
 
-	// dispatch each type to core sql or module http and collect
-	// resolved names; failures are logged so events still come back
-	// (rendered id-only) when name resolution fails for some types
+	// consult the in-process name cache first, then dispatch the
+	// remaining misses to core sql or module http; failures are logged
+	// so events still come back (rendered id-only) when name resolution
+	// fails for some types. Cache hits skip the resolver round trip
+	// entirely so a hot repeat page pays only for the AOR load above.
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
-		ids := make([]uint, 0, len(idSet))
+		resolved := make(map[uint]string, len(idSet))
+		misses := make([]uint, 0, len(idSet))
 		for id := range idSet {
-			ids = append(ids, id)
+			if cached, ok := moduleNameCache.Get(typ, id); ok {
+				resolved[id] = cached
+				continue
+			}
+			misses = append(misses, id)
 		}
-		names, err := GetObjectNames(db, typ, ids, true)
-		if err != nil {
-			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
-			continue
+		if len(misses) > 0 {
+			fetched, err := GetObjectNames(ctx, db, typ, misses, true)
+			if err != nil {
+				log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
+				// keep any cache-hit names for this type so partial
+				// resolution still degrades better than id-only
+				if len(resolved) > 0 {
+					namesByType[typ] = resolved
+				}
+				continue
+			}
+			for id, name := range fetched {
+				resolved[id] = name
+				moduleNameCache.Put(typ, id, name)
+			}
 		}
-		namesByType[typ] = names
+		namesByType[typ] = resolved
 	}
 
 	// project the resolved name onto each event row when available;

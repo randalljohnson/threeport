@@ -38,7 +38,6 @@ const (
 	eventShortAlias = "ev"
 )
 
-
 // topLevelObjectKinds lists the core API type names considered
 // top-level for the --top-level filter. Sub-object types
 // (GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance,
@@ -148,6 +147,7 @@ Use --type Normal|Warning to filter events by type. Empty disables the filter.
 Use --wide to widen the MESSAGE column to the terminal width so long notes render inline.
 
 AGE column: a single value is the event's age; a "first..last" span (e.g. 1h5m..1h4m) means the event was first observed at "first" ago and last observed at "last" ago.
+
 
 Full event notes (including captured script stdout/stderr) can be viewed with -o yaml.`,
 	PreRun: CommandPreRunFunc,

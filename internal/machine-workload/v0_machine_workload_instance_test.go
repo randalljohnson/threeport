@@ -363,16 +363,27 @@ func (f *fixture) patchedStatuses() []string {
 
 // TestMachineWorkloadInstanceCreated_HappyPath confirms the Created
 // reconciler runs the create script, persists Reconciled=true with a
-// Healthy status, and records a ScriptSucceeded event.
+// Healthy status, and logs the successful completion. The wrapper's
+// SuccessfulCreate event carries the outcome, so the reconciler emits
+// no Normal event of its own.
 func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	log := logr.Discard()
 
+	// drive the Created reconciler with a script that exits zero
 	delay, err := v0MachineWorkloadInstanceCreated(f.r, f.mwi, &log)
+
+	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
+
+	// status persists as Healthy so consumers see the current state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
-	assert.Equal(t, []string{"ScriptSucceeded"}, f.recorder.GetReasons())
+
+	// successful script emits no event; the wrapper's SuccessfulCreate
+	// event carries the outcome and the log line covers the diagnostic
+	// detail
+	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulCreate event carries the outcome and the log line covers the diagnostic detail")
 }
 
 // TestMachineWorkloadInstanceCreated_RuntimeNotReconciled covers the early
@@ -445,16 +456,28 @@ func TestMachineWorkloadInstanceCreated_GetDefinitionFails(t *testing.T) {
 }
 
 // TestMachineWorkloadInstanceUpdated_HappyPath confirms Updated runs the
-// update script with healthy result, mirroring Created.
+// update script with healthy result, persists Reconciled=true with a
+// Healthy status, and logs the successful completion. The wrapper's
+// SuccessfulUpdate event carries the outcome, so the reconciler emits
+// no Normal event of its own.
 func TestMachineWorkloadInstanceUpdated_HappyPath(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	log := logr.Discard()
 
+	// drive the Updated reconciler with a script that exits zero
 	delay, err := v0MachineWorkloadInstanceUpdated(f.r, f.mwi, &log)
+
+	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
+
+	// status persists as Healthy so consumers see the current state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
-	assert.Equal(t, []string{"ScriptSucceeded"}, f.recorder.GetReasons())
+
+	// successful script emits no event; the wrapper's SuccessfulUpdate
+	// event carries the outcome and the log line covers the diagnostic
+	// detail
+	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulUpdate event carries the outcome and the log line covers the diagnostic detail")
 }
 
 // TestMachineWorkloadInstanceUpdated_NoUpdateScript covers the early-return
@@ -473,17 +496,29 @@ func TestMachineWorkloadInstanceUpdated_NoUpdateScript(t *testing.T) {
 }
 
 // TestMachineWorkloadInstanceDeleted_HappyPath confirms Deleted runs the
-// delete script and returns (0, nil). Deleted does not PATCH the MWI - the
-// generated reconciler removes the row.
+// delete script and returns (0, nil), logging the successful completion.
+// Deleted does not PATCH the MWI (the generated reconciler removes the
+// row); the wrapper's SuccessfulDelete event carries the outcome, so the
+// reconciler emits no Normal event of its own.
 func TestMachineWorkloadInstanceDeleted_HappyPath(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	log := logr.Discard()
 
+	// drive the Deleted reconciler with a script that exits zero
 	delay, err := v0MachineWorkloadInstanceDeleted(f.r, f.mwi, &log)
+
+	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
+
+	// Deleted does not PATCH the MWI; the generated reconciler removes
+	// the row
 	assert.Empty(t, f.patchedStatuses(), "Deleted should not PATCH the MWI; the generated reconciler handles removal")
-	assert.Equal(t, []string{"ScriptSucceeded"}, f.recorder.GetReasons())
+
+	// successful script emits no event; the wrapper's SuccessfulDelete
+	// event carries the outcome and the log line covers the diagnostic
+	// detail
+	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulDelete event carries the outcome and the log line covers the diagnostic detail")
 }
 
 // TestMachineWorkloadInstanceDeleted_ScriptFails covers the non-zero exit

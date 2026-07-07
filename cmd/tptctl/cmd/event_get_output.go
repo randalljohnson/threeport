@@ -17,10 +17,7 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-const (
-	eventMessageTableMax = 80
-	eventNameTableMax    = 40
-)
+const eventMessageTableMax = 200
 
 // outputEventsTable produces the tabular output for the events list. Each
 // element of events is a server-side aggregated bucket: Count reflects
@@ -54,6 +51,7 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 		apiGroup  string
 		kind      string
 		name      string
+		object    string
 		reason    string
 		age       string
 		count     string
@@ -78,6 +76,7 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 			name:      formatEventObjectName(&e),
 			reason:    util.DerefString(e.Reason),
 		}
+		r.object = formatEventObject(group, kind, r.name)
 
 		// COUNT cell stays populated only when the column is shown
 		if showCount && e.Count != nil {
@@ -166,7 +165,13 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 
 	// build the header from the same conditional as the row cells so
 	// the header and rows stay in sync
-	header := []string{"TYPE", "API GROUP", "KIND", "NAME", "REASON"}
+	header := []string{"TYPE"}
+	if wide {
+		header = append(header, "API GROUP", "KIND", "NAME")
+	} else {
+		header = append(header, "OBJECT")
+	}
+	header = append(header, "REASON")
 	header = append(header, fmt.Sprintf("%*s", maxAgeWidth, "AGE"))
 	if showCount {
 		header = append(header, fmt.Sprintf("%*s", maxCountWidth, "COUNT"))
@@ -177,7 +182,13 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 	// emit one tab-separated row through the writer; numeric cells carry
 	// leading spaces so they read right-aligned against the header
 	for _, r := range rows {
-		row := []string{r.eventType, r.apiGroup, r.kind, r.name, r.reason}
+		row := []string{r.eventType}
+		if wide {
+			row = append(row, r.apiGroup, r.kind, r.name)
+		} else {
+			row = append(row, r.object)
+		}
+		row = append(row, r.reason)
 		row = append(row, fmt.Sprintf("%*s", maxAgeWidth, r.age))
 		if showCount {
 			row = append(row, fmt.Sprintf("%*s", maxCountWidth, r.count))
@@ -188,9 +199,9 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 	writer.Flush()
 
 	// nudge the reader toward -o yaml when at least one note was
-	// shortened so they can see the full content
+	// shortened; write to stderr so pipes and pagers only see the table
 	if anyTruncated {
-		fmt.Println("MESSAGE truncated; use 'tptctl get events -o yaml' for full text")
+		fmt.Fprintln(os.Stderr, "MESSAGE truncated; use 'tptctl get events -o yaml' for full text")
 	}
 	return nil
 }
@@ -307,24 +318,48 @@ func formatEventObjectKind(e *v0.Event) string {
 	return strcase.ToKebab(typeName)
 }
 
+// formatEventObject renders the compact OBJECT cell used when --wide is
+// off. Threeport-owned subjects render bare as "kind/name"; subjects owned
+// by another api group prefix the group as "group:kind/name" so a mixed
+// event stream still reads unambiguously. Empty parts are elided so a
+// subject with no resolved kind or name still yields a usable string.
+func formatEventObject(group, kind, name string) string {
+	// build the "kind/name" core, tolerating an empty kind or name so a
+	// row with only one of the two still renders something greppable
+	var target string
+	switch {
+	case kind != "" && name != "":
+		target = kind + "/" + name
+	case kind != "":
+		target = kind
+	default:
+		target = name
+	}
+
+	// bare threeport subjects skip the group prefix; anything else keeps
+	// the group so the reader can tell modules apart at a glance
+	if group == "" || group == "threeport.io" {
+		return target
+	}
+	return group + ":" + target
+}
+
 // formatEventObjectName renders the NAME cell for an event. Prefers
 // ObjectName when resolved (the common case after the events-join handler
 // enriches the row); falls back to the numeric ObjectID so the user still
-// has something to grep. Truncates the result to eventNameTableMax with an
-// ellipsis so a long name doesn't wreck the table layout.
+// has something to grep. The full name is returned so operators can
+// copy-paste it into follow-up commands.
 func formatEventObjectName(e *v0.Event) string {
 	// prefer name when resolved
 	if name := util.DerefString(e.ObjectName); name != "" {
-		if len(name) > eventNameTableMax {
-			return util.TruncateString(name, eventNameTableMax)
-		}
 		return name
 	}
 
 	// name wasn't resolved (lookup failed, deleted subject); fall back to
-	// id so the user still has something to grep
+	// the id with an "id:" prefix so the reader can tell this is a raw
+	// identifier and not a real object name
 	if e.ObjectID != nil {
-		return fmt.Sprintf("%d", *e.ObjectID)
+		return fmt.Sprintf("id:%d", *e.ObjectID)
 	}
 
 	// neither name nor id present

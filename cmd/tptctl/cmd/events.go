@@ -77,11 +77,11 @@ var GetEventsCmd = &cobra.Command{
   # filter to a specific object (broad: any namespace/version)
   tptctl get events --for helm-workload-instance/my-app
 
-  # narrow to one version
-  tptctl get events --for v0.helm-workload-instance/my-app
-
   # narrow to one api namespace + version
   tptctl get events --for threeport.io/v0.helm-workload-instance/my-app
+
+  # narrow to one version
+  tptctl get events --for v0.helm-workload-instance/my-app
 
   # filter by kind alone across every object of that kind
   tptctl get events --object-kind helm-workload-instance
@@ -138,6 +138,8 @@ Use --since=<duration> to filter events by recency (e.g. --since=10m). Zero disa
 Use --type Normal|Warning to filter events by type. Empty disables the filter.
 
 Use --wide to widen the MESSAGE column to the terminal width so long notes render inline.
+
+AGE column: a single value is the event's age; a "first..last" span (e.g. 1h5m..1h4m) means the event was first observed at "first" ago and last observed at "last" ago.
 
 Full event notes (including captured script stdout/stderr) can be viewed with -o yaml.`,
 	PreRun: CommandPreRunFunc,
@@ -316,6 +318,10 @@ func init() {
 		"object-kind", "", "Filter events by object kind alone (kebab-case form of the API type name, e.g. helm-workload-instance). Mutually exclusive with --for; combinable with --api-group and --name.",
 	)
 	GetEventsCmd.Flags().StringVar(
+		&eventsObjectKind,
+		"kind", "", "Alias for --object-kind.",
+	)
+	GetEventsCmd.Flags().StringVar(
 		&eventsApiGroup,
 		"api-group", "", "Filter events by API group / namespace (e.g. threeport.io). Mutually exclusive with --for; combinable with --object-kind and --name.",
 	)
@@ -329,7 +335,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().BoolVar(
 		&eventsTopLevel,
-		"top-level", false, "Only show events on top-level object kinds (drops sub-object kinds like GcpGceMachineRuntimeInstance and KubernetesWorkloadResourceInstance).",
+		"top-level", false, "Show only events for top-level objects. Drops events for owned children (RouterMachineInstance under a Set, MachineRuntimeInstance under a RouterMachine, etc).",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&eventsOutput,

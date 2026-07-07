@@ -113,7 +113,7 @@ var GetEventsCmd = &cobra.Command{
   # widen the MESSAGE column to the terminal width
   tptctl get events --wide
 
-  # newest events first (equivalent to --sort=newest)
+  # oldest events first, top-down causal read (equivalent to --sort=oldest)
   tptctl get events -r`,
 	Long: `Get events from the system.
 
@@ -129,7 +129,7 @@ Use --reason <reason> to filter events by Reason (case-sensitive CamelCase, e.g.
 
 Use --top-level to drop events on sub-object kinds (e.g. GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance) and keep only events on top-level user-facing kinds.
 
-Use --sort to control row order: oldest (default) puts the oldest activity at the top so the causal sequence reads down; newest is reverse. -r / --reverse is equivalent to --sort=newest.
+Use --sort to control row order: newest (default) puts the most recent activity at the top matching kubectl's convention; oldest is reverse and lets a causal sequence read down. -r / --reverse is equivalent to --sort=oldest.
 
 Use --limit N to cap the number of rows shown (after sort). The default of 0 means no cap.
 
@@ -239,13 +239,13 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		// -r / --reverse folds into --sort=newest. When both are set
 		// explicitly and they conflict, reject rather than silently pick
 		// one. Combining --reverse with the default sort just flips to
-		// newest without complaint.
+		// oldest without complaint.
 		if eventsReverse {
-			if cmd.Flags().Changed("sort") && eventsSort == "oldest" {
-				cli.Error("", fmt.Errorf("--reverse and --sort=oldest are mutually exclusive"))
+			if cmd.Flags().Changed("sort") && eventsSort == "newest" {
+				cli.Error("", fmt.Errorf("--reverse and --sort=newest are mutually exclusive"))
 				os.Exit(1)
 			}
-			eventsSort = "newest"
+			eventsSort = "oldest"
 		}
 
 		// sort by event time per --sort
@@ -337,7 +337,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsSort,
-		"sort", "oldest", "Sort order. One of: [oldest, newest]. Default oldest places the earliest event at the top so the causal sequence reads down.",
+		"sort", "newest", "Sort order. One of: [oldest, newest]. Default newest places the most recent event at the top, matching kubectl's convention.",
 	)
 	GetEventsCmd.Flags().IntVar(
 		&eventsLimit,
@@ -357,7 +357,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().BoolVarP(
 		&eventsReverse,
-		"reverse", "r", false, "Reverse sort order. Equivalent to --sort=newest.",
+		"reverse", "r", false, "Reverse sort order. Equivalent to --sort=oldest.",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,

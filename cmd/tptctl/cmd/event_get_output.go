@@ -14,7 +14,6 @@ import (
 
 	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
-	event "github.com/threeport/threeport/pkg/event/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -176,16 +175,9 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 	fmt.Fprintln(writer, strings.Join(header, "\t"))
 
 	// emit one tab-separated row through the writer; numeric cells carry
-	// leading spaces so they read right-aligned against the header, and
-	// Warning-type rows get an inline yellow tint on TTY output. The
-	// colorization is applied AFTER the width tracking above so the
-	// escape bytes never inflate maxTypeWidth.
+	// leading spaces so they read right-aligned against the header
 	for _, r := range rows {
-		eventTypeCell := r.eventType
-		if eventTypeCell == event.TypeWarning {
-			eventTypeCell = util.CliColorizeWarningInline(eventTypeCell)
-		}
-		row := []string{eventTypeCell, r.apiGroup, r.kind, r.name, r.reason}
+		row := []string{r.eventType, r.apiGroup, r.kind, r.name, r.reason}
 		row = append(row, fmt.Sprintf("%*s", maxAgeWidth, r.age))
 		if showCount {
 			row = append(row, fmt.Sprintf("%*s", maxCountWidth, r.count))

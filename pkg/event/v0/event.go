@@ -74,27 +74,6 @@ func (r *EventRecorder) RecordEvent(
 	if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
 		return fmt.Errorf("failed to create event: %w", err)
 	}
-	// stamp timestamps and count=1 unconditionally; the server-side
-	// events endpoint aggregates repeat rows on read via a rolling
-	// window, so the client posts every occurrence as a raw row and
-	// avoids the client-side list-then-branch race between concurrent
-	// recorders.
-	event.ReportingController = &r.ReportingController
-	event.EventTime = util.Ptr(time.Now())
-	event.LastObservedTime = util.Ptr(time.Now())
-	event.Count = util.Ptr(uint(1))
-
-	// carry the subject info on the in-memory Event so the API
-	// server's BeforeCreate validates and AfterCreate writes the
-	// matching AttachedObjectReference in the same transaction.
-	// gorm:"-" keeps these fields off the row; the AOR is the on-disk
-	// source of truth for the subject linkage.
-	event.ObjectType = util.Ptr(fullyQualifiedObjectType)
-	event.ObjectID = util.Ptr(objectId)
-
-	if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
-		return fmt.Errorf("failed to create event: %w", err)
-	}
 	return nil
 }
 

@@ -140,9 +140,9 @@ func TestEventsJoin_CrossTypeFilterSurfacesAllMatches(t *testing.T) {
 }
 
 // rawRow builds an event carrying the aggregation-relevant fields
-// keyed off a base instant. Reason, ObjectType, ObjectID, Note form
-// the bucket key; EventTime and LastObservedTime drive the window
-// walk. Callers pass the raw row's ID so IDs the bucket inherits are
+// keyed off a base instant. Reason, ObjectType, ObjectID form the
+// bucket key; EventTime and LastObservedTime drive the window walk.
+// Callers pass the raw row's ID so IDs the bucket inherits are
 // deterministic in the assertions.
 func rawRow(id uint, reason, objectType string, objectID uint, note string, base time.Time, eventTimeOffset, lastObservedOffset time.Duration) api.Event {
 	eventTime := base.Add(eventTimeOffset)
@@ -166,8 +166,8 @@ func rawRow(id uint, reason, objectType string, objectID uint, note string, base
 // into one bucket, Count reflects the raw-row total, EventTime is the
 // earliest row's time, LastObservedTime is the latest row's time.
 func TestAggregateEvents_CoversDedupKeyCollapseWithinWindow(t *testing.T) {
-	// three raw rows sharing (Reason, ObjectType, ObjectID, Note),
-	// spaced under the window so the walk keeps extending one bucket.
+	// three raw rows sharing (Reason, ObjectType, ObjectID), spaced
+	// under the window so the walk keeps extending one bucket.
 	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	rows := []api.Event{
 		rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 0),
@@ -187,6 +187,47 @@ func TestAggregateEvents_CoversDedupKeyCollapseWithinWindow(t *testing.T) {
 	assert.True(t, got.LastObservedTime.Equal(base.Add(5*time.Minute)), "LastObservedTime slides to the last raw row's timestamp")
 	require.NotNil(t, got.ID)
 	assert.Equal(t, uint(1), *got.ID, "bucket ID copies the first raw row so the pagination cursor stays stable")
+}
+
+// TestAggregateEvents_PreservesStoredCountOnSeed covers the seed path:
+// a lone raw row whose stored Count is already greater than 1 keeps
+// its Count and its wide EventTime -> LastObservedTime span through
+// the bucket rather than being reset to 1.
+func TestAggregateEvents_PreservesStoredCountOnSeed(t *testing.T) {
+	// seed one legacy-shaped row: Count=5 with a 3-hour observation span.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	row := rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 3*time.Hour)
+	row.Count = util.Ptr(uint(5))
+
+	// aggregate; one bucket that carries the stored Count and span.
+	out := aggregateEvents([]api.Event{row})
+	require.Len(t, out, 1, "single seed row produces a single bucket")
+	got := out[0]
+	require.NotNil(t, got.Count)
+	assert.Equal(t, uint(5), *got.Count, "seedBucket preserves the raw row's stored Count")
+	require.NotNil(t, got.EventTime)
+	assert.True(t, got.EventTime.Equal(base), "EventTime carries the raw row's timestamp")
+	require.NotNil(t, got.LastObservedTime)
+	assert.True(t, got.LastObservedTime.Equal(base.Add(3*time.Hour)), "LastObservedTime carries the raw row's span")
+}
+
+// TestAggregateEvents_AddsIncomingCountOnExtend covers the extend path:
+// a second row's stored Count is added to the bucket total rather than
+// contributing a hard-coded 1.
+func TestAggregateEvents_AddsIncomingCountOnExtend(t *testing.T) {
+	// two rows sharing the key inside the window; first Count=4, second Count=2.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	row1 := rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 0)
+	row1.Count = util.Ptr(uint(4))
+	row2 := rawRow(2, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 2*time.Minute, 2*time.Minute)
+	row2.Count = util.Ptr(uint(2))
+
+	// aggregate; one bucket whose Count is the sum of the two stored Counts.
+	out := aggregateEvents([]api.Event{row1, row2})
+	require.Len(t, out, 1, "same-key rows in the window collapse into one bucket")
+	got := out[0]
+	require.NotNil(t, got.Count)
+	assert.Equal(t, uint(6), *got.Count, "extend adds the incoming row's stored Count")
 }
 
 // TestAggregateEvents_CoversDedupKeySplitAcrossWindow places three
@@ -274,21 +315,23 @@ func TestAggregateEvents_CoversCausalSortOldestFirst(t *testing.T) {
 	assert.Equal(t, uint(1), *out[0].ID, "oldest raw row's ID heads the response")
 }
 
-// TestAggregateEvents_CollapsesNilAndEmptyNoteTogether covers the
-// nil-safe key rule: a nil Note and an empty-string Note produce the
-// same bucket key so churn between the two representations does not
-// spuriously split buckets.
-func TestAggregateEvents_CollapsesNilAndEmptyNoteTogether(t *testing.T) {
-	// two rows same key with one nil-Note row and one empty-Note row;
-	// key derivation should collapse them.
+// TestAggregateEvents_CollapsesDriftingNotes covers the key rule that
+// Note is not part of the bucket key: two rows sharing (Reason,
+// ObjectType, ObjectID) but carrying different non-empty Note strings
+// collapse into one bucket, and the bucket's Note is the seed row's
+// (earliest EventTime, lowest ID for tiebreak).
+func TestAggregateEvents_CollapsesDriftingNotes(t *testing.T) {
+	// two rows sharing the key with distinct non-empty Note strings;
+	// the second row falls within the aggregation window of the first.
 	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	row1 := rawRow(1, "R", "threeport.io/v0.MachineWorkloadInstance", 42, "", base, 0, 0)
-	row1.Note = nil
-	row2 := rawRow(2, "R", "threeport.io/v0.MachineWorkloadInstance", 42, "", base, 1*time.Minute, 1*time.Minute)
+	row1 := rawRow(1, "R", "threeport.io/v0.MachineWorkloadInstance", 42, "note-a", base, 0, 0)
+	row2 := rawRow(2, "R", "threeport.io/v0.MachineWorkloadInstance", 42, "note-b", base, 1*time.Minute, 1*time.Minute)
 
-	// aggregate; one bucket, count 2.
+	// aggregate; one bucket, count 2, Note carries the seed row's value.
 	out := aggregateEvents([]api.Event{row1, row2})
-	require.Len(t, out, 1, "nil Note and empty Note share the same bucket key")
+	require.Len(t, out, 1, "distinct Note strings share the same bucket key")
 	require.NotNil(t, out[0].Count)
-	assert.Equal(t, uint(2), *out[0].Count)
+	assert.Equal(t, uint(2), *out[0].Count, "extend adds the second row's count to the bucket total")
+	require.NotNil(t, out[0].Note)
+	assert.Equal(t, "note-a", *out[0].Note, "bucket Note is the seed row's Note")
 }

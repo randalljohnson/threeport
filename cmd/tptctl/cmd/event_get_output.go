@@ -163,14 +163,10 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 	// width of any individual cell's content
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 
-	// build the header from the same conditional as the row cells so
-	// the header and rows stay in sync
-	header := []string{"TYPE"}
-	if wide {
-		header = append(header, "API GROUP", "KIND", "NAME")
-	} else {
-		header = append(header, "OBJECT")
-	}
+	// header keeps API GROUP, KIND, and NAME as separate columns so
+	// each cell is copy-pasteable on its own and consistent with the
+	// established output shape
+	header := []string{"TYPE", "API GROUP", "KIND", "NAME"}
 	header = append(header, "REASON")
 	header = append(header, fmt.Sprintf("%*s", maxAgeWidth, "AGE"))
 	if showCount {
@@ -182,12 +178,7 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 	// emit one tab-separated row through the writer; numeric cells carry
 	// leading spaces so they read right-aligned against the header
 	for _, r := range rows {
-		row := []string{r.eventType}
-		if wide {
-			row = append(row, r.apiGroup, r.kind, r.name)
-		} else {
-			row = append(row, r.object)
-		}
+		row := []string{r.eventType, r.apiGroup, r.kind, r.name}
 		row = append(row, r.reason)
 		row = append(row, fmt.Sprintf("%*s", maxAgeWidth, r.age))
 		if showCount {

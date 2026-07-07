@@ -7,11 +7,14 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	strcase "github.com/iancoleman/strcase"
+	term "golang.org/x/term"
 
 	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -24,60 +27,260 @@ const (
 // element of events is a server-side aggregated bucket: Count reflects
 // the number of raw rows collapsed into the bucket, EventTime is the
 // oldest observation, and LastObservedTime is the newest.
-func outputEventsTable(events *[]v0.Event) error {
+//
+// Runs two passes over the slice: the first pass decides which optional
+// columns appear (COUNT drops when every row's count is 1; each row's
+// AGE renders as a single instant or a span depending on that row's own
+// times), pre-formats every cell, and tracks the widest numeric-cell
+// string so the second pass can right-pad COUNT and AGE for right-aligned
+// display. Left-align stays the tabwriter default for text columns.
+// When wide is set the MESSAGE cap grows to fit the terminal width so
+// long notes render inline; otherwise the fixed eventMessageTableMax cap
+// applies.
+func outputEventsTable(events *[]v0.Event, wide bool) error {
+	// decide whether COUNT belongs on the output; any Count>1 in the set
+	// turns the column on
+	showCount := false
+	for _, e := range *events {
+		if e.Count != nil && *e.Count > 1 {
+			showCount = true
+			break
+		}
+	}
+
+	// pre-format every cell in the first pass so we can measure the widest
+	// numeric cell before emitting
+	type rowCells struct {
+		eventType string
+		apiGroup  string
+		kind      string
+		name      string
+		reason    string
+		age       string
+		count     string
+		message   string
+	}
+	rows := make([]rowCells, 0, len(*events))
+	anyTruncated := false
+	maxAgeWidth := len("AGE")
+	maxCountWidth := len("COUNT")
+	maxTypeWidth := len("TYPE")
+	maxApiGroupWidth := len("API GROUP")
+	maxKindWidth := len("KIND")
+	maxNameWidth := len("NAME")
+	maxReasonWidth := len("REASON")
+
+	for _, e := range *events {
+		group, kind := formatEventApiGroupAndKind(&e)
+		r := rowCells{
+			eventType: util.DerefString(e.Type),
+			apiGroup:  group,
+			kind:      kind,
+			name:      formatEventObjectName(&e),
+			reason:    util.DerefString(e.Reason),
+		}
+
+		// COUNT cell stays populated only when the column is shown
+		if showCount && e.Count != nil {
+			r.count = fmt.Sprintf("%d", *e.Count)
+		}
+
+		// AGE cell renders as a single instant when this row's first and
+		// last observation match, or as a span "<age_of_first>..<age_of_last>"
+		// when they differ (oldest observation on the left, most recent on
+		// the right)
+		if !eventTimesEqual(e.EventTime, e.LastObservedTime) {
+			r.age = fmt.Sprintf(
+				"%s..%s",
+				util.GetAgeFormattedPrecise(e.EventTime),
+				util.GetAgeFormattedPrecise(e.LastObservedTime),
+			)
+		} else {
+			r.age = util.GetAgeFormattedPrecise(e.EventTime)
+		}
+
+		// collapse whitespace runs in the note so multi-line script
+		// output renders on one row; the raw form is stashed on r.message
+		// and truncation happens after the width budget is known
+		rawNote := util.DerefString(e.Note)
+		r.message = strings.Join(strings.Fields(rawNote), " ")
+
+		// track the widest cell so the second pass can right-align numerics
+		// and, when --wide is set, budget the MESSAGE column against the
+		// terminal width
+		if len(r.count) > maxCountWidth {
+			maxCountWidth = len(r.count)
+		}
+		if len(r.age) > maxAgeWidth {
+			maxAgeWidth = len(r.age)
+		}
+		if len(r.eventType) > maxTypeWidth {
+			maxTypeWidth = len(r.eventType)
+		}
+		if len(r.apiGroup) > maxApiGroupWidth {
+			maxApiGroupWidth = len(r.apiGroup)
+		}
+		if len(r.kind) > maxKindWidth {
+			maxKindWidth = len(r.kind)
+		}
+		if len(r.name) > maxNameWidth {
+			maxNameWidth = len(r.name)
+		}
+		if len(r.reason) > maxReasonWidth {
+			maxReasonWidth = len(r.reason)
+		}
+
+		rows = append(rows, r)
+	}
+
+	// decide the MESSAGE cap: fixed eventMessageTableMax without --wide,
+	// otherwise the terminal width minus every other column's budget
+	// (falling back to a generous 200 when stdout is not a TTY so a
+	// redirected --wide run still emits readable output)
+	messageCap := eventMessageTableMax
+	if wide {
+		messageCap = computeWideMessageCap(
+			maxTypeWidth,
+			maxApiGroupWidth,
+			maxKindWidth,
+			maxNameWidth,
+			maxReasonWidth,
+			maxAgeWidth,
+			maxCountWidth,
+			showCount,
+		)
+	}
+
+	// truncate MESSAGE cells against the chosen cap; anyTruncated fires
+	// when at least one row overflows so the footer hint can nudge the
+	// user toward -o yaml
+	for i := range rows {
+		if len(rows[i].message) > messageCap {
+			rows[i].message = util.TruncateString(rows[i].message, messageCap)
+			anyTruncated = true
+		}
+	}
+
 	// configure a tabwriter so the columns align regardless of the
 	// width of any individual cell's content
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "OBJECT KIND\t NAME\t REASON\t COUNT\t FIRST SEEN\t LAST SEEN\t MESSAGE")
 
-	// track whether any note got truncated so we can hint about -o yaml
-	// at the bottom of the output
-	anyTruncated := false
-	for _, e := range *events {
-		// derive the human-readable cell values per event
-		objectKind := formatEventObjectKind(&e)
-		objectName := formatEventObjectName(&e)
-		reason := util.DerefString(e.Reason)
-		count := ""
-		if e.Count != nil {
-			count = fmt.Sprintf("%d", *e.Count)
+	// build the header from the same conditional as the row cells so
+	// the header and rows stay in sync
+	header := []string{"TYPE", "API GROUP", "KIND", "NAME", "REASON"}
+	header = append(header, fmt.Sprintf("%*s", maxAgeWidth, "AGE"))
+	if showCount {
+		header = append(header, fmt.Sprintf("%*s", maxCountWidth, "COUNT"))
+	}
+	header = append(header, "MESSAGE")
+	fmt.Fprintln(writer, strings.Join(header, "\t"))
+
+	// emit one tab-separated row through the writer; numeric cells carry
+	// leading spaces so they read right-aligned against the header, and
+	// Warning-type rows get an inline yellow tint on TTY output. The
+	// colorization is applied AFTER the width tracking above so the
+	// escape bytes never inflate maxTypeWidth.
+	for _, r := range rows {
+		eventTypeCell := r.eventType
+		if eventTypeCell == event.TypeWarning {
+			eventTypeCell = util.CliColorizeWarningInline(eventTypeCell)
 		}
-		firstSeen := util.GetAgeFormatted(e.EventTime)
-		lastSeen := util.GetAgeFormatted(e.LastObservedTime)
-
-		// collapse whitespace runs in the note so multi-line script
-		// output renders on one row
-		rawNote := util.DerefString(e.Note)
-		message := strings.Join(strings.Fields(rawNote), " ")
-
-		// truncate over-long notes so a single noisy event doesn't
-		// wreck the table layout
-		if len(message) > eventMessageTableMax {
-			message = util.TruncateString(message, eventMessageTableMax)
-			anyTruncated = true
+		row := []string{eventTypeCell, r.apiGroup, r.kind, r.name, r.reason}
+		row = append(row, fmt.Sprintf("%*s", maxAgeWidth, r.age))
+		if showCount {
+			row = append(row, fmt.Sprintf("%*s", maxCountWidth, r.count))
 		}
-
-		// emit one tab-separated row through the writer; column
-		// alignment is finalized at Flush() below
-		fmt.Fprintln(
-			writer,
-			objectKind, "\t",
-			objectName, "\t",
-			reason, "\t",
-			count, "\t",
-			firstSeen, "\t",
-			lastSeen, "\t",
-			message,
-		)
+		row = append(row, r.message)
+		fmt.Fprintln(writer, strings.Join(row, "\t"))
 	}
 	writer.Flush()
 
 	// nudge the reader toward -o yaml when at least one note was
 	// shortened so they can see the full content
 	if anyTruncated {
-		fmt.Println("(use -o yaml to see full note)")
+		fmt.Println("MESSAGE truncated; use 'tptctl get events -o yaml' for full text")
 	}
 	return nil
+}
+
+// computeWideMessageCap returns the MESSAGE column budget for --wide
+// output. On a TTY it subtracts every other column's measured width and
+// the tabwriter padding from the terminal width, floored at 40 so a
+// narrow terminal still gets a usable cap. Off a TTY (piped or redirected
+// stdout) it falls back to 200 so `tptctl get events --wide > out.txt`
+// remains readable.
+func computeWideMessageCap(
+	typeW, apiGroupW, kindW, nameW, reasonW, ageW, countW int,
+	showCount bool,
+) int {
+	const (
+		wideFallback = 200
+		wideMinCap   = 40
+		// tabwriter is configured with minwidth=4, tabwidth=4, padding=4;
+		// the actual inter-column gap is padding characters wide
+		tabwriterPadding = 4
+	)
+
+	// piped or redirected output has no terminal width; use a fixed
+	// fallback that still fits typical script output
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return wideFallback
+	}
+	termWidth, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return wideFallback
+	}
+
+	// sum the non-MESSAGE column widths and their padding gaps
+	numCols := 7
+	nonMessage := typeW + apiGroupW + kindW + nameW + reasonW + ageW
+	if showCount {
+		numCols = 8
+		nonMessage += countW
+	}
+	// numCols - 1 inter-column gaps between all columns including MESSAGE
+	budget := termWidth - nonMessage - tabwriterPadding*(numCols-1)
+	if budget < wideMinCap {
+		return wideMinCap
+	}
+	return budget
+}
+
+// eventTimesEqual reports whether two timestamps refer to the same
+// observation for column-collapse purposes. Two nil pointers are equal;
+// two set pointers are equal when their times match to the second so
+// nanosecond drift from write-side rounding does not force the FIRST and
+// LAST seen columns apart.
+func eventTimesEqual(a, b *time.Time) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Round(time.Second).Equal(b.Round(time.Second))
+}
+
+// formatEventApiGroupAndKind splits the event's ObjectType into the
+// API GROUP and KIND cells. Parses via apilib.ParseQualifiedType so the
+// namespace becomes the group and the CamelCase type name becomes the
+// kebab-case kind. Falls back to ("", rawType) on parse failure so
+// malformed values are still greppable, and to ("", "") when ObjectType
+// is nil.
+func formatEventApiGroupAndKind(e *v0.Event) (group, kind string) {
+	// kind half reuses the standalone helper so future kind-formatting
+	// changes only need to land in one place
+	kind = formatEventObjectKind(e)
+
+	rawType := util.DerefString(e.ObjectType)
+	if rawType == "" {
+		return "", kind
+	}
+	namespace, _, _, ok := apilib.ParseQualifiedType(rawType)
+	if !ok {
+		return "", kind
+	}
+	return namespace, kind
 }
 
 // formatEventObjectKind renders the OBJECT KIND cell as the kebab-case form

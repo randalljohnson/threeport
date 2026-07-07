@@ -30,6 +30,19 @@ func v0KubernetesWorkloadInstanceCreated(
 	k8sWorkloadInstance *v0.KubernetesWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// record the start of the reconciliation before the fan-out so the
+	// causal boundary is visible in events even if a downstream call fails
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr("ReconciliationStarted"),
+			Note:   util.Ptr(fmt.Sprintf("starting reconciliation of kubernetes workload instance %s", *k8sWorkloadInstance.Name)),
+		},
+		*k8sWorkloadInstance.ID,
+		k8sWorkloadInstance.GetFullyQualifiedType(),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for reconciliation start")
+	}
 
 	// ensure kubernetes workload definition is reconciled before working on an instance
 	// for it
@@ -254,6 +267,20 @@ func v0KubernetesWorkloadInstanceUpdated(
 	k8sWorkloadInstance *v0.KubernetesWorkloadInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// record the start of the reconciliation before the fan-out so the
+	// causal boundary is visible in events even if a downstream call fails
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr("ReconciliationStarted"),
+			Note:   util.Ptr(fmt.Sprintf("starting reconciliation of kubernetes workload instance %s", *k8sWorkloadInstance.Name)),
+		},
+		*k8sWorkloadInstance.ID,
+		k8sWorkloadInstance.GetFullyQualifiedType(),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for reconciliation start")
+	}
+
 	// get kubernetes runtime instance info
 	kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
 		r.APIClient,
@@ -405,6 +432,20 @@ func v0KubernetesWorkloadInstanceDeleted(
 	// more
 	if k8sWorkloadInstance.DeletionConfirmed != nil {
 		return 0, nil
+	}
+
+	// record the start of the deletion after the idempotency guards so
+	// requeues on already-scheduled deletes do not spam the event log
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr("ReconciliationStarted"),
+			Note:   util.Ptr(fmt.Sprintf("starting deletion of kubernetes workload instance %s", *k8sWorkloadInstance.Name)),
+		},
+		*k8sWorkloadInstance.ID,
+		k8sWorkloadInstance.GetFullyQualifiedType(),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for reconciliation start")
 	}
 
 	// get kubernetes workload resource instances

@@ -15,37 +15,45 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-const eventMessageTableMax = 80
+const (
+	eventMessageTableMax = 80
+	eventNameTableMax    = 40
+)
 
-// outputEventsTable produces the tabular output for the events list.
+// outputEventsTable produces the tabular output for the events list. Each
+// element of events is a server-side aggregated bucket: Count reflects
+// the number of raw rows collapsed into the bucket, EventTime is the
+// oldest observation, and LastObservedTime is the newest.
 func outputEventsTable(events *[]v0.Event) error {
 	// configure a tabwriter so the columns align regardless of the
 	// width of any individual cell's content
 	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	fmt.Fprintln(writer, "AGE\t TYPE\t REASON\t OBJECT\t NOTE")
+	fmt.Fprintln(writer, "OBJECT KIND\t NAME\t REASON\t COUNT\t FIRST SEEN\t LAST SEEN\t MESSAGE")
 
 	// track whether any note got truncated so we can hint about -o yaml
 	// at the bottom of the output
 	anyTruncated := false
 	for _, e := range *events {
 		// derive the human-readable cell values per event
-		age := util.GetAgeFormatted(e.EventTime)
-		eventType := util.DerefString(e.Type)
+		objectKind := formatEventObjectKind(&e)
+		objectName := formatEventObjectName(&e)
 		reason := util.DerefString(e.Reason)
-
-		// resolve the OBJECT column from the AOR-projected fields
-		// on the event row (see Event.ObjectType/ID/Name)
-		object := formatEventObject(&e)
+		count := ""
+		if e.Count != nil {
+			count = fmt.Sprintf("%d", *e.Count)
+		}
+		firstSeen := util.GetAgeFormatted(e.EventTime)
+		lastSeen := util.GetAgeFormatted(e.LastObservedTime)
 
 		// collapse whitespace runs in the note so multi-line script
 		// output renders on one row
 		rawNote := util.DerefString(e.Note)
-		note := strings.Join(strings.Fields(rawNote), " ")
+		message := strings.Join(strings.Fields(rawNote), " ")
 
 		// truncate over-long notes so a single noisy event doesn't
 		// wreck the table layout
-		if len(note) > eventMessageTableMax {
-			note = util.TruncateString(note, eventMessageTableMax)
+		if len(message) > eventMessageTableMax {
+			message = util.TruncateString(message, eventMessageTableMax)
 			anyTruncated = true
 		}
 
@@ -53,11 +61,13 @@ func outputEventsTable(events *[]v0.Event) error {
 		// alignment is finalized at Flush() below
 		fmt.Fprintln(
 			writer,
-			age, "\t",
-			eventType, "\t",
+			objectKind, "\t",
+			objectName, "\t",
 			reason, "\t",
-			object, "\t",
-			note,
+			count, "\t",
+			firstSeen, "\t",
+			lastSeen, "\t",
+			message,
 		)
 	}
 	writer.Flush()
@@ -70,14 +80,12 @@ func outputEventsTable(events *[]v0.Event) error {
 	return nil
 }
 
-// formatEventObject formats an event's target object as
-// <namespace>/<kebab-kind>/<name>. For an event with
-// ObjectType="example.com/v0.RouterInstance", ObjectID=42,
-// ObjectName="some-router" the result is
-// "example.com/router-instance/some-router". Falls back to
-// "<namespace>/<kind>/<id>" if the name wasn't resolved (e.g. lookup
-// failed), or just "<namespace>/<kind>" if the id is nil too.
-func formatEventObject(e *v0.Event) string {
+// formatEventObjectKind renders the OBJECT KIND cell as the kebab-case form
+// of the event's ObjectType. For an event with
+// ObjectType="example.com/v0.RouterInstance" the result is "router-instance".
+// Falls back to the raw fully qualified type on parse failure, and empty
+// when ObjectType is nil.
+func formatEventObjectKind(e *v0.Event) string {
 	// no recorded subject - nothing to render
 	rawType := util.DerefString(e.ObjectType)
 	if rawType == "" {
@@ -86,30 +94,36 @@ func formatEventObject(e *v0.Event) string {
 
 	// parse the fully qualified type into its parts; malformed values are surfaced
 	// raw so the user can still grep for them
-	namespace, _, typeName, ok := apilib.ParseQualifiedType(rawType)
+	_, _, typeName, ok := apilib.ParseQualifiedType(rawType)
 	if !ok {
 		return rawType
 	}
 
-	// CamelCase -> kebab so the kind segment matches the --for flag
-	// shape. "RouterInstance" -> kind = "router-instance"
-	kind := strcase.ToKebab(typeName)
+	// CamelCase -> kebab so the kind cell matches the --for and
+	// --object-kind flag shape. "RouterInstance" -> "router-instance"
+	return strcase.ToKebab(typeName)
+}
 
-	// prefer name when resolved; this is the common case after the
-	// events-join handler enriches the row
+// formatEventObjectName renders the NAME cell for an event. Prefers
+// ObjectName when resolved (the common case after the events-join handler
+// enriches the row); falls back to the numeric ObjectID so the user still
+// has something to grep. Truncates the result to eventNameTableMax with an
+// ellipsis so a long name doesn't wreck the table layout.
+func formatEventObjectName(e *v0.Event) string {
+	// prefer name when resolved
 	if name := util.DerefString(e.ObjectName); name != "" {
-		return fmt.Sprintf("%s/%s/%s", namespace, kind, name)
+		if len(name) > eventNameTableMax {
+			return util.TruncateString(name, eventNameTableMax)
+		}
+		return name
 	}
 
-	// name wasn't resolved (lookup failed, deleted subject, etc.);
-	// fall back to id so the user still has something to grep
+	// name wasn't resolved (lookup failed, deleted subject); fall back to
+	// id so the user still has something to grep
 	if e.ObjectID != nil {
-		return fmt.Sprintf("%s/%s/%d", namespace, kind, *e.ObjectID)
+		return fmt.Sprintf("%d", *e.ObjectID)
 	}
 
-	// neither name nor id present - the event row had no resolvable
-	// subject (shouldn't happen for events created through RecordEvent
-	// but the projection fields can be nil if the AOR row is missing).
-	// emit the type alone so the column still renders something.
-	return fmt.Sprintf("%s/%s", namespace, kind)
+	// neither name nor id present
+	return ""
 }

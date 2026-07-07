@@ -20,6 +20,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -390,17 +391,33 @@ func TestMachineWorkloadInstanceCreated_RuntimeNotReconciled(t *testing.T) {
 }
 
 // TestMachineWorkloadInstanceCreated_ScriptFails covers the non-zero exit
-// path: status persisted as Unhealthy, ScriptFailed event recorded, and
-// the reconciler returns a non-nil error so the controller requeues.
+// path: status persisted as Unhealthy, the reconciler returns an
+// ErrWithEvent whose Reason is ScriptFailed so the wrapper substitutes it
+// for the generic FailedCreate row, and the delay pins a 30s requeue.
 func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
 	log := logr.Discard()
 
+	// drive the Created reconciler with a script that exits non-zero
 	delay, err := v0MachineWorkloadInstanceCreated(f.r, f.mwi, &log)
+
+	// reconciler surfaces the failure with a 30s requeue for retry
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay)
+
+	// status persists as Unhealthy so consumers see the last-known state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusUnhealthy)}, f.patchedStatuses())
-	assert.Equal(t, []string{"ScriptFailed"}, f.recorder.GetReasons())
+
+	// error carries the specific-reason event the wrapper will substitute
+	// for the generic FailedCreate row
+	var errWithEvent *tp_errors.ErrWithEvent
+	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.NotNil(t, errWithEvent.Event.Reason)
+	assert.Equal(t, "ScriptFailed", *errWithEvent.Event.Reason)
+
+	// failure path defers emission to the wrapper, so the reconciler itself
+	// records no events
+	assert.Empty(t, f.recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
 // TestMachineWorkloadInstanceCreated_GetDefinitionFails covers the
@@ -470,13 +487,28 @@ func TestMachineWorkloadInstanceDeleted_HappyPath(t *testing.T) {
 }
 
 // TestMachineWorkloadInstanceDeleted_ScriptFails covers the non-zero exit
-// path for delete: returns (30, err) so the reconciler retries.
+// path for delete: the reconciler returns an ErrWithEvent whose Reason is
+// ScriptFailed so the wrapper substitutes it for the generic FailedDelete
+// row, with a 30s requeue for retry.
 func TestMachineWorkloadInstanceDeleted_ScriptFails(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
 	log := logr.Discard()
 
+	// drive the Deleted reconciler with a script that exits non-zero
 	delay, err := v0MachineWorkloadInstanceDeleted(f.r, f.mwi, &log)
+
+	// reconciler surfaces the failure with a 30s requeue for retry
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay)
-	assert.Equal(t, []string{"ScriptFailed"}, f.recorder.GetReasons())
+
+	// error carries the specific-reason event the wrapper will substitute
+	// for the generic FailedDelete row
+	var errWithEvent *tp_errors.ErrWithEvent
+	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.NotNil(t, errWithEvent.Event.Reason)
+	assert.Equal(t, "ScriptFailed", *errWithEvent.Event.Reason)
+
+	// failure path defers emission to the wrapper, so the reconciler itself
+	// records no events
+	assert.Empty(t, f.recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }

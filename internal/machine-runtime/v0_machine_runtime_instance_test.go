@@ -18,6 +18,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -104,12 +105,15 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 }
 
 // TestMachineRuntimeInstanceCreated_NetworkError points the MRI at an
-// unreachable host and asserts the reconciler returns 30s requeue and emits
-// SSHConnectFailed.
+// unreachable host and asserts the reconciler returns 30s requeue and a
+// carrying ErrWithEvent whose Reason is SSHConnectFailed. The wrapper's
+// HandleEventOverride substitutes that event for the generic FailedCreate
+// row, so the failure path no longer calls RecordEvent directly and the
+// fake recorder stays empty.
 func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
-	// 127.0.0.1:1 — port 1 is reserved and never bound; produces
-	// "connection refused" (network-class error).
+	// point at 127.0.0.1:1 (reserved, never bound) to force a connection-refused
+	// network-class error out of GetClient
 	mri := machinetest.MRIFromAddr(t, 9, "mri-unreachable", "127.0.0.1:1", "u", "p", key)
 
 	api := machinetest.NewAPIStub(t)
@@ -122,24 +126,40 @@ func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
+	// drive the Created reconciler against the unreachable host
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
+
+	// reconciler surfaces the failure with a 30s requeue for retry
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay, "network-class errors should be retried after 30s")
-	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())
+
+	// error carries the specific-reason event the wrapper will substitute
+	// for the generic FailedCreate row
+	var errWithEvent *tp_errors.ErrWithEvent
+	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.NotNil(t, errWithEvent.Event.Reason)
+	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
+
+	// failure path defers emission to the wrapper, so the reconciler itself
+	// records no events
+	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
 // TestMachineRuntimeInstanceCreated_HostKeyMismatch points the MRI at the
 // test server but with a HostKey that doesn't match the server's actual
 // host key. SSH client errors (including host key mismatch) always retry
 // after 30s, since a misconfigured key may be fixed externally without
-// changing the object.
+// changing the object. The failure surfaces as an ErrWithEvent whose Reason
+// is SSHConnectFailed, which the wrapper substitutes for the generic
+// FailedCreate event.
 func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	serverSigner := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, serverSigner, "u", "p", machinetest.SSHOpts{ExitCode: 0})
 	defer stop()
 
-	// Pin a different host key on the MRI to force a mismatch.
+	// pin a different host key on the MRI to force a mismatch against the
+	// server's actual key
 	wrongSigner := machinetest.NewSigner(t)
 	mri := machinetest.MRIFromAddr(t, 11, "mri-mismatch", addr, "u", "p", key)
 	mri.HostKey = util.Ptr(hostKeyBase64(wrongSigner))
@@ -154,10 +174,23 @@ func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
+	// drive the Created reconciler against the mismatched host key
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
+
+	// ssh-client failures always retry after 30s
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay, "ssh-client errors always retry")
-	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())
+
+	// error carries the specific-reason event the wrapper will substitute
+	// for the generic FailedCreate row
+	var errWithEvent *tp_errors.ErrWithEvent
+	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.NotNil(t, errWithEvent.Event.Reason)
+	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
+
+	// failure path defers emission to the wrapper, so the reconciler itself
+	// records no events
+	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
 // hostKeyBase64 returns the base64-encoded marshalled public key matching

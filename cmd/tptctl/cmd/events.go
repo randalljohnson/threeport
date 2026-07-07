@@ -10,20 +10,59 @@ import (
 	strcase "github.com/iancoleman/strcase"
 	cobra "github.com/spf13/cobra"
 
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
+	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 var (
-	eventsFor    string
-	eventsOutput string
-	eventsSort   string
-	eventsLimit  int
+	eventsFor        string
+	eventsObjectKind string
+	eventsOutput     string
+	eventsSort       string
+	eventsLimit      int
+	eventsTopLevel   bool
 )
 
 const (
 	eventShortAlias = "ev"
 )
+
+// topLevelObjectKinds lists the core API type names considered
+// top-level for the --top-level filter. Sub-object types
+// (GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance,
+// AwsEksKubernetesRuntimeInstance, etc.) stay off the list.
+//
+// TODO: promote to an SDK-generated manifest driven by a per-type
+// top_level: true field in sdk-config.yaml so modules (Router,
+// RouterFleetInstance) can register their own top-level kinds via
+// IsTopLevel() instead of extending this hardcoded set.
+var topLevelObjectKinds = map[string]bool{
+	"KubernetesRuntimeDefinition":  true,
+	"KubernetesRuntimeInstance":    true,
+	"KubernetesWorkloadDefinition": true,
+	"KubernetesWorkloadInstance":   true,
+	"HelmWorkloadDefinition":       true,
+	"HelmWorkloadInstance":         true,
+	"ControlPlaneDefinition":       true,
+	"ControlPlaneInstance":         true,
+	"GatewayDefinition":            true,
+	"GatewayInstance":              true,
+	"DomainNameDefinition":         true,
+	"DomainNameInstance":           true,
+	"MachineRuntimeDefinition":     true,
+	"MachineRuntimeInstance":       true,
+	"MachineWorkloadDefinition":    true,
+	"MachineWorkloadInstance":      true,
+	"ObservabilityStackDefinition": true,
+	"ObservabilityStackInstance":   true,
+	"SecretDefinition":             true,
+	"SecretInstance":               true,
+	"TerraformDefinition":          true,
+	"TerraformInstance":            true,
+}
 
 // GetEventsCmd represents the command 'tptctl get events'
 var GetEventsCmd = &cobra.Command{
@@ -38,12 +77,22 @@ var GetEventsCmd = &cobra.Command{
   tptctl get events --for v0.helm-workload-instance/my-app
 
   # narrow to one api namespace + version
-  tptctl get events --for threeport.io/v0.helm-workload-instance/my-app`,
+  tptctl get events --for threeport.io/v0.helm-workload-instance/my-app
+
+  # filter by kind alone across every object of that kind
+  tptctl get events --object-kind helm-workload-instance
+
+  # show only events on top-level object kinds
+  tptctl get events --top-level`,
 	Long: `Get events from the system.
 
 Use --for [<namespace>/][<version>.]<kind>/<name> to filter events to a specific object. <namespace> and <version> are optional; <kind> and <name> are required. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.
 
-Use --sort to control row order: newest (default) puts the most recent activity at the top; oldest is reverse.
+Use --object-kind <kebab-kind> to filter events to a specific kind across every object of that kind. Mutually exclusive with --for.
+
+Use --top-level to drop events on sub-object kinds (e.g. GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance) and keep only events on top-level user-facing kinds.
+
+Use --sort to control row order: oldest (default) puts the oldest activity at the top so the causal sequence reads down; newest is reverse.
 
 Use --limit N to cap the number of rows shown (after sort). The default of 0 means no cap.
 
@@ -52,18 +101,36 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
 
-		// build query string from --for
-		queryString, err := buildEventsQueryString(eventsFor)
+		// reject mutually exclusive filters up front
+		if eventsFor != "" && eventsObjectKind != "" {
+			cli.Error("", fmt.Errorf("--for and --object-kind are mutually exclusive"))
+			os.Exit(1)
+		}
+
+		// build query string from the requested filter
+		queryString, err := buildEventsQueryString(eventsFor, eventsObjectKind)
 		if err != nil {
 			cli.Error("failed to build events query", err)
 			os.Exit(1)
 		}
 
-		// fetch events
+		// fetch events; the client walks pagination internally, then the
+		// caller-supplied limit caps the returned slice
 		events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(apiClient, apiEndpoint, queryString, eventsLimit)
 		if err != nil {
 			cli.Error("failed to retrieve events", err)
 			os.Exit(1)
+		}
+
+		// drop events on sub-object kinds when --top-level is set
+		if eventsTopLevel {
+			filtered := make([]v0.Event, 0, len(*events))
+			for _, e := range *events {
+				if isTopLevelEvent(&e) {
+					filtered = append(filtered, e)
+				}
+			}
+			events = &filtered
 		}
 
 		if len(*events) == 0 {
@@ -75,7 +142,7 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		}
 
 		// sort by event time per --sort
-		newestFirst := true
+		newestFirst := false
 		switch eventsSort {
 		case "newest":
 			newestFirst = true
@@ -134,15 +201,23 @@ func init() {
 
 	GetEventsCmd.Flags().StringVar(
 		&eventsFor,
-		"for", "", "Filter events by object, in the form <kind>/<name>. Kind is the kebab-case form of the API type name (e.g. machine-runtime-instance, router-definition).",
+		"for", "", "Filter events by object, in the form [<namespace>/][<version>.]<kind>/<name>. Kind is the kebab-case form of the API type name (e.g. machine-runtime-instance, router-definition). Mutually exclusive with --object-kind.",
+	)
+	GetEventsCmd.Flags().StringVar(
+		&eventsObjectKind,
+		"object-kind", "", "Filter events by object kind alone (kebab-case form of the API type name, e.g. helm-workload-instance). Mutually exclusive with --for.",
+	)
+	GetEventsCmd.Flags().BoolVar(
+		&eventsTopLevel,
+		"top-level", false, "Only show events on top-level object kinds (drops sub-object kinds like GcpGceMachineRuntimeInstance and KubernetesWorkloadResourceInstance).",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&eventsOutput,
-		"output", "o", "tabular", "Output format for events. One of: [yaml, json]",
+		"output", "o", "tabular", "Output format for events. One of: [tabular, yaml, json]",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsSort,
-		"sort", "newest", "Sort order. One of: [newest, oldest]",
+		"sort", "oldest", "Sort order. One of: [oldest, newest]. Default oldest places the earliest event at the top so the causal sequence reads down.",
 	)
 	GetEventsCmd.Flags().IntVar(
 		&eventsLimit,
@@ -154,24 +229,38 @@ func init() {
 	)
 }
 
-// buildEventsQueryString turns the --for flag into the events query
-// string. Accepts three input shapes, narrowing the query as more
-// parts are supplied:
+// buildEventsQueryString turns the --for and --object-kind flags into the
+// events query string. Callers must ensure at most one of the two is set.
+//
+// --for accepts three input shapes, narrowing the query as more parts are
+// supplied:
 //
 //	<kebab-kind>/<name>                                 - broad, any namespace/version
 //	<version>.<kebab-kind>/<name>                       - narrow to one version
 //	<namespace>/<version>.<kebab-kind>/<name>           - exact fully qualified type match
 //
 // The kind segment carries the optional version inline as
-// "<version>.<kind>", mirroring the fully qualified type form. Empty flag returns
-// empty string so the events list isn't filtered.
-func buildEventsQueryString(forFlag string) (string, error) {
+// "<version>.<kind>", mirroring the fully qualified type form.
+//
+// --object-kind accepts the kebab-case kind alone and matches every object
+// of that kind (no name required).
+//
+// Empty flags return an empty string so the caller queries every event.
+func buildEventsQueryString(forFlag, objectKindFlag string) (string, error) {
 	// no filter requested - return empty so the caller queries every event
-	if forFlag == "" {
+	if forFlag == "" && objectKindFlag == "" {
 		return "", nil
 	}
 
-	// split slash-delimited segments. parse right-to-left so the
+	q := url.Values{}
+
+	// --object-kind: filter by kind alone, no name binding
+	if objectKindFlag != "" {
+		q.Set("objecttypename", strcase.ToCamel(objectKindFlag))
+		return q.Encode(), nil
+	}
+
+	// --for: split slash-delimited segments. parse right-to-left so the
 	// optional namespace lands in the right slot
 	parts := strings.Split(forFlag, "/")
 	if len(parts) < 2 || len(parts) > 3 {
@@ -180,8 +269,6 @@ func buildEventsQueryString(forFlag string) (string, error) {
 			forFlag,
 		)
 	}
-
-	q := url.Values{}
 
 	// last segment is always the object name
 	name := parts[len(parts)-1]
@@ -221,4 +308,19 @@ func buildEventsQueryString(forFlag string) (string, error) {
 	}
 
 	return q.Encode(), nil
+}
+
+// isTopLevelEvent reports whether the event's ObjectType is a top-level
+// object kind per topLevelObjectKinds. Events missing or malformed
+// ObjectType are treated as non-top-level.
+func isTopLevelEvent(e *v0.Event) bool {
+	rawType := util.DerefString(e.ObjectType)
+	if rawType == "" {
+		return false
+	}
+	_, _, typeName, ok := apilib.ParseQualifiedType(rawType)
+	if !ok {
+		return false
+	}
+	return topLevelObjectKinds[typeName]
 }

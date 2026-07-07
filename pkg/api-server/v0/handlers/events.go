@@ -243,7 +243,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// count fits under the threshold, serve the fetched records
 		// directly and skip the materialized view path.
 		findQuery := JoinEventsToAttachedObjectReferences(
-			h.DB.Order("ID asc").Limit(int(threshold)+1),
+			h.DB.Order("event_time ASC, id ASC").Limit(int(threshold)+1),
 			fullyQualifiedEventType,
 		)
 		if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
@@ -304,7 +304,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				FROM v0_events
 				%s
 				%s
-				ORDER BY v0_events.id ASC
+				ORDER BY v0_events.event_time ASC, v0_events.id ASC
 			`,
 				viewName,
 				joinClause,
@@ -577,37 +577,48 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 }
 
 // aggregateEvents collapses raw event rows into bucketed events keyed
-// on (Reason, ObjectType, ObjectID, Note). Within one key group, rows
-// are walked in EventTime order and start a new bucket whenever the
-// next row's EventTime is more than eventAggregationWindow after the
+// on (Reason, ObjectType, ObjectID). Within one key group, rows are
+// walked in EventTime order and start a new bucket whenever the next
+// row's EventTime is more than eventAggregationWindow after the
 // current bucket's LastObservedTime (rolling window). The returned
 // slice is sorted oldest-first by bucket EventTime so the response
 // reads in causal order. Each bucket's ID is copied from its first
 // raw row so cursor-based pagination in the caller stays stable
-// across the collapse.
+// across the collapse. Rows in the same bucket may carry different
+// Note strings; the bucket's Note is the seed row's Note (earliest
+// EventTime, lowest ID for tiebreak).
 func aggregateEvents(events []v0.Event) []v0.Event {
 	if len(events) == 0 {
 		return events
 	}
 
-	// sort the raw rows by EventTime ascending; the group walk below
-	// depends on a stable causal-order stream. copy first so the
-	// caller's slice is not reordered as a side effect.
+	// sort the raw rows by (EventTime, ID) ascending; the group walk
+	// below depends on a stable causal-order stream. copy first so
+	// the caller's slice is not reordered as a side effect. ID
+	// breaks intra-second ties in insertion order (CRDB's monotonic
+	// unique_rowid approximates emit order); nil IDs sort after
+	// non-nil so bad rows do not front the response.
 	sorted := make([]v0.Event, len(events))
 	copy(sorted, events)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		ti := timeOrZero(sorted[i].EventTime)
 		tj := timeOrZero(sorted[j].EventTime)
-		return ti.Before(tj)
+		if ti.Before(tj) {
+			return true
+		}
+		if ti.Equal(tj) {
+			return eventIDLess(sorted[i].ID, sorted[j].ID)
+		}
+		return false
 	})
 
-	// bucketKey builds the map key from the dedup fields. nil Note and
-	// empty Note collapse together; nil ObjectType or ObjectID render
-	// as an empty string in that slot so pathological rows still bucket
-	// deterministically. the null byte separator keeps the parts from
-	// bleeding into each other on values that happen to embed a slash.
+	// bucketKey builds the map key from the dedup fields. nil ObjectType
+	// or ObjectID render as an empty string in that slot so pathological
+	// rows still bucket deterministically. the null byte separator keeps
+	// the parts from bleeding into each other on values that happen to
+	// embed a slash.
 	bucketKey := func(e v0.Event) string {
-		var reason, objectType, note string
+		var reason, objectType string
 		var objectID uint
 		if e.Reason != nil {
 			reason = *e.Reason
@@ -618,10 +629,7 @@ func aggregateEvents(events []v0.Event) []v0.Event {
 		if e.ObjectID != nil {
 			objectID = *e.ObjectID
 		}
-		if e.Note != nil {
-			note = *e.Note
-		}
-		return fmt.Sprintf("%s\x00%s\x00%d\x00%s", reason, objectType, objectID, note)
+		return fmt.Sprintf("%s\x00%s\x00%d", reason, objectType, objectID)
 	}
 
 	// grouped preserves per-key ordering; buckets fill in the order
@@ -654,13 +662,18 @@ func aggregateEvents(events []v0.Event) []v0.Event {
 			continue
 		}
 
-		// extend the current bucket: bump count and slide the
-		// LastObservedTime forward to the later of the current end
-		// and the incoming row's LastObservedTime.
+		// extend the current bucket: add the incoming row's stored
+		// count (default 1 when nil) to the bucket total and slide
+		// the LastObservedTime forward to the later of the current
+		// end and the incoming row's LastObservedTime.
+		incoming := uint(1)
+		if e.Count != nil {
+			incoming = *e.Count
+		}
 		if last.Count != nil {
-			last.Count = util.Ptr(*last.Count + 1)
+			last.Count = util.Ptr(*last.Count + incoming)
 		} else {
-			last.Count = util.Ptr(uint(1))
+			last.Count = util.Ptr(incoming)
 		}
 		if lastObserved.After(lastBucketEnd) {
 			last.LastObservedTime = util.Ptr(lastObserved)
@@ -677,21 +690,39 @@ func aggregateEvents(events []v0.Event) []v0.Event {
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
-		return timeOrZero(out[i].EventTime).Before(timeOrZero(out[j].EventTime))
+		ti := timeOrZero(out[i].EventTime)
+		tj := timeOrZero(out[j].EventTime)
+		if ti.Before(tj) {
+			return true
+		}
+		if ti.Equal(tj) {
+			return eventIDLess(out[i].ID, out[j].ID)
+		}
+		return false
 	})
 	return out
 }
 
-// seedBucket copies the first raw row of a key group and resets the
-// bucket's aggregate count to 1. The ID and per-row projection
-// fields carry over so callers see stable pagination cursors and
-// enriched subject info on the bucket.
+// eventIDLess reports whether the left ID sorts before the right
+// under the aggregator's tiebreak rule. Nil IDs sort after non-nil
+// so malformed rows stay out of the front of the response.
+func eventIDLess(a, b *uint) bool {
+	if a == nil {
+		return false
+	}
+	if b == nil {
+		return true
+	}
+	return *a < *b
+}
+
+// seedBucket seeds the bucket from the first raw row, defaulting
+// Count to 1 only when the row was written without one.
 func seedBucket(seed v0.Event) *v0.Event {
-	// count starts at 1 regardless of the raw row's stored value,
-	// which is always 1 under the current writer path but may be
-	// nil on legacy rows.
 	b := seed
-	b.Count = util.Ptr(uint(1))
+	if b.Count == nil {
+		b.Count = util.Ptr(uint(1))
+	}
 	return &b
 }
 

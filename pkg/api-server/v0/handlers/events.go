@@ -6,10 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	echo "github.com/labstack/echo/v4"
 	zap "go.uber.org/zap"
@@ -26,13 +24,6 @@ import (
 // pages), return the whole result set in a single query and skip the
 // CREATE MATERIALIZED VIEW / DROP MATERIALIZED VIEW round trip.
 const materializedViewThresholdFloor = 5000
-
-// eventAggregationWindow is the rolling window used to collapse
-// repeat raw event rows into one bucket. Two rows sharing the dedup
-// key belong to the same bucket when the next row's EventTime is
-// within this window of the bucket's LastObservedTime; the window
-// slides forward on every emit (kubernetes-style semantics).
-const eventAggregationWindow = 10 * time.Minute
 
 // eventJoinAttachedObjectReferenceClause is the inner join from
 // v0_events to v0_attached_object_references on the polymorphic
@@ -532,14 +523,6 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	// avoids the intermediate slice entirely.
 	w := c.Response()
 	w.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	// collapse raw event rows into aggregated buckets by (Reason,
-	// ObjectType, ObjectID, Note) with a rolling 10-minute window.
-	// runs on the current page after the raw fetch and enrichment; a
-	// bucket whose raw rows straddle a page boundary appears as two
-	// adjacent buckets rather than one, which is accepted for now
-	// because the raw-row cursor keeps pagination termination correct.
-	aggregated := aggregateEvents(*records)
-
 	w.WriteHeader(http.StatusOK)
 	return json.NewEncoder(w).Encode(struct {
 		Meta   apiserver_lib.Meta
@@ -549,7 +532,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	}{
 		Meta:   apiserver_lib.Meta{Pagination: *pagination, ObjectCount: returnedCount},
 		Type:   objectType,
-		Data:   aggregated,
+		Data:   *records,
 		Status: apiserver_lib.Status{Code: http.StatusOK, Message: http.StatusText(http.StatusOK)},
 	})
 }
@@ -690,162 +673,4 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 	}
 
 	return nil
-}
-
-// aggregateEvents collapses raw event rows into bucketed events keyed
-// on (Reason, ObjectType, ObjectID). Within one key group, rows are
-// walked in EventTime order and start a new bucket whenever the next
-// row's EventTime is more than eventAggregationWindow after the
-// current bucket's LastObservedTime (rolling window). The returned
-// slice is sorted oldest-first by bucket EventTime so the response
-// reads in causal order. Each bucket's ID is copied from its first
-// raw row so cursor-based pagination in the caller stays stable
-// across the collapse. Rows in the same bucket may carry different
-// Note strings; the bucket's Note is the seed row's Note (earliest
-// EventTime, lowest ID for tiebreak).
-func aggregateEvents(events []v0.Event) []v0.Event {
-	if len(events) == 0 {
-		return events
-	}
-
-	// sort the raw rows by (EventTime, ID) ascending; the group walk
-	// below depends on a stable causal-order stream. copy first so
-	// the caller's slice is not reordered as a side effect. ID
-	// breaks intra-second ties in insertion order (CRDB's monotonic
-	// unique_rowid approximates emit order); nil IDs sort after
-	// non-nil so bad rows do not front the response.
-	sorted := make([]v0.Event, len(events))
-	copy(sorted, events)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		ti := timeOrZero(sorted[i].EventTime)
-		tj := timeOrZero(sorted[j].EventTime)
-		if ti.Before(tj) {
-			return true
-		}
-		if ti.Equal(tj) {
-			return eventIDLess(sorted[i].ID, sorted[j].ID)
-		}
-		return false
-	})
-
-	// bucketKey builds the map key from the dedup fields. nil ObjectType
-	// or ObjectID render as an empty string in that slot so pathological
-	// rows still bucket deterministically. the null byte separator keeps
-	// the parts from bleeding into each other on values that happen to
-	// embed a slash.
-	bucketKey := func(e v0.Event) string {
-		var reason, objectType string
-		var objectID uint
-		if e.Reason != nil {
-			reason = *e.Reason
-		}
-		if e.ObjectType != nil {
-			objectType = *e.ObjectType
-		}
-		if e.ObjectID != nil {
-			objectID = *e.ObjectID
-		}
-		return fmt.Sprintf("%s\x00%s\x00%d", reason, objectType, objectID)
-	}
-
-	// grouped preserves per-key ordering; buckets fill in the order
-	// rows are visited so the final sort by EventTime is stable when
-	// buckets end at the same instant. each bucket is stored by
-	// pointer so per-row mutation in the walk below stays in place.
-	grouped := make(map[string][]*v0.Event)
-	keyOrder := make([]string, 0)
-
-	for _, e := range sorted {
-		key := bucketKey(e)
-		buckets, seen := grouped[key]
-		if !seen {
-			keyOrder = append(keyOrder, key)
-		}
-		eventTime := timeOrZero(e.EventTime)
-		lastObserved := timeOrZero(e.LastObservedTime)
-
-		// start a new bucket when nothing in this key has been seen
-		// yet or when the current row falls outside the rolling
-		// window of the most recent bucket for this key.
-		if len(buckets) == 0 {
-			grouped[key] = append(buckets, seedBucket(e))
-			continue
-		}
-		last := buckets[len(buckets)-1]
-		lastBucketEnd := timeOrZero(last.LastObservedTime)
-		if eventTime.Sub(lastBucketEnd) > eventAggregationWindow {
-			grouped[key] = append(buckets, seedBucket(e))
-			continue
-		}
-
-		// extend the current bucket: add the incoming row's stored
-		// count (default 1 when nil) to the bucket total and slide
-		// the LastObservedTime forward to the later of the current
-		// end and the incoming row's LastObservedTime.
-		incoming := uint(1)
-		if e.Count != nil {
-			incoming = *e.Count
-		}
-		if last.Count != nil {
-			last.Count = util.Ptr(*last.Count + incoming)
-		} else {
-			last.Count = util.Ptr(incoming)
-		}
-		if lastObserved.After(lastBucketEnd) {
-			last.LastObservedTime = util.Ptr(lastObserved)
-		}
-	}
-
-	// flatten grouped map into a slice, then sort by bucket EventTime
-	// so the response reads oldest-first regardless of key iteration
-	// order.
-	out := make([]v0.Event, 0, len(sorted))
-	for _, key := range keyOrder {
-		for _, b := range grouped[key] {
-			out = append(out, *b)
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		ti := timeOrZero(out[i].EventTime)
-		tj := timeOrZero(out[j].EventTime)
-		if ti.Before(tj) {
-			return true
-		}
-		if ti.Equal(tj) {
-			return eventIDLess(out[i].ID, out[j].ID)
-		}
-		return false
-	})
-	return out
-}
-
-// eventIDLess reports whether the left ID sorts before the right
-// under the aggregator's tiebreak rule. Nil IDs sort after non-nil
-// so malformed rows stay out of the front of the response.
-func eventIDLess(a, b *uint) bool {
-	if a == nil {
-		return false
-	}
-	if b == nil {
-		return true
-	}
-	return *a < *b
-}
-
-// seedBucket seeds the bucket from the first raw row, defaulting
-// Count to 1 only when the row was written without one.
-func seedBucket(seed v0.Event) *v0.Event {
-	b := seed
-	if b.Count == nil {
-		b.Count = util.Ptr(uint(1))
-	}
-	return &b
-}
-
-// timeOrZero dereferences a nullable time or returns the zero value.
-func timeOrZero(t *time.Time) time.Time {
-	if t == nil {
-		return time.Time{}
-	}
-	return *t
 }

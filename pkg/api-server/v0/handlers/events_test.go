@@ -139,3 +139,199 @@ func TestEventsJoin_CrossTypeFilterSurfacesAllMatches(t *testing.T) {
 	assert.Len(t, rows, 3, "Cartesian filter surfaces every event whose subject is one of the resolved (type, id) pairs")
 }
 
+// rawRow builds an event carrying the aggregation-relevant fields
+// keyed off a base instant. Reason, ObjectType, ObjectID form the
+// bucket key; EventTime and LastObservedTime drive the window walk.
+// Callers pass the raw row's ID so IDs the bucket inherits are
+// deterministic in the assertions.
+func rawRow(id uint, reason, objectType string, objectID uint, note string, base time.Time, eventTimeOffset, lastObservedOffset time.Duration) api.Event {
+	eventTime := base.Add(eventTimeOffset)
+	lastObserved := base.Add(lastObservedOffset)
+	return api.Event{
+		Common:              api.Common{ID: util.Ptr(id)},
+		Reason:              util.Ptr(reason),
+		Note:                util.Ptr(note),
+		Type:                util.Ptr("Warning"),
+		Count:               util.Ptr(uint(1)),
+		EventTime:           &eventTime,
+		LastObservedTime:    &lastObserved,
+		ReportingController: util.Ptr("test"),
+		ObjectType:          util.Ptr(objectType),
+		ObjectID:            util.Ptr(objectID),
+	}
+}
+
+// TestAggregateEvents_CoversDedupKeyCollapseWithinWindow inserts three
+// rows sharing the dedup key inside a 10-minute span; every row folds
+// into one bucket, Count reflects the raw-row total, EventTime is the
+// earliest row's time, LastObservedTime is the latest row's time.
+func TestAggregateEvents_CoversDedupKeyCollapseWithinWindow(t *testing.T) {
+	// three raw rows sharing (Reason, ObjectType, ObjectID), spaced
+	// under the window so the walk keeps extending one bucket.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	rows := []api.Event{
+		rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 0),
+		rawRow(2, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 2*time.Minute, 2*time.Minute),
+		rawRow(3, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 5*time.Minute, 5*time.Minute),
+	}
+
+	// aggregate and assert one bucket carrying the three raw rows.
+	out := aggregateEvents(rows)
+	require.Len(t, out, 1, "identical-key rows inside the window collapse into one bucket")
+	got := out[0]
+	require.NotNil(t, got.Count)
+	assert.Equal(t, uint(3), *got.Count, "Count reflects raw-row total in the bucket")
+	require.NotNil(t, got.EventTime)
+	assert.True(t, got.EventTime.Equal(base), "EventTime carries the first raw row's timestamp")
+	require.NotNil(t, got.LastObservedTime)
+	assert.True(t, got.LastObservedTime.Equal(base.Add(5*time.Minute)), "LastObservedTime slides to the last raw row's timestamp")
+	require.NotNil(t, got.ID)
+	assert.Equal(t, uint(1), *got.ID, "bucket ID copies the first raw row so the pagination cursor stays stable")
+}
+
+// TestAggregateEvents_PreservesStoredCountOnSeed covers the seed path:
+// a lone raw row whose stored Count is already greater than 1 keeps
+// its Count and its wide EventTime -> LastObservedTime span through
+// the bucket rather than being reset to 1.
+func TestAggregateEvents_PreservesStoredCountOnSeed(t *testing.T) {
+	// seed one legacy-shaped row: Count=5 with a 3-hour observation span.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	row := rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 3*time.Hour)
+	row.Count = util.Ptr(uint(5))
+
+	// aggregate; one bucket that carries the stored Count and span.
+	out := aggregateEvents([]api.Event{row})
+	require.Len(t, out, 1, "single seed row produces a single bucket")
+	got := out[0]
+	require.NotNil(t, got.Count)
+	assert.Equal(t, uint(5), *got.Count, "seedBucket preserves the raw row's stored Count")
+	require.NotNil(t, got.EventTime)
+	assert.True(t, got.EventTime.Equal(base), "EventTime carries the raw row's timestamp")
+	require.NotNil(t, got.LastObservedTime)
+	assert.True(t, got.LastObservedTime.Equal(base.Add(3*time.Hour)), "LastObservedTime carries the raw row's span")
+}
+
+// TestAggregateEvents_AddsIncomingCountOnExtend covers the extend path:
+// a second row's stored Count is added to the bucket total rather than
+// contributing a hard-coded 1.
+func TestAggregateEvents_AddsIncomingCountOnExtend(t *testing.T) {
+	// two rows sharing the key inside the window; first Count=4, second Count=2.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	row1 := rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 0)
+	row1.Count = util.Ptr(uint(4))
+	row2 := rawRow(2, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 2*time.Minute, 2*time.Minute)
+	row2.Count = util.Ptr(uint(2))
+
+	// aggregate; one bucket whose Count is the sum of the two stored Counts.
+	out := aggregateEvents([]api.Event{row1, row2})
+	require.Len(t, out, 1, "same-key rows in the window collapse into one bucket")
+	got := out[0]
+	require.NotNil(t, got.Count)
+	assert.Equal(t, uint(6), *got.Count, "extend adds the incoming row's stored Count")
+}
+
+// TestAggregateEvents_CoversDedupKeySplitAcrossWindow places three
+// key-identical rows so the third one falls outside the window,
+// producing two buckets: the first two collapse and the third stands
+// alone. Verifies the rolling-window rule: the window slides forward
+// on the second emit, so the third's 16-minute offset is measured
+// against the second's LastObservedTime, not the first's.
+func TestAggregateEvents_CoversDedupKeySplitAcrossWindow(t *testing.T) {
+	// rows at t=0, t=5min (within window of t=0), t=16min (outside
+	// window of t=5min): first two form one bucket, third stands alone.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	rows := []api.Event{
+		rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 0),
+		rawRow(2, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 5*time.Minute, 5*time.Minute),
+		rawRow(3, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 16*time.Minute, 16*time.Minute),
+	}
+
+	// aggregate; two buckets, in EventTime-ascending order.
+	out := aggregateEvents(rows)
+	require.Len(t, out, 2, "row falling outside the rolling window starts a fresh bucket")
+
+	// first bucket collapses rows 1 and 2.
+	first := out[0]
+	require.NotNil(t, first.Count)
+	assert.Equal(t, uint(2), *first.Count, "first bucket sums the two in-window rows")
+	assert.True(t, first.EventTime.Equal(base))
+	assert.True(t, first.LastObservedTime.Equal(base.Add(5*time.Minute)))
+
+	// second bucket carries row 3 alone.
+	second := out[1]
+	require.NotNil(t, second.Count)
+	assert.Equal(t, uint(1), *second.Count, "post-window row stands alone in a fresh bucket")
+	assert.True(t, second.EventTime.Equal(base.Add(16*time.Minute)))
+	assert.True(t, second.LastObservedTime.Equal(base.Add(16*time.Minute)))
+}
+
+// TestAggregateEvents_RejectsCrossKeyCollapse pins the bucket-key
+// isolation contract: two rows about the same object but with
+// different Reason belong to different buckets, no collapse.
+func TestAggregateEvents_RejectsCrossKeyCollapse(t *testing.T) {
+	// identical object and window but different Reason values: the
+	// dedup key differs, so no collapse.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	rows := []api.Event{
+		rawRow(1, "ScriptFailed", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 0, 0),
+		rawRow(2, "ScriptTimedOut", "threeport.io/v0.MachineWorkloadInstance", 42, "n", base, 1*time.Minute, 1*time.Minute),
+	}
+
+	// each row lands in its own bucket.
+	out := aggregateEvents(rows)
+	require.Len(t, out, 2, "distinct Reason values do not share a bucket")
+	for _, b := range out {
+		require.NotNil(t, b.Count)
+		assert.Equal(t, uint(1), *b.Count)
+	}
+}
+
+// TestAggregateEvents_CoversCausalSortOldestFirst confirms the
+// response order at the endpoint is oldest-first by EventTime,
+// regardless of input order. Mixes rows across distinct objects so
+// aggregation collapses nothing and the sort is the only effect.
+func TestAggregateEvents_CoversCausalSortOldestFirst(t *testing.T) {
+	// four rows across distinct objects, fed in newest-first order;
+	// the aggregation pass should reorder them oldest-first.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	rows := []api.Event{
+		rawRow(4, "R", "threeport.io/v0.MachineWorkloadInstance", 4, "n", base, 30*time.Minute, 30*time.Minute),
+		rawRow(3, "R", "threeport.io/v0.MachineWorkloadInstance", 3, "n", base, 20*time.Minute, 20*time.Minute),
+		rawRow(2, "R", "threeport.io/v0.MachineWorkloadInstance", 2, "n", base, 10*time.Minute, 10*time.Minute),
+		rawRow(1, "R", "threeport.io/v0.MachineWorkloadInstance", 1, "n", base, 0, 0),
+	}
+
+	// aggregate and read out the EventTime order.
+	out := aggregateEvents(rows)
+	require.Len(t, out, 4)
+	for i := 1; i < len(out); i++ {
+		assert.True(t,
+			out[i-1].EventTime.Before(*out[i].EventTime) || out[i-1].EventTime.Equal(*out[i].EventTime),
+			"aggregation output is sorted by EventTime ascending; index %d violates ordering", i,
+		)
+	}
+	// spot-check the first bucket is the oldest input.
+	require.NotNil(t, out[0].ID)
+	assert.Equal(t, uint(1), *out[0].ID, "oldest raw row's ID heads the response")
+}
+
+// TestAggregateEvents_CollapsesDriftingNotes covers the key rule that
+// Note is not part of the bucket key: two rows sharing (Reason,
+// ObjectType, ObjectID) but carrying different non-empty Note strings
+// collapse into one bucket, and the bucket's Note is the seed row's
+// (earliest EventTime, lowest ID for tiebreak).
+func TestAggregateEvents_CollapsesDriftingNotes(t *testing.T) {
+	// two rows sharing the key with distinct non-empty Note strings;
+	// the second row falls within the aggregation window of the first.
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	row1 := rawRow(1, "R", "threeport.io/v0.MachineWorkloadInstance", 42, "note-a", base, 0, 0)
+	row2 := rawRow(2, "R", "threeport.io/v0.MachineWorkloadInstance", 42, "note-b", base, 1*time.Minute, 1*time.Minute)
+
+	// aggregate; one bucket, count 2, Note carries the seed row's value.
+	out := aggregateEvents([]api.Event{row1, row2})
+	require.Len(t, out, 1, "distinct Note strings share the same bucket key")
+	require.NotNil(t, out[0].Count)
+	assert.Equal(t, uint(2), *out[0].Count, "extend adds the second row's count to the bucket total")
+	require.NotNil(t, out[0].Note)
+	assert.Equal(t, "note-a", *out[0].Note, "bucket Note is the seed row's Note")
+}

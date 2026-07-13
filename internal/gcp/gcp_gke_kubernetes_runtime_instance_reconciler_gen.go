@@ -119,6 +119,9 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestGcpGkeKubernetesRuntimeInstance tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					gcpGkeKubernetesRuntimeInstance.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestGcpGkeKubernetesRuntimeInstance = latestObject
 				getLatestErr = err
 			default:
@@ -188,7 +194,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
+							Reason: util.Ptr(event.ReasonCreateFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						gcpGkeKubernetesRuntimeInstance.GetId(),
@@ -248,7 +254,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						gcpGkeKubernetesRuntimeInstance.GetId(),
@@ -308,7 +314,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						gcpGkeKubernetesRuntimeInstance.GetId(),
@@ -419,23 +425,25 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("gcp gke kubernetes runtime instance unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"gcp gke kubernetes runtime instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				gcpGkeKubernetesRuntimeInstance.GetId(),
-				gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful gcp gke kubernetes runtime instance reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"gcp gke kubernetes runtime instance successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					gcpGkeKubernetesRuntimeInstance.GetId(),
+					gcpGkeKubernetesRuntimeInstance.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful gcp gke kubernetes runtime instance reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

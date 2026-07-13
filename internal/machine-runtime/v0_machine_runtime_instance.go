@@ -3,12 +3,14 @@
 package machineruntime
 
 import (
+	"errors"
 	"fmt"
 
 	logr "github.com/go-logr/logr"
 
 	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
@@ -29,12 +31,47 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// load the parent definition early so the emit can name the married kind
+	// and the provider create path below can reuse it without a second lookup
+	var parentDef *v0.MachineRuntimeDefinition
+	if machineRuntimeInstance.MachineRuntimeDefinitionID != nil {
+		def, err := client.GetMachineRuntimeDefinitionByID(
+			r.APIClient,
+			r.APIServer,
+			*machineRuntimeInstance.MachineRuntimeDefinitionID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get machine runtime definition by ID: %w", err)
+		}
+		parentDef = def
+	}
+
+	// emit a lifecycle marker so operators can see reconcile has begun;
+	// dedup collapses repeated emits across requeues into a single row
+	var createExtras []string
+	if parentDef != nil && parentDef.InfraProvider != nil && *parentDef.InfraProvider != "" {
+		if marriedKind := v0.MachineRuntimeMarriedKind(*parentDef.InfraProvider, "instance"); marriedKind != "" {
+			createExtras = append(createExtras, marriedKind)
+		}
+	}
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateInProgress),
+			Note:   util.Ptr(event.CreateNote(machineRuntimeInstance, createExtras...)),
+		},
+		*machineRuntimeInstance.ID,
+		machineRuntimeInstance.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record CreateInProgress event")
+	}
+
 	// when the instance is provider-provisioned and has no hostname yet, create
 	// the married provider instance and requeue so the ssh path below waits for
 	// the provider reconciler to write back the hostname
-	if machineRuntimeInstance.MachineRuntimeDefinitionID != nil &&
+	if parentDef != nil &&
 		(machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "") {
-		requeue, err := reconcileProviderInstance(r, machineRuntimeInstance, log)
+		requeue, err := reconcileProviderInstance(r, machineRuntimeInstance, parentDef, log)
 		if err != nil {
 			return 0, err
 		}
@@ -104,7 +141,7 @@ func v0MachineRuntimeInstanceCreated(
 		"id", *machineRuntimeInstance.ID,
 	)
 
-	return 0, nil
+	return controller.Done, nil
 }
 
 // reconcileProviderInstance creates the married provider machine runtime
@@ -114,19 +151,12 @@ func v0MachineRuntimeInstanceCreated(
 func reconcileProviderInstance(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	def *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	// fetch the parent definition to learn the provider
-	def, err := client.GetMachineRuntimeDefinitionByID(
-		r.APIClient,
-		r.APIServer,
-		*machineRuntimeInstance.MachineRuntimeDefinitionID,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get machine runtime definition by ID: %w", err)
-	}
+	// an imported machine has no infra provider, so there is nothing to create
 	if def.InfraProvider == nil || *def.InfraProvider == "" {
-		return 0, nil
+		return controller.Done, nil
 	}
 
 	switch *def.InfraProvider {
@@ -230,7 +260,45 @@ func v0MachineRuntimeInstanceUpdated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	return 0, nil
+	// emit a lifecycle marker so operators can see reconcile has begun;
+	// dedup collapses repeated emits across requeues into a single row
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonUpdateInProgress),
+			Note:   util.Ptr(event.UpdateNote()),
+		},
+		*machineRuntimeInstance.ID,
+		machineRuntimeInstance.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record UpdateInProgress event")
+	}
+
+	return controller.Done, nil
+}
+
+// marriedInstanceKind loads the instance's parent definition and returns the
+// concrete married attached-object kind, or "" if the instance has no parent,
+// the lookup fails, or the provider is unknown.
+func marriedInstanceKind(
+	r *controller.Reconciler,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+) string {
+	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
+		return ""
+	}
+	def, err := client.GetMachineRuntimeDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineRuntimeInstance.MachineRuntimeDefinitionID,
+	)
+	if err != nil {
+		return ""
+	}
+	if def.InfraProvider == nil || *def.InfraProvider == "" {
+		return ""
+	}
+	return v0.MachineRuntimeMarriedKind(*def.InfraProvider, "instance")
 }
 
 // v0MachineRuntimeInstanceDeleted performs reconciliation when a v0 MachineRuntimeInstance
@@ -240,5 +308,55 @@ func v0MachineRuntimeInstanceDeleted(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	return 0, nil
+	// emit a lifecycle marker so operators can see reconcile has begun;
+	// dedup collapses repeated emits across requeues into a single row
+	var deleteExtras []string
+	if marriedKind := marriedInstanceKind(r, machineRuntimeInstance); marriedKind != "" {
+		deleteExtras = append(deleteExtras, marriedKind)
+	}
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonDeleteInProgress),
+			Note:   util.Ptr(event.DeleteNote(machineRuntimeInstance, deleteExtras...)),
+		},
+		*machineRuntimeInstance.ID,
+		machineRuntimeInstance.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record DeleteInProgress event")
+	}
+
+	// fetch married GCE machine runtime instance(s) owned by this MRI
+	existing, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to list married GCE machine runtime instances: %w", err)
+	}
+
+	// nothing left; cascade is complete
+	if len(*existing) == 0 {
+		return controller.Done, nil
+	}
+
+	// issue delete for each; the GCE reconciler runs Pulumi destroy and removes
+	// the row when done. skip rows already scheduled for deletion and tolerate
+	// not-found so the loop stays idempotent across requeues.
+	for _, gceInstance := range *existing {
+		if gceInstance.DeletionScheduled != nil {
+			continue
+		}
+		if _, err := client.DeleteGcpGceMachineRuntimeInstance(
+			r.APIClient,
+			r.APIServer,
+			*gceInstance.ID,
+		); err != nil && !errors.Is(err, client_lib.ErrObjectNotFound) {
+			return 0, fmt.Errorf("failed to delete married GCE machine runtime instance %d: %w", *gceInstance.ID, err)
+		}
+	}
+
+	// requeue until every married GCE instance has cleared
+	return controller.Requeue30s, nil
 }

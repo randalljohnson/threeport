@@ -16,6 +16,7 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -269,6 +270,22 @@ func (g *gceMachineLifecycle) SetDeletionFailed() error {
 	}
 	_, err := client.UpdateGcpGceMachineRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
 	return err
+}
+
+// RecordSuccessfulCreate emits a SuccessfulCreate event for the GCE instance
+// so a reader tailing events sees provisioning completion; the wrapper's
+// wasReconciled gate skips its own emit because ConfirmCreation flipped
+// Reconciled=true before the redelivered reconcile pass captured it.
+func (g *gceMachineLifecycle) RecordSuccessfulCreate() error {
+	return g.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateSuccessful),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		g.instance.GetId(),
+		g.instance.GetFullyQualifiedType(),
+	)
 }
 
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.

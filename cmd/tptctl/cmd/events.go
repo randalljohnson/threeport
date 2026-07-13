@@ -98,6 +98,9 @@ var GetEventsCmd = &cobra.Command{
   # filter by Reason (case-sensitive CamelCase)
   tptctl get events --reason SuccessfulCreate
 
+  # filter by Reason prefix (trailing * wildcard)
+  tptctl get events --reason 'Create*'
+
   # show only events on top-level object kinds
   tptctl get events --top-level
 
@@ -125,7 +128,7 @@ Use --api-group <namespace> to filter events by API group / namespace alone (e.g
 
 Use --name <name> to filter events by object name alone. Mutually exclusive with --for; combinable with --object-kind and --api-group.
 
-Use --reason <reason> to filter events by Reason (case-sensitive CamelCase, e.g. SuccessfulCreate). Applied client-side after fetch.
+Use --reason <reason> to filter events by Reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with a trailing star (--reason='Create*'). Case-sensitive CamelCase. Applied server-side.
 
 Use --top-level to drop events on sub-object kinds (e.g. GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance) and keep only events on top-level user-facing kinds.
 
@@ -164,7 +167,7 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		}
 
 		// build query string from the requested filter
-		queryString, err := buildEventsQueryString(eventsFor, eventsObjectKind, eventsApiGroup, eventsName)
+		queryString, err := buildEventsQueryString(eventsFor, eventsObjectKind, eventsApiGroup, eventsName, eventsReason)
 		if err != nil {
 			cli.Error("failed to build events query", err)
 			os.Exit(1)
@@ -212,18 +215,6 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 			filtered := make([]v0.Event, 0, len(*events))
 			for _, e := range *events {
 				if util.DerefString(e.Type) == eventsType {
-					filtered = append(filtered, e)
-				}
-			}
-			events = &filtered
-		}
-
-		// drop rows whose Reason does not match --reason. Case-sensitive
-		// CamelCase match by design; server-side reason index is a followup.
-		if eventsReason != "" {
-			filtered := make([]v0.Event, 0, len(*events))
-			for _, e := range *events {
-				if util.DerefString(e.Reason) == eventsReason {
 					filtered = append(filtered, e)
 				}
 			}
@@ -331,7 +322,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsReason,
-		"reason", "", "Filter events by Reason (case-sensitive CamelCase, e.g. SuccessfulCreate).",
+		"reason", "", "Filter events by reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with trailing * (--reason='Create*').",
 	)
 	GetEventsCmd.Flags().BoolVar(
 		&eventsTopLevel,
@@ -390,14 +381,26 @@ func init() {
 // They combine freely so a caller can narrow by any subset (kind + name,
 // group + kind, group + name, or all three).
 //
+// --reason accepts an exact match ("SuccessfulCreate") or a trailing-star
+// prefix ("Create*"). Exact match maps to ?reason=X; prefix strips the
+// trailing star and maps to ?reasonprefix=X. Combines freely with the
+// other flags.
+//
 // Empty flags return an empty string so the caller queries every event.
-func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag string) (string, error) {
+func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, reasonFlag string) (string, error) {
 	// no filter requested - return empty so the caller queries every event
-	if forFlag == "" && objectKindFlag == "" && apiGroupFlag == "" && nameFlag == "" {
+	if forFlag == "" && objectKindFlag == "" && apiGroupFlag == "" && nameFlag == "" && reasonFlag == "" {
 		return "", nil
 	}
 
 	q := url.Values{}
+
+	// reason: exact match, or trailing-star prefix
+	if reasonFlag != "" {
+		if err := setReasonQueryParam(q, reasonFlag); err != nil {
+			return "", err
+		}
+	}
 
 	// narrow flags: each maps to one query key. Any subset may be set;
 	// each additional key AND-narrows the server-side match.
@@ -462,6 +465,30 @@ func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag stri
 	}
 
 	return q.Encode(), nil
+}
+
+// setReasonQueryParam maps the --reason flag onto the events query. An
+// exact value like "SuccessfulCreate" sets reason=X for a server-side
+// equality match; a trailing-star value like "Create*" strips the star
+// and sets reasonprefix=X for a server-side LIKE prefix match. A bare
+// "*" or an embedded star is rejected.
+func setReasonQueryParam(q url.Values, reasonFlag string) error {
+	if strings.HasSuffix(reasonFlag, "*") {
+		prefix := strings.TrimSuffix(reasonFlag, "*")
+		if prefix == "" {
+			return fmt.Errorf("invalid --reason value %q: prefix is empty", reasonFlag)
+		}
+		if strings.Contains(prefix, "*") {
+			return fmt.Errorf("invalid --reason value %q: star wildcard is only allowed as trailing character", reasonFlag)
+		}
+		q.Set("reasonprefix", prefix)
+		return nil
+	}
+	if strings.Contains(reasonFlag, "*") {
+		return fmt.Errorf("invalid --reason value %q: star wildcard is only allowed as trailing character", reasonFlag)
+	}
+	q.Set("reason", reasonFlag)
+	return nil
 }
 
 // isTopLevelEvent reports whether the event's ObjectType is a top-level

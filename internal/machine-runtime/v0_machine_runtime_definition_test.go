@@ -16,6 +16,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -75,10 +76,12 @@ func TestMachineRuntimeDefinitionCreated_AdoptsExistingMarried(t *testing.T) {
 		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&updated})
 	})
 
+	recorder := machinetest.NewFakeRecorder()
 	log := logr.Discard()
 	r := &controller.Reconciler{
-		APIClient: api.Client,
-		APIServer: api.Addr,
+		APIClient:      api.Client,
+		APIServer:      api.Addr,
+		EventsRecorder: recorder,
 	}
 
 	// run the Created hook against a definition whose married child already exists
@@ -90,6 +93,9 @@ func TestMachineRuntimeDefinitionCreated_AdoptsExistingMarried(t *testing.T) {
 	// verify the abstract definition is still marked reconciled
 	require.Len(t, patches, 1, "the adopt path must still mark the definition reconciled")
 	assert.Contains(t, string(patches[0]), `"Reconciled":true`)
+	// reconciler emits only the CreateInProgress lifecycle marker directly; the
+	// wrapper handles SuccessfulCreate / FailedCreate on the outcome
+	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the adopt path")
 }
 
 // TestMachineRuntimeDefinitionCreated_CreatesWhenMissing covers the create path:
@@ -137,10 +143,12 @@ func TestMachineRuntimeDefinitionCreated_CreatesWhenMissing(t *testing.T) {
 		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&updated})
 	})
 
+	recorder := machinetest.NewFakeRecorder()
 	log := logr.Discard()
 	r := &controller.Reconciler{
-		APIClient: api.Client,
-		APIServer: api.Addr,
+		APIClient:      api.Client,
+		APIServer:      api.Addr,
+		EventsRecorder: recorder,
 	}
 
 	// run the Created hook with no pre-existing married definition
@@ -149,6 +157,9 @@ func TestMachineRuntimeDefinitionCreated_CreatesWhenMissing(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 	// verify exactly one married definition was created
 	assert.Equal(t, int64(1), atomic.LoadInt64(&createCalls), "a missing married definition must be created once")
+	// reconciler emits only the CreateInProgress lifecycle marker directly; the
+	// wrapper handles SuccessfulCreate / FailedCreate on the outcome
+	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the create path")
 }
 
 // TestMachineRuntimeDefinitionCreated_DefaultsUnsetFields covers the defaulting
@@ -198,10 +209,12 @@ func TestMachineRuntimeDefinitionCreated_DefaultsUnsetFields(t *testing.T) {
 		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{&updated})
 	})
 
+	recorder := machinetest.NewFakeRecorder()
 	log := logr.Discard()
 	r := &controller.Reconciler{
-		APIClient: api.Client,
-		APIServer: api.Addr,
+		APIClient:      api.Client,
+		APIServer:      api.Addr,
+		EventsRecorder: recorder,
 	}
 
 	// run the Created hook against the definition with every field unset
@@ -215,4 +228,7 @@ func TestMachineRuntimeDefinitionCreated_DefaultsUnsetFields(t *testing.T) {
 	// verify the boot image defaulted to the documented image
 	require.NotNil(t, created.ImageID)
 	assert.Equal(t, defaultMachineImageID, *created.ImageID)
+	// reconciler emits only the CreateInProgress lifecycle marker directly; the
+	// wrapper handles SuccessfulCreate / FailedCreate on the outcome
+	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the defaulting path")
 }

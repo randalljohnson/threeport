@@ -17,26 +17,12 @@ const (
 	MachineRuntimeInfraProviderGCE = "gce"
 )
 
-// MachineRuntimeInfraProviderForCloudProvider maps a cloud provider name
-// (util.GcpProvider, util.AwsProvider, util.OciProvider) to the concrete
-// machine-runtime infra provider token this API server routes on. Cloud
-// provider names are what users write in user-facing config (RouterMachine,
-// Fleet, RouterMachineSet); the machine-runtime API keys its provisioning
-// switch on the compute-service name because a cloud provider can host more
-// than one compute service (GCP: GCE and GKE, AWS: EC2 and Fargate, etc.).
-// Modules that carry a Provider field forward to threeport-core call this
-// once at handoff so a mapping addition here reaches every module without
-// per-module changes. Returns an error for an unknown or empty cloud
-// provider so an accidental typo surfaces at the caller.
-func MachineRuntimeInfraProviderForCloudProvider(cloudProvider string) (string, error) {
-	switch cloudProvider {
-	case util.GcpProvider:
-		return MachineRuntimeInfraProviderGCE, nil
-	case "":
-		return "", fmt.Errorf("cloud provider is required")
-	default:
-		return "", fmt.Errorf("cloud provider %q is not supported for machine runtime provisioning", cloudProvider)
-	}
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on
+// MachineRuntimeDefinition. The definition has no relationship-tagged foreign
+// keys, so this satisfies the interface with an empty list so lifecycle emit
+// sites can pass the object as the note owner.
+func (m *MachineRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return nil
 }
 
 // beforeCreate validates the MachineRuntimeDefinition before create.
@@ -189,4 +175,15 @@ func (m *MachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 // afterDelete runs after the MachineRuntimeInstance is deleted.
 func (m *MachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
+}
+
+// MachineRuntimeMarriedKind returns the concrete married attached-object
+// kind (kebab-case) for the given infra provider and suffix ("definition"
+// or "instance"). Returns "" if the provider is unknown.
+func MachineRuntimeMarriedKind(infraProvider, suffix string) string {
+	cloud, err := CloudProviderForInfraProvider(infraProvider)
+	if err != nil {
+		return ""
+	}
+	return cloud + "-" + infraProvider + "-machine-runtime-" + suffix
 }

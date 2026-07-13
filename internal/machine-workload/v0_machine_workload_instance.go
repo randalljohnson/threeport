@@ -76,12 +76,18 @@ func v0MachineWorkloadInstanceCreated(
 	// run the create script and record results
 	wlStatus, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.CreateScript, "create", log)
 
-	// update the instance with the final status
-	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
-		Common:         v0.Common{ID: machineWorkloadInstance.ID},
-		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
-		Status:         util.Ptr(string(wlStatus)),
-	}); err != nil {
+	// mark reconciled only when the script actually succeeded; on failure
+	// leave Reconciled unset so the owner-wait chain up through
+	// RouterInstance / RouterMachineInstance / RouterMachineSet correctly
+	// holds Provisioning until a retry succeeds
+	patch := v0.MachineWorkloadInstance{
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Status: util.Ptr(string(wlStatus)),
+	}
+	if scriptErr == nil {
+		patch.Reconciliation = v0.Reconciliation{Reconciled: util.Ptr(true)}
+	}
+	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &patch); err != nil {
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
@@ -92,7 +98,7 @@ func v0MachineWorkloadInstanceCreated(
 		return 30, scriptErr
 	}
 
-	return 0, nil
+	return controller.Done, nil
 }
 
 // v0MachineWorkloadInstanceUpdated performs reconciliation when a v0
@@ -137,12 +143,18 @@ func v0MachineWorkloadInstanceUpdated(
 	// run the update script and record results
 	wlStatus, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.UpdateScript, "update", log)
 
-	// update the instance with the final status
-	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
-		Common:         v0.Common{ID: machineWorkloadInstance.ID},
-		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
-		Status:         util.Ptr(string(wlStatus)),
-	}); err != nil {
+	// mark reconciled only when the script actually succeeded; on failure
+	// leave Reconciled unset so the owner-wait chain up through
+	// RouterInstance / RouterMachineInstance / RouterMachineSet correctly
+	// holds Provisioning until a retry succeeds
+	patch := v0.MachineWorkloadInstance{
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Status: util.Ptr(string(wlStatus)),
+	}
+	if scriptErr == nil {
+		patch.Reconciliation = v0.Reconciliation{Reconciled: util.Ptr(true)}
+	}
+	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &patch); err != nil {
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 

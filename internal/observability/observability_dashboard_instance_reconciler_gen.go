@@ -119,6 +119,9 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestObservabilityDashboardInstance tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					observabilityDashboardInstance.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestObservabilityDashboardInstance = latestObject
 				getLatestErr = err
 			default:
@@ -188,7 +194,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
+							Reason: util.Ptr(event.ReasonCreateFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						observabilityDashboardInstance.GetId(),
@@ -248,7 +254,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						observabilityDashboardInstance.GetId(),
@@ -308,7 +314,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						observabilityDashboardInstance.GetId(),
@@ -419,23 +425,25 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("observability dashboard instance unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"observability dashboard instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				observabilityDashboardInstance.GetId(),
-				observabilityDashboardInstance.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful observability dashboard instance reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"observability dashboard instance successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					observabilityDashboardInstance.GetId(),
+					observabilityDashboardInstance.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful observability dashboard instance reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

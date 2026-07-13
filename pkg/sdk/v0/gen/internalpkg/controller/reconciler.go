@@ -248,6 +248,14 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)
 							g.Line()
 
+							// capture pre-pass reconciled state to gate the success-event emit;
+							// getLatestObject flips wasReconciled to true when the object is
+							// already reconciled at fetch time so redelivered notifications
+							// don't emit a duplicate success event
+							g.Comment("capture pre-pass reconciled state to gate the success-event emit")
+							g.Id("wasReconciled").Op(":=").Lit(false)
+							g.Line()
+
 							// If the object has any field with a "persist" tag set to "false", skip
 							// the retrieval of the latest object. Otherwise, generate the
 							// source code to retrieve the latest object.
@@ -380,32 +388,34 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)
 							g.Line()
 
-							g.Comment("log and record event for successful reconciliation")
-							g.Id("successMsg").Op(":=").Qual("fmt", "Sprintf").Call(
-								Line().Lit(fmt.Sprintf("%s successfully reconciled for %%s operation", strcase.ToDelimited(obj.Name, ' '))),
-								Line().Qual("strings", "ToLower").Call(Id("string").Call(Id("notif").Dot("Operation"))),
-								Line(),
-							)
-							g.If(Id("err").Op(":=").Id("r").Dot("EventsRecorder").Dot("RecordEvent").Call(
-								Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
-									Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
-										Qual("github.com/threeport/threeport/pkg/event/v0", "GetSuccessReasonForOperation").Call(Id("notif").Dot("Operation")),
-									),
-									Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("successMsg")),
-									Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
-										Qual("github.com/threeport/threeport/pkg/event/v0", "TypeNormal"),
-									),
-								}),
-								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
-								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
-								Line(),
-							).Op(";").Id("err").Op("!=").Nil().Block(
-								Id("log").Dot("Error").Call(
-									Err(),
-									Lit(fmt.Sprintf("failed to record event for successful %s reconciliation", strcase.ToDelimited(obj.Name, ' '))),
+							g.Comment("emit success event only on the first-successful transition; skip on redelivery")
+							g.If(Op("!").Id("wasReconciled")).Block(
+								Id("successMsg").Op(":=").Qual("fmt", "Sprintf").Call(
+									Line().Lit(fmt.Sprintf("%s successfully reconciled for %%s operation", strcase.ToDelimited(obj.Name, ' '))),
+									Line().Qual("strings", "ToLower").Call(Id("string").Call(Id("notif").Dot("Operation"))),
+									Line(),
 								),
-							))
-							g.Id("log").Dot("Info").Call(Id("successMsg"))
+								If(Id("err").Op(":=").Id("r").Dot("EventsRecorder").Dot("RecordEvent").Call(
+									Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
+										Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
+											Qual("github.com/threeport/threeport/pkg/event/v0", "GetSuccessReasonForOperation").Call(Id("notif").Dot("Operation")),
+										),
+										Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("successMsg")),
+										Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
+											Qual("github.com/threeport/threeport/pkg/event/v0", "TypeNormal"),
+										),
+									}),
+									Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
+									Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
+									Line(),
+								).Op(";").Id("err").Op("!=").Nil().Block(
+									Id("log").Dot("Error").Call(
+										Err(),
+										Lit(fmt.Sprintf("failed to record event for successful %s reconciliation", strcase.ToDelimited(obj.Name, ' '))),
+									),
+								)),
+								Id("log").Dot("Info").Call(Id("successMsg")),
+							)
 						}),
 					),
 				),
@@ -465,6 +475,13 @@ func getLatestObject(
 					Line().Id("r").Dot("APIServer"),
 					Line().Id(objVar).Dot("GetId").Call(),
 					Line(),
+				),
+				If(
+					Id("latestObject").Op("!=").Nil().
+						Op("&&").Id("latestObject").Dot("Reconciled").Op("!=").Nil().
+						Op("&&").Op("*").Id("latestObject").Dot("Reconciled"),
+				).Block(
+					Id("wasReconciled").Op("=").Lit(true),
 				),
 				Id(latestObjVar).Op("=").Id("latestObject"),
 				Id(latestObjErrVar).Op("=").Err(),

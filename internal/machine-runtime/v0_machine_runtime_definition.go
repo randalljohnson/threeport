@@ -12,6 +12,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -40,12 +41,29 @@ func v0MachineRuntimeDefinitionCreated(
 	// a definition registered externally with Reconciled already set needs no
 	// resolution, so return without error
 	if machineRuntimeDefinition.Reconciled != nil && *machineRuntimeDefinition.Reconciled {
-		return 0, nil
+		return controller.Done, nil
 	}
 
 	// imported machines have no infra provider, so there is nothing to resolve
 	if machineRuntimeDefinition.InfraProvider == nil || *machineRuntimeDefinition.InfraProvider == "" {
-		return 0, nil
+		return controller.Done, nil
+	}
+
+	// emit a lifecycle marker so operators can see reconcile has begun
+	var createExtras []string
+	if marriedKind := v0.MachineRuntimeMarriedKind(*machineRuntimeDefinition.InfraProvider, "definition"); marriedKind != "" {
+		createExtras = append(createExtras, marriedKind)
+	}
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateInProgress),
+			Note:   util.Ptr(event.CreateNote(machineRuntimeDefinition, createExtras...)),
+		},
+		*machineRuntimeDefinition.ID,
+		machineRuntimeDefinition.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record CreateInProgress event")
 	}
 
 	switch *machineRuntimeDefinition.InfraProvider {
@@ -125,7 +143,7 @@ func v0MachineRuntimeDefinitionCreated(
 		return 0, fmt.Errorf("failed to update machine runtime definition: %w", err)
 	}
 
-	return 0, nil
+	return controller.Done, nil
 }
 
 // v0MachineRuntimeDefinitionUpdated performs reconciliation when a v0
@@ -135,7 +153,20 @@ func v0MachineRuntimeDefinitionUpdated(
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	return 0, nil
+	// emit a lifecycle marker so operators can see reconcile has begun
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonUpdateInProgress),
+			Note:   util.Ptr(event.UpdateNote()),
+		},
+		*machineRuntimeDefinition.ID,
+		machineRuntimeDefinition.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record UpdateInProgress event")
+	}
+
+	return controller.Done, nil
 }
 
 // v0MachineRuntimeDefinitionDeleted performs reconciliation when a v0
@@ -147,6 +178,25 @@ func v0MachineRuntimeDefinitionDeleted(
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
+	// emit a lifecycle marker so operators can see reconcile has begun
+	var deleteExtras []string
+	if machineRuntimeDefinition.InfraProvider != nil && *machineRuntimeDefinition.InfraProvider != "" {
+		if marriedKind := v0.MachineRuntimeMarriedKind(*machineRuntimeDefinition.InfraProvider, "definition"); marriedKind != "" {
+			deleteExtras = append(deleteExtras, marriedKind)
+		}
+	}
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonDeleteInProgress),
+			Note:   util.Ptr(event.DeleteNote(machineRuntimeDefinition, deleteExtras...)),
+		},
+		*machineRuntimeDefinition.ID,
+		machineRuntimeDefinition.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record DeleteInProgress event")
+	}
+
 	// a deletion notification that was not scheduled indicates a problem
 	if machineRuntimeDefinition.DeletionScheduled == nil {
 		return 0, errors.New("deletion notification received but not scheduled")
@@ -154,7 +204,7 @@ func v0MachineRuntimeDefinitionDeleted(
 
 	// nothing to do once deletion is already confirmed
 	if machineRuntimeDefinition.DeletionConfirmed != nil {
-		return 0, nil
+		return controller.Done, nil
 	}
 
 	// delete the married provider definition; it is non-reconcilable, so the
@@ -177,5 +227,5 @@ func v0MachineRuntimeDefinitionDeleted(
 		}
 	}
 
-	return 0, nil
+	return controller.Done, nil
 }

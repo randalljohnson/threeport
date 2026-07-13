@@ -17,8 +17,6 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-const eventMessageTableMax = 200
-
 // outputEventsTable produces the tabular output for the events list. Each
 // element of events is a server-side aggregated bucket: Count reflects
 // the number of raw rows collapsed into the bucket, EventTime is the
@@ -30,9 +28,10 @@ const eventMessageTableMax = 200
 // times), pre-formats every cell, and tracks the widest numeric-cell
 // string so the second pass can right-pad COUNT and AGE for right-aligned
 // display. Left-align stays the tabwriter default for text columns.
-// When wide is set the MESSAGE cap grows to fit the terminal width so
-// long notes render inline; otherwise the fixed eventMessageTableMax cap
-// applies.
+// The default view sizes MESSAGE to fit the terminal width so no row
+// wraps. --wide disables truncation entirely, showing full untruncated
+// notes even if the terminal wraps them, so operators can copy the
+// complete text out of the buffer.
 func outputEventsTable(events *[]v0.Event, wide bool) error {
 	// decide whether COUNT belongs on the output; any Count>1 in the set
 	// turns the column on
@@ -131,31 +130,34 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 		rows = append(rows, r)
 	}
 
-	// decide the MESSAGE cap: fixed eventMessageTableMax without --wide,
-	// otherwise the terminal width minus every other column's budget
-	// (falling back to a generous 200 when stdout is not a TTY so a
-	// redirected --wide run still emits readable output)
-	messageCap := eventMessageTableMax
+	// decide the MESSAGE cap: default view sizes MESSAGE to the terminal
+	// width minus every other column's budget so no row wraps; --wide
+	// disables truncation entirely so operators can copy the full note out
+	// of the terminal even if it wraps
+	messageCap := computeDefaultMessageCap(
+		maxTypeWidth,
+		maxApiGroupWidth,
+		maxKindWidth,
+		maxNameWidth,
+		maxReasonWidth,
+		maxAgeWidth,
+		maxCountWidth,
+		showCount,
+	)
 	if wide {
-		messageCap = computeWideMessageCap(
-			maxTypeWidth,
-			maxApiGroupWidth,
-			maxKindWidth,
-			maxNameWidth,
-			maxReasonWidth,
-			maxAgeWidth,
-			maxCountWidth,
-			showCount,
-		)
+		messageCap = 0
 	}
 
-	// truncate MESSAGE cells against the chosen cap; anyTruncated fires
-	// when at least one row overflows so the footer hint can nudge the
-	// user toward -o yaml
-	for i := range rows {
-		if len(rows[i].message) > messageCap {
-			rows[i].message = util.TruncateString(rows[i].message, messageCap)
-			anyTruncated = true
+	// truncate MESSAGE cells against the chosen cap when non-zero;
+	// messageCap of zero disables truncation entirely under --wide.
+	// anyTruncated fires when at least one row overflows so the footer
+	// hint can nudge the user toward -o yaml
+	if messageCap > 0 {
+		for i := range rows {
+			if len(rows[i].message) > messageCap {
+				rows[i].message = util.TruncateString(rows[i].message, messageCap)
+				anyTruncated = true
+			}
 		}
 	}
 
@@ -197,13 +199,13 @@ func outputEventsTable(events *[]v0.Event, wide bool) error {
 	return nil
 }
 
-// computeWideMessageCap returns the MESSAGE column budget for --wide
+// computeDefaultMessageCap returns the MESSAGE column budget for default
 // output. On a TTY it subtracts every other column's measured width and
 // the tabwriter padding from the terminal width, floored at 40 so a
 // narrow terminal still gets a usable cap. Off a TTY (piped or redirected
-// stdout) it falls back to 200 so `tptctl get events --wide > out.txt`
-// remains readable.
-func computeWideMessageCap(
+// stdout) it falls back to 200 so `tptctl get events > out.txt` remains
+// readable.
+func computeDefaultMessageCap(
 	typeW, apiGroupW, kindW, nameW, reasonW, ageW, countW int,
 	showCount bool,
 ) int {

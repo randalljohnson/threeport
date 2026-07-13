@@ -13,7 +13,6 @@ import (
 	"gorm.io/datatypes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	runtime "github.com/threeport/threeport/internal/kubernetes-runtime"
 	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	workload_util "github.com/threeport/threeport/internal/kubernetes-workload/util"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
@@ -1013,7 +1012,7 @@ func configureIssuer(
 	}
 
 	// get infra provider region
-	provider, err := runtime.GetCloudProviderForInfraProvider(*kubernetesRuntimeDefinition.InfraProvider)
+	provider, err := v0.CloudProviderForInfraProvider(*kubernetesRuntimeDefinition.InfraProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider for infra provider: %w", err)
 	}

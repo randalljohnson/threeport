@@ -28,23 +28,11 @@ var (
 	eventsSort       string
 	eventsLimit      int
 	eventsTopLevel   bool
-	eventsVerbose    bool
 	eventsWide       bool
 	eventsReverse    bool
 	eventsSince      time.Duration
 	eventsType       string
 )
-
-// bootNoiseReasons lists Reason values considered low-signal boot-time
-// noise. Rows carrying these Reasons are hidden by default and revealed
-// with --verbose; Warning-type events are always shown regardless.
-var bootNoiseReasons = map[string]bool{
-	"HostKeyCaptured":                 true,
-	"SSHReachable":                    true,
-	"ProviderResourcesProvisioning":   true,
-	"ProviderResourcesDeprovisioning": true,
-	"ScriptSucceeded":                 true,
-}
 
 // topLevelObjectKinds lists the core API type names considered
 // top-level for the --top-level filter. Sub-object types
@@ -89,11 +77,11 @@ var GetEventsCmd = &cobra.Command{
   # filter to a specific object (broad: any namespace/version)
   tptctl get events --for helm-workload-instance/my-app
 
-  # narrow to one version
-  tptctl get events --for v0.helm-workload-instance/my-app
-
   # narrow to one api namespace + version
   tptctl get events --for threeport.io/v0.helm-workload-instance/my-app
+
+  # narrow to one version
+  tptctl get events --for v0.helm-workload-instance/my-app
 
   # filter by kind alone across every object of that kind
   tptctl get events --object-kind helm-workload-instance
@@ -110,6 +98,9 @@ var GetEventsCmd = &cobra.Command{
   # filter by Reason (case-sensitive CamelCase)
   tptctl get events --reason SuccessfulCreate
 
+  # filter by Reason prefix (trailing * wildcard)
+  tptctl get events --reason 'Create*'
+
   # show only events on top-level object kinds
   tptctl get events --top-level
 
@@ -125,11 +116,8 @@ var GetEventsCmd = &cobra.Command{
   # widen the MESSAGE column to the terminal width
   tptctl get events --wide
 
-  # newest events first (equivalent to --sort=newest)
-  tptctl get events -r
-
-  # include the boot-noise reasons hidden by default
-  tptctl get events --verbose`,
+  # oldest events first, top-down causal read (equivalent to --sort=oldest)
+  tptctl get events -r`,
 	Long: `Get events from the system.
 
 Use --for [<namespace>/][<version>.]<kind>/<name> to filter events to a specific object. <namespace> and <version> are optional; <kind> and <name> are required. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.
@@ -140,11 +128,11 @@ Use --api-group <namespace> to filter events by API group / namespace alone (e.g
 
 Use --name <name> to filter events by object name alone. Mutually exclusive with --for; combinable with --object-kind and --api-group.
 
-Use --reason <reason> to filter events by Reason (case-sensitive CamelCase, e.g. SuccessfulCreate). Applied client-side after fetch.
+Use --reason <reason> to filter events by Reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with a trailing star (--reason='Create*'). Case-sensitive CamelCase. Applied server-side.
 
 Use --top-level to drop events on sub-object kinds (e.g. GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance) and keep only events on top-level user-facing kinds.
 
-Use --sort to control row order: oldest (default) puts the oldest activity at the top so the causal sequence reads down; newest is reverse. -r / --reverse is equivalent to --sort=newest.
+Use --sort to control row order: newest (default) puts the most recent activity at the top matching kubectl's convention; oldest is reverse and lets a causal sequence read down. -r / --reverse is equivalent to --sort=oldest.
 
 Use --limit N to cap the number of rows shown (after sort). The default of 0 means no cap.
 
@@ -154,7 +142,7 @@ Use --type Normal|Warning to filter events by type. Empty disables the filter.
 
 Use --wide to widen the MESSAGE column to the terminal width so long notes render inline.
 
-Use --verbose to include the boot-noise reasons that are hidden by default: HostKeyCaptured, SSHReachable, ProviderResourcesProvisioning, ProviderResourcesDeprovisioning, ScriptSucceeded. Warning-type events are always shown regardless of --verbose.
+AGE column: a single value is the event's age; a "first..last" span (e.g. 1h5m..1h4m) means the event was first observed at "first" ago and last observed at "last" ago.
 
 Full event notes (including captured script stdout/stderr) can be viewed with -o yaml.`,
 	PreRun: CommandPreRunFunc,
@@ -179,7 +167,7 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		}
 
 		// build query string from the requested filter
-		queryString, err := buildEventsQueryString(eventsFor, eventsObjectKind, eventsApiGroup, eventsName)
+		queryString, err := buildEventsQueryString(eventsFor, eventsObjectKind, eventsApiGroup, eventsName, eventsReason)
 		if err != nil {
 			cli.Error("failed to build events query", err)
 			os.Exit(1)
@@ -200,23 +188,6 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 				if isTopLevelEvent(&e) {
 					filtered = append(filtered, e)
 				}
-			}
-			events = &filtered
-		}
-
-		// hide boot-noise Reasons by default; --verbose reveals them.
-		// Warning-type events are always shown; matches pkg/event/v0.TypeWarning.
-		// hiddenBootNoise counts how many rows were suppressed so the
-		// footer hint can offer --verbose as the escape hatch.
-		hiddenBootNoise := 0
-		if !eventsVerbose {
-			filtered := make([]v0.Event, 0, len(*events))
-			for _, e := range *events {
-				if util.DerefString(e.Type) != "Warning" && bootNoiseReasons[util.DerefString(e.Reason)] {
-					hiddenBootNoise++
-					continue
-				}
-				filtered = append(filtered, e)
 			}
 			events = &filtered
 		}
@@ -250,24 +221,7 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 			events = &filtered
 		}
 
-		// drop rows whose Reason does not match --reason. Case-sensitive
-		// CamelCase match by design; server-side reason index is a followup.
-		if eventsReason != "" {
-			filtered := make([]v0.Event, 0, len(*events))
-			for _, e := range *events {
-				if util.DerefString(e.Reason) == eventsReason {
-					filtered = append(filtered, e)
-				}
-			}
-			events = &filtered
-		}
-
 		if len(*events) == 0 {
-			// still surface the boot-noise escape hatch when everything
-			// was filtered away so a user who over-narrowed can back off
-			if !eventsVerbose && hiddenBootNoise > 0 {
-				fmt.Printf("%d event(s) hidden by boot-noise filter; use --verbose to include\n", hiddenBootNoise)
-			}
 			cli.Info(fmt.Sprintf(
 				"no events found that are currently managed by %s threeport control plane",
 				requestedControlPlane,
@@ -278,13 +232,13 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		// -r / --reverse folds into --sort=newest. When both are set
 		// explicitly and they conflict, reject rather than silently pick
 		// one. Combining --reverse with the default sort just flips to
-		// newest without complaint.
+		// oldest without complaint.
 		if eventsReverse {
-			if cmd.Flags().Changed("sort") && eventsSort == "oldest" {
-				cli.Error("", fmt.Errorf("--reverse and --sort=oldest are mutually exclusive"))
+			if cmd.Flags().Changed("sort") && eventsSort == "newest" {
+				cli.Error("", fmt.Errorf("--reverse and --sort=newest are mutually exclusive"))
 				os.Exit(1)
 			}
-			eventsSort = "newest"
+			eventsSort = "oldest"
 		}
 
 		// sort by event time per --sort
@@ -315,16 +269,10 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 			events = &truncated
 		}
 
-		// write output. For tabular the verbose hint prints BEFORE the
-		// table so the terminal read order is verbose-hint, table,
-		// truncation-hint (the last printed inside outputEventsTable
-		// after the tabwriter flush). yaml and json outputs never mix
-		// hints with the payload.
+		// dispatch on output format: tabular prints via tabwriter with an
+		// in-body truncation hint; yaml and json emit the raw payload.
 		switch eventsOutput {
 		case "tabular":
-			if !eventsVerbose && hiddenBootNoise > 0 {
-				fmt.Printf("%d event(s) hidden by boot-noise filter; use --verbose to include\n", hiddenBootNoise)
-			}
 			if err := outputEventsTable(events, eventsWide); err != nil {
 				cli.Error("failed to produce output", err)
 				os.Exit(1)
@@ -361,6 +309,10 @@ func init() {
 		"object-kind", "", "Filter events by object kind alone (kebab-case form of the API type name, e.g. helm-workload-instance). Mutually exclusive with --for; combinable with --api-group and --name.",
 	)
 	GetEventsCmd.Flags().StringVar(
+		&eventsObjectKind,
+		"kind", "", "Alias for --object-kind.",
+	)
+	GetEventsCmd.Flags().StringVar(
 		&eventsApiGroup,
 		"api-group", "", "Filter events by API group / namespace (e.g. threeport.io). Mutually exclusive with --for; combinable with --object-kind and --name.",
 	)
@@ -370,11 +322,11 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsReason,
-		"reason", "", "Filter events by Reason (case-sensitive CamelCase, e.g. SuccessfulCreate).",
+		"reason", "", "Filter events by reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with trailing * (--reason='Create*').",
 	)
 	GetEventsCmd.Flags().BoolVar(
 		&eventsTopLevel,
-		"top-level", false, "Only show events on top-level object kinds (drops sub-object kinds like GcpGceMachineRuntimeInstance and KubernetesWorkloadResourceInstance).",
+		"top-level", false, "Show only events for top-level objects. Drops events for owned children (RouterMachineInstance under a Set, MachineRuntimeInstance under a RouterMachine, etc).",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&eventsOutput,
@@ -382,15 +334,11 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsSort,
-		"sort", "oldest", "Sort order. One of: [oldest, newest]. Default oldest places the earliest event at the top so the causal sequence reads down.",
+		"sort", "newest", "Sort order. One of: [oldest, newest]. Default newest places the most recent event at the top, matching kubectl's convention.",
 	)
 	GetEventsCmd.Flags().IntVar(
 		&eventsLimit,
 		"limit", 0, "Maximum number of events to display after sort. 0 means no cap.",
-	)
-	GetEventsCmd.Flags().BoolVar(
-		&eventsVerbose,
-		"verbose", false, "Show low-value boot-noise events (HostKeyCaptured, SSHReachable, ProviderResourcesProvisioning, ProviderResourcesDeprovisioning, ScriptSucceeded) that are hidden by default.",
 	)
 	GetEventsCmd.Flags().DurationVar(
 		&eventsSince,
@@ -406,7 +354,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().BoolVarP(
 		&eventsReverse,
-		"reverse", "r", false, "Reverse sort order. Equivalent to --sort=newest.",
+		"reverse", "r", false, "Reverse sort order. Equivalent to --sort=oldest.",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
@@ -433,14 +381,26 @@ func init() {
 // They combine freely so a caller can narrow by any subset (kind + name,
 // group + kind, group + name, or all three).
 //
+// --reason accepts an exact match ("SuccessfulCreate") or a trailing-star
+// prefix ("Create*"). Exact match maps to ?reason=X; prefix strips the
+// trailing star and maps to ?reasonprefix=X. Combines freely with the
+// other flags.
+//
 // Empty flags return an empty string so the caller queries every event.
-func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag string) (string, error) {
+func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, reasonFlag string) (string, error) {
 	// no filter requested - return empty so the caller queries every event
-	if forFlag == "" && objectKindFlag == "" && apiGroupFlag == "" && nameFlag == "" {
+	if forFlag == "" && objectKindFlag == "" && apiGroupFlag == "" && nameFlag == "" && reasonFlag == "" {
 		return "", nil
 	}
 
 	q := url.Values{}
+
+	// reason: exact match, or trailing-star prefix
+	if reasonFlag != "" {
+		if err := setReasonQueryParam(q, reasonFlag); err != nil {
+			return "", err
+		}
+	}
 
 	// narrow flags: each maps to one query key. Any subset may be set;
 	// each additional key AND-narrows the server-side match.
@@ -505,6 +465,30 @@ func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag stri
 	}
 
 	return q.Encode(), nil
+}
+
+// setReasonQueryParam maps the --reason flag onto the events query. An
+// exact value like "SuccessfulCreate" sets reason=X for a server-side
+// equality match; a trailing-star value like "Create*" strips the star
+// and sets reasonprefix=X for a server-side LIKE prefix match. A bare
+// "*" or an embedded star is rejected.
+func setReasonQueryParam(q url.Values, reasonFlag string) error {
+	if strings.HasSuffix(reasonFlag, "*") {
+		prefix := strings.TrimSuffix(reasonFlag, "*")
+		if prefix == "" {
+			return fmt.Errorf("invalid --reason value %q: prefix is empty", reasonFlag)
+		}
+		if strings.Contains(prefix, "*") {
+			return fmt.Errorf("invalid --reason value %q: star wildcard is only allowed as trailing character", reasonFlag)
+		}
+		q.Set("reasonprefix", prefix)
+		return nil
+	}
+	if strings.Contains(reasonFlag, "*") {
+		return fmt.Errorf("invalid --reason value %q: star wildcard is only allowed as trailing character", reasonFlag)
+	}
+	q.Set("reason", reasonFlag)
+	return nil
 }
 
 // isTopLevelEvent reports whether the event's ObjectType is a top-level

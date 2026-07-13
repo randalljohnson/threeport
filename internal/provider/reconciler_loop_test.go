@@ -66,7 +66,7 @@ func waitForInFlightZero(t *testing.T, within time.Duration) {
 
 // TestReconcilerLoop_2000Instances_SemaphoreCapped is the headline scale
 // test. It models the reconciler requeue loop: the semaphore acquire is
-// non-blocking, so a call when the pool is full returns (30, nil) without
+// non-blocking, so a call when the pool is full returns (90, nil) without
 // launching. Blocking deploys hold every slot so the cap is observable;
 // the watcher proves the count of concurrently-executing operations never
 // exceeds the injected capacity no matter how hard the loop drives.

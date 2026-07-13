@@ -22,7 +22,7 @@ func testLifecycleConfig() LifecycleConfig {
 	}
 }
 
-// TestCheckStaleAck_Boundary pins the strict greater-than comparison in
+// TestCheckStaleAck_Boundary asserts the strict greater-than comparison in
 // stale ack detection: an ack aged exactly at the threshold is not yet
 // stale, only ages strictly beyond the threshold are.
 func TestCheckStaleAck_Boundary(t *testing.T) {
@@ -63,7 +63,7 @@ func TestCheckStaleAck_Boundary(t *testing.T) {
 	}
 }
 
-// TestVerifyState_NilEmptyInvalid pins the three early-reject branches
+// TestVerifyState_NilEmptyInvalid covers the three early-reject branches
 // of state verification: nil pointer, zero-length bytes, and bytes that
 // fail JSON parsing.
 func TestVerifyState_NilEmptyInvalid(t *testing.T) {
@@ -97,7 +97,7 @@ func TestVerifyState_NilEmptyInvalid(t *testing.T) {
 	}
 }
 
-// TestVerifyState_CheckpointFormat_CountsResources pins that resources
+// TestVerifyState_CheckpointFormat_CountsResources asserts that resources
 // nested under checkpoint.latest.resources are counted and a non-empty
 // list passes verification.
 func TestVerifyState_CheckpointFormat_CountsResources(t *testing.T) {
@@ -105,7 +105,7 @@ func TestVerifyState_CheckpointFormat_CountsResources(t *testing.T) {
 	assert.NoError(t, verifyState(state, newTestLogger()))
 }
 
-// TestVerifyState_DeploymentFormat pins that resources under
+// TestVerifyState_DeploymentFormat asserts that resources under
 // deployment.resources are counted and a non-empty list passes
 // verification.
 func TestVerifyState_DeploymentFormat(t *testing.T) {
@@ -113,10 +113,10 @@ func TestVerifyState_DeploymentFormat(t *testing.T) {
 	assert.NoError(t, verifyState(state, newTestLogger()))
 }
 
-// TestVerifyState_NoResources pins the no-resources rejection branch:
-// valid JSON whose checkpoint and deployment resource lists are empty
-// or missing fails verification.
-func TestVerifyState_NoResources(t *testing.T) {
+// TestVerifyState_UnrecognizedSchema_Rejected asserts that valid JSON
+// carrying neither Pulumi schema (no checkpoint.latest.resources and no
+// deployment.resources list) is rejected as unrecognized state.
+func TestVerifyState_UnrecognizedSchema_Rejected(t *testing.T) {
 	cases := []struct {
 		name  string
 		state *datatypes.JSON
@@ -125,6 +125,33 @@ func TestVerifyState_NoResources(t *testing.T) {
 			name:  "both formats missing",
 			state: jsonPtr(`{"other":"content"}`),
 		},
+		{
+			name:  "checkpoint present but resources not a list",
+			state: jsonPtr(`{"checkpoint":{"latest":{"resources":{}}}}`),
+		},
+		{
+			name:  "deployment present but resources not a list",
+			state: jsonPtr(`{"deployment":{"resources":"oops"}}`),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := verifyState(tc.state, newTestLogger())
+			assert.ErrorContains(t, err, "known Pulumi stack schema")
+		})
+	}
+}
+
+// TestVerifyState_EmptyStack_Accepted asserts the zero-resource guard: a
+// well-formed Pulumi stack whose resource list is present but empty is a
+// legitimately empty stack and passes verification, so a deployment that
+// creates no resources is not persisted as failed and retried forever.
+func TestVerifyState_EmptyStack_Accepted(t *testing.T) {
+	cases := []struct {
+		name  string
+		state *datatypes.JSON
+	}{
 		{
 			name:  "checkpoint format with empty resources",
 			state: jsonPtr(`{"checkpoint":{"latest":{"resources":[]}}}`),
@@ -141,13 +168,12 @@ func TestVerifyState_NoResources(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := verifyState(tc.state, newTestLogger())
-			assert.ErrorContains(t, err, "state contains no resources")
+			assert.NoError(t, verifyState(tc.state, newTestLogger()))
 		})
 	}
 }
 
-// TestInventoryCleared_Table pins which inventory values count as
+// TestInventoryCleared_Table asserts which inventory values count as
 // cleared: nil, zero-length, empty object, and JSON null are cleared;
 // an object with content is not.
 func TestInventoryCleared_Table(t *testing.T) {
@@ -190,7 +216,7 @@ func TestInventoryCleared_Table(t *testing.T) {
 	}
 }
 
-// TestHasExistingState_Table pins which state values count as restorable
+// TestHasExistingState_Table asserts which state values count as restorable
 // existing state: nil, zero-length, empty object, and JSON null do not;
 // an object with content does.
 func TestHasExistingState_Table(t *testing.T) {
@@ -233,7 +259,7 @@ func TestHasExistingState_Table(t *testing.T) {
 	}
 }
 
-// TestPersistFailure_SucceedsFirstTry pins the immediate-return branch:
+// TestPersistFailure_SucceedsFirstTry covers the immediate-return branch:
 // a persist function that succeeds on its first call is invoked exactly
 // once and the retry delay is never waited out.
 func TestPersistFailure_SucceedsFirstTry(t *testing.T) {
@@ -258,7 +284,7 @@ func TestPersistFailure_SucceedsFirstTry(t *testing.T) {
 		"first-try success must return without waiting the retry delay")
 }
 
-// TestPersistFailure_Exhaustion pins the retry-exhaustion branch: a
+// TestPersistFailure_Exhaustion covers the retry-exhaustion branch: a
 // persist function that always errors is retried up to the configured
 // count and the call returns normally afterward.
 func TestPersistFailure_Exhaustion(t *testing.T) {

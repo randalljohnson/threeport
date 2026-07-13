@@ -44,6 +44,9 @@ type Reconciliation struct {
 	// Used by controllers to confirm deletion of an object.
 	DeletionConfirmed *time.Time `json:",omitempty" validate:"optional"`
 
+	// Gets set to true if deletion process fails.
+	DeletionFailed *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
+
 	// InterruptReconciliation is used by the controller to indicated that future
 	// reconcilation should be interrupted.  Useful in cases where there is a
 	// situation where future reconciliation could be descructive such as

@@ -2,9 +2,11 @@ package provider
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -419,6 +421,7 @@ type fakeLifecycle struct {
 	snaps     []*ReconciliationSnapshot
 	snapIndex int
 
+	stackKey       string
 	infra          InfraProvider
 	createComplete bool
 
@@ -426,17 +429,26 @@ type fakeLifecycle struct {
 	createOutputState *datatypes.JSON
 }
 
+// fakeLifecycleCounter mints a unique default stack key per fakeLifecycle
+// so tests that spin up multiple independent instances don't accidentally
+// serialize on the same key.
+var fakeLifecycleCounter int64
+
 // newFakeLifecycle returns a lifecycle fake that walks the given
 // reconciliation snapshots in order: each call consumes the next
 // snapshot, and once exhausted the last snapshot repeats. With no
 // snapshots, an empty snapshot (a brand new create request) repeats.
-// The built infra defaults to a fresh fakeInfra.
+// The built infra defaults to a fresh fakeInfra. Each instance gets a
+// unique default stack key so multiple fakes stay concurrency-independent
+// unless a test opts them into a shared key via setStackKey.
 func newFakeLifecycle(snaps ...*ReconciliationSnapshot) *fakeLifecycle {
+	id := atomic.AddInt64(&fakeLifecycleCounter, 1)
 	return &fakeLifecycle{
-		calls: make(map[string]int),
-		errs:  make(map[string]error),
-		snaps: snaps,
-		infra: newFakeInfra(),
+		calls:    make(map[string]int),
+		errs:     make(map[string]error),
+		snaps:    snaps,
+		stackKey: fmt.Sprintf("fake-lifecycle-%d", id),
+		infra:    newFakeInfra(),
 	}
 }
 
@@ -446,6 +458,24 @@ func (f *fakeLifecycle) recordSimple(method string) error {
 	defer f.mu.Unlock()
 	f.calls[method]++
 	return f.errs[method]
+}
+
+// StackKey returns the programmed stack key. Every fake starts with a
+// unique default so multiple instances stay concurrency-independent; a
+// test can call setStackKey to point two fakes at the same key when it
+// wants to assert same-stack serialization.
+func (f *fakeLifecycle) StackKey() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.stackKey
+}
+
+// setStackKey programs the stack key returned by StackKey so tests can
+// assert both same-key serialization and cross-key concurrency.
+func (f *fakeLifecycle) setStackKey(key string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.stackKey = key
 }
 
 // GetReconciliation counts the call and returns the next snapshot in the
@@ -540,6 +570,11 @@ func (f *fakeLifecycle) AckDeletion() error {
 // RefreshDeletionAck counts the call and returns its injected error.
 func (f *fakeLifecycle) RefreshDeletionAck() error {
 	return f.recordSimple("RefreshDeletionAck")
+}
+
+// SetDeletionFailed counts the call and returns its injected error.
+func (f *fakeLifecycle) SetDeletionFailed() error {
+	return f.recordSimple("SetDeletionFailed")
 }
 
 // ConfirmDeletion counts the call and returns its injected error.

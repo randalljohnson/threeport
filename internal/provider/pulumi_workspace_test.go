@@ -40,7 +40,7 @@ func checkpointState(project, name, marker string) string {
 	)
 }
 
-// TestNewPulumiWorkspace_WithStateDirRoot pins the constructor seam: the
+// TestNewPulumiWorkspace_WithStateDirRoot covers the constructor seam: the
 // runtime instance name and project name are set from the arguments, the
 // state dir root option makes the state dir resolve to <root>/<name>, and
 // the state file path lands under the injected root at
@@ -68,7 +68,7 @@ func TestNewPulumiWorkspace_WithStateDirRoot(t *testing.T) {
 	assert.True(t, info.IsDir())
 }
 
-// TestNewPulumiWorkspace_DefaultRoot pins the fallback branch of state dir
+// TestNewPulumiWorkspace_DefaultRoot covers the fallback branch of state dir
 // resolution: without the state dir root option, the state dir resolves
 // under the home-dir runtime state path. The home dir is redirected to a
 // temp dir so the side-effecting mkdir never touches the real home dir;
@@ -102,7 +102,7 @@ func TestNewPulumiWorkspace_DefaultRoot(t *testing.T) {
 	assert.True(t, info.IsDir())
 }
 
-// TestGetStateFilePath_EmptyName pins the empty-name guard added by the
+// TestGetStateFilePath_EmptyName covers the empty-name guard added by the
 // seam: an empty runtime instance name returns an error refusing to build
 // the path, before any filesystem side effects, so two unnamed instances
 // can never collide on the same state file.
@@ -121,7 +121,7 @@ func TestGetStateFilePath_EmptyName(t *testing.T) {
 	assert.Empty(t, entries)
 }
 
-// TestSetStackState_CheckpointRoundTrip pins the checkpoint-format branch
+// TestSetStackState_CheckpointRoundTrip covers the checkpoint-format branch
 // of state restoration: JSON with a top-level "checkpoint" key, and no
 // top-level "deployment" key, bypasses the backend import and is written
 // directly to the state file, landing on disk byte-identical and reading
@@ -147,7 +147,7 @@ func TestSetStackState_CheckpointRoundTrip(t *testing.T) {
 	assert.Equal(t, state, string(*readBack))
 }
 
-// TestSetStackState_AtomicTempThenRename pins the atomic temp-then-rename
+// TestSetStackState_AtomicTempThenRename covers the atomic temp-then-rename
 // write of the checkpoint branch in three parts. Success: the target holds
 // the content and no temp file remains. Temp-write failure: a directory
 // occupying the temp path makes the temp write fail, the temp-write error
@@ -159,7 +159,7 @@ func TestSetStackState_CheckpointRoundTrip(t *testing.T) {
 // first because the file backend treats a directory as a missing blob and
 // then cannot write its own snapshot over it, leaving the production
 // rename branch unreachable from outside. Because that interception cannot
-// be confirmed without a live backend run, the test pins the invariants
+// be confirmed without a live backend run, the test asserts the invariants
 // shared by both candidate failure points: an error surfaces, no temp file
 // survives (the rename branch removes its temp file on failure), and the
 // directory occupying the target is untouched.
@@ -194,7 +194,7 @@ func TestSetStackState_AtomicTempThenRename(t *testing.T) {
 	require.NoError(t, os.Remove(path+".tmp"))
 }
 
-// TestSetStackState_ExportFormatRequiresBackend pins the export-format
+// TestSetStackState_ExportFormatRequiresBackend covers the export-format
 // branch of state restoration: JSON with a top-level "deployment" key is
 // routed through the backend stack import, which converts it to checkpoint
 // format on disk, and a subsequent state export returns deployment-format
@@ -228,7 +228,7 @@ func TestSetStackState_ExportFormatRequiresBackend(t *testing.T) {
 	assert.NotNil(t, deployment.Deployment)
 }
 
-// TestPulumiWorkspace_ZeroValueStillWorks pins zero-value compatibility
+// TestPulumiWorkspace_ZeroValueStillWorks asserts zero-value compatibility
 // for the embedder pattern: a workspace built as a plain struct literal
 // with only the name fields set, no constructor and no options, still
 // resolves the state file path through the home-dir fallback exactly as

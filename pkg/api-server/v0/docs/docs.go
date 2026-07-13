@@ -16627,6 +16627,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -16719,6 +16723,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -16797,6 +16805,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -16866,6 +16878,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -16977,6 +16993,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17098,6 +17118,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17385,6 +17409,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -17511,6 +17539,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -17587,6 +17619,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -17651,6 +17687,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17772,6 +17812,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -17856,6 +17900,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -17927,6 +17975,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18135,6 +18187,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -18219,6 +18275,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18376,6 +18436,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18542,6 +18606,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -18623,6 +18691,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -18695,6 +18767,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18889,6 +18965,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -18962,6 +19042,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -19025,6 +19109,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19130,6 +19218,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19271,6 +19363,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19493,6 +19589,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -19553,6 +19653,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19643,6 +19747,10 @@ const docTemplate = `{
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
+                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
@@ -19707,6 +19815,10 @@ const docTemplate = `{
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
+                },
+                "DeletionFailed": {
+                    "description": "Gets set to true if deletion process fails.",
+                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",

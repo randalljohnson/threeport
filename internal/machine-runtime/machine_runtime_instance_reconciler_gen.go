@@ -119,6 +119,9 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestMachineRuntimeInstance tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					machineRuntimeInstance.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestMachineRuntimeInstance = latestObject
 				getLatestErr = err
 			default:
@@ -170,13 +176,26 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of machine runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"machine runtime instance create deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							machineRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile created machine runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonCreateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						machineRuntimeInstance.GetId(),
 						machineRuntimeInstance.GetFullyQualifiedType(),
@@ -192,7 +211,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						machineRuntimeInstance,
 						customRequeueDelay,
@@ -217,13 +236,26 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of machine runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"machine runtime instance update deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							machineRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile updated machine runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						machineRuntimeInstance.GetId(),
 						machineRuntimeInstance.GetFullyQualifiedType(),
@@ -239,7 +271,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						machineRuntimeInstance,
 						customRequeueDelay,
@@ -264,13 +296,26 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of machine runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"machine runtime instance delete deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							machineRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted machine runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						machineRuntimeInstance.GetId(),
 						machineRuntimeInstance.GetFullyQualifiedType(),
@@ -286,7 +331,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						machineRuntimeInstance,
 						customRequeueDelay,
@@ -320,6 +365,19 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					machineRuntimeInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"machine runtime instance deletion already in progress, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							machineRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete machine runtime instance")
 					r.UnlockAndRequeue(machineRuntimeInstance, requeueDelay, lockReleased, msg)
 					continue
@@ -367,23 +425,25 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("machine runtime instance unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"machine runtime instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				machineRuntimeInstance.GetId(),
-				machineRuntimeInstance.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful machine runtime instance reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"machine runtime instance successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					machineRuntimeInstance.GetId(),
+					machineRuntimeInstance.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful machine runtime instance reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

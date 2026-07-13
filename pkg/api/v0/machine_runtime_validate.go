@@ -7,16 +7,56 @@ import (
 
 	"gorm.io/gorm"
 
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+const (
+	// MachineRuntimeInfraProviderGCE selects Google Compute Engine as the
+	// machine runtime provider.
+	MachineRuntimeInfraProviderGCE = "gce"
+)
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on
+// MachineRuntimeDefinition. The definition has no relationship-tagged foreign
+// keys, so this satisfies the interface with an empty list so lifecycle emit
+// sites can pass the object as the note owner.
+func (m *MachineRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return nil
+}
 
 // beforeCreate validates the MachineRuntimeDefinition before create.
 func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the MachineRuntimeDefinition before update.
+// beforeUpdate rejects changes to the immutable provisioning template
+// fields. It checks each through lib.IsFieldChanged so immutability is
+// enforced under both PATCH and PUT; the infra provider, machine type, and
+// image must stay fixed once instances derive from the definition.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
+	immutableFields := []struct {
+		column string
+		name   string
+	}{
+		{"InfraProvider", "infra provider"},
+		{"MachineType", "machine type"},
+		{"ImageID", "image id"},
+	}
+	for _, field := range immutableFields {
+		changed, err := lib.IsFieldChanged(tx, field.column)
+		if err != nil {
+			return fmt.Errorf("failed to check %s for changes: %w", field.name, err)
+		}
+		if changed {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime definition %s cannot be changed after creation",
+					field.name,
+				),
+			)
+		}
+	}
 	return nil
 }
 
@@ -27,8 +67,13 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 
 // beforeCreate validates the MachineRuntimeInstance before create.
 //
-// Why: at least one of SSHKey or SSHPassword must be provided so the
-// reconciler has a credential to authenticate with the machine.
+// Two invariants are enforced:
+//   - at least one of SSHKey or SSHPassword must be provided so the
+//     reconciler has a credential to authenticate with the machine.
+//   - when the referenced machine runtime definition has an infra provider
+//     set, the instance must supply a location or a region so the provider
+//     knows where to provision the machine. The controller maps a location to
+//     a provider region and zone; a concrete region serves imported machines.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	if m.SSHKey == nil && m.SSHPassword == nil {
 		return util.NewBadRequestError(
@@ -38,11 +83,62 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 			),
 		)
 	}
+
+	if m.MachineRuntimeDefinitionID != nil {
+		var def MachineRuntimeDefinition
+		if err := tx.First(&def, *m.MachineRuntimeDefinitionID).Error; err != nil {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime instance %s references machine runtime definition %d which does not exist",
+					*m.Name,
+					*m.MachineRuntimeDefinitionID,
+				),
+			)
+		}
+		if def.InfraProvider != nil && *def.InfraProvider != "" {
+			locationEmpty := m.Location == nil || *m.Location == ""
+			regionEmpty := m.Region == nil || *m.Region == ""
+			if locationEmpty && regionEmpty {
+				return util.NewBadRequestError(
+					fmt.Sprintf(
+						"machine runtime instance %s must have a location or region when the definition specifies an infra provider",
+						*m.Name,
+					),
+				)
+			}
+		}
+	}
+
 	return nil
 }
 
-// beforeUpdate validates the MachineRuntimeInstance before update.
+// beforeUpdate rejects changes to the immutable provisioning location
+// fields. It checks each through lib.IsFieldChanged so immutability is
+// enforced under both PATCH and PUT; changing them after creation would
+// orphan the provisioned resources.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	immutableFields := []struct {
+		column string
+		name   string
+	}{
+		{"Location", "location"},
+		{"Region", "region"},
+		{"NetworkID", "network id"},
+	}
+	for _, field := range immutableFields {
+		changed, err := lib.IsFieldChanged(tx, field.column)
+		if err != nil {
+			return fmt.Errorf("failed to check %s for changes: %w", field.name, err)
+		}
+		if changed {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime instance %s cannot be changed after creation",
+					field.name,
+				),
+			)
+		}
+	}
 	return nil
 }
 
@@ -79,4 +175,15 @@ func (m *MachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 // afterDelete runs after the MachineRuntimeInstance is deleted.
 func (m *MachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
+}
+
+// MachineRuntimeMarriedKind returns the concrete married attached-object
+// kind (kebab-case) for the given infra provider and suffix ("definition"
+// or "instance"). Returns "" if the provider is unknown.
+func MachineRuntimeMarriedKind(infraProvider, suffix string) string {
+	cloud, err := CloudProviderForInfraProvider(infraProvider)
+	if err != nil {
+		return ""
+	}
+	return cloud + "-" + infraProvider + "-machine-runtime-" + suffix
 }

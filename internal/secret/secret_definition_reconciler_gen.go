@@ -162,7 +162,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonCreateFailed),
+							Reason: util.Ptr(event.ReasonFailedCreate),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						secretDefinition.GetId(),
@@ -222,7 +222,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonUpdateFailed),
+							Reason: util.Ptr(event.ReasonFailedUpdate),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						secretDefinition.GetId(),
@@ -282,7 +282,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonDeleteFailed),
+							Reason: util.Ptr(event.ReasonFailedDelete),
 							Type:   util.Ptr(event.TypeWarning),
 						},
 						secretDefinition.GetId(),

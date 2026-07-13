@@ -16,6 +16,18 @@ func (g *GcpProvider) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the GcpProvider before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GcpProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -52,6 +64,18 @@ func (g *GcpGkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the GcpGkeKubernetesRuntimeDefinition before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GcpGkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -67,12 +91,54 @@ func (g *GcpGkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the GcpGkeKubernetesRuntimeInstance before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GcpGkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
 // beforeDelete validates the GcpGkeKubernetesRuntimeInstance before delete.
 func (g *GcpGkeKubernetesRuntimeInstance) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeCreate validates the GcpGceMachineRuntimeDefinition before create.
+func (g *GcpGceMachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeUpdate validates the GcpGceMachineRuntimeDefinition before update.
+func (g *GcpGceMachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeDelete validates the GcpGceMachineRuntimeDefinition before delete.
+func (g *GcpGceMachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeCreate validates the GcpGceMachineRuntimeInstance before create.
+func (g *GcpGceMachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeUpdate validates the GcpGceMachineRuntimeInstance before update.
+func (g *GcpGceMachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeDelete validates the GcpGceMachineRuntimeInstance before delete.
+func (g *GcpGceMachineRuntimeInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
@@ -118,5 +184,35 @@ func (g *GcpGkeKubernetesRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 
 // afterDelete runs after the GcpGkeKubernetesRuntimeInstance is deleted.
 func (g *GcpGkeKubernetesRuntimeInstance) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the GcpGceMachineRuntimeDefinition is created.
+func (g *GcpGceMachineRuntimeDefinition) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the GcpGceMachineRuntimeDefinition is updated.
+func (g *GcpGceMachineRuntimeDefinition) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the GcpGceMachineRuntimeDefinition is deleted.
+func (g *GcpGceMachineRuntimeDefinition) afterDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the GcpGceMachineRuntimeInstance is created.
+func (g *GcpGceMachineRuntimeInstance) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the GcpGceMachineRuntimeInstance is updated.
+func (g *GcpGceMachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the GcpGceMachineRuntimeInstance is deleted.
+func (g *GcpGceMachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }

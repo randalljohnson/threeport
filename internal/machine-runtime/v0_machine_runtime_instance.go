@@ -3,10 +3,14 @@
 package machineruntime
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	logr "github.com/go-logr/logr"
+	"golang.org/x/crypto/ssh"
 
+	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
@@ -14,6 +18,75 @@ import (
 	machine "github.com/threeport/threeport/pkg/machine/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// sshRetryDelaySeconds is the requeue delay (in seconds) returned when an
+// SSH connect or ping fails. Package-level so tests can override it.
+var sshRetryDelaySeconds int64 = 30
+
+// sshOperationTimeout bounds the SSH operations of one reconcile pass.
+// Package-level so tests can shrink it to exercise the timeout path.
+var sshOperationTimeout = 30 * time.Second
+
+// newReconcileContext returns the context that bounds one reconcile pass's
+// SSH operations. Package-level so tests can swap in a context that is
+// already canceled or cancels mid-flight.
+var newReconcileContext = func() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), sshOperationTimeout)
+}
+
+// getClientResult carries an SSH connect outcome across a goroutine
+// boundary.
+type getClientResult struct {
+	client          *ssh.Client
+	capturedHostKey string
+	err             error
+}
+
+// getClientWithContext establishes the SSH connection in its own goroutine
+// so the caller returns promptly when ctx is canceled or times out, even
+// though the underlying connect cannot be interrupted. When the caller
+// abandons the attempt, a reaper goroutine waits for the connect to finish
+// and closes any connection it produced; the buffered channel lets the
+// connect goroutine exit without blocking either way.
+func getClientWithContext(
+	ctx context.Context,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	encryptionKey string,
+) (*ssh.Client, string, error) {
+	done := make(chan getClientResult, 1)
+	go func() {
+		sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, encryptionKey)
+		done <- getClientResult{sshClient, capturedHostKey, err}
+	}()
+	select {
+	case res := <-done:
+		return res.client, res.capturedHostKey, res.err
+	case <-ctx.Done():
+		go func() {
+			if res := <-done; res.client != nil {
+				res.client.Close()
+			}
+		}()
+		return nil, "", fmt.Errorf("ssh connect aborted: %w", ctx.Err())
+	}
+}
+
+// pingWithContext verifies the connection is usable, returning early with
+// ctx's error when the context is canceled or times out before the ping
+// completes. The underlying call cannot be interrupted; an abandoned ping
+// unblocks and exits when the caller closes the SSH client.
+func pingWithContext(ctx context.Context, sshClient *ssh.Client) error {
+	done := make(chan error, 1)
+	go func() {
+		done <- machine.Ping(sshClient)
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("ssh ping aborted: %w", ctx.Err())
+	}
+}
 
 // v0MachineRuntimeInstanceCreated performs reconciliation when a v0 MachineRuntimeInstance
 // has been created.  It verifies the machine is reachable via SSH and records
@@ -23,8 +96,27 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// when the instance is provider-provisioned and has no hostname yet, create
+	// the married provider instance and requeue so the ssh path below waits for
+	// the provider reconciler to write back the hostname
+	if machineRuntimeInstance.MachineRuntimeDefinitionID != nil &&
+		(machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "") {
+		requeue, err := reconcileProviderInstance(r, machineRuntimeInstance, log)
+		if err != nil {
+			return 0, err
+		}
+		if requeue != 0 {
+			return requeue, nil
+		}
+	}
+
+	// bound all ssh operations in this reconcile pass so a partitioned or
+	// hanging host cannot stall the reconciler indefinitely
+	ctx, cancel := newReconcileContext()
+	defer cancel()
+
 	// establish an ssh connection to the machine
-	sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
+	sshClient, capturedHostKey, err := getClientWithContext(ctx, machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
@@ -40,7 +132,7 @@ func v0MachineRuntimeInstanceCreated(
 		// always retry ssh client failures, since a misconfigured credential
 		// or unreachable host may be fixed externally without any change
 		// to this object, so reconciliation should keep trying
-		return 30, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
 	}
 	defer sshClient.Close()
 
@@ -69,7 +161,7 @@ func v0MachineRuntimeInstanceCreated(
 	}
 
 	// verify the connection is usable
-	if err := machine.Ping(sshClient); err != nil {
+	if err := pingWithContext(ctx, sshClient); err != nil {
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -82,7 +174,7 @@ func v0MachineRuntimeInstanceCreated(
 			log.Error(eventErr, "failed to record event for ssh ping error")
 		}
 		// always retry, same reasoning as the GetClient path above
-		return 30, fmt.Errorf("failed to ping machine runtime instance: %w", err)
+		return sshRetryDelaySeconds, fmt.Errorf("failed to ping machine runtime instance: %w", err)
 	}
 
 	// record successful reachability event
@@ -101,6 +193,122 @@ func v0MachineRuntimeInstanceCreated(
 	return 0, nil
 }
 
+// reconcileProviderInstance creates the married provider machine runtime
+// instance for a provider-provisioned machine. It returns a requeue delay once
+// the married object exists so the caller waits for the provider reconciler to
+// populate the hostname.
+func reconcileProviderInstance(
+	r *controller.Reconciler,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	log *logr.Logger,
+) (int64, error) {
+	// fetch the parent definition to learn the provider
+	def, err := client.GetMachineRuntimeDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineRuntimeInstance.MachineRuntimeDefinitionID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get machine runtime definition by ID: %w", err)
+	}
+	if def.InfraProvider == nil || *def.InfraProvider == "" {
+		return 0, nil
+	}
+
+	switch *def.InfraProvider {
+	case v0.MachineRuntimeInfraProviderGCE:
+		// when the married provider instance already exists, wait for its
+		// hostname instead of creating a second one
+		existing, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
+			r.APIClient,
+			r.APIServer,
+			fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to check for existing GCE machine runtime instance: %w", err)
+		}
+		if len(*existing) > 0 {
+			return sshRetryDelaySeconds, nil
+		}
+
+		// look up the GCP provider by name or fall back to the default
+		var gcpProvider v0.GcpProvider
+		if def.InfraProviderAccountName != nil {
+			provider, err := client.GetGcpProviderByName(r.APIClient, r.APIServer, *def.InfraProviderAccountName)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get GCP provider by name: %w", err)
+			}
+			gcpProvider = *provider
+		} else {
+			provider, err := client.GetGcpProviderByDefaultProvider(r.APIClient, r.APIServer)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get GCP provider by default: %w", err)
+			}
+			gcpProvider = *provider
+		}
+
+		// map the abstract location to a GCP region; a GCE VM is zonal, so
+		// derive a zone within that region. the mapping keys on the cloud
+		// provider token, not the machine runtime infra provider token
+		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
+		if err != nil {
+			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
+		}
+		zone := region + "-a"
+
+		// fetch the married provider definition
+		gcpGceMachineRuntimeDefinitions, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
+			r.APIClient,
+			r.APIServer,
+			fmt.Sprintf("machineruntimedefinitionid=%d", *def.ID),
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get GCE machine runtime definition by machine runtime definition ID: %w", err)
+		}
+		if len(*gcpGceMachineRuntimeDefinitions) < 1 {
+			return 0, fmt.Errorf("no GCE machine runtime definition found for machine runtime definition %d", *def.ID)
+		}
+		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
+
+		// create the married provider instance; leave Reconciled unset so the
+		// ssh path requeues until the provider reconciler writes back the host
+		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
+			Instance: v0.Instance{
+				Name: machineRuntimeInstance.Name,
+			},
+			GcpProviderID:                    gcpProvider.ID,
+			Region:                           &region,
+			Zone:                             &zone,
+			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
+			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
+			// default to the provider default network so the instance and its
+			// firewall have a network to attach to
+			NetworkID: util.Ptr("default"),
+		}
+
+		// propagate ssh credentials from the abstract instance so the GCE
+		// provisioner can authorize the user and inject the key; copy only
+		// when present to leave the married columns null otherwise
+		if machineRuntimeInstance.SSHUser != nil {
+			gcpGceMachineRuntimeInstance.SSHUser = util.Ptr(*machineRuntimeInstance.SSHUser)
+		}
+		if machineRuntimeInstance.SSHKey != nil {
+			gcpGceMachineRuntimeInstance.SSHKey = util.Ptr(*machineRuntimeInstance.SSHKey)
+		}
+		if _, err := client.CreateGcpGceMachineRuntimeInstance(
+			r.APIClient,
+			r.APIServer,
+			&gcpGceMachineRuntimeInstance,
+		); err != nil {
+			return 0, fmt.Errorf("failed to create GCE machine runtime instance: %w", err)
+		}
+
+		return sshRetryDelaySeconds, nil
+	default:
+		return 0, fmt.Errorf("infra provider %s not supported", *def.InfraProvider)
+	}
+}
+
 // v0MachineRuntimeInstanceUpdated performs reconciliation when a v0 MachineRuntimeInstance
 // has been updated.
 func v0MachineRuntimeInstanceUpdated(
@@ -112,11 +320,34 @@ func v0MachineRuntimeInstanceUpdated(
 }
 
 // v0MachineRuntimeInstanceDeleted performs reconciliation when a v0 MachineRuntimeInstance
-// has been deleted.
+// has been deleted.  Imported machines (no associated definition) have no
+// provisioned infrastructure, so deletion is a clean no-op for them.
 func v0MachineRuntimeInstanceDeleted(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// imported machines have no definition, so nothing to deprovision
+	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
+		return 0, nil
+	}
+
+	// TODO: deprovision the provider resources recorded in the resource
+	// inventory once provider integration lands. Until then, record an
+	// event so operators know the backing resources were not torn down.
+	if machineRuntimeInstance.ResourceInventory != nil {
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("DeprovisionDeferred"),
+				Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s was deleted but its provider resources were not deprovisioned", *machineRuntimeInstance.Name)),
+			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for deferred deprovisioning")
+		}
+	}
+
 	return 0, nil
 }

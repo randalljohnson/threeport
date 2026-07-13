@@ -25,6 +25,7 @@ func setupMachineWorkloadValidateDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(
+		&MachineRuntimeDefinition{},
 		&MachineRuntimeInstance{},
 		&MachineWorkloadDefinition{},
 		&MachineWorkloadInstance{},
@@ -131,4 +132,20 @@ func TestMachineWorkloadInstance_beforeUpdate_RejectsInvalidPayloadEnv(t *testin
 
 	require.Error(t, err, "update with invalid env must be rejected")
 	assert.Contains(t, err.Error(), "invalid env key")
+}
+
+// TestMachineWorkloadDefinition_ShellDefault_AppliedOnInsert pins the
+// Shell column default ("/bin/bash"). Downstream controllers read
+// Shell after create; a silent regression on the default tag (typo,
+// accidental drop, reorder) would shift the runtime contract for any
+// workload that omits Shell.
+func TestMachineWorkloadDefinition_ShellDefault_AppliedOnInsert(t *testing.T) {
+	db := setupMachineWorkloadValidateDB(t)
+
+	// createValidMWD leaves Shell nil, so insert exercises the
+	// column default applied by AutoMigrate-managed sqlite.
+	loaded := createValidMWD(t, db, &[]string{"VALID_KEY=valid_value"})
+
+	require.NotNil(t, loaded.Shell, "Shell should be populated from the column default")
+	assert.Equal(t, "/bin/bash", *loaded.Shell)
 }

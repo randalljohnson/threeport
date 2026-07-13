@@ -1,7 +1,5 @@
 basePath: /
 definitions:
-  datatypes.JSON:
-    type: object
   v0.ApiObjectVersions:
     properties:
       API:
@@ -66,8 +64,123 @@ definitions:
     - ObjectType
     type: object
   v0.AwsEksKubernetesRuntimeDefinition:
+    properties:
+      AwsEksKubernetesRuntimeInstances:
+        description: The AWS EKS kubernetes runtime instances derived from this definition.
+        items:
+          $ref: '#/definitions/v0.AwsEksKubernetesRuntimeInstance'
+        type: array
+      DefaultNodeGroupInitialSize:
+        description: The number of nodes in the default initial node group.
+        type: integer
+      DefaultNodeGroupInstanceType:
+        description: The AWS instance type for the default initial node group.
+        type: string
+      DefaultNodeGroupMaximumSize:
+        description: The maximum number of nodes the default initial node group should
+          have.
+        type: integer
+      DefaultNodeGroupMinimumSize:
+        description: The minimum number of nodes the default initial node group should
+          have.
+        type: integer
+      KubernetesRuntimeDefinitionID:
+        description: The kubernetes runtime definition for an EKS cluster in AWS.
+        type: integer
+      Name:
+        description: An arbitrary name for the definition.
+        type: string
+      ProfileID:
+        description: |-
+          The profile to associate with the definition.  Profile is a named
+          standard configuration for a definition object.
+        type: integer
+      TierID:
+        description: |-
+          The tier to associate with the definition.  Tier is a level of
+          criticality for access control.
+        type: integer
+      ZoneCount:
+        description: The number of zones the cluster should span for availability.
+        type: integer
+    required:
+    - DefaultNodeGroupInitialSize
+    - DefaultNodeGroupInstanceType
+    - DefaultNodeGroupMaximumSize
+    - DefaultNodeGroupMinimumSize
+    - KubernetesRuntimeDefinitionID
+    - Name
+    - ZoneCount
     type: object
   v0.AwsEksKubernetesRuntimeInstance:
+    properties:
+      AwsEksKubernetesRuntimeDefinitionID:
+        description: The definition that configures this instance.
+        type: integer
+      AwsProviderID:
+        description: The AWS provider in which the EKS cluster is provisioned.
+        type: integer
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      KubernetesRuntimeInstanceID:
+        description: The kubernetes runtime instance associated with the AWS EKS cluster.
+        type: integer
+      Name:
+        description: An arbitrary name the instance
+        type: string
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
+      Region:
+        description: The AWS region in which the cluster is provisioned.
+        type: string
+      ResourceInventory:
+        description: An inventory of all AWS resources for the EKS cluster.
+        items:
+          type: integer
+        type: array
+      Status:
+        description: |-
+          The status of the instance.
+          TODO: use a custom type
+        type: string
+    required:
+    - AwsEksKubernetesRuntimeDefinitionID
+    - AwsProviderID
+    - KubernetesRuntimeInstanceID
+    - Name
     type: object
   v0.AwsProvider:
     properties:
@@ -110,20 +223,23 @@ definitions:
   v0.ControlPlaneComponent:
     properties:
       AdditionalEnvRef:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The additional env reference to be added to the environment variables
           of the component.
+        items:
+          type: integer
+        type: array
       AdditionalVolumeMounts:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The additional volume mounts to be added to the deployment spec
           of the component.
+        items:
+          type: integer
+        type: array
       AdditionalVolumes:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The additional volumes to be added to the deployment spec of
           the component.
+        items:
+          type: integer
+        type: array
       BinaryName:
         description: The binary name of the component.
         type: string
@@ -727,6 +843,135 @@ definitions:
     - GatewayDefinitionID
     - Port
     type: object
+  v0.GcpGceMachineRuntimeDefinition:
+    properties:
+      GcpGceMachineRuntimeInstances:
+        description: The GCP GCE machine runtime instances derived from this definition.
+        items:
+          $ref: '#/definitions/v0.GcpGceMachineRuntimeInstance'
+        type: array
+      ImageID:
+        description: The boot image identifier.
+        type: string
+      MachineRuntimeDefinitionID:
+        description: |-
+          The machine runtime definition for a GCE machine in GCP. Optional because
+          imported machines may not have an associated definition.
+        type: integer
+      MachineType:
+        description: The GCE machine type (e.g. e2-medium).
+        type: string
+      Name:
+        description: An arbitrary name for the definition.
+        type: string
+      ProfileID:
+        description: |-
+          The profile to associate with the definition.  Profile is a named
+          standard configuration for a definition object.
+        type: integer
+      TierID:
+        description: |-
+          The tier to associate with the definition.  Tier is a level of
+          criticality for access control.
+        type: integer
+    required:
+    - Name
+    type: object
+  v0.GcpGceMachineRuntimeInstance:
+    properties:
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      ExternalIP:
+        description: The external IP surfaced after provisioning.
+        type: string
+      GcpGceMachineRuntimeDefinitionID:
+        description: The definition that configures this instance.
+        type: integer
+      GcpProviderID:
+        description: The GCP provider in which the VM is provisioned.
+        type: integer
+      Hostname:
+        description: The hostname surfaced after provisioning.
+        type: string
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      MachineRuntimeInstanceID:
+        description: The machine runtime instance associated with the GCE machine.
+        type: integer
+      Name:
+        description: An arbitrary name the instance
+        type: string
+      NetworkID:
+        description: The network the VM attaches to.
+        type: string
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
+      Region:
+        description: The GCP region in which the VM is provisioned.
+        type: string
+      ResourceInventory:
+        description: An inventory of all GCP resources backing this VM.
+        items:
+          type: integer
+        type: array
+      SSHKey:
+        description: The generated SSH private key, surfaced once after provisioning.
+        type: string
+      SSHSourceRanges:
+        description: |-
+          CIDR ranges allowed to reach the VM over SSH. Empty means the provider
+          default open range.
+        items:
+          type: string
+        type: array
+      SSHUser:
+        description: The SSH username provisioned on the VM.
+        type: string
+      Status:
+        description: |-
+          The status of the instance.
+          TODO: use a custom type
+        type: string
+      Zone:
+        description: The GCP zone in which the VM is provisioned.
+        type: string
+    required:
+    - GcpGceMachineRuntimeDefinitionID
+    - GcpProviderID
+    - MachineRuntimeInstanceID
+    - Name
+    type: object
   v0.GcpGkeKubernetesRuntimeDefinition:
     properties:
       DefaultNodeGroupInitialSize:
@@ -831,9 +1076,10 @@ definitions:
         description: The GCP region in which the cluster is provisioned.
         type: string
       ResourceInventory:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: An inventory of all GCP resources for the GKE cluster.
+        items:
+          type: integer
+        type: array
       Status:
         description: |-
           The status of the instance.
@@ -883,7 +1129,9 @@ definitions:
           Complete kubernetes resources that will be appended to the provided
           helm chart.
         items:
-          $ref: '#/definitions/datatypes.JSON'
+          items:
+            type: integer
+          type: array
         type: array
       Chart:
         description: The name of the helm chart to use from the helm repo, e.g. wordpress
@@ -973,7 +1221,9 @@ definitions:
           Complete kubernetes resources that will be appended to the provided
           helm chart.
         items:
-          $ref: '#/definitions/datatypes.JSON'
+          items:
+            type: integer
+          type: array
         type: array
       CreationAcknowledged:
         description: |-
@@ -1389,9 +1639,10 @@ definitions:
   v0.KubernetesWorkloadResourceDefinition:
     properties:
       JSONDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The individual manifest in JSON format.
+        items:
+          type: integer
+        type: array
       KubernetesWorkloadDefinitionID:
         description: The kubernetes workload definition this resource belongs to.
         type: integer
@@ -1402,13 +1653,14 @@ definitions:
   v0.KubernetesWorkloadResourceInstance:
     properties:
       JSONDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: |-
           The individual manifest in JSON format.  This field is a superset of
           KubernetesWorkloadResourceDefinition.JSONDefinition in that it has
           namespace management and other configuration — such as resource
           allocation management — added.
+        items:
+          type: integer
+        type: array
       KubernetesWorkloadInstanceID:
         description: The kubernetes workload instance this resource belongs to.
         type: integer
@@ -1423,11 +1675,12 @@ definitions:
           kubernetes workload controller.
         type: boolean
       RuntimeDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: |-
           The JSON definition of a Kubernetes resource as stored in etcd in the
           kubernetes runtime.
+        items:
+          type: integer
+        type: array
       ScheduledForDeletion:
         description: Whether another controller has scheduled this resource for deletion
         type: string
@@ -1663,6 +1916,57 @@ definitions:
     type: object
   v0.MachineRuntimeDefinition:
     properties:
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      ImageID:
+        description: The provider image identifier used to boot the machine.
+        type: string
+      InfraProvider:
+        description: |-
+          The infrastructure provider that provisions machines from this
+          definition. Empty for imported machines that already exist.
+        type: string
+      InfraProviderAccountName:
+        description: |-
+          The provider account name that selects which account the machine is
+          provisioned on. Empty falls back to the default provider account.
+        type: string
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      MachineProfile:
+        description: |-
+          The CPU-to-memory ratio of the machine. Resolved server-side together
+          with the machine size to a provider machine type.
+        type: string
       MachineRuntimeInstances:
         description: |-
           The associated machine runtime instances that are deployed from this
@@ -1670,6 +1974,16 @@ definitions:
         items:
           $ref: '#/definitions/v0.MachineRuntimeInstance'
         type: array
+      MachineSize:
+        description: |-
+          The compute capacity of the machine. Resolved server-side together with
+          the machine profile to a provider machine type.
+        type: string
+      MachineType:
+        description: |-
+          The provider-specific machine type. Populated by the controller from the
+          machine size and profile; not supplied for provider-provisioned machines.
+        type: string
       Name:
         description: An arbitrary name for the definition.
         type: string
@@ -1678,6 +1992,10 @@ definitions:
           The profile to associate with the definition.  Profile is a named
           standard configuration for a definition object.
         type: integer
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
       TierID:
         description: |-
           The tier to associate with the definition.  Tier is a level of
@@ -1729,6 +2047,12 @@ definitions:
           situation where future reconciliation could be descructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
+      Location:
+        description: |-
+          The abstract threeport location for the machine. Mapped server-side to a
+          provider region and zone. Optional so imported machines that supply a
+          concrete region directly still validate.
+        type: string
       MachineRuntimeDefinitionID:
         description: |-
           The machine runtime definition for this instance.  Optional because
@@ -1743,6 +2067,9 @@ definitions:
       Name:
         description: An arbitrary name the instance
         type: string
+      NetworkID:
+        description: The provider network identifier the machine attaches to.
+        type: string
       Port:
         description: The SSH port on the machine.
         type: integer
@@ -1750,6 +2077,16 @@ definitions:
         description: Indicates if object is considered to be reconciled by the object's
           controller.
         type: boolean
+      Region:
+        description: The provider region in which the machine is provisioned.
+        type: string
+      ResourceInventory:
+        description: |-
+          An inventory of all provider resources backing this machine, used for
+          crash recovery and deprovisioning.
+        items:
+          type: integer
+        type: array
       SSHKey:
         description: The SSH private key for authenticating to the machine.
         type: string
@@ -2588,9 +2925,10 @@ definitions:
           definition will not move a cluster.
         type: string
       ResourceInventory:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: An inventory of all OCI resources for the OKE cluster.
+        items:
+          type: integer
+        type: array
       Status:
         description: |-
           The status of the instance.
@@ -2726,9 +3064,10 @@ definitions:
         description: Gets set to true if creation process fails.
         type: boolean
       Data:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The secret value to be stored in the provider.
+        items:
+          type: integer
+        type: array
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
@@ -3191,6 +3530,32 @@ paths:
             $ref: '#/definitions/v0.ApiObjectVersions'
       summary: GetGatewayTcpPortVersions gets the supported versions for the gateway
         tcp port API.
+  /gcp-gce-machine-runtime-definitions/versions:
+    get:
+      description: Get the supported API versions for gcp gce machine runtime definitions.
+      operationId: gcpGceMachineRuntimeDefinition-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetGcpGceMachineRuntimeDefinitionVersions gets the supported versions
+        for the gcp gce machine runtime definition API.
+  /gcp-gce-machine-runtime-instances/versions:
+    get:
+      description: Get the supported API versions for gcp gce machine runtime instances.
+      operationId: gcpGceMachineRuntimeInstance-get-versions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.ApiObjectVersions'
+      summary: GetGcpGceMachineRuntimeInstanceVersions gets the supported versions
+        for the gcp gce machine runtime instance API.
   /gcp-gke-kubernetes-runtime-definitions/versions:
     get:
       description: Get the supported API versions for gcp gke kubernetes runtime definitions.
@@ -6343,6 +6708,407 @@ paths:
           schema:
             $ref: '#/definitions/v0.Response'
       summary: updates an existing gateway tcp port by replacing the entire object.
+  /v0/gcp-gce-machine-runtime-definitions:
+    get:
+      consumes:
+      - application/json
+      description: Get all gcp gce machine runtime definitions from the Threeport
+        database.
+      operationId: get-v0-gcpGceMachineRuntimeDefinitions
+      parameters:
+      - description: gcp gce machine runtime definition search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all gcp gce machine runtime definitions.
+    post:
+      consumes:
+      - application/json
+      description: Add a new gcp gce machine runtime definition to the Threeport database.
+      operationId: add-v0-gcpGceMachineRuntimeDefinition
+      parameters:
+      - description: GcpGceMachineRuntimeDefinition object
+        in: body
+        name: gcpGceMachineRuntimeDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.GcpGceMachineRuntimeDefinition'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new gcp gce machine runtime definition.
+  /v0/gcp-gce-machine-runtime-definitions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a gcp gce machine runtime definition by ID from the database.
+      operationId: delete-v0-gcpGceMachineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a gcp gce machine runtime definition.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular gcp gce machine runtime definition from the database.
+      operationId: get-v0-gcpGceMachineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a gcp gce machine runtime definition.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a gcp gce machine runtime definition in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating gcp gce machine runtime definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-gcpGceMachineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: GcpGceMachineRuntimeDefinition object
+        in: body
+        name: gcpGceMachineRuntimeDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.GcpGceMachineRuntimeDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing gcp gce machine runtime definition.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a gcp gce machine runtime definition in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating gcp gce machine runtime definition objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-gcpGceMachineRuntimeDefinition
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: GcpGceMachineRuntimeDefinition object
+        in: body
+        name: gcpGceMachineRuntimeDefinition
+        required: true
+        schema:
+          $ref: '#/definitions/v0.GcpGceMachineRuntimeDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing gcp gce machine runtime definition by replacing
+        the entire object.
+  /v0/gcp-gce-machine-runtime-instances:
+    get:
+      consumes:
+      - application/json
+      description: Get all gcp gce machine runtime instances from the Threeport database.
+      operationId: get-v0-gcpGceMachineRuntimeInstances
+      parameters:
+      - description: gcp gce machine runtime instance search by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets all gcp gce machine runtime instances.
+    post:
+      consumes:
+      - application/json
+      description: Add a new gcp gce machine runtime instance to the Threeport database.
+      operationId: add-v0-gcpGceMachineRuntimeInstance
+      parameters:
+      - description: GcpGceMachineRuntimeInstance object
+        in: body
+        name: gcpGceMachineRuntimeInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.GcpGceMachineRuntimeInstance'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: adds a new gcp gce machine runtime instance.
+  /v0/gcp-gce-machine-runtime-instances/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a gcp gce machine runtime instance by ID from the database.
+      operationId: delete-v0-gcpGceMachineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: deletes a gcp gce machine runtime instance.
+    get:
+      consumes:
+      - application/json
+      description: Get a particular gcp gce machine runtime instance from the database.
+      operationId: get-v0-gcpGceMachineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: gets a gcp gce machine runtime instance.
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a gcp gce machine runtime instance in the database.  Provide one or more fields to update.
+        Note: This API endpint is for updating gcp gce machine runtime instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: update-v0-gcpGceMachineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: GcpGceMachineRuntimeInstance object
+        in: body
+        name: gcpGceMachineRuntimeInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.GcpGceMachineRuntimeInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates specific fields for an existing gcp gce machine runtime instance.
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Replace a gcp gce machine runtime instance in the database.  All required fields must be provided.
+        If any optional fields are not provided, they will be null post-update.
+        Note: This API endpint is for updating gcp gce machine runtime instance objects only.
+        Request bodies that include related objects will be accepted, however
+        the related objects will not be changed.  Call the patch or put method for
+        each particular existing object to change them.
+      operationId: replace-v0-gcpGceMachineRuntimeInstance
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: GcpGceMachineRuntimeInstance object
+        in: body
+        name: gcpGceMachineRuntimeInstance
+        required: true
+        schema:
+          $ref: '#/definitions/v0.GcpGceMachineRuntimeInstance'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v0.Response'
+      summary: updates an existing gcp gce machine runtime instance by replacing the
+        entire object.
   /v0/gcp-gke-kubernetes-runtime-definitions:
     get:
       consumes:

@@ -119,6 +119,9 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestAwsEksKubernetesRuntimeInstance tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					awsEksKubernetesRuntimeInstance.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestAwsEksKubernetesRuntimeInstance = latestObject
 				getLatestErr = err
 			default:
@@ -170,13 +176,26 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of aws eks kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"aws eks kubernetes runtime instance create deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							awsEksKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile created aws eks kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonCreateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						awsEksKubernetesRuntimeInstance.GetId(),
 						awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
@@ -192,7 +211,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						awsEksKubernetesRuntimeInstance,
 						customRequeueDelay,
@@ -217,13 +236,26 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of aws eks kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"aws eks kubernetes runtime instance update deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							awsEksKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile updated aws eks kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						awsEksKubernetesRuntimeInstance.GetId(),
 						awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
@@ -239,7 +271,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						awsEksKubernetesRuntimeInstance,
 						customRequeueDelay,
@@ -264,13 +296,26 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of aws eks kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"aws eks kubernetes runtime instance delete deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							awsEksKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted aws eks kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						awsEksKubernetesRuntimeInstance.GetId(),
 						awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
@@ -286,7 +331,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						awsEksKubernetesRuntimeInstance,
 						customRequeueDelay,
@@ -320,6 +365,19 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					awsEksKubernetesRuntimeInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"aws eks kubernetes runtime instance deletion already in progress, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							awsEksKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete aws eks kubernetes runtime instance")
 					r.UnlockAndRequeue(awsEksKubernetesRuntimeInstance, requeueDelay, lockReleased, msg)
 					continue
@@ -367,23 +425,25 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("aws eks kubernetes runtime instance unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"aws eks kubernetes runtime instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				awsEksKubernetesRuntimeInstance.GetId(),
-				awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful aws eks kubernetes runtime instance reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"aws eks kubernetes runtime instance successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					awsEksKubernetesRuntimeInstance.GetId(),
+					awsEksKubernetesRuntimeInstance.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful aws eks kubernetes runtime instance reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

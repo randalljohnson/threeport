@@ -10,13 +10,41 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+const (
+	// MachineRuntimeInfraProviderGCE selects Google Compute Engine as the
+	// machine runtime provider.
+	MachineRuntimeInfraProviderGCE = "gce"
+)
+
 // beforeCreate validates the MachineRuntimeDefinition before create.
 func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
 // beforeUpdate validates the MachineRuntimeDefinition before update.
+//
+// The provisioning template fields are immutable: changing the infra
+// provider, machine type, or image after instances have been derived from
+// the definition would diverge the running machines from their template.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
+	immutableFields := []struct {
+		column string
+		name   string
+	}{
+		{"InfraProvider", "infra provider"},
+		{"MachineType", "machine type"},
+		{"ImageID", "image id"},
+	}
+	for _, field := range immutableFields {
+		if tx.Statement.Changed(field.column) {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime definition %s cannot be changed after creation",
+					field.name,
+				),
+			)
+		}
+	}
 	return nil
 }
 
@@ -27,8 +55,13 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 
 // beforeCreate validates the MachineRuntimeInstance before create.
 //
-// Why: at least one of SSHKey or SSHPassword must be provided so the
-// reconciler has a credential to authenticate with the machine.
+// Two invariants are enforced:
+//   - at least one of SSHKey or SSHPassword must be provided so the
+//     reconciler has a credential to authenticate with the machine.
+//   - when the referenced machine runtime definition has an infra provider
+//     set, the instance must supply a location or a region so the provider
+//     knows where to provision the machine. The controller maps a location to
+//     a provider region and zone; a concrete region serves imported machines.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	if m.SSHKey == nil && m.SSHPassword == nil {
 		return util.NewBadRequestError(
@@ -38,11 +71,58 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 			),
 		)
 	}
+
+	if m.MachineRuntimeDefinitionID != nil {
+		var def MachineRuntimeDefinition
+		if err := tx.First(&def, *m.MachineRuntimeDefinitionID).Error; err != nil {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime instance %s references machine runtime definition %d which does not exist",
+					*m.Name,
+					*m.MachineRuntimeDefinitionID,
+				),
+			)
+		}
+		if def.InfraProvider != nil && *def.InfraProvider != "" {
+			locationEmpty := m.Location == nil || *m.Location == ""
+			regionEmpty := m.Region == nil || *m.Region == ""
+			if locationEmpty && regionEmpty {
+				return util.NewBadRequestError(
+					fmt.Sprintf(
+						"machine runtime instance %s must have a location or region when the definition specifies an infra provider",
+						*m.Name,
+					),
+				)
+			}
+		}
+	}
+
 	return nil
 }
 
 // beforeUpdate validates the MachineRuntimeInstance before update.
+//
+// The provisioning location fields are immutable: changing them after
+// creation would orphan the provisioned resources. The provider, machine
+// type, and image live on the definition and are guarded there.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	immutableFields := []struct {
+		column string
+		name   string
+	}{
+		{"Region", "region"},
+		{"NetworkID", "network id"},
+	}
+	for _, field := range immutableFields {
+		if tx.Statement.Changed(field.column) {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime instance %s cannot be changed after creation",
+					field.name,
+				),
+			)
+		}
+	}
 	return nil
 }
 

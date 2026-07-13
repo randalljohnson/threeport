@@ -3,6 +3,8 @@ package machine
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"golang.org/x/crypto/ssh"
+	"google.golang.org/api/googleapi"
 	"gorm.io/datatypes"
 
 	"github.com/threeport/threeport/internal/provider"
@@ -29,12 +32,15 @@ func requirePulumi(t *testing.T) {
 	}
 }
 
-// recordedResource captures the type token, logical name, and inputs of one
-// resource registered during a mocked Pulumi program run.
+// recordedResource captures the type token, logical name, inputs, and import
+// ID of one resource registered during a mocked Pulumi program run. The import
+// ID is the physical identifier Pulumi passes when a resource carries a
+// pulumi.Import option, so tests can assert the adopt path attached it.
 type recordedResource struct {
 	typeToken string
 	name      string
 	inputs    map[string]any
+	importID  string
 }
 
 // recordingMocks is a MockResourceMonitor that records every NewResource call
@@ -50,6 +56,7 @@ func (m *recordingMocks) NewResource(args pulumi.MockResourceArgs) (string, reso
 		typeToken: args.TypeToken,
 		name:      args.Name,
 		inputs:    args.Inputs.Mappable(),
+		importID:  args.ID,
 	})
 	m.mu.Unlock()
 	return args.Name + "-id", args.Inputs, nil
@@ -71,8 +78,9 @@ func (m *recordingMocks) byType(typeToken string) []recordedResource {
 }
 
 const (
-	instanceTypeToken = "gcp:compute/instance:Instance"
-	firewallTypeToken = "gcp:compute/firewall:Firewall"
+	instanceTypeToken    = "gcp:compute/instance:Instance"
+	firewallTypeToken    = "gcp:compute/firewall:Firewall"
+	gcpProviderTypeToken = "pulumi:providers:gcp"
 )
 
 // newTestInfra builds a fully-configured provider for program-level tests.
@@ -255,6 +263,118 @@ func TestPulumiProgram_DoesNotExportPrivateKey(t *testing.T) {
 		if containsPrivateKey(r.inputs, i.sshPrivateKeyPEM) {
 			t.Fatalf("resource %s (%s) inputs contain the private key", r.name, r.typeToken)
 		}
+	}
+}
+
+// TestResourceOptions_AttachesImportWhenAdopting asserts the program attaches a
+// pulumi.Import option carrying the recorded import ID to a resource whose
+// logical name DiscoverAndAdopt found in the cloud, and leaves resources with
+// no recorded ID untouched so a partial adopt imports only the orphan.
+func TestResourceOptions_AttachesImportWhenAdopting(t *testing.T) {
+	// build a configured provider and seed an adopt ID for the instance only,
+	// modeling an interrupted create where the VM was made but the firewall was not
+	i := newTestInfra("adopt-test")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+	wantInstanceID := "projects/test-project/zones/us-central1-a/instances/adopt-test"
+	i.adoptImportIDs = map[string]string{
+		i.instanceLogicalName(): wantInstanceID,
+	}
+
+	// run the program under the recording monitor so the import ID Pulumi
+	// receives for each resource is observable
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+
+	// the instance carries the seeded import ID, marking it adopted not created
+	instances := mocks.byType(instanceTypeToken)
+	if len(instances) != 1 {
+		t.Fatalf("expected exactly 1 instance, got %d", len(instances))
+	}
+	if instances[0].importID != wantInstanceID {
+		t.Errorf("instance importID = %q, want %q", instances[0].importID, wantInstanceID)
+	}
+
+	// the firewall has no recorded ID, so it is created fresh with no import
+	firewalls := mocks.byType(firewallTypeToken)
+	if len(firewalls) != 1 {
+		t.Fatalf("expected exactly 1 firewall, got %d", len(firewalls))
+	}
+	if firewalls[0].importID != "" {
+		t.Errorf("firewall importID = %q, want empty (no adopt)", firewalls[0].importID)
+	}
+}
+
+// TestResourceOptions_NoImportOnCleanCreate asserts that with no recorded adopt
+// IDs the program imports nothing, so an ordinary create still creates both
+// resources rather than attempting to import absent cloud resources.
+func TestResourceOptions_NoImportOnCleanCreate(t *testing.T) {
+	// a provider with an empty adopt map models a clean first create
+	i := newTestInfra("clean-create")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+
+	// run the program and confirm no resource received an import ID
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+	for _, r := range mocks.resources {
+		if r.importID != "" {
+			t.Errorf("resource %q (%s) carried importID %q on a clean create", r.name, r.typeToken, r.importID)
+		}
+	}
+}
+
+// TestAdoptTargets_DeterministicLogicalNames asserts the adopt targets pair each
+// resource kind with the same logical name the program registers it under, so a
+// found import ID lands on the resource that gets imported.
+func TestAdoptTargets_DeterministicLogicalNames(t *testing.T) {
+	// the instance and firewall names derive deterministically from the runtime
+	// instance name, which is what makes constructed import IDs valid
+	i := newTestInfra("targets")
+	targets := i.adoptTargets()
+	if len(targets) != 2 {
+		t.Fatalf("expected 2 adopt targets, got %d", len(targets))
+	}
+
+	// each kind maps to its program logical name
+	byKind := map[adoptResourceKind]string{}
+	for _, target := range targets {
+		byKind[target.kind] = target.logicalName
+	}
+	if got := byKind[adoptInstance]; got != "targets" {
+		t.Errorf("instance target logical name = %q, want %q", got, "targets")
+	}
+	if got := byKind[adoptFirewall]; got != "targets-ssh" {
+		t.Errorf("firewall target logical name = %q, want %q", got, "targets-ssh")
+	}
+}
+
+// TestIsNotFound_DistinguishesFourOhFour asserts only a 404 from the compute API
+// reads as not found, so DiscoverAndAdopt skips an absent resource yet surfaces
+// other API errors instead of silently treating them as not found.
+func TestIsNotFound_DistinguishesFourOhFour(t *testing.T) {
+	// a 404 is the not-found signal that lets adopt skip a missing resource
+	if !isNotFound(&googleapi.Error{Code: 404}) {
+		t.Error("expected a 404 googleapi error to read as not found")
+	}
+	// a 403 is a real failure, not a not-found, and must not be swallowed
+	if isNotFound(&googleapi.Error{Code: 403}) {
+		t.Error("a 403 googleapi error must not read as not found")
+	}
+	// a wrapped 404 still reads as not found via errors.As unwrapping
+	wrapped := fmt.Errorf("get instance: %w", &googleapi.Error{Code: 404})
+	if !isNotFound(wrapped) {
+		t.Error("expected a wrapped 404 to read as not found")
+	}
+	// a non-api error is not a not-found
+	if isNotFound(errors.New("connection reset")) {
+		t.Error("a plain error must not read as not found")
 	}
 }
 
@@ -612,4 +732,116 @@ func equalStringSlices(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel asserts every
+// labelable resource the GCE program registers carries the managed-by label set
+// to the threeport value, while resources that cannot carry labels are the
+// documented exemptions: the firewall, whose type has no labels field, and the
+// cloud-provider meta-resource, which carries no user labels. It rejects any
+// resource type the allowlist does not account for, so a future resource cannot
+// ship unlabeled without a conscious decision.
+func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T) {
+	// build a fully-configured provider and a deterministic key pair so the
+	// program runs without touching the network
+	i := newTestInfra("label-audit")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+
+	// run the real program under the recording monitor so the audit sees the
+	// exact inputs every resource is registered with
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+
+	// the program must register at least one resource; an empty graph would let
+	// every per-resource assertion below pass vacuously
+	if len(mocks.resources) == 0 {
+		t.Fatal("program registered no resources; nothing to audit")
+	}
+
+	// classify each registered type as labelable or exempt; a type missing from
+	// this map fails the audit so a new resource forces a labelable-or-exempt
+	// decision rather than slipping through unlabeled
+	type labelExpectation struct {
+		labelable    bool
+		exemptReason string
+	}
+	allowlist := map[string]labelExpectation{
+		instanceTypeToken: {labelable: true},
+		firewallTypeToken: {
+			labelable:    false,
+			exemptReason: "firewall rules have no labels field, so the managed-by label cannot be applied",
+		},
+		gcpProviderTypeToken: {
+			labelable:    false,
+			exemptReason: "the cloud-provider meta-resource carries no user labels",
+		},
+	}
+
+	// track that the labelable instance and the exempt firewall both appeared,
+	// so a program that silently stops creating either still fails the audit
+	sawLabelable := false
+	sawFirewall := false
+
+	for _, r := range mocks.resources {
+		// reject any resource type the allowlist does not account for
+		exp, ok := allowlist[r.typeToken]
+		if !ok {
+			t.Errorf("resource %q (%s) is not in the label allowlist; classify it as labelable or exempt", r.name, r.typeToken)
+			continue
+		}
+
+		// exempt types must declare a reason and are skipped without a label check
+		if !exp.labelable {
+			if r.typeToken == firewallTypeToken {
+				sawFirewall = true
+			}
+			if exp.exemptReason == "" {
+				t.Errorf("resource type %s is exempt but carries no documented reason", r.typeToken)
+			}
+			continue
+		}
+
+		// labelable types must carry the managed-by label set to the threeport value
+		sawLabelable = true
+		labels := instanceLabels(t, r)
+		if got := labels[provider.ManagedByLabelKey]; got != provider.ManagedByLabelValue {
+			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.ManagedByLabelKey, got, provider.ManagedByLabelValue)
+		}
+	}
+
+	// confirm both the labelable instance and the exempt firewall were observed
+	if !sawLabelable {
+		t.Error("no labelable resource was registered; expected at least the VM instance")
+	}
+	if !sawFirewall {
+		t.Error("the exempt firewall resource was not registered")
+	}
+}
+
+// instanceLabels extracts the labels input of a recorded resource as a
+// map[string]string, failing the test when the input is absent or the wrong
+// shape so a missing labels map surfaces as a clear assertion, not a nil panic.
+func instanceLabels(t *testing.T, r recordedResource) map[string]string {
+	t.Helper()
+	raw, ok := r.inputs["labels"]
+	if !ok {
+		t.Fatalf("resource %q (%s) has no labels input", r.name, r.typeToken)
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("resource %q labels is not a map: %T", r.name, raw)
+	}
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		s, ok := v.(string)
+		if !ok {
+			t.Fatalf("resource %q label %q is not a string: %T", r.name, k, v)
+		}
+		out[k] = s
+	}
+	return out
 }

@@ -4,6 +4,102 @@ package v0
 
 import gorm "gorm.io/gorm"
 
+// BeforeCreate is the GORM before-create hook for GcpGceMachineRuntimeDefinition.
+func (g *GcpGceMachineRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
+	if err := g.beforeCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
+}
+
+// BeforeUpdate is the GORM before-update hook for GcpGceMachineRuntimeDefinition.
+func (g *GcpGceMachineRuntimeDefinition) BeforeUpdate(tx *gorm.DB) error {
+	if err := g.beforeUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
+}
+
+// BeforeDelete is the GORM before-delete hook for GcpGceMachineRuntimeDefinition.
+func (g *GcpGceMachineRuntimeDefinition) BeforeDelete(tx *gorm.DB) error {
+	if err := g.beforeDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
+}
+
+// AfterCreate is the GORM after-create hook for GcpGceMachineRuntimeDefinition.
+func (g *GcpGceMachineRuntimeDefinition) AfterCreate(tx *gorm.DB) error {
+	if err := g.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, g)
+}
+
+// AfterUpdate is the GORM after-update hook for GcpGceMachineRuntimeDefinition.
+func (g *GcpGceMachineRuntimeDefinition) AfterUpdate(tx *gorm.DB) error {
+	if err := g.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, g)
+}
+
+// AfterDelete is the GORM after-delete hook for GcpGceMachineRuntimeDefinition.
+func (g *GcpGceMachineRuntimeDefinition) AfterDelete(tx *gorm.DB) error {
+	if err := g.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, g)
+}
+
+// BeforeCreate is the GORM before-create hook for GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) BeforeCreate(tx *gorm.DB) error {
+	if err := g.beforeCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
+}
+
+// BeforeUpdate is the GORM before-update hook for GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) BeforeUpdate(tx *gorm.DB) error {
+	if err := g.beforeUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
+}
+
+// BeforeDelete is the GORM before-delete hook for GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) BeforeDelete(tx *gorm.DB) error {
+	if err := g.beforeDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
+}
+
+// AfterCreate is the GORM after-create hook for GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) AfterCreate(tx *gorm.DB) error {
+	if err := g.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, g)
+}
+
+// AfterUpdate is the GORM after-update hook for GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) AfterUpdate(tx *gorm.DB) error {
+	if err := g.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, g)
+}
+
+// AfterDelete is the GORM after-delete hook for GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) AfterDelete(tx *gorm.DB) error {
+	if err := g.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, g)
+}
+
 // BeforeCreate is the GORM before-create hook for GcpGkeKubernetesRuntimeDefinition.
 func (g *GcpGkeKubernetesRuntimeDefinition) BeforeCreate(tx *gorm.DB) error {
 	if err := g.beforeCreate(tx); err != nil {

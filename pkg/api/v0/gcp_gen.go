@@ -15,8 +15,8 @@ const (
 	ObjectTypeGcpGceMachineRuntimeInstance      string = "GcpGceMachineRuntimeInstance"
 	ObjectTypeGcpGkeKubernetesRuntimeDefinition string = "GcpGkeKubernetesRuntimeDefinition"
 	ObjectTypeGcpGkeKubernetesRuntimeInstance   string = "GcpGkeKubernetesRuntimeInstance"
+	ObjectTypeGcpNetwork                        string = "GcpNetwork"
 	ObjectTypeGcpProvider                       string = "GcpProvider"
-	ObjectTypeGcpSharedNetwork                  string = "GcpSharedNetwork"
 
 	PathGcpGceMachineRuntimeDefinitionVersions    = "/gcp-gce-machine-runtime-definitions/versions"
 	PathGcpGceMachineRuntimeDefinitions           = "/v0/gcp-gce-machine-runtime-definitions"
@@ -26,10 +26,10 @@ const (
 	PathGcpGkeKubernetesRuntimeDefinitions        = "/v0/gcp-gke-kubernetes-runtime-definitions"
 	PathGcpGkeKubernetesRuntimeInstanceVersions   = "/gcp-gke-kubernetes-runtime-instances/versions"
 	PathGcpGkeKubernetesRuntimeInstances          = "/v0/gcp-gke-kubernetes-runtime-instances"
+	PathGcpNetworkVersions                        = "/gcp-networks/versions"
+	PathGcpNetworks                               = "/v0/gcp-networks"
 	PathGcpProviderVersions                       = "/gcp-providers/versions"
 	PathGcpProviders                              = "/v0/gcp-providers"
-	PathGcpSharedNetworkVersions                  = "/gcp-shared-networks/versions"
-	PathGcpSharedNetworks                         = "/v0/gcp-shared-networks"
 )
 
 // NotificationPayload returns the notification payload that is delivered to the
@@ -182,11 +182,6 @@ func (g *GcpGceMachineRuntimeInstance) RelationshipTaggedForeignKeys() []Relatio
 		FieldName:    "GcpProviderID",
 		ObjectID:     g.GcpProviderID,
 		ObjectType:   new(GcpProvider).GetFullyQualifiedType(),
-		Relationship: RelationshipRequires,
-	}, {
-		FieldName:    "GcpSharedNetworkID",
-		ObjectID:     g.GcpSharedNetworkID,
-		ObjectType:   new(GcpSharedNetwork).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}, {
 		FieldName:    "MachineRuntimeInstanceID",
@@ -366,6 +361,81 @@ func (g *GcpGkeKubernetesRuntimeInstance) RelationshipTaggedForeignKeys() []Rela
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
+func (gn *GcpNetwork) NotificationPayload(
+	operation notifications.NotificationOperation,
+	requeue bool,
+	creationTime int64,
+) (*[]byte, error) {
+	notif := notifications.Notification{
+		CreationTime:  &creationTime,
+		Object:        gn,
+		ObjectVersion: gn.GetVersion(),
+		Operation:     operation,
+	}
+
+	payload, err := json.Marshal(notif)
+	if err != nil {
+		return &payload, fmt.Errorf("failed to marshal notification payload %+v: %w", gn, err)
+	}
+
+	return &payload, nil
+}
+
+// DecodeNotifObject takes the threeport object in the form of a
+// map[string]interface and returns the typed object by marshalling into JSON
+// and then unmarshalling into the typed object.  We are not using the
+// mapstructure library here as that requires custom decode hooks to manage
+// fields with non-native go types.
+func (gn *GcpNetwork) DecodeNotifObject(object interface{}) error {
+	jsonObject, err := json.Marshal(object)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object map from consumed notification message: %w", err)
+	}
+	if err := json.Unmarshal(jsonObject, &gn); err != nil {
+		return fmt.Errorf("failed to unmarshal json object to typed object: %w", err)
+	}
+	return nil
+}
+
+// GetId returns the unique ID for the object.
+func (gn *GcpNetwork) GetId() uint {
+	return *gn.ID
+}
+
+// GetType returns the object type.
+func (gn *GcpNetwork) GetType() string {
+	return "GcpNetwork"
+}
+
+// GetVersion returns the version of the API object.
+func (gn *GcpNetwork) GetVersion() string {
+	return "v0"
+}
+
+// GetFullyQualifiedType returns the API-namespace-qualified type name.
+func (gn *GcpNetwork) GetFullyQualifiedType() string {
+	return "threeport.io/v0.GcpNetwork"
+}
+
+// ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
+// if scheduled for deletion or nil if not scheduled for deletion.
+func (gn *GcpNetwork) ScheduledForDeletion() *time.Time {
+	return gn.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpNetwork.
+func (g *GcpNetwork) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "GcpProviderID",
+		ObjectID:     g.GcpProviderID,
+		ObjectType:   new(GcpProvider).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}}
+}
+
+// NotificationPayload returns the notification payload that is delivered to the
+// controller when a change is made.  It includes the object as presented by the
+// client when the change was made.
 func (gp *GcpProvider) NotificationPayload(
 	operation notifications.NotificationOperation,
 	requeue bool,
@@ -432,80 +502,5 @@ func (g *GcpProvider) EncryptedFields() []lib.EncryptedField {
 	return []lib.EncryptedField{{
 		Name:  "ServiceAccountCredentials",
 		Value: g.ServiceAccountCredentials,
-	}}
-}
-
-// NotificationPayload returns the notification payload that is delivered to the
-// controller when a change is made.  It includes the object as presented by the
-// client when the change was made.
-func (gsn *GcpSharedNetwork) NotificationPayload(
-	operation notifications.NotificationOperation,
-	requeue bool,
-	creationTime int64,
-) (*[]byte, error) {
-	notif := notifications.Notification{
-		CreationTime:  &creationTime,
-		Object:        gsn,
-		ObjectVersion: gsn.GetVersion(),
-		Operation:     operation,
-	}
-
-	payload, err := json.Marshal(notif)
-	if err != nil {
-		return &payload, fmt.Errorf("failed to marshal notification payload %+v: %w", gsn, err)
-	}
-
-	return &payload, nil
-}
-
-// DecodeNotifObject takes the threeport object in the form of a
-// map[string]interface and returns the typed object by marshalling into JSON
-// and then unmarshalling into the typed object.  We are not using the
-// mapstructure library here as that requires custom decode hooks to manage
-// fields with non-native go types.
-func (gsn *GcpSharedNetwork) DecodeNotifObject(object interface{}) error {
-	jsonObject, err := json.Marshal(object)
-	if err != nil {
-		return fmt.Errorf("failed to marshal object map from consumed notification message: %w", err)
-	}
-	if err := json.Unmarshal(jsonObject, &gsn); err != nil {
-		return fmt.Errorf("failed to unmarshal json object to typed object: %w", err)
-	}
-	return nil
-}
-
-// GetId returns the unique ID for the object.
-func (gsn *GcpSharedNetwork) GetId() uint {
-	return *gsn.ID
-}
-
-// GetType returns the object type.
-func (gsn *GcpSharedNetwork) GetType() string {
-	return "GcpSharedNetwork"
-}
-
-// GetVersion returns the version of the API object.
-func (gsn *GcpSharedNetwork) GetVersion() string {
-	return "v0"
-}
-
-// GetFullyQualifiedType returns the API-namespace-qualified type name.
-func (gsn *GcpSharedNetwork) GetFullyQualifiedType() string {
-	return "threeport.io/v0.GcpSharedNetwork"
-}
-
-// ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
-// if scheduled for deletion or nil if not scheduled for deletion.
-func (gsn *GcpSharedNetwork) ScheduledForDeletion() *time.Time {
-	return gsn.DeletionScheduled
-}
-
-// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpSharedNetwork.
-func (g *GcpSharedNetwork) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
-	return []RelationshipTaggedForeignKey{{
-		FieldName:    "GcpProviderID",
-		ObjectID:     g.GcpProviderID,
-		ObjectType:   new(GcpProvider).GetFullyQualifiedType(),
-		Relationship: RelationshipRequires,
 	}}
 }

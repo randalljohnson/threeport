@@ -387,28 +387,11 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			subnetworkRef = subnet.SelfLink
 		}
 
-		// SSH-allow firewall rule scoped to the configured source ranges.
-		// The firewall resource has no labels field, so the managed-by label
-		// is applied only to labelable resources such as the instance.
-		sourceRanges := pulumi.ToStringArray(i.sshSourceRanges())
-		_, err = compute.NewFirewall(pctx, i.firewallLogicalName(), &compute.FirewallArgs{
-			Name:    pulumi.String(i.firewallLogicalName()),
-			Network: networkRef,
-			Allows: compute.FirewallAllowArray{
-				&compute.FirewallAllowArgs{
-					Protocol: pulumi.String("tcp"),
-					Ports:    pulumi.StringArray{pulumi.String("22")},
-				},
-			},
-			SourceRanges: sourceRanges,
-		}, i.resourceOptions(gcpProvider, i.firewallLogicalName())...)
-		if err != nil {
-			return fmt.Errorf("failed to create SSH firewall rule: %w", err)
-		}
-
-		// render each configured ingress rule to its own google_compute_firewall
-		// alongside the SSH-allow rule. Empty ports means all ports for the
-		// protocol; empty source ranges falls back to the world-open range.
+		// render each configured ingress rule to its own google_compute_firewall.
+		// Empty ports means all ports for the protocol; empty source ranges
+		// falls back to the world-open range. The SSH rule is folded into
+		// IngressRules by the adapter, so no standalone SSH firewall is
+		// created here.
 		for idx, rule := range i.IngressRules {
 			name := i.ingressFirewallLogicalName(idx)
 			allowArgs := &compute.FirewallAllowArgs{

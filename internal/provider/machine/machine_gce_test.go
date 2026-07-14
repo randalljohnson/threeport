@@ -84,6 +84,10 @@ const (
 )
 
 // newTestInfra builds a fully-configured provider for program-level tests.
+// Seeds a single SSH ingress rule so program-level tests observe the same
+// firewall shape the adapter would inject in production, where SSHSourceRanges
+// is folded into IngressRules and the pulumi program only renders one firewall
+// per configured rule.
 func newTestInfra(name string) *GceMachineInfra {
 	return &GceMachineInfra{
 		PulumiWorkspace: provider.PulumiWorkspace{
@@ -97,6 +101,12 @@ func newTestInfra(name string) *GceMachineInfra {
 		ImageID:     "debian-cloud/debian-12",
 		NetworkID:   "default",
 		SSHUser:     "threeport",
+		IngressRules: []GceIngressRule{{
+			Protocol:     "tcp",
+			Ports:        []string{"22"},
+			SourceRanges: []string{"0.0.0.0/0"},
+			Description:  "ssh",
+		}},
 	}
 }
 
@@ -202,11 +212,11 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 		t.Errorf("instance zone = %v, want us-central1-a", got)
 	}
 
-	// firewall source ranges match the (defaulted) SSHSourceRanges
-	if got := firewallSourceRanges(t, firewalls[0]); !equalStringSlices(got, i.sshSourceRanges()) {
-		t.Errorf("firewall sourceRanges = %v, want %v", got, i.sshSourceRanges())
+	// firewall source ranges match the seeded ingress rule
+	if got := firewallSourceRanges(t, firewalls[0]); !equalStringSlices(got, i.IngressRules[0].SourceRanges) {
+		t.Errorf("firewall sourceRanges = %v, want %v", got, i.IngressRules[0].SourceRanges)
 	}
-	// firewall allows tcp/22
+	// firewall allows tcp/22 from the seeded ingress rule
 	if !firewallAllowsTCP22(t, firewalls[0]) {
 		t.Errorf("firewall does not allow tcp/22: %v", firewalls[0].inputs["allows"])
 	}
@@ -524,16 +534,19 @@ func TestStackStateRoundTrip_CheckpointFormat(t *testing.T) {
 	}
 }
 
-func TestSSHSourceRanges_DefaultAndOverride(t *testing.T) {
-	// empty field defaults to the world-open range
-	def := newTestInfra("default-ranges")
-	if got := def.sshSourceRanges(); !equalStringSlices(got, []string{"0.0.0.0/0"}) {
-		t.Errorf("default sshSourceRanges = %v, want [0.0.0.0/0]", got)
-	}
-
-	// an explicit override reaches the firewall args under mocks
+// TestIngressRule_SourceRangesOverrideReachesFirewall drives the pulumi program
+// with an explicit ingress rule and asserts the configured source ranges reach
+// the firewall args under mocks. Replaces the earlier SSH-firewall-focused test:
+// the SSH firewall is no longer a standalone resource, so this exercises the
+// generic ingress-rule pipeline the SSH rule now folds into.
+func TestIngressRule_SourceRangesOverrideReachesFirewall(t *testing.T) {
 	override := newTestInfra("override-ranges")
-	override.SSHSourceRanges = []string{"10.0.0.0/8"}
+	override.IngressRules = []GceIngressRule{{
+		Protocol:     "tcp",
+		Ports:        []string{"22"},
+		SourceRanges: []string{"10.0.0.0/8"},
+		Description:  "ssh",
+	}}
 	if err := override.ensureSSHKeyPair(); err != nil {
 		t.Fatalf("ensureSSHKeyPair: %v", err)
 	}

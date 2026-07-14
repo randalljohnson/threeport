@@ -344,24 +344,21 @@ func TestResourceOptions_NoImportOnCleanCreate(t *testing.T) {
 // resource kind with the same logical name the program registers it under, so a
 // found import ID lands on the resource that gets imported.
 func TestAdoptTargets_DeterministicLogicalNames(t *testing.T) {
-	// the instance and firewall names derive deterministically from the runtime
-	// instance name, which is what makes constructed import IDs valid
+	// the instance name derives deterministically from the runtime instance
+	// name, which is what makes the constructed import ID valid
 	i := newTestInfra("targets")
 	targets := i.adoptTargets()
-	if len(targets) != 2 {
-		t.Fatalf("expected 2 adopt targets, got %d", len(targets))
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 adopt target, got %d", len(targets))
 	}
 
-	// each kind maps to its program logical name
+	// the instance kind maps to its program logical name
 	byKind := map[adoptResourceKind]string{}
 	for _, target := range targets {
 		byKind[target.kind] = target.logicalName
 	}
 	if got := byKind[adoptInstance]; got != "targets" {
 		t.Errorf("instance target logical name = %q, want %q", got, "targets")
-	}
-	if got := byKind[adoptFirewall]; got != "targets-ssh" {
-		t.Errorf("firewall target logical name = %q, want %q", got, "targets-ssh")
 	}
 }
 

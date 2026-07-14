@@ -101,15 +101,10 @@ func ensureGcpNetwork(
 	}
 
 	// name the network per the sxalable convention:
-	// sxalable-vpc{n}-{orgName}-{zone}, where {n} is a monotonic sequence
-	// for the (org, zone) tuple derived from the count of existing networks
-	sequence := 1
-	if existing != nil {
-		sequence = len(*existing) + 1
-	}
+	// sxalable-vpc-{orgName}-{zone}. Only one network exists per (org, zone)
+	// because the shared-network invariant reuses on every subsequent hit.
 	networkName := fmt.Sprintf(
-		"sxalable-vpc%d-%s-%s",
-		sequence,
+		"sxalable-vpc-%s-%s",
 		*gcpProvider.Name,
 		*gceInstance.Zone,
 	)

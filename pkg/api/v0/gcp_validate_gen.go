@@ -243,3 +243,51 @@ func (g *GcpProvider) AfterDelete(tx *gorm.DB) error {
 	}
 	return ProcessCoreTaggedFieldsAfterDelete(tx, g)
 }
+
+// BeforeCreate is the GORM before-create hook for GcpSharedNetwork.
+func (g *GcpSharedNetwork) BeforeCreate(tx *gorm.DB) error {
+	if err := g.beforeCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeCreate(tx, g)
+}
+
+// BeforeUpdate is the GORM before-update hook for GcpSharedNetwork.
+func (g *GcpSharedNetwork) BeforeUpdate(tx *gorm.DB) error {
+	if err := g.beforeUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeUpdate(tx, g)
+}
+
+// BeforeDelete is the GORM before-delete hook for GcpSharedNetwork.
+func (g *GcpSharedNetwork) BeforeDelete(tx *gorm.DB) error {
+	if err := g.beforeDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsBeforeDelete(tx, g)
+}
+
+// AfterCreate is the GORM after-create hook for GcpSharedNetwork.
+func (g *GcpSharedNetwork) AfterCreate(tx *gorm.DB) error {
+	if err := g.afterCreate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterCreate(tx, g)
+}
+
+// AfterUpdate is the GORM after-update hook for GcpSharedNetwork.
+func (g *GcpSharedNetwork) AfterUpdate(tx *gorm.DB) error {
+	if err := g.afterUpdate(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterUpdate(tx, g)
+}
+
+// AfterDelete is the GORM after-delete hook for GcpSharedNetwork.
+func (g *GcpSharedNetwork) AfterDelete(tx *gorm.DB) error {
+	if err := g.afterDelete(tx); err != nil {
+		return err
+	}
+	return ProcessCoreTaggedFieldsAfterDelete(tx, g)
+}

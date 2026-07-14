@@ -2463,3 +2463,541 @@ func (h Handler) DeleteGcpProvider(c echo.Context) error {
 
 	return apiserver_lib.ResponseStatus200(c, *response)
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// GcpSharedNetwork
+///////////////////////////////////////////////////////////////////////////////
+
+// @Summary GetGcpSharedNetworkVersions gets the supported versions for the gcp shared network API.
+// @Description Get the supported API versions for gcp shared networks.
+// @ID gcpSharedNetwork-get-versions
+// @Produce json
+// @Success 200 {object} apiserver_lib.ApiObjectVersions "OK"
+// @Router /gcp-shared-networks/versions [GET]
+func (h Handler) GetGcpSharedNetworkVersions(c echo.Context) error {
+	return c.JSON(http.StatusOK, apiserver_lib.ObjectVersions[string(api_v0.ObjectTypeGcpSharedNetwork)])
+}
+
+// @Summary adds a new gcp shared network.
+// @Description Add a new gcp shared network to the Threeport database.
+// @ID add-v0-gcpSharedNetwork
+// @Accept json
+// @Produce json
+// @Param gcpSharedNetwork body api_v0.GcpSharedNetwork true "GcpSharedNetwork object"
+// @Success 201 {object} v0.Response "Created"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/gcp-shared-networks [POST]
+func (h Handler) AddGcpSharedNetwork(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpSharedNetwork
+	var gcpSharedNetwork api_v0.GcpSharedNetwork
+
+	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
+	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, gcpSharedNetwork); err != nil {
+		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	if err := c.Bind(&gcpSharedNetwork); err != nil {
+		h.Logger.Error("handler error: error binding object", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	// check for missing required fields
+	if id, err := apiserver_lib.ValidateBoundData(c, gcpSharedNetwork, objectType); err != nil {
+		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingGcpSharedNetwork api_v0.GcpSharedNetwork
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", gcpSharedNetwork.Name).First(&existingGcpSharedNetwork)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+	}
+
+	// persist to DB
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&gcpSharedNetwork)
+	}); result.Error != nil {
+		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required
+	if !*gcpSharedNetwork.Reconciled {
+		notifPayload, err := gcpSharedNetwork.NotificationPayload(
+			notifications.NotificationOperationCreated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.GcpSharedNetworkCreateSubject, *notifPayload)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		gcpSharedNetwork,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus201(c, *response)
+}
+
+// @Summary gets all gcp shared networks.
+// @Description Get all gcp shared networks from the Threeport database.
+// @ID get-v0-gcpSharedNetworks
+// @Accept json
+// @Produce json
+// @Param name query string false "gcp shared network search by name"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/gcp-shared-networks [GET]
+func (h Handler) GetGcpSharedNetworks(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpSharedNetwork
+
+	// get pagination parameters
+	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
+	if err != nil {
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+	}
+
+	// bind filter
+	var filter api_v0.GcpSharedNetwork
+	if err := c.Bind(&filter); err != nil {
+		h.Logger.Error("handler error: error binding filter", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+	}
+
+	pagination := new(apiserver_lib.Pagination)
+	pagination.Limit = pageParams.Limit
+
+	records := &[]api_v0.GcpSharedNetwork{}
+	var returnedCount int64
+
+	switch {
+	case pageParams.QueryId == "":
+		// no query ID provided, so the client is not requesting a specific page of results
+		// count total number of objects
+		var totalCount int64
+		if result := h.RequestDB(c).Model(&api_v0.GcpSharedNetwork{}).Where(&filter).Count(&totalCount); result.Error != nil {
+			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+		}
+
+		// see if total count is greater than the limit
+		pagination.HasMore = totalCount > pagination.Limit
+
+		switch pagination.HasMore {
+		case false:
+			// if we don't have to paginate, return all records
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
+				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			}
+			returnedCount = int64(len(*records))
+		case true:
+			// dispatch to the configured pagination strategy to fetch the first page
+			queryTable := filter.TableName()
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
+			pagination.QueryId = queryId
+			returnedCount = count
+
+			// set the cursor for the next page of results
+			if len(*records) > 0 {
+				pagination.NextCursor = *(*records)[len(*records)-1].ID
+			} else {
+				pagination.NextCursor = 0
+			}
+		}
+	case pageParams.QueryId != "" && pageParams.Cursor == 0:
+		// client provided a query ID but no cursor, so we cannot fetch the next page of results
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+	case pageParams.QueryId != "" && pageParams.Cursor != 0:
+		// continuation: dispatch to the configured pagination strategy to fetch the next page
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+		pagination.QueryId = queryId
+		returnedCount = count
+
+		// set the cursor for the next page of results
+		if len(*records) > 0 {
+			pagination.NextCursor = *(*records)[len(*records)-1].ID
+		} else {
+			pagination.NextCursor = 0
+		}
+
+		// see if we fetched the last of the records
+		pagination.HasMore = returnedCount >= pagination.Limit
+	}
+
+	// construct response
+	response, err := apiserver_lib.CreateResponse(
+		&apiserver_lib.Meta{
+			ObjectCount: returnedCount,
+			Pagination:  *pagination,
+		},
+		*records,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary gets a gcp shared network.
+// @Description Get a particular gcp shared network from the database.
+// @ID get-v0-gcpSharedNetwork
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/gcp-shared-networks/{id} [GET]
+func (h Handler) GetGcpSharedNetwork(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpSharedNetwork
+	gcpSharedNetworkID := c.Param("id")
+	var gcpSharedNetwork api_v0.GcpSharedNetwork
+	if result := h.RequestDB(c).
+		First(&gcpSharedNetwork, gcpSharedNetworkID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		gcpSharedNetwork,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary updates specific fields for an existing gcp shared network.
+// @Description Update a gcp shared network in the database.  Provide one or more fields to update.
+// @Description Note: This API endpint is for updating gcp shared network objects only.
+// @Description Request bodies that include related objects will be accepted, however
+// @Description the related objects will not be changed.  Call the patch or put method for
+// @Description each particular existing object to change them.
+// @ID update-v0-gcpSharedNetwork
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Param gcpSharedNetwork body api_v0.GcpSharedNetwork true "GcpSharedNetwork object"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/gcp-shared-networks/{id} [PATCH]
+func (h Handler) UpdateGcpSharedNetwork(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpSharedNetwork
+	gcpSharedNetworkID := c.Param("id")
+	var existingGcpSharedNetwork api_v0.GcpSharedNetwork
+	if result := h.RequestDB(c).First(&existingGcpSharedNetwork, gcpSharedNetworkID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for empty payload, invalid or unsupported fields, optional associations, etc.
+	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpSharedNetwork); err != nil {
+		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// bind payload
+	var updatedGcpSharedNetwork api_v0.GcpSharedNetwork
+	if err := c.Bind(&updatedGcpSharedNetwork); err != nil {
+		h.Logger.Error("handler error: error binding payload", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingGcpSharedNetwork.Reconciliation
+
+	// update object in database
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingGcpSharedNetwork).Updates(&updatedGcpSharedNetwork)
+	}); result.Error != nil {
+		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGcpSharedNetwork.Reconciled != nil && !*existingGcpSharedNetwork.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGcpSharedNetwork.Reconciliation) {
+		notifPayload, err := existingGcpSharedNetwork.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.GcpSharedNetworkUpdateSubject, *notifPayload)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		existingGcpSharedNetwork,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary updates an existing gcp shared network by replacing the entire object.
+// @Description Replace a gcp shared network in the database.  All required fields must be provided.
+// @Description If any optional fields are not provided, they will be null post-update.
+// @Description Note: This API endpint is for updating gcp shared network objects only.
+// @Description Request bodies that include related objects will be accepted, however
+// @Description the related objects will not be changed.  Call the patch or put method for
+// @Description each particular existing object to change them.
+// @ID replace-v0-gcpSharedNetwork
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Param gcpSharedNetwork body api_v0.GcpSharedNetwork true "GcpSharedNetwork object"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/gcp-shared-networks/{id} [PUT]
+func (h Handler) ReplaceGcpSharedNetwork(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpSharedNetwork
+	gcpSharedNetworkID := c.Param("id")
+	var existingGcpSharedNetwork api_v0.GcpSharedNetwork
+	if result := h.RequestDB(c).First(&existingGcpSharedNetwork, gcpSharedNetworkID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// check for empty payload, invalid or unsupported fields, optional associations, etc.
+	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpSharedNetwork); err != nil {
+		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// bind payload
+	var updatedGcpSharedNetwork api_v0.GcpSharedNetwork
+	if err := c.Bind(&updatedGcpSharedNetwork); err != nil {
+		h.Logger.Error("handler error: error binding payload", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	// check for missing required fields
+	if id, err := apiserver_lib.ValidateBoundData(c, updatedGcpSharedNetwork, objectType); err != nil {
+		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// persist provided data
+	updatedGcpSharedNetwork.ID = existingGcpSharedNetwork.ID
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGcpSharedNetwork)
+	}); result.Error != nil {
+		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// reload updated data from DB
+	if result := h.RequestDB(c).First(&existingGcpSharedNetwork, gcpSharedNetworkID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		existingGcpSharedNetwork,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}
+
+// @Summary deletes a gcp shared network.
+// @Description Delete a gcp shared network by ID from the database.
+// @ID delete-v0-gcpSharedNetwork
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Success 200 {object} v0.Response "OK"
+// @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
+// @Failure 500 {object} v0.Response "Internal Server Error"
+// @Router /v0/gcp-shared-networks/{id} [DELETE]
+func (h Handler) DeleteGcpSharedNetwork(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpSharedNetwork
+	gcpSharedNetworkID := c.Param("id")
+	var gcpSharedNetwork api_v0.GcpSharedNetwork
+	if result := h.RequestDB(c).First(&gcpSharedNetwork, gcpSharedNetworkID); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+		}
+		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
+	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &gcpSharedNetwork); checkErr != nil {
+		var blockedErr *api_v0.BlockedDeleteError
+		if errors.As(checkErr, &blockedErr) {
+			return RespondBlockedDelete(
+				c,
+				h.RequestDB(c),
+				blockedErr,
+			)
+		}
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+	}
+	// schedule for deletion if not already scheduled
+	// if scheduled and reconciled, delete object from DB
+	// if scheduled but not reconciled, return 409 (controller is working on it)
+	if gcpSharedNetwork.DeletionScheduled == nil {
+		// schedule for deletion
+		reconciled := false
+		timestamp := time.Now().UTC()
+		scheduledGcpSharedNetwork := api_v0.GcpSharedNetwork{
+			Reconciliation: api_v0.Reconciliation{
+				DeletionScheduled: &timestamp,
+				Reconciled:        &reconciled,
+			}}
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&gcpSharedNetwork).Updates(&scheduledGcpSharedNetwork)
+		}); result.Error != nil {
+			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+		// notify controller
+		notifPayload, err := gcpSharedNetwork.NotificationPayload(
+			notifications.NotificationOperationDeleted,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.GcpSharedNetworkDeleteSubject, *notifPayload)
+	} else {
+		if gcpSharedNetwork.DeletionConfirmed == nil {
+			// if deletion scheduled but not reconciled, return 409 - deletion
+			// already underway
+			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
+				"object with ID %d already being deleted",
+				*gcpSharedNetwork.ID,
+			)), objectType)
+		} else {
+			// object scheduled for deletion and confirmed - it can be deleted
+			// from DB
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&gcpSharedNetwork)
+			}); result.Error != nil {
+				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(result.Error, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
+				// check if this is a custom HTTP error with specific status code
+				var httpErr *util_v0.HttpError
+				if errors.As(result.Error, &httpErr) {
+					return apiserver_lib.ResponseStatusErr(
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+					)
+				}
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			}
+		}
+	}
+
+	response, err := apiserver_lib.CreateResponse(
+		apiserver_lib.SingleObjectMeta(),
+		gcpSharedNetwork,
+		objectType,
+	)
+	if err != nil {
+		h.Logger.Error("handler error: error creating response", zap.Error(err))
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+	}
+
+	return apiserver_lib.ResponseStatus200(c, *response)
+}

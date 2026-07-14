@@ -169,3 +169,35 @@ func AddGcpProviderVersions() {
 	// add the object tagged fields to the rest API version
 	apiserver_lib.AddObjectVersion(versionObj)
 }
+
+// AddGcpSharedNetworkVersions adds field validation info and adds it
+// to the REST API versions.
+func AddGcpSharedNetworkVersions() {
+	apiserver_v0.GcpSharedNetworkTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
+		Optional:             []string{},
+		OptionalAssociations: []string{},
+		Required:             []string{},
+		TagName:              string(api_lib.ValidateTag),
+	}
+
+	// parse struct and populate the FieldsByTag object
+	apiserver_lib.ParseStruct(
+		string(api_lib.ValidateTag),
+		reflect.ValueOf(new(api_v0.GcpSharedNetwork)),
+		"",
+		apiserver_lib.Translate,
+		apiserver_v0.GcpSharedNetworkTaggedFields,
+	)
+
+	// create a version object which contains the object name and versions
+	versionObj := apiserver_lib.VersionObject{
+		Object:  string(api_v0.ObjectTypeGcpSharedNetwork),
+		Version: "v0",
+	}
+
+	// add the object tagged fields to the global tagged fields map
+	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GcpSharedNetworkTaggedFields[string(api_lib.ValidateTag)]
+
+	// add the object tagged fields to the rest API version
+	apiserver_lib.AddObjectVersion(versionObj)
+}

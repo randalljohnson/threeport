@@ -179,6 +179,17 @@ func GetCoreObjectNamesByIDs(db *gorm.DB, objectType string, ids []uint, include
 			}
 		}
 
+	case "threeport.io/v0.GcpSharedNetwork":
+		var rows []v0.GcpSharedNetwork
+		if err := db.Model(&v0.GcpSharedNetwork{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up GcpSharedNetwork names: %w", err)
+		}
+		for _, r := range rows {
+			if r.ID != nil && r.Name != nil {
+				out[*r.ID] = *r.Name
+			}
+		}
+
 	case "threeport.io/v0.HelmWorkloadDefinition":
 		var rows []v0.HelmWorkloadDefinition
 		if err := db.Model(&v0.HelmWorkloadDefinition{}).Select("id, name").Where("id IN ?", ids).Find(&rows).Error; err != nil {
@@ -727,6 +738,19 @@ func GetCoreObjectIDsByName(db *gorm.DB, objectType string, name string) ([]uint
 		var rows []v0.GcpProvider
 		if err := db.Select("id").Where("name = ?", name).Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("failed to look up GcpProvider by name: %w", err)
+		}
+		ids := make([]uint, 0, len(rows))
+		for _, r := range rows {
+			if r.ID != nil {
+				ids = append(ids, *r.ID)
+			}
+		}
+		return ids, nil
+
+	case "threeport.io/v0.GcpSharedNetwork":
+		var rows []v0.GcpSharedNetwork
+		if err := db.Select("id").Where("name = ?", name).Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("failed to look up GcpSharedNetwork by name: %w", err)
 		}
 		ids := make([]uint, 0, len(rows))
 		for _, r := range rows {

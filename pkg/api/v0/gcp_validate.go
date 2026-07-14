@@ -245,3 +245,33 @@ func (g *GcpGceMachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 func (g *GcpGceMachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }
+
+// beforeCreate validates the GcpSharedNetwork before create.
+func (g *GcpSharedNetwork) beforeCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeUpdate validates the GcpSharedNetwork before update.
+func (g *GcpSharedNetwork) beforeUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// beforeDelete validates the GcpSharedNetwork before delete.
+func (g *GcpSharedNetwork) beforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+// afterCreate runs after the GcpSharedNetwork is created.
+func (g *GcpSharedNetwork) afterCreate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterUpdate runs after the GcpSharedNetwork is updated.
+func (g *GcpSharedNetwork) afterUpdate(tx *gorm.DB) error {
+	return nil
+}
+
+// afterDelete runs after the GcpSharedNetwork is deleted.
+func (g *GcpSharedNetwork) afterDelete(tx *gorm.DB) error {
+	return nil
+}

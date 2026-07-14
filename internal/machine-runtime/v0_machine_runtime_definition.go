@@ -12,7 +12,22 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
+)
+
+const (
+	// defaultMachineProfile is the CPU-to-memory ratio applied when a machine
+	// runtime definition leaves the profile unset.
+	defaultMachineProfile = "Balanced"
+
+	// defaultMachineSize is the compute capacity applied when a machine runtime
+	// definition leaves the size unset.
+	defaultMachineSize = "Medium"
+
+	// defaultMachineImageID is the boot image applied to a provider-provisioned
+	// machine when its definition leaves the image identifier unset.
+	defaultMachineImageID = "debian-cloud/debian-12"
 )
 
 // v0MachineRuntimeDefinitionCreated resolves the abstract machine size and
@@ -26,43 +41,92 @@ func v0MachineRuntimeDefinitionCreated(
 	// a definition registered externally with Reconciled already set needs no
 	// resolution, so return without error
 	if machineRuntimeDefinition.Reconciled != nil && *machineRuntimeDefinition.Reconciled {
-		return 0, nil
+		return controller.Done, nil
 	}
 
 	// imported machines have no infra provider, so there is nothing to resolve
 	if machineRuntimeDefinition.InfraProvider == nil || *machineRuntimeDefinition.InfraProvider == "" {
-		return 0, nil
+		return controller.Done, nil
+	}
+
+	// emit a lifecycle marker so operators can see reconcile has begun
+	var createExtras []string
+	if marriedKind := v0.MachineRuntimeMarriedKind(*machineRuntimeDefinition.InfraProvider, "definition"); marriedKind != "" {
+		createExtras = append(createExtras, marriedKind)
+	}
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateInProgress),
+			Note:   util.Ptr(event.CreateNote(machineRuntimeDefinition, createExtras...)),
+		},
+		*machineRuntimeDefinition.ID,
+		machineRuntimeDefinition.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record CreateInProgress event")
 	}
 
 	switch *machineRuntimeDefinition.InfraProvider {
 	case v0.MachineRuntimeInfraProviderGCE:
-		// map the abstract size and profile to a Google Cloud Platform machine
-		// type; the mapping keys on the cloud provider token, not the machine
-		// runtime infra provider token
-		machineType, err := mapping.GetMachineType(
-			util.GcpProvider,
-			*machineRuntimeDefinition.MachineProfile,
-			*machineRuntimeDefinition.MachineSize,
-		)
-		if err != nil {
-			return 0, fmt.Errorf("failed to map machine size and profile to GCP machine type: %w", err)
-		}
-
-		// create the married GCE machine runtime definition
-		gcpGceMachineRuntimeDefinition := v0.GcpGceMachineRuntimeDefinition{
-			Definition: v0.Definition{
-				Name: machineRuntimeDefinition.Name,
-			},
-			MachineType:                &machineType,
-			ImageID:                    machineRuntimeDefinition.ImageID,
-			MachineRuntimeDefinitionID: machineRuntimeDefinition.ID,
-		}
-		if _, err := client.CreateGcpGceMachineRuntimeDefinition(
+		// when the married provider definition already exists for this parent,
+		// adopt it instead of creating a second one; a create that succeeded
+		// before the parent recorded its reconciled state leaves a child that a
+		// retry would otherwise duplicate
+		existing, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
 			r.APIClient,
 			r.APIServer,
-			&gcpGceMachineRuntimeDefinition,
-		); err != nil {
-			return 0, fmt.Errorf("failed to create GCE machine runtime definition: %w", err)
+			fmt.Sprintf("machineruntimedefinitionid=%d", *machineRuntimeDefinition.ID),
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to check for existing GCE machine runtime definition: %w", err)
+		}
+		if len(*existing) < 1 {
+			// default the abstract profile and size to the documented defaults
+			// when unset so resolution never dereferences a nil pointer
+			machineProfile := defaultMachineProfile
+			if machineRuntimeDefinition.MachineProfile != nil && *machineRuntimeDefinition.MachineProfile != "" {
+				machineProfile = *machineRuntimeDefinition.MachineProfile
+			}
+			machineSize := defaultMachineSize
+			if machineRuntimeDefinition.MachineSize != nil && *machineRuntimeDefinition.MachineSize != "" {
+				machineSize = *machineRuntimeDefinition.MachineSize
+			}
+
+			// map the abstract size and profile to a Google Cloud Platform
+			// machine type; the mapping keys on the cloud provider token, not
+			// the machine runtime infra provider token
+			machineType, err := mapping.GetMachineType(
+				util.GcpProvider,
+				machineProfile,
+				machineSize,
+			)
+			if err != nil {
+				return 0, fmt.Errorf("failed to map machine size and profile to GCP machine type: %w", err)
+			}
+
+			// default the boot image to the documented image when unset so
+			// provisioning never fails on a missing image identifier
+			imageID := machineRuntimeDefinition.ImageID
+			if imageID == nil || *imageID == "" {
+				imageID = util.Ptr(defaultMachineImageID)
+			}
+
+			// create the married GCE machine runtime definition
+			gcpGceMachineRuntimeDefinition := v0.GcpGceMachineRuntimeDefinition{
+				Definition: v0.Definition{
+					Name: machineRuntimeDefinition.Name,
+				},
+				MachineType:                &machineType,
+				ImageID:                    imageID,
+				MachineRuntimeDefinitionID: machineRuntimeDefinition.ID,
+			}
+			if _, err := client.CreateGcpGceMachineRuntimeDefinition(
+				r.APIClient,
+				r.APIServer,
+				&gcpGceMachineRuntimeDefinition,
+			); err != nil {
+				return 0, fmt.Errorf("failed to create GCE machine runtime definition: %w", err)
+			}
 		}
 	default:
 		return 0, fmt.Errorf("infra provider %s not supported", *machineRuntimeDefinition.InfraProvider)
@@ -79,7 +143,7 @@ func v0MachineRuntimeDefinitionCreated(
 		return 0, fmt.Errorf("failed to update machine runtime definition: %w", err)
 	}
 
-	return 0, nil
+	return controller.Done, nil
 }
 
 // v0MachineRuntimeDefinitionUpdated performs reconciliation when a v0
@@ -89,18 +153,50 @@ func v0MachineRuntimeDefinitionUpdated(
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	return 0, nil
+	// emit a lifecycle marker so operators can see reconcile has begun
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonUpdateInProgress),
+			Note:   util.Ptr(event.UpdateNote()),
+		},
+		*machineRuntimeDefinition.ID,
+		machineRuntimeDefinition.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record UpdateInProgress event")
+	}
+
+	return controller.Done, nil
 }
 
 // v0MachineRuntimeDefinitionDeleted performs reconciliation when a v0
 // MachineRuntimeDefinition has been deleted. The married provider definition is
-// torn down by its own reconciler, so the abstract definition only confirms the
-// deletion was scheduled.
+// non-reconcilable, so it is deleted here directly; the delete completes
+// synchronously and needs no await before the abstract deletion is confirmed.
 func v0MachineRuntimeDefinitionDeleted(
 	r *controller.Reconciler,
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
+	// emit a lifecycle marker so operators can see reconcile has begun
+	var deleteExtras []string
+	if machineRuntimeDefinition.InfraProvider != nil && *machineRuntimeDefinition.InfraProvider != "" {
+		if marriedKind := v0.MachineRuntimeMarriedKind(*machineRuntimeDefinition.InfraProvider, "definition"); marriedKind != "" {
+			deleteExtras = append(deleteExtras, marriedKind)
+		}
+	}
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonDeleteInProgress),
+			Note:   util.Ptr(event.DeleteNote(machineRuntimeDefinition, deleteExtras...)),
+		},
+		*machineRuntimeDefinition.ID,
+		machineRuntimeDefinition.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record DeleteInProgress event")
+	}
+
 	// a deletion notification that was not scheduled indicates a problem
 	if machineRuntimeDefinition.DeletionScheduled == nil {
 		return 0, errors.New("deletion notification received but not scheduled")
@@ -108,8 +204,28 @@ func v0MachineRuntimeDefinitionDeleted(
 
 	// nothing to do once deletion is already confirmed
 	if machineRuntimeDefinition.DeletionConfirmed != nil {
-		return 0, nil
+		return controller.Done, nil
 	}
 
-	return 0, nil
+	// delete the married provider definition; it is non-reconcilable, so the
+	// delete removes its row synchronously with no teardown to await
+	gcpGceMachineRuntimeDefinitions, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimedefinitionid=%d", *machineRuntimeDefinition.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get married GCE machine runtime definition: %w", err)
+	}
+	for _, gcpGceMachineRuntimeDefinition := range *gcpGceMachineRuntimeDefinitions {
+		if _, err := client.DeleteGcpGceMachineRuntimeDefinition(
+			r.APIClient,
+			r.APIServer,
+			*gcpGceMachineRuntimeDefinition.ID,
+		); err != nil {
+			return 0, fmt.Errorf("failed to delete married GCE machine runtime definition: %w", err)
+		}
+	}
+
+	return controller.Done, nil
 }

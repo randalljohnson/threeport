@@ -100,7 +100,7 @@ ApiObjectGroups:
       Reconcilable: true
       Tptctl:
         Enabled: true
-    - Name: GcpSharedNetwork
+    - Name: GcpNetwork
       Versions:
         - v0
       Reconcilable: true

@@ -20,9 +20,9 @@ import (
 	"time"
 )
 
-// GcpSharedNetworkReconciler reconciles system state when a GcpSharedNetwork
+// GcpNetworkReconciler reconciles system state when a GcpNetwork
 // is created, updated or deleted.
-func GcpSharedNetworkReconciler(r *controller.Reconciler) {
+func GcpNetworkReconciler(r *controller.Reconciler) {
 	r.ShutdownWait.Add(1)
 	reconcilerLog := r.Log.WithValues("reconcilerName", r.Name)
 	reconcilerLog.Info("reconciler started")
@@ -63,30 +63,30 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 					"msgData", string(msg.Data),
 				)
 				r.RequeueRaw(msg)
-				log.V(1).Info("gcp shared network reconciliation requeued with identical payload and fixed delay")
+				log.V(1).Info("gcp network reconciliation requeued with identical payload and fixed delay")
 				continue
 			}
 
 			// determine the correct object version from the notification
-			var gcpSharedNetwork tpapi_lib.ReconciledThreeportApiObject
+			var gcpNetwork tpapi_lib.ReconciledThreeportApiObject
 			switch notif.ObjectVersion {
 			case "v0":
-				gcpSharedNetwork = &api_v0.GcpSharedNetwork{}
+				gcpNetwork = &api_v0.GcpNetwork{}
 			default:
-				log.Error(errors.New("received unrecognized version of gcp shared network object"), "")
+				log.Error(errors.New("received unrecognized version of gcp network object"), "")
 				r.RequeueRaw(msg)
-				log.V(1).Info("gcp shared network reconciliation requeued with identical payload and fixed delay")
+				log.V(1).Info("gcp network reconciliation requeued with identical payload and fixed delay")
 				continue
 			}
 
 			// decode the object that was sent in the notification
-			if err := gcpSharedNetwork.DecodeNotifObject(notif.Object); err != nil {
+			if err := gcpNetwork.DecodeNotifObject(notif.Object); err != nil {
 				log.Error(err, "failed to marshal object map from consumed notification message")
 				r.RequeueRaw(msg)
-				log.V(1).Info("gcp shared network reconciliation requeued with identical payload and fixed delay")
+				log.V(1).Info("gcp network reconciliation requeued with identical payload and fixed delay")
 				continue
 			}
-			log = log.WithValues("gcpSharedNetworkID", gcpSharedNetwork.GetId())
+			log = log.WithValues("gcpNetworkID", gcpNetwork.GetId())
 
 			// back off the requeue delay as needed
 			requeueDelay := controller.SetRequeueDelay(
@@ -94,10 +94,10 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 			)
 
 			// check for lock on object
-			locked, ok := r.CheckLock(gcpSharedNetwork)
+			locked, ok := r.CheckLock(gcpNetwork)
 			if locked || ok == false {
-				r.Requeue(gcpSharedNetwork, requeueDelay, msg)
-				log.V(1).Info("gcp shared network reconciliation requeued")
+				r.Requeue(gcpNetwork, requeueDelay, msg)
+				log.V(1).Info("gcp network reconciliation requeued")
 				continue
 			}
 
@@ -105,17 +105,17 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 			go func() {
 				select {
 				case <-osSignals:
-					log.V(1).Info("received termination signal, performing unlock and requeue of gcp shared network")
-					r.UnlockAndRequeue(gcpSharedNetwork, requeueDelay, lockReleased, msg)
+					log.V(1).Info("received termination signal, performing unlock and requeue of gcp network")
+					r.UnlockAndRequeue(gcpNetwork, requeueDelay, lockReleased, msg)
 				case <-lockReleased:
-					log.V(1).Info("reached end of reconcile loop for gcp shared network, closing out signal handler")
+					log.V(1).Info("reached end of reconcile loop for gcp network, closing out signal handler")
 				}
 			}()
 
 			// put a lock on the reconciliation of the created object
-			if ok := r.Lock(gcpSharedNetwork); !ok {
-				r.Requeue(gcpSharedNetwork, requeueDelay, msg)
-				log.V(1).Info("gcp shared network reconciliation requeued")
+			if ok := r.Lock(gcpNetwork); !ok {
+				r.Requeue(gcpNetwork, requeueDelay, msg)
+				log.V(1).Info("gcp network reconciliation requeued")
 				continue
 			}
 
@@ -123,73 +123,73 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 			wasReconciled := false
 
 			// retrieve latest version of object
-			var latestGcpSharedNetwork tpapi_lib.ReconciledThreeportApiObject
+			var latestGcpNetwork tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
 			switch notif.ObjectVersion {
 			case "v0":
-				latestObject, err := client_v0.GetGcpSharedNetworkByID(
+				latestObject, err := client_v0.GetGcpNetworkByID(
 					r.APIClient,
 					r.APIServer,
-					gcpSharedNetwork.GetId(),
+					gcpNetwork.GetId(),
 				)
 				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
 					wasReconciled = true
 				}
-				latestGcpSharedNetwork = latestObject
+				latestGcpNetwork = latestObject
 				getLatestErr = err
 			default:
-				getLatestErr = errors.New("received unrecognized version of gcp shared network object")
+				getLatestErr = errors.New("received unrecognized version of gcp network object")
 			}
 
 			// check if error is 404 - if object no longer exists, no need to requeue
 			if errors.Is(getLatestErr, tpclient_lib.ErrObjectNotFound) {
 				log.Info("object no longer exists - halting reconciliation")
-				r.ReleaseLock(gcpSharedNetwork, lockReleased, msg, true)
+				r.ReleaseLock(gcpNetwork, lockReleased, msg, true)
 				continue
 			}
 			if getLatestErr != nil {
-				log.Error(getLatestErr, "failed to get gcp shared network by ID from API")
-				r.UnlockAndRequeue(gcpSharedNetwork, requeueDelay, lockReleased, msg)
+				log.Error(getLatestErr, "failed to get gcp network by ID from API")
+				r.UnlockAndRequeue(gcpNetwork, requeueDelay, lockReleased, msg)
 				continue
 			}
-			gcpSharedNetwork = latestGcpSharedNetwork
+			gcpNetwork = latestGcpNetwork
 
 			// determine which operation and act accordingly
 			switch notif.Operation {
 			case notifications.NotificationOperationCreated:
-				if gcpSharedNetwork.ScheduledForDeletion() != nil {
-					log.Info("gcp shared network scheduled for deletion - skipping create")
+				if gcpNetwork.ScheduledForDeletion() != nil {
+					log.Info("gcp network scheduled for deletion - skipping create")
 					break
 				}
 				var operationErr error
 				var customRequeueDelay int64
-				switch gcpSharedNetwork.GetVersion() {
+				switch gcpNetwork.GetVersion() {
 				case "v0":
-					requeueDelay, err := v0GcpSharedNetworkCreated(
+					requeueDelay, err := v0GcpNetworkCreated(
 						r,
-						gcpSharedNetwork.(*api_v0.GcpSharedNetwork),
+						gcpNetwork.(*api_v0.GcpNetwork),
 						&log,
 					)
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gcp shared network encountered for creation")
+					operationErr = errors.New("unrecognized version of gcp network encountered for creation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.V(1).Info(
-							"gcp shared network create deferred pending in-flight deletion, requeueing",
+							"gcp network create deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
-							gcpSharedNetwork,
+							gcpNetwork,
 							int64(30),
 							lockReleased,
 							msg,
 						)
 						continue
 					}
-					errorMsg := "failed to reconcile created gcp shared network object"
+					errorMsg := "failed to reconcile created gcp network object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
@@ -197,13 +197,13 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 							Reason: util.Ptr(event.ReasonCreateFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
-						gcpSharedNetwork.GetId(),
-						gcpSharedNetwork.GetFullyQualifiedType(),
+						gcpNetwork.GetId(),
+						gcpNetwork.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
 					r.UnlockAndRequeue(
-						gcpSharedNetwork,
+						gcpNetwork,
 						requeueDelay,
 						lockReleased,
 						msg,
@@ -213,7 +213,7 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 				if customRequeueDelay != 0 {
 					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
-						gcpSharedNetwork,
+						gcpNetwork,
 						customRequeueDelay,
 						lockReleased,
 						msg,
@@ -223,33 +223,33 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationUpdated:
 				var operationErr error
 				var customRequeueDelay int64
-				switch gcpSharedNetwork.GetVersion() {
+				switch gcpNetwork.GetVersion() {
 				case "v0":
-					requeueDelay, err := v0GcpSharedNetworkUpdated(
+					requeueDelay, err := v0GcpNetworkUpdated(
 						r,
-						gcpSharedNetwork.(*api_v0.GcpSharedNetwork),
+						gcpNetwork.(*api_v0.GcpNetwork),
 						&log,
 					)
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gcp shared network encountered for creation")
+					operationErr = errors.New("unrecognized version of gcp network encountered for creation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.V(1).Info(
-							"gcp shared network update deferred pending in-flight deletion, requeueing",
+							"gcp network update deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
-							gcpSharedNetwork,
+							gcpNetwork,
 							int64(30),
 							lockReleased,
 							msg,
 						)
 						continue
 					}
-					errorMsg := "failed to reconcile updated gcp shared network object"
+					errorMsg := "failed to reconcile updated gcp network object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
@@ -257,13 +257,13 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 							Reason: util.Ptr(event.ReasonUpdateFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
-						gcpSharedNetwork.GetId(),
-						gcpSharedNetwork.GetFullyQualifiedType(),
+						gcpNetwork.GetId(),
+						gcpNetwork.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
 					r.UnlockAndRequeue(
-						gcpSharedNetwork,
+						gcpNetwork,
 						requeueDelay,
 						lockReleased,
 						msg,
@@ -273,7 +273,7 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 				if customRequeueDelay != 0 {
 					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
-						gcpSharedNetwork,
+						gcpNetwork,
 						customRequeueDelay,
 						lockReleased,
 						msg,
@@ -283,33 +283,33 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationDeleted:
 				var operationErr error
 				var customRequeueDelay int64
-				switch gcpSharedNetwork.GetVersion() {
+				switch gcpNetwork.GetVersion() {
 				case "v0":
-					requeueDelay, err := v0GcpSharedNetworkDeleted(
+					requeueDelay, err := v0GcpNetworkDeleted(
 						r,
-						gcpSharedNetwork.(*api_v0.GcpSharedNetwork),
+						gcpNetwork.(*api_v0.GcpNetwork),
 						&log,
 					)
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gcp shared network encountered for creation")
+					operationErr = errors.New("unrecognized version of gcp network encountered for creation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.V(1).Info(
-							"gcp shared network delete deferred pending in-flight deletion, requeueing",
+							"gcp network delete deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
-							gcpSharedNetwork,
+							gcpNetwork,
 							int64(30),
 							lockReleased,
 							msg,
 						)
 						continue
 					}
-					errorMsg := "failed to reconcile deleted gcp shared network object"
+					errorMsg := "failed to reconcile deleted gcp network object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
@@ -317,13 +317,13 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 							Reason: util.Ptr(event.ReasonDeleteFailed),
 							Type:   util.Ptr(event.TypeWarning),
 						},
-						gcpSharedNetwork.GetId(),
-						gcpSharedNetwork.GetFullyQualifiedType(),
+						gcpNetwork.GetId(),
+						gcpNetwork.GetFullyQualifiedType(),
 						operationErr,
 						&log,
 					)
 					r.UnlockAndRequeue(
-						gcpSharedNetwork,
+						gcpNetwork,
 						requeueDelay,
 						lockReleased,
 						msg,
@@ -333,7 +333,7 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 				if customRequeueDelay != 0 {
 					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
-						gcpSharedNetwork,
+						gcpNetwork,
 						customRequeueDelay,
 						lockReleased,
 						msg,
@@ -341,45 +341,45 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 					continue
 				}
 				deletionTimestamp := util.Ptr(time.Now().UTC())
-				deletedGcpSharedNetwork := api_v0.GcpSharedNetwork{
-					Common: api_v0.Common{ID: util.Ptr(gcpSharedNetwork.GetId())},
+				deletedGcpNetwork := api_v0.GcpNetwork{
+					Common: api_v0.Common{ID: util.Ptr(gcpNetwork.GetId())},
 					Reconciliation: api_v0.Reconciliation{
 						DeletionAcknowledged: deletionTimestamp,
 						DeletionConfirmed:    deletionTimestamp,
 						Reconciled:           util.Ptr(true),
 					},
 				}
-				_, err = client_v0.UpdateGcpSharedNetwork(
+				_, err = client_v0.UpdateGcpNetwork(
 					r.APIClient,
 					r.APIServer,
-					&deletedGcpSharedNetwork,
+					&deletedGcpNetwork,
 				)
 				if err != nil {
-					log.Error(err, "failed to update gcp shared network to mark as deleted")
-					r.UnlockAndRequeue(gcpSharedNetwork, requeueDelay, lockReleased, msg)
+					log.Error(err, "failed to update gcp network to mark as deleted")
+					r.UnlockAndRequeue(gcpNetwork, requeueDelay, lockReleased, msg)
 					continue
 				}
-				_, err = client_v0.DeleteGcpSharedNetwork(
+				_, err = client_v0.DeleteGcpNetwork(
 					r.APIClient,
 					r.APIServer,
-					gcpSharedNetwork.GetId(),
+					gcpNetwork.GetId(),
 				)
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.V(1).Info(
-							"gcp shared network deletion already in progress, requeueing",
+							"gcp network deletion already in progress, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(
-							gcpSharedNetwork,
+							gcpNetwork,
 							int64(30),
 							lockReleased,
 							msg,
 						)
 						continue
 					}
-					log.Error(err, "failed to delete gcp shared network")
-					r.UnlockAndRequeue(gcpSharedNetwork, requeueDelay, lockReleased, msg)
+					log.Error(err, "failed to delete gcp network")
+					r.UnlockAndRequeue(gcpNetwork, requeueDelay, lockReleased, msg)
 					continue
 				}
 			default:
@@ -388,7 +388,7 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 					"notification included an invalid operation",
 				)
 				r.UnlockAndRequeue(
-					gcpSharedNetwork,
+					gcpNetwork,
 					requeueDelay,
 					lockReleased,
 					msg,
@@ -398,37 +398,37 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 
 			// set the object's Reconciled field to true if not deleted
 			if notif.Operation != notifications.NotificationOperationDeleted {
-				reconciledGcpSharedNetwork := api_v0.GcpSharedNetwork{
-					Common:         api_v0.Common{ID: util.Ptr(gcpSharedNetwork.GetId())},
+				reconciledGcpNetwork := api_v0.GcpNetwork{
+					Common:         api_v0.Common{ID: util.Ptr(gcpNetwork.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},
 				}
-				updatedGcpSharedNetwork, err := client_v0.UpdateGcpSharedNetwork(
+				updatedGcpNetwork, err := client_v0.UpdateGcpNetwork(
 					r.APIClient,
 					r.APIServer,
-					&reconciledGcpSharedNetwork,
+					&reconciledGcpNetwork,
 				)
 				if err != nil {
-					log.Error(err, "failed to update gcp shared network to mark as reconciled")
-					r.UnlockAndRequeue(gcpSharedNetwork, requeueDelay, lockReleased, msg)
+					log.Error(err, "failed to update gcp network to mark as reconciled")
+					r.UnlockAndRequeue(gcpNetwork, requeueDelay, lockReleased, msg)
 					continue
 				}
 				log.V(1).Info(
-					"gcp shared network marked as reconciled in API",
-					"gcp shared networkName", updatedGcpSharedNetwork.Name,
+					"gcp network marked as reconciled in API",
+					"gcp networkName", updatedGcpNetwork.Name,
 				)
 			}
 
 			// release the lock on the reconciliation of the created object
-			if ok := r.ReleaseLock(gcpSharedNetwork, lockReleased, msg, true); !ok {
-				log.Error(errors.New("gcp shared network remains locked - will unlock when TTL expires"), "")
+			if ok := r.ReleaseLock(gcpNetwork, lockReleased, msg, true); !ok {
+				log.Error(errors.New("gcp network remains locked - will unlock when TTL expires"), "")
 			} else {
-				log.V(1).Info("gcp shared network unlocked")
+				log.V(1).Info("gcp network unlocked")
 			}
 
 			// emit success event only on the first-successful transition; skip on redelivery
 			if !wasReconciled {
 				successMsg := fmt.Sprintf(
-					"gcp shared network successfully reconciled for %s operation",
+					"gcp network successfully reconciled for %s operation",
 					strings.ToLower(string(notif.Operation)),
 				)
 				if err := r.EventsRecorder.RecordEvent(
@@ -437,10 +437,10 @@ func GcpSharedNetworkReconciler(r *controller.Reconciler) {
 						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
 						Type:   util.Ptr(event.TypeNormal),
 					},
-					gcpSharedNetwork.GetId(),
-					gcpSharedNetwork.GetFullyQualifiedType(),
+					gcpNetwork.GetId(),
+					gcpNetwork.GetFullyQualifiedType(),
 				); err != nil {
-					log.Error(err, "failed to record event for successful gcp shared network reconciliation")
+					log.Error(err, "failed to record event for successful gcp network reconciliation")
 				}
 				log.Info(successMsg)
 			}

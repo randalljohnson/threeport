@@ -56,6 +56,18 @@ func GcpGkeKubernetesRuntimeInstanceRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.DELETE(v0.PathGcpGkeKubernetesRuntimeInstances+"/:id", h.DeleteGcpGkeKubernetesRuntimeInstance)
 }
 
+// GcpNetworkRoutes sets up all routes for the GcpNetwork handlers.
+func GcpNetworkRoutes(e *echo.Echo, h *handlers.Handler) {
+	e.GET(v0.PathGcpNetworkVersions, h.GetGcpNetworkVersions)
+
+	e.POST(v0.PathGcpNetworks, h.AddGcpNetwork)
+	e.GET(v0.PathGcpNetworks, h.GetGcpNetworks)
+	e.GET(v0.PathGcpNetworks+"/:id", h.GetGcpNetwork)
+	e.PATCH(v0.PathGcpNetworks+"/:id", h.UpdateGcpNetwork)
+	e.PUT(v0.PathGcpNetworks+"/:id", h.ReplaceGcpNetwork)
+	e.DELETE(v0.PathGcpNetworks+"/:id", h.DeleteGcpNetwork)
+}
+
 // GcpProviderRoutes sets up all routes for the GcpProvider handlers.
 func GcpProviderRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.GET(v0.PathGcpProviderVersions, h.GetGcpProviderVersions)
@@ -66,16 +78,4 @@ func GcpProviderRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.PATCH(v0.PathGcpProviders+"/:id", h.UpdateGcpProvider)
 	e.PUT(v0.PathGcpProviders+"/:id", h.ReplaceGcpProvider)
 	e.DELETE(v0.PathGcpProviders+"/:id", h.DeleteGcpProvider)
-}
-
-// GcpSharedNetworkRoutes sets up all routes for the GcpSharedNetwork handlers.
-func GcpSharedNetworkRoutes(e *echo.Echo, h *handlers.Handler) {
-	e.GET(v0.PathGcpSharedNetworkVersions, h.GetGcpSharedNetworkVersions)
-
-	e.POST(v0.PathGcpSharedNetworks, h.AddGcpSharedNetwork)
-	e.GET(v0.PathGcpSharedNetworks, h.GetGcpSharedNetworks)
-	e.GET(v0.PathGcpSharedNetworks+"/:id", h.GetGcpSharedNetwork)
-	e.PATCH(v0.PathGcpSharedNetworks+"/:id", h.UpdateGcpSharedNetwork)
-	e.PUT(v0.PathGcpSharedNetworks+"/:id", h.ReplaceGcpSharedNetwork)
-	e.DELETE(v0.PathGcpSharedNetworks+"/:id", h.DeleteGcpSharedNetwork)
 }

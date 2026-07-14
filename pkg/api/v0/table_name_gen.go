@@ -102,14 +102,14 @@ func (GcpGkeKubernetesRuntimeInstance) TableName() string {
 	return "v0_gcp_gke_kubernetes_runtime_instances"
 }
 
+// TableName sets the name of the table for the GcpNetwork objects in the database.
+func (GcpNetwork) TableName() string {
+	return "v0_gcp_networks"
+}
+
 // TableName sets the name of the table for the GcpProvider objects in the database.
 func (GcpProvider) TableName() string {
 	return "v0_gcp_providers"
-}
-
-// TableName sets the name of the table for the GcpSharedNetwork objects in the database.
-func (GcpSharedNetwork) TableName() string {
-	return "v0_gcp_shared_networks"
 }
 
 // TableName sets the name of the table for the HelmWorkloadDefinition objects in the database.

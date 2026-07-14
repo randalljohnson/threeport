@@ -8,31 +8,31 @@ import (
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 )
 
-// v0GcpSharedNetworkCreated performs reconciliation when a v0 GcpSharedNetwork
+// v0GcpNetworkCreated performs reconciliation when a v0 GcpNetwork
 // has been created.
-func v0GcpSharedNetworkCreated(
+func v0GcpNetworkCreated(
 	r *controller.Reconciler,
-	gcpSharedNetwork *v0.GcpSharedNetwork,
+	gcpNetwork *v0.GcpNetwork,
 	log *logr.Logger,
 ) (int64, error) {
 	return 0, nil
 }
 
-// v0GcpSharedNetworkUpdated performs reconciliation when a v0 GcpSharedNetwork
+// v0GcpNetworkUpdated performs reconciliation when a v0 GcpNetwork
 // has been updated.
-func v0GcpSharedNetworkUpdated(
+func v0GcpNetworkUpdated(
 	r *controller.Reconciler,
-	gcpSharedNetwork *v0.GcpSharedNetwork,
+	gcpNetwork *v0.GcpNetwork,
 	log *logr.Logger,
 ) (int64, error) {
 	return 0, nil
 }
 
-// v0GcpSharedNetworkDeleted performs reconciliation when a v0 GcpSharedNetwork
+// v0GcpNetworkDeleted performs reconciliation when a v0 GcpNetwork
 // has been deleted.
-func v0GcpSharedNetworkDeleted(
+func v0GcpNetworkDeleted(
 	r *controller.Reconciler,
-	gcpSharedNetwork *v0.GcpSharedNetwork,
+	gcpNetwork *v0.GcpNetwork,
 	log *logr.Logger,
 ) (int64, error) {
 	return 0, nil

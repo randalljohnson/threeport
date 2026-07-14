@@ -11,7 +11,9 @@ import (
 )
 
 // v0GcpGceMachineRuntimeInstanceCreated performs reconciliation when a v0 GcpGceMachineRuntimeInstance
-// has been created.
+// has been created. Shared VPC resolution happens inside buildGceMachineInfra
+// so the network is looked up (or created) each time the pulumi program is
+// assembled and no FK is stored on the instance.
 func v0GcpGceMachineRuntimeInstanceCreated(
 	r *controller.Reconciler,
 	gcpGceMachineRuntimeInstance *v0.GcpGceMachineRuntimeInstance,
@@ -21,13 +23,6 @@ func v0GcpGceMachineRuntimeInstanceCreated(
 		"gcpGceMachineRuntimeInstanceID", *gcpGceMachineRuntimeInstance.ID,
 		"gcpGceMachineRuntimeInstanceName", *gcpGceMachineRuntimeInstance.Name,
 	)
-
-	// resolve the shared VPC network for the (provider, region) tuple before
-	// building infra so the FK is wired and the pulumi program reads network
-	// state from the shared record rather than the instance's raw CIDRs
-	if _, err := ensureGcpSharedNetwork(r, gcpGceMachineRuntimeInstance, &reconLog); err != nil {
-		return 0, fmt.Errorf("failed to ensure GCP shared network: %w", err)
-	}
 
 	p := newGceMachineLifecycleProvider(r, gcpGceMachineRuntimeInstance, &reconLog)
 	return provider.HandleInfraCreate(p, &reconLog)

@@ -439,66 +439,98 @@ func buildGceMachineInfra(
 	if instance.SSHSourceRanges != nil {
 		infraGce.SSHSourceRanges = append([]string(nil), *instance.SSHSourceRanges...)
 	}
+
+	// load the parent machine runtime instance so IngressRules, NetworkCIDR,
+	// SubnetCIDR, and AssignPublicIP are read from the abstract instance
+	// where they now live; a nil MachineRuntimeInstanceID leaves those
+	// fields at their zero values.
+	var mri *v0.MachineRuntimeInstance
+	if instance.MachineRuntimeInstanceID != nil {
+		var err error
+		mri, err = client.GetMachineRuntimeInstanceByID(
+			r.APIClient,
+			r.APIServer,
+			*instance.MachineRuntimeInstanceID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve machine runtime instance by ID: %w", err)
+		}
+	}
+
+	// prepend an SSH ingress rule when SSHSourceRanges is set so a single
+	// ingress pipeline drives every firewall; the pulumi program no longer
+	// creates a standalone SSH firewall.
+	var ingressRules []v0.IngressRule
+	if len(infraGce.SSHSourceRanges) > 0 {
+		sshRanges := append([]string(nil), infraGce.SSHSourceRanges...)
+		ingressRules = append(ingressRules, v0.IngressRule{
+			Protocol:     util.Ptr("tcp"),
+			Ports:        util.Ptr([]string{"22"}),
+			SourceRanges: &sshRanges,
+			Description:  util.Ptr("ssh"),
+		})
+	}
+	if mri != nil && mri.IngressRules != nil {
+		ingressRules = append(ingressRules, *mri.IngressRules...)
+	}
 	// translate each portable ingress rule to the provider-side shape; each
 	// non-nil string/slice field is copied out of its pointer so a partial
 	// rule renders as an empty value on the provider rather than a panic.
-	if instance.IngressRules != nil {
-		for _, rule := range *instance.IngressRules {
-			gceRule := machine.GceIngressRule{}
-			if rule.Protocol != nil {
-				gceRule.Protocol = *rule.Protocol
-			}
-			if rule.Ports != nil {
-				gceRule.Ports = append([]string(nil), *rule.Ports...)
-			}
-			if rule.SourceRanges != nil {
-				gceRule.SourceRanges = append([]string(nil), *rule.SourceRanges...)
-			}
-			if rule.Description != nil {
-				gceRule.Description = *rule.Description
-			}
-			infraGce.IngressRules = append(infraGce.IngressRules, gceRule)
+	for _, rule := range ingressRules {
+		gceRule := machine.GceIngressRule{}
+		if rule.Protocol != nil {
+			gceRule.Protocol = *rule.Protocol
+		}
+		if rule.Ports != nil {
+			gceRule.Ports = append([]string(nil), *rule.Ports...)
+		}
+		if rule.SourceRanges != nil {
+			gceRule.SourceRanges = append([]string(nil), *rule.SourceRanges...)
+		}
+		if rule.Description != nil {
+			gceRule.Description = *rule.Description
+		}
+		infraGce.IngressRules = append(infraGce.IngressRules, gceRule)
+	}
+
+	if mri != nil {
+		if mri.NetworkCIDR != nil {
+			infraGce.NetworkCIDR = *mri.NetworkCIDR
+		}
+		if mri.SubnetCIDR != nil {
+			infraGce.SubnetCIDR = *mri.SubnetCIDR
+		}
+		if mri.AssignPublicIP != nil {
+			infraGce.AssignPublicIP = *mri.AssignPublicIP
 		}
 	}
-	if instance.NetworkCIDR != nil {
-		infraGce.NetworkCIDR = *instance.NetworkCIDR
+
+	// resolve the shared VPC network for the (provider, zone) tuple and
+	// prefer its concrete provider IDs over CIDR-driven creation so
+	// subsequent instances attach to the already-provisioned VPC. When the
+	// IDs are not yet populated, the network's CIDRs authoritatively drive
+	// the pulumi program so every instance in the tuple agrees on the same
+	// VPC shape.
+	network, err := ensureGcpNetwork(r, instance, mri, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure GCP network: %w", err)
 	}
-	if instance.SubnetCIDR != nil {
-		infraGce.SubnetCIDR = *instance.SubnetCIDR
-	}
-	// prefer the shared network's fields when the FK is wired: concrete
-	// provider IDs win over CIDRs so subsequent instances attach to the
-	// already-provisioned VPC instead of recreating a duplicate one; when the
-	// shared network's IDs are not yet populated, its CIDRs still authoritatively
-	// drive the pulumi program so every instance in the tuple agrees on the
-	// same VPC shape
-	if instance.GcpSharedNetworkID != nil {
-		shared, err := client.GetGcpSharedNetworkByID(
-			r.APIClient,
-			r.APIServer,
-			*instance.GcpSharedNetworkID,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve GCP shared network by ID: %w", err)
+	if network != nil {
+		if network.NetworkCIDR != nil {
+			infraGce.NetworkCIDR = *network.NetworkCIDR
 		}
-		if shared.NetworkCIDR != nil {
-			infraGce.NetworkCIDR = *shared.NetworkCIDR
+		if network.SubnetCIDR != nil {
+			infraGce.SubnetCIDR = *network.SubnetCIDR
 		}
-		if shared.SubnetCIDR != nil {
-			infraGce.SubnetCIDR = *shared.SubnetCIDR
-		}
-		if shared.NetworkID != nil && *shared.NetworkID != "" {
-			infraGce.NetworkID = *shared.NetworkID
+		if network.NetworkID != nil && *network.NetworkID != "" {
+			infraGce.NetworkID = *network.NetworkID
 			// concrete network ID supersedes CIDR-driven creation so the pulumi
 			// program adopts the existing VPC instead of provisioning a fresh one
 			infraGce.NetworkCIDR = ""
 		}
-		if shared.SubnetworkID != nil && *shared.SubnetworkID != "" {
+		if network.SubnetworkID != nil && *network.SubnetworkID != "" {
 			infraGce.SubnetCIDR = ""
 		}
-	}
-	if instance.AssignPublicIP != nil {
-		infraGce.AssignPublicIP = *instance.AssignPublicIP
 	}
 
 	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {

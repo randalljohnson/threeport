@@ -100,12 +100,6 @@ ApiObjectGroups:
       Reconcilable: true
       Tptctl:
         Enabled: true
-    - Name: GcpNetwork
-      Versions:
-        - v0
-      Reconcilable: true
-      Tptctl:
-        Enabled: true
 - Name: control_plane
   Objects:
     - Name: ControlPlaneDefinition

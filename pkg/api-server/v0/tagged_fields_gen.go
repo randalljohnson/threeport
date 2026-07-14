@@ -24,7 +24,6 @@ var (
 	GcpGceMachineRuntimeInstanceTaggedFields         = make(map[string]*apiserver_lib.FieldsByTag)
 	GcpGkeKubernetesRuntimeDefinitionTaggedFields    = make(map[string]*apiserver_lib.FieldsByTag)
 	GcpGkeKubernetesRuntimeInstanceTaggedFields      = make(map[string]*apiserver_lib.FieldsByTag)
-	GcpNetworkTaggedFields                           = make(map[string]*apiserver_lib.FieldsByTag)
 	GcpProviderTaggedFields                          = make(map[string]*apiserver_lib.FieldsByTag)
 	HelmWorkloadDefinitionTaggedFields               = make(map[string]*apiserver_lib.FieldsByTag)
 	HelmWorkloadInstanceTaggedFields                 = make(map[string]*apiserver_lib.FieldsByTag)

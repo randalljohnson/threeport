@@ -38,11 +38,6 @@ func main() {
 		1,
 		"Number of concurrent reconcilers to run for gcp gce machine runtime instances",
 	)
-	var gcpNetworkConcurrentReconciles = flag.Int(
-		"gcp-network-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for gcp networks",
-	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
 	var msgBrokerHost = flag.String("msg-broker-host", "", "Threeport message broker hostname")
@@ -147,12 +142,6 @@ func main() {
 		Name:                 "GcpGceMachineRuntimeInstanceReconciler",
 		NotifSubject:         notif.GcpGceMachineRuntimeInstanceSubject,
 		ReconcileFunc:        gcp.GcpGceMachineRuntimeInstanceReconciler,
-	})
-	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *gcpNetworkConcurrentReconciles,
-		Name:                 "GcpNetworkReconciler",
-		NotifSubject:         notif.GcpNetworkSubject,
-		ReconcileFunc:        gcp.GcpNetworkReconciler,
 	})
 
 	for _, r := range reconcilerConfigs {

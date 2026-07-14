@@ -742,51 +742,6 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		return fmt.Errorf("failed to register object route for GcpGkeKubernetesRuntimeInstance: %w", result.Error)
 	}
 
-	// registering object GcpNetwork
-	object = api_v0.ModuleObject{
-		Description:        util.Ptr("GcpNetwork represents a VPC network and subnetwork pair shared across multiple GCE machine instances scoped to a (GcpProvider, zone) tuple. The GCE reconciler looks one up (or creates one) when a GcpGceMachineRuntimeInstance is provisioned. Deletion is guarded by a live query for referencing instances so the network is not removed while any instance still resolves to it."),
-		ModuleApiID:        moduleApi.ID,
-		ModuleControllerID: controller.ID,
-		Name:               util.Ptr("GcpNetwork"),
-		Version:            util.Ptr("v0"),
-	}
-	result = db.Where(api_v0.ModuleObject{
-		ModuleApiID: moduleApi.ID,
-		Name:        object.Name,
-		Version:     object.Version,
-	}).FirstOrCreate(&object)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register GcpNetwork: %w", result.Error)
-	}
-
-	// registering routes for GcpNetwork
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathGcpNetworkVersions),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register version route for GcpNetwork: %w", result.Error)
-	}
-	route = api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          util.Ptr(api_v0.PathGcpNetworks),
-	}
-	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
-		ModuleApiID:   moduleApi.ID,
-		ModuleObjects: []*api_v0.ModuleObject{&object},
-		Path:          route.Path,
-	}).FirstOrCreate(&route)
-	if result.Error != nil {
-		return fmt.Errorf("failed to register object route for GcpNetwork: %w", result.Error)
-	}
-
 	// registering object GcpProvider
 	object = api_v0.ModuleObject{
 		Description: util.Ptr("GcpProvider represents a Google Cloud Platform (GCP) project in an account with the GCP service provider."),

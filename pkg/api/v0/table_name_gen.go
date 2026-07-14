@@ -107,6 +107,11 @@ func (GcpProvider) TableName() string {
 	return "v0_gcp_providers"
 }
 
+// TableName sets the name of the table for the GcpSharedNetwork objects in the database.
+func (GcpSharedNetwork) TableName() string {
+	return "v0_gcp_shared_networks"
+}
+
 // TableName sets the name of the table for the HelmWorkloadDefinition objects in the database.
 func (HelmWorkloadDefinition) TableName() string {
 	return "v0_helm_workload_definitions"

@@ -44,17 +44,14 @@ var (
 	_ provider.AdoptableProvider   = (*GceMachineInfra)(nil)
 )
 
-// adoptResourceKind identifies which of the two deterministically named GCE
-// resources an adopt target refers to, so the discover helper can branch on
-// kind without string matching on logical names.
+// adoptResourceKind identifies which deterministically named GCE resource an
+// adopt target refers to, so the discover helper can branch on kind without
+// string matching on logical names.
 type adoptResourceKind int
 
 const (
 	// adoptInstance is the VM instance resource.
 	adoptInstance adoptResourceKind = iota
-
-	// adoptFirewall is the SSH-allow firewall rule resource.
-	adoptFirewall
 )
 
 // adoptTarget pairs a resource kind with the Pulumi logical name the program
@@ -510,13 +507,6 @@ func (i *GceMachineInfra) instanceLogicalName() string {
 	return i.RuntimeInstanceName
 }
 
-// firewallLogicalName returns the Pulumi logical name and GCE resource name of
-// the SSH-allow firewall rule. It is deterministic for the same reason the
-// instance name is.
-func (i *GceMachineInfra) firewallLogicalName() string {
-	return fmt.Sprintf("%s-ssh", i.RuntimeInstanceName)
-}
-
 // networkLogicalName returns the Pulumi logical name and GCE resource name of
 // the custom-mode network created when NetworkCIDR is set.
 func (i *GceMachineInfra) networkLogicalName() string {
@@ -548,13 +538,12 @@ func (i *GceMachineInfra) resourceOptions(gcpProvider pulumi.ProviderResource, l
 	return opts
 }
 
-// adoptTargets returns the two deterministically named resources DiscoverAndAdopt
+// adoptTargets returns the deterministically named resources DiscoverAndAdopt
 // probes, each paired with the Pulumi logical name the program registers it
 // under so a found import ID lands against the right resource.
 func (i *GceMachineInfra) adoptTargets() []adoptTarget {
 	return []adoptTarget{
 		{kind: adoptInstance, logicalName: i.instanceLogicalName()},
-		{kind: adoptFirewall, logicalName: i.firewallLogicalName()},
 	}
 }
 
@@ -616,17 +605,6 @@ func (i *GceMachineInfra) discoverImportID(
 		return fmt.Sprintf(
 			"projects/%s/zones/%s/instances/%s",
 			i.ProjectID, i.Zone, i.instanceLogicalName(),
-		), true, nil
-	case adoptFirewall:
-		if _, err := service.Firewalls.Get(i.ProjectID, i.firewallLogicalName()).Context(ctx).Do(); err != nil {
-			if isNotFound(err) {
-				return "", false, nil
-			}
-			return "", false, fmt.Errorf("failed to get firewall: %w", err)
-		}
-		return fmt.Sprintf(
-			"projects/%s/global/firewalls/%s",
-			i.ProjectID, i.firewallLogicalName(),
 		), true, nil
 	default:
 		return "", false, fmt.Errorf("unknown adopt resource kind: %d", kind)

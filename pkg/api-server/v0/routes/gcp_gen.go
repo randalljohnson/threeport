@@ -67,3 +67,15 @@ func GcpProviderRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.PUT(v0.PathGcpProviders+"/:id", h.ReplaceGcpProvider)
 	e.DELETE(v0.PathGcpProviders+"/:id", h.DeleteGcpProvider)
 }
+
+// GcpSharedNetworkRoutes sets up all routes for the GcpSharedNetwork handlers.
+func GcpSharedNetworkRoutes(e *echo.Echo, h *handlers.Handler) {
+	e.GET(v0.PathGcpSharedNetworkVersions, h.GetGcpSharedNetworkVersions)
+
+	e.POST(v0.PathGcpSharedNetworks, h.AddGcpSharedNetwork)
+	e.GET(v0.PathGcpSharedNetworks, h.GetGcpSharedNetworks)
+	e.GET(v0.PathGcpSharedNetworks+"/:id", h.GetGcpSharedNetwork)
+	e.PATCH(v0.PathGcpSharedNetworks+"/:id", h.UpdateGcpSharedNetwork)
+	e.PUT(v0.PathGcpSharedNetworks+"/:id", h.ReplaceGcpSharedNetwork)
+	e.DELETE(v0.PathGcpSharedNetworks+"/:id", h.DeleteGcpSharedNetwork)
+}

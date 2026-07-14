@@ -22,6 +22,13 @@ func v0GcpGceMachineRuntimeInstanceCreated(
 		"gcpGceMachineRuntimeInstanceName", *gcpGceMachineRuntimeInstance.Name,
 	)
 
+	// resolve the shared VPC network for the (provider, region) tuple before
+	// building infra so the FK is wired and the pulumi program reads network
+	// state from the shared record rather than the instance's raw CIDRs
+	if _, err := ensureGcpSharedNetwork(r, gcpGceMachineRuntimeInstance, &reconLog); err != nil {
+		return 0, fmt.Errorf("failed to ensure GCP shared network: %w", err)
+	}
+
 	p := newGceMachineLifecycleProvider(r, gcpGceMachineRuntimeInstance, &reconLog)
 	return provider.HandleInfraCreate(p, &reconLog)
 }

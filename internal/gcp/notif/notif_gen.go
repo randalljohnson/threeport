@@ -14,6 +14,11 @@ const (
 	GcpGceMachineRuntimeInstanceCreateSubject = "gcpGceMachineRuntimeInstance.create"
 	GcpGceMachineRuntimeInstanceUpdateSubject = "gcpGceMachineRuntimeInstance.update"
 	GcpGceMachineRuntimeInstanceDeleteSubject = "gcpGceMachineRuntimeInstance.delete"
+
+	GcpSharedNetworkSubject       = "gcpSharedNetwork.*"
+	GcpSharedNetworkCreateSubject = "gcpSharedNetwork.create"
+	GcpSharedNetworkUpdateSubject = "gcpSharedNetwork.update"
+	GcpSharedNetworkDeleteSubject = "gcpSharedNetwork.delete"
 )
 
 // GetGcpGkeKubernetesRuntimeInstanceSubjects returns the NATS subjects
@@ -36,6 +41,16 @@ func GetGcpGceMachineRuntimeInstanceSubjects() []string {
 	}
 }
 
+// GetGcpSharedNetworkSubjects returns the NATS subjects
+// for gcp shared networks.
+func GetGcpSharedNetworkSubjects() []string {
+	return []string{
+		GcpSharedNetworkCreateSubject,
+		GcpSharedNetworkUpdateSubject,
+		GcpSharedNetworkDeleteSubject,
+	}
+}
+
 // GetGcpSubjects returns the NATS subjects
 // for all gcp objects.
 func GetGcpSubjects() []string {
@@ -43,6 +58,7 @@ func GetGcpSubjects() []string {
 
 	gcpSubjects = append(gcpSubjects, GetGcpGkeKubernetesRuntimeInstanceSubjects()...)
 	gcpSubjects = append(gcpSubjects, GetGcpGceMachineRuntimeInstanceSubjects()...)
+	gcpSubjects = append(gcpSubjects, GetGcpSharedNetworkSubjects()...)
 
 	return gcpSubjects
 }

@@ -786,6 +786,51 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 		return fmt.Errorf("failed to register object route for GcpProvider: %w", result.Error)
 	}
 
+	// registering object GcpSharedNetwork
+	object = api_v0.ModuleObject{
+		Description:        util.Ptr("GcpSharedNetwork represents a VPC network and subnetwork pair shared across multiple GCE machine instances scoped to a (GcpProvider, region) tuple. The GCE reconciler looks one up (or creates it) when a GcpGceMachineRuntimeInstance is provisioned; requires-AOR wiring holds the shared network in place while any instance still references it."),
+		ModuleApiID:        moduleApi.ID,
+		ModuleControllerID: controller.ID,
+		Name:               util.Ptr("GcpSharedNetwork"),
+		Version:            util.Ptr("v0"),
+	}
+	result = db.Where(api_v0.ModuleObject{
+		ModuleApiID: moduleApi.ID,
+		Name:        object.Name,
+		Version:     object.Version,
+	}).FirstOrCreate(&object)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register GcpSharedNetwork: %w", result.Error)
+	}
+
+	// registering routes for GcpSharedNetwork
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathGcpSharedNetworkVersions),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register version route for GcpSharedNetwork: %w", result.Error)
+	}
+	route = api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          util.Ptr(api_v0.PathGcpSharedNetworks),
+	}
+	result = db.Omit("ModuleObjects.*").Where(api_v0.ModuleApiRoute{
+		ModuleApiID:   moduleApi.ID,
+		ModuleObjects: []*api_v0.ModuleObject{&object},
+		Path:          route.Path,
+	}).FirstOrCreate(&route)
+	if result.Error != nil {
+		return fmt.Errorf("failed to register object route for GcpSharedNetwork: %w", result.Error)
+	}
+
 	// /////////////////////////////////////////////////////////////////////////////
 	// registering controllers, objects and routes for ControlPlane object group
 	// /////////////////////////////////////////////////////////////////////////////

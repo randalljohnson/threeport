@@ -27,6 +27,7 @@ func AddRoutes(e *echo.Echo, h *handlers.Handler) {
 	GcpGkeKubernetesRuntimeDefinitionRoutes(e, h)
 	GcpGkeKubernetesRuntimeInstanceRoutes(e, h)
 	GcpProviderRoutes(e, h)
+	GcpSharedNetworkRoutes(e, h)
 	HelmWorkloadDefinitionRoutes(e, h)
 	HelmWorkloadInstanceRoutes(e, h)
 	KubernetesRuntimeDefinitionRoutes(e, h)

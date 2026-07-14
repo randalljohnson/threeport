@@ -1497,3 +1497,300 @@ func DeleteGcpProvider(apiClient *http.Client, apiAddr string, id uint) (*v0.Gcp
 
 	return &gcpProvider, nil
 }
+
+// GetGcpSharedNetworks fetches all gcp shared networks.
+func GetGcpSharedNetworks(apiClient *http.Client, apiAddr string) (*[]v0.GcpSharedNetwork, error) {
+	var gcpSharedNetworks []v0.GcpSharedNetwork
+
+	allPagesReceived := false
+	var allPageData []apiserver_lib.Object
+	nextCursor := uint(0)
+	queryId := ""
+	for !allPagesReceived {
+		url := fmt.Sprintf("%s%s", apiAddr, v0.PathGcpSharedNetworks)
+		if queryId != "" {
+			url = fmt.Sprintf("%s%s?queryid=%s&cursor=%d", apiAddr, v0.PathGcpSharedNetworks, queryId, nextCursor)
+		}
+
+		response, err := client_lib.GetResponse(
+			apiClient,
+			url,
+			http.MethodGet,
+			new(bytes.Buffer),
+			map[string]string{},
+			http.StatusOK,
+		)
+		if err != nil {
+			return &gcpSharedNetworks, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+		}
+
+		allPageData = append(allPageData, response.Data...)
+
+		if response.Meta.Pagination.HasMore {
+			nextCursor = response.Meta.Pagination.NextCursor
+			queryId = response.Meta.Pagination.QueryId
+		} else {
+			allPagesReceived = true
+		}
+	}
+
+	jsonData, err := json.Marshal(allPageData)
+	if err != nil {
+		return &gcpSharedNetworks, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpSharedNetworks); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpSharedNetworks, nil
+}
+
+// GetGcpSharedNetworkByID fetches a gcp shared network by ID.
+func GetGcpSharedNetworkByID(apiClient *http.Client, apiAddr string, id uint) (*v0.GcpSharedNetwork, error) {
+	var gcpSharedNetwork v0.GcpSharedNetwork
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpSharedNetworks, id),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpSharedNetwork, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &gcpSharedNetwork, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpSharedNetwork); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpSharedNetwork, nil
+}
+
+// GetGcpSharedNetworksByQueryString fetches gcp shared networks by provided query string.
+func GetGcpSharedNetworksByQueryString(apiClient *http.Client, apiAddr string, queryString string) (*[]v0.GcpSharedNetwork, error) {
+	var gcpSharedNetworks []v0.GcpSharedNetwork
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?%s", apiAddr, v0.PathGcpSharedNetworks, queryString),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpSharedNetworks, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &gcpSharedNetworks, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpSharedNetworks); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpSharedNetworks, nil
+}
+
+// GetGcpSharedNetworkByName fetches a gcp shared network by name.
+func GetGcpSharedNetworkByName(apiClient *http.Client, apiAddr, name string) (*v0.GcpSharedNetwork, error) {
+	var gcpSharedNetworks []v0.GcpSharedNetwork
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?name=%s", apiAddr, v0.PathGcpSharedNetworks, name),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &v0.GcpSharedNetwork{}, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &v0.GcpSharedNetwork{}, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpSharedNetworks); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	switch {
+	case len(gcpSharedNetworks) < 1:
+		return &v0.GcpSharedNetwork{}, client_lib.ErrObjectNotFound
+	case len(gcpSharedNetworks) > 1:
+		return &v0.GcpSharedNetwork{}, fmt.Errorf("more than one gcp shared network with name %s returned", name)
+	}
+
+	return &gcpSharedNetworks[0], nil
+}
+
+// CreateGcpSharedNetwork creates a new gcp shared network.
+func CreateGcpSharedNetwork(apiClient *http.Client, apiAddr string, gcpSharedNetwork *v0.GcpSharedNetwork) (*v0.GcpSharedNetwork, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpSharedNetwork)
+	jsonGcpSharedNetwork, err := util.MarshalObject(gcpSharedNetwork)
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s", apiAddr, v0.PathGcpSharedNetworks),
+		http.MethodPost,
+		bytes.NewBuffer(jsonGcpSharedNetwork),
+		map[string]string{},
+		http.StatusCreated,
+	)
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpSharedNetwork); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return gcpSharedNetwork, nil
+}
+
+// UpdateGcpSharedNetwork updates a gcp shared network with a PATCH request.
+func UpdateGcpSharedNetwork(apiClient *http.Client, apiAddr string, gcpSharedNetwork *v0.GcpSharedNetwork) (*v0.GcpSharedNetwork, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpSharedNetwork)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	gcpSharedNetworkID := *gcpSharedNetwork.ID
+	payloadGcpSharedNetwork := *gcpSharedNetwork
+	payloadGcpSharedNetwork.ID = nil
+	payloadGcpSharedNetwork.CreatedAt = nil
+	payloadGcpSharedNetwork.UpdatedAt = nil
+
+	jsonGcpSharedNetwork, err := util.MarshalObject(payloadGcpSharedNetwork)
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpSharedNetworks, gcpSharedNetworkID),
+		http.MethodPatch,
+		bytes.NewBuffer(jsonGcpSharedNetwork),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadGcpSharedNetwork); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadGcpSharedNetwork.ID = &gcpSharedNetworkID
+	return &payloadGcpSharedNetwork, nil
+}
+
+// ReplaceGcpSharedNetwork updates a gcp shared network with a PUT request.
+func ReplaceGcpSharedNetwork(apiClient *http.Client, apiAddr string, gcpSharedNetwork *v0.GcpSharedNetwork) (*v0.GcpSharedNetwork, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpSharedNetwork)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	gcpSharedNetworkID := *gcpSharedNetwork.ID
+	payloadGcpSharedNetwork := *gcpSharedNetwork
+	payloadGcpSharedNetwork.ID = nil
+	payloadGcpSharedNetwork.CreatedAt = nil
+	payloadGcpSharedNetwork.UpdatedAt = nil
+
+	jsonGcpSharedNetwork, err := util.MarshalObject(payloadGcpSharedNetwork)
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpSharedNetworks, gcpSharedNetworkID),
+		http.MethodPut,
+		bytes.NewBuffer(jsonGcpSharedNetwork),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpSharedNetwork, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadGcpSharedNetwork); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadGcpSharedNetwork.ID = &gcpSharedNetworkID
+	return &payloadGcpSharedNetwork, nil
+}
+
+// DeleteGcpSharedNetwork deletes a gcp shared network by ID.
+func DeleteGcpSharedNetwork(apiClient *http.Client, apiAddr string, id uint) (*v0.GcpSharedNetwork, error) {
+	var gcpSharedNetwork v0.GcpSharedNetwork
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpSharedNetworks, id),
+		http.MethodDelete,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpSharedNetwork, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &gcpSharedNetwork, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpSharedNetwork); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpSharedNetwork, nil
+}

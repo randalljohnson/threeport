@@ -458,6 +458,37 @@ func buildGceMachineInfra(
 	if instance.SubnetCIDR != nil {
 		infraGce.SubnetCIDR = *instance.SubnetCIDR
 	}
+	// prefer the shared network's fields when the FK is wired: concrete
+	// provider IDs win over CIDRs so subsequent instances attach to the
+	// already-provisioned VPC instead of recreating a duplicate one; when the
+	// shared network's IDs are not yet populated, its CIDRs still authoritatively
+	// drive the pulumi program so every instance in the tuple agrees on the
+	// same VPC shape
+	if instance.GcpSharedNetworkID != nil {
+		shared, err := client.GetGcpSharedNetworkByID(
+			r.APIClient,
+			r.APIServer,
+			*instance.GcpSharedNetworkID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve GCP shared network by ID: %w", err)
+		}
+		if shared.NetworkCIDR != nil {
+			infraGce.NetworkCIDR = *shared.NetworkCIDR
+		}
+		if shared.SubnetCIDR != nil {
+			infraGce.SubnetCIDR = *shared.SubnetCIDR
+		}
+		if shared.NetworkID != nil && *shared.NetworkID != "" {
+			infraGce.NetworkID = *shared.NetworkID
+			// concrete network ID supersedes CIDR-driven creation so the pulumi
+			// program adopts the existing VPC instead of provisioning a fresh one
+			infraGce.NetworkCIDR = ""
+		}
+		if shared.SubnetworkID != nil && *shared.SubnetworkID != "" {
+			infraGce.SubnetCIDR = ""
+		}
+	}
 	if instance.AssignPublicIP != nil {
 		infraGce.AssignPublicIP = *instance.AssignPublicIP
 	}

@@ -58,6 +58,14 @@ type GcpGceMachineRuntimeInstance struct {
 	// The generated SSH private key, surfaced once after provisioning.
 	SSHKey *string `json:",omitempty" validate:"optional" encrypt:"true"`
 
+	// GcpSharedNetworkID references the shared network this instance's primary
+	// interface attaches to. Managed by the reconciler: users supply
+	// NetworkCIDR and SubnetCIDR at the instance level and the reconciler
+	// resolves to (or creates) a shared network for the (provider, region)
+	// tuple, then wires the FK here so requires-AOR holds the shared network
+	// in place while this instance exists.
+	GcpSharedNetworkID *uint `json:",omitempty" validate:"optional" relationship:"requires"`
+
 	// The definition that configures this instance.
 	GcpGceMachineRuntimeDefinitionID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
 

@@ -750,10 +750,148 @@ func TestGceLifecycleClearInventory(t *testing.T) {
 	require.Error(t, g500.ClearInventory())
 }
 
-func TestGceLifecycleOnDeleteConfirmed(t *testing.T) {
+// gceFakeOrphanCloud is an orphanReclaimCloud whose presence, probe errors,
+// delete errors, and post-delete lingering are configurable, so the reclaim
+// logic is driven through every branch without a live compute API. It records
+// probe and delete counts so a test can assert the probe-delete-reprobe shape.
+type gceFakeOrphanCloud struct {
+	instancePresent  bool
+	firewallPresent  bool
+	instanceProbeErr error
+	firewallProbeErr error
+	instanceDelErr   error
+	firewallDelErr   error
+	instanceLingers  bool
+	firewallLingers  bool
+	instanceProbes   int
+	firewallProbes   int
+	instanceDeletes  int
+	firewallDeletes  int
+}
+
+func (f *gceFakeOrphanCloud) instanceExists() (bool, error) {
+	f.instanceProbes++
+	if f.instanceProbeErr != nil {
+		return false, f.instanceProbeErr
+	}
+	return f.instancePresent, nil
+}
+
+func (f *gceFakeOrphanCloud) deleteInstance() error {
+	f.instanceDeletes++
+	if f.instanceDelErr != nil {
+		return f.instanceDelErr
+	}
+	if !f.instanceLingers {
+		f.instancePresent = false
+	}
+	return nil
+}
+
+func (f *gceFakeOrphanCloud) firewallExists() (bool, error) {
+	f.firewallProbes++
+	if f.firewallProbeErr != nil {
+		return false, f.firewallProbeErr
+	}
+	return f.firewallPresent, nil
+}
+
+func (f *gceFakeOrphanCloud) deleteFirewall() error {
+	f.firewallDeletes++
+	if f.firewallDelErr != nil {
+		return f.firewallDelErr
+	}
+	if !f.firewallLingers {
+		f.firewallPresent = false
+	}
+	return nil
+}
+
+func TestGceLifecycleOnDeleteConfirmedRejectsWrongInfraType(t *testing.T) {
+	// the post-destroy reclaim needs the concrete GCE infra to address the VM;
+	// a nil or foreign infra must refuse rather than confirm a deletion it
+	// cannot validate against the cloud
 	s := gceNewAPIStub(t)
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
-	assert.NoError(t, g.OnDeleteConfirmed(nil))
+
+	// a nil infra is rejected
+	require.Error(t, g.OnDeleteConfirmed(nil))
+	// a foreign concrete type is rejected with a message naming the wanted type
+	err := g.OnDeleteConfirmed(gceFakeInfra{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "expected *machine.GceMachineInfra")
+}
+
+func TestGceNewComputeOrphanReclaimCloudRejectsMissingCoordinates(t *testing.T) {
+	// building the reclaim client against an infra missing its addressing fields
+	// must fail before any cloud call, so a false not-found cannot read as gone
+	gceInfra := machine.NewGceMachineInfra("")
+	gceInfra.ProjectID = ""
+	gceInfra.Zone = ""
+
+	_, err := newComputeOrphanReclaimCloud(gceInfra)
+	require.Error(t, err)
+	// the accumulated error names every missing coordinate
+	assert.Contains(t, err.Error(), "ProjectID")
+	assert.Contains(t, err.Error(), "Zone")
+	assert.Contains(t, err.Error(), "RuntimeInstanceName")
+}
+
+func TestReclaimOrphansNoSurvivorsConfirms(t *testing.T) {
+	// the common no-drift path: neither resource present, so the reclaim probes
+	// once each, deletes nothing, and returns nil to let deletion confirm
+	cloud := &gceFakeOrphanCloud{}
+	require.NoError(t, reclaimOrphans(cloud))
+	assert.Equal(t, 1, cloud.instanceProbes)
+	assert.Equal(t, 1, cloud.firewallProbes)
+	assert.Equal(t, 0, cloud.instanceDeletes)
+	assert.Equal(t, 0, cloud.firewallDeletes)
+}
+
+func TestReclaimOrphansDeletesSurvivingInstance(t *testing.T) {
+	// an instance the destroy abandoned is deleted, then re-probed gone, so the
+	// reclaim returns nil and lets deletion confirm
+	cloud := &gceFakeOrphanCloud{instancePresent: true}
+	require.NoError(t, reclaimOrphans(cloud))
+	// the instance is deleted once and probed before and after the delete
+	assert.Equal(t, 1, cloud.instanceDeletes)
+	assert.Equal(t, 2, cloud.instanceProbes)
+}
+
+func TestReclaimOrphansDeletesSurvivingFirewall(t *testing.T) {
+	// a firewall the destroy abandoned is deleted and re-probed gone
+	cloud := &gceFakeOrphanCloud{firewallPresent: true}
+	require.NoError(t, reclaimOrphans(cloud))
+	assert.Equal(t, 1, cloud.firewallDeletes)
+	assert.Equal(t, 2, cloud.firewallProbes)
+}
+
+func TestReclaimOrphansRejectsDeleteFailure(t *testing.T) {
+	// a delete that errors surfaces so the teardown requeues instead of
+	// confirming a deletion that left the instance live
+	cloud := &gceFakeOrphanCloud{instancePresent: true, instanceDelErr: fmt.Errorf("delete denied")}
+	err := reclaimOrphans(cloud)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to delete orphaned instance")
+}
+
+func TestReclaimOrphansRejectsResourceLingeringAfterDelete(t *testing.T) {
+	// a delete the cloud accepts but that leaves the resource present is caught
+	// by the re-probe and returns an error so the teardown retries
+	cloud := &gceFakeOrphanCloud{instancePresent: true, instanceLingers: true}
+	err := reclaimOrphans(cloud)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "still present after delete")
+}
+
+func TestReclaimOrphansRejectsProbeFailure(t *testing.T) {
+	// a probe that errors surfaces and no delete is attempted, so a transient
+	// cloud failure requeues rather than confirming on incomplete information
+	cloud := &gceFakeOrphanCloud{instanceProbeErr: fmt.Errorf("api down")}
+	err := reclaimOrphans(cloud)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to probe instance")
+	assert.Equal(t, 0, cloud.instanceDeletes)
 }
 
 func TestGceLifecycleOnCreateConfirmedWritesHostnameSSHOntoMarriedInstance(t *testing.T) {

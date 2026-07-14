@@ -14,6 +14,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -22,6 +23,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"golang.org/x/crypto/ssh"
+	computev1 "google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 	"gorm.io/datatypes"
 
 	"github.com/threeport/threeport/internal/provider"
@@ -29,14 +33,37 @@ import (
 )
 
 // compile-time guarantees that GceMachineInfra satisfies the infra provider
-// lifecycle contract plus the optional streaming and refresh seams. The three
-// optional methods (GetStateFilePath, ReadStateFile, RefreshStack) come from
-// the embedded PulumiWorkspace for free.
+// lifecycle contract plus the optional streaming, refresh, and adopt seams.
+// The three streaming and refresh methods (GetStateFilePath, ReadStateFile,
+// RefreshStack) come from the embedded PulumiWorkspace for free; the adopt
+// method is implemented on this provider.
 var (
 	_ provider.InfraProvider       = (*GceMachineInfra)(nil)
 	_ provider.StreamableProvider  = (*GceMachineInfra)(nil)
 	_ provider.RefreshableProvider = (*GceMachineInfra)(nil)
+	_ provider.AdoptableProvider   = (*GceMachineInfra)(nil)
 )
+
+// adoptResourceKind identifies which of the two deterministically named GCE
+// resources an adopt target refers to, so the discover helper can branch on
+// kind without string matching on logical names.
+type adoptResourceKind int
+
+const (
+	// adoptInstance is the VM instance resource.
+	adoptInstance adoptResourceKind = iota
+
+	// adoptFirewall is the SSH-allow firewall rule resource.
+	adoptFirewall
+)
+
+// adoptTarget pairs a resource kind with the Pulumi logical name the program
+// registers it under, so DiscoverAndAdopt records each constructed import ID
+// against the name the program later looks it up by.
+type adoptTarget struct {
+	kind        adoptResourceKind
+	logicalName string
+}
 
 // defaultSSHSourceRange is the initial default ingress range for the SSH
 // firewall rule when SSHSourceRanges is left empty. It is world-open; callers
@@ -98,6 +125,12 @@ type GceMachineInfra struct {
 
 	// externalIP is captured from the Pulumi up outputs after a successful deploy.
 	externalIP string
+
+	// adoptImportIDs maps a resource's Pulumi logical name to the import ID
+	// DiscoverAndAdopt found for it. The program attaches pulumi.Import for
+	// any resource present here so the deploy adopts an existing cloud
+	// resource instead of creating a duplicate. Empty on a clean create.
+	adoptImportIDs map[string]string
 }
 
 // NewGceMachineInfra builds a GCE machine provider for the named runtime
@@ -251,8 +284,8 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 		// The firewall resource has no labels field, so the managed-by label
 		// is applied only to labelable resources such as the instance.
 		sourceRanges := pulumi.ToStringArray(i.sshSourceRanges())
-		_, err = compute.NewFirewall(pctx, fmt.Sprintf("%s-ssh", i.RuntimeInstanceName), &compute.FirewallArgs{
-			Name:    pulumi.String(fmt.Sprintf("%s-ssh", i.RuntimeInstanceName)),
+		_, err = compute.NewFirewall(pctx, i.firewallLogicalName(), &compute.FirewallArgs{
+			Name:    pulumi.String(i.firewallLogicalName()),
 			Network: pulumi.String(i.NetworkID),
 			Allows: compute.FirewallAllowArray{
 				&compute.FirewallAllowArgs{
@@ -261,7 +294,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 				},
 			},
 			SourceRanges: sourceRanges,
-		}, pulumi.Provider(gcpProvider))
+		}, i.resourceOptions(gcpProvider, i.firewallLogicalName())...)
 		if err != nil {
 			return fmt.Errorf("failed to create SSH firewall rule: %w", err)
 		}
@@ -269,7 +302,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 		// VM instance with an ephemeral external IP (empty access config) and
 		// the generated PUBLIC key injected into ssh-keys metadata. The
 		// authorized-key marshal ends with a newline, so trim it.
-		instance, err := compute.NewInstance(pctx, i.RuntimeInstanceName, &compute.InstanceArgs{
+		instance, err := compute.NewInstance(pctx, i.instanceLogicalName(), &compute.InstanceArgs{
 			Name:        pulumi.String(i.RuntimeInstanceName),
 			MachineType: pulumi.String(i.MachineType),
 			Zone:        pulumi.String(i.Zone),
@@ -297,7 +330,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			Labels: pulumi.StringMap{
 				provider.ManagedByLabelKey: pulumi.String(provider.ManagedByLabelValue),
 			},
-		}, pulumi.Provider(gcpProvider))
+		}, i.resourceOptions(gcpProvider, i.instanceLogicalName())...)
 		if err != nil {
 			return fmt.Errorf("failed to create GCE instance: %w", err)
 		}
@@ -313,6 +346,124 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 
 		return nil
 	}
+}
+
+// instanceLogicalName returns the Pulumi logical name and GCE resource name of
+// the VM instance. The two are identical and deterministic, which is what lets
+// an orphaned instance be re-acquired by constructed import ID.
+func (i *GceMachineInfra) instanceLogicalName() string {
+	return i.RuntimeInstanceName
+}
+
+// firewallLogicalName returns the Pulumi logical name and GCE resource name of
+// the SSH-allow firewall rule. It is deterministic for the same reason the
+// instance name is.
+func (i *GceMachineInfra) firewallLogicalName() string {
+	return fmt.Sprintf("%s-ssh", i.RuntimeInstanceName)
+}
+
+// resourceOptions returns the Pulumi resource options for the named resource:
+// always the GCP provider, plus a pulumi.Import option when DiscoverAndAdopt
+// recorded an import ID for that logical name so the deploy adopts the existing
+// cloud resource instead of creating a duplicate.
+func (i *GceMachineInfra) resourceOptions(gcpProvider pulumi.ProviderResource, logicalName string) []pulumi.ResourceOption {
+	opts := []pulumi.ResourceOption{pulumi.Provider(gcpProvider)}
+	if importID, ok := i.adoptImportIDs[logicalName]; ok {
+		opts = append(opts, pulumi.Import(pulumi.ID(importID)))
+	}
+	return opts
+}
+
+// adoptTargets returns the two deterministically named resources DiscoverAndAdopt
+// probes, each paired with the Pulumi logical name the program registers it
+// under so a found import ID lands against the right resource.
+func (i *GceMachineInfra) adoptTargets() []adoptTarget {
+	return []adoptTarget{
+		{kind: adoptInstance, logicalName: i.instanceLogicalName()},
+		{kind: adoptFirewall, logicalName: i.firewallLogicalName()},
+	}
+}
+
+// DiscoverAndAdopt probes the GCE compute API for each deterministically named
+// resource and records an import ID for every one that already exists, so the
+// next deploy adopts the orphan instead of colliding on its name. It satisfies
+// AdoptableProvider and is a no-op for resources the API reports as not found.
+func (i *GceMachineInfra) DiscoverAndAdopt() error {
+	if err := i.validateRequiredFields(); err != nil {
+		return fmt.Errorf("invalid GCE machine configuration: %w", err)
+	}
+
+	if err := gcpauth.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
+		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
+	}
+
+	ctx := context.Background()
+	service, err := computev1.NewService(ctx, option.WithScopes(computev1.ComputeReadonlyScope))
+	if err != nil {
+		return fmt.Errorf("failed to create GCE compute service: %w", err)
+	}
+
+	// probe each target and record the import ID of any that already exists,
+	// accumulating into the adopt map the program reads when attaching imports
+	for _, target := range i.adoptTargets() {
+		importID, found, err := i.discoverImportID(ctx, service, target.kind)
+		if err != nil {
+			return fmt.Errorf("failed to discover %s: %w", target.logicalName, err)
+		}
+		if !found {
+			continue
+		}
+		if i.adoptImportIDs == nil {
+			i.adoptImportIDs = make(map[string]string)
+		}
+		i.adoptImportIDs[target.logicalName] = importID
+	}
+
+	return nil
+}
+
+// discoverImportID checks whether the resource of the given kind exists by its
+// deterministic name and, if so, returns its Pulumi import ID. A 404 from the
+// compute API means not found and yields found=false with no error; any other
+// API error is returned to the caller.
+func (i *GceMachineInfra) discoverImportID(
+	ctx context.Context,
+	service *computev1.Service,
+	kind adoptResourceKind,
+) (importID string, found bool, err error) {
+	switch kind {
+	case adoptInstance:
+		if _, err := service.Instances.Get(i.ProjectID, i.Zone, i.instanceLogicalName()).Context(ctx).Do(); err != nil {
+			if isNotFound(err) {
+				return "", false, nil
+			}
+			return "", false, fmt.Errorf("failed to get instance: %w", err)
+		}
+		return fmt.Sprintf(
+			"projects/%s/zones/%s/instances/%s",
+			i.ProjectID, i.Zone, i.instanceLogicalName(),
+		), true, nil
+	case adoptFirewall:
+		if _, err := service.Firewalls.Get(i.ProjectID, i.firewallLogicalName()).Context(ctx).Do(); err != nil {
+			if isNotFound(err) {
+				return "", false, nil
+			}
+			return "", false, fmt.Errorf("failed to get firewall: %w", err)
+		}
+		return fmt.Sprintf(
+			"projects/%s/global/firewalls/%s",
+			i.ProjectID, i.firewallLogicalName(),
+		), true, nil
+	default:
+		return "", false, fmt.Errorf("unknown adopt resource kind: %d", kind)
+	}
+}
+
+// isNotFound reports whether a compute API error is a 404, the signal that the
+// probed resource does not exist and so cannot be adopted.
+func isNotFound(err error) bool {
+	var apiErr *googleapi.Error
+	return errors.As(err, &apiErr) && apiErr.Code == 404
 }
 
 // generateSSHKeyPair generates a 2048-bit RSA key pair, returning the private

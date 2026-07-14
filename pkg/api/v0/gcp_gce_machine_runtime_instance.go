@@ -28,6 +28,27 @@ type GcpGceMachineRuntimeInstance struct {
 	// default open range.
 	SSHSourceRanges *[]string `json:",omitempty" validate:"optional" gorm:"type:jsonb;serializer:json"`
 
+	// IngressRules are additional firewall ingress rules applied to the VM.
+	// Complements SSHSourceRanges (which is a legacy shape and will eventually
+	// fold in as an equivalent rule). Rules are provider-agnostic; the GCE
+	// reconciler translates each to a google_compute_firewall.
+	IngressRules *[]IngressRule `json:",omitempty" validate:"optional" gorm:"type:jsonb;serializer:json"`
+
+	// NetworkCIDR is the CIDR block for the VPC network the VM is placed in.
+	// Optional; when unset the reconciler falls back to the default network
+	// or the network selected by NetworkID.
+	NetworkCIDR *string `json:",omitempty" validate:"optional"`
+
+	// SubnetCIDR is the CIDR block for the subnet the VM's primary interface
+	// is placed in. Optional; when unset the reconciler falls back to the
+	// default subnet for the region.
+	SubnetCIDR *string `json:",omitempty" validate:"optional"`
+
+	// AssignPublicIP controls whether the primary network interface gets an
+	// external IP address. Defaults false; the reconciler reads back the
+	// assigned address into ExternalIP after provisioning.
+	AssignPublicIP *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
+
 	// The hostname surfaced after provisioning.
 	Hostname *string `json:",omitempty" validate:"optional"`
 

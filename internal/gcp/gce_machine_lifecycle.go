@@ -497,34 +497,6 @@ func buildGceMachineInfra(
 		}
 	}
 
-	// resolve the shared VPC network for the (provider, zone) tuple and
-	// prefer its concrete provider IDs over CIDR-driven creation so
-	// subsequent instances attach to the already-provisioned VPC. When the
-	// IDs are not yet populated, the network's CIDRs authoritatively drive
-	// the pulumi program so every instance in the tuple agrees on the same
-	// VPC shape.
-	network, err := ensureGcpNetwork(r, instance, mri, log)
-	if err != nil {
-		return nil, fmt.Errorf("failed to ensure GCP network: %w", err)
-	}
-	if network != nil {
-		if network.NetworkCIDR != nil {
-			infraGce.NetworkCIDR = *network.NetworkCIDR
-		}
-		if network.SubnetCIDR != nil {
-			infraGce.SubnetCIDR = *network.SubnetCIDR
-		}
-		if network.NetworkID != nil && *network.NetworkID != "" {
-			infraGce.NetworkID = *network.NetworkID
-			// concrete network ID supersedes CIDR-driven creation so the pulumi
-			// program adopts the existing VPC instead of provisioning a fresh one
-			infraGce.NetworkCIDR = ""
-		}
-		if network.SubnetworkID != nil && *network.SubnetworkID != "" {
-			infraGce.SubnetCIDR = ""
-		}
-	}
-
 	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
 		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
 		if err != nil {

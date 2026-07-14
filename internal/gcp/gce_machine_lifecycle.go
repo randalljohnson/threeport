@@ -439,6 +439,36 @@ func buildGceMachineInfra(
 	if instance.SSHSourceRanges != nil {
 		infraGce.SSHSourceRanges = append([]string(nil), *instance.SSHSourceRanges...)
 	}
+	// translate each portable ingress rule to the provider-side shape; each
+	// non-nil string/slice field is copied out of its pointer so a partial
+	// rule renders as an empty value on the provider rather than a panic.
+	if instance.IngressRules != nil {
+		for _, rule := range *instance.IngressRules {
+			gceRule := machine.GceIngressRule{}
+			if rule.Protocol != nil {
+				gceRule.Protocol = *rule.Protocol
+			}
+			if rule.Ports != nil {
+				gceRule.Ports = append([]string(nil), *rule.Ports...)
+			}
+			if rule.SourceRanges != nil {
+				gceRule.SourceRanges = append([]string(nil), *rule.SourceRanges...)
+			}
+			if rule.Description != nil {
+				gceRule.Description = *rule.Description
+			}
+			infraGce.IngressRules = append(infraGce.IngressRules, gceRule)
+		}
+	}
+	if instance.NetworkCIDR != nil {
+		infraGce.NetworkCIDR = *instance.NetworkCIDR
+	}
+	if instance.SubnetCIDR != nil {
+		infraGce.SubnetCIDR = *instance.SubnetCIDR
+	}
+	if instance.AssignPublicIP != nil {
+		infraGce.AssignPublicIP = *instance.AssignPublicIP
+	}
 
 	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
 		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)

@@ -70,6 +70,27 @@ type adoptTarget struct {
 // should narrow it for production by setting SSHSourceRanges explicitly.
 const defaultSSHSourceRange = "0.0.0.0/0"
 
+// GceIngressRule describes a single firewall ingress rule in the shape the
+// GCE provider consumes. Callers translate a portable rule model into this
+// value when configuring the provider.
+type GceIngressRule struct {
+	// Protocol is the L4 protocol name ("tcp", "udp", "icmp") or bare
+	// protocol number ("112" for VRRP).
+	Protocol string
+
+	// Ports are the destination ports the rule allows. Empty means all
+	// ports for this protocol, which is the correct shape for protocols
+	// without ports (icmp, esp, vrrp).
+	Ports []string
+
+	// SourceRanges are the source CIDR blocks the rule allows. Empty
+	// falls back to the world-open range.
+	SourceRanges []string
+
+	// Description is an optional human-readable note attached to the rule.
+	Description string
+}
+
 // GceMachineInfra provisions a single Google Compute Engine VM via Pulumi and
 // implements the threeport infra provider lifecycle contract. It embeds the
 // core PulumiWorkspace by value, mirroring the bare embed in the GKE provider,
@@ -110,6 +131,30 @@ type GceMachineInfra struct {
 	// SSHSourceRanges scopes the SSH firewall ingress. When empty it defaults
 	// to the world-open range; callers should narrow it for production.
 	SSHSourceRanges []string
+
+	// IngressRules are additional firewall ingress rules to open on the VM's
+	// network. Each rule renders to one google_compute_firewall alongside the
+	// SSH firewall; the SSH-allow rule stays on its own resource for now.
+	IngressRules []GceIngressRule
+
+	// NetworkCIDR, when non-empty, drives creation of a custom-mode VPC
+	// network for the VM. Modern GCP VPCs are logical containers with no
+	// top-level CIDR; the CIDR intent is applied to the subnet resource.
+	// When empty the program attaches to the existing network named by
+	// NetworkID.
+	NetworkCIDR string
+
+	// SubnetCIDR, when non-empty, drives creation of a subnetwork with that
+	// CIDR range in the VM's region. The subnetwork is attached to the
+	// custom-mode network created from NetworkCIDR, or to the pre-existing
+	// NetworkID network when NetworkCIDR is empty. When both CIDRs are empty
+	// the VM uses the default subnet of NetworkID.
+	SubnetCIDR string
+
+	// AssignPublicIP controls whether the primary network interface gets an
+	// ephemeral external IP via an access_config block. When false the
+	// interface has no access_config and the VM has only an internal IP.
+	AssignPublicIP bool
 
 	// sshPrivateKeyPEM holds the generated RSA private key in PKCS1 PEM form.
 	// It is surfaced only through CreateOutputs and is never exported into
@@ -308,9 +353,10 @@ func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 	return i.PulumiWorkspace.SetStackState(state)
 }
 
-// pulumiProgram defines the Pulumi resources for the GCE VM stack: a firewall
-// rule allowing SSH ingress and the VM instance itself, with the generated
-// public key injected into the instance ssh-keys metadata.
+// pulumiProgram defines the Pulumi resources for the GCE VM stack: an
+// optional custom-mode network and subnet, the SSH-allow firewall, one
+// firewall per configured IngressRule, and the VM instance itself with the
+// generated public key injected into ssh-keys metadata.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
 		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", &gcp.ProviderArgs{
@@ -321,13 +367,52 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
 
+		// default the network reference to the pre-existing NetworkID string;
+		// upgrade to a newly-created custom-mode network when NetworkCIDR is
+		// set. GCP VPCs have no top-level CIDR in custom-subnet mode; the
+		// CIDR intent is carried by the subnetwork resource below.
+		var networkRef pulumi.StringInput = pulumi.String(i.NetworkID)
+		var networkResource pulumi.Resource
+		if i.NetworkCIDR != "" {
+			network, err := compute.NewNetwork(pctx, i.networkLogicalName(), &compute.NetworkArgs{
+				Name:                  pulumi.String(i.networkLogicalName()),
+				AutoCreateSubnetworks: pulumi.Bool(false),
+			}, i.resourceOptions(gcpProvider, i.networkLogicalName())...)
+			if err != nil {
+				return fmt.Errorf("failed to create network: %w", err)
+			}
+			networkRef = network.SelfLink
+			networkResource = network
+		}
+
+		// create a subnetwork with the configured CIDR when set; attach the
+		// VM's primary interface to it below. When unset the interface takes
+		// the network's default subnet for the region.
+		var subnetworkRef pulumi.StringInput
+		if i.SubnetCIDR != "" {
+			subnetOpts := i.resourceOptions(gcpProvider, i.subnetLogicalName())
+			if networkResource != nil {
+				subnetOpts = append(subnetOpts, pulumi.DependsOn([]pulumi.Resource{networkResource}))
+			}
+			subnet, err := compute.NewSubnetwork(pctx, i.subnetLogicalName(), &compute.SubnetworkArgs{
+				Name:        pulumi.String(i.subnetLogicalName()),
+				IpCidrRange: pulumi.String(i.SubnetCIDR),
+				Region:      pulumi.String(i.Region),
+				Network:     networkRef,
+			}, subnetOpts...)
+			if err != nil {
+				return fmt.Errorf("failed to create subnetwork: %w", err)
+			}
+			subnetworkRef = subnet.SelfLink
+		}
+
 		// SSH-allow firewall rule scoped to the configured source ranges.
 		// The firewall resource has no labels field, so the managed-by label
 		// is applied only to labelable resources such as the instance.
 		sourceRanges := pulumi.ToStringArray(i.sshSourceRanges())
 		_, err = compute.NewFirewall(pctx, i.firewallLogicalName(), &compute.FirewallArgs{
 			Name:    pulumi.String(i.firewallLogicalName()),
-			Network: pulumi.String(i.NetworkID),
+			Network: networkRef,
 			Allows: compute.FirewallAllowArray{
 				&compute.FirewallAllowArgs{
 					Protocol: pulumi.String("tcp"),
@@ -340,9 +425,57 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create SSH firewall rule: %w", err)
 		}
 
-		// VM instance with an ephemeral external IP (empty access config) and
-		// the generated PUBLIC key injected into ssh-keys metadata. The
-		// authorized-key marshal ends with a newline, so trim it.
+		// render each configured ingress rule to its own google_compute_firewall
+		// alongside the SSH-allow rule. Empty ports means all ports for the
+		// protocol; empty source ranges falls back to the world-open range.
+		for idx, rule := range i.IngressRules {
+			name := i.ingressFirewallLogicalName(idx)
+			allowArgs := &compute.FirewallAllowArgs{
+				Protocol: pulumi.String(rule.Protocol),
+			}
+			if len(rule.Ports) > 0 {
+				allowArgs.Ports = pulumi.ToStringArray(rule.Ports)
+			}
+			ranges := rule.SourceRanges
+			if len(ranges) == 0 {
+				ranges = []string{defaultSSHSourceRange}
+			}
+			firewallArgs := &compute.FirewallArgs{
+				Name:         pulumi.String(name),
+				Network:      networkRef,
+				Allows:       compute.FirewallAllowArray{allowArgs},
+				SourceRanges: pulumi.ToStringArray(ranges),
+			}
+			if rule.Description != "" {
+				firewallArgs.Description = pulumi.String(rule.Description)
+			}
+			if _, err := compute.NewFirewall(
+				pctx,
+				name,
+				firewallArgs,
+				i.resourceOptions(gcpProvider, name)...,
+			); err != nil {
+				return fmt.Errorf("failed to create ingress firewall %s: %w", name, err)
+			}
+		}
+
+		// build the primary network interface; attach a subnetwork when one
+		// was created, and include an access_config only when the caller
+		// asked for a public IP so the VM has no external address by default.
+		networkInterfaceArgs := &compute.InstanceNetworkInterfaceArgs{
+			Network: networkRef,
+		}
+		if subnetworkRef != nil {
+			networkInterfaceArgs.Subnetwork = subnetworkRef
+		}
+		if i.AssignPublicIP {
+			networkInterfaceArgs.AccessConfigs = compute.InstanceNetworkInterfaceAccessConfigArray{
+				&compute.InstanceNetworkInterfaceAccessConfigArgs{},
+			}
+		}
+
+		// VM instance with the generated PUBLIC key injected into ssh-keys
+		// metadata. The authorized-key marshal ends with a newline, so trim it.
 		instance, err := compute.NewInstance(pctx, i.instanceLogicalName(), &compute.InstanceArgs{
 			Name:        pulumi.String(i.RuntimeInstanceName),
 			MachineType: pulumi.String(i.MachineType),
@@ -353,12 +486,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 				},
 			},
 			NetworkInterfaces: compute.InstanceNetworkInterfaceArray{
-				&compute.InstanceNetworkInterfaceArgs{
-					Network: pulumi.String(i.NetworkID),
-					AccessConfigs: compute.InstanceNetworkInterfaceAccessConfigArray{
-						&compute.InstanceNetworkInterfaceAccessConfigArgs{},
-					},
-				},
+				networkInterfaceArgs,
 			},
 			Metadata: pulumi.StringMap{
 				"ssh-keys": pulumi.String(fmt.Sprintf(
@@ -376,14 +504,17 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create GCE instance: %w", err)
 		}
 
-		// export only the hostname and external IP. The private key must NEVER
-		// be exported: exports land in the streamed and persisted state file.
+		// export only the hostname and, when a public IP was allocated, the
+		// external IP. The private key must NEVER be exported: exports land in
+		// the streamed and persisted state file.
 		pctx.Export("hostname", instance.Name)
-		pctx.Export("externalIP", instance.NetworkInterfaces.
-			Index(pulumi.Int(0)).
-			AccessConfigs().
-			Index(pulumi.Int(0)).
-			NatIp())
+		if i.AssignPublicIP {
+			pctx.Export("externalIP", instance.NetworkInterfaces.
+				Index(pulumi.Int(0)).
+				AccessConfigs().
+				Index(pulumi.Int(0)).
+				NatIp())
+		}
 
 		return nil
 	}
@@ -401,6 +532,25 @@ func (i *GceMachineInfra) instanceLogicalName() string {
 // instance name is.
 func (i *GceMachineInfra) firewallLogicalName() string {
 	return fmt.Sprintf("%s-ssh", i.RuntimeInstanceName)
+}
+
+// networkLogicalName returns the Pulumi logical name and GCE resource name of
+// the custom-mode network created when NetworkCIDR is set.
+func (i *GceMachineInfra) networkLogicalName() string {
+	return fmt.Sprintf("%s-network", i.RuntimeInstanceName)
+}
+
+// subnetLogicalName returns the Pulumi logical name and GCE resource name of
+// the subnetwork created when SubnetCIDR is set.
+func (i *GceMachineInfra) subnetLogicalName() string {
+	return fmt.Sprintf("%s-subnet", i.RuntimeInstanceName)
+}
+
+// ingressFirewallLogicalName returns the Pulumi logical name and GCE resource
+// name for the ingress firewall rule at position idx in IngressRules. The
+// index keeps names deterministic across reconciles for the same rule list.
+func (i *GceMachineInfra) ingressFirewallLogicalName(idx int) string {
+	return fmt.Sprintf("%s-ingress-%d", i.RuntimeInstanceName, idx)
 }
 
 // resourceOptions returns the Pulumi resource options for the named resource:

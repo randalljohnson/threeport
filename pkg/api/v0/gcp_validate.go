@@ -4,7 +4,6 @@ package v0
 
 import (
 	"fmt"
-	"net"
 
 	"gorm.io/gorm"
 
@@ -247,94 +246,3 @@ func (g *GcpGceMachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeCreate validates the GcpNetwork before create by requiring both CIDRs
-// and enforcing that the subnet CIDR is fully contained in the network CIDR.
-// Catches misconfigured requests before a pulumi program is launched with an
-// impossible network shape.
-func (g *GcpNetwork) beforeCreate(tx *gorm.DB) error {
-	if g.NetworkCIDR == nil || *g.NetworkCIDR == "" {
-		return util.NewBadRequestError("gcp network requires NetworkCIDR")
-	}
-	if g.SubnetCIDR == nil || *g.SubnetCIDR == "" {
-		return util.NewBadRequestError("gcp network requires SubnetCIDR")
-	}
-	contained, err := cidrContainsSubnet(*g.NetworkCIDR, *g.SubnetCIDR)
-	if err != nil {
-		return util.NewBadRequestError(fmt.Sprintf("failed to validate subnet containment: %s", err.Error()))
-	}
-	if !contained {
-		return util.NewBadRequestError(fmt.Sprintf(
-			"subnet CIDR %s is not contained in network CIDR %s",
-			*g.SubnetCIDR,
-			*g.NetworkCIDR,
-		))
-	}
-	return nil
-}
-
-// beforeUpdate validates the GcpNetwork before update.
-func (g *GcpNetwork) beforeUpdate(tx *gorm.DB) error {
-	return nil
-}
-
-// beforeDelete blocks deletion of a GcpNetwork while any
-// GcpGceMachineRuntimeInstance still resolves to it (matches this network's
-// GcpProviderID and Zone). Replaces the requires-AOR pattern with a live
-// query so no FK is stored on the instance.
-func (g *GcpNetwork) beforeDelete(tx *gorm.DB) error {
-	if g.GcpProviderID == nil || g.Zone == nil {
-		return nil
-	}
-	var count int64
-	if err := tx.Model(&GcpGceMachineRuntimeInstance{}).
-		Where("gcp_provider_id = ? AND zone = ?", *g.GcpProviderID, *g.Zone).
-		Count(&count).Error; err != nil {
-		return fmt.Errorf("failed to count referencing gce instances: %w", err)
-	}
-	if count > 0 {
-		return util.NewBadRequestError(fmt.Sprintf(
-			"cannot delete gcp network: %d gce machine runtime instances still resolve to it (provider=%d zone=%s)",
-			count, *g.GcpProviderID, *g.Zone,
-		))
-	}
-	return nil
-}
-
-// afterCreate runs after the GcpNetwork is created.
-func (g *GcpNetwork) afterCreate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterUpdate runs after the GcpNetwork is updated.
-func (g *GcpNetwork) afterUpdate(tx *gorm.DB) error {
-	return nil
-}
-
-// afterDelete runs after the GcpNetwork is deleted.
-func (g *GcpNetwork) afterDelete(tx *gorm.DB) error {
-	return nil
-}
-
-// cidrContainsSubnet reports whether subnetCIDR is entirely contained within
-// networkCIDR. Both arguments must parse as valid CIDR blocks.
-func cidrContainsSubnet(networkCIDR, subnetCIDR string) (bool, error) {
-	_, networkNet, err := net.ParseCIDR(networkCIDR)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse network CIDR: %w", err)
-	}
-	subnetIP, subnetNet, err := net.ParseCIDR(subnetCIDR)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse subnet CIDR: %w", err)
-	}
-	// containment: the subnet's network address sits inside the outer network
-	// and the outer mask is no wider than the subnet's mask
-	networkOnes, networkBits := networkNet.Mask.Size()
-	subnetOnes, subnetBits := subnetNet.Mask.Size()
-	if networkBits != subnetBits {
-		return false, nil
-	}
-	if networkOnes > subnetOnes {
-		return false, nil
-	}
-	return networkNet.Contains(subnetIP), nil
-}

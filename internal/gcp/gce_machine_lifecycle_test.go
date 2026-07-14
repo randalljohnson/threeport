@@ -191,28 +191,6 @@ func gcePtr[T any](v T) *T {
 	return &v
 }
 
-// gceHandleGcpNetworks registers a handler for the GcpNetworks collection path
-// that returns an empty list on GET (no existing networks for any query) and
-// echoes the created object back on POST, so BuildInfra's ensureGcpNetwork call
-// resolves cleanly without hitting an unstubbed endpoint.
-func (s *gceAPIStub) gceHandleGcpNetworks(t *testing.T) {
-	t.Helper()
-	s.mux.HandleFunc(v0.PathGcpNetworks, func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			gceWriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{})
-		case http.MethodPost:
-			body, _ := io.ReadAll(r.Body)
-			var created v0.GcpNetwork
-			require.NoError(t, json.Unmarshal(body, &created))
-			created.ID = gcePtr(uint(101))
-			gceWriteResponse(t, w, http.StatusCreated, []apiserver_lib.Object{&created})
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	})
-}
-
 // gceBaseInstance returns a minimal valid instance referencing the test
 // provider and definition, with the given ID and name.
 func gceBaseInstance(id uint, name string) *v0.GcpGceMachineRuntimeInstance {
@@ -421,9 +399,6 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		prov.ServiceAccountCredentials = gcePtr(enc)
 		s.gceHandleProvider(t, gceTestProviderID, prov)
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
-		// buildGceMachineInfra resolves the shared VPC network for the
-		// (provider, zone) tuple; stub the collection path so it lands cleanly.
-		s.gceHandleGcpNetworks(t)
 
 		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 		infra, err := g.BuildInfra()
@@ -505,8 +480,6 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		prov.ServiceAccountCredentials = gcePtr(enc)
 		s.gceHandleProvider(t, gceTestProviderID, prov)
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
-		// stub the shared-network collection so ensureGcpNetwork lands cleanly
-		s.gceHandleGcpNetworks(t)
 
 		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 		infra, err := g.BuildInfra()

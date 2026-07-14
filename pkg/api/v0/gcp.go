@@ -148,34 +148,3 @@ type GcpGceMachineRuntimeInstance struct {
 	// An inventory of all GCP resources backing this VM.
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 }
-
-// GcpNetwork represents a VPC network and subnetwork pair shared across
-// multiple GCE machine instances scoped to a (GcpProvider, zone) tuple. The
-// GCE reconciler looks one up (or creates one) when a
-// GcpGceMachineRuntimeInstance is provisioned. Deletion is guarded by a live
-// query for referencing instances so the network is not removed while any
-// instance still resolves to it.
-type GcpNetwork struct {
-	Common         `swaggerignore:"true" mapstructure:",squash"`
-	Instance       `mapstructure:",squash"`
-	Reconciliation `mapstructure:",squash"`
-
-	// The GCP provider that owns this network.
-	GcpProviderID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"requires"`
-
-	// The GCP zone this network lives in.
-	Zone *string `json:",omitempty" validate:"required" gorm:"not null"`
-
-	// NetworkCIDR is the CIDR range for the VPC network.
-	NetworkCIDR *string `json:",omitempty" validate:"required" gorm:"not null"`
-
-	// SubnetCIDR is the CIDR range for the primary subnetwork; must be
-	// contained in NetworkCIDR (validated on create via CidrContainsSubnet).
-	SubnetCIDR *string `json:",omitempty" validate:"required" gorm:"not null"`
-
-	// NetworkID is the provider network identifier populated after apply.
-	NetworkID *string `json:",omitempty" validate:"optional"`
-
-	// SubnetworkID is the provider subnetwork identifier populated after apply.
-	SubnetworkID *string `json:",omitempty" validate:"optional"`
-}

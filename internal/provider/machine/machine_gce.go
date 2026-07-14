@@ -507,25 +507,6 @@ func (i *GceMachineInfra) ingressFirewallLogicalName(idx int) string {
 	return fmt.Sprintf("%s-ingress-%d", i.RuntimeInstanceName, idx)
 }
 
-// networkLogicalName returns the Pulumi logical name and GCE resource name of
-// the custom-mode network created when NetworkCIDR is set.
-func (i *GceMachineInfra) networkLogicalName() string {
-	return fmt.Sprintf("%s-network", i.RuntimeInstanceName)
-}
-
-// subnetLogicalName returns the Pulumi logical name and GCE resource name of
-// the subnetwork created when SubnetCIDR is set.
-func (i *GceMachineInfra) subnetLogicalName() string {
-	return fmt.Sprintf("%s-subnet", i.RuntimeInstanceName)
-}
-
-// ingressFirewallLogicalName returns the Pulumi logical name and GCE resource
-// name for the ingress firewall rule at position idx in IngressRules. The
-// index keeps names deterministic across reconciles for the same rule list.
-func (i *GceMachineInfra) ingressFirewallLogicalName(idx int) string {
-	return fmt.Sprintf("%s-ingress-%d", i.RuntimeInstanceName, idx)
-}
-
 // resourceOptions returns the Pulumi resource options for the named resource:
 // always the GCP provider, plus a pulumi.Import option when DiscoverAndAdopt
 // recorded an import ID for that logical name so the deploy adopts the existing

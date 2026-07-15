@@ -77,12 +77,10 @@ type MachineRuntimeInstance struct {
 	// The provider network identifier the machine attaches to.
 	NetworkID *string `json:",omitempty" validate:"optional"`
 
-	// IngressRules are additional firewall ingress rules applied to the
-	// machine. Rules are provider-agnostic; each provider reconciler
-	// translates them to its native firewall shape. When SSHSourceRanges
-	// is set on the provider-specific instance, the reconciler prepends an
-	// equivalent SSH rule to this list so a single ingress pipeline
-	// produces every firewall.
+	// IngressRules are the firewall ingress rules applied to the machine.
+	// Rules are provider-agnostic; each provider reconciler translates them
+	// to its native firewall shape. Callers who need SSH must include a
+	// tcp/22 rule here; no rule is added by default.
 	IngressRules *[]IngressRule `json:",omitempty" validate:"optional" gorm:"type:jsonb;serializer:json"`
 
 	// NetworkCIDR is the CIDR block for the VPC network the machine is

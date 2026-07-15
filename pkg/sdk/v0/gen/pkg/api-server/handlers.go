@@ -60,6 +60,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				gen.Module,
 			))
 			f.ImportAlias(util.SetImportAlias(
+				"github.com/threeport/threeport/pkg/api/lib/v0",
+				"api_lib",
+				"tpapi_lib",
+				gen.Module,
+			))
+			f.ImportAlias(util.SetImportAlias(
 				"github.com/threeport/threeport/pkg/util/v0",
 				"util_v0",
 				"tputil_v0",
@@ -526,21 +532,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					deleteObjectChecks.Line()
 					deleteObjectChecks.Comment("check to make sure no dependent instances exist for this definition")
 					deleteObjectChecks.Line()
-					deleteObjectChecks.If(
-						Len(Id(strcase.ToLowerCamel(apiObject.TypeName)).Dot(instancesName)).Op("!=").Lit(0).Block(
-							Id("err").Op(":=").Qual("errors", "New").Call(
-								Lit(fmt.Sprintf(
-									"%s has related %s - cannot be deleted",
-									strcase.ToDelimited(apiObject.TypeName, ' '),
-									strcase.ToDelimited(instancesName, ' '),
-								)),
-							),
-							Return().Qual(
-								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus409",
-							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")),
-						),
-					)
+					emitBlockedByChildrenCheck(deleteObjectChecks, strcase.ToLowerCamel(apiObject.TypeName), instancesName, gen.Module)
 					deleteObjectChecks.Line()
 				} else {
 					deleteObjectChecks = If(
@@ -2255,6 +2247,66 @@ func emitBlockedDeleteCheck(h *Group, module bool, role blockedDeleteCheckRole) 
 				}
 			}).Dot("RequestDB").Call(Id("c")),
 			Line().Id("blockedErr"),
+			Line(),
+		)),
+	)
+}
+
+// emitBlockedByChildrenCheck emits the delete-blocked branch for a
+// defined-instance-definition type: when the preloaded child slice is
+// non-empty, build a BlockedDeleteError anchored on the parent with one
+// AttachedObjectReference per child and hand it to RespondBlockedDelete
+// so the 409 body lists each blocker by <api-namespace>/<kind>/<name>.
+func emitBlockedByChildrenCheck(s *Statement, objVar, instancesField string, module bool) {
+	requestDB := func() *Statement {
+		return Do(func(g *Statement) {
+			if module {
+				g.Id("h").Dot("Handler")
+			} else {
+				g.Id("h")
+			}
+		}).Dot("RequestDB").Call(Id("c"))
+	}
+	respondBlocked := func() *Statement {
+		return Do(func(g *Statement) {
+			if module {
+				g.Qual(
+					"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+					"RespondBlockedDelete",
+				)
+			} else {
+				g.Id("RespondBlockedDelete")
+			}
+		})
+	}
+
+	s.If(Len(Id(objVar).Dot(instancesField)).Op("!=").Lit(0)).Block(
+		// collect blocking children as FullyQualifiedTypeProvider so the
+		// constructor can pull each child's type and id via reflection
+		Id("blockingChildren").Op(":=").Make(
+			Index().Qual(
+				"github.com/threeport/threeport/pkg/api/lib/v0",
+				"FullyQualifiedTypeProvider",
+			),
+			Lit(0),
+			Len(Id(objVar).Dot(instancesField)),
+		),
+		For(Id("i").Op(":=").Range().Id(objVar).Dot(instancesField)).Block(
+			Id("blockingChildren").Op("=").Append(
+				Id("blockingChildren"),
+				Op("&").Id(objVar).Dot(instancesField).Index(Id("i")),
+			),
+		),
+		Return(respondBlocked().Call(
+			Line().Id("c"),
+			Line().Add(requestDB()),
+			Line().Qual(
+				"github.com/threeport/threeport/pkg/api/v0",
+				"NewBlockedDeleteErrorFromChildren",
+			).Call(
+				Op("&").Id(objVar),
+				Id("blockingChildren"),
+			),
 			Line(),
 		)),
 	)

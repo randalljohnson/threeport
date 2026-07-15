@@ -103,9 +103,10 @@ type GcpGceMachineRuntimeDefinition struct {
 }
 
 // GcpGceMachineRuntimeInstance is a deployed GCE virtual machine provisioned
-// through Threeport's durable infrastructure lifecycle. Ingress rules, network
-// CIDRs, and public-IP assignment live on the abstract MachineRuntimeInstance;
-// the GCE reconciler reads them there so the shape is provider-agnostic.
+// through Threeport's durable infrastructure lifecycle. Network attachment,
+// ingress rules, network CIDRs, and public-IP assignment live on the abstract
+// MachineRuntimeInstance; the GCE reconciler reads them there so the shape is
+// provider-agnostic.
 type GcpGceMachineRuntimeInstance struct {
 	Common         `swaggerignore:"true" mapstructure:",squash"`
 	Instance       `mapstructure:",squash"`
@@ -120,15 +121,8 @@ type GcpGceMachineRuntimeInstance struct {
 	// The GCP zone in which the VM is provisioned.
 	Zone *string `json:",omitempty" validate:"optional"`
 
-	// The network the VM attaches to.
-	NetworkID *string `json:",omitempty" validate:"optional"`
-
 	// The SSH username provisioned on the VM.
 	SSHUser *string `json:",omitempty" validate:"optional"`
-
-	// CIDR ranges allowed to reach the VM over SSH. Empty means the provider
-	// default open range.
-	SSHSourceRanges *[]string `json:",omitempty" validate:"optional" gorm:"type:jsonb;serializer:json"`
 
 	// The hostname surfaced after provisioning.
 	Hostname *string `json:",omitempty" validate:"optional"`

@@ -214,21 +214,6 @@ func reconcileProviderInstance(
 		}
 		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
 
-		// forward the caller-supplied network id onto the married instance;
-		// when the caller instead asked for a new network via NetworkCIDR
-		// leave NetworkID unset so the provider does not see both fields set,
-		// and fall back to the provider default only when both are unset so
-		// the instance and its firewall still have a network to attach to
-		var networkID *string
-		switch {
-		case machineRuntimeInstance.NetworkID != nil && *machineRuntimeInstance.NetworkID != "":
-			networkID = util.Ptr(*machineRuntimeInstance.NetworkID)
-		case machineRuntimeInstance.NetworkCIDR != nil && *machineRuntimeInstance.NetworkCIDR != "":
-			networkID = nil
-		default:
-			networkID = util.Ptr("default")
-		}
-
 		// create the married provider instance; leave Reconciled unset so the
 		// ssh path requeues until the provider reconciler writes back the host
 		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
@@ -240,7 +225,6 @@ func reconcileProviderInstance(
 			Zone:                             &zone,
 			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
 			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
-			NetworkID:                        networkID,
 		}
 
 		// propagate ssh credentials from the abstract instance so the GCE

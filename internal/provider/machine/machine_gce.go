@@ -213,23 +213,39 @@ func (i *GceMachineInfra) sshSourceRanges() []string {
 	return i.SSHSourceRanges
 }
 
-// validateRequiredFields returns a descriptive error naming the first required
+// validateRequiredFields returns a descriptive error naming every required
 // field that is empty, so a misconfigured provider fails fast before any auth
-// or cloud call rather than mid-deploy inside the Pulumi engine.
+// or cloud call rather than mid-deploy inside the Pulumi engine. NetworkID and
+// NetworkCIDR are mutually exclusive: exactly one must be set so the program
+// either attaches to a pre-existing network or creates a new one, never both.
 func (i *GceMachineInfra) validateRequiredFields() error {
-	switch {
-	case i.RuntimeInstanceName == "":
-		return fmt.Errorf("RuntimeInstanceName is required")
-	case i.ProjectID == "":
-		return fmt.Errorf("ProjectID is required")
-	case i.Zone == "":
-		return fmt.Errorf("Zone is required")
-	case i.MachineType == "":
-		return fmt.Errorf("MachineType is required")
-	case i.ImageID == "":
-		return fmt.Errorf("ImageID is required")
-	case i.SSHUser == "":
-		return fmt.Errorf("SSHUser is required")
+	var missing []string
+	if i.RuntimeInstanceName == "" {
+		missing = append(missing, "RuntimeInstanceName")
+	}
+	if i.ProjectID == "" {
+		missing = append(missing, "ProjectID")
+	}
+	if i.Zone == "" {
+		missing = append(missing, "Zone")
+	}
+	if i.MachineType == "" {
+		missing = append(missing, "MachineType")
+	}
+	if i.ImageID == "" {
+		missing = append(missing, "ImageID")
+	}
+	if i.SSHUser == "" {
+		missing = append(missing, "SSHUser")
+	}
+	if i.NetworkID == "" && i.NetworkCIDR == "" {
+		missing = append(missing, "NetworkID or NetworkCIDR")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("missing required fields: %s", strings.Join(missing, ", "))
+	}
+	if i.NetworkID != "" && i.NetworkCIDR != "" {
+		return fmt.Errorf("NetworkID and NetworkCIDR are mutually exclusive: set one to attach to an existing network or the other to create a new one")
 	}
 	return nil
 }

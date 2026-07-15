@@ -561,6 +561,9 @@ func TestIngressRule_SourceRangesOverrideReachesFirewall(t *testing.T) {
 }
 
 func TestDeployInfra_MissingRequiredFields(t *testing.T) {
+	// base provides a configuration valid enough that each case's single
+	// mutation isolates the field the case is exercising; NetworkID is
+	// seeded so the network-resolution rule is satisfied by default
 	base := func() *GceMachineInfra {
 		return &GceMachineInfra{
 			PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: "validate"},
@@ -569,6 +572,7 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 			MachineType:     "m",
 			ImageID:         "img",
 			SSHUser:         "u",
+			NetworkID:       "default",
 		}
 	}
 	cases := []struct {
@@ -585,6 +589,8 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			// mutate a single field to empty and confirm the validator names
+			// that specific field in the accumulated error string
 			i := base()
 			tc.mut(i)
 			err := i.DeployInfra()
@@ -596,6 +602,83 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDeployInfra_NetworkFieldsExclusive covers the mutually-exclusive rule
+// between NetworkID and NetworkCIDR: neither set is a missing-field error, both
+// set is an exclusivity error, and either one set alone passes validation
+// through to the next stage.
+func TestDeployInfra_NetworkFieldsExclusive(t *testing.T) {
+	// base leaves both network fields unset so each case controls the pair
+	base := func() *GceMachineInfra {
+		return &GceMachineInfra{
+			PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: "validate"},
+			ProjectID:       "p",
+			Zone:            "z",
+			MachineType:     "m",
+			ImageID:         "img",
+			SSHUser:         "u",
+		}
+	}
+
+	// neither field set: reject with the required-field accumulated message
+	// naming the network resolution requirement
+	t.Run("neither network id nor cidr", func(t *testing.T) {
+		i := base()
+		err := i.DeployInfra()
+		if err == nil {
+			t.Fatal("expected error when both NetworkID and NetworkCIDR are unset")
+		}
+		if !strings.Contains(err.Error(), "NetworkID or NetworkCIDR") {
+			t.Errorf("error %q does not name the network resolution requirement", err.Error())
+		}
+	})
+
+	// both fields set: reject with an exclusivity error naming both fields so
+	// the operator can see which pair conflicts
+	t.Run("both network id and cidr", func(t *testing.T) {
+		i := base()
+		i.NetworkID = "default"
+		i.NetworkCIDR = "10.0.0.0/16"
+		err := i.DeployInfra()
+		if err == nil {
+			t.Fatal("expected error when both NetworkID and NetworkCIDR are set")
+		}
+		if !strings.Contains(err.Error(), "mutually exclusive") {
+			t.Errorf("error %q does not name the exclusivity rule", err.Error())
+		}
+		if !strings.Contains(err.Error(), "NetworkID") || !strings.Contains(err.Error(), "NetworkCIDR") {
+			t.Errorf("error %q does not name both conflicting fields", err.Error())
+		}
+	})
+
+	// only NetworkID set: passes validation, so any subsequent error is not the
+	// validator complaining about the network fields
+	t.Run("only network id passes validation", func(t *testing.T) {
+		i := base()
+		i.NetworkID = "default"
+		err := i.DeployInfra()
+		if err != nil && strings.Contains(err.Error(), "missing required fields") {
+			t.Errorf("validator rejected NetworkID-only config: %v", err)
+		}
+		if err != nil && strings.Contains(err.Error(), "mutually exclusive") {
+			t.Errorf("validator rejected NetworkID-only config as exclusive: %v", err)
+		}
+	})
+
+	// only NetworkCIDR set: same shape as above; NetworkID may legitimately be
+	// empty when the program is meant to create a new custom-mode network
+	t.Run("only network cidr passes validation", func(t *testing.T) {
+		i := base()
+		i.NetworkCIDR = "10.0.0.0/16"
+		err := i.DeployInfra()
+		if err != nil && strings.Contains(err.Error(), "missing required fields") {
+			t.Errorf("validator rejected NetworkCIDR-only config: %v", err)
+		}
+		if err != nil && strings.Contains(err.Error(), "mutually exclusive") {
+			t.Errorf("validator rejected NetworkCIDR-only config as exclusive: %v", err)
+		}
+	})
 }
 
 // ---- test helpers ----

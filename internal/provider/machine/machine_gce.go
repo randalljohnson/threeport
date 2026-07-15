@@ -62,10 +62,10 @@ type adoptTarget struct {
 	logicalName string
 }
 
-// defaultSSHSourceRange is the initial default ingress range for the SSH
-// firewall rule when SSHSourceRanges is left empty. It is world-open; callers
-// should narrow it for production by setting SSHSourceRanges explicitly.
-const defaultSSHSourceRange = "0.0.0.0/0"
+// defaultIngressSourceRange is the fallback source-CIDR list used when an
+// ingress rule leaves SourceRanges empty. World-open; callers should narrow
+// it per rule for production.
+const defaultIngressSourceRange = "0.0.0.0/0"
 
 // GceIngressRule describes a single firewall ingress rule in the shape the
 // GCE provider consumes. Callers translate a portable rule model into this
@@ -124,10 +124,6 @@ type GceMachineInfra struct {
 	// SSHUser is the username the generated public key is authorized for in
 	// the instance ssh-keys metadata.
 	SSHUser string
-
-	// SSHSourceRanges scopes the SSH firewall ingress. When empty it defaults
-	// to the world-open range; callers should narrow it for production.
-	SSHSourceRanges []string
 
 	// IngressRules are additional firewall ingress rules to open on the VM's
 	// network. Each rule renders to one google_compute_firewall alongside the
@@ -202,15 +198,6 @@ func (i *GceMachineInfra) syncStackConfigs() {
 		"gcp:project": i.ProjectID,
 		"gcp:region":  i.Region,
 	}
-}
-
-// sshSourceRanges returns the configured SSH ingress ranges, falling back to the
-// world-open default when the field is empty.
-func (i *GceMachineInfra) sshSourceRanges() []string {
-	if len(i.SSHSourceRanges) == 0 {
-		return []string{defaultSSHSourceRange}
-	}
-	return i.SSHSourceRanges
 }
 
 // validateRequiredFields returns a descriptive error naming every required
@@ -423,7 +410,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			}
 			ranges := rule.SourceRanges
 			if len(ranges) == 0 {
-				ranges = []string{defaultSSHSourceRange}
+				ranges = []string{defaultIngressSourceRange}
 			}
 			firewallArgs := &compute.FirewallArgs{
 				Name:         pulumi.String(name),

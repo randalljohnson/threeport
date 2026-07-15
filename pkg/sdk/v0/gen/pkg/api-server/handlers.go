@@ -2294,7 +2294,7 @@ func emitBlockedByChildrenCheck(s *Statement, objVar, instancesField string, mod
 		For(Id("i").Op(":=").Range().Id(objVar).Dot(instancesField)).Block(
 			Id("blockingChildren").Op("=").Append(
 				Id("blockingChildren"),
-				Op("&").Id(objVar).Dot(instancesField).Index(Id("i")),
+				Id(objVar).Dot(instancesField).Index(Id("i")),
 			),
 		),
 		Return(respondBlocked().Call(

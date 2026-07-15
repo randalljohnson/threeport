@@ -6,6 +6,7 @@ import (
 	"errors"
 	echo "github.com/labstack/echo/v4"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
 	zap "go.uber.org/zap"
@@ -884,8 +885,15 @@ func (h Handler) DeleteLogStorageDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(logStorageDefinition.LogStorageInstances) != 0 {
-		err := errors.New("log storage definition has related log storage instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(logStorageDefinition.LogStorageInstances))
+		for i := range logStorageDefinition.LogStorageInstances {
+			blockingChildren = append(blockingChildren, logStorageDefinition.LogStorageInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&logStorageDefinition, blockingChildren),
+		)
 	}
 
 	// delete object

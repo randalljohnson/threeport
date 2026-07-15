@@ -8,6 +8,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/machine-workload/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -435,8 +436,15 @@ func (h Handler) DeleteMachineWorkloadDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(machineWorkloadDefinition.MachineWorkloadInstances) != 0 {
-		err := errors.New("machine workload definition has related machine workload instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(machineWorkloadDefinition.MachineWorkloadInstances))
+		for i := range machineWorkloadDefinition.MachineWorkloadInstances {
+			blockingChildren = append(blockingChildren, machineWorkloadDefinition.MachineWorkloadInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&machineWorkloadDefinition, blockingChildren),
+		)
 	}
 
 	// delete object

@@ -8,6 +8,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/gcp/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -435,8 +436,15 @@ func (h Handler) DeleteGcpGceMachineRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances) != 0 {
-		err := errors.New("gcp gce machine runtime definition has related gcp gce machine runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances))
+		for i := range gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances {
+			blockingChildren = append(blockingChildren, gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&gcpGceMachineRuntimeDefinition, blockingChildren),
+		)
 	}
 
 	// delete object
@@ -1432,8 +1440,15 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances) != 0 {
-		err := errors.New("gcp gke kubernetes runtime definition has related gcp gke kubernetes runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances))
+		for i := range gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances {
+			blockingChildren = append(blockingChildren, gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&gcpGkeKubernetesRuntimeDefinition, blockingChildren),
+		)
 	}
 
 	// delete object

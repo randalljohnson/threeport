@@ -8,6 +8,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/observability/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -467,8 +468,15 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(loggingDefinition.LoggingInstances) != 0 {
-		err := errors.New("logging definition has related logging instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(loggingDefinition.LoggingInstances))
+		for i := range loggingDefinition.LoggingInstances {
+			blockingChildren = append(blockingChildren, loggingDefinition.LoggingInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&loggingDefinition, blockingChildren),
+		)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -1549,8 +1557,15 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(metricsDefinition.MetricsInstances) != 0 {
-		err := errors.New("metrics definition has related metrics instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(metricsDefinition.MetricsInstances))
+		for i := range metricsDefinition.MetricsInstances {
+			blockingChildren = append(blockingChildren, metricsDefinition.MetricsInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&metricsDefinition, blockingChildren),
+		)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -2631,8 +2646,15 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(observabilityDashboardDefinition.ObservabilityDashboardInstances) != 0 {
-		err := errors.New("observability dashboard definition has related observability dashboard instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(observabilityDashboardDefinition.ObservabilityDashboardInstances))
+		for i := range observabilityDashboardDefinition.ObservabilityDashboardInstances {
+			blockingChildren = append(blockingChildren, observabilityDashboardDefinition.ObservabilityDashboardInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&observabilityDashboardDefinition, blockingChildren),
+		)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -3713,8 +3735,15 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(observabilityStackDefinition.ObservabilityStackInstances) != 0 {
-		err := errors.New("observability stack definition has related observability stack instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(observabilityStackDefinition.ObservabilityStackInstances))
+		for i := range observabilityStackDefinition.ObservabilityStackInstances {
+			blockingChildren = append(blockingChildren, observabilityStackDefinition.ObservabilityStackInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&observabilityStackDefinition, blockingChildren),
+		)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler

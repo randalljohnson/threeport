@@ -8,6 +8,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/machine-runtime/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -467,8 +468,15 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(machineRuntimeDefinition.MachineRuntimeInstances) != 0 {
-		err := errors.New("machine runtime definition has related machine runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(machineRuntimeDefinition.MachineRuntimeInstances))
+		for i := range machineRuntimeDefinition.MachineRuntimeInstances {
+			blockingChildren = append(blockingChildren, machineRuntimeDefinition.MachineRuntimeInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&machineRuntimeDefinition, blockingChildren),
+		)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler

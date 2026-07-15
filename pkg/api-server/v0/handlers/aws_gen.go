@@ -8,6 +8,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/aws/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -435,8 +436,15 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(awsEksKubernetesRuntimeDefinition.AwsEksKubernetesRuntimeInstances) != 0 {
-		err := errors.New("aws eks kubernetes runtime definition has related aws eks kubernetes runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(awsEksKubernetesRuntimeDefinition.AwsEksKubernetesRuntimeInstances))
+		for i := range awsEksKubernetesRuntimeDefinition.AwsEksKubernetesRuntimeInstances {
+			blockingChildren = append(blockingChildren, awsEksKubernetesRuntimeDefinition.AwsEksKubernetesRuntimeInstances[i])
+		}
+		return RespondBlockedDelete(
+			c,
+			h.RequestDB(c),
+			api_v0.NewBlockedDeleteErrorFromChildren(&awsEksKubernetesRuntimeDefinition, blockingChildren),
+		)
 	}
 
 	// delete object

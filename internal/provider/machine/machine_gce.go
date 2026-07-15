@@ -213,9 +213,11 @@ func (i *GceMachineInfra) sshSourceRanges() []string {
 	return i.SSHSourceRanges
 }
 
-// validateRequiredFields returns a descriptive error naming the first required
+// validateRequiredFields returns a descriptive error naming every required
 // field that is empty, so a misconfigured provider fails fast before any auth
-// or cloud call rather than mid-deploy inside the Pulumi engine.
+// or cloud call rather than mid-deploy inside the Pulumi engine. NetworkID and
+// NetworkCIDR are mutually exclusive: exactly one must be set so the program
+// either attaches to a pre-existing network or creates a new one, never both.
 func (i *GceMachineInfra) validateRequiredFields() error {
 	// collect every missing field so the caller fixes them in one pass rather
 	// than rediscovering them one failed deploy at a time
@@ -238,11 +240,14 @@ func (i *GceMachineInfra) validateRequiredFields() error {
 	if i.SSHUser == "" {
 		missing = append(missing, "SSHUser")
 	}
-	if i.NetworkID == "" {
-		missing = append(missing, "NetworkID")
+	if i.NetworkID == "" && i.NetworkCIDR == "" {
+		missing = append(missing, "NetworkID or NetworkCIDR")
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required fields: %s", strings.Join(missing, ", "))
+	}
+	if i.NetworkID != "" && i.NetworkCIDR != "" {
+		return fmt.Errorf("NetworkID and NetworkCIDR are mutually exclusive: set one to attach to an existing network or the other to create a new one")
 	}
 	return nil
 }

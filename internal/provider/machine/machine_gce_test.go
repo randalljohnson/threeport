@@ -85,9 +85,8 @@ const (
 
 // newTestInfra builds a fully-configured provider for program-level tests.
 // Seeds a single SSH ingress rule so program-level tests observe the same
-// firewall shape the adapter would inject in production, where SSHSourceRanges
-// is folded into IngressRules and the pulumi program only renders one firewall
-// per configured rule.
+// firewall shape the adapter would inject in production, where SSH is one
+// entry in IngressRules and the pulumi program renders one firewall per rule.
 func newTestInfra(name string) *GceMachineInfra {
 	return &GceMachineInfra{
 		PulumiWorkspace: provider.PulumiWorkspace{

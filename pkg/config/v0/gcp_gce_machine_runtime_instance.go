@@ -117,6 +117,7 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 		}
 
 		// get machine runtime instance
+		var networkID *string
 		if gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID != nil {
 			machineRuntimeInstanceObj, err := client_v0.GetMachineRuntimeInstanceByID(
 				apiClient,
@@ -133,6 +134,7 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 			machineRuntimeInstance = &MachineRuntimeInstanceValues{
 				Name: machineRuntimeInstanceObj.Name,
 			}
+			networkID = machineRuntimeInstanceObj.NetworkID
 		}
 
 		gcpGceMachineRuntimeInstanceConfig := GcpGceMachineRuntimeInstanceConfig{
@@ -141,6 +143,7 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 				GcpProviderName:                gcpProviderName,
 				Region:                         gcpGceMachineRuntimeInstance.Region,
 				Zone:                           gcpGceMachineRuntimeInstance.Zone,
+				NetworkID:                      networkID,
 				SSHUser:                        gcpGceMachineRuntimeInstance.SSHUser,
 				GcpGceMachineRuntimeDefinition: gcpGceMachineRuntimeDefinition,
 				MachineRuntimeInstance:         machineRuntimeInstance,

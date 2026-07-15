@@ -420,22 +420,14 @@ func buildGceMachineInfra(
 	if instance.Zone != nil {
 		infraGce.Zone = *instance.Zone
 	}
-	if instance.NetworkID != nil {
-		infraGce.NetworkID = *instance.NetworkID
-	}
 	if instance.SSHUser != nil {
 		infraGce.SSHUser = *instance.SSHUser
 	}
-	// SSHSourceRanges is a pointer-to-slice; copy the dereferenced slice only
-	// when the pointer is non-nil to avoid a nil-pointer range.
-	if instance.SSHSourceRanges != nil {
-		infraGce.SSHSourceRanges = append([]string(nil), *instance.SSHSourceRanges...)
-	}
 
-	// load the parent machine runtime instance so IngressRules, NetworkCIDR,
-	// SubnetCIDR, and AssignPublicIP are read from the abstract instance
-	// where they now live; a nil MachineRuntimeInstanceID leaves those
-	// fields at their zero values.
+	// load the parent machine runtime instance so NetworkID, IngressRules,
+	// NetworkCIDR, SubnetCIDR, and AssignPublicIP are read from the abstract
+	// instance where they now live; a nil MachineRuntimeInstanceID leaves
+	// those fields at their zero values.
 	var mri *v0.MachineRuntimeInstance
 	if instance.MachineRuntimeInstanceID != nil {
 		var err error
@@ -449,43 +441,32 @@ func buildGceMachineInfra(
 		}
 	}
 
-	// prepend an SSH ingress rule when SSHSourceRanges is set so a single
-	// ingress pipeline drives every firewall; the pulumi program no longer
-	// creates a standalone SSH firewall.
-	var ingressRules []v0.IngressRule
-	if len(infraGce.SSHSourceRanges) > 0 {
-		sshRanges := append([]string(nil), infraGce.SSHSourceRanges...)
-		ingressRules = append(ingressRules, v0.IngressRule{
-			Protocol:     util.Ptr("tcp"),
-			Ports:        util.Ptr([]string{"22"}),
-			SourceRanges: &sshRanges,
-			Description:  util.Ptr("ssh"),
-		})
-	}
-	if mri != nil && mri.IngressRules != nil {
-		ingressRules = append(ingressRules, *mri.IngressRules...)
-	}
 	// translate each portable ingress rule to the provider-side shape; each
 	// non-nil string/slice field is copied out of its pointer so a partial
 	// rule renders as an empty value on the provider rather than a panic.
-	for _, rule := range ingressRules {
-		gceRule := machine.GceIngressRule{}
-		if rule.Protocol != nil {
-			gceRule.Protocol = *rule.Protocol
+	if mri != nil && mri.IngressRules != nil {
+		for _, rule := range *mri.IngressRules {
+			gceRule := machine.GceIngressRule{}
+			if rule.Protocol != nil {
+				gceRule.Protocol = *rule.Protocol
+			}
+			if rule.Ports != nil {
+				gceRule.Ports = append([]string(nil), *rule.Ports...)
+			}
+			if rule.SourceRanges != nil {
+				gceRule.SourceRanges = append([]string(nil), *rule.SourceRanges...)
+			}
+			if rule.Description != nil {
+				gceRule.Description = *rule.Description
+			}
+			infraGce.IngressRules = append(infraGce.IngressRules, gceRule)
 		}
-		if rule.Ports != nil {
-			gceRule.Ports = append([]string(nil), *rule.Ports...)
-		}
-		if rule.SourceRanges != nil {
-			gceRule.SourceRanges = append([]string(nil), *rule.SourceRanges...)
-		}
-		if rule.Description != nil {
-			gceRule.Description = *rule.Description
-		}
-		infraGce.IngressRules = append(infraGce.IngressRules, gceRule)
 	}
 
 	if mri != nil {
+		if mri.NetworkID != nil {
+			infraGce.NetworkID = *mri.NetworkID
+		}
 		if mri.NetworkCIDR != nil {
 			infraGce.NetworkCIDR = *mri.NetworkCIDR
 		}

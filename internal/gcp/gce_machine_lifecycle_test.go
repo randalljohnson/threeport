@@ -372,9 +372,7 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
 		latest.Region = gcePtr("us-central1")
 		latest.Zone = gcePtr("us-central1-a")
-		latest.NetworkID = gcePtr("default")
 		latest.SSHUser = gcePtr("threeport")
-		latest.SSHSourceRanges = gcePtr([]string{"10.0.0.0/8", "192.168.0.0/16"})
 		s.gceHandleInstance(t, gceTestInstanceID, latest)
 		prov := gceBaseProvider()
 		enc, err := encryption.Encrypt(s.encryptionKey, "creds-json")
@@ -393,9 +391,7 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, "us-central1-a", gceInfra.Zone)
 		assert.Equal(t, "e2-medium", gceInfra.MachineType)
 		assert.Equal(t, "debian-12", gceInfra.ImageID)
-		assert.Equal(t, "default", gceInfra.NetworkID)
 		assert.Equal(t, "threeport", gceInfra.SSHUser)
-		assert.Equal(t, []string{"10.0.0.0/8", "192.168.0.0/16"}, gceInfra.SSHSourceRanges)
 		assert.Equal(t, "creds-json", gceInfra.ServiceAccountCredentials)
 	})
 
@@ -433,21 +429,6 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		require.NoError(t, err)
 		gceInfra := infra.(*machine.GceMachineInfra)
 		assert.Equal(t, "", gceInfra.ServiceAccountCredentials)
-	})
-
-	t.Run("nil SSHSourceRanges left empty", func(t *testing.T) {
-		s := gceNewAPIStub(t)
-		latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
-		latest.SSHSourceRanges = nil
-		s.gceHandleInstance(t, gceTestInstanceID, latest)
-		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
-		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
-
-		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
-		infra, err := g.BuildInfra()
-		require.NoError(t, err)
-		gceInfra := infra.(*machine.GceMachineInfra)
-		assert.Nil(t, gceInfra.SSHSourceRanges)
 	})
 
 	t.Run("definition GET fails", func(t *testing.T) {

@@ -43,7 +43,6 @@ func createProvisionedGceInstance(t *testing.T, db *gorm.DB, name string) GcpGce
 		MachineRuntimeInstanceID:         util.Ptr(uint(3)),
 		Region:                           util.Ptr("us-central1"),
 		Zone:                             util.Ptr("us-central1-a"),
-		NetworkID:                        util.Ptr("default"),
 		SSHUser:                          util.Ptr("user"),
 	}
 	require.NoError(t, db.Create(instance).Error)
@@ -65,7 +64,6 @@ func TestGcpGceMachineRuntimeInstance_BeforeUpdate_PlacementFieldsImmutable(t *t
 	}{
 		{"region", &GcpGceMachineRuntimeInstance{Region: util.Ptr("other-region")}},
 		{"zone", &GcpGceMachineRuntimeInstance{Zone: util.Ptr("other-zone")}},
-		{"network id", &GcpGceMachineRuntimeInstance{NetworkID: util.Ptr("other-network")}},
 		{"definition", &GcpGceMachineRuntimeInstance{GcpGceMachineRuntimeDefinitionID: util.Ptr(uint(99))}},
 		{"provider", &GcpGceMachineRuntimeInstance{GcpProviderID: util.Ptr(uint(99))}},
 	}
@@ -82,16 +80,14 @@ func TestGcpGceMachineRuntimeInstance_BeforeUpdate_PlacementFieldsImmutable(t *t
 }
 
 // TestGcpGceMachineRuntimeInstance_BeforeUpdate_AllowsInPlaceMutableFields seeds
-// a provisioned GCE instance and asserts the ssh source ranges and ssh user are
-// accepted on update, since a pulumi up applies them in place to the firewall
-// and instance metadata.
+// a provisioned GCE instance and asserts the ssh user is accepted on update,
+// since a pulumi up applies it in place to the instance metadata.
 func TestGcpGceMachineRuntimeInstance_BeforeUpdate_AllowsInPlaceMutableFields(t *testing.T) {
 	tests := []struct {
 		name    string
 		payload *GcpGceMachineRuntimeInstance
 	}{
 		{"ssh user", &GcpGceMachineRuntimeInstance{SSHUser: util.Ptr("newuser")}},
-		{"ssh source ranges", &GcpGceMachineRuntimeInstance{SSHSourceRanges: &[]string{"10.0.0.0/8"}}},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

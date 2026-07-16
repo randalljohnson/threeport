@@ -9,9 +9,15 @@ import (
 
 	cobra "github.com/spf13/cobra"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
+	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	config_v0 "github.com/threeport/threeport/pkg/config/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	yaml "sigs.k8s.io/yaml"
 )
+
+// gcpID carries the numeric ID value for --id flag lookups on gcp gce machine
+// runtime definition and instance get commands.
+var gcpID int64
 
 ///////////////////////////////////////////////////////////////////////////////
 // GcpGceMachineRuntime
@@ -151,5 +157,607 @@ func init() {
 	DeleteGcpGceMachineRuntimeCmd.Flags().StringVarP(
 		&gcpVersion,
 		"version", "v", "v0", "Version of gcp gce machine runtimes object to delete. One of: [v0]",
+	)
+}
+
+// GetGcpGceMachineRuntimesCmd represents the command 'tptctl get gcp-gce-machine-runtimes'
+var GetGcpGceMachineRuntimesCmd = &cobra.Command{
+	Aliases: []string{"gcp-gce-machine-runtime"},
+	Example: "  # get all gcp gce machine runtimes\n  tptctl get gcp-gce-machine-runtimes\n\n  # get a specific gcp gce machine runtime\n  tptctl get gcp-gce-machine-runtime --name some-gcp-gce-machine-runtime",
+	Long:    "Get gcp gce machine runtimes from the system. Use --name to get a specific gcp gce machine runtime. A gcp gce machine runtime is a unified abstraction of a gcp gce machine runtime definition and gcp gce machine runtime instance.",
+	PreRun:  CommandPreRunFunc,
+	Run: func(cmd *cobra.Command, args []string) {
+		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
+
+		// flag validation
+		if err := cli.ValidateConfigNameFlags(
+			gcpConfigPath,
+			gcpName,
+			"gcp gce machine runtime",
+		); err != nil {
+			cli.Error("flag validation failed", err)
+			os.Exit(1)
+		}
+
+		// get gcp gce machine runtime based on version
+		switch gcpVersion {
+		case "v0":
+			// load gcp gce machine runtime values
+			gcpGceMachineRuntimeConfig := config_v0.GcpGceMachineRuntimeConfig{}
+			if gcpConfigPath != "" {
+				configContent, err := os.ReadFile(gcpConfigPath)
+				if err != nil {
+					cli.Error("failed to read config file", err)
+					os.Exit(1)
+				}
+				if err := yaml.UnmarshalStrict(configContent, &gcpGceMachineRuntimeConfig); err != nil {
+					cli.Error("failed to unmarshal config file yaml content", err)
+					os.Exit(1)
+				}
+			} else if gcpName != "" {
+				gcpGceMachineRuntimeConfig = config_v0.GcpGceMachineRuntimeConfig{
+					GcpGceMachineRuntime: config_v0.GcpGceMachineRuntimeValues{
+						Name: &gcpName,
+					},
+				}
+			}
+
+			// get gcp gce machine runtime
+			gcpGceMachineRuntimeConfigs, err := gcpGceMachineRuntimeConfig.Get(apiClient, apiEndpoint)
+			if err != nil {
+				cli.Error("failed to retrieve gcp gce machine runtime", err)
+				os.Exit(1)
+			}
+
+			// check if gcp gce machine runtime exists
+			if len(*gcpGceMachineRuntimeConfigs) == 0 {
+				cli.Info(fmt.Sprintf(
+					"no gcp gce machine runtimes found that are currently managed by %s threeport control plane",
+					requestedControlPlane,
+				))
+				os.Exit(0)
+			}
+
+			// write the output
+			switch gcpOutput {
+			case "tabular":
+				if err := outputGetv0GcpGceMachineRuntimesCmd(gcpGceMachineRuntimeConfigs); err != nil {
+					cli.Error("failed to produce output", err)
+					os.Exit(1)
+				}
+			case "yaml":
+				if err := cli.YamlObjectOutput(*gcpGceMachineRuntimeConfigs); err != nil {
+					cli.Error("failed to produce YAML output", err)
+					os.Exit(1)
+				}
+			case "json":
+				if err := cli.JsonObjectOutput(*gcpGceMachineRuntimeConfigs); err != nil {
+					cli.Error("failed to produce JSON output", err)
+					os.Exit(1)
+				}
+			default:
+				cli.Error("", fmt.Errorf("unrecognized output format: %s", gcpOutput))
+				os.Exit(1)
+			}
+		default:
+			cli.Error("", errors.New("unrecognized object version"))
+			os.Exit(1)
+		}
+	},
+	Short:        "Get gcp gce machine runtimes from the system",
+	SilenceUsage: true,
+	Use:          "gcp-gce-machine-runtimes",
+}
+
+func init() {
+	GetCmd.AddCommand(GetGcpGceMachineRuntimesCmd)
+
+	GetGcpGceMachineRuntimesCmd.Flags().StringVarP(
+		&gcpName,
+		"name", "n", "", "Name of gcp gce machine runtime.",
+	)
+	GetGcpGceMachineRuntimesCmd.Flags().StringVarP(
+		&gcpConfigPath,
+		"config", "c", "", "Path to file with gcp gce machine runtime config.",
+	)
+	GetGcpGceMachineRuntimesCmd.Flags().StringVarP(
+		&gcpVersion,
+		"version", "v", "v0", "Version of gcp gce machine runtime objects to retrieve. One of: [v0]",
+	)
+	GetGcpGceMachineRuntimesCmd.Flags().StringVarP(
+		&gcpOutput,
+		"output", "o", "tabular", "Output format for gcp gce machine runtime objects. One of: [tabular, yaml, json]",
+	)
+	GetGcpGceMachineRuntimesCmd.Flags().StringVarP(
+		&cliArgs.ControlPlaneName,
+		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// GcpGceMachineRuntimeDefinition
+///////////////////////////////////////////////////////////////////////////////
+
+// GetGcpGceMachineRuntimeDefinitionsCmd represents the command 'tptctl get gcp-gce-machine-runtime-definitions'
+var GetGcpGceMachineRuntimeDefinitionsCmd = &cobra.Command{
+	Aliases: []string{"gcp-gce-machine-runtime-definition"},
+	Example: "  # get all gcp gce machine runtime definitions\n  tptctl get gcp-gce-machine-runtime-definitions\n\n  # get a specific gcp gce machine runtime definition by name\n  tptctl get gcp-gce-machine-runtime-definition --name some-gcp-gce-machine-runtime-definition\n\n  # get a specific gcp gce machine runtime definition by id\n  tptctl get gcp-gce-machine-runtime-definition --id 42",
+	Long:    "Get gcp gce machine runtime definitions from the system. Use --name or --id to get a specific gcp gce machine runtime definition.",
+	PreRun:  CommandPreRunFunc,
+	Run: func(cmd *cobra.Command, args []string) {
+		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
+
+		// flag validation
+		if gcpID != 0 && (gcpName != "" || gcpConfigPath != "") {
+			cli.Error("flag validation failed", errors.New("--id cannot be combined with --name or --config"))
+			os.Exit(1)
+		}
+		if gcpID == 0 {
+			if err := cli.ValidateConfigNameFlags(
+				gcpConfigPath,
+				gcpName,
+				"gcp gce machine runtime definition",
+			); err != nil {
+				cli.Error("flag validation failed", err)
+				os.Exit(1)
+			}
+		}
+
+		switch gcpVersion {
+		case "v0":
+			var gcpGceMachineRuntimeDefinitions *[]config_v0.GcpGceMachineRuntimeDefinitionConfig
+
+			switch {
+			// look up a single definition by numeric ID
+			case gcpID != 0:
+				fetched, err := client_v0.GetGcpGceMachineRuntimeDefinitionByID(
+					apiClient,
+					apiEndpoint,
+					uint(gcpID),
+				)
+				if err != nil {
+					cli.Error("failed to retrieve gcp gce machine runtime definition by id", err)
+					os.Exit(1)
+				}
+				single := []config_v0.GcpGceMachineRuntimeDefinitionConfig{
+					{
+						GcpGceMachineRuntimeDefinition: config_v0.GcpGceMachineRuntimeDefinitionValues{
+							Name:        fetched.Name,
+							MachineType: fetched.MachineType,
+							ImageID:     fetched.ImageID,
+							Age:         util.Ptr(util.GetAgeFormatted(fetched.CreatedAt)),
+						},
+					},
+				}
+				gcpGceMachineRuntimeDefinitions = &single
+			default:
+				// load values from config file or name flag
+				gcpGceMachineRuntimeDefinitionConfig := config_v0.GcpGceMachineRuntimeDefinitionConfig{}
+				if gcpConfigPath != "" {
+					configContent, err := os.ReadFile(gcpConfigPath)
+					if err != nil {
+						cli.Error("failed to read config file", err)
+						os.Exit(1)
+					}
+					if err := yaml.UnmarshalStrict(configContent, &gcpGceMachineRuntimeDefinitionConfig); err != nil {
+						cli.Error("failed to unmarshal config file yaml content", err)
+						os.Exit(1)
+					}
+				} else if gcpName != "" {
+					gcpGceMachineRuntimeDefinitionConfig = config_v0.GcpGceMachineRuntimeDefinitionConfig{
+						GcpGceMachineRuntimeDefinition: config_v0.GcpGceMachineRuntimeDefinitionValues{
+							Name: &gcpName,
+						},
+					}
+				}
+
+				// get gcp gce machine runtime definitions
+				fetched, err := gcpGceMachineRuntimeDefinitionConfig.Get(apiClient, apiEndpoint)
+				if err != nil {
+					cli.Error("failed to retrieve gcp gce machine runtime definitions", err)
+					os.Exit(1)
+				}
+				gcpGceMachineRuntimeDefinitions = fetched
+			}
+
+			// check if gcp gce machine runtime definition exists
+			if len(*gcpGceMachineRuntimeDefinitions) == 0 {
+				cli.Info(fmt.Sprintf(
+					"no gcp gce machine runtime definitions found that are currently managed by %s threeport control plane",
+					requestedControlPlane,
+				))
+				os.Exit(0)
+			}
+
+			// write the output
+			switch gcpOutput {
+			case "tabular":
+				if err := outputGetv0GcpGceMachineRuntimeDefinitionsCmd(gcpGceMachineRuntimeDefinitions); err != nil {
+					cli.Error("failed to produce output", err)
+					os.Exit(1)
+				}
+			case "yaml":
+				if err := cli.YamlObjectOutput(*gcpGceMachineRuntimeDefinitions); err != nil {
+					cli.Error("failed to produce YAML output", err)
+					os.Exit(1)
+				}
+			case "json":
+				if err := cli.JsonObjectOutput(*gcpGceMachineRuntimeDefinitions); err != nil {
+					cli.Error("failed to produce JSON output", err)
+					os.Exit(1)
+				}
+			default:
+				cli.Error("", fmt.Errorf("unrecognized output format: %s", gcpOutput))
+				os.Exit(1)
+			}
+		default:
+			cli.Error("", errors.New("unrecognized object version"))
+			os.Exit(1)
+		}
+	},
+	Short:        "Get gcp gce machine runtime definitions from the system",
+	SilenceUsage: true,
+	Use:          "gcp-gce-machine-runtime-definitions",
+}
+
+func init() {
+	GetCmd.AddCommand(GetGcpGceMachineRuntimeDefinitionsCmd)
+
+	GetGcpGceMachineRuntimeDefinitionsCmd.Flags().StringVarP(
+		&gcpName,
+		"name", "n", "", "Name of gcp gce machine runtime definition.",
+	)
+	GetGcpGceMachineRuntimeDefinitionsCmd.Flags().StringVarP(
+		&gcpConfigPath,
+		"config", "c", "", "Path to file with gcp gce machine runtime definition config.",
+	)
+	GetGcpGceMachineRuntimeDefinitionsCmd.Flags().Int64Var(
+		&gcpID,
+		"id", 0, "Numeric ID of the gcp gce machine runtime definition to retrieve. Mutually exclusive with --name and --config.",
+	)
+	GetGcpGceMachineRuntimeDefinitionsCmd.Flags().StringVarP(
+		&gcpVersion,
+		"version", "v", "v0", "Version of gcp gce machine runtime definition objects to retrieve. One of: [v0]",
+	)
+	GetGcpGceMachineRuntimeDefinitionsCmd.Flags().StringVarP(
+		&gcpOutput,
+		"output", "o", "tabular", "Output format for gcp gce machine runtime definition objects. One of: [tabular, yaml, json]",
+	)
+	GetGcpGceMachineRuntimeDefinitionsCmd.Flags().StringVarP(
+		&cliArgs.ControlPlaneName,
+		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+}
+
+// ReplaceGcpGceMachineRuntimeDefinitionCmd represents the command 'tptctl replace gcp-gce-machine-runtime-definition'
+var ReplaceGcpGceMachineRuntimeDefinitionCmd = &cobra.Command{
+	Example: "  # replace using a config file\n  tptctl replace gcp-gce-machine-runtime-definition --config path/to/config.yaml --name some-gcp-gce-machine-runtime-definition",
+	Long:    "Replace an existing gcp gce machine runtime definition.\n Note that the entire object will replaced with a PUT request.\n All fields must be provided in the config file.",
+	PreRun:  CommandPreRunFunc,
+	Run: func(cmd *cobra.Command, args []string) {
+		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
+
+		// replace gcp gce machine runtime definition based on version
+		switch gcpVersion {
+		case "v0":
+			var gcpGceMachineRuntimeDefinitionConfig config_v0.GcpGceMachineRuntimeDefinitionConfig
+			// load gcp gce machine runtime definition config
+			configContent, err := os.ReadFile(gcpConfigPath)
+			if err != nil {
+				cli.Error("failed to read config file", err)
+				os.Exit(1)
+			}
+			if err := yaml.UnmarshalStrict(configContent, &gcpGceMachineRuntimeDefinitionConfig); err != nil {
+				cli.Error("failed to unmarshal config file yaml content", err)
+				os.Exit(1)
+			}
+
+			// replace gcp gce machine runtime definition
+			updatedGcpGceMachineRuntimeDefinition, err := gcpGceMachineRuntimeDefinitionConfig.Replace(apiClient, apiEndpoint, gcpName)
+			if err != nil {
+				cli.Error("failed to update gcp gce machine runtime definition", err)
+				os.Exit(1)
+			}
+
+			cli.Complete(fmt.Sprintf("gcp gce machine runtime definition %s updated", *updatedGcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeDefinition.Name))
+		default:
+			cli.Error("", errors.New("unrecognized object version"))
+			os.Exit(1)
+		}
+	},
+	Short:        "Replace an existing gcp gce machine runtime definition",
+	SilenceUsage: true,
+	Use:          "gcp-gce-machine-runtime-definition",
+}
+
+func init() {
+	ReplaceCmd.AddCommand(ReplaceGcpGceMachineRuntimeDefinitionCmd)
+
+	ReplaceGcpGceMachineRuntimeDefinitionCmd.Flags().StringVarP(
+		&gcpConfigPath,
+		"config", "c", "", "Path to file with gcp gce machine runtime definition config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
+	)
+	ReplaceGcpGceMachineRuntimeDefinitionCmd.MarkFlagRequired("config")
+	ReplaceGcpGceMachineRuntimeDefinitionCmd.Flags().StringVarP(
+		&gcpName,
+		"name", "n", "", "Name of existing gcp gce machine runtime definition to replace.  If the name in the gcp gce machine runtime definition config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
+	)
+	ReplaceGcpGceMachineRuntimeDefinitionCmd.MarkFlagRequired("name")
+	ReplaceGcpGceMachineRuntimeDefinitionCmd.Flags().StringVarP(
+		&cliArgs.ControlPlaneName,
+		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	ReplaceGcpGceMachineRuntimeDefinitionCmd.Flags().StringVarP(
+		&gcpVersion,
+		"version", "v", "v0", "Version of gcp gce machine runtime definitions object to replace. One of: [v0]",
+	)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// GcpGceMachineRuntimeInstance
+///////////////////////////////////////////////////////////////////////////////
+
+// GetGcpGceMachineRuntimeInstancesCmd represents the command 'tptctl get gcp-gce-machine-runtime-instances'
+var GetGcpGceMachineRuntimeInstancesCmd = &cobra.Command{
+	Aliases: []string{"gcp-gce-machine-runtime-instance"},
+	Example: "  # get all gcp gce machine runtime instances\n  tptctl get gcp-gce-machine-runtime-instances\n\n  # get a specific gcp gce machine runtime instance by name\n  tptctl get gcp-gce-machine-runtime-instance --name some-gcp-gce-machine-runtime-instance\n\n  # get a specific gcp gce machine runtime instance by id\n  tptctl get gcp-gce-machine-runtime-instance --id 42",
+	Long:    "Get gcp gce machine runtime instances from the system. Use --name or --id to get a specific gcp gce machine runtime instance.",
+	PreRun:  CommandPreRunFunc,
+	Run: func(cmd *cobra.Command, args []string) {
+		apiClient, _, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
+
+		// flag validation
+		if gcpID != 0 && (gcpName != "" || gcpConfigPath != "") {
+			cli.Error("flag validation failed", errors.New("--id cannot be combined with --name or --config"))
+			os.Exit(1)
+		}
+		if gcpID == 0 {
+			if err := cli.ValidateConfigNameFlags(
+				gcpConfigPath,
+				gcpName,
+				"gcp gce machine runtime instance",
+			); err != nil {
+				cli.Error("flag validation failed", err)
+				os.Exit(1)
+			}
+		}
+
+		switch gcpVersion {
+		case "v0":
+			var gcpGceMachineRuntimeInstances *[]config_v0.GcpGceMachineRuntimeInstanceConfig
+
+			switch {
+			// look up a single instance by numeric ID
+			case gcpID != 0:
+				fetched, err := client_v0.GetGcpGceMachineRuntimeInstanceByID(
+					apiClient,
+					apiEndpoint,
+					uint(gcpID),
+				)
+				if err != nil {
+					cli.Error("failed to retrieve gcp gce machine runtime instance by id", err)
+					os.Exit(1)
+				}
+
+				// resolve related object names so tabular output matches the by-name shape
+				var gcpProviderName *string
+				if fetched.GcpProviderID != nil {
+					gcpProvider, err := client_v0.GetGcpProviderByID(
+						apiClient,
+						apiEndpoint,
+						*fetched.GcpProviderID,
+					)
+					if err == nil {
+						gcpProviderName = gcpProvider.Name
+					}
+				}
+				var relatedDefinition *config_v0.GcpGceMachineRuntimeDefinitionValues
+				if fetched.GcpGceMachineRuntimeDefinitionID != nil {
+					def, err := client_v0.GetGcpGceMachineRuntimeDefinitionByID(
+						apiClient,
+						apiEndpoint,
+						*fetched.GcpGceMachineRuntimeDefinitionID,
+					)
+					if err != nil {
+						cli.Error("failed to retrieve related gcp gce machine runtime definition", err)
+						os.Exit(1)
+					}
+					relatedDefinition = &config_v0.GcpGceMachineRuntimeDefinitionValues{
+						Name: def.Name,
+					}
+				}
+				var relatedMachineRuntimeInstance *config_v0.MachineRuntimeInstanceValues
+				if fetched.MachineRuntimeInstanceID != nil {
+					mri, err := client_v0.GetMachineRuntimeInstanceByID(
+						apiClient,
+						apiEndpoint,
+						*fetched.MachineRuntimeInstanceID,
+					)
+					if err != nil {
+						cli.Error("failed to retrieve related machine runtime instance", err)
+						os.Exit(1)
+					}
+					relatedMachineRuntimeInstance = &config_v0.MachineRuntimeInstanceValues{
+						Name: mri.Name,
+					}
+				}
+
+				single := []config_v0.GcpGceMachineRuntimeInstanceConfig{
+					{
+						GcpGceMachineRuntimeInstance: config_v0.GcpGceMachineRuntimeInstanceValues{
+							Name:                           fetched.Name,
+							GcpProviderName:                gcpProviderName,
+							Region:                         fetched.Region,
+							Zone:                           fetched.Zone,
+							NetworkID:                      fetched.NetworkID,
+							SSHUser:                        fetched.SSHUser,
+							GcpGceMachineRuntimeDefinition: relatedDefinition,
+							MachineRuntimeInstance:         relatedMachineRuntimeInstance,
+							Reconciled:                     fetched.Reconciled,
+							Age:                            util.Ptr(util.GetAgeFormatted(fetched.CreatedAt)),
+						},
+					},
+				}
+				gcpGceMachineRuntimeInstances = &single
+			default:
+				// load values from config file or name flag
+				gcpGceMachineRuntimeInstanceConfig := config_v0.GcpGceMachineRuntimeInstanceConfig{}
+				if gcpConfigPath != "" {
+					configContent, err := os.ReadFile(gcpConfigPath)
+					if err != nil {
+						cli.Error("failed to read config file", err)
+						os.Exit(1)
+					}
+					if err := yaml.UnmarshalStrict(configContent, &gcpGceMachineRuntimeInstanceConfig); err != nil {
+						cli.Error("failed to unmarshal config file yaml content", err)
+						os.Exit(1)
+					}
+				} else if gcpName != "" {
+					gcpGceMachineRuntimeInstanceConfig = config_v0.GcpGceMachineRuntimeInstanceConfig{
+						GcpGceMachineRuntimeInstance: config_v0.GcpGceMachineRuntimeInstanceValues{
+							Name: &gcpName,
+						},
+					}
+				}
+
+				// get gcp gce machine runtime instances
+				fetched, err := gcpGceMachineRuntimeInstanceConfig.Get(apiClient, apiEndpoint)
+				if err != nil {
+					cli.Error("failed to retrieve gcp gce machine runtime instances", err)
+					os.Exit(1)
+				}
+				gcpGceMachineRuntimeInstances = fetched
+			}
+
+			// check if gcp gce machine runtime instance exists
+			if len(*gcpGceMachineRuntimeInstances) == 0 {
+				cli.Info(fmt.Sprintf(
+					"no gcp gce machine runtime instances found that are currently managed by %s threeport control plane",
+					requestedControlPlane,
+				))
+				os.Exit(0)
+			}
+
+			// write the output
+			switch gcpOutput {
+			case "tabular":
+				if err := outputGetv0GcpGceMachineRuntimeInstancesCmd(gcpGceMachineRuntimeInstances); err != nil {
+					cli.Error("failed to produce output", err)
+					os.Exit(1)
+				}
+			case "yaml":
+				if err := cli.YamlObjectOutput(*gcpGceMachineRuntimeInstances); err != nil {
+					cli.Error("failed to produce YAML output", err)
+					os.Exit(1)
+				}
+			case "json":
+				if err := cli.JsonObjectOutput(*gcpGceMachineRuntimeInstances); err != nil {
+					cli.Error("failed to produce JSON output", err)
+					os.Exit(1)
+				}
+			default:
+				cli.Error("", fmt.Errorf("unrecognized output format: %s", gcpOutput))
+				os.Exit(1)
+			}
+		default:
+			cli.Error("", errors.New("unrecognized object version"))
+			os.Exit(1)
+		}
+	},
+	Short:        "Get gcp gce machine runtime instances from the system",
+	SilenceUsage: true,
+	Use:          "gcp-gce-machine-runtime-instances",
+}
+
+func init() {
+	GetCmd.AddCommand(GetGcpGceMachineRuntimeInstancesCmd)
+
+	GetGcpGceMachineRuntimeInstancesCmd.Flags().StringVarP(
+		&gcpName,
+		"name", "n", "", "Name of gcp gce machine runtime instance.",
+	)
+	GetGcpGceMachineRuntimeInstancesCmd.Flags().StringVarP(
+		&gcpConfigPath,
+		"config", "c", "", "Path to file with gcp gce machine runtime instance config.",
+	)
+	GetGcpGceMachineRuntimeInstancesCmd.Flags().Int64Var(
+		&gcpID,
+		"id", 0, "Numeric ID of the gcp gce machine runtime instance to retrieve. Mutually exclusive with --name and --config.",
+	)
+	GetGcpGceMachineRuntimeInstancesCmd.Flags().StringVarP(
+		&gcpVersion,
+		"version", "v", "v0", "Version of gcp gce machine runtime instance objects to retrieve. One of: [v0]",
+	)
+	GetGcpGceMachineRuntimeInstancesCmd.Flags().StringVarP(
+		&gcpOutput,
+		"output", "o", "tabular", "Output format for gcp gce machine runtime instance objects. One of: [tabular, yaml, json]",
+	)
+	GetGcpGceMachineRuntimeInstancesCmd.Flags().StringVarP(
+		&cliArgs.ControlPlaneName,
+		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+}
+
+// ReplaceGcpGceMachineRuntimeInstanceCmd represents the command 'tptctl replace gcp-gce-machine-runtime-instance'
+var ReplaceGcpGceMachineRuntimeInstanceCmd = &cobra.Command{
+	Example: "  # replace using a config file\n  tptctl replace gcp-gce-machine-runtime-instance --config path/to/config.yaml --name some-gcp-gce-machine-runtime-instance",
+	Long:    "Replace an existing gcp gce machine runtime instance.\n Note that the entire object will replaced with a PUT request.\n All fields must be provided in the config file.",
+	PreRun:  CommandPreRunFunc,
+	Run: func(cmd *cobra.Command, args []string) {
+		apiClient, _, apiEndpoint, _ := GetClientContext(cmd)
+
+		// replace gcp gce machine runtime instance based on version
+		switch gcpVersion {
+		case "v0":
+			var gcpGceMachineRuntimeInstanceConfig config_v0.GcpGceMachineRuntimeInstanceConfig
+			// load gcp gce machine runtime instance config
+			configContent, err := os.ReadFile(gcpConfigPath)
+			if err != nil {
+				cli.Error("failed to read config file", err)
+				os.Exit(1)
+			}
+			if err := yaml.UnmarshalStrict(configContent, &gcpGceMachineRuntimeInstanceConfig); err != nil {
+				cli.Error("failed to unmarshal config file yaml content", err)
+				os.Exit(1)
+			}
+
+			// replace gcp gce machine runtime instance
+			updatedGcpGceMachineRuntimeInstance, err := gcpGceMachineRuntimeInstanceConfig.Replace(apiClient, apiEndpoint, gcpName)
+			if err != nil {
+				cli.Error("failed to update gcp gce machine runtime instance", err)
+				os.Exit(1)
+			}
+
+			cli.Complete(fmt.Sprintf("gcp gce machine runtime instance %s updated", *updatedGcpGceMachineRuntimeInstance.GcpGceMachineRuntimeInstance.Name))
+		default:
+			cli.Error("", errors.New("unrecognized object version"))
+			os.Exit(1)
+		}
+	},
+	Short:        "Replace an existing gcp gce machine runtime instance",
+	SilenceUsage: true,
+	Use:          "gcp-gce-machine-runtime-instance",
+}
+
+func init() {
+	ReplaceCmd.AddCommand(ReplaceGcpGceMachineRuntimeInstanceCmd)
+
+	ReplaceGcpGceMachineRuntimeInstanceCmd.Flags().StringVarP(
+		&gcpConfigPath,
+		"config", "c", "", "Path to file with gcp gce machine runtime instance config.  The config file must be a complete config, i.e. the provided config will be used to replace the entire existing config for the object with a PUT request.",
+	)
+	ReplaceGcpGceMachineRuntimeInstanceCmd.MarkFlagRequired("config")
+	ReplaceGcpGceMachineRuntimeInstanceCmd.Flags().StringVarP(
+		&gcpName,
+		"name", "n", "", "Name of existing gcp gce machine runtime instance to replace.  If the name in the gcp gce machine runtime instance config is different from the name provided here, the name of the existing object will be updated with the name in the config.",
+	)
+	ReplaceGcpGceMachineRuntimeInstanceCmd.MarkFlagRequired("name")
+	ReplaceGcpGceMachineRuntimeInstanceCmd.Flags().StringVarP(
+		&cliArgs.ControlPlaneName,
+		"control-plane-name", "i", "", "Optional. Name of control plane. Will default to current control plane if not provided.",
+	)
+	ReplaceGcpGceMachineRuntimeInstanceCmd.Flags().StringVarP(
+		&gcpVersion,
+		"version", "v", "v0", "Version of gcp gce machine runtime instances object to replace. One of: [v0]",
 	)
 }

@@ -214,3 +214,153 @@ func outputGetv0GcpGkeKubernetesRuntimeInstancesCmd(
 
 	return nil
 }
+
+// outputGetv0GcpGceMachineRuntimesCmd produces the tabular output for the
+// 'get gcp-gce-machine-runtimes' command.
+func outputGetv0GcpGceMachineRuntimesCmd(
+	gcpGceMachineRuntimes *[]config_v0.GcpGceMachineRuntimeConfig,
+) error {
+	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
+	fmt.Fprintln(writer, "VERSION\t NAME\t GCP PROVIDER\t REGION\t ZONE\t MACHINE TYPE\t IMAGE ID\t RECONCILED\t AGE")
+	for _, gcpGceMachineRuntime := range *gcpGceMachineRuntimes {
+		v := gcpGceMachineRuntime.GcpGceMachineRuntime
+		gcpProviderName := ""
+		if v.GcpProviderName != nil {
+			gcpProviderName = *v.GcpProviderName
+		}
+		region := ""
+		if v.Region != nil {
+			region = *v.Region
+		}
+		zone := ""
+		if v.Zone != nil {
+			zone = *v.Zone
+		}
+		machineType := ""
+		if v.MachineType != nil {
+			machineType = *v.MachineType
+		}
+		imageID := ""
+		if v.ImageID != nil {
+			imageID = *v.ImageID
+		}
+		reconciled := false
+		if v.Reconciled != nil {
+			reconciled = *v.Reconciled
+		}
+		age := ""
+		if v.Age != nil {
+			age = *v.Age
+		}
+		fmt.Fprintln(
+			writer,
+			"v0", "\t",
+			*v.Name, "\t",
+			gcpProviderName, "\t",
+			region, "\t",
+			zone, "\t",
+			machineType, "\t",
+			imageID, "\t",
+			reconciled, "\t",
+			age,
+		)
+	}
+	writer.Flush()
+
+	return nil
+}
+
+// outputGetv0GcpGceMachineRuntimeDefinitionsCmd produces the tabular output for the
+// `get gcp-gce-machine-runtime-definitions` command.
+func outputGetv0GcpGceMachineRuntimeDefinitionsCmd(
+	gcpGceMachineRuntimeDefinitions *[]config_v0.GcpGceMachineRuntimeDefinitionConfig,
+) error {
+	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
+	fmt.Fprintln(writer, "VERSION\t NAME\t MACHINE TYPE\t IMAGE ID\t AGE")
+	for _, d := range *gcpGceMachineRuntimeDefinitions {
+		v := d.GcpGceMachineRuntimeDefinition
+		machineType := ""
+		if v.MachineType != nil {
+			machineType = *v.MachineType
+		}
+		imageID := ""
+		if v.ImageID != nil {
+			imageID = *v.ImageID
+		}
+		age := ""
+		if v.Age != nil {
+			age = *v.Age
+		}
+		fmt.Fprintln(
+			writer,
+			"v0", "\t",
+			*v.Name, "\t",
+			machineType, "\t",
+			imageID, "\t",
+			age,
+		)
+	}
+	writer.Flush()
+
+	return nil
+}
+
+// outputGetv0GcpGceMachineRuntimeInstancesCmd produces the tabular output for the
+// `get gcp-gce-machine-runtime-instances` command.
+func outputGetv0GcpGceMachineRuntimeInstancesCmd(
+	gcpGceMachineRuntimeInstances *[]config_v0.GcpGceMachineRuntimeInstanceConfig,
+) error {
+	writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
+	fmt.Fprintln(writer, "VERSION\t NAME\t GCP PROVIDER\t REGION\t ZONE\t MACHINE RUNTIME INSTANCE NAME\t GCP GCE MACHINE RUNTIME DEFINITION NAME\t HOSTNAME\t RECONCILED\t AGE")
+	for _, gcpGceMachineRuntimeInstance := range *gcpGceMachineRuntimeInstances {
+		v := gcpGceMachineRuntimeInstance.GcpGceMachineRuntimeInstance
+		gcpProviderName := ""
+		if v.GcpProviderName != nil {
+			gcpProviderName = *v.GcpProviderName
+		}
+		region := ""
+		if v.Region != nil {
+			region = *v.Region
+		}
+		zone := ""
+		if v.Zone != nil {
+			zone = *v.Zone
+		}
+		machineRuntimeInstanceName := ""
+		if v.MachineRuntimeInstance != nil && v.MachineRuntimeInstance.Name != nil {
+			machineRuntimeInstanceName = *v.MachineRuntimeInstance.Name
+		}
+		definitionName := ""
+		if v.GcpGceMachineRuntimeDefinition != nil && v.GcpGceMachineRuntimeDefinition.Name != nil {
+			definitionName = *v.GcpGceMachineRuntimeDefinition.Name
+		}
+		hostname := ""
+		if v.MachineRuntimeInstance != nil && v.MachineRuntimeInstance.Hostname != nil {
+			hostname = *v.MachineRuntimeInstance.Hostname
+		}
+		reconciled := false
+		if v.Reconciled != nil {
+			reconciled = *v.Reconciled
+		}
+		age := ""
+		if v.Age != nil {
+			age = *v.Age
+		}
+		fmt.Fprintln(
+			writer,
+			"v0", "\t",
+			*v.Name, "\t",
+			gcpProviderName, "\t",
+			region, "\t",
+			zone, "\t",
+			machineRuntimeInstanceName, "\t",
+			definitionName, "\t",
+			hostname, "\t",
+			reconciled, "\t",
+			age,
+		)
+	}
+	writer.Flush()
+
+	return nil
+}

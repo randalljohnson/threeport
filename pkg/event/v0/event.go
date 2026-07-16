@@ -151,12 +151,21 @@ func (r *EventRecorder) HandleEventOverride(
 			log.Error(err, "failed to record event")
 		}
 	default:
-		if err := r.RecordEvent(
+		// wrap the operation error into Note so the failure surfaces
+		// on the recorded event; cap at 500 chars to bound row size.
+		if err != nil && event != nil {
+			wrapped := fmt.Sprintf("%s: %v", util.Deref(event.Note), err)
+			if len(wrapped) > 500 {
+				wrapped = wrapped[:500]
+			}
+			event.Note = util.Ptr(wrapped)
+		}
+		if recordErr := r.RecordEvent(
 			event,
 			objectId,
 			fullyQualifiedObjectType,
-		); err != nil {
-			log.Error(err, "failed to record event")
+		); recordErr != nil {
+			log.Error(recordErr, "failed to record event")
 		}
 	}
 }

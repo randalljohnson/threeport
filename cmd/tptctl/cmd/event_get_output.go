@@ -15,7 +15,7 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-const eventMessageTableMax = 80
+const eventNoteTableMax = 80
 
 // outputEventsTable produces the tabular output for the events list.
 func outputEventsTable(events *[]v0.Event) error {
@@ -44,8 +44,8 @@ func outputEventsTable(events *[]v0.Event) error {
 
 		// truncate over-long notes so a single noisy event doesn't
 		// wreck the table layout
-		if len(note) > eventMessageTableMax {
-			note = util.TruncateString(note, eventMessageTableMax)
+		if len(note) > eventNoteTableMax {
+			note = util.TruncateString(note, eventNoteTableMax)
 			anyTruncated = true
 		}
 

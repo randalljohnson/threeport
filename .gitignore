@@ -6,3 +6,4 @@ __debug_bin*
 **/.DS_Store
 .claude/
 .venv/
+hack/

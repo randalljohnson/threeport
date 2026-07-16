@@ -27,6 +27,11 @@ import (
 
 func main() {
 	// flags
+	var machineRuntimeDefinitionConcurrentReconciles = flag.Int(
+		"machine-runtime-definition-concurrent-reconciles",
+		1,
+		"Number of concurrent reconcilers to run for machine runtime definitions",
+	)
 	var machineRuntimeInstanceConcurrentReconciles = flag.Int(
 		"machine-runtime-instance-concurrent-reconciles",
 		1,
@@ -125,6 +130,12 @@ func main() {
 
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
+	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
+		ConcurrentReconciles: *machineRuntimeDefinitionConcurrentReconciles,
+		Name:                 "MachineRuntimeDefinitionReconciler",
+		NotifSubject:         notif.MachineRuntimeDefinitionSubject,
+		ReconcileFunc:        machineruntime.MachineRuntimeDefinitionReconciler,
+	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
 		ConcurrentReconciles: *machineRuntimeInstanceConcurrentReconciles,
 		Name:                 "MachineRuntimeInstanceReconciler",

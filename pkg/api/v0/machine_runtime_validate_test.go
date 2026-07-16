@@ -138,7 +138,7 @@ func TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion(t *tes
 
 	err := db.Create(mri).Error
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must have a region when the definition specifies an infra provider")
+	assert.Contains(t, err.Error(), "must have a location or region when the definition specifies an infra provider")
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion accepts an

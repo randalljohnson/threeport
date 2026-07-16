@@ -5,11 +5,26 @@ package notif
 const (
 	MachineRuntimeStreamName = "machineRuntimeStream"
 
+	MachineRuntimeDefinitionSubject       = "machineRuntimeDefinition.*"
+	MachineRuntimeDefinitionCreateSubject = "machineRuntimeDefinition.create"
+	MachineRuntimeDefinitionUpdateSubject = "machineRuntimeDefinition.update"
+	MachineRuntimeDefinitionDeleteSubject = "machineRuntimeDefinition.delete"
+
 	MachineRuntimeInstanceSubject       = "machineRuntimeInstance.*"
 	MachineRuntimeInstanceCreateSubject = "machineRuntimeInstance.create"
 	MachineRuntimeInstanceUpdateSubject = "machineRuntimeInstance.update"
 	MachineRuntimeInstanceDeleteSubject = "machineRuntimeInstance.delete"
 )
+
+// GetMachineRuntimeDefinitionSubjects returns the NATS subjects
+// for machine runtime definitions.
+func GetMachineRuntimeDefinitionSubjects() []string {
+	return []string{
+		MachineRuntimeDefinitionCreateSubject,
+		MachineRuntimeDefinitionUpdateSubject,
+		MachineRuntimeDefinitionDeleteSubject,
+	}
+}
 
 // GetMachineRuntimeInstanceSubjects returns the NATS subjects
 // for machine runtime instances.
@@ -26,6 +41,7 @@ func GetMachineRuntimeInstanceSubjects() []string {
 func GetMachineRuntimeSubjects() []string {
 	var machineRuntimeSubjects []string
 
+	machineRuntimeSubjects = append(machineRuntimeSubjects, GetMachineRuntimeDefinitionSubjects()...)
 	machineRuntimeSubjects = append(machineRuntimeSubjects, GetMachineRuntimeInstanceSubjects()...)
 
 	return machineRuntimeSubjects

@@ -567,6 +567,7 @@ var GetGcpGceMachineRuntimeInstancesCmd = &cobra.Command{
 					}
 				}
 				var relatedMachineRuntimeInstance *config_v0.MachineRuntimeInstanceValues
+				var networkID *string
 				if fetched.MachineRuntimeInstanceID != nil {
 					mri, err := client_v0.GetMachineRuntimeInstanceByID(
 						apiClient,
@@ -580,6 +581,7 @@ var GetGcpGceMachineRuntimeInstancesCmd = &cobra.Command{
 					relatedMachineRuntimeInstance = &config_v0.MachineRuntimeInstanceValues{
 						Name: mri.Name,
 					}
+					networkID = mri.NetworkID
 				}
 
 				single := []config_v0.GcpGceMachineRuntimeInstanceConfig{
@@ -589,7 +591,7 @@ var GetGcpGceMachineRuntimeInstancesCmd = &cobra.Command{
 							GcpProviderName:                gcpProviderName,
 							Region:                         fetched.Region,
 							Zone:                           fetched.Zone,
-							NetworkID:                      fetched.NetworkID,
+							NetworkID:                      networkID,
 							SSHUser:                        fetched.SSHUser,
 							GcpGceMachineRuntimeDefinition: relatedDefinition,
 							MachineRuntimeInstance:         relatedMachineRuntimeInstance,

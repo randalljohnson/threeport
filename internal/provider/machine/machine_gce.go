@@ -279,6 +279,34 @@ func (i *GceMachineInfra) createInfra() error {
 
 	i.captureOutputs(upResult.Outputs)
 
+	// assert the VM actually exists in GCP so a pulumi program that skipped
+	// instance creation cannot leak an unbacked create-success up to the
+	// reconciler.
+	if err := i.verifyInstanceExists(context.Background()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// verifyInstanceExists confirms the deterministically named VM instance is live
+// in GCP after a successful pulumi up. It returns a descriptive error when the
+// compute API reports the instance is not found, so a pulumi program that
+// silently skipped the instance resource cannot masquerade as create success.
+func (i *GceMachineInfra) verifyInstanceExists(ctx context.Context) error {
+	service, err := computev1.NewService(ctx, option.WithScopes(computev1.ComputeReadonlyScope))
+	if err != nil {
+		return fmt.Errorf("failed to create GCE compute service for existence check: %w", err)
+	}
+	if _, err := service.Instances.Get(i.ProjectID, i.Zone, i.instanceLogicalName()).Context(ctx).Do(); err != nil {
+		if isNotFound(err) {
+			return fmt.Errorf(
+				"pulumi reported success but instance %s not found in project %s",
+				i.instanceLogicalName(), i.ProjectID,
+			)
+		}
+		return fmt.Errorf("failed to verify GCE instance exists: %w", err)
+	}
 	return nil
 }
 

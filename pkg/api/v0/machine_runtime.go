@@ -43,11 +43,15 @@ type MachineRuntimeInstance struct {
 	Instance       `mapstructure:",squash"`
 	Reconciliation `mapstructure:",squash"`
 
-	// The hostname or IP address used to reach the machine.
-	Hostname *string `json:",omitempty" validate:"required" gorm:"not null"`
+	// The hostname or IP address used to reach the machine. Optional at
+	// create so the abstract instance can exist before the machine is
+	// provisioned; populated once the machine is reachable.
+	Hostname *string `json:",omitempty" validate:"optional"`
 
-	// The SSH username for authenticating to the machine.
-	SSHUser *string `json:",omitempty" validate:"required" gorm:"not null"`
+	// The SSH username for authenticating to the machine. Optional at create
+	// for the same reason as the hostname; populated once the machine is
+	// provisioned.
+	SSHUser *string `json:",omitempty" validate:"optional"`
 
 	// The SSH private key for authenticating to the machine.
 	SSHKey *string `json:",omitempty" validate:"optional" encrypt:"true"`
@@ -72,6 +76,11 @@ type MachineRuntimeInstance struct {
 
 	// The provider network identifier the machine attaches to.
 	NetworkID *string `json:",omitempty" validate:"optional"`
+
+	// The provider-specific subnet identifier the VM should attach to.
+	// Required in custom-mode shared VPCs where multiple subnets share a
+	// region.
+	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
 
 	// IngressRules are the firewall ingress rules applied to the machine.
 	// Rules are provider-agnostic; each provider reconciler translates them

@@ -64,6 +64,67 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the success path")
 }
 
+// TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers
+// the deferred-dial path: an instance whose hostname is not yet populated
+// requeues with the unpopulated delay, returns no error, dials no SSH server,
+// records no event, and persists no update, so Reconciled stays unset until
+// the machine is reachable. Both a nil and an empty-string hostname take this
+// path.
+func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *testing.T) {
+	overrideUnpopulatedRequeueDelay(t, 3)
+	// fail loudly if the deferred-dial guard ever lets a reconcile reach the
+	// SSH dial: the connect would build a reconcile context from this factory
+	overrideReconcileContext(t, func() (context.Context, context.CancelFunc) {
+		t.Fatal("reconcile must not dial ssh when the hostname is unpopulated")
+		return context.WithCancel(context.Background())
+	})
+
+	key := machinetest.NewEncryptionKey(t)
+
+	cases := []struct {
+		name     string
+		hostname *string
+	}{
+		{"nil hostname", nil},
+		{"empty hostname", util.Ptr("")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// arrange an instance whose hostname is unpopulated so the
+			// reconcile must take the deferred-dial path
+			mri := &v0.MachineRuntimeInstance{
+				Common:      v0.Common{ID: util.Ptr(uint(101))},
+				Instance:    v0.Instance{Name: util.Ptr("mri-unpopulated")},
+				SSHPassword: util.Ptr("ignored"),
+				Hostname:    tc.hostname,
+			}
+
+			// count PATCHes so a persisted update would register as nonzero
+			api := machinetest.NewAPIStub(t)
+			patchCount := registerPatchCounter(t, api, 101)
+			recorder := machinetest.NewFakeRecorder()
+			log := logr.Discard()
+			r := &controller.Reconciler{
+				APIClient:      api.Client,
+				APIServer:      api.Addr,
+				EncryptionKey:  key,
+				EventsRecorder: recorder,
+			}
+
+			// run the Created hook against the unpopulated instance
+			delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
+			// verify the deferred-dial path returns cleanly rather than failing
+			require.NoError(t, err, "an unpopulated instance must requeue without erroring")
+			// verify it requeues on the unpopulated delay, not the ssh-retry delay
+			assert.Equal(t, int64(3), delay, "an unpopulated instance requeues with the unpopulated delay")
+			// verify no event fires before the machine is reachable
+			assert.Empty(t, recorder.GetReasons(), "no event may be recorded before the machine is reachable")
+			// verify nothing is persisted so Reconciled stays unset until reachable
+			assert.Equal(t, int64(0), atomic.LoadInt64(patchCount), "no update may be persisted, so Reconciled stays unset")
+		})
+	}
+}
+
 // TestMachineRuntimeInstanceCreated_HostKeyCaptured covers the first-connect
 // path: HostKey is nil, so GetClient captures the server's key and the
 // reconciler PATCHes the MRI to persist it with Reconciled=true. The
@@ -81,9 +142,9 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 
 	api := machinetest.NewAPIStub(t)
 	var (
-		patches    [][]byte
-		patchesMu  sync.Mutex
-		patchPath  = fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, 7)
+		patches   [][]byte
+		patchesMu sync.Mutex
+		patchPath = fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, 7)
 	)
 	api.Mux.HandleFunc(patchPath, func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPatch, r.Method)

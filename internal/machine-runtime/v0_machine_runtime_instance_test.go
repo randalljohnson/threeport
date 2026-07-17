@@ -81,9 +81,9 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 
 	api := machinetest.NewAPIStub(t)
 	var (
-		patches    [][]byte
-		patchesMu  sync.Mutex
-		patchPath  = fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, 7)
+		patches   [][]byte
+		patchesMu sync.Mutex
+		patchPath = fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, 7)
 	)
 	api.Mux.HandleFunc(patchPath, func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPatch, r.Method)

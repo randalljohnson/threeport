@@ -77,6 +77,11 @@ type MachineRuntimeInstance struct {
 	// The provider network identifier the machine attaches to.
 	NetworkID *string `json:",omitempty" validate:"optional"`
 
+	// The provider-specific subnet identifier the VM should attach to.
+	// Required in custom-mode shared VPCs where multiple subnets share a
+	// region.
+	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
+
 	// IngressRules are the firewall ingress rules applied to the machine.
 	// Rules are provider-agnostic; each provider reconciler translates them
 	// to its native firewall shape. Callers who need SSH must include a

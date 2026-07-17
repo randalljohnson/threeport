@@ -116,6 +116,14 @@ type GceMachineInfra struct {
 	// NetworkID is the network or selfLink the VM and firewall attach to.
 	NetworkID string
 
+	// SubnetID is the subnetwork selfLink or self-name the VM's primary
+	// interface should attach to. When non-empty it takes priority over
+	// SubnetCIDR: the program skips subnet creation and attaches to the
+	// existing subnetwork verbatim. Required in custom-mode shared VPCs
+	// where multiple subnets share a region and no CIDR-driven create is
+	// desired.
+	SubnetID string
+
 	// ServiceAccountCredentials contains the JSON key for a GCP service
 	// account, used when running outside GCP where Workload Identity is
 	// not available.
@@ -392,9 +400,13 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 
 		// create a subnetwork with the configured CIDR when set; attach the
 		// VM's primary interface to it below. When unset the interface takes
-		// the network's default subnet for the region.
+		// the network's default subnet for the region. A non-empty SubnetID
+		// takes priority: the program attaches to the existing subnetwork by
+		// selfLink or name and skips subnet creation entirely.
 		var subnetworkRef pulumi.StringInput
-		if i.SubnetCIDR != "" {
+		if i.SubnetID != "" {
+			subnetworkRef = pulumi.String(i.SubnetID)
+		} else if i.SubnetCIDR != "" {
 			subnetOpts := i.resourceOptions(gcpProvider, i.subnetLogicalName())
 			if networkResource != nil {
 				subnetOpts = append(subnetOpts, pulumi.DependsOn([]pulumi.Resource{networkResource}))

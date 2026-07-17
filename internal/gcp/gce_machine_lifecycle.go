@@ -501,6 +501,9 @@ func buildGceMachineInfra(
 		if mri.NetworkID != nil {
 			infraGce.NetworkID = *mri.NetworkID
 		}
+		if mri.SubnetID != nil {
+			infraGce.SubnetID = *mri.SubnetID
+		}
 		if mri.NetworkCIDR != nil {
 			infraGce.NetworkCIDR = *mri.NetworkCIDR
 		}

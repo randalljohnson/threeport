@@ -19,25 +19,32 @@ const (
 	// tcpMaxRetries is the maximum number of TCP connection retries before
 	// the process exits.
 	tcpMaxRetries = 60
-
-	// tcpAPIPort is the port used for the threeport API service.
-	tcpAPIPort = 443
 )
 
-// WaitForAPI waits for the threeport API server to become reachable on port
-// 443. It retries up to 60 times with a 2-second dial timeout and 2-second
-// sleep between attempts (~4 minutes total). If the endpoint is not reachable
-// after all retries, the process exits with code 1 to trigger a pod restart.
+// tcpAPIPorts lists the ports the threeport API service may expose. The auth
+// enabled deployment exposes 443; the auth disabled deployment exposes 80.
+var tcpAPIPorts = []int{443, 80}
+
+// WaitForAPI waits for the threeport API server to become reachable on any
+// of the known API ports. It retries up to 60 times with a 2-second dial
+// timeout and 2-second sleep between attempts (~4 minutes total). If none of
+// the endpoints are reachable after all retries, the process exits with code
+// 1 to trigger a pod restart.
 func WaitForAPI(host string, log logr.Logger) {
-	addr := fmt.Sprintf("%s:%d", host, tcpAPIPort)
-	log.Info("waiting for API server", "address", addr)
+	addrs := make([]string, 0, len(tcpAPIPorts))
+	for _, port := range tcpAPIPorts {
+		addrs = append(addrs, fmt.Sprintf("%s:%d", host, port))
+	}
+	log.Info("waiting for API server", "addresses", addrs)
 
 	for i := 0; i < tcpMaxRetries; i++ {
-		conn, err := net.DialTimeout("tcp", addr, tcpDialTimeout)
-		if err == nil {
-			conn.Close()
-			log.Info("API server is reachable", "address", addr)
-			return
+		for _, addr := range addrs {
+			conn, err := net.DialTimeout("tcp", addr, tcpDialTimeout)
+			if err == nil {
+				conn.Close()
+				log.Info("API server is reachable", "address", addr)
+				return
+			}
 		}
 		time.Sleep(tcpRetryInterval)
 	}
@@ -45,7 +52,7 @@ func WaitForAPI(host string, log logr.Logger) {
 	log.Error(
 		fmt.Errorf("API server not reachable after %d retries", tcpMaxRetries),
 		"failed to connect to API server",
-		"address", addr,
+		"addresses", addrs,
 	)
 	os.Exit(1)
 }

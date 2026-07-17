@@ -1,6 +1,7 @@
 package gcp
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -187,6 +188,31 @@ func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, st
 		&updatedInstance,
 	); err != nil {
 		return fmt.Errorf("failed to update GCE instance with create outputs: %w", err)
+	}
+
+	// persist the GCE resource inventory onto the abstract machine runtime
+	// instance so a downstream consumer can read the payload without
+	// crossing into the provider-specific row. skip when no parent link is
+	// present, which is the shape a fixture or a partial create can produce
+	if g.instance == nil || g.instance.MachineRuntimeInstanceID == nil {
+		return nil
+	}
+	inventory := gceInfra.BuildResourceInventory()
+	inventoryBytes, err := json.Marshal(inventory)
+	if err != nil {
+		return fmt.Errorf("failed to marshal GCE resource inventory: %w", err)
+	}
+	inventoryJSON := datatypes.JSON(inventoryBytes)
+	mriUpdate := v0.MachineRuntimeInstance{
+		Common:            v0.Common{ID: g.instance.MachineRuntimeInstanceID},
+		ResourceInventory: &inventoryJSON,
+	}
+	if _, err := client.UpdateMachineRuntimeInstance(
+		g.r.APIClient,
+		g.r.APIServer,
+		&mriUpdate,
+	); err != nil {
+		return fmt.Errorf("failed to update machine runtime instance with resource inventory: %w", err)
 	}
 	return nil
 }

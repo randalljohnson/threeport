@@ -164,6 +164,22 @@ type GceMachineInfra struct {
 	// externalIP is captured from the Pulumi up outputs after a successful deploy.
 	externalIP string
 
+	// internalIPs are the primary internal IP addresses captured from each
+	// network interface after a successful deploy. Single-entry today because
+	// the pulumi program attaches only one interface; kept as a slice so a
+	// future multi-interface program surfaces every address without an API change.
+	internalIPs []string
+
+	// attachedVPCs are the VPC selfLink URLs of every network the VM is
+	// attached to, captured from network interface outputs after deploy.
+	// Same single-entry shape as internalIPs for the same reason.
+	attachedVPCs []string
+
+	// attachedSubnets are the subnet selfLink URLs of every subnetwork the VM
+	// is attached to, captured from network interface outputs. Empty on
+	// interfaces that fall back to the default subnet of the attached network.
+	attachedSubnets []string
+
 	// adoptImportIDs maps a resource's Pulumi logical name to the import ID
 	// DiscoverAndAdopt found for it. The program attaches pulumi.Import for
 	// any resource present here so the deploy adopts an existing cloud
@@ -458,6 +474,23 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 				NatIp())
 		}
 
+		// export the primary interface's internal IP and the VPC and subnet
+		// selfLink URLs so the resource inventory captures the network
+		// attachments the VM ended up with, not just the inputs the caller
+		// supplied. The Google Compute API normalizes network and subnetwork
+		// references on read to full selfLink URLs, so these exports always
+		// resolve to URLs regardless of whether the caller passed a bare name
+		// or a URL as input.
+		pctx.Export("internalIP", instance.NetworkInterfaces.
+			Index(pulumi.Int(0)).
+			NetworkIp())
+		pctx.Export("attachedVPC", instance.NetworkInterfaces.
+			Index(pulumi.Int(0)).
+			Network())
+		pctx.Export("attachedSubnet", instance.NetworkInterfaces.
+			Index(pulumi.Int(0)).
+			Subnetwork())
+
 		return nil
 	}
 }
@@ -625,6 +658,10 @@ func (i *GceMachineInfra) ensureSSHKeyPair() error {
 
 // captureOutputs maps the hostname and externalIP entries from the Pulumi up
 // outputs onto the receiver, tolerating missing keys rather than panicking.
+// The internalIP, attachedVPC, and attachedSubnet outputs feed the resource
+// inventory the lifecycle adapter persists onto the abstract machine runtime
+// instance; each is wrapped in a single-entry slice so the inventory shape
+// generalizes to a future multi-interface program without changing the JSON.
 func (i *GceMachineInfra) captureOutputs(outputs auto.OutputMap) {
 	if v, ok := outputs["hostname"]; ok {
 		if s, ok := v.Value.(string); ok {
@@ -635,6 +672,63 @@ func (i *GceMachineInfra) captureOutputs(outputs auto.OutputMap) {
 		if s, ok := v.Value.(string); ok {
 			i.externalIP = s
 		}
+	}
+	if s := captureStringOutput(outputs, "internalIP"); s != "" {
+		i.internalIPs = []string{s}
+	}
+	if s := captureStringOutput(outputs, "attachedVPC"); s != "" {
+		i.attachedVPCs = []string{s}
+	}
+	if s := captureStringOutput(outputs, "attachedSubnet"); s != "" {
+		i.attachedSubnets = []string{s}
+	}
+}
+
+// captureStringOutput reads a single string value from the Pulumi output map,
+// tolerating the two shapes the automation API produces for a string export:
+// a bare string, and a pointer to string that came from a StringPtrOutput.
+// A missing key or an unexpected value type both return the empty string.
+func captureStringOutput(outputs auto.OutputMap, key string) string {
+	v, ok := outputs[key]
+	if !ok {
+		return ""
+	}
+	switch val := v.Value.(type) {
+	case string:
+		return val
+	case *string:
+		if val == nil {
+			return ""
+		}
+		return *val
+	default:
+		return ""
+	}
+}
+
+// BuildResourceInventory returns a generic GCP infrastructure inventory for
+// the deployed VM: external and internal IPs, the VPC and subnet self-links
+// the instance is attached to, the deterministic firewall names, and the
+// zone and region it lives in. The lifecycle adapter persists this payload
+// onto the abstract machine runtime instance so a downstream consumer can
+// act on the deployed resources without provider-specific knowledge. Call
+// after createInfra has populated the captured Pulumi outputs.
+func (i *GceMachineInfra) BuildResourceInventory() map[string]any {
+	// derive firewall names from the ingress rule index; deterministic naming
+	// avoids a dedicated Pulumi output for the same information
+	firewallNames := make([]string, 0, len(i.IngressRules))
+	for idx := range i.IngressRules {
+		firewallNames = append(firewallNames, i.ingressFirewallLogicalName(idx))
+	}
+
+	return map[string]any{
+		"external_ip":       i.externalIP,
+		"internal_ips":      i.internalIPs,
+		"vpc_self_links":    i.attachedVPCs,
+		"subnet_self_links": i.attachedSubnets,
+		"firewall_names":    firewallNames,
+		"zone":              i.Zone,
+		"region":            i.Region,
 	}
 }
 

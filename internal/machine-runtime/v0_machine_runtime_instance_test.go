@@ -26,9 +26,11 @@ import (
 // TestMachineRuntimeInstanceCreated_HappyPath drives a full Created
 // reconcile against the in-process SSH server. The MRI has HostKey set to
 // the server's actual key (no capture path); GetClient succeeds, Ping
-// succeeds, and the reachability signal lands as a log statement. The
-// reconciler emits exactly one CreateInProgress lifecycle marker at the top of
-// the run; the wrapper's SuccessfulCreate event still records the outcome.
+// succeeds, and the reachability signal lands as a log statement. On this
+// first-reachability pass the reconciler issues a single PATCH that stamps
+// creation_confirmed with Reconciled=true, and emits exactly one
+// CreateInProgress lifecycle marker at the top of the run; the wrapper's
+// SuccessfulCreate event still records the outcome.
 func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)
@@ -40,7 +42,26 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	mri := machinetest.MRIFromAddr(t, 42, "mri-happy", addr, "u", "p", key)
 	mri.HostKey = util.Ptr(hostKeyBase64(signer))
 
+	// mock the PATCH the reconciler issues to stamp creation_confirmed and
+	// record every request body so the test can assert exactly one fires
 	api := machinetest.NewAPIStub(t)
+	var (
+		patches   [][]byte
+		patchesMu sync.Mutex
+		patchPath = fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, 42)
+	)
+	api.Mux.HandleFunc(patchPath, func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+		body, _ := io.ReadAll(r.Body)
+		patchesMu.Lock()
+		patches = append(patches, body)
+		patchesMu.Unlock()
+		var updated v0.MachineRuntimeInstance
+		require.NoError(t, json.Unmarshal(body, &updated))
+		updated.ID = util.Ptr(uint(42))
+		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{updated})
+	})
+
 	recorder := machinetest.NewFakeRecorder()
 	log := logr.Discard()
 
@@ -62,6 +83,15 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	// success path; the wrapper covers the outcome and reachability is a
 	// log line, so no HostKeyCaptured or SSHReachable events fire
 	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the success path")
+
+	// a single PATCH stamps creation_confirmed with Reconciled=true; the
+	// pinned host key needs no capture, so the body carries no HostKey field
+	patchesMu.Lock()
+	defer patchesMu.Unlock()
+	require.Len(t, patches, 1, "expected exactly one PATCH to stamp creation_confirmed")
+	assert.Contains(t, string(patches[0]), "CreationConfirmed", "PATCH body should carry the CreationConfirmed field")
+	assert.Contains(t, string(patches[0]), `"Reconciled":true`, "PATCH should set Reconciled=true so the resulting update notification does not retrigger reconciliation")
+	assert.NotContains(t, string(patches[0]), "HostKey", "pinned host key needs no capture, so the PATCH should not carry HostKey")
 }
 
 // TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers

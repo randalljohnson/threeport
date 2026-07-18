@@ -1,6 +1,9 @@
 package v0
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestResolveImageRepoPrefersExplicitOverride covers ResolveImageRepo
 // returning IMAGE_REPO verbatim when set, ahead of any CI or dev derivation.
@@ -76,20 +79,45 @@ func TestResolveImageTagEchoesRefNameOnTagBuild(t *testing.T) {
 	}
 }
 
-// TestResolveImageTagReturnsVersionOutsideCI covers ResolveImageTag returning
-// the version default unchanged outside CI.
-func TestResolveImageTagReturnsVersionOutsideCI(t *testing.T) {
-	// no override, not in CI
+// TestResolveImageTagFallsBackToVersionOutsideCheckout covers ResolveImageTag
+// returning the bare version default when it runs outside CI and outside a git
+// checkout, where no short commit sha is available to suffix.
+func TestResolveImageTagFallsBackToVersionOutsideCheckout(t *testing.T) {
+	// not in CI, and run from outside any git checkout so the sha read fails
+	// and the resolver falls back to the bare version default
 	t.Setenv("IMAGE_TAG", "")
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("ARCH", "")
-	// the version default passes through untouched
+	t.Chdir(t.TempDir())
+	// the bare version default passes through when no sha is available
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
 	}
 	if got != "v0.1.0-dev" {
 		t.Errorf("ResolveImageTag = %q, want v0.1.0-dev", got)
+	}
+}
+
+// TestResolveImageTagSuffixesShaInCheckout covers ResolveImageTag suffixing the
+// version default with the short commit sha when it runs outside CI inside a git
+// checkout, so the tag names the exact commit built.
+func TestResolveImageTagSuffixesShaInCheckout(t *testing.T) {
+	// not in CI; the test runs inside the repo checkout, so a short sha is read
+	t.Setenv("IMAGE_TAG", "")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("ARCH", "")
+	// the resolved tag is <version>.<sha> with a seven-character sha
+	got, err := ResolveImageTag("v0.1.0-dev")
+	if err != nil {
+		t.Fatalf("ResolveImageTag returned error: %v", err)
+	}
+	prefix := "v0.1.0-dev."
+	if !strings.HasPrefix(got, prefix) {
+		t.Fatalf("ResolveImageTag = %q, want prefix %q", got, prefix)
+	}
+	if sha := strings.TrimPrefix(got, prefix); len(sha) != 7 {
+		t.Errorf("sha suffix = %q, want seven characters", sha)
 	}
 }
 
@@ -110,14 +138,17 @@ func TestResolveImageTagDecoratesSingleArch(t *testing.T) {
 	}
 }
 
-// TestResolveImageTagSingleArchAppliesToVersionDefault covers the -<arch>
-// decoration landing on the plain version default outside CI.
-func TestResolveImageTagSingleArchAppliesToVersionDefault(t *testing.T) {
-	// no override, not in CI, with a single-arch ARCH set
+// TestResolveImageTagSingleArchDecoratesFallbackVersion covers the -<arch>
+// decoration landing on the bare version default when the resolver falls back
+// outside CI and outside a git checkout.
+func TestResolveImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
+	// not in CI, single-arch ARCH set, and run from outside any git checkout so
+	// the resolver falls back to the bare version default before decorating
 	t.Setenv("IMAGE_TAG", "")
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("ARCH", "amd64")
-	// the version default carries the arch decoration through
+	t.Chdir(t.TempDir())
+	// the arch decorates the bare fallback version
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)

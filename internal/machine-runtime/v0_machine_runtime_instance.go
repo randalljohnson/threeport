@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	logr "github.com/go-logr/logr"
@@ -22,8 +23,10 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// sshRetryDelaySeconds is the requeue delay (in seconds) returned when an
-// SSH connect or ping fails. Package-level so tests can override it.
+// sshRetryDelaySeconds is the base requeue delay (in seconds) returned when
+// an SSH connect or ping fails; subsequent consecutive failures on the same
+// instance double the delay up to sshMaxRetryDelaySeconds. Package-level so
+// tests can override it.
 var sshRetryDelaySeconds int64 = 30
 
 // unpopulatedRequeueDelaySeconds is the requeue delay (in seconds) returned
@@ -31,6 +34,53 @@ var sshRetryDelaySeconds int64 = 30
 // without erroring while the machine is still being provisioned.
 // Package-level so tests can override it.
 var unpopulatedRequeueDelaySeconds int64 = 15
+
+// sshMaxRetryDelaySeconds caps the exponential backoff so a permanently
+// unreachable host does not stretch the requeue delay unboundedly.
+// Package-level so tests can shrink it.
+var sshMaxRetryDelaySeconds int64 = 30 * 60
+
+// sshRetryState tracks consecutive reconcile-retry failures per machine
+// runtime instance ID so the requeue delay can grow exponentially. Keying
+// on the instance ID means the cap applies uniformly to every instance the
+// reconciler observes: newly-created machines whose provisioning is in
+// flight, machines whose SSH endpoint is transiently unreachable, and
+// pre-existing orphan records whose backing provider VM has been destroyed
+// out of band. A process restart clears the map; the goal is to relieve
+// steady-state controller load, not to persist give-up state across
+// restarts.
+var (
+	sshRetryStateMu sync.Mutex
+	sshRetryState   = map[uint]int64{}
+)
+
+// sshRetryBackoff records another consecutive SSH failure for the given
+// instance and returns the requeue delay to use, doubling from
+// sshRetryDelaySeconds up to sshMaxRetryDelaySeconds so a partitioned host
+// stops hammering the reconciler at the base cadence.
+func sshRetryBackoff(instanceID uint) int64 {
+	sshRetryStateMu.Lock()
+	defer sshRetryStateMu.Unlock()
+	sshRetryState[instanceID]++
+	n := sshRetryState[instanceID]
+	// cap the exponent so the shift below cannot overflow int64
+	if n > 20 {
+		n = 20
+	}
+	delay := sshRetryDelaySeconds << uint(n-1)
+	if delay <= 0 || delay > sshMaxRetryDelaySeconds {
+		delay = sshMaxRetryDelaySeconds
+	}
+	return delay
+}
+
+// sshRetryReset clears any recorded SSH failure count for the instance so
+// the next failure starts a new backoff sequence at sshRetryDelaySeconds.
+func sshRetryReset(instanceID uint) {
+	sshRetryStateMu.Lock()
+	defer sshRetryStateMu.Unlock()
+	delete(sshRetryState, instanceID)
+}
 
 // sshOperationTimeout bounds the SSH operations of one reconcile pass.
 // Package-level so tests can shrink it to exercise the timeout path.
@@ -174,9 +224,11 @@ func v0MachineRuntimeInstanceCreated(
 		// or unreachable host may be fixed externally without any change
 		// to this object, so reconciliation should keep trying;
 		// return an ErrWithEvent so the wrapper substitutes the specific
-		// reason for the generic FailedCreate event
+		// reason for the generic FailedCreate event, and back off
+		// exponentially so a permanently unreachable host does not hammer
+		// the reconciler at the base cadence
 		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
-		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
+		return sshRetryBackoff(*machineRuntimeInstance.ID), &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -209,15 +261,39 @@ func v0MachineRuntimeInstanceCreated(
 	if err := pingWithContext(ctx, sshClient); err != nil {
 		// always retry, same reasoning as the GetClient path above;
 		// return an ErrWithEvent so the wrapper substitutes the specific
-		// reason for the generic FailedCreate event
+		// reason for the generic FailedCreate event, and back off
+		// exponentially so a permanently unreachable host does not hammer
+		// the reconciler at the base cadence
 		note := fmt.Sprintf("failed to ping machine runtime instance: %s", err)
-		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
+		return sshRetryBackoff(*machineRuntimeInstance.ID), &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
 				Reason: util.Ptr("SSHPingFailed"),
 				Note:   util.Ptr(note),
 			},
+		}
+	}
+
+	// the machine is reachable, so clear any recorded failure count so a
+	// future failure starts a fresh backoff sequence
+	sshRetryReset(*machineRuntimeInstance.ID)
+
+	// stamp creation_confirmed on the abstract instance row the first time
+	// the reconciler observes end-to-end reachability, mirroring the shape
+	// the leaf GCE reconciler uses on its own row. only write when the
+	// column is still unset so subsequent successful reconciles do not
+	// churn the row or emit further update notifications
+	if machineRuntimeInstance.CreationConfirmed == nil {
+		timestamp := time.Now().UTC()
+		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
+			Common: v0.Common{ID: machineRuntimeInstance.ID},
+			Reconciliation: v0.Reconciliation{
+				Reconciled:        util.Ptr(true),
+				CreationConfirmed: &timestamp,
+			},
+		}); err != nil {
+			return controller.RetryOnNetworkErr(err, "failed to stamp creation_confirmed on machine runtime instance")
 		}
 	}
 
@@ -259,7 +335,10 @@ func reconcileProviderInstance(
 			return 0, fmt.Errorf("failed to check for existing GCE machine runtime instance: %w", err)
 		}
 		if len(*existing) > 0 {
-			return sshRetryDelaySeconds, nil
+			// back off on repeat passes so an orphan whose provider VM was
+			// destroyed does not spin at the base cadence waiting for a
+			// hostname that will never arrive
+			return sshRetryBackoff(*machineRuntimeInstance.ID), nil
 		}
 
 		// look up the GCP provider by name or fall back to the default
@@ -321,7 +400,9 @@ func reconcileProviderInstance(
 			return 0, fmt.Errorf("failed to create GCE machine runtime instance: %w", err)
 		}
 
-		return sshRetryDelaySeconds, nil
+		// route through the same backoff so the wait-for-hostname loop is
+		// capped for every instance, not just the SSH-connect path
+		return sshRetryBackoff(*machineRuntimeInstance.ID), nil
 	default:
 		return 0, fmt.Errorf("infra provider %s not supported", *def.InfraProvider)
 	}
@@ -382,6 +463,12 @@ func v0MachineRuntimeInstanceDeleted(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// drop any recorded SSH failure count so the map does not retain an
+	// entry for an instance that is going away
+	if machineRuntimeInstance.ID != nil {
+		sshRetryReset(*machineRuntimeInstance.ID)
+	}
+
 	// emit a lifecycle marker so operators can see reconcile has begun;
 	// dedup collapses repeated emits across requeues into a single row
 	var deleteExtras []string

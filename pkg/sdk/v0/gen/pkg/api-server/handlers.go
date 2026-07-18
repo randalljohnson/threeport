@@ -2059,6 +2059,8 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						}),
 					)
 					g.Line()
+					g.Add(notifyControllersUpdateHandler)
+					g.Line()
 					g.Id("response").Op(",").Id("err").Op(":=").Qual(
 						"github.com/threeport/threeport/pkg/api-server/lib/v0",
 						"CreateResponse",

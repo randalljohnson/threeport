@@ -2,6 +2,7 @@ package v0
 
 import (
 	"errors"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -16,13 +17,20 @@ const (
 	serializationFailureCode = "40001"
 
 	// serializationRetryMax bounds how many times a write is re-run after a
-	// serialization conflict before the error is surfaced to the caller.
-	serializationRetryMax = 5
+	// serialization conflict before the error is surfaced to the caller. Sized
+	// for the observed workload: bursts of concurrent PATCHes on the same row
+	// exhaust a 5-attempt budget for a small fraction of writers, so the cap
+	// sits high enough to absorb that burst without stranding the caller.
+	serializationRetryMax = 12
 
-	// serializationRetryBaseDelay is the wait before the first retry. The
-	// wait grows linearly with each subsequent attempt to spread out
-	// contending writers.
+	// serializationRetryBaseDelay seeds the exponential backoff. Doubling and
+	// jitter spread contending writers across a wide enough window that a
+	// stampede resolves within the retry budget.
 	serializationRetryBaseDelay = 10 * time.Millisecond
+
+	// serializationRetryMaxDelay caps the per-attempt wait so a long tail on
+	// exponential backoff does not stall the request context.
+	serializationRetryMaxDelay = 500 * time.Millisecond
 )
 
 // RetryOnSerializationFailure runs a database write and re-runs it from the
@@ -37,10 +45,22 @@ func RetryOnSerializationFailure(write func() *gorm.DB) *gorm.DB {
 		if result.Error == nil || !isSerializationFailure(result.Error) {
 			return result
 		}
-		time.Sleep(serializationRetryBaseDelay * time.Duration(attempt+1))
+		time.Sleep(serializationRetryBackoff(attempt))
 	}
 
 	return result
+}
+
+// serializationRetryBackoff returns the wait before the next attempt: base *
+// 2^attempt capped at the max, then multiplied by a random factor in [0.5, 1.5)
+// so contending writers do not retry in lockstep and re-collide.
+func serializationRetryBackoff(attempt int) time.Duration {
+	delay := serializationRetryBaseDelay << attempt
+	if delay <= 0 || delay > serializationRetryMaxDelay {
+		delay = serializationRetryMaxDelay
+	}
+	jitter := 0.5 + rand.Float64()
+	return time.Duration(float64(delay) * jitter)
 }
 
 // isSerializationFailure reports whether err is a CockroachDB or PostgreSQL
@@ -62,9 +82,11 @@ func isSerializationFailure(err error) bool {
 
 	// fall back to the error text only when no typed driver error is present,
 	// matching the SQLSTATE on a bordered token so a value carried in the
-	// message cannot be mistaken for the code.
+	// message cannot be mistaken for the code. WriteTooOldError is a specific
+	// CockroachDB variant of the same class, retryable for the same reason.
 	msg := err.Error()
 	return strings.Contains(msg, "(SQLSTATE "+serializationFailureCode+")") ||
 		strings.Contains(msg, "RETRY_SERIALIZABLE") ||
-		strings.Contains(msg, "TransactionRetryWithProtoRefreshError")
+		strings.Contains(msg, "TransactionRetryWithProtoRefreshError") ||
+		strings.Contains(msg, "WriteTooOldError")
 }

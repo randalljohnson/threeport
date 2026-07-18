@@ -718,7 +718,6 @@ Flags:
   -h, --help                      help for wordpress
       --provider-config string    Path to infra provider config directory (default is $HOME/.threeport/).
       --threeport-config string   Path to config file (default is $HOME/.threeport/config.yaml). Can also be set with environment variable THREEPORT_CONFIG
-  -t, --toggle                    Help message for toggle
 
 Additional help topics:
   wordpress update     Update a Threeport Wordpress object

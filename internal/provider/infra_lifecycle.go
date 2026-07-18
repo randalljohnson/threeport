@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,11 +29,19 @@ type LifecycleConfig struct {
 	PersistRetryDelay time.Duration
 }
 
+// defaultSemaphoreCapacity is the fallback concurrency cap applied when
+// PULUMI_CONCURRENCY is unset, unparseable, or out of range.
+const defaultSemaphoreCapacity = 20
+
+// maxSemaphoreCapacity is the upper bound enforced on PULUMI_CONCURRENCY;
+// values above this are clamped down with a warning log.
+const maxSemaphoreCapacity = 100
+
 // defaultLifecycleConfig is the production configuration.
 var defaultLifecycleConfig = LifecycleConfig{
 	StaleAckThreshold: 240 * time.Second,
 	RefreshInterval:   60 * time.Second,
-	SemaphoreCapacity: 5,
+	SemaphoreCapacity: defaultSemaphoreCapacity,
 	PersistRetries:    30,
 	PersistRetryDelay: 10 * time.Second,
 }
@@ -48,8 +58,43 @@ var lifecycleConfig = defaultLifecycleConfig
 
 // infraSemaphore caps the total number of concurrent infrastructure
 // operations across every stack, guarding overall memory use when many
-// distinct stacks reconcile at once.
-var infraSemaphore = make(chan struct{}, 5)
+// distinct stacks reconcile at once. The capacity is initialized in init
+// from lifecycleConfig.SemaphoreCapacity so PULUMI_CONCURRENCY overrides
+// apply before any operation runs.
+var infraSemaphore chan struct{}
+
+// init reads the PULUMI_CONCURRENCY override, applies it to
+// lifecycleConfig, and sizes infraSemaphore to match.
+func init() {
+	// PULUMI_CONCURRENCY caps how many concurrent pulumi stack operations may run per controller instance.
+	lifecycleConfig.SemaphoreCapacity = resolveSemaphoreCapacity()
+	infraSemaphore = make(chan struct{}, lifecycleConfig.SemaphoreCapacity)
+}
+
+// resolveSemaphoreCapacity reads PULUMI_CONCURRENCY and returns a valid
+// concurrency cap. An unset or unparseable value falls back to the
+// default; a value below 1 is raised to 1 with a warning; a value above
+// maxSemaphoreCapacity is clamped down with a warning.
+func resolveSemaphoreCapacity() int {
+	raw := os.Getenv("PULUMI_CONCURRENCY")
+	if raw == "" {
+		return defaultSemaphoreCapacity
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil {
+		log.Printf("PULUMI_CONCURRENCY=%q is not a valid integer, using default %d", raw, defaultSemaphoreCapacity)
+		return defaultSemaphoreCapacity
+	}
+	if parsed < 1 {
+		log.Printf("PULUMI_CONCURRENCY=%d is below minimum, using 1", parsed)
+		return 1
+	}
+	if parsed > maxSemaphoreCapacity {
+		log.Printf("PULUMI_CONCURRENCY=%d exceeds maximum, using %d", parsed, maxSemaphoreCapacity)
+		return maxSemaphoreCapacity
+	}
+	return parsed
+}
 
 // stackLocksMu guards stackLocks and its reference counts. The map is
 // small, only holds entries for keys currently being operated on, and is
@@ -228,6 +273,12 @@ type InfraLifecycleProvider interface {
 	// ConfirmCreation sets CreationConfirmed and Reconciled=true in the API.
 	ConfirmCreation() error
 
+	// RecordSuccessfulCreate emits a SuccessfulCreate event for the provider's
+	// object. Called from the OnSuccess callback after ConfirmCreation succeeds,
+	// so the reader sees provisioning completion even though the wrapper's
+	// wasReconciled gate suppresses its own emit.
+	RecordSuccessfulCreate() error
+
 	// AckDeletion sets DeletionAcknowledged in the API.
 	AckDeletion() error
 
@@ -362,18 +413,47 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 
 			// check if deletion was scheduled during the create operation
 			latestSnap, err := p.GetReconciliation()
-			if err == nil && latestSnap.DeletionScheduled != nil {
-				log.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
+			if err != nil {
+				return fmt.Errorf("failed to re-check reconciliation before confirmation: %w", err)
+			}
+			if latestSnap.DeletionScheduled != nil {
+				log.Info("deletion was scheduled during create, skipping confirmation to let delete proceed")
 				return nil
 			}
 
-			// publish notification; return the error so the caller triggers
-			// persistFailure and requeues, otherwise downstream subscribers
-			// never fire and the object stalls until an unrelated event
-			if err := p.PublishCreateNotification(); err != nil {
-				return fmt.Errorf("failed to publish create notification: %w", err)
+			// short-circuit if a concurrent path already confirmed
+			if latestSnap.CreationConfirmed != nil {
+				return nil
 			}
 
+			// confirmation runs inline here so Reconciled flips as soon
+			// as Pulumi completes rather than waiting for the original
+			// NATS message to redeliver. The wrapper Nak-redelivers the
+			// original create message anyway; when it hits
+			// IsCreateComplete the CreationConfirmed short-circuit above
+			// catches it. The wrapper's wasReconciled gate then
+			// suppresses its own SuccessfulCreate emit, so this callback
+			// records the event directly via RecordSuccessfulCreate
+			// below to surface provisioning completion to the reader.
+			infra, err := p.BuildInfra()
+			if err != nil {
+				return fmt.Errorf("failed to build infra for create confirmation: %w", err)
+			}
+			if err := p.OnCreateConfirmed(infra); err != nil {
+				return fmt.Errorf("failed to run post-creation work: %w", err)
+			}
+			if err := p.ConfirmCreation(); err != nil {
+				return fmt.Errorf("failed to confirm creation: %w", err)
+			}
+
+			// emit the provisioning-complete event directly; an emit
+			// failure must not fail the callback and trip
+			// PersistFailure, since ConfirmCreation already succeeded
+			if err := p.RecordSuccessfulCreate(); err != nil {
+				log.Error(err, "failed to record SuccessfulCreate event")
+			}
+
+			log.Info("creation confirmed")
 			return nil
 		},
 	}

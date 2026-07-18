@@ -112,7 +112,7 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 // @ID get-v0-machineWorkloadDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "machine workload definition search by name"
+// @Param name query string false "filter by exact machine workload definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -130,7 +130,7 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 	var filter api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -413,6 +413,8 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a machine workload definition.
 // @Description Delete a machine workload definition by ID from the database.
+// @Description Cascade: children of this machine workload definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the machine workload definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-machineWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -592,7 +594,7 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 // @ID get-v0-machineWorkloadInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "machine workload instance search by name"
+// @Param name query string false "filter by exact machine workload instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -610,7 +612,7 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 	var filter api_v0.MachineWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -911,6 +913,8 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a machine workload instance.
 // @Description Delete a machine workload instance by ID from the database.
+// @Description Cascade: children of this machine workload instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the machine workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-machineWorkloadInstance
 // @Accept json
 // @Produce json

@@ -127,7 +127,7 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 // @ID get-v0-controlPlaneDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "control plane definition search by name"
+// @Param name query string false "filter by exact control plane definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -145,7 +145,7 @@ func (h Handler) GetControlPlaneDefinitions(c echo.Context) error {
 	var filter api_v0.ControlPlaneDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -446,6 +446,8 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 
 // @Summary deletes a control plane definition.
 // @Description Delete a control plane definition by ID from the database.
+// @Description Cascade: children of this control plane definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the control plane definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-controlPlaneDefinition
 // @Accept json
 // @Produce json
@@ -678,7 +680,7 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 // @ID get-v0-controlPlaneInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "control plane instance search by name"
+// @Param name query string false "filter by exact control plane instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -696,7 +698,7 @@ func (h Handler) GetControlPlaneInstances(c echo.Context) error {
 	var filter api_v0.ControlPlaneInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -997,6 +999,8 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 
 // @Summary deletes a control plane instance.
 // @Description Delete a control plane instance by ID from the database.
+// @Description Cascade: children of this control plane instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the control plane instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-controlPlaneInstance
 // @Accept json
 // @Produce json

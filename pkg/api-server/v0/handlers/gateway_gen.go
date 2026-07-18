@@ -112,7 +112,7 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 // @ID get-v0-domainNameDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "domain name definition search by name"
+// @Param name query string false "filter by exact domain name definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -130,7 +130,7 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 	var filter api_v0.DomainNameDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -413,6 +413,8 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 
 // @Summary deletes a domain name definition.
 // @Description Delete a domain name definition by ID from the database.
+// @Description Cascade: children of this domain name definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the domain name definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-domainNameDefinition
 // @Accept json
 // @Produce json
@@ -592,7 +594,7 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 // @ID get-v0-domainNameInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "domain name instance search by name"
+// @Param name query string false "filter by exact domain name instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -610,7 +612,7 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 	var filter api_v0.DomainNameInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -911,6 +913,8 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 
 // @Summary deletes a domain name instance.
 // @Description Delete a domain name instance by ID from the database.
+// @Description Cascade: children of this domain name instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the domain name instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-domainNameInstance
 // @Accept json
 // @Produce json
@@ -1130,7 +1134,7 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 // @ID get-v0-gatewayDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway definition search by name"
+// @Param name query string false "filter by exact gateway definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1148,7 +1152,7 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 	var filter api_v0.GatewayDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1449,6 +1453,8 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 
 // @Summary deletes a gateway definition.
 // @Description Delete a gateway definition by ID from the database.
+// @Description Cascade: children of this gateway definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gateway definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gatewayDefinition
 // @Accept json
 // @Produce json
@@ -1651,7 +1657,7 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 // @ID get-v0-gatewayHttpPorts
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway http port search by name"
+// @Param name query string false "filter by exact gateway http port name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1669,7 +1675,7 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 	var filter api_v0.GatewayHttpPort
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1952,6 +1958,8 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 
 // @Summary deletes a gateway http port.
 // @Description Delete a gateway http port by ID from the database.
+// @Description Cascade: children of this gateway http port attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the gateway http port row and any cascading children have been removed synchronously.
 // @ID delete-v0-gatewayHttpPort
 // @Accept json
 // @Produce json
@@ -2118,7 +2126,7 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 // @ID get-v0-gatewayInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway instance search by name"
+// @Param name query string false "filter by exact gateway instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -2136,7 +2144,7 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 	var filter api_v0.GatewayInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -2437,6 +2445,8 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 
 // @Summary deletes a gateway instance.
 // @Description Delete a gateway instance by ID from the database.
+// @Description Cascade: children of this gateway instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gateway instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gatewayInstance
 // @Accept json
 // @Produce json
@@ -2626,7 +2636,7 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 // @ID get-v0-gatewayTcpPorts
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway tcp port search by name"
+// @Param name query string false "filter by exact gateway tcp port name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -2644,7 +2654,7 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 	var filter api_v0.GatewayTcpPort
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -2927,6 +2937,8 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 
 // @Summary deletes a gateway tcp port.
 // @Description Delete a gateway tcp port by ID from the database.
+// @Description Cascade: children of this gateway tcp port attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the gateway tcp port row and any cascading children have been removed synchronously.
 // @ID delete-v0-gatewayTcpPort
 // @Accept json
 // @Produce json

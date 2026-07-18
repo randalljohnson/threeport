@@ -112,7 +112,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @ID get-v0-ociOkeKubernetesRuntimeDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "oci oke kubernetes runtime definition search by name"
+// @Param name query string false "filter by exact oci oke kubernetes runtime definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -130,7 +130,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeDefinitions(c echo.Context) error {
 	var filter api_v0.OciOkeKubernetesRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -413,6 +413,8 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 
 // @Summary deletes a oci oke kubernetes runtime definition.
 // @Description Delete a oci oke kubernetes runtime definition by ID from the database.
+// @Description Cascade: children of this oci oke kubernetes runtime definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the oci oke kubernetes runtime definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-ociOkeKubernetesRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -592,7 +594,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 // @ID get-v0-ociOkeKubernetesRuntimeInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "oci oke kubernetes runtime instance search by name"
+// @Param name query string false "filter by exact oci oke kubernetes runtime instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -610,7 +612,7 @@ func (h Handler) GetOciOkeKubernetesRuntimeInstances(c echo.Context) error {
 	var filter api_v0.OciOkeKubernetesRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -911,6 +913,8 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a oci oke kubernetes runtime instance.
 // @Description Delete a oci oke kubernetes runtime instance by ID from the database.
+// @Description Cascade: children of this oci oke kubernetes runtime instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the oci oke kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-ociOkeKubernetesRuntimeInstance
 // @Accept json
 // @Produce json
@@ -1116,7 +1120,7 @@ func (h Handler) AddOciProvider(c echo.Context) error {
 // @ID get-v0-ociProviders
 // @Accept json
 // @Produce json
-// @Param name query string false "oci provider search by name"
+// @Param name query string false "filter by exact oci provider name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1134,7 +1138,7 @@ func (h Handler) GetOciProviders(c echo.Context) error {
 	var filter api_v0.OciProvider
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1417,6 +1421,8 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 
 // @Summary deletes a oci provider.
 // @Description Delete a oci provider by ID from the database.
+// @Description Cascade: children of this oci provider attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the oci provider row and any cascading children have been removed synchronously.
 // @ID delete-v0-ociProvider
 // @Accept json
 // @Produce json

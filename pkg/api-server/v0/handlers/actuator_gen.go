@@ -107,7 +107,7 @@ func (h Handler) AddProfile(c echo.Context) error {
 // @ID get-v0-profiles
 // @Accept json
 // @Produce json
-// @Param name query string false "profile search by name"
+// @Param name query string false "filter by exact profile name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -125,7 +125,7 @@ func (h Handler) GetProfiles(c echo.Context) error {
 	var filter api_v0.Profile
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -408,6 +408,8 @@ func (h Handler) ReplaceProfile(c echo.Context) error {
 
 // @Summary deletes a profile.
 // @Description Delete a profile by ID from the database.
+// @Description Cascade: children of this profile attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the profile row and any cascading children have been removed synchronously.
 // @ID delete-v0-profile
 // @Accept json
 // @Produce json
@@ -560,7 +562,7 @@ func (h Handler) AddTier(c echo.Context) error {
 // @ID get-v0-tiers
 // @Accept json
 // @Produce json
-// @Param name query string false "tier search by name"
+// @Param name query string false "filter by exact tier name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -578,7 +580,7 @@ func (h Handler) GetTiers(c echo.Context) error {
 	var filter api_v0.Tier
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -861,6 +863,8 @@ func (h Handler) ReplaceTier(c echo.Context) error {
 
 // @Summary deletes a tier.
 // @Description Delete a tier by ID from the database.
+// @Description Cascade: children of this tier attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the tier row and any cascading children have been removed synchronously.
 // @ID delete-v0-tier
 // @Accept json
 // @Produce json

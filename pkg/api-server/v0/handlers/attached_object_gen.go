@@ -91,7 +91,7 @@ func (h Handler) AddAttachedObjectReference(c echo.Context) error {
 // @ID get-v0-attachedObjectReferences
 // @Accept json
 // @Produce json
-// @Param name query string false "attached object reference search by name"
+// @Param name query string false "filter by exact attached object reference name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -109,7 +109,7 @@ func (h Handler) GetAttachedObjectReferences(c echo.Context) error {
 	var filter api_v0.AttachedObjectReference
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -392,6 +392,8 @@ func (h Handler) ReplaceAttachedObjectReference(c echo.Context) error {
 
 // @Summary deletes a attached object reference.
 // @Description Delete a attached object reference by ID from the database.
+// @Description Cascade: children of this attached object reference attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the attached object reference row and any cascading children have been removed synchronously.
 // @ID delete-v0-attachedObjectReference
 // @Accept json
 // @Produce json

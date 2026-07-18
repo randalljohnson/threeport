@@ -112,7 +112,7 @@ func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 // @ID get-v0-awsEksKubernetesRuntimeDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "aws eks kubernetes runtime definition search by name"
+// @Param name query string false "filter by exact aws eks kubernetes runtime definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -130,7 +130,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinitions(c echo.Context) error {
 	var filter api_v0.AwsEksKubernetesRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -413,6 +413,8 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error 
 
 // @Summary deletes a aws eks kubernetes runtime definition.
 // @Description Delete a aws eks kubernetes runtime definition by ID from the database.
+// @Description Cascade: children of this aws eks kubernetes runtime definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the aws eks kubernetes runtime definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-awsEksKubernetesRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -592,7 +594,7 @@ func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 // @ID get-v0-awsEksKubernetesRuntimeInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "aws eks kubernetes runtime instance search by name"
+// @Param name query string false "filter by exact aws eks kubernetes runtime instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -610,7 +612,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstances(c echo.Context) error {
 	var filter api_v0.AwsEksKubernetesRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -911,6 +913,8 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a aws eks kubernetes runtime instance.
 // @Description Delete a aws eks kubernetes runtime instance by ID from the database.
+// @Description Cascade: children of this aws eks kubernetes runtime instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the aws eks kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-awsEksKubernetesRuntimeInstance
 // @Accept json
 // @Produce json
@@ -1116,7 +1120,7 @@ func (h Handler) AddAwsProvider(c echo.Context) error {
 // @ID get-v0-awsProviders
 // @Accept json
 // @Produce json
-// @Param name query string false "aws provider search by name"
+// @Param name query string false "filter by exact aws provider name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1134,7 +1138,7 @@ func (h Handler) GetAwsProviders(c echo.Context) error {
 	var filter api_v0.AwsProvider
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1417,6 +1421,8 @@ func (h Handler) ReplaceAwsProvider(c echo.Context) error {
 
 // @Summary deletes a aws provider.
 // @Description Delete a aws provider by ID from the database.
+// @Description Cascade: children of this aws provider attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the aws provider row and any cascading children have been removed synchronously.
 // @ID delete-v0-awsProvider
 // @Accept json
 // @Produce json

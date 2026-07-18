@@ -126,7 +126,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 // @ID get-v0-helmWorkloadDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "helm workload definition search by name"
+// @Param name query string false "filter by exact helm workload definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -144,7 +144,7 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 	var filter api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -445,6 +445,8 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a helm workload definition.
 // @Description Delete a helm workload definition by ID from the database.
+// @Description Cascade: children of this helm workload definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the helm workload definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-helmWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -677,7 +679,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 // @ID get-v0-helmWorkloadInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "helm workload instance search by name"
+// @Param name query string false "filter by exact helm workload instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -695,7 +697,7 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 	var filter api_v0.HelmWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -996,6 +998,8 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a helm workload instance.
 // @Description Delete a helm workload instance by ID from the database.
+// @Description Cascade: children of this helm workload instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the helm workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-helmWorkloadInstance
 // @Accept json
 // @Produce json

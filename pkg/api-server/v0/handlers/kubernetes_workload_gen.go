@@ -126,7 +126,7 @@ func (h Handler) AddKubernetesWorkloadDefinition(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "kubernetes workload definition search by name"
+// @Param name query string false "filter by exact kubernetes workload definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -144,7 +144,7 @@ func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
 	var filter api_v0.KubernetesWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -445,6 +445,8 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a kubernetes workload definition.
 // @Description Delete a kubernetes workload definition by ID from the database.
+// @Description Cascade: children of this kubernetes workload definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -677,7 +679,7 @@ func (h Handler) AddKubernetesWorkloadInstance(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "kubernetes workload instance search by name"
+// @Param name query string false "filter by exact kubernetes workload instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -695,7 +697,7 @@ func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
 	var filter api_v0.KubernetesWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -996,6 +998,8 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a kubernetes workload instance.
 // @Description Delete a kubernetes workload instance by ID from the database.
+// @Description Cascade: children of this kubernetes workload instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesWorkloadInstance
 // @Accept json
 // @Produce json
@@ -1185,7 +1189,7 @@ func (h Handler) AddKubernetesWorkloadResourceDefinition(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadResourceDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "kubernetes workload resource definition search by name"
+// @Param name query string false "filter by exact kubernetes workload resource definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1203,7 +1207,7 @@ func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 	var filter api_v0.KubernetesWorkloadResourceDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1486,6 +1490,8 @@ func (h Handler) ReplaceKubernetesWorkloadResourceDefinition(c echo.Context) err
 
 // @Summary deletes a kubernetes workload resource definition.
 // @Description Delete a kubernetes workload resource definition by ID from the database.
+// @Description Cascade: children of this kubernetes workload resource definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the kubernetes workload resource definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-kubernetesWorkloadResourceDefinition
 // @Accept json
 // @Produce json
@@ -1622,7 +1628,7 @@ func (h Handler) AddKubernetesWorkloadResourceInstance(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadResourceInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "kubernetes workload resource instance search by name"
+// @Param name query string false "filter by exact kubernetes workload resource instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1640,7 +1646,7 @@ func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
 	var filter api_v0.KubernetesWorkloadResourceInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1923,6 +1929,8 @@ func (h Handler) ReplaceKubernetesWorkloadResourceInstance(c echo.Context) error
 
 // @Summary deletes a kubernetes workload resource instance.
 // @Description Delete a kubernetes workload resource instance by ID from the database.
+// @Description Cascade: children of this kubernetes workload resource instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the kubernetes workload resource instance row and any cascading children have been removed synchronously.
 // @ID delete-v0-kubernetesWorkloadResourceInstance
 // @Accept json
 // @Produce json

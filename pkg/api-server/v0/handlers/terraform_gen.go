@@ -126,7 +126,7 @@ func (h Handler) AddTerraformDefinition(c echo.Context) error {
 // @ID get-v0-terraformDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "terraform definition search by name"
+// @Param name query string false "filter by exact terraform definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -144,7 +144,7 @@ func (h Handler) GetTerraformDefinitions(c echo.Context) error {
 	var filter api_v0.TerraformDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -445,6 +445,8 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 
 // @Summary deletes a terraform definition.
 // @Description Delete a terraform definition by ID from the database.
+// @Description Cascade: children of this terraform definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the terraform definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-terraformDefinition
 // @Accept json
 // @Produce json
@@ -677,7 +679,7 @@ func (h Handler) AddTerraformInstance(c echo.Context) error {
 // @ID get-v0-terraformInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "terraform instance search by name"
+// @Param name query string false "filter by exact terraform instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -695,7 +697,7 @@ func (h Handler) GetTerraformInstances(c echo.Context) error {
 	var filter api_v0.TerraformInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -996,6 +998,8 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 
 // @Summary deletes a terraform instance.
 // @Description Delete a terraform instance by ID from the database.
+// @Description Cascade: children of this terraform instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the terraform instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-terraformInstance
 // @Accept json
 // @Produce json

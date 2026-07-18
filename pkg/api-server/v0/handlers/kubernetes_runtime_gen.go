@@ -126,7 +126,7 @@ func (h Handler) AddKubernetesRuntimeDefinition(c echo.Context) error {
 // @ID get-v0-kubernetesRuntimeDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "kubernetes runtime definition search by name"
+// @Param name query string false "filter by exact kubernetes runtime definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -144,7 +144,7 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 	var filter api_v0.KubernetesRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -445,6 +445,8 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 
 // @Summary deletes a kubernetes runtime definition.
 // @Description Delete a kubernetes runtime definition by ID from the database.
+// @Description Cascade: children of this kubernetes runtime definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -677,7 +679,7 @@ func (h Handler) AddKubernetesRuntimeInstance(c echo.Context) error {
 // @ID get-v0-kubernetesRuntimeInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "kubernetes runtime instance search by name"
+// @Param name query string false "filter by exact kubernetes runtime instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -695,7 +697,7 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 	var filter api_v0.KubernetesRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -996,6 +998,8 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a kubernetes runtime instance.
 // @Description Delete a kubernetes runtime instance by ID from the database.
+// @Description Cascade: children of this kubernetes runtime instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesRuntimeInstance
 // @Accept json
 // @Produce json

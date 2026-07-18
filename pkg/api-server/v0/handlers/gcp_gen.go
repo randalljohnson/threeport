@@ -112,7 +112,7 @@ func (h Handler) AddGcpGceMachineRuntimeDefinition(c echo.Context) error {
 // @ID get-v0-gcpGceMachineRuntimeDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "gcp gce machine runtime definition search by name"
+// @Param name query string false "filter by exact gcp gce machine runtime definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -130,7 +130,7 @@ func (h Handler) GetGcpGceMachineRuntimeDefinitions(c echo.Context) error {
 	var filter api_v0.GcpGceMachineRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -413,6 +413,8 @@ func (h Handler) ReplaceGcpGceMachineRuntimeDefinition(c echo.Context) error {
 
 // @Summary deletes a gcp gce machine runtime definition.
 // @Description Delete a gcp gce machine runtime definition by ID from the database.
+// @Description Cascade: children of this gcp gce machine runtime definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the gcp gce machine runtime definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-gcpGceMachineRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -592,7 +594,7 @@ func (h Handler) AddGcpGceMachineRuntimeInstance(c echo.Context) error {
 // @ID get-v0-gcpGceMachineRuntimeInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "gcp gce machine runtime instance search by name"
+// @Param name query string false "filter by exact gcp gce machine runtime instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -610,7 +612,7 @@ func (h Handler) GetGcpGceMachineRuntimeInstances(c echo.Context) error {
 	var filter api_v0.GcpGceMachineRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -911,6 +913,8 @@ func (h Handler) ReplaceGcpGceMachineRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a gcp gce machine runtime instance.
 // @Description Delete a gcp gce machine runtime instance by ID from the database.
+// @Description Cascade: children of this gcp gce machine runtime instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gcp gce machine runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gcpGceMachineRuntimeInstance
 // @Accept json
 // @Produce json
@@ -1116,7 +1120,7 @@ func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @ID get-v0-gcpGkeKubernetesRuntimeDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "gcp gke kubernetes runtime definition search by name"
+// @Param name query string false "filter by exact gcp gke kubernetes runtime definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1134,7 +1138,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 	var filter api_v0.GcpGkeKubernetesRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1417,6 +1421,8 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeDefinition(c echo.Context) error 
 
 // @Summary deletes a gcp gke kubernetes runtime definition.
 // @Description Delete a gcp gke kubernetes runtime definition by ID from the database.
+// @Description Cascade: children of this gcp gke kubernetes runtime definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the gcp gke kubernetes runtime definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-gcpGkeKubernetesRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -1596,7 +1602,7 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 // @ID get-v0-gcpGkeKubernetesRuntimeInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "gcp gke kubernetes runtime instance search by name"
+// @Param name query string false "filter by exact gcp gke kubernetes runtime instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1614,7 +1620,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 	var filter api_v0.GcpGkeKubernetesRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1915,6 +1921,8 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a gcp gke kubernetes runtime instance.
 // @Description Delete a gcp gke kubernetes runtime instance by ID from the database.
+// @Description Cascade: children of this gcp gke kubernetes runtime instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gcp gke kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gcpGkeKubernetesRuntimeInstance
 // @Accept json
 // @Produce json
@@ -2120,7 +2128,7 @@ func (h Handler) AddGcpProvider(c echo.Context) error {
 // @ID get-v0-gcpProviders
 // @Accept json
 // @Produce json
-// @Param name query string false "gcp provider search by name"
+// @Param name query string false "filter by exact gcp provider name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -2138,7 +2146,7 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 	var filter api_v0.GcpProvider
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -2421,6 +2429,8 @@ func (h Handler) ReplaceGcpProvider(c echo.Context) error {
 
 // @Summary deletes a gcp provider.
 // @Description Delete a gcp provider by ID from the database.
+// @Description Cascade: children of this gcp provider attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the gcp provider row and any cascading children have been removed synchronously.
 // @ID delete-v0-gcpProvider
 // @Accept json
 // @Produce json

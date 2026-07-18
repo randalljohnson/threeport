@@ -107,7 +107,7 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 // @ID get-v0-moduleApis
 // @Accept json
 // @Produce json
-// @Param name query string false "module api search by name"
+// @Param name query string false "filter by exact module api name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -125,7 +125,7 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 	var filter api_v0.ModuleApi
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -408,6 +408,8 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 
 // @Summary deletes a module api.
 // @Description Delete a module api by ID from the database.
+// @Description Cascade: children of this module api attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the module api row and any cascading children have been removed synchronously.
 // @ID delete-v0-moduleApi
 // @Accept json
 // @Produce json
@@ -544,7 +546,7 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 // @ID get-v0-moduleApiRoutes
 // @Accept json
 // @Produce json
-// @Param name query string false "module api route search by name"
+// @Param name query string false "filter by exact module api route name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -562,7 +564,7 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 	var filter api_v0.ModuleApiRoute
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -845,6 +847,8 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 
 // @Summary deletes a module api route.
 // @Description Delete a module api route by ID from the database.
+// @Description Cascade: children of this module api route attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the module api route row and any cascading children have been removed synchronously.
 // @ID delete-v0-moduleApiRoute
 // @Accept json
 // @Produce json
@@ -997,7 +1001,7 @@ func (h Handler) AddModuleController(c echo.Context) error {
 // @ID get-v0-moduleControllers
 // @Accept json
 // @Produce json
-// @Param name query string false "module controller search by name"
+// @Param name query string false "filter by exact module controller name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1015,7 +1019,7 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 	var filter api_v0.ModuleController
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1298,6 +1302,8 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 
 // @Summary deletes a module controller.
 // @Description Delete a module controller by ID from the database.
+// @Description Cascade: children of this module controller attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the module controller row and any cascading children have been removed synchronously.
 // @ID delete-v0-moduleController
 // @Accept json
 // @Produce json
@@ -1434,7 +1440,7 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 // @ID get-v0-moduleObjects
 // @Accept json
 // @Produce json
-// @Param name query string false "module object search by name"
+// @Param name query string false "filter by exact module object name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1452,7 +1458,7 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 	var filter api_v0.ModuleObject
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1735,6 +1741,8 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 
 // @Summary deletes a module object.
 // @Description Delete a module object by ID from the database.
+// @Description Cascade: children of this module object attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the module object row and any cascading children have been removed synchronously.
 // @ID delete-v0-moduleObject
 // @Accept json
 // @Produce json

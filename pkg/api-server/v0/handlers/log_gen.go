@@ -108,7 +108,7 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 // @ID get-v0-logBackends
 // @Accept json
 // @Produce json
-// @Param name query string false "log backend search by name"
+// @Param name query string false "filter by exact log backend name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -126,7 +126,7 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 	var filter api_v0.LogBackend
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -409,6 +409,8 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 
 // @Summary deletes a log backend.
 // @Description Delete a log backend by ID from the database.
+// @Description Cascade: children of this log backend attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the log backend row and any cascading children have been removed synchronously.
 // @ID delete-v0-logBackend
 // @Accept json
 // @Produce json
@@ -561,7 +563,7 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 // @ID get-v0-logStorageDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "log storage definition search by name"
+// @Param name query string false "filter by exact log storage definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -579,7 +581,7 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 	var filter api_v0.LogStorageDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -862,6 +864,8 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 
 // @Summary deletes a log storage definition.
 // @Description Delete a log storage definition by ID from the database.
+// @Description Cascade: children of this log storage definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the log storage definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-logStorageDefinition
 // @Accept json
 // @Produce json
@@ -1027,7 +1031,7 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 // @ID get-v0-logStorageInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "log storage instance search by name"
+// @Param name query string false "filter by exact log storage instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1045,7 +1049,7 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 	var filter api_v0.LogStorageInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1328,6 +1332,8 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 
 // @Summary deletes a log storage instance.
 // @Description Delete a log storage instance by ID from the database.
+// @Description Cascade: children of this log storage instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Non-reconciled type: this endpoint returns after the log storage instance row and any cascading children have been removed synchronously.
 // @ID delete-v0-logStorageInstance
 // @Accept json
 // @Produce json

@@ -126,7 +126,7 @@ func (h Handler) AddLoggingDefinition(c echo.Context) error {
 // @ID get-v0-loggingDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "logging definition search by name"
+// @Param name query string false "filter by exact logging definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -144,7 +144,7 @@ func (h Handler) GetLoggingDefinitions(c echo.Context) error {
 	var filter api_v0.LoggingDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -445,6 +445,8 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 
 // @Summary deletes a logging definition.
 // @Description Delete a logging definition by ID from the database.
+// @Description Cascade: children of this logging definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the logging definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-loggingDefinition
 // @Accept json
 // @Produce json
@@ -677,7 +679,7 @@ func (h Handler) AddLoggingInstance(c echo.Context) error {
 // @ID get-v0-loggingInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "logging instance search by name"
+// @Param name query string false "filter by exact logging instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -695,7 +697,7 @@ func (h Handler) GetLoggingInstances(c echo.Context) error {
 	var filter api_v0.LoggingInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -996,6 +998,8 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 
 // @Summary deletes a logging instance.
 // @Description Delete a logging instance by ID from the database.
+// @Description Cascade: children of this logging instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the logging instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-loggingInstance
 // @Accept json
 // @Produce json
@@ -1215,7 +1219,7 @@ func (h Handler) AddMetricsDefinition(c echo.Context) error {
 // @ID get-v0-metricsDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "metrics definition search by name"
+// @Param name query string false "filter by exact metrics definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1233,7 +1237,7 @@ func (h Handler) GetMetricsDefinitions(c echo.Context) error {
 	var filter api_v0.MetricsDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1534,6 +1538,8 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 
 // @Summary deletes a metrics definition.
 // @Description Delete a metrics definition by ID from the database.
+// @Description Cascade: children of this metrics definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the metrics definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-metricsDefinition
 // @Accept json
 // @Produce json
@@ -1766,7 +1772,7 @@ func (h Handler) AddMetricsInstance(c echo.Context) error {
 // @ID get-v0-metricsInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "metrics instance search by name"
+// @Param name query string false "filter by exact metrics instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1784,7 +1790,7 @@ func (h Handler) GetMetricsInstances(c echo.Context) error {
 	var filter api_v0.MetricsInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -2085,6 +2091,8 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 
 // @Summary deletes a metrics instance.
 // @Description Delete a metrics instance by ID from the database.
+// @Description Cascade: children of this metrics instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the metrics instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-metricsInstance
 // @Accept json
 // @Produce json
@@ -2304,7 +2312,7 @@ func (h Handler) AddObservabilityDashboardDefinition(c echo.Context) error {
 // @ID get-v0-observabilityDashboardDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "observability dashboard definition search by name"
+// @Param name query string false "filter by exact observability dashboard definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -2322,7 +2330,7 @@ func (h Handler) GetObservabilityDashboardDefinitions(c echo.Context) error {
 	var filter api_v0.ObservabilityDashboardDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -2623,6 +2631,8 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 
 // @Summary deletes a observability dashboard definition.
 // @Description Delete a observability dashboard definition by ID from the database.
+// @Description Cascade: children of this observability dashboard definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability dashboard definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityDashboardDefinition
 // @Accept json
 // @Produce json
@@ -2855,7 +2865,7 @@ func (h Handler) AddObservabilityDashboardInstance(c echo.Context) error {
 // @ID get-v0-observabilityDashboardInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "observability dashboard instance search by name"
+// @Param name query string false "filter by exact observability dashboard instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -2873,7 +2883,7 @@ func (h Handler) GetObservabilityDashboardInstances(c echo.Context) error {
 	var filter api_v0.ObservabilityDashboardInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -3174,6 +3184,8 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 
 // @Summary deletes a observability dashboard instance.
 // @Description Delete a observability dashboard instance by ID from the database.
+// @Description Cascade: children of this observability dashboard instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability dashboard instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityDashboardInstance
 // @Accept json
 // @Produce json
@@ -3393,7 +3405,7 @@ func (h Handler) AddObservabilityStackDefinition(c echo.Context) error {
 // @ID get-v0-observabilityStackDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "observability stack definition search by name"
+// @Param name query string false "filter by exact observability stack definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -3411,7 +3423,7 @@ func (h Handler) GetObservabilityStackDefinitions(c echo.Context) error {
 	var filter api_v0.ObservabilityStackDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -3712,6 +3724,8 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 
 // @Summary deletes a observability stack definition.
 // @Description Delete a observability stack definition by ID from the database.
+// @Description Cascade: children of this observability stack definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability stack definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityStackDefinition
 // @Accept json
 // @Produce json
@@ -3944,7 +3958,7 @@ func (h Handler) AddObservabilityStackInstance(c echo.Context) error {
 // @ID get-v0-observabilityStackInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "observability stack instance search by name"
+// @Param name query string false "filter by exact observability stack instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -3962,7 +3976,7 @@ func (h Handler) GetObservabilityStackInstances(c echo.Context) error {
 	var filter api_v0.ObservabilityStackInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -4263,6 +4277,8 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 
 // @Summary deletes a observability stack instance.
 // @Description Delete a observability stack instance by ID from the database.
+// @Description Cascade: children of this observability stack instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability stack instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityStackInstance
 // @Accept json
 // @Produce json

@@ -74,11 +74,24 @@ func TestQueryBinder_MissingParamLeavesFieldZero(t *testing.T) {
 	assert.Nil(t, filter.Count, "Count stays nil when no count param present")
 }
 
-// TestQueryBinder_UnknownParamIgnored verifies extra query params that
-// don't correspond to any field are silently dropped rather than
-// erroring out - matches the permissive default binder.
-func TestQueryBinder_UnknownParamIgnored(t *testing.T) {
+// TestQueryBinder_UnknownParamRejected verifies extra query params that
+// don't correspond to any field are rejected with an error, so a typo
+// or a filter against a nonexistent field surfaces as a 400 instead of
+// silently returning unfiltered results.
+func TestQueryBinder_UnknownParamRejected(t *testing.T) {
 	c, _ := newBindContext(http.MethodGet, "/?name=keep&irrelevant=junk", nil)
+	var filter bindTestFilter
+	err := NewQueryBinder().Bind(&filter, c)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "irrelevant")
+}
+
+// TestQueryBinder_ReservedPaginationParamsAllowed confirms that keys
+// consumed by the api-server pagination layer (queryid, cursor, limit)
+// pass through the unknown-key gate even though they are not fields on
+// the filter struct.
+func TestQueryBinder_ReservedPaginationParamsAllowed(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?name=keep&queryid=abc&cursor=1&limit=10", nil)
 	var filter bindTestFilter
 	require.NoError(t, NewQueryBinder().Bind(&filter, c))
 

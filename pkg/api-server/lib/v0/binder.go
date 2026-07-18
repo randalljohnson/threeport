@@ -5,11 +5,22 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 )
+
+// reservedQueryParams are keys the api-server layer consumes directly
+// for pagination rather than binding onto a filter struct. The query
+// binder treats them as known so requests carrying them are not
+// rejected as unknown-key errors.
+var reservedQueryParams = map[string]bool{
+	QueryParamQueryId: true,
+	QueryParamCursor:  true,
+	QueryParamLimit:   true,
+}
 
 // QueryBinder overrides echo's default binder so api types don't need
 // `query:"..."` struct tags. Each settable struct field is bound from
@@ -65,7 +76,9 @@ func (b *QueryBinder) Bind(i interface{}, c echo.Context) error {
 }
 
 // bindQueryParams unwraps the target pointer and dispatches to the
-// per-field walk when it points at a struct.
+// per-field walk when it points at a struct. Unknown query keys are
+// rejected upfront so a typo or filter against a nonexistent field
+// surfaces as a 400 instead of silently returning unfiltered results.
 func (b *QueryBinder) bindQueryParams(qp url.Values, i interface{}) error {
 	// no params in the URL means no bind work to do
 	if len(qp) == 0 {
@@ -85,7 +98,53 @@ func (b *QueryBinder) bindQueryParams(qp url.Values, i interface{}) error {
 	if v.Kind() != reflect.Struct {
 		return nil
 	}
+
+	// collect the set of query keys this struct can accept, then check
+	// each incoming key against it. rejecting unknown keys prevents
+	// silent no-op filters on types that do not carry the requested
+	// field, and catches typos before they return misleading
+	// unfiltered results
+	known := make(map[string]bool)
+	collectKnownFieldNames(v.Type(), known)
+	if unknown := unknownQueryKeys(qp, known); len(unknown) > 0 {
+		return fmt.Errorf("unknown query parameter(s): %s", strings.Join(unknown, ", "))
+	}
 	return bindStructFields(qp, v)
+}
+
+// collectKnownFieldNames walks structType and populates known with the
+// lowercased Go field name for every exported field, recursing into
+// anonymous embeds so their fields participate as if declared on the
+// outer type.
+func collectKnownFieldNames(structType reflect.Type, known map[string]bool) {
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		if field.Anonymous && field.Type.Kind() == reflect.Struct {
+			collectKnownFieldNames(field.Type, known)
+			continue
+		}
+		if !field.IsExported() {
+			continue
+		}
+		known[strings.ToLower(field.Name)] = true
+	}
+}
+
+// unknownQueryKeys returns the sorted list of query keys that neither
+// match a known struct field nor a reserved pagination param. The
+// comparison lowercases each incoming key so a client varying key case
+// is treated the same as the canonical lowercased form.
+func unknownQueryKeys(qp url.Values, known map[string]bool) []string {
+	var unknown []string
+	for k := range qp {
+		lower := strings.ToLower(k)
+		if known[lower] || reservedQueryParams[lower] {
+			continue
+		}
+		unknown = append(unknown, k)
+	}
+	sort.Strings(unknown)
+	return unknown
 }
 
 // bindStructFields assigns each settable field of structValue from the

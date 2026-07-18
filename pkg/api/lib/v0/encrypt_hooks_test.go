@@ -203,6 +203,41 @@ func TestEncryptHookRejectsRedactedPlaceholder(t *testing.T) {
 	assert.Contains(t, err.Error(), "redacted placeholder", "error should explain the placeholder rejection")
 }
 
+// TestRedactEncryptedValuesPreservesEnvKeys covers the KEY=VALUE
+// slice shape: redaction must leave the KEY= prefix intact on each
+// entry so a tptctl get -> tptctl replace round trip still hands the
+// encrypt hook a well-formed KEY=VALUE payload rather than a bare
+// placeholder that fails the KEY=VALUE parse.
+func TestRedactEncryptedValuesPreservesEnvKeys(t *testing.T) {
+	// seed a slice-shaped encrypted field with two KEY=VALUE entries
+	env := []string{"DB_PASSWORD=cipher1", "API_KEY=cipher2"}
+	obj := &testSecret{Env: &env}
+
+	// redact in place; the returned interface is the same object
+	_ = RedactEncryptedValues(obj)
+
+	// each entry retains its KEY= prefix and the value is the placeholder
+	require.Len(t, env, 2)
+	assert.Equal(t, "DB_PASSWORD="+encryption.RedactedValuePlaceholder, env[0], "KEY= prefix must survive redaction on first entry")
+	assert.Equal(t, "API_KEY="+encryption.RedactedValuePlaceholder, env[1], "KEY= prefix must survive redaction on second entry")
+}
+
+// TestRedactEncryptedValuesRedactsStringField pins the *string branch
+// contract: a non-nil pointer is replaced with the placeholder in
+// place, a nil pointer is left alone.
+func TestRedactEncryptedValuesRedactsStringField(t *testing.T) {
+	// non-nil *string: underlying value is replaced by the placeholder
+	obj := &testSecret{Token: testTokenPtr("plaintext-secret")}
+	_ = RedactEncryptedValues(obj)
+	require.NotNil(t, obj.Token, "non-nil pointer stays non-nil after redact")
+	assert.Equal(t, encryption.RedactedValuePlaceholder, *obj.Token, "value must be replaced with the placeholder")
+
+	// nil *string: pointer stays nil, hook does not deref
+	nilObj := &testSecret{}
+	_ = RedactEncryptedValues(nilObj)
+	assert.Nil(t, nilObj.Token, "nil pointer must be left alone")
+}
+
 // TestEncryptHookSkipsAlreadyEncryptedInbound verifies the
 // IsEncrypted guard: a caller resubmitting ciphertext is not
 // double-encrypted, which would otherwise corrupt the field.

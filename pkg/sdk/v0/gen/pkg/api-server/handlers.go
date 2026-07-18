@@ -1975,6 +1975,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Id("err").Dot("Error").Call()).Op(",").Id("objectType")))
 						}),
 					)
+					if apiObject.Reconciler {
+						g.Line()
+						g.Comment("snapshot reconciliation state before replace so the notify block")
+						g.Comment("can skip publishing when the replace did not touch any state marker")
+						g.Id("prevReconciliation").Op(":=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation")
+					}
 					g.Line()
 					g.Comment("persist provided data")
 					g.Id(fmt.Sprintf("updated%s", apiObject.TypeName)).Dot("ID").Op("=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("ID")

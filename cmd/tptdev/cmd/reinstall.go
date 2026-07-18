@@ -10,11 +10,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/threeport/threeport/internal/version"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // reinstallApis holds the --apis flag value: a comma-separated list
@@ -47,16 +49,16 @@ change.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cliArgs.GetControlPlaneEnvVars()
 
-		// default tag to current git branch name so reinstall picks up
-		// images built by 'tptdev build' without requiring --tag every
-		// invocation; matches the build command's default.
+		// default the tag to the sha-suffixed dev tag the image build resolves
+		// so reinstall picks up images built by 'tptdev build' without requiring
+		// --tag every invocation; matches the build command's default.
 		if cliArgs.ControlPlaneImageTag == "" {
-			branch, err := gitBranchName()
+			tag, err := util.ResolveImageTag(version.GetVersion())
 			if err != nil {
-				cli.Error(fmt.Sprintf("failed to determine git branch for default tag: %s\nspecify a tag explicitly with --tag/-t", err), nil)
+				cli.Error(fmt.Sprintf("failed to resolve default image tag: %s\nspecify a tag explicitly with --tag/-t", err), nil)
 				os.Exit(1)
 			}
-			cliArgs.ControlPlaneImageTag = branch
+			cliArgs.ControlPlaneImageTag = tag
 		}
 
 		cpi, err := cliArgs.CreateInstaller()

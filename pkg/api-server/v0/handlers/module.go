@@ -33,7 +33,7 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 
 	if err := c.Bind(&moduleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -91,7 +91,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 	var filter api_v0.ModuleObject
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)

@@ -138,7 +138,9 @@ func encryptValue(tx *gorm.DB, encryptionKey, plain, fieldRef string) (string, e
 // RedactEncryptedValues takes an API object, replaces the value on any
 // encrypt-tagged fields with the redacted placeholder, and returns the
 // object. Nil pointer fields are left as-is since there is nothing to
-// redact.
+// redact. Slice fields are redacted element-by-element, preserving the
+// KEY= prefix on each entry so the round trip back through
+// ProcessEncryptTaggedFields still recognizes the KEY=VALUE shape.
 func RedactEncryptedValues(obj interface{}) interface{} {
 	p, ok := obj.(EncryptedFieldProvider)
 	if !ok {
@@ -155,8 +157,16 @@ func RedactEncryptedValues(obj interface{}) interface{} {
 			if v == nil {
 				continue
 			}
-			for j := range *v {
-				(*v)[j] = encryption.RedactedValuePlaceholder
+			for j, entry := range *v {
+				// preserve the KEY= prefix so tptctl get -> tptctl replace
+				// round trips leave the encrypt hook a well-formed
+				// KEY=VALUE entry to reject or accept
+				key, _, ok := strings.Cut(entry, "=")
+				if !ok {
+					(*v)[j] = encryption.RedactedValuePlaceholder
+					continue
+				}
+				(*v)[j] = key + "=" + encryption.RedactedValuePlaceholder
 			}
 		}
 	}

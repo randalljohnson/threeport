@@ -562,6 +562,11 @@ func (f *fakeLifecycle) ConfirmCreation() error {
 	return f.recordSimple("ConfirmCreation")
 }
 
+// RecordSuccessfulCreate counts the call and returns its injected error.
+func (f *fakeLifecycle) RecordSuccessfulCreate() error {
+	return f.recordSimple("RecordSuccessfulCreate")
+}
+
 // AckDeletion counts the call and returns its injected error.
 func (f *fakeLifecycle) AckDeletion() error {
 	return f.recordSimple("AckDeletion")

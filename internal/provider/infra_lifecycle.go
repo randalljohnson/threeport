@@ -273,6 +273,12 @@ type InfraLifecycleProvider interface {
 	// ConfirmCreation sets CreationConfirmed and Reconciled=true in the API.
 	ConfirmCreation() error
 
+	// RecordSuccessfulCreate emits a SuccessfulCreate event for the provider's
+	// object. Called from the OnSuccess callback after ConfirmCreation succeeds,
+	// so the reader sees provisioning completion even though the wrapper's
+	// wasReconciled gate suppresses its own emit.
+	RecordSuccessfulCreate() error
+
 	// AckDeletion sets DeletionAcknowledged in the API.
 	AckDeletion() error
 
@@ -407,18 +413,47 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 
 			// check if deletion was scheduled during the create operation
 			latestSnap, err := p.GetReconciliation()
-			if err == nil && latestSnap.DeletionScheduled != nil {
-				log.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
+			if err != nil {
+				return fmt.Errorf("failed to re-check reconciliation before confirmation: %w", err)
+			}
+			if latestSnap.DeletionScheduled != nil {
+				log.Info("deletion was scheduled during create, skipping confirmation to let delete proceed")
 				return nil
 			}
 
-			// publish notification; return the error so the caller triggers
-			// persistFailure and requeues, otherwise downstream subscribers
-			// never fire and the object stalls until an unrelated event
-			if err := p.PublishCreateNotification(); err != nil {
-				return fmt.Errorf("failed to publish create notification: %w", err)
+			// short-circuit if a concurrent path already confirmed
+			if latestSnap.CreationConfirmed != nil {
+				return nil
 			}
 
+			// confirmation runs inline here so Reconciled flips as soon
+			// as Pulumi completes rather than waiting for the original
+			// NATS message to redeliver. The wrapper Nak-redelivers the
+			// original create message anyway; when it hits
+			// IsCreateComplete the CreationConfirmed short-circuit above
+			// catches it. The wrapper's wasReconciled gate then
+			// suppresses its own SuccessfulCreate emit, so this callback
+			// records the event directly via RecordSuccessfulCreate
+			// below to surface provisioning completion to the reader.
+			infra, err := p.BuildInfra()
+			if err != nil {
+				return fmt.Errorf("failed to build infra for create confirmation: %w", err)
+			}
+			if err := p.OnCreateConfirmed(infra); err != nil {
+				return fmt.Errorf("failed to run post-creation work: %w", err)
+			}
+			if err := p.ConfirmCreation(); err != nil {
+				return fmt.Errorf("failed to confirm creation: %w", err)
+			}
+
+			// emit the provisioning-complete event directly; an emit
+			// failure must not fail the callback and trip
+			// PersistFailure, since ConfirmCreation already succeeded
+			if err := p.RecordSuccessfulCreate(); err != nil {
+				log.Error(err, "failed to record SuccessfulCreate event")
+			}
+
+			log.Info("creation confirmed")
 			return nil
 		},
 	}

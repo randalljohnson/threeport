@@ -259,9 +259,15 @@ func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	require.NotNil(t, oi.lastRestoredState())
 	require.JSONEq(t, string(*inventory), string(*oi.lastRestoredState()))
 
-	// the success path completed after the ordered sequence
+	// the success path completed after the ordered sequence; the inline
+	// confirmation cascade saves outputs, rebuilds infra, runs the
+	// post-creation work, and confirms creation (BuildInfra runs twice: once
+	// for the initial deploy, once for the confirmation rebuild)
 	require.Equal(t, 1, fl.callCount("SaveCreateOutputs"))
-	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
+	require.Equal(t, 2, fl.callCount("BuildInfra"))
+	require.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
+	require.Equal(t, 1, fl.callCount("ConfirmCreation"))
+	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
 // TestExecuteInfraCreate_NonStreamable_NoWatcher asserts that a provider
@@ -282,12 +288,18 @@ func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 
 	waitForSemaphoreDrain(t)
 
-	// success path completed end to end
+	// success path completed end to end; the inline confirmation cascade
+	// saves outputs, rebuilds infra, runs the post-creation work, and
+	// confirms creation (BuildInfra runs twice: once for the initial deploy,
+	// once for the confirmation rebuild)
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 1, fl.callCount("SaveCreateOutputs"))
 	require.NotNil(t, fl.createOutputs())
 	require.JSONEq(t, string(*validStackState()), string(*fl.createOutputs()))
-	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
+	require.Equal(t, 2, fl.callCount("BuildInfra"))
+	require.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
+	require.Equal(t, 1, fl.callCount("ConfirmCreation"))
+	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 
 	// no existing state, so no restore; no watcher, so no streamed saves
 	require.Equal(t, 0, fi.setStackStateCallCount())

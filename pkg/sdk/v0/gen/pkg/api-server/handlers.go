@@ -2126,6 +2126,30 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					"@Description Delete a %s by ID from the database.",
 					strcase.ToDelimited(apiObject.TypeName, ' '),
 				))
+				// cascade semantics: children tagged relationship:owns and
+				// relationship:describes are removed with the parent; children
+				// pointing back via relationship:requires surface as a 409 with
+				// the blockers listed in the response body.
+				f.Comment(fmt.Sprintf(
+					"@Description Cascade: children of this %s attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.",
+					strcase.ToDelimited(apiObject.TypeName, ' '),
+				))
+				// reconciled vs non-reconciled semantics: reconciled types
+				// return after the deletion marker is written and the
+				// reconciler drives child cleanup asynchronously;
+				// non-reconciled types return only after the row and any
+				// cascading children are removed synchronously.
+				if apiObject.Reconciler {
+					f.Comment(fmt.Sprintf(
+						"@Description Reconciled type: this endpoint returns after the deletion marker is written; the %s reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
+						strcase.ToDelimited(apiObject.TypeName, ' '),
+					))
+				} else {
+					f.Comment(fmt.Sprintf(
+						"@Description Non-reconciled type: this endpoint returns after the %s row and any cascading children have been removed synchronously.",
+						strcase.ToDelimited(apiObject.TypeName, ' '),
+					))
+				}
 				f.Comment(fmt.Sprintf(
 					"@ID delete-%s-%s", objCollection.Version, strcase.ToLowerCamel(apiObject.TypeName),
 				))

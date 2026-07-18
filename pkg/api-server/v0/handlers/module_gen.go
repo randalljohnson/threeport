@@ -49,7 +49,7 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 
 	if err := c.Bind(&moduleApi); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -289,7 +289,7 @@ func (h Handler) UpdateModuleApi(c echo.Context) error {
 	var updatedModuleApi api_v0.ModuleApi
 	if err := c.Bind(&updatedModuleApi); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -359,7 +359,7 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 	var updatedModuleApi api_v0.ModuleApi
 	if err := c.Bind(&updatedModuleApi); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -504,7 +504,7 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 
 	if err := c.Bind(&moduleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -728,7 +728,7 @@ func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
 	var updatedModuleApiRoute api_v0.ModuleApiRoute
 	if err := c.Bind(&updatedModuleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -798,7 +798,7 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 	var updatedModuleApiRoute api_v0.ModuleApiRoute
 	if err := c.Bind(&updatedModuleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -943,7 +943,7 @@ func (h Handler) AddModuleController(c echo.Context) error {
 
 	if err := c.Bind(&moduleController); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1183,7 +1183,7 @@ func (h Handler) UpdateModuleController(c echo.Context) error {
 	var updatedModuleController api_v0.ModuleController
 	if err := c.Bind(&updatedModuleController); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1253,7 +1253,7 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 	var updatedModuleController api_v0.ModuleController
 	if err := c.Bind(&updatedModuleController); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1398,7 +1398,7 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 
 	if err := c.Bind(&moduleObject); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1622,7 +1622,7 @@ func (h Handler) UpdateModuleObject(c echo.Context) error {
 	var updatedModuleObject api_v0.ModuleObject
 	if err := c.Bind(&updatedModuleObject); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1692,7 +1692,7 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 	var updatedModuleObject api_v0.ModuleObject
 	if err := c.Bind(&updatedModuleObject); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

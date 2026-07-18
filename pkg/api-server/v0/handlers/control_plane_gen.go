@@ -55,7 +55,7 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 
 	if err := c.Bind(&controlPlaneDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -309,7 +309,7 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 	var updatedControlPlaneDefinition api_v0.ControlPlaneDefinition
 	if err := c.Bind(&updatedControlPlaneDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -397,7 +397,7 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 	var updatedControlPlaneDefinition api_v0.ControlPlaneDefinition
 	if err := c.Bind(&updatedControlPlaneDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -405,6 +405,10 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingControlPlaneDefinition.Reconciliation
 
 	// persist provided data
 	updatedControlPlaneDefinition.ID = existingControlPlaneDefinition.ID
@@ -429,6 +433,20 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
+		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ControlPlaneDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -608,7 +626,7 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 
 	if err := c.Bind(&controlPlaneInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -862,7 +880,7 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 	var updatedControlPlaneInstance api_v0.ControlPlaneInstance
 	if err := c.Bind(&updatedControlPlaneInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -950,7 +968,7 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 	var updatedControlPlaneInstance api_v0.ControlPlaneInstance
 	if err := c.Bind(&updatedControlPlaneInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -958,6 +976,10 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingControlPlaneInstance.Reconciliation
 
 	// persist provided data
 	updatedControlPlaneInstance.ID = existingControlPlaneInstance.ID
@@ -982,6 +1004,20 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
+		notifPayload, err := existingControlPlaneInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ControlPlaneInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

@@ -50,7 +50,7 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 
 	if err := c.Bind(&logBackend); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -290,7 +290,7 @@ func (h Handler) UpdateLogBackend(c echo.Context) error {
 	var updatedLogBackend api_v0.LogBackend
 	if err := c.Bind(&updatedLogBackend); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -360,7 +360,7 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 	var updatedLogBackend api_v0.LogBackend
 	if err := c.Bind(&updatedLogBackend); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -505,7 +505,7 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 
 	if err := c.Bind(&logStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -745,7 +745,7 @@ func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 	var updatedLogStorageDefinition api_v0.LogStorageDefinition
 	if err := c.Bind(&updatedLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -815,7 +815,7 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 	var updatedLogStorageDefinition api_v0.LogStorageDefinition
 	if err := c.Bind(&updatedLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -973,7 +973,7 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 
 	if err := c.Bind(&logStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1213,7 +1213,7 @@ func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 	var updatedLogStorageInstance api_v0.LogStorageInstance
 	if err := c.Bind(&updatedLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1283,7 +1283,7 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 	var updatedLogStorageInstance api_v0.LogStorageInstance
 	if err := c.Bind(&updatedLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

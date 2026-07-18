@@ -54,7 +54,7 @@ func (h Handler) AddSecretDefinition(c echo.Context) error {
 
 	if err := c.Bind(&secretDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -308,7 +308,7 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 	var updatedSecretDefinition api_v0.SecretDefinition
 	if err := c.Bind(&updatedSecretDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -396,7 +396,7 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 	var updatedSecretDefinition api_v0.SecretDefinition
 	if err := c.Bind(&updatedSecretDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -404,6 +404,10 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingSecretDefinition.Reconciliation
 
 	// persist provided data
 	updatedSecretDefinition.ID = existingSecretDefinition.ID
@@ -428,6 +432,20 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretDefinition.Reconciliation) {
+		notifPayload, err := existingSecretDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.SecretDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -607,7 +625,7 @@ func (h Handler) AddSecretInstance(c echo.Context) error {
 
 	if err := c.Bind(&secretInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -861,7 +879,7 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 	var updatedSecretInstance api_v0.SecretInstance
 	if err := c.Bind(&updatedSecretInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -949,7 +967,7 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 	var updatedSecretInstance api_v0.SecretInstance
 	if err := c.Bind(&updatedSecretInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -957,6 +975,10 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingSecretInstance.Reconciliation
 
 	// persist provided data
 	updatedSecretInstance.ID = existingSecretInstance.ID
@@ -981,6 +1003,20 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretInstance.Reconciliation) {
+		notifPayload, err := existingSecretInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.SecretInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

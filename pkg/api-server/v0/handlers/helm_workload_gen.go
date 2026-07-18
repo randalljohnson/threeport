@@ -54,7 +54,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 
 	if err := c.Bind(&helmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -308,7 +308,7 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 	var updatedHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&updatedHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -396,7 +396,7 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 	var updatedHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&updatedHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -404,6 +404,10 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
 
 	// persist provided data
 	updatedHelmWorkloadDefinition.ID = existingHelmWorkloadDefinition.ID
@@ -428,6 +432,20 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadDefinition.Reconciled != nil && !*existingHelmWorkloadDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadDefinition.Reconciliation) {
+		notifPayload, err := existingHelmWorkloadDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.HelmWorkloadDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -607,7 +625,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 
 	if err := c.Bind(&helmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -861,7 +879,7 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 	var updatedHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if err := c.Bind(&updatedHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -949,7 +967,7 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 	var updatedHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if err := c.Bind(&updatedHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -957,6 +975,10 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
 
 	// persist provided data
 	updatedHelmWorkloadInstance.ID = existingHelmWorkloadInstance.ID
@@ -981,6 +1003,20 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadInstance.Reconciled != nil && !*existingHelmWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadInstance.Reconciliation) {
+		notifPayload, err := existingHelmWorkloadInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.HelmWorkloadInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

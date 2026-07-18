@@ -54,7 +54,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 
 	if err := c.Bind(&ociOkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -294,7 +294,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	var updatedOciOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedOciOkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -364,7 +364,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 	var updatedOciOkeKubernetesRuntimeDefinition api_v0.OciOkeKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedOciOkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -522,7 +522,7 @@ func (h Handler) AddOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 
 	if err := c.Bind(&ociOkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -776,7 +776,7 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	var updatedOciOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
 	if err := c.Bind(&updatedOciOkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -864,7 +864,7 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	var updatedOciOkeKubernetesRuntimeInstance api_v0.OciOkeKubernetesRuntimeInstance
 	if err := c.Bind(&updatedOciOkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -872,6 +872,10 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingOciOkeKubernetesRuntimeInstance.Reconciliation
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeInstance.ID = existingOciOkeKubernetesRuntimeInstance.ID
@@ -896,6 +900,20 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingOciOkeKubernetesRuntimeInstance.Reconciled != nil && !*existingOciOkeKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingOciOkeKubernetesRuntimeInstance.Reconciliation) {
+		notifPayload, err := existingOciOkeKubernetesRuntimeInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.OciOkeKubernetesRuntimeInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1062,7 +1080,7 @@ func (h Handler) AddOciProvider(c echo.Context) error {
 
 	if err := c.Bind(&ociProvider); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1302,7 +1320,7 @@ func (h Handler) UpdateOciProvider(c echo.Context) error {
 	var updatedOciProvider api_v0.OciProvider
 	if err := c.Bind(&updatedOciProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1372,7 +1390,7 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 	var updatedOciProvider api_v0.OciProvider
 	if err := c.Bind(&updatedOciProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

@@ -54,7 +54,7 @@ func (h Handler) AddLoggingDefinition(c echo.Context) error {
 
 	if err := c.Bind(&loggingDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -308,7 +308,7 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 	var updatedLoggingDefinition api_v0.LoggingDefinition
 	if err := c.Bind(&updatedLoggingDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -396,7 +396,7 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 	var updatedLoggingDefinition api_v0.LoggingDefinition
 	if err := c.Bind(&updatedLoggingDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -404,6 +404,10 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingLoggingDefinition.Reconciliation
 
 	// persist provided data
 	updatedLoggingDefinition.ID = existingLoggingDefinition.ID
@@ -428,6 +432,20 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingDefinition.Reconciliation) {
+		notifPayload, err := existingLoggingDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.LoggingDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -607,7 +625,7 @@ func (h Handler) AddLoggingInstance(c echo.Context) error {
 
 	if err := c.Bind(&loggingInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -861,7 +879,7 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 	var updatedLoggingInstance api_v0.LoggingInstance
 	if err := c.Bind(&updatedLoggingInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -949,7 +967,7 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 	var updatedLoggingInstance api_v0.LoggingInstance
 	if err := c.Bind(&updatedLoggingInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -957,6 +975,10 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingLoggingInstance.Reconciliation
 
 	// persist provided data
 	updatedLoggingInstance.ID = existingLoggingInstance.ID
@@ -981,6 +1003,20 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingInstance.Reconciliation) {
+		notifPayload, err := existingLoggingInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.LoggingInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1147,7 +1183,7 @@ func (h Handler) AddMetricsDefinition(c echo.Context) error {
 
 	if err := c.Bind(&metricsDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1401,7 +1437,7 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 	var updatedMetricsDefinition api_v0.MetricsDefinition
 	if err := c.Bind(&updatedMetricsDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -1489,7 +1525,7 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 	var updatedMetricsDefinition api_v0.MetricsDefinition
 	if err := c.Bind(&updatedMetricsDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1497,6 +1533,10 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMetricsDefinition.Reconciliation
 
 	// persist provided data
 	updatedMetricsDefinition.ID = existingMetricsDefinition.ID
@@ -1521,6 +1561,20 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsDefinition.Reconciliation) {
+		notifPayload, err := existingMetricsDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MetricsDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1700,7 +1754,7 @@ func (h Handler) AddMetricsInstance(c echo.Context) error {
 
 	if err := c.Bind(&metricsInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1954,7 +2008,7 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 	var updatedMetricsInstance api_v0.MetricsInstance
 	if err := c.Bind(&updatedMetricsInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -2042,7 +2096,7 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 	var updatedMetricsInstance api_v0.MetricsInstance
 	if err := c.Bind(&updatedMetricsInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -2050,6 +2104,10 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMetricsInstance.Reconciliation
 
 	// persist provided data
 	updatedMetricsInstance.ID = existingMetricsInstance.ID
@@ -2074,6 +2132,20 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsInstance.Reconciliation) {
+		notifPayload, err := existingMetricsInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MetricsInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -2240,7 +2312,7 @@ func (h Handler) AddObservabilityDashboardDefinition(c echo.Context) error {
 
 	if err := c.Bind(&observabilityDashboardDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -2494,7 +2566,7 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 	var updatedObservabilityDashboardDefinition api_v0.ObservabilityDashboardDefinition
 	if err := c.Bind(&updatedObservabilityDashboardDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -2582,7 +2654,7 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 	var updatedObservabilityDashboardDefinition api_v0.ObservabilityDashboardDefinition
 	if err := c.Bind(&updatedObservabilityDashboardDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -2590,6 +2662,10 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardDefinition.Reconciliation
 
 	// persist provided data
 	updatedObservabilityDashboardDefinition.ID = existingObservabilityDashboardDefinition.ID
@@ -2614,6 +2690,20 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
+		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityDashboardDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -2793,7 +2883,7 @@ func (h Handler) AddObservabilityDashboardInstance(c echo.Context) error {
 
 	if err := c.Bind(&observabilityDashboardInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -3047,7 +3137,7 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 	var updatedObservabilityDashboardInstance api_v0.ObservabilityDashboardInstance
 	if err := c.Bind(&updatedObservabilityDashboardInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -3135,7 +3225,7 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 	var updatedObservabilityDashboardInstance api_v0.ObservabilityDashboardInstance
 	if err := c.Bind(&updatedObservabilityDashboardInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -3143,6 +3233,10 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardInstance.Reconciliation
 
 	// persist provided data
 	updatedObservabilityDashboardInstance.ID = existingObservabilityDashboardInstance.ID
@@ -3167,6 +3261,20 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
+		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityDashboardInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -3333,7 +3441,7 @@ func (h Handler) AddObservabilityStackDefinition(c echo.Context) error {
 
 	if err := c.Bind(&observabilityStackDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -3587,7 +3695,7 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 	var updatedObservabilityStackDefinition api_v0.ObservabilityStackDefinition
 	if err := c.Bind(&updatedObservabilityStackDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -3675,7 +3783,7 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 	var updatedObservabilityStackDefinition api_v0.ObservabilityStackDefinition
 	if err := c.Bind(&updatedObservabilityStackDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -3683,6 +3791,10 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityStackDefinition.Reconciliation
 
 	// persist provided data
 	updatedObservabilityStackDefinition.ID = existingObservabilityStackDefinition.ID
@@ -3707,6 +3819,20 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
+		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityStackDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -3886,7 +4012,7 @@ func (h Handler) AddObservabilityStackInstance(c echo.Context) error {
 
 	if err := c.Bind(&observabilityStackInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -4140,7 +4266,7 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 	var updatedObservabilityStackInstance api_v0.ObservabilityStackInstance
 	if err := c.Bind(&updatedObservabilityStackInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -4228,7 +4354,7 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 	var updatedObservabilityStackInstance api_v0.ObservabilityStackInstance
 	if err := c.Bind(&updatedObservabilityStackInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -4236,6 +4362,10 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityStackInstance.Reconciliation
 
 	// persist provided data
 	updatedObservabilityStackInstance.ID = existingObservabilityStackInstance.ID
@@ -4260,6 +4390,20 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
+		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityStackInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

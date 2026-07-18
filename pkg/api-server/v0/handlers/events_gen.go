@@ -49,7 +49,7 @@ func (h Handler) AddEvent(c echo.Context) error {
 
 	if err := c.Bind(&event); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -273,7 +273,7 @@ func (h Handler) UpdateEvent(c echo.Context) error {
 	var updatedEvent api_v0.Event
 	if err := c.Bind(&updatedEvent); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -343,7 +343,7 @@ func (h Handler) ReplaceEvent(c echo.Context) error {
 	var updatedEvent api_v0.Event
 	if err := c.Bind(&updatedEvent); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

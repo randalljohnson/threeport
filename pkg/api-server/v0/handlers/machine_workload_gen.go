@@ -54,7 +54,7 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 
 	if err := c.Bind(&machineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -294,7 +294,7 @@ func (h Handler) UpdateMachineWorkloadDefinition(c echo.Context) error {
 	var updatedMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&updatedMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -364,7 +364,7 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 	var updatedMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&updatedMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -522,7 +522,7 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 
 	if err := c.Bind(&machineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -776,7 +776,7 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	var updatedMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if err := c.Bind(&updatedMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -864,7 +864,7 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 	var updatedMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if err := c.Bind(&updatedMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -872,6 +872,10 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMachineWorkloadInstance.Reconciliation
 
 	// persist provided data
 	updatedMachineWorkloadInstance.ID = existingMachineWorkloadInstance.ID
@@ -896,6 +900,20 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
+		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineWorkloadInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

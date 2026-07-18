@@ -54,7 +54,7 @@ func (h Handler) AddMachineRuntimeDefinition(c echo.Context) error {
 
 	if err := c.Bind(&machineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -308,7 +308,7 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 	var updatedMachineRuntimeDefinition api_v0.MachineRuntimeDefinition
 	if err := c.Bind(&updatedMachineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -396,7 +396,7 @@ func (h Handler) ReplaceMachineRuntimeDefinition(c echo.Context) error {
 	var updatedMachineRuntimeDefinition api_v0.MachineRuntimeDefinition
 	if err := c.Bind(&updatedMachineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -404,6 +404,10 @@ func (h Handler) ReplaceMachineRuntimeDefinition(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMachineRuntimeDefinition.Reconciliation
 
 	// persist provided data
 	updatedMachineRuntimeDefinition.ID = existingMachineRuntimeDefinition.ID
@@ -428,6 +432,20 @@ func (h Handler) ReplaceMachineRuntimeDefinition(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineRuntimeDefinition.Reconciled != nil && !*existingMachineRuntimeDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineRuntimeDefinition.Reconciliation) {
+		notifPayload, err := existingMachineRuntimeDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineRuntimeDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -607,7 +625,7 @@ func (h Handler) AddMachineRuntimeInstance(c echo.Context) error {
 
 	if err := c.Bind(&machineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -861,7 +879,7 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 	var updatedMachineRuntimeInstance api_v0.MachineRuntimeInstance
 	if err := c.Bind(&updatedMachineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -949,7 +967,7 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 	var updatedMachineRuntimeInstance api_v0.MachineRuntimeInstance
 	if err := c.Bind(&updatedMachineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -957,6 +975,10 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMachineRuntimeInstance.Reconciliation
 
 	// persist provided data
 	updatedMachineRuntimeInstance.ID = existingMachineRuntimeInstance.ID
@@ -981,6 +1003,20 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
+		notifPayload, err := existingMachineRuntimeInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineRuntimeInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

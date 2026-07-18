@@ -54,7 +54,7 @@ func (h Handler) AddGcpGceMachineRuntimeDefinition(c echo.Context) error {
 
 	if err := c.Bind(&gcpGceMachineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -294,7 +294,7 @@ func (h Handler) UpdateGcpGceMachineRuntimeDefinition(c echo.Context) error {
 	var updatedGcpGceMachineRuntimeDefinition api_v0.GcpGceMachineRuntimeDefinition
 	if err := c.Bind(&updatedGcpGceMachineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -364,7 +364,7 @@ func (h Handler) ReplaceGcpGceMachineRuntimeDefinition(c echo.Context) error {
 	var updatedGcpGceMachineRuntimeDefinition api_v0.GcpGceMachineRuntimeDefinition
 	if err := c.Bind(&updatedGcpGceMachineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -522,7 +522,7 @@ func (h Handler) AddGcpGceMachineRuntimeInstance(c echo.Context) error {
 
 	if err := c.Bind(&gcpGceMachineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -776,7 +776,7 @@ func (h Handler) UpdateGcpGceMachineRuntimeInstance(c echo.Context) error {
 	var updatedGcpGceMachineRuntimeInstance api_v0.GcpGceMachineRuntimeInstance
 	if err := c.Bind(&updatedGcpGceMachineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -864,7 +864,7 @@ func (h Handler) ReplaceGcpGceMachineRuntimeInstance(c echo.Context) error {
 	var updatedGcpGceMachineRuntimeInstance api_v0.GcpGceMachineRuntimeInstance
 	if err := c.Bind(&updatedGcpGceMachineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -872,6 +872,10 @@ func (h Handler) ReplaceGcpGceMachineRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingGcpGceMachineRuntimeInstance.Reconciliation
 
 	// persist provided data
 	updatedGcpGceMachineRuntimeInstance.ID = existingGcpGceMachineRuntimeInstance.ID
@@ -896,6 +900,20 @@ func (h Handler) ReplaceGcpGceMachineRuntimeInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGcpGceMachineRuntimeInstance.Reconciled != nil && !*existingGcpGceMachineRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGcpGceMachineRuntimeInstance.Reconciliation) {
+		notifPayload, err := existingGcpGceMachineRuntimeInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.GcpGceMachineRuntimeInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1062,7 +1080,7 @@ func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 
 	if err := c.Bind(&gcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1302,7 +1320,7 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 	var updatedGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1372,7 +1390,7 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeDefinition(c echo.Context) error 
 	var updatedGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1530,7 +1548,7 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 
 	if err := c.Bind(&gcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1784,7 +1802,7 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	var updatedGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -1872,7 +1890,7 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	var updatedGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1880,6 +1898,10 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
 
 	// persist provided data
 	updatedGcpGkeKubernetesRuntimeInstance.ID = existingGcpGkeKubernetesRuntimeInstance.ID
@@ -1904,6 +1926,20 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+	}
+
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGcpGkeKubernetesRuntimeInstance.Reconciled != nil && !*existingGcpGkeKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGcpGkeKubernetesRuntimeInstance.Reconciliation) {
+		notifPayload, err := existingGcpGkeKubernetesRuntimeInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.GcpGkeKubernetesRuntimeInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -2070,7 +2106,7 @@ func (h Handler) AddGcpProvider(c echo.Context) error {
 
 	if err := c.Bind(&gcpProvider); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -2310,7 +2346,7 @@ func (h Handler) UpdateGcpProvider(c echo.Context) error {
 	var updatedGcpProvider api_v0.GcpProvider
 	if err := c.Bind(&updatedGcpProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -2380,7 +2416,7 @@ func (h Handler) ReplaceGcpProvider(c echo.Context) error {
 	var updatedGcpProvider api_v0.GcpProvider
 	if err := c.Bind(&updatedGcpProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

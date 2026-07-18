@@ -239,24 +239,6 @@ func v0MachineRuntimeInstanceCreated(
 	}
 	defer sshClient.Close()
 
-	// save captured host key if this is the first connection; set
-	// Reconciled=true on the update so the resulting update
-	// notification does not trigger another reconciliation pass
-	if capturedHostKey != "" {
-		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
-			Common:         v0.Common{ID: machineRuntimeInstance.ID},
-			Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
-			HostKey:        &capturedHostKey,
-		}); err != nil {
-			return controller.RetryOnNetworkErr(err, "failed to save captured host key")
-		}
-		log.Info(
-			"captured ssh host key",
-			"machineRuntimeInstance", *machineRuntimeInstance.Name,
-			"id", *machineRuntimeInstance.ID,
-		)
-	}
-
 	// verify the connection is usable
 	if err := pingWithContext(ctx, sshClient); err != nil {
 		// always retry, same reasoning as the GetClient path above;
@@ -279,21 +261,35 @@ func v0MachineRuntimeInstanceCreated(
 	// future failure starts a fresh backoff sequence
 	sshRetryReset(*machineRuntimeInstance.ID)
 
-	// stamp creation_confirmed on the abstract instance row the first time
-	// the reconciler observes end-to-end reachability, mirroring the shape
-	// the leaf GCE reconciler uses on its own row. only write when the
-	// column is still unset so subsequent successful reconciles do not
-	// churn the row or emit further update notifications
-	if machineRuntimeInstance.CreationConfirmed == nil {
-		timestamp := time.Now().UTC()
-		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
-			Common: v0.Common{ID: machineRuntimeInstance.ID},
-			Reconciliation: v0.Reconciliation{
-				Reconciled:        util.Ptr(true),
-				CreationConfirmed: &timestamp,
-			},
-		}); err != nil {
-			return controller.RetryOnNetworkErr(err, "failed to stamp creation_confirmed on machine runtime instance")
+	// on the first pass that observes end-to-end reachability, persist the
+	// captured host key and stamp creation_confirmed in a single update so
+	// exactly one update notification fires. set Reconciled=true so the
+	// resulting notification does not trigger another reconciliation pass.
+	// write only when there is something new to record: a freshly captured
+	// host key, or a creation_confirmed column that is still unset. the stamp
+	// runs on every first-reachability path, including a pinned or imported
+	// host whose key needs no capture.
+	if capturedHostKey != "" || machineRuntimeInstance.CreationConfirmed == nil {
+		update := &v0.MachineRuntimeInstance{
+			Common:         v0.Common{ID: machineRuntimeInstance.ID},
+			Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+		}
+		if capturedHostKey != "" {
+			update.HostKey = &capturedHostKey
+		}
+		if machineRuntimeInstance.CreationConfirmed == nil {
+			timestamp := time.Now().UTC()
+			update.CreationConfirmed = &timestamp
+		}
+		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, update); err != nil {
+			return controller.RetryOnNetworkErr(err, "failed to persist host key and creation_confirmed on machine runtime instance")
+		}
+		if capturedHostKey != "" {
+			log.Info(
+				"captured ssh host key",
+				"machineRuntimeInstance", *machineRuntimeInstance.Name,
+				"id", *machineRuntimeInstance.ID,
+			)
 		}
 	}
 

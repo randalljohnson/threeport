@@ -2,17 +2,188 @@ package v0
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
+
+// memBytesPerWorker is the runner memory budgeted per build worker, 5 GB.
+// Observed per-link peak is ~4.5 GB when go links the static binaries, so
+// budgeting 5 GB per worker keeps an 8 GB container at -p=1 (the kubelet
+// eviction threshold can't tolerate more) and still scales up on a roomier
+// runner. Dividing available memory by this yields a memory-bound worker
+// count that the runner can sustain without an out-of-memory kill.
+const memBytesPerWorker = 1024 * 1024 * 1024 * 5
+
+// BuildParallelism derives a build worker count from the runner's available
+// memory, budgeting roughly one worker per 5 GB and clamping the result to
+// the range [1, NumCPU]. Available memory is the smaller of /proc/meminfo
+// MemAvailable (host view) and the cgroup memory limit (container budget),
+// so a pod on a roomy node still sizes parallelism to its own limit rather
+// than the node's total memory. Where neither source is readable (non-Linux
+// runners), it falls back to the CPU count. The result is always at least 1.
+func BuildParallelism() int {
+	cpus := runtime.NumCPU()
+	if cpus < 1 {
+		cpus = 1
+	}
+
+	memBytes, ok := availableMemoryBytes()
+	if !ok {
+		return cpus
+	}
+
+	return clampWorkers(memBytes, cpus)
+}
+
+// clampWorkers derives a memory-bound worker count by dividing memBytes by the
+// per-worker memory budget, clamping the result to the range [1, cpus]. It
+// falls back to cpus when memBytes is non-positive, since a missing memory
+// reading should not starve the build.
+func clampWorkers(memBytes int64, cpus int) int {
+	if memBytes <= 0 {
+		return cpus
+	}
+	workers := int(memBytes / memBytesPerWorker)
+	if workers < 1 {
+		return 1
+	}
+	if workers > cpus {
+		return cpus
+	}
+	return workers
+}
+
+// ReleaseParallelism reports how many whole-binary targets a release build
+// should compile at once. Each release target links the full tree, whose peak
+// memory is several times a single package-compile worker's, so it scales
+// BuildParallelism down by four and never returns less than one.
+func ReleaseParallelism() int {
+	if p := BuildParallelism() / 4; p > 1 {
+		return p
+	}
+	return 1
+}
+
+// availableMemoryBytes returns the runner's available memory budget — the
+// smaller of /proc/meminfo MemAvailable (host view) and the cgroup memory
+// limit (container budget). Reporting the lower of the two means a pod
+// running on a beefy node still sizes parallelism to its own limit rather
+// than the node's total memory, which would otherwise drive the build into
+// an OOM-kill. Reports false when neither source yields a usable value
+// (non-Linux runners without a cgroup memory limit).
+func availableMemoryBytes() (int64, bool) {
+	host, hostOK := procMemAvailable()
+	limit, limitOK := cgroupMemoryLimit()
+	switch {
+	case hostOK && limitOK:
+		if limit < host {
+			return limit, true
+		}
+		return host, true
+	case hostOK:
+		return host, true
+	case limitOK:
+		return limit, true
+	default:
+		return 0, false
+	}
+}
+
+// procMemAvailable returns the host's available memory in bytes by reading
+// MemAvailable from /proc/meminfo, reporting false when the file is
+// unreadable or the field is absent (non-Linux runners). On a container,
+// /proc/meminfo reflects the node, not the container — see
+// cgroupMemoryLimit for the container-budget reading.
+func procMemAvailable() (int64, bool) {
+	contents, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0, false
+	}
+	return parseMemAvailable(string(contents))
+}
+
+// cgroupMemoryLimit returns the cgroup memory limit in bytes, preferring
+// cgroup v2 (/sys/fs/cgroup/memory.max) and falling back to v1
+// (/sys/fs/cgroup/memory/memory.limit_in_bytes). It reports false when
+// neither file is readable, when v2 reports "max" (unlimited), or when v1
+// reports the sentinel near-int64-max value cgroup v1 uses for "no limit".
+// In a container with a memory limit this returns the container's budget;
+// outside a container or on an unconstrained cgroup it returns false so
+// the host reading takes over.
+func cgroupMemoryLimit() (int64, bool) {
+	if b, err := os.ReadFile("/sys/fs/cgroup/memory.max"); err == nil {
+		return parseCgroupV2Max(string(b))
+	}
+	if b, err := os.ReadFile("/sys/fs/cgroup/memory/memory.limit_in_bytes"); err == nil {
+		return parseCgroupV1Limit(string(b))
+	}
+	return 0, false
+}
+
+// parseCgroupV2Max parses a cgroup v2 memory.max file's contents. The
+// literal "max" indicates unlimited and reports false; anything else is a
+// byte count. Returns false on parse failure or a non-positive value.
+func parseCgroupV2Max(contents string) (int64, bool) {
+	s := strings.TrimSpace(contents)
+	if s == "max" {
+		return 0, false
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || v <= 0 {
+		return 0, false
+	}
+	return v, true
+}
+
+// parseCgroupV1Limit parses a cgroup v1 memory.limit_in_bytes file's
+// contents. cgroup v1 represents "no limit" with a sentinel near int64
+// max (typically 9223372036854771712); values at or above 1<<62 are
+// treated as unlimited and report false. Returns false on parse failure
+// or a non-positive value.
+func parseCgroupV1Limit(contents string) (int64, bool) {
+	s := strings.TrimSpace(contents)
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || v <= 0 || v >= (1<<62) {
+		return 0, false
+	}
+	return v, true
+}
+
+// parseMemAvailable extracts the MemAvailable value from /proc/meminfo
+// contents and returns it in bytes, reporting false when the field is absent,
+// malformed, or non-numeric.
+func parseMemAvailable(contents string) (int64, bool) {
+	for _, line := range strings.Split(contents, "\n") {
+		if !strings.HasPrefix(line, "MemAvailable:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, false
+		}
+		kb, err := strconv.ParseInt(fields[1], 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		return kb * 1024, true
+	}
+	return 0, false
+}
 
 // BuildBinaries compiles every binary for every arch with one go build
 // invocation per arch. Arches run in parallel, and within each arch all
@@ -61,13 +232,9 @@ func buildArchBinaries(threeportPath, arch string, packageDirs []string, noCache
 	if noCache {
 		args = append(args, "-a")
 	}
-	// PARALLEL_GO_BUILD caps concurrent compile workers per go build
-	// invocation. CI sets it (e.g. 2) to keep memory bounded on small
-	// runners; locally we leave it unset so the Go default (GOMAXPROCS)
-	// uses every available core.
-	if p := os.Getenv("PARALLEL_GO_BUILD"); p != "" {
-		args = append(args, "-p="+p)
-	}
+	// size compile workers to the runner's memory so a small CI runner does
+	// not run out of memory; on a roomy machine this is the CPU count.
+	args = append(args, fmt.Sprintf("-p=%d", BuildParallelism()))
 	args = append(args, "-o", filepath.Join("bin", arch)+string(os.PathSeparator))
 	// prefix each package dir with ./ so go build treats them as local
 	// import paths rather than stdlib lookups.
@@ -334,9 +501,9 @@ func BuildImage(
 
 // buildxBuildArgs assembles the docker buildx invocation argv, the full
 // image ref, and the short component name used for log prefixes. Reads
-// GIT_REVISION / GIT_TAG / BUILD_CREATED for OCI image labels, falling
-// back to git probes for the unset label values. Emits no other side
-// effects.
+// GIT_REVISION / GIT_TAG / BUILD_CREATED for OCI image labels; an unset
+// GIT_TAG falls back to the image tag, the others to git probes and the
+// current time. Emits no other side effects.
 func buildxBuildArgs(
 	threeportPath string,
 	dockerfilePath string,
@@ -385,6 +552,11 @@ func buildxBuildArgs(
 		return gitOutput(threeportPath, "rev-parse", "HEAD")
 	})
 	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
+		// self-derived builds leave GIT_TAG unset; fall back to the tag the
+		// image is published under so the OCI version label is never blank.
+		if imageTag != "" {
+			return imageTag
+		}
 		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
 	})
 	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {
@@ -440,6 +612,39 @@ func gitOutput(workingDir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// DiscoverArches lists imageRef's repository tags and returns the arch
+// suffixes of every <baseTag>-<arch> tag, sorted. It lets a manifest stitch
+// assemble whatever single-arch images a build pushed without being told the
+// arch set. imageRef is a repository with no tag, e.g.
+// "ghcr.io/owner/threeport-rest-api".
+func DiscoverArches(imageRef, baseTag string) ([]string, error) {
+	repo, err := name.NewRepository(imageRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse image repository %q: %w", imageRef, err)
+	}
+	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(context.Background()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tags for %q: %w", imageRef, err)
+	}
+	return archSuffixes(tags, baseTag), nil
+}
+
+// archSuffixes returns the sorted arch suffixes of every tag shaped
+// <baseTag>-<arch>. Tags without the <baseTag>- prefix, the bare baseTag, and
+// an empty suffix are dropped, so a base that prefixes a longer base does not
+// cross-contaminate.
+func archSuffixes(tags []string, baseTag string) []string {
+	prefix := baseTag + "-"
+	arches := []string{}
+	for _, tag := range tags {
+		if suffix := strings.TrimPrefix(tag, prefix); suffix != tag && suffix != "" {
+			arches = append(arches, suffix)
+		}
+	}
+	sort.Strings(arches)
+	return arches
+}
+
 // ParseArches splits a comma-separated arch string into a clean slice,
 // trimming whitespace from each entry and dropping empties.
 func ParseArches(arch string) []string {
@@ -453,6 +658,28 @@ func ParseArches(arch string) []string {
 	return out
 }
 
+// imagetoolsArgs assembles the docker buildx imagetools create argv and the
+// canonical target tag <repo>/<image>:<tag>, with one per-arch source
+// <repo>/<image>:<tag>-<arch> for each arch in order. An empty arches slice is
+// an error, since a manifest needs at least one source.
+func imagetoolsArgs(repo, image, tag string, arches []string) (args []string, target string, err error) {
+	if len(arches) == 0 {
+		return nil, "", errors.New("--arches is required")
+	}
+
+	// build the canonical target tag and the per-arch source tags
+	target = fmt.Sprintf("%s/%s:%s", repo, image, tag)
+	sources := make([]string, 0, len(arches))
+	for _, a := range arches {
+		sources = append(sources, fmt.Sprintf("%s/%s:%s-%s", repo, image, tag, a))
+	}
+
+	// assemble the buildx imagetools create invocation
+	args = []string{"buildx", "imagetools", "create", "--tag", target}
+	args = append(args, sources...)
+	return args, target, nil
+}
+
 // PushMultiArchManifest stitches per-arch image tags into a multi-arch
 // manifest list and pushes the result under the canonical tag. Sources
 // are assumed to already exist at <repo>/<image>:<tag>-<arch> for each
@@ -461,21 +688,10 @@ func ParseArches(arch string) []string {
 // create`, which reads the source manifests from the registry and
 // writes a fan-in manifest list back without re-uploading any blobs.
 func PushMultiArchManifest(imageRepo, imageName, imageTag, arches string) error {
-	archList := ParseArches(arches)
-	if len(archList) == 0 {
-		return errors.New("--arches is required")
+	args, target, err := imagetoolsArgs(imageRepo, imageName, imageTag, ParseArches(arches))
+	if err != nil {
+		return err
 	}
-
-	// build the canonical target tag and the per-arch source tags
-	target := fmt.Sprintf("%s/%s:%s", imageRepo, imageName, imageTag)
-	sources := make([]string, 0, len(archList))
-	for _, a := range archList {
-		sources = append(sources, fmt.Sprintf("%s/%s:%s-%s", imageRepo, imageName, imageTag, a))
-	}
-
-	// assemble the buildx imagetools create invocation
-	args := []string{"buildx", "imagetools", "create", "--tag", target}
-	args = append(args, sources...)
 
 	// run with prefixed stdout/stderr so concurrent component runs
 	// stay disambiguated in interleaved CI output

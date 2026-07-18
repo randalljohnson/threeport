@@ -37,6 +37,13 @@ type SdkConfig struct {
 
 	// The filepaths to files that should be excluded from code generation.
 	ExcludeFiles []string
+
+	// PriorModuleNames lists module names this module was previously registered
+	// under. When the current registered name is not found, the module
+	// registration flow looks up any prior name and renames the existing record
+	// in place, so a rename does not orphan the module_api row and its
+	// dependent controller and object rows.
+	PriorModuleNames []string
 }
 
 // ApiDocs contains the information displayed on the documentation page served

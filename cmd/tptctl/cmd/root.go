@@ -108,7 +108,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(
 		&cliArgs.ProviderConfigDir, "provider-config", "", "Path to infra provider config directory (default is $HOME/.threeport/).",
 	)
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	cobra.OnInitialize(func() {
 		cli.InitArgs(cliArgs)
 	})

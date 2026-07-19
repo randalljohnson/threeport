@@ -134,12 +134,14 @@ func TestQueryBinder_ReservedPaginationParamsAllowed(t *testing.T) {
 	assert.Equal(t, "keep", *filter.Name)
 }
 
-// TestQueryBinder_ReservedScopeParamAllowed confirms includedeleted, a
-// scope param the api-server consumes directly to bypass the soft-delete
-// filter, passes the unknown-key gate even though it is not a field on
-// the filter struct.
-func TestQueryBinder_ReservedScopeParamAllowed(t *testing.T) {
-	c, _ := newBindContext(http.MethodGet, "/?name=keep&includedeleted=true", nil)
+// TestQueryBinder_ReservedScopeParamsAllowed confirms the scope params
+// the api-server consumes directly (includedeleted to bypass the
+// soft-delete filter, ids to restrict a list to a set of row ids) pass
+// the unknown-key gate even though neither is a field on the filter
+// struct. ids resolution across modules relies on this: a bulk name
+// lookup lists by ?ids= and would 500 if the binder rejected the key.
+func TestQueryBinder_ReservedScopeParamsAllowed(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?name=keep&includedeleted=true&ids=1,2,3", nil)
 	var filter bindTestFilter
 	require.NoError(t, NewQueryBinder().Bind(&filter, c))
 

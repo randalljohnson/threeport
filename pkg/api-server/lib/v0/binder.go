@@ -21,6 +21,10 @@ var reservedQueryParams = map[string]bool{
 	QueryParamCursor:         true,
 	QueryParamLimit:          true,
 	QueryParamIncludeDeleted: true,
+	// the ids scope filter (QueryParamIDs, defined alongside the ids
+	// query scope) restricts a list to a set of row ids; the literal is
+	// used because that constant is not declared on this branch.
+	"ids": true,
 }
 
 // QueryKeyExtender lets a bound type declare query keys a handler

@@ -91,12 +91,12 @@ type MachineRuntimeInstance struct {
 	// NetworkCIDR is the CIDR block for the VPC network the machine is
 	// placed in. Optional; when unset the reconciler falls back to a
 	// provider-specific default.
-	NetworkCIDR *string `json:",omitempty" validate:"optional"`
+	NetworkCIDR *string `json:",omitempty" validate:"optional" gorm:"column:network_cidr"`
 
 	// SubnetCIDR is the CIDR block for the subnet the machine's primary
 	// interface is placed in. Optional; when unset the reconciler falls
 	// back to a provider-specific default.
-	SubnetCIDR *string `json:",omitempty" validate:"optional"`
+	SubnetCIDR *string `json:",omitempty" validate:"optional" gorm:"column:subnet_cidr"`
 
 	// AssignPublicIP controls whether the primary network interface gets
 	// an external IP address. Defaults false; the reconciler reads back

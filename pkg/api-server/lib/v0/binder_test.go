@@ -134,6 +134,19 @@ func TestQueryBinder_ReservedPaginationParamsAllowed(t *testing.T) {
 	assert.Equal(t, "keep", *filter.Name)
 }
 
+// TestQueryBinder_ReservedScopeParamAllowed confirms includedeleted, a
+// scope param the api-server consumes directly to bypass the soft-delete
+// filter, passes the unknown-key gate even though it is not a field on
+// the filter struct.
+func TestQueryBinder_ReservedScopeParamAllowed(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?name=keep&includedeleted=true", nil)
+	var filter bindTestFilter
+	require.NoError(t, NewQueryBinder().Bind(&filter, c))
+
+	require.NotNil(t, filter.Name)
+	assert.Equal(t, "keep", *filter.Name)
+}
+
 // TestQueryBinder_MalformedValueError exercises the path where the
 // query param value can't be parsed into the target field's type.
 // Callers (api handlers) translate this into a 400 to the client.

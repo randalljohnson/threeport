@@ -79,6 +79,21 @@ func TestResolveImageTagEchoesRefNameOnTagBuild(t *testing.T) {
 	}
 }
 
+// isolateFromGit puts the resolver somewhere no repository can be found, so the
+// sha read fails and the fallback path runs. Changing directory alone is not
+// enough: git exports GIT_DIR and GIT_WORK_TREE to hook processes, so a suite
+// invoked from a pre-push hook still resolves the repository from the
+// environment whatever the working directory is, and the fallback assertions
+// then see a real sha. Emptying those makes the failure deterministic wherever
+// the suite runs.
+func isolateFromGit(t *testing.T) {
+	t.Helper()
+	t.Setenv("GIT_DIR", "")
+	t.Setenv("GIT_WORK_TREE", "")
+	t.Setenv("GIT_COMMON_DIR", "")
+	t.Chdir(t.TempDir())
+}
+
 // TestResolveImageTagFallsBackToVersionOutsideCheckout covers ResolveImageTag
 // returning the bare version default when it runs outside CI and outside a git
 // checkout, where no short commit sha is available to suffix.
@@ -88,7 +103,7 @@ func TestResolveImageTagFallsBackToVersionOutsideCheckout(t *testing.T) {
 	t.Setenv("IMAGE_TAG", "")
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("ARCH", "")
-	t.Chdir(t.TempDir())
+	isolateFromGit(t)
 	// the bare version default passes through when no sha is available
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {
@@ -147,7 +162,7 @@ func TestResolveImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
 	t.Setenv("IMAGE_TAG", "")
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("ARCH", "amd64")
-	t.Chdir(t.TempDir())
+	isolateFromGit(t)
 	// the arch decorates the bare fallback version
 	got, err := ResolveImageTag("v0.1.0-dev")
 	if err != nil {

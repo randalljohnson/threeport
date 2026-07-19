@@ -13,13 +13,14 @@ import (
 )
 
 // reservedQueryParams are keys the api-server layer consumes directly
-// for pagination rather than binding onto a filter struct. The query
-// binder treats them as known so requests carrying them are not
-// rejected as unknown-key errors.
+// for pagination and query scopes rather than binding onto a filter
+// struct. The query binder treats them as known so requests carrying
+// them are not rejected as unknown-key errors.
 var reservedQueryParams = map[string]bool{
-	QueryParamQueryId: true,
-	QueryParamCursor:  true,
-	QueryParamLimit:   true,
+	QueryParamQueryId:        true,
+	QueryParamCursor:         true,
+	QueryParamLimit:          true,
+	QueryParamIncludeDeleted: true,
 }
 
 // QueryKeyExtender lets a bound type declare query keys a handler

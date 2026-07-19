@@ -86,6 +86,41 @@ func TestQueryBinder_UnknownParamRejected(t *testing.T) {
 	assert.Contains(t, err.Error(), "irrelevant")
 }
 
+// bindTestExtender declares extra accepted query keys via ExtraQueryKeys,
+// mirroring an api type (e.g. Event) whose handler reads synthetic filter
+// keys directly from the query string rather than binding them onto a
+// field.
+type bindTestExtender struct {
+	bindTestFilter
+}
+
+func (bindTestExtender) ExtraQueryKeys() []string {
+	return []string{"objecttypename", "objectversion"}
+}
+
+// TestQueryBinder_ExtraQueryKeysAccepted confirms keys a bound type
+// declares via ExtraQueryKeys pass the unknown-key gate even though no
+// struct field matches them, while the type's real fields still bind.
+func TestQueryBinder_ExtraQueryKeysAccepted(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?name=keep&objecttypename=Widget&objectversion=v0", nil)
+	var filter bindTestExtender
+	require.NoError(t, NewQueryBinder().Bind(&filter, c))
+
+	require.NotNil(t, filter.Name)
+	assert.Equal(t, "keep", *filter.Name, "real field still binds alongside declared synthetic keys")
+}
+
+// TestQueryBinder_ExtraQueryKeysStillRejectsUnknown confirms declaring
+// extra keys does not disable typo protection: a key that is neither a
+// field nor declared is still rejected.
+func TestQueryBinder_ExtraQueryKeysStillRejectsUnknown(t *testing.T) {
+	c, _ := newBindContext(http.MethodGet, "/?objecttypename=Widget&bogus=junk", nil)
+	var filter bindTestExtender
+	err := NewQueryBinder().Bind(&filter, c)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "bogus")
+}
+
 // TestQueryBinder_ReservedPaginationParamsAllowed confirms that keys
 // consumed by the api-server pagination layer (queryid, cursor, limit)
 // pass through the unknown-key gate even though they are not fields on

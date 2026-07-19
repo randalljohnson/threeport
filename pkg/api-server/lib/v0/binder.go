@@ -22,6 +22,16 @@ var reservedQueryParams = map[string]bool{
 	QueryParamLimit:   true,
 }
 
+// QueryKeyExtender lets a bound type declare query keys a handler
+// consumes directly (via QueryParam) rather than binding onto one of the
+// type's fields. The binder treats the declared keys as known so a
+// well-formed request carrying them is not rejected as unknown, while a
+// genuinely unknown key on the same endpoint is still rejected. Keys are
+// compared case-insensitively, matching the field-name derivation.
+type QueryKeyExtender interface {
+	ExtraQueryKeys() []string
+}
+
 // QueryBinder overrides echo's default binder so api types don't need
 // `query:"..."` struct tags. Each settable struct field is bound from
 // the query param keyed by strings.ToLower of the field name. A field
@@ -106,6 +116,15 @@ func (b *QueryBinder) bindQueryParams(qp url.Values, i interface{}) error {
 	// unfiltered results
 	known := make(map[string]bool)
 	collectKnownFieldNames(v.Type(), known)
+	// a bound type may accept filter keys its handler reads directly
+	// rather than binding onto a field; fold those in so they pass the
+	// unknown-key gate. assert on i, the original pointer, so a
+	// value-receiver ExtraQueryKeys stays in the method set.
+	if ext, ok := i.(QueryKeyExtender); ok {
+		for _, k := range ext.ExtraQueryKeys() {
+			known[strings.ToLower(k)] = true
+		}
+	}
 	if unknown := unknownQueryKeys(qp, known); len(unknown) > 0 {
 		return fmt.Errorf("unknown query parameter(s): %s", strings.Join(unknown, ", "))
 	}

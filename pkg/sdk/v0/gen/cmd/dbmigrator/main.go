@@ -392,3 +392,195 @@ examples:
 
 	return nil
 }
+
+// GenDbMigratorSchemaDriftTest generates a test that checks the schema built by
+// the migrations against the columns the persisted models declare.
+func GenDbMigratorSchemaDriftTest(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	f := NewFile("main")
+	f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+	f.ImportAlias("github.com/pressly/goose/v3", "goose")
+	f.ImportAlias("gorm.io/driver/sqlite", "sqlite")
+	f.ImportAlias("gorm.io/gorm", "gorm")
+
+	gooseVersionTableName := "threeport_goose_db_version"
+	if gen.Module {
+		gooseVersionTableName = fmt.Sprintf(
+			"threeport_%s_goose_db_version",
+			strcase.ToSnake(sdkConfig.ModuleName),
+		)
+	}
+
+	f.Comment("persistedModels returns one instance of every model the API persists.")
+	f.Func().Id("persistedModels").Params().Params(Index().Interface()).Block(
+		Return().Index().Interface().BlockFunc(func(g *Group) {
+			for _, version := range gen.GlobalVersionConfig.Versions {
+				for _, name := range version.DatabaseInitNames {
+					g.List(
+						Op("&").Qual(
+							fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, version.VersionName),
+							name,
+						).Values().Op(","),
+					)
+				}
+			}
+		}),
+	)
+	f.Line()
+
+	f.Comment("migratedSchema applies every registered migration to a fresh in-memory")
+	f.Comment("database and returns a handle on the resulting schema.")
+	f.Func().Id("migratedSchema").Params(
+		Id("t").Op("*").Qual("testing", "T"),
+	).Params(Op("*").Qual("gorm.io/gorm", "DB")).Block(
+		Id("t").Dot("Helper").Call(),
+		Line(),
+
+		List(Id("gormDb"), Id("err")).Op(":=").Qual("gorm.io/gorm", "Open").Call(
+			Qual("gorm.io/driver/sqlite", "Open").Call(Lit(":memory:")),
+			Op("&").Qual("gorm.io/gorm", "Config").Values(),
+		),
+		If(Id("err").Op("!=").Nil()).Block(
+			Id("t").Dot("Fatalf").Call(Lit("open sqlite: %v"), Id("err")),
+		),
+		Line(),
+
+		Comment("share one connection pool so the migrations and the assertions see"),
+		Comment("the same in-memory database"),
+		List(Id("sqlDb"), Id("err")).Op(":=").Id("gormDb").Dot("DB").Call(),
+		If(Id("err").Op("!=").Nil()).Block(
+			Id("t").Dot("Fatalf").Call(Lit("resolve sql db: %v"), Id("err")),
+		),
+		Line(),
+
+		If(Id("err").Op(":=").Qual("github.com/pressly/goose/v3", "SetDialect").Call(
+			Lit("sqlite3"),
+		), Id("err").Op("!=").Nil()).Block(
+			Id("t").Dot("Fatalf").Call(Lit("set goose dialect: %v"), Id("err")),
+		),
+		Qual("github.com/pressly/goose/v3", "SetTableName").Call(Lit(gooseVersionTableName)),
+		Line(),
+
+		Comment("the migrations read the gorm db from the context under the same key"),
+		Comment("the deployed migrator sets"),
+		Id("ctx").Op(":=").Qual("context", "WithValue").Call(
+			Qual("context", "Background").Call(), Lit("gormdb"), Id("gormDb"),
+		),
+		If(Id("err").Op(":=").Qual("github.com/pressly/goose/v3", "UpContext").Call(
+			Id("ctx"), Id("sqlDb"), Lit("."),
+		), Id("err").Op("!=").Nil()).Block(
+			Id("t").Dot("Fatalf").Call(Lit("apply migrations: %v"), Id("err")),
+		),
+		Line(),
+
+		Return(Id("gormDb")),
+	)
+	f.Line()
+
+	f.Comment("TestMigrationsCoverEveryPersistedModel asserts the schema the migration")
+	f.Comment("chain builds matches the columns every persisted model declares, reporting")
+	f.Comment("both fields left without a column and columns left without a field.")
+	f.Func().Id("TestMigrationsCoverEveryPersistedModel").Params(
+		Id("t").Op("*").Qual("testing", "T"),
+	).Block(
+		Comment("build the schema a deployed database would have after an upgrade"),
+		Id("gormDb").Op(":=").Id("migratedSchema").Call(Id("t")),
+		Line(),
+
+		For(List(Id("_"), Id("model")).Op(":=").Range().Id("persistedModels").Call()).Block(
+			Comment("resolve the columns the model's fields declare, which accounts"),
+			Comment("for embedded structs, column overrides and excluded fields"),
+			Id("stmt").Op(":=").Op("&").Qual("gorm.io/gorm", "Statement").Values(Dict{
+				Id("DB"): Id("gormDb"),
+			}),
+			If(Id("err").Op(":=").Id("stmt").Dot("Parse").Call(
+				Id("model"),
+			), Id("err").Op("!=").Nil()).Block(
+				Id("t").Dot("Fatalf").Call(Lit("parse %T: %v"), Id("model"), Id("err")),
+			),
+			Id("declared").Op(":=").Make(
+				Map(String()).Bool(), Len(Id("stmt").Dot("Schema").Dot("DBNames")),
+			),
+			For(List(Id("_"), Id("name")).Op(":=").Range().Id("stmt").Dot("Schema").Dot("DBNames")).Block(
+				Id("declared").Index(Id("name")).Op("=").True(),
+			),
+			Line(),
+
+			Comment("a model no migration creates reads as total drift"),
+			If(Op("!").Id("gormDb").Dot("Migrator").Call().Dot("HasTable").Call(
+				Id("model"),
+			)).Block(
+				Id("t").Dot("Errorf").Call(
+					Lit("no migration creates table %s for %T"),
+					Id("stmt").Dot("Schema").Dot("Table"),
+					Id("model"),
+				),
+				Continue(),
+			),
+			Line(),
+
+			Comment("read the columns the migration chain actually created"),
+			List(Id("columnTypes"), Id("err")).Op(":=").Id("gormDb").Dot("Migrator").Call().Dot(
+				"ColumnTypes",
+			).Call(Id("model")),
+			If(Id("err").Op("!=").Nil()).Block(
+				Id("t").Dot("Fatalf").Call(Lit("read columns for %T: %v"), Id("model"), Id("err")),
+			),
+			Id("created").Op(":=").Make(Map(String()).Bool(), Len(Id("columnTypes"))),
+			For(List(Id("_"), Id("columnType")).Op(":=").Range().Id("columnTypes")).Block(
+				Id("created").Index(Id("columnType").Dot("Name").Call()).Op("=").True(),
+			),
+			Line(),
+
+			Comment("a declared field with no column means a migration was never written"),
+			Var().Id("missingColumns").Index().String(),
+			For(Id("name").Op(":=").Range().Id("declared")).Block(
+				If(Op("!").Id("created").Index(Id("name"))).Block(
+					Id("missingColumns").Op("=").Append(Id("missingColumns"), Id("name")),
+				),
+			),
+			Line(),
+
+			Comment("a column with no declared field means a migration never dropped it"),
+			Var().Id("missingFields").Index().String(),
+			For(Id("name").Op(":=").Range().Id("created")).Block(
+				If(Op("!").Id("declared").Index(Id("name"))).Block(
+					Id("missingFields").Op("=").Append(Id("missingFields"), Id("name")),
+				),
+			),
+			Line(),
+
+			Comment("report both directions so one run shows the whole drift"),
+			Qual("sort", "Strings").Call(Id("missingColumns")),
+			Qual("sort", "Strings").Call(Id("missingFields")),
+			If(Len(Id("missingColumns")).Op(">").Lit(0)).Block(
+				Id("t").Dot("Errorf").Call(
+					Lit("%s has fields with no column: %v"),
+					Id("stmt").Dot("Schema").Dot("Table"),
+					Id("missingColumns"),
+				),
+			),
+			If(Len(Id("missingFields")).Op(">").Lit(0)).Block(
+				Id("t").Dot("Errorf").Call(
+					Lit("%s has columns with no field: %v"),
+					Id("stmt").Dot("Schema").Dot("Table"),
+					Id("missingFields"),
+				),
+			),
+		),
+	)
+
+	// write code to file if not excluded by SDK config
+	genFilepath := filepath.Join("cmd", "database-migrator", "schema_drift_gen_test.go")
+	if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+		cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+	} else {
+		_, err := util.WriteCodeToFile(f, genFilepath, true)
+		if err != nil {
+			return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+		}
+		cli.Info(fmt.Sprintf("source code for DB migrator schema drift test written to %s", genFilepath))
+	}
+
+	return nil
+}

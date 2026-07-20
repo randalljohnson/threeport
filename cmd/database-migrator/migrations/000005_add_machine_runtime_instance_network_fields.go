@@ -15,12 +15,9 @@ import (
 
 // machineRuntimeInstanceNetworkFields names the Go fields whose columns this
 // migration reconciles on v0_machine_runtime_instances. They are Go field
-// names rather than column names on purpose: the migrator derives the column
-// name from the field through the same naming strategy the application uses,
-// so the migration and the running application can never disagree about it.
-// The disagreement is real for these fields, because the naming strategy
-// treats ID as an initialism and renders a name ending in CIDR as
-// network_c_id_r rather than network_cidr.
+// names rather than column names on purpose: the migrator resolves each field
+// to the column the model declares for it, so the migration follows the model
+// instead of restating a name that could drift away from it.
 var machineRuntimeInstanceNetworkFields = []string{
 	"IngressRules",
 	"NetworkCIDR",

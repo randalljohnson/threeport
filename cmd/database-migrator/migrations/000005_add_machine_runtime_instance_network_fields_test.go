@@ -31,13 +31,12 @@ func TestAddMachineRuntimeInstanceNetworkColumns(t *testing.T) {
 		t.Fatalf("addMachineRuntimeInstanceNetworkColumns: %v", err)
 	}
 
-	// every column is present under the name the naming strategy derives from
-	// the Go field, which renders a name ending in CIDR with the initialism
-	// split out; a select against each must succeed.
+	// every column is present under the name the model declares for its field;
+	// a select against each must succeed.
 	for _, column := range []string{
 		"ingress_rules",
-		"network_c_id_r",
-		"subnet_c_id_r",
+		"network_cidr",
+		"subnet_cidr",
 		"assign_public_ip",
 	} {
 		if err := gormDb.Exec("SELECT " + column + " FROM v0_machine_runtime_instances").Error; err != nil {
@@ -65,7 +64,7 @@ func TestAddMachineRuntimeInstanceNetworkColumnsFreshDbNoOp(t *testing.T) {
 
 	// seed a v0_machine_runtime_instances table shaped like the current model
 	// set: every network column already present.
-	if err := gormDb.Exec("CREATE TABLE v0_machine_runtime_instances (id integer primary key, ingress_rules jsonb, network_c_id_r text, subnet_c_id_r text, assign_public_ip numeric)").Error; err != nil {
+	if err := gormDb.Exec("CREATE TABLE v0_machine_runtime_instances (id integer primary key, ingress_rules jsonb, network_cidr text, subnet_cidr text, assign_public_ip numeric)").Error; err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
@@ -77,7 +76,7 @@ func TestAddMachineRuntimeInstanceNetworkColumnsFreshDbNoOp(t *testing.T) {
 	}
 
 	// the surviving columns are still readable
-	if err := gormDb.Exec("SELECT network_c_id_r, subnet_c_id_r FROM v0_machine_runtime_instances").Error; err != nil {
+	if err := gormDb.Exec("SELECT network_cidr, subnet_cidr FROM v0_machine_runtime_instances").Error; err != nil {
 		t.Errorf("v0_machine_runtime_instances network columns should be intact: %v", err)
 	}
 }
@@ -103,7 +102,7 @@ func TestDown000005(t *testing.T) {
 
 	// seed the table from the model, standing in for a database that has
 	// already applied Up000005: building it through the migrator gives it every
-	// network column under the name the naming strategy derives.
+	// network column under the name the model declares.
 	if err := gormDb.Migrator().CreateTable(&v0.MachineRuntimeInstance{}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -117,8 +116,8 @@ func TestDown000005(t *testing.T) {
 	// every network column is gone after the down migration
 	for _, column := range []string{
 		"ingress_rules",
-		"network_c_id_r",
-		"subnet_c_id_r",
+		"network_cidr",
+		"subnet_cidr",
 		"assign_public_ip",
 	} {
 		if err := gormDb.Exec("SELECT " + column + " FROM v0_machine_runtime_instances").Error; err == nil {

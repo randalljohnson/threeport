@@ -178,6 +178,15 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
+		Comment("enforce one row per version before migrating so a concurrent run"),
+		Comment("cannot record the same version a second time"),
+		If(Id("err").Op(":=").Id("ensureUniqueGooseVersionId").Call(
+			Id("gormdb"),
+		), Id("err").Op("!=").Nil()).Block(
+			Id("returnErr").Call(Lit("failed to enforce unique goose version id"), Id("err")),
+		),
+		Line(),
+
 		Comment("run migrations"),
 		Id("ctx").Op(":=").Qual("context", "WithValue").Call(
 			Qual("context", "TODO").Call(), Lit("gormdb"), Id("gormdb"),
@@ -192,7 +201,64 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
+		Comment("install the index on a database where goose created the version"),
+		Comment("table during this run"),
+		If(Id("err").Op(":=").Id("ensureUniqueGooseVersionId").Call(
+			Id("gormdb"),
+		), Id("err").Op("!=").Nil()).Block(
+			Id("returnErr").Call(Lit("failed to enforce unique goose version id"), Id("err")),
+		),
+		Line(),
+
 		Id("logger").Dot("Info").Call(Lit("database schema successfully migrated")),
+		Line(),
+
+		Return(Nil()),
+	)
+	f.Line()
+
+	// statements that collapse duplicate version rows and then bar new ones
+	dedupeVersionRows := fmt.Sprintf(
+		"DELETE FROM %[1]s WHERE id NOT IN (SELECT min(id) FROM %[1]s GROUP BY version_id)",
+		gooseVersionTableName,
+	)
+	uniqueVersionIndex := fmt.Sprintf(
+		"CREATE UNIQUE INDEX IF NOT EXISTS %[1]s_version_id_key ON %[1]s (version_id)",
+		gooseVersionTableName,
+	)
+
+	f.Comment("ensureUniqueGooseVersionId removes duplicate version rows and adds a unique")
+	f.Comment("index over the version id column of the table tracking applied migrations.")
+	f.Func().Id("ensureUniqueGooseVersionId").Params(
+		Id("gormdb").Op("*").Qual("gorm.io/gorm", "DB"),
+	).Params(Error()).Block(
+		Comment("skip a database where the version table has yet to be created"),
+		If(Op("!").Id("gormdb").Dot("Migrator").Call().Dot("HasTable").Call(
+			Lit(gooseVersionTableName),
+		)).Block(
+			Return(Nil()),
+		),
+		Line(),
+
+		Comment("collapse duplicate rows left by concurrent migrator runs, keeping the"),
+		Comment("earliest row recorded for each version"),
+		If(Id("err").Op(":=").Id("gormdb").Dot("Exec").Call(
+			Lit(dedupeVersionRows),
+		).Dot("Error"), Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit("failed to remove duplicate version rows: %w"), Id("err"),
+			)),
+		),
+		Line(),
+
+		Comment("reject any subsequent duplicate at the database level"),
+		If(Id("err").Op(":=").Id("gormdb").Dot("Exec").Call(
+			Lit(uniqueVersionIndex),
+		).Dot("Error"), Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit("failed to create unique index on version id: %w"), Id("err"),
+			)),
+		),
 		Line(),
 
 		Return(Nil()),

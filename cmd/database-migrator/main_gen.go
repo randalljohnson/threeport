@@ -115,6 +115,12 @@ func migrateDb(
 		returnErr("could not create gorm db object", err)
 	}
 
+	// enforce one row per version before migrating so a concurrent run
+	// cannot record the same version a second time
+	if err := ensureUniqueGooseVersionId(gormdb); err != nil {
+		returnErr("failed to enforce unique goose version id", err)
+	}
+
 	// run migrations
 	ctx := context.WithValue(context.TODO(), "gormdb", gormdb)
 	goose.SetTableName("threeport_goose_db_version")
@@ -122,7 +128,35 @@ func migrateDb(
 		returnErr(fmt.Sprintf("goose %s command failed", command), err)
 	}
 
+	// install the index on a database where goose created the version
+	// table during this run
+	if err := ensureUniqueGooseVersionId(gormdb); err != nil {
+		returnErr("failed to enforce unique goose version id", err)
+	}
+
 	logger.Info("database schema successfully migrated")
+
+	return nil
+}
+
+// ensureUniqueGooseVersionId removes duplicate version rows and adds a unique
+// index over the version id column of the table tracking applied migrations.
+func ensureUniqueGooseVersionId(gormdb *gorm.DB) error {
+	// skip a database where the version table has yet to be created
+	if !gormdb.Migrator().HasTable("threeport_goose_db_version") {
+		return nil
+	}
+
+	// collapse duplicate rows left by concurrent migrator runs, keeping the
+	// earliest row recorded for each version
+	if err := gormdb.Exec("DELETE FROM threeport_goose_db_version WHERE id NOT IN (SELECT min(id) FROM threeport_goose_db_version GROUP BY version_id)").Error; err != nil {
+		return fmt.Errorf("failed to remove duplicate version rows: %w", err)
+	}
+
+	// reject any subsequent duplicate at the database level
+	if err := gormdb.Exec("CREATE UNIQUE INDEX IF NOT EXISTS threeport_goose_db_version_version_id_key ON threeport_goose_db_version (version_id)").Error; err != nil {
+		return fmt.Errorf("failed to create unique index on version id: %w", err)
+	}
 
 	return nil
 }

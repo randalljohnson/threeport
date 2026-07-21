@@ -37,6 +37,12 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("could not run gorm AutoMigrate: %w", err)
 	}
 
+	// row-level time-to-live is a CockroachDB feature, so leave the schema as
+	// built on dialects that do not implement it
+	if gormDb.Dialector.Name() != "postgres" {
+		return nil
+	}
+
 	// uniform row-level time-to-live on events
 	if err := gormDb.Exec(fmt.Sprintf(
 		"ALTER TABLE v0_events SET (ttl_expire_after = '%s', ttl_job_cron = '@hourly')",

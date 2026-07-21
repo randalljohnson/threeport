@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -74,13 +73,16 @@ func Execute() {
 	// call plugin executable if given as first arg to tptctl
 	for _, plugFile := range validatedPlugins {
 		if len(os.Args) > 1 && os.Args[1] == filepath.Base(plugFile) {
-			plugCmd := exec.Command(plugFile, os.Args[2:]...)
+			plugArgs := os.Args[2:]
+			plugCmd := exec.Command(plugFile, plugArgs...)
+			// wire the plugin's stdio directly to tptctl's so its output
+			// streams live rather than being buffered until the process exits
 			plugCmd.Stdin = os.Stdin
 			plugCmd.Stdout = os.Stdout
 			plugCmd.Stderr = os.Stderr
 			if err := plugCmd.Run(); err != nil {
-				var exitErr *exec.ExitError
-				if errors.As(err, &exitErr) {
+				// preserve the plugin's own exit code when it exits non-zero
+				if exitErr, ok := err.(*exec.ExitError); ok {
 					os.Exit(exitErr.ExitCode())
 				}
 				cli.Error(

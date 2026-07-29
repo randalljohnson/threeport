@@ -78,7 +78,7 @@ mage build:tptctl
 
 When building container images with `tptdev build`, use `--parallel=2` to limit concurrent builds. This can be increased if your machine has more resources.
 ```bash
-tptdev build --names rest-api,workload-controller --push --parallel=2
+tptdev build --names rest-api,kubernetes-workload-controller --push --parallel=2
 ```
 
 ## Local Verification
@@ -201,7 +201,7 @@ The inverted shape — wrapping the happy path inside nested `if`/`else` branche
 ### Examples of correct docstring format:
 ```go
 // ThreeportWorkloadName returns a standardized name for a ThreeportWorkload
-// Kubernetes custom resource based on the workload instance ID.
+// Kubernetes custom resource based on the kubernetes workload instance ID.
 func ThreeportWorkloadName(...)
 
 // MergeHelmValuesGo merges two helm values documents and
@@ -278,7 +278,7 @@ Use the standardized functions when available:
 
 ### Error Types
 - **Wrapped errors**: `fmt.Errorf("failed to get user: %w", err)`
-- **Simple errors**: `errors.New("user must be attached to workload instance")`
+- **Simple errors**: `errors.New("user must be attached to kubernetes workload instance")`
 - **Context-specific errors**: Include relevant details when helpful
 
 ### Examples of correct error patterns:
@@ -288,7 +288,7 @@ return fmt.Errorf("failed to create compartment: %w", err)
 return fmt.Errorf("failed to get tenancy OCID: %w", err)
 
 // Simple errors
-return errors.New("secret instance must be attached to a workload instance")
+return errors.New("secret instance must be attached to a kubernetes workload instance")
 return errors.New("deletion notification received but not scheduled")
 
 // With context

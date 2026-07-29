@@ -69,7 +69,7 @@ type Common struct {
 
 | Definition | Instance | Domain |
 |---|---|---|
-| `WorkloadDefinition` | `WorkloadInstance` | workload |
+| `KubernetesWorkloadDefinition` | `KubernetesWorkloadInstance` | workload |
 | `HelmWorkloadDefinition` | `HelmWorkloadInstance` | helm-workload |
 | `KubernetesRuntimeDefinition` | `KubernetesRuntimeInstance` | kubernetes-runtime |
 | `AwsEksKubernetesRuntimeDefinition` | `AwsEksKubernetesRuntimeInstance` | aws |
@@ -197,7 +197,7 @@ The value stored is the controller's UUID. Consumer names follow: `{ReconcilerNa
 |---|---|---|
 | Control plane components | `threeport-control-plane` | `pkg/threeport-installer/v0/threeport.go:64` |
 | Gateway resources | `nukleros-gateway-system` | `pkg/util/v0/constants.go:17` |
-| WorkloadInstance | `{name}-{10alphanumChars}` | `pkg/kube/v0/namespace.go:47` |
+| KubernetesWorkloadInstance | `{name}-{10alphanumChars}` | `pkg/kube/v0/namespace.go:47` |
 | HelmWorkloadInstance | `{name}-{10alphaChars}` (or user-specified `ReleaseNamespace`) | `internal/helm-workload/v0_helm_workload_instance.go:93` |
 
 ### Naming Patterns
@@ -247,7 +247,7 @@ kubectl get pods -n threeport-control-plane
 
 # Control plane component logs
 kubectl logs deploy/threeport-api-server -n threeport-control-plane
-kubectl logs deploy/threeport-workload-controller -n threeport-control-plane
+kubectl logs deploy/threeport-kubernetes-workload-controller -n threeport-control-plane
 kubectl logs deploy/threeport-helm-workload-controller -n threeport-control-plane
 kubectl logs deploy/threeport-kubernetes-runtime-controller -n threeport-control-plane
 ```
@@ -258,7 +258,7 @@ kubectl logs deploy/threeport-kubernetes-runtime-controller -n threeport-control
 
 1. Check reconciliation status: `tptctl get workload-instances -o json` — look at `Reconciled`, `CreationFailed`, `InterruptReconciliation`
 2. If `Reconciled=false` and no `CreationFailed`: controller may be processing or stuck
-   - Check controller logs: `kubectl logs deploy/threeport-workload-controller -n threeport-control-plane`
+   - Check controller logs: `kubectl logs deploy/threeport-kubernetes-workload-controller -n threeport-control-plane`
    - Check for lock stuck in NATS KV (lock key: `WorkloadInstanceReconciler.{ID}`, TTL: 20 min)
 3. If `CreationFailed=true`: check controller logs for error, fix issue, update object to retry
 4. Check Kubernetes resources: `kubectl get all -n {workloadName}-{suffix}`
@@ -361,7 +361,7 @@ cat <<EOF | tptctl create workload --stdin
 Workload:
   Name: my-app
   YAMLDocument: path/to/manifest.yaml
-  WorkloadInstance:
+  KubernetesWorkloadInstance:
     Name: my-app
 EOF
 
@@ -400,7 +400,7 @@ EOF
 # List all workload instances as JSON
 tptctl get workload-instances -o json
 
-# Get a specific workload definition as YAML
+# Get a specific kubernetes workload definition as YAML
 tptctl get workload-definitions --name my-def -o yaml
 
 # List all helm workload instances
@@ -414,16 +414,16 @@ cat <<EOF | tptctl create workload --stdin
 Workload:
   Name: my-app
   YAMLDocument: path/to/manifest.yaml
-  WorkloadInstance:
+  KubernetesWorkloadInstance:
     Name: my-app
 EOF
 
-# Delete a workload instance by name
+# Delete a kubernetes workload instance by name
 tptctl delete workload-instance --name my-instance
 
-# Replace (update) a workload definition
+# Replace (update) a kubernetes workload definition
 cat <<EOF | tptctl replace workload-definition --stdin --name existing-def
-WorkloadDefinition:
+KubernetesWorkloadDefinition:
   Name: existing-def
   YAMLDocument: path/to/new-manifest.yaml
 EOF
@@ -463,7 +463,7 @@ Debug mode is implemented across several functions in `pkg/threeport-installer/v
 tptdev debug
 
 # Debug specific components only
-tptdev debug --names rest-api,workload-controller
+tptdev debug --names rest-api,kubernetes-workload-controller
 
 # Enable verbose logging
 tptdev debug --verbose
@@ -472,10 +472,10 @@ tptdev debug --verbose
 tptdev debug --disable
 
 # Build and push images to remote registry
-tptdev build --names rest-api,workload-controller --push
+tptdev build --names rest-api,kubernetes-workload-controller --push
 
 # Build, push, and restart pods to pick up new images immediately
-tptdev build --names rest-api,workload-controller --push --restart
+tptdev build --names rest-api,kubernetes-workload-controller --push --restart
 
 # Tear down dev environment
 tptdev down
@@ -503,7 +503,7 @@ After making code changes:
 | Target | Description |
 |---|---|
 | `dev-logs-api` | Follow API server logs |
-| `dev-logs-wrk` | Follow workload controller logs |
+| `dev-logs-wrk` | Follow kubernetes workload controller logs |
 | `dev-logs-gw` | Follow gateway controller logs |
 | `dev-logs-kr` | Follow kubernetes runtime controller logs |
 | `dev-logs-aws` | Follow AWS controller logs |
@@ -514,7 +514,7 @@ After making code changes:
 | `dev-purge-streams` | Purge all NATS JetStream streams |
 | `dev-sub-nats` | Subscribe to all NATS messages for debugging |
 | `dev-debug-api` | Start delve session for API server |
-| `dev-debug-wrk` | Start delve session for workload controller |
+| `dev-debug-wrk` | Start delve session for kubernetes workload controller |
 | `dev-debug-gateway` | Start delve session for gateway controller |
 
 ## SDK Code Generation Circular Dependency
@@ -573,7 +573,7 @@ If any `_gen.go` files show changes, the commit is out of sync — regenerate be
 threeport/
 ├── cmd/                           # Binary entry points
 │   ├── rest-api/                  # API server [generated main_gen.go]
-│   ├── workload-controller/       # [generated main_gen.go]
+│   ├── kubernetes-workload-controller/       # [generated main_gen.go]
 │   ├── helm-workload-controller/  # [generated main_gen.go]
 │   ├── kubernetes-runtime-controller/
 │   ├── gateway-controller/
@@ -612,7 +612,7 @@ threeport/
 │   │   ├── *_gen.go               # [generated] interface method implementations
 │   │   ├── common.go              # Common, Reconciliation structs
 │   │   ├── class.go               # Definition, Instance base structs
-│   │   ├── workload.go            # WorkloadDefinition, WorkloadInstance
+│   │   ├── workload.go            # KubernetesWorkloadDefinition, KubernetesWorkloadInstance
 │   │   └── ...                    # Other domain object definitions
 │   ├── api/lib/v0/                # ReconciledThreeportApiObject interface
 │   ├── api-server/v0/

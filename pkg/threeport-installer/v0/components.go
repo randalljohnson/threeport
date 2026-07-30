@@ -1953,13 +1953,28 @@ func GetThreeportAPIPort(authEnabled bool) int {
 	return 80
 }
 
+// ResolveKindAPIHostPort returns the host port the threeport API is
+// reachable on for the kind provider. A kind cluster's host port mapping
+// for the API can be fixed independently of whether auth is enabled, for
+// example when it was chosen at cluster creation to avoid colliding with
+// another cluster already bound to the auth-derived default, so an
+// explicit override takes precedence over deriving the port from
+// authEnabled.
+func ResolveKindAPIHostPort(authEnabled bool, apiServerHostPort int) int {
+	if apiServerHostPort != 0 {
+		return apiServerHostPort
+	}
+
+	return GetThreeportAPIPort(authEnabled)
+}
+
 // GetLocalThreeportAPIEndpoint returns the endpoint for the threeport API
-// running locally.
-func GetLocalThreeportAPIEndpoint(authEnabled bool) string {
+// running locally on the given host port.
+func GetLocalThreeportAPIEndpoint(port int) string {
 	return fmt.Sprintf(
 		"%s:%d",
 		ThreeportLocalAPIEndpoint,
-		GetThreeportAPIPort(authEnabled),
+		port,
 	)
 }
 

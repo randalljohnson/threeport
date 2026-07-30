@@ -587,9 +587,13 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	// for kind, the API endpoint is known upfront so we can install TLS
 	// secrets before deploying the API server to avoid mount failures
 	if controlPlane.InfraProvider == v0.KubernetesRuntimeInfraProviderKind {
-		// update threeport config with api endpoint
+		// update threeport config with api endpoint. --control-plane-only
+		// installs onto a kind node whose host port for the API's NodePort
+		// was fixed when the cluster was originally created, so an explicit
+		// override takes precedence over the auth-derived default.
 		var err error
-		threeportAPIEndpoint = threeport.GetLocalThreeportAPIEndpoint(cpi.Opts.AuthEnabled)
+		apiPort := threeport.ResolveKindAPIHostPort(cpi.Opts.AuthEnabled, cpi.Opts.ApiServerHostPort)
+		threeportAPIEndpoint = threeport.GetLocalThreeportAPIEndpoint(apiPort)
 		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *ControlPlane) {
 			c.APIServer = threeportAPIEndpoint
 		}); err != nil {

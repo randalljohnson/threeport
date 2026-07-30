@@ -65,6 +65,7 @@ type GenesisControlPlaneCLIArgs struct {
 	ClusterName           string
 	InfraOnly             bool
 	KindPortMappings      []string
+	ApiServerHostPort     int
 	LocalRegistry         bool
 }
 
@@ -184,6 +185,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.TeardownOnFailure = a.TeardownOnFailure
 	cpi.Opts.LocalRegistry = a.LocalRegistry
 	cpi.Opts.KindPortMappings = a.KindPortMappings
+	cpi.Opts.ApiServerHostPort = a.ApiServerHostPort
 
 	return cpi, nil
 }
@@ -596,9 +598,13 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	// for kind, the API endpoint is known upfront so we can install TLS
 	// secrets before deploying the API server to avoid mount failures
 	if controlPlane.InfraProvider == v0.KubernetesRuntimeInfraProviderKind {
-		// update threeport config with api endpoint
+		// update threeport config with api endpoint. --control-plane-only
+		// installs onto a kind node whose host port for the API's NodePort
+		// was fixed when the cluster was originally created, so an explicit
+		// override takes precedence over the auth-derived default.
 		var err error
-		threeportAPIEndpoint = threeport.GetLocalThreeportAPIEndpoint(cpi.Opts.AuthEnabled)
+		apiPort := threeport.ResolveKindAPIHostPort(cpi.Opts.AuthEnabled, cpi.Opts.ApiServerHostPort)
+		threeportAPIEndpoint = threeport.GetLocalThreeportAPIEndpoint(apiPort)
 		if threeportConfig, err = threeportControlPlaneConfig.UpdateThreeportConfigInstance(func(c *ControlPlane) {
 			c.APIServer = threeportAPIEndpoint
 		}); err != nil {
@@ -1396,7 +1402,9 @@ func runtimeInstanceName(opts threeport.Options) string {
 		//     name, matching clusters tptctl provisions itself
 		return opts.ClusterName
 	}
-	// new cluster, named with the threeport- prefix
+	// new cluster: callers pass just the identifier (--name 1) and
+	// ThreeportRuntimeName enforces the "threeport-" prefix so every
+	// tptctl-provisioned cluster is discoverable by that convention.
 	return provider.ThreeportRuntimeName(opts.ControlPlaneName)
 }
 

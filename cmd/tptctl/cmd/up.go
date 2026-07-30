@@ -261,4 +261,8 @@ func init() {
 		&upApis,
 		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the install to those apis' controllers. Use \"none\" to install zero optional controllers. Defaults to empty, which installs all controllers.",
 	)
+	UpCmd.Flags().IntVar(
+		&cliArgs.ApiServerHostPort,
+		"api-server-host-port", 443, "Host port to bind the threeport API to when using kind provider. Overrides the default of 443. Useful when 443 is already in use on the host.",
+	)
 }

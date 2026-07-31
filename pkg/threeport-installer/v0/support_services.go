@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SupportServicesOperatorImage = "ghcr.io/nukleros/support-services-operator:v0.6.0"
+	SupportServicesOperatorImage = "ghcr.io/nukleros/support-services-operator:v0.7.0"
 	RBACProxyImage               = "ghcr.io/kube-rbac-proxy/kube-rbac-proxy:v0.22.0"
 
 	// links the service account delcared in the IngressComponent resource to the
@@ -351,7 +351,16 @@ func InstallThreeportCRDs(
 												"type": "object",
 											},
 											"domainName": map[string]interface{}{
-												"type": "string",
+												"description": "The DNS domain name to manage records for.",
+												"type":        "string",
+											},
+											"gcpProject": map[string]interface{}{
+												"description": "GCP project ID used when provider is \"google\".",
+												"type":        "string",
+											},
+											"gcpServiceAccountName": map[string]interface{}{
+												"description": "Name of the GCP service account external-dns impersonates via Workload Identity when provider is \"google\".  Used to set the iam.gke.io/gcp-service-account annotation on the external-dns Kubernetes service account.",
+												"type":        "string",
 											},
 											"extraArgs": map[string]interface{}{
 												"description": "Extra arguments to be passed into the External DNS container.",

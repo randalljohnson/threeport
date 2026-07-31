@@ -53,6 +53,7 @@ type GenesisControlPlaneCLIArgs struct {
 	ForceOverwriteConfig  bool
 	ControlPlaneName      string
 	InfraProvider         string
+	Tier                  string
 	KubeconfigPath        string
 	NumWorkerNodes        int
 	ProviderConfigDir     string
@@ -81,8 +82,6 @@ type Uninstaller struct {
 	awsConfig              *aws.Config
 	teardownOnFailure      *bool
 }
-
-const tier = threeport.ControlPlaneTierDev
 
 // InitArgs sets the default provider config directory, kubeconfig path and path
 // to threeport repo as needed in the CLI arguments.
@@ -159,6 +158,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.ForceOverwriteConfig = a.ForceOverwriteConfig
 	cpi.Opts.ControlPlaneName = a.ControlPlaneName
 	cpi.Opts.InfraProvider = a.InfraProvider
+	cpi.Opts.Tier = threeport.ControlPlaneTier(a.Tier)
 	cpi.Opts.KubeconfigPath = a.KubeconfigPath
 	cpi.Opts.NumWorkerNodes = a.NumWorkerNodes
 	cpi.Opts.ProviderConfigDir = a.ProviderConfigDir
@@ -249,7 +249,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	// configure the control plane
 	controlPlane := threeport.ControlPlane{
 		InfraProvider: v0.KubernetesRuntimeInfraProvider(cpi.Opts.InfraProvider),
-		Tier:          tier,
+		Tier:          cpi.Opts.Tier,
 	}
 	uninstaller.controlPlane = &controlPlane
 
@@ -1213,12 +1213,23 @@ func DeleteGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 func ValidateCreateGenesisControlPlaneFlags(
 	instanceName string,
 	infraProvider string,
+	tier string,
 	createRootDomain string,
 	authEnabled bool,
 	kindPortMappings []string,
 	controlPlaneOnly bool,
 	clusterName string,
 ) error {
+	// validate tier is one of the recognized values so a typo can't
+	// silently produce a control plane the drop-database guard treats as
+	// untrusted
+	if tier != threeport.ControlPlaneTierDev && tier != threeport.ControlPlaneTierProd {
+		return fmt.Errorf(
+			"invalid tier value '%s' - must be one of [%s, %s]",
+			tier, threeport.ControlPlaneTierDev, threeport.ControlPlaneTierProd,
+		)
+	}
+
 	// ensure name length doesn't exceed maximum
 	if utf8.RuneCountInString(instanceName) > threeport.InstanceNameMaxLength {
 		return fmt.Errorf(

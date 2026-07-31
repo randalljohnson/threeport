@@ -144,6 +144,11 @@ type Options struct {
 	// Create and connect local container registry for local control plane
 	// clusters.
 	LocalRegistry bool
+
+	// Tier records the level of availability and data retention this
+	// control plane is installed with. Stamped as a label on the
+	// control plane namespace at install time.
+	Tier ControlPlaneTier
 }
 
 type ControlPlaneInstaller struct {

@@ -15,4 +15,11 @@ const (
 	// load balancer ip) and that an in-place spec update can't fix.
 	LabelPersistent      = "threeport.io/persistent"
 	LabelPersistentValue = "true"
+
+	// LabelTier records the ControlPlaneTier a control plane was
+	// installed with, on its namespace. Operations that must never run
+	// against anything but a development installation (e.g. the dev
+	// reinstall's database drop) read this label back from the cluster
+	// rather than trusting a value supplied by the invoking command.
+	LabelTier = "threeport.io/tier"
 )

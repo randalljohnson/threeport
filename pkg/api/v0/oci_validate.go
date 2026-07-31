@@ -16,6 +16,18 @@ func (o *OciProvider) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the OciProvider before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -49,6 +61,18 @@ func (o *OciOkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the OciOkeKubernetesRuntimeDefinition before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciOkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -64,6 +88,18 @@ func (o *OciOkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the OciOkeKubernetesRuntimeInstance before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *OciOkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

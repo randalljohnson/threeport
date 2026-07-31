@@ -164,70 +164,103 @@ func TestAOR_MarriesOneToOne(t *testing.T) {
 	}
 }
 
-// TestAOR_RelationshipImmutable verifies the beforeUpdate hook in
-// attached_object_validate.go: silently widening describes -> owns
-// would change blocking behavior of an existing reference, so the
-// Relationship column is locked once persisted. Unchanged updates
-// (Changed returns false) must pass through.
-func TestAOR_RelationshipImmutable(t *testing.T) {
-	const (
-		baseType     = "threeport.io/v0.Workload"
-		baseID       = uint(7)
-		attacherType = "threeport.io/v0.Pod"
-		attacherID   = uint(99)
-	)
-
-	cases := []struct {
-		name      string
-		updateRel *Relationship // nil = no change to Relationship
-		wantErr   bool
-	}{
-		{
-			name:      "rel change describes -> owns rejected",
-			updateRel: rPtr(RelationshipOwns),
-			wantErr:   true,
-		},
-		{
-			name:      "rel change describes -> requires rejected",
-			updateRel: rPtr(RelationshipRequires),
-			wantErr:   true,
-		},
-		{
-			name:      "unchanged update (no rel field in payload) allowed",
-			updateRel: nil,
-		},
-		{
-			name:      "rel same value resolves Changed=false and is allowed",
-			updateRel: rPtr(RelationshipDescribes),
-		},
+// createValidAOR is the seed helper for hook tests; it inserts an
+// AttachedObjectReference with stable values and returns the reloaded
+// row, mirroring the PATCH handler's flow which loads existing before
+// calling Updates.
+func createValidAOR(t *testing.T, db *gorm.DB, rel Relationship) AttachedObjectReference {
+	t.Helper()
+	objType := "threeport.io/v0.TestBase"
+	objID := uint(1)
+	attachedType := "threeport.io/v0.TestAttacher"
+	attachedID := uint(2)
+	relCopy := rel
+	existing := &AttachedObjectReference{
+		ObjectType:         &objType,
+		ObjectID:           &objID,
+		AttachedObjectType: &attachedType,
+		AttachedObjectID:   &attachedID,
+		Relationship:       &relCopy,
 	}
+	require.NoError(t, db.Create(existing).Error)
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			db := setupAORTestDB(t)
-			existing := newAOR(baseType, baseID, attacherType, attacherID, RelationshipDescribes)
-			require.NoError(t, db.Create(existing).Error)
-
-			var loaded AttachedObjectReference
-			require.NoError(t, db.First(&loaded, *existing.ID).Error)
-
-			inbound := &AttachedObjectReference{}
-			if tc.updateRel != nil {
-				inbound.Relationship = tc.updateRel
-			}
-
-			err := db.Model(&loaded).Updates(inbound).Error
-			if tc.wantErr {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), "immutable")
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
+	var loaded AttachedObjectReference
+	require.NoError(t, db.First(&loaded, *existing.ID).Error)
+	return loaded
 }
 
-func rPtr(r Relationship) *Relationship { return &r }
+// TestAttachedObjectReference_beforeUpdate_RejectsPatchRelationship
+// pins the canonical PATCH-shape immutability check: changing
+// Relationship via Updates() must be rejected because the relationship
+// lifecycle (owns, marries, requires, describes) determines blocking
+// behavior of existing references, and silently widening or narrowing
+// it would change those guarantees post-create.
+func TestAttachedObjectReference_beforeUpdate_RejectsPatchRelationship(t *testing.T) {
+	db := setupAORTestDB(t)
+	loaded := createValidAOR(t, db, RelationshipRequires)
+
+	newRel := RelationshipOwns
+	patch := &AttachedObjectReference{Relationship: &newRel}
+	err := db.Model(&loaded).Updates(patch).Error
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "AttachedObjectReference.Relationship is immutable")
+}
+
+// TestAttachedObjectReference_beforeUpdate_RejectsPutRelationship is
+// the regression guard for the GORM Statement.Changed PUT-blind spot.
+// Under Save() the receiver IS the inbound row, so Statement.Changed
+// reports nothing changed even when the caller flips Relationship.
+// The fix routes through IsFieldChanged, which loads the committed row
+// and diffs it against the inbound values. This test fails against
+// the pre-fix code and passes against the fixed code.
+func TestAttachedObjectReference_beforeUpdate_RejectsPutRelationship(t *testing.T) {
+	db := setupAORTestDB(t)
+	loaded := createValidAOR(t, db, RelationshipRequires)
+
+	full := loaded
+	newRel := RelationshipOwns
+	full.Relationship = &newRel
+	err := db.Save(&full).Error
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "AttachedObjectReference.Relationship is immutable")
+}
+
+// TestAttachedObjectReference_beforeUpdate_AllowsNoOpUpdate confirms a
+// patch that doesn't touch Relationship passes through. This pins the
+// "no spurious rejection" branch; without it a regression that
+// always-returns-error on the field check would still pass the
+// rejection tests above but break legitimate updates.
+func TestAttachedObjectReference_beforeUpdate_AllowsNoOpUpdate(t *testing.T) {
+	db := setupAORTestDB(t)
+	loaded := createValidAOR(t, db, RelationshipRequires)
+
+	// PATCH with no Relationship field present in the payload
+	patch := &AttachedObjectReference{}
+	err := db.Model(&loaded).Updates(patch).Error
+
+	require.NoError(t, err, "no-op update should pass; Relationship absent from patch must not trigger rejection")
+}
+
+// TestAttachedObjectReference_beforeUpdate_AllowsSameRelationshipPut
+// confirms a PUT that writes the SAME Relationship value back passes
+// through. Without the IsFieldChanged fix, a naive "any nil-vs-non-nil
+// diff" check could fire even when the caller is sending the same
+// value, breaking idempotent writes.
+func TestAttachedObjectReference_beforeUpdate_AllowsSameRelationshipPut(t *testing.T) {
+	db := setupAORTestDB(t)
+	loaded := createValidAOR(t, db, RelationshipRequires)
+
+	full := loaded
+	// reassign with the same value via a fresh pointer (simulates the
+	// generated handler which binds the request body into a new struct)
+	sameRel := RelationshipRequires
+	full.Relationship = &sameRel
+	err := db.Save(&full).Error
+
+	require.NoError(t, err, "PUT writing the same Relationship back should pass; same value must not be flagged as changed")
+}
 
 // TestAOR_OwnsConstraintAfterSoftDelete verifies the deleted_at IS
 // NULL clause in idx_aor_owns_base lets a soft-deleted owns row drop

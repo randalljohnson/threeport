@@ -19,6 +19,7 @@ var ErrForbidden = errors.New("forbidden")
 var ErrConflict = errors.New("conflict")
 var ErrBadRequest = errors.New("bad request")
 var ErrObjectOwned = errors.New("object owned externally")
+var ErrMisdirectedRequest = errors.New("misdirected request")
 
 // GetResponse calls the threeport API and returns a response.
 func GetResponse(
@@ -97,6 +98,8 @@ func GetResponse(
 			return nil, fmt.Errorf("%w: %s", ErrBadRequest, errMessage)
 		case http.StatusNotFound:
 			return nil, fmt.Errorf("%w: %s", ErrObjectNotFound, errMessage)
+		case http.StatusMisdirectedRequest:
+			return nil, fmt.Errorf("%w: %s", ErrMisdirectedRequest, errMessage)
 		case http.StatusUnauthorized:
 			return nil, fmt.Errorf("%w: %s", ErrUnauthorized, errMessage)
 		case http.StatusForbidden:

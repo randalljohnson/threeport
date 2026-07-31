@@ -10,6 +10,18 @@ func (l *LoggingDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the LoggingDefinition is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LoggingDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -40,6 +52,18 @@ func (l *LoggingInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the LoggingInstance is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (l *LoggingInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -70,6 +94,18 @@ func (m *MetricsDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the MetricsDefinition is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *MetricsDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -100,6 +136,18 @@ func (m *MetricsInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the MetricsInstance is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *MetricsInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -130,6 +178,18 @@ func (o *ObservabilityDashboardDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ObservabilityDashboardDefinition is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *ObservabilityDashboardDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -160,6 +220,18 @@ func (o *ObservabilityDashboardInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ObservabilityDashboardInstance is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *ObservabilityDashboardInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -190,6 +262,18 @@ func (o *ObservabilityStackDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ObservabilityStackDefinition is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *ObservabilityStackDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -220,6 +304,18 @@ func (o *ObservabilityStackInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ObservabilityStackInstance is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (o *ObservabilityStackInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

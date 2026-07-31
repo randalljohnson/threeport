@@ -5,10 +5,11 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -62,6 +63,149 @@ var deleteTargets = []deleteTarget{
 // restApiDeploymentReadyTimeout caps how long Reinstall will wait for
 // the rest-api deployment to roll back to ready after install.
 const restApiDeploymentReadyTimeout = 5 * time.Minute
+
+// crdbStatefulSetName is the name of the database statefulset the
+// installer creates, and the prefix its volume claim carries.
+const crdbStatefulSetName = "crdb"
+
+// crdbDataVolumeClaimName is the volume claim holding the database's
+// data directory. A statefulset's claim is named from its volume claim
+// template and ordinal, so a single-replica database has exactly one.
+const crdbDataVolumeClaimName = "datadir-crdb-0"
+
+// statefulSetGVR and volumeClaimGVR are the kinds the database drop
+// deletes. Neither appears in deleteTargets: the ordinary reinstall
+// must never touch them.
+var (
+	statefulSetGVR = schema.GroupVersionResource{
+		Group:    "apps",
+		Version:  "v1",
+		Resource: "statefulsets",
+	}
+	volumeClaimGVR = schema.GroupVersionResource{
+		Group:    "",
+		Version:  "v1",
+		Resource: "persistentvolumeclaims",
+	}
+)
+
+// ErrControlPlaneNotDevelopment reports that an operation restricted to
+// development control planes was attempted against one installed at a
+// different tier, or against one whose tier cannot be established.
+var ErrControlPlaneNotDevelopment = errors.New("control plane is not installed at the development tier")
+
+// DropDatabase deletes the control plane's database and the volume
+// holding its data, so the next install brings up an empty database and
+// the migrations run against a fresh schema. The data is not
+// recoverable afterward.
+//
+// Only a control plane installed at the development tier may be
+// dropped. The tier is read from the namespace in the target cluster
+// rather than taken from the caller, so pointing a development command
+// at a production cluster is refused by that cluster's own record of
+// how it was installed. A namespace carrying no tier is refused too,
+// which covers control planes installed before the tier was recorded.
+//
+// The certificate authority, the signed certificates, the message
+// broker's data, and the api's external endpoint all survive: they are
+// separate resources, so nobody has to re-issue or re-download
+// credentials after a drop.
+func (cpi *ControlPlaneInstaller) DropDatabase(
+	kubeClient dynamic.Interface,
+	mapper *meta.RESTMapper,
+) error {
+	namespace := cpi.Opts.Namespace
+
+	tier, err := cpi.getInstalledTier(kubeClient, mapper)
+	if err != nil {
+		return err
+	}
+	if tier != ControlPlaneTierDev {
+		return fmt.Errorf(
+			"%w: namespace %s reports tier %q, refusing to drop its database",
+			ErrControlPlaneNotDevelopment, namespace, tier,
+		)
+	}
+
+	// foreground cascade so the pod is gone before the volume claim is
+	// released; deleting the claim out from under a running database
+	// leaves the volume attached and the replacement pod unschedulable.
+	fmt.Printf("Info: deleting database statefulset %s and volume claim %s\n", crdbStatefulSetName, crdbDataVolumeClaimName)
+	deletePolicy := metav1.DeletePropagationForeground
+	deleteOpts := metav1.DeleteOptions{PropagationPolicy: &deletePolicy}
+
+	if err := kubeClient.Resource(statefulSetGVR).Namespace(namespace).Delete(
+		context.Background(), crdbStatefulSetName, deleteOpts,
+	); err != nil && !k8serrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete database statefulset %s: %w", crdbStatefulSetName, err)
+	}
+
+	if err := kubeClient.Resource(volumeClaimGVR).Namespace(namespace).Delete(
+		context.Background(), crdbDataVolumeClaimName, deleteOpts,
+	); err != nil && !k8serrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete database volume claim %s: %w", crdbDataVolumeClaimName, err)
+	}
+
+	// wait for both to leave the api. the install that follows treats an
+	// existing statefulset as already installed and skips it, so a
+	// still-terminating one would be read as present and the database
+	// would never come back.
+	fmt.Println("Info: waiting for database statefulset and volume claim to be fully removed")
+	if err := util.Retry(60, 3, func() error {
+		for _, pending := range []struct {
+			gvr  schema.GroupVersionResource
+			name string
+		}{
+			{gvr: statefulSetGVR, name: crdbStatefulSetName},
+			{gvr: volumeClaimGVR, name: crdbDataVolumeClaimName},
+		} {
+			_, err := kubeClient.Resource(pending.gvr).Namespace(namespace).Get(
+				context.Background(), pending.name, metav1.GetOptions{},
+			)
+			if err == nil {
+				return fmt.Errorf("%s/%s still terminating", pending.gvr.Resource, pending.name)
+			}
+			if !k8serrors.IsNotFound(err) {
+				return fmt.Errorf("failed to check %s/%s: %w", pending.gvr.Resource, pending.name, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("database resources did not finish terminating: %w", err)
+	}
+
+	fmt.Println("Info: database dropped, it will be recreated empty by the install that follows")
+
+	return nil
+}
+
+// getInstalledTier reads the tier a control plane was installed with
+// from its namespace. It reports an error when the namespace is absent
+// or carries no tier, so a caller gating a destructive operation on the
+// result never proceeds on a missing value.
+func (cpi *ControlPlaneInstaller) getInstalledTier(
+	kubeClient dynamic.Interface,
+	mapper *meta.RESTMapper,
+) (ControlPlaneTier, error) {
+	namespace, err := kube.GetResource(
+		"", "v1", "Namespace",
+		"", cpi.Opts.Namespace,
+		kubeClient, *mapper,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to read control plane namespace %s: %w", cpi.Opts.Namespace, err)
+	}
+
+	tier := namespace.GetLabels()[LabelTier]
+	if tier == "" {
+		return "", fmt.Errorf(
+			"%w: namespace %s records no tier, so it cannot be confirmed as a development installation",
+			ErrControlPlaneNotDevelopment, cpi.Opts.Namespace,
+		)
+	}
+
+	return ControlPlaneTier(tier), nil
+}
 
 // Reinstall deletes every installer-managed stateless resource in the
 // control plane namespace and then re-runs the install path so the
@@ -173,7 +317,7 @@ func (cpi *ControlPlaneInstaller) deleteForReinstall(
 			patch,
 			metav1.PatchOptions{},
 		)
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			return fmt.Errorf("failed to scale deployment %s to zero: %w", name, err)
 		}
 	}
@@ -231,7 +375,7 @@ func (cpi *ControlPlaneInstaller) deleteForReinstall(
 
 		for _, obj := range list.Items {
 			name := obj.GetName()
-			if err := ri.Delete(context.Background(), name, deleteOpts); err != nil && !errors.IsNotFound(err) {
+			if err := ri.Delete(context.Background(), name, deleteOpts); err != nil && !k8serrors.IsNotFound(err) {
 				return fmt.Errorf(
 					"failed to delete %s/%s: %w",
 					target.gvr.Resource, name, err,
@@ -299,7 +443,7 @@ func (cpi *ControlPlaneInstaller) waitForRestAPIReady(
 		dep, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).Get(
 			context.Background(), name, metav1.GetOptions{},
 		)
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			return fmt.Errorf("failed to read rest-api deployment status: %w", err)
 		}
 		if err == nil {

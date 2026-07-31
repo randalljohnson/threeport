@@ -29,11 +29,18 @@ func (cpi *ControlPlaneInstaller) CreateThreeportControlPlaneNamespace(
 			"kind":       "Namespace",
 			"metadata": map[string]interface{}{
 				"name": cpi.Opts.Namespace,
+				"labels": map[string]interface{}{
+					LabelTier: string(cpi.Opts.Tier),
+				},
 			},
 		},
 	}
+	// persistent so the tier it was installed with can never drift on a
+	// later reapply (e.g. tptdev reinstall, which doesn't itself know
+	// the original tier)
+	setPersistent(namespace)
 	if err := cpi.CreateOrUpdateKubeResource(namespace, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
+		return fmt.Errorf("failed to create/update control plane namespace: %w", err)
 	}
 
 	return nil

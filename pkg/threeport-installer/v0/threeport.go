@@ -241,6 +241,20 @@ type ControlPlane struct {
 	Tier          ControlPlaneTier
 }
 
+// DefaultControlPlaneTierForProvider returns the tier to assume when a
+// caller installs on the given infra provider without naming one. A
+// local cluster is disposable and defaults to development; every cloud
+// provider defaults to production, so an install that reaches real
+// infrastructure is never treated as throwaway unless asked for
+// explicitly.
+func DefaultControlPlaneTierForProvider(infraProvider string) string {
+	if infraProvider == v0.KubernetesRuntimeInfraProviderKind {
+		return ControlPlaneTierDev
+	}
+
+	return ControlPlaneTierProd
+}
+
 // AllControlPlaneComponents returns a list of all control plane components.
 func AllControlPlaneComponents() []*v0.ControlPlaneComponent {
 	allControlPlaneComponents := ThreeportControllerList

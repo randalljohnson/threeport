@@ -10,6 +10,18 @@ func (c *ControlPlaneDefinition) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ControlPlaneDefinition is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (c *ControlPlaneDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -40,6 +52,18 @@ func (c *ControlPlaneInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the ControlPlaneInstance is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (c *ControlPlaneInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

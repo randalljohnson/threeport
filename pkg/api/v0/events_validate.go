@@ -7,7 +7,7 @@ import (
 
 	gorm "gorm.io/gorm"
 
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -22,7 +22,7 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 			"event requires ObjectType (fully qualified form) and ObjectID to identify its subject",
 		)
 	}
-	if _, _, _, ok := apilib.ParseQualifiedType(*e.ObjectType); !ok {
+	if _, _, _, ok := lib.ParseQualifiedType(*e.ObjectType); !ok {
 		return util.NewBadRequestError(fmt.Sprintf(
 			"event ObjectType %q is not a fully qualified type name (expected <api-namespace>/<version>.<TypeName>)",
 			*e.ObjectType,
@@ -32,6 +32,18 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate runs before the Event is updated.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (e *Event) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

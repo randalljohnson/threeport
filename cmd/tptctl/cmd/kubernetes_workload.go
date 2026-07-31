@@ -21,14 +21,20 @@ var (
 	k8sWorkloadOutput     string
 )
 
+const (
+	kubernetesWorkloadShortAlias           = "kw"
+	kubernetesWorkloadDefinitionShortAlias = "kwd"
+	kubernetesWorkloadInstanceShortAlias   = "kwi"
+)
+
 ///////////////////////////////////////////////////////////////////////////////
 // Workload
 ///////////////////////////////////////////////////////////////////////////////
 
 // GetKubernetesWorkloadsCmd represents the command 'tptctl get workloads'
 var GetKubernetesWorkloadsCmd = &cobra.Command{
-	Aliases: []string{"workload"},
-	Example: "  # get all workloads\n  tptctl get workloads\n\n  # get a specific workload\n  tptctl get workload --name some-workload",
+	Aliases: []string{"kubernetes-workload", kubernetesWorkloadShortAlias},
+	Example: "  # get all kubernetes workloads\n  tptctl get kubernetes-workloads\n\n  # get a specific kubernetes workload\n  tptctl get kubernetes-workload --name some-workload",
 	Long:    "Get workloads from the system. Use --name to get a specific workload. A workload is a unified abstraction of a kubernetes workload definition and kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -61,7 +67,7 @@ var GetKubernetesWorkloadsCmd = &cobra.Command{
 				}
 			} else if k8sWorkloadName != "" {
 				k8sWorkloadConfig = config_v0.KubernetesWorkloadConfig{
-					Workload: config_v0.KubernetesWorkloadValues{
+					KubernetesWorkload: config_v0.KubernetesWorkloadValues{
 						Name: &k8sWorkloadName,
 					},
 				}
@@ -111,7 +117,7 @@ var GetKubernetesWorkloadsCmd = &cobra.Command{
 	},
 	Short:        "Get workloads from the system",
 	SilenceUsage: true,
-	Use:          "workloads",
+	Use:          "kubernetes-workloads",
 }
 
 func init() {
@@ -141,7 +147,8 @@ func init() {
 
 // CreateKubernetesWorkloadCmd represents the command 'tptctl create workload'
 var CreateKubernetesWorkloadCmd = &cobra.Command{
-	Example: "  # create a new workload using a config file\n  tptctl create workload --config path/to/config.yaml",
+	Aliases: []string{kubernetesWorkloadShortAlias},
+	Example: "  # create a new kubernetes workload using a config file\n  tptctl create kubernetes-workload --config path/to/config.yaml",
 	Long:    "Create a new workload. A workload is a unified abstraction of a kubernetes workload definition and kubernetes workload instance. This command creates both a new kubernetes workload definition and kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -164,7 +171,7 @@ var CreateKubernetesWorkloadCmd = &cobra.Command{
 			}
 
 			// create workload
-			k8sWorkloadConfig.Workload.WorkloadConfigPath = &k8sWorkloadConfigPath
+			k8sWorkloadConfig.KubernetesWorkload.WorkloadConfigPath = &k8sWorkloadConfigPath
 			createdK8sWorkloadSlice, err := k8sWorkloadConfig.Create(
 				apiClient,
 				apiEndpoint,
@@ -181,8 +188,8 @@ var CreateKubernetesWorkloadCmd = &cobra.Command{
 			}
 			createdK8sWorkload := (*createdK8sWorkloadSlice)[0]
 
-			cli.Info(fmt.Sprintf("kubernetes workload definition and instance with name %s created", *createdK8sWorkload.Workload.Name))
-			cli.Complete(fmt.Sprintf("workload %s created", *createdK8sWorkload.Workload.Name))
+			cli.Info(fmt.Sprintf("kubernetes workload definition and instance with name %s created", *createdK8sWorkload.KubernetesWorkload.Name))
+			cli.Complete(fmt.Sprintf("workload %s created", *createdK8sWorkload.KubernetesWorkload.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -190,7 +197,7 @@ var CreateKubernetesWorkloadCmd = &cobra.Command{
 	},
 	Short:        "Create a new workload",
 	SilenceUsage: true,
-	Use:          "workload",
+	Use:          "kubernetes-workload",
 }
 
 func init() {
@@ -216,7 +223,8 @@ func init() {
 
 // DeleteKubernetesWorkloadCmd represents the command 'tptctl delete workload'
 var DeleteKubernetesWorkloadCmd = &cobra.Command{
-	Example: "  # delete using a config file\n  tptctl delete workload --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete workload --name some-workload",
+	Aliases: []string{kubernetesWorkloadShortAlias},
+	Example: "  # delete using a config file\n  tptctl delete kubernetes-workload --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete kubernetes-workload --name some-workload",
 	Long:    "Delete an existing workload. This command deletes an existing kubernetes workload definition and kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -244,16 +252,16 @@ var DeleteKubernetesWorkloadCmd = &cobra.Command{
 			}
 
 			// delete workload
-			k8sWorkloadConfig.Workload.WorkloadConfigPath = &k8sWorkloadConfigPath
+			k8sWorkloadConfig.KubernetesWorkload.WorkloadConfigPath = &k8sWorkloadConfigPath
 			_, err = k8sWorkloadConfig.Delete(apiClient, apiEndpoint)
 			if err != nil {
 				cli.Error("failed to delete workload", err)
 				os.Exit(1)
 			}
 
-			cli.Info(fmt.Sprintf("kubernetes workload definition %s deleted", *k8sWorkloadConfig.Workload.Name))
-			cli.Info(fmt.Sprintf("kubernetes workload instance %s deleted", *k8sWorkloadConfig.Workload.Name))
-			cli.Complete(fmt.Sprintf("workload %s deleted", *k8sWorkloadConfig.Workload.Name))
+			cli.Info(fmt.Sprintf("kubernetes workload definition %s deleted", *k8sWorkloadConfig.KubernetesWorkload.Name))
+			cli.Info(fmt.Sprintf("kubernetes workload instance %s deleted", *k8sWorkloadConfig.KubernetesWorkload.Name))
+			cli.Complete(fmt.Sprintf("workload %s deleted", *k8sWorkloadConfig.KubernetesWorkload.Name))
 		default:
 			cli.Error("", errors.New("unrecognized object version"))
 			os.Exit(1)
@@ -261,7 +269,7 @@ var DeleteKubernetesWorkloadCmd = &cobra.Command{
 	},
 	Short:        "Delete an existing workload",
 	SilenceUsage: true,
-	Use:          "workload",
+	Use:          "kubernetes-workload",
 }
 
 func init() {
@@ -285,10 +293,10 @@ func init() {
 // KubernetesWorkloadDefinition
 ///////////////////////////////////////////////////////////////////////////////
 
-// GetKubernetesWorkloadDefinitionsCmd represents the command 'tptctl get workload-definitions'
+// GetKubernetesWorkloadDefinitionsCmd represents the command 'tptctl get kubernetes-workload-definitions'
 var GetKubernetesWorkloadDefinitionsCmd = &cobra.Command{
-	Aliases: []string{"workload-definition"},
-	Example: "  # get all workload definitions\n  tptctl get workload-definitions\n\n  # get a specific kubernetes workload definition\n  tptctl get workload-definition --name some-workload-definition",
+	Aliases: []string{"kubernetes-workload-definition", kubernetesWorkloadDefinitionShortAlias},
+	Example: "  # get all workload definitions\n  tptctl get kubernetes-workload-definitions\n\n  # get a specific kubernetes workload definition\n  tptctl get kubernetes-workload-definition --name some-workload-definition",
 	Long:    "Get workload definitions from the system. Use --name to get a specific kubernetes workload definition.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -370,7 +378,7 @@ var GetKubernetesWorkloadDefinitionsCmd = &cobra.Command{
 	},
 	Short:        "Get workload definitions from the system",
 	SilenceUsage: true,
-	Use:          "workload-definitions",
+	Use:          "kubernetes-workload-definitions",
 }
 
 func init() {
@@ -398,9 +406,10 @@ func init() {
 	)
 }
 
-// CreateKubernetesWorkloadDefinitionCmd represents the command 'tptctl create workload-definition'
+// CreateKubernetesWorkloadDefinitionCmd represents the command 'tptctl create kubernetes-workload-definition'
 var CreateKubernetesWorkloadDefinitionCmd = &cobra.Command{
-	Example: "  # create a new kubernetes workload definition using a config file\n  tptctl create workload-definition --config path/to/config.yaml",
+	Aliases: []string{kubernetesWorkloadDefinitionShortAlias},
+	Example: "  # create a new kubernetes workload definition using a config file\n  tptctl create kubernetes-workload-definition --config path/to/config.yaml",
 	Long:    "Create a new kubernetes workload definition.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -437,7 +446,7 @@ var CreateKubernetesWorkloadDefinitionCmd = &cobra.Command{
 	},
 	Short:        "Create a new kubernetes workload definition",
 	SilenceUsage: true,
-	Use:          "workload-definition",
+	Use:          "kubernetes-workload-definition",
 }
 
 func init() {
@@ -461,9 +470,10 @@ func init() {
 	)
 }
 
-// ReplaceKubernetesWorkloadDefinitionCmd represents the command 'tptctl replace workload-definition'
+// ReplaceKubernetesWorkloadDefinitionCmd represents the command 'tptctl replace kubernetes-workload-definition'
 var ReplaceKubernetesWorkloadDefinitionCmd = &cobra.Command{
-	Example: "  # replace using a config file\n  tptctl replace workload-definition --config path/to/config.yaml --name some-workload-definition",
+	Aliases: []string{kubernetesWorkloadDefinitionShortAlias},
+	Example: "  # replace using a config file\n  tptctl replace kubernetes-workload-definition --config path/to/config.yaml --name some-workload-definition",
 	Long:    "Replace an existing kubernetes workload definition.\n Note that the entire object will replaced with a PUT request.\n All fields must be provided in the config file.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -500,7 +510,7 @@ var ReplaceKubernetesWorkloadDefinitionCmd = &cobra.Command{
 	},
 	Short:        "Replace an existing kubernetes workload definition",
 	SilenceUsage: true,
-	Use:          "workload-definition",
+	Use:          "kubernetes-workload-definition",
 }
 
 func init() {
@@ -529,9 +539,10 @@ func init() {
 	)
 }
 
-// DeleteKubernetesWorkloadDefinitionCmd represents the command 'tptctl delete workload-definition'
+// DeleteKubernetesWorkloadDefinitionCmd represents the command 'tptctl delete kubernetes-workload-definition'
 var DeleteKubernetesWorkloadDefinitionCmd = &cobra.Command{
-	Example: "  # delete using a config file\n  tptctl delete workload-definition --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete workload-definition --name some-workload-definition",
+	Aliases: []string{kubernetesWorkloadDefinitionShortAlias},
+	Example: "  # delete using a config file\n  tptctl delete kubernetes-workload-definition --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete kubernetes-workload-definition --name some-workload-definition",
 	Long:    "Delete an existing kubernetes workload definition.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -586,7 +597,7 @@ var DeleteKubernetesWorkloadDefinitionCmd = &cobra.Command{
 	},
 	Short:        "Delete an existing kubernetes workload definition",
 	SilenceUsage: true,
-	Use:          "workload-definition",
+	Use:          "kubernetes-workload-definition",
 }
 
 func init() {
@@ -614,10 +625,10 @@ func init() {
 // KubernetesWorkloadInstance
 ///////////////////////////////////////////////////////////////////////////////
 
-// GetKubernetesWorkloadInstancesCmd represents the command 'tptctl get workload-instances'
+// GetKubernetesWorkloadInstancesCmd represents the command 'tptctl get kubernetes-workload-instances'
 var GetKubernetesWorkloadInstancesCmd = &cobra.Command{
-	Aliases: []string{"workload-instance"},
-	Example: "  # get all workload instances\n  tptctl get workload-instances\n\n  # get a specific kubernetes workload instance\n  tptctl get workload-instance --name some-workload-instance",
+	Aliases: []string{"kubernetes-workload-instance", kubernetesWorkloadInstanceShortAlias},
+	Example: "  # get all workload instances\n  tptctl get kubernetes-workload-instances\n\n  # get a specific kubernetes workload instance\n  tptctl get kubernetes-workload-instance --name some-workload-instance",
 	Long:    "Get workload instances from the system. Use --name to get a specific kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -699,7 +710,7 @@ var GetKubernetesWorkloadInstancesCmd = &cobra.Command{
 	},
 	Short:        "Get workload instances from the system",
 	SilenceUsage: true,
-	Use:          "workload-instances",
+	Use:          "kubernetes-workload-instances",
 }
 
 func init() {
@@ -727,9 +738,10 @@ func init() {
 	)
 }
 
-// CreateKubernetesWorkloadInstanceCmd represents the command 'tptctl create workload-instance'
+// CreateKubernetesWorkloadInstanceCmd represents the command 'tptctl create kubernetes-workload-instance'
 var CreateKubernetesWorkloadInstanceCmd = &cobra.Command{
-	Example: "  # create a new kubernetes workload instance using a config file\n  tptctl create workload-instance --config path/to/config.yaml",
+	Aliases: []string{kubernetesWorkloadInstanceShortAlias},
+	Example: "  # create a new kubernetes workload instance using a config file\n  tptctl create kubernetes-workload-instance --config path/to/config.yaml",
 	Long:    "Create a new kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -765,7 +777,7 @@ var CreateKubernetesWorkloadInstanceCmd = &cobra.Command{
 	},
 	Short:        "Create a new kubernetes workload instance",
 	SilenceUsage: true,
-	Use:          "workload-instance",
+	Use:          "kubernetes-workload-instance",
 }
 
 func init() {
@@ -789,9 +801,10 @@ func init() {
 	)
 }
 
-// ReplaceKubernetesWorkloadInstanceCmd represents the command 'tptctl replace workload-instance'
+// ReplaceKubernetesWorkloadInstanceCmd represents the command 'tptctl replace kubernetes-workload-instance'
 var ReplaceKubernetesWorkloadInstanceCmd = &cobra.Command{
-	Example: "  # replace using a config file\n  tptctl replace workload-instance --config path/to/config.yaml --name some-workload-instance",
+	Aliases: []string{kubernetesWorkloadInstanceShortAlias},
+	Example: "  # replace using a config file\n  tptctl replace kubernetes-workload-instance --config path/to/config.yaml --name some-workload-instance",
 	Long:    "Replace an existing kubernetes workload instance.\n Note that the entire object will replaced with a PUT request.\n All fields must be provided in the config file.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -827,7 +840,7 @@ var ReplaceKubernetesWorkloadInstanceCmd = &cobra.Command{
 	},
 	Short:        "Replace an existing kubernetes workload instance",
 	SilenceUsage: true,
-	Use:          "workload-instance",
+	Use:          "kubernetes-workload-instance",
 }
 
 func init() {
@@ -856,9 +869,10 @@ func init() {
 	)
 }
 
-// DeleteKubernetesWorkloadInstanceCmd represents the command 'tptctl delete workload-instance'
+// DeleteKubernetesWorkloadInstanceCmd represents the command 'tptctl delete kubernetes-workload-instance'
 var DeleteKubernetesWorkloadInstanceCmd = &cobra.Command{
-	Example: "  # delete using a config file\n  tptctl delete workload-instance --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete workload-instance --name some-workload-instance",
+	Aliases: []string{kubernetesWorkloadInstanceShortAlias},
+	Example: "  # delete using a config file\n  tptctl delete kubernetes-workload-instance --config path/to/config.yaml\n\n  # delete using name\n  tptctl delete kubernetes-workload-instance --name some-workload-instance",
 	Long:    "Delete an existing kubernetes workload instance.",
 	PreRun:  CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -912,7 +926,7 @@ var DeleteKubernetesWorkloadInstanceCmd = &cobra.Command{
 	},
 	Short:        "Delete an existing kubernetes workload instance",
 	SilenceUsage: true,
-	Use:          "workload-instance",
+	Use:          "kubernetes-workload-instance",
 }
 
 func init() {

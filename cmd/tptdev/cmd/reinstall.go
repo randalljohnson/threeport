@@ -55,7 +55,9 @@ the migrations run against an empty schema. That data is not
 recoverable, so the flag also requires --confirm with the control plane
 name, and the target cluster must record itself as a development
 installation. Certificates survive a drop, so no credentials need to be
-re-issued or re-downloaded afterward.
+re-issued or re-downloaded afterward, and the kubernetes runtime and
+control plane records the API needs in order to accept work are
+recreated from the local threeport config once the API is back up.
 
 Intended for dev environments only. The reinstall command does not
 build images; run 'tptdev build --push' first if the image needs to
@@ -156,6 +158,18 @@ change.`,
 		if err := cpi.Reinstall(kubeClient, &mapper, authConfig); err != nil {
 			cli.Error("failed to reinstall threeport control plane", err)
 			os.Exit(1)
+		}
+
+		// the reinstall replaces kubernetes resources only. The records
+		// the genesis install wrote through the threeport API went out
+		// with the dropped database, so restore them; without them the
+		// control plane comes back with no default kubernetes runtime
+		// to place workloads on and no record of itself.
+		if reinstallDropDatabase {
+			if err := cli.EnsureBootstrapObjects(cpi); err != nil {
+				cli.Error("failed to restore control plane bootstrap objects", err)
+				os.Exit(1)
+			}
 		}
 
 		cli.Complete("threeport control plane reinstalled")

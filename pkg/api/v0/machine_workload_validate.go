@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	util "github.com/threeport/threeport/pkg/util/v0"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // envKeyRegex matches a valid POSIX environment variable name.
@@ -46,19 +47,33 @@ func (m *MachineWorkloadDefinition) beforeCreate(tx *gorm.DB) error {
 	return validateEnv(m.Env)
 }
 
-// beforeUpdate validates the MachineWorkloadDefinition before update. On
-// update paths the receiver is the stale loaded row, so redirect to
-// Statement.Dest for the inbound payload. Mirrors the pattern in
-// ProcessEncryptTaggedFields.
+// beforeUpdate validates the MachineWorkloadDefinition before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *MachineWorkloadDefinition) beforeUpdate(tx *gorm.DB) error {
-	if !tx.Statement.Changed("Env") {
+	changed, err := lib.IsFieldChanged(tx, "Env")
+	if err != nil {
+		return err
+	}
+	if !changed {
 		return nil
 	}
-	target := m
-	if dest, ok := tx.Statement.Dest.(*MachineWorkloadDefinition); ok && dest != m {
-		target = dest
+	incoming := lib.IncomingValues(tx)
+	def, ok := incoming.(*MachineWorkloadDefinition)
+	if !ok {
+		return fmt.Errorf("failed to validate env: unexpected payload type %T", incoming)
 	}
-	return validateEnv(target.Env)
+	return validateEnv(def.Env)
 }
 
 // beforeDelete validates the MachineWorkloadDefinition before delete.
@@ -71,19 +86,33 @@ func (m *MachineWorkloadInstance) beforeCreate(tx *gorm.DB) error {
 	return validateEnv(m.Env)
 }
 
-// beforeUpdate validates the MachineWorkloadInstance before update. On
-// update paths the receiver is the stale loaded row, so redirect to
-// Statement.Dest for the inbound payload. Mirrors the pattern in
-// ProcessEncryptTaggedFields.
+// beforeUpdate validates the MachineWorkloadInstance before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+// Import:
+//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (m *MachineWorkloadInstance) beforeUpdate(tx *gorm.DB) error {
-	if !tx.Statement.Changed("Env") {
+	changed, err := lib.IsFieldChanged(tx, "Env")
+	if err != nil {
+		return err
+	}
+	if !changed {
 		return nil
 	}
-	target := m
-	if dest, ok := tx.Statement.Dest.(*MachineWorkloadInstance); ok && dest != m {
-		target = dest
+	incoming := lib.IncomingValues(tx)
+	inst, ok := incoming.(*MachineWorkloadInstance)
+	if !ok {
+		return fmt.Errorf("failed to validate env: unexpected payload type %T", incoming)
 	}
-	return validateEnv(target.Env)
+	return validateEnv(inst.Env)
 }
 
 // beforeDelete validates the MachineWorkloadInstance before delete.

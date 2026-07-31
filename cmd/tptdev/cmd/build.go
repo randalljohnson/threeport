@@ -15,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/threeport/threeport/internal/provider"
+	"github.com/threeport/threeport/internal/version"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
@@ -77,14 +78,16 @@ var buildCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// default tag to current git branch name if not specified
+		// default the tag to the sha-suffixed dev tag the image build resolves
+		// so build and a later install agree on the exact commit; falls back to
+		// the base version outside a git checkout.
 		if cliArgs.ControlPlaneImageTag == "" {
-			branch, err := gitBranchName()
+			tag, err := util.ResolveImageTag(version.GetVersion())
 			if err != nil {
-				cli.Error(fmt.Sprintf("failed to determine git branch for default tag: %s\nspecify a tag explicitly with --tag/-t", err), nil)
+				cli.Error(fmt.Sprintf("failed to resolve default image tag: %s\nspecify a tag explicitly with --tag/-t", err), nil)
 				os.Exit(1)
 			}
-			cliArgs.ControlPlaneImageTag = branch
+			cliArgs.ControlPlaneImageTag = tag
 		}
 
 		// create list of buildable components, including database-migrator
@@ -232,36 +235,6 @@ var buildCmd = &cobra.Command{
 		// wait for all workers to finish
 		waitGroup.Wait()
 	},
-}
-
-// gitBranchName returns the current git branch name by reading .git/HEAD directly.
-func gitBranchName() (string, error) {
-	// walk up from current directory to find .git/HEAD
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
-	}
-
-	for {
-		headPath := filepath.Join(dir, ".git", "HEAD")
-		data, err := os.ReadFile(headPath)
-		if err == nil {
-			ref := strings.TrimSpace(string(data))
-			// .git/HEAD contains "ref: refs/heads/<branch>"
-			if strings.HasPrefix(ref, "ref: refs/heads/") {
-				return strings.TrimPrefix(ref, "ref: refs/heads/"), nil
-			}
-			return "", fmt.Errorf("git HEAD is detached or has unexpected format: %s", ref)
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-
-	return "", fmt.Errorf("not inside a git repository")
 }
 
 func init() {

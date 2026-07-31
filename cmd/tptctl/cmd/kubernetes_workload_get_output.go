@@ -19,23 +19,23 @@ func outputGetv0K8sWorkloadsCmd(
 	fmt.Fprintln(writer, "NAME\t WORKLOAD DEFINITION\t WORKLOAD INSTANCE\t KUBERNETES RUNTIME INSTANCE\t STATUS\t AGE")
 	for _, workload := range *workloads {
 		kubernetesRuntimeInstanceName := ""
-		if workload.Workload.KubernetesRuntimeInstance != nil &&
-			workload.Workload.KubernetesRuntimeInstance.Name != nil {
-			kubernetesRuntimeInstanceName = *workload.Workload.KubernetesRuntimeInstance.Name
+		if workload.KubernetesWorkload.KubernetesRuntimeInstance != nil &&
+			workload.KubernetesWorkload.KubernetesRuntimeInstance.Name != nil {
+			kubernetesRuntimeInstanceName = *workload.KubernetesWorkload.KubernetesRuntimeInstance.Name
 		}
 		status := ""
-		if workload.Workload.Status != nil {
-			status = *workload.Workload.Status
+		if workload.KubernetesWorkload.Status != nil {
+			status = *workload.KubernetesWorkload.Status
 		}
 		age := ""
-		if workload.Workload.Age != nil {
-			age = *workload.Workload.Age
+		if workload.KubernetesWorkload.Age != nil {
+			age = *workload.KubernetesWorkload.Age
 		}
 		fmt.Fprintln(
 			writer,
-			*workload.Workload.Name, "\t",
-			*workload.Workload.Name, "\t",
-			*workload.Workload.Name, "\t",
+			*workload.KubernetesWorkload.Name, "\t",
+			*workload.KubernetesWorkload.Name, "\t",
+			*workload.KubernetesWorkload.Name, "\t",
 			kubernetesRuntimeInstanceName, "\t",
 			status, "\t",
 			age,
@@ -47,7 +47,7 @@ func outputGetv0K8sWorkloadsCmd(
 }
 
 // outputGetv0K8sWorkloadDefinitionsCmd produces the tabular output for the
-// `get workload-definitions` command.
+// `get kubernetes-workload-definitions` command.
 func outputGetv0K8sWorkloadDefinitionsCmd(
 	k8sWorkloadDefinitions *[]config_v0.KubernetesWorkloadDefinitionConfig,
 ) error {
@@ -70,7 +70,7 @@ func outputGetv0K8sWorkloadDefinitionsCmd(
 }
 
 // outputGetv0K8sWorkloadInstancesCmd produces the tabular output for the
-// `get workload-instances` command.
+// `get kubernetes-workload-instances` command.
 func outputGetv0K8sWorkloadInstancesCmd(
 	k8sWorkloadInstances *[]config_v0.KubernetesWorkloadInstanceConfig,
 ) error {

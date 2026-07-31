@@ -25,6 +25,15 @@ import (
 // subset from the cluster's installer-managed deployments.
 var reinstallApis string
 
+// reinstallDropDatabase holds the --drop-database flag value: whether
+// to delete the database and its data before reapplying the install,
+// so the migrations run against an empty schema.
+var reinstallDropDatabase bool
+
+// reinstallConfirm holds the --confirm flag value: the control plane
+// name the caller typed back to authorize dropping the database.
+var reinstallConfirm string
+
 // reinstallCmd represents the reinstall command. Dev-only: sweeps
 // installer-managed stateless deployments and reapplies the install
 // path so devs pick up source changes without losing database state
@@ -43,11 +52,31 @@ certificate authority and signed certs, and the rest-api's external
 service ip. Everything else (controller and api-server pods, their
 configmaps, rbac) is recreated.
 
+Pass --drop-database to delete the database and its data as well, so
+the migrations run against an empty schema. That data is not
+recoverable, so the flag also requires --confirm with the control plane
+name, and the target cluster must record itself as a development
+installation. Certificates survive a drop, so no credentials need to be
+re-issued or re-downloaded afterward.
+
 Intended for dev environments only. The reinstall command does not
 build images; run 'tptdev build --push' first if the image needs to
 change.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cliArgs.GetControlPlaneEnvVars()
+
+		// require the control plane name typed back before dropping the
+		// database. The installer refuses the drop outright on anything
+		// but a development control plane; this catches the case where
+		// the target legitimately is one, but not the one the caller had
+		// in mind.
+		if reinstallDropDatabase && reinstallConfirm != cliArgs.ControlPlaneName {
+			cli.Error(fmt.Sprintf(
+				"--drop-database destroys the database of control plane %q and its data cannot be recovered; re-run with --confirm %s to proceed",
+				cliArgs.ControlPlaneName, cliArgs.ControlPlaneName,
+			), nil)
+			os.Exit(1)
+		}
 
 		// default the tag to the sha-suffixed dev tag the image build resolves
 		// so reinstall picks up images built by 'tptdev build' without requiring
@@ -117,6 +146,15 @@ change.`,
 			}
 		}
 
+		// drop the database before the reapply so the install that
+		// follows recreates it empty and the migrations run from scratch
+		if reinstallDropDatabase {
+			if err := cpi.DropDatabase(kubeClient, &mapper); err != nil {
+				cli.Error("failed to drop control plane database", err)
+				os.Exit(1)
+			}
+		}
+
 		if err := cpi.Reinstall(kubeClient, &mapper, authConfig); err != nil {
 			cli.Error("failed to reinstall threeport control plane", err)
 			os.Exit(1)
@@ -152,5 +190,13 @@ func init() {
 	reinstallCmd.Flags().StringVar(
 		&reinstallApis,
 		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the reinstall to those apis' controllers. Defaults to empty, which auto-detects the controller subset from the cluster's installer-managed deployments.",
+	)
+	reinstallCmd.Flags().BoolVar(
+		&reinstallDropDatabase,
+		"drop-database", false, "Delete the database and its data before reapplying, so the migrations run against an empty schema. Requires --confirm and a control plane installed at the development tier. The data cannot be recovered.",
+	)
+	reinstallCmd.Flags().StringVar(
+		&reinstallConfirm,
+		"confirm", "", "Name of the control plane whose database is being dropped. Must match --name. Required with --drop-database.",
 	)
 }

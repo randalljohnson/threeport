@@ -920,7 +920,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			Reconciled: &reconciled,
 		},
 		Namespace:                   &cpi.Opts.Namespace,
-		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
+		KubernetesRuntimeInstanceID: kubernetesRuntimeInstResult.ID,
 		Genesis:                     &genesis,
 		IsSelf:                      &selfInstance,
 		ApiServerEndpoint:           &threeportAPIEndpoint,

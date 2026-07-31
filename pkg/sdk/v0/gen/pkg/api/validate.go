@@ -62,6 +62,7 @@ func emitValidateGen(
 	f.ImportAlias("gorm.io/gorm", "gorm")
 	if generator.Module {
 		f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "tpapi_v0")
+		f.ImportAlias("github.com/threeport/threeport/pkg/api/lib/v0", "tpapi_lib")
 	}
 
 	for _, apiObj := range objGroup.ApiObjects {
@@ -141,6 +142,45 @@ func emitValidateScaffoldIfMissing(
 				"%s runs %s the %s is %s.",
 				h.userName, tense, typeName, h.verb,
 			))
+			if h.gormName == "BeforeUpdate" {
+				// use tpapi_lib in modules
+				libAlias := "lib"
+				if generator.Module {
+					libAlias = "tpapi_lib"
+				}
+				f.Comment("")
+				f.Comment("Receiver semantics depend on the GORM call shape; see")
+				f.Comment("pkg/api/lib/v0/update_helpers.go for the full model. The simplest")
+				f.Comment("per-field check is:")
+				f.Comment(fmt.Sprintf(
+					`  - %s.IsFieldChanged(tx, "FieldName"): works under both PATCH`,
+					libAlias,
+				))
+				f.Comment("    and PUT, handles the DB load internally")
+				f.Comment(fmt.Sprintf(
+					"Lower-level helpers, useful when %s.IsFieldChanged doesn't fit:",
+					libAlias,
+				))
+				f.Comment(fmt.Sprintf(
+					"  - %s.IncomingValues(tx): values being written",
+					libAlias,
+				))
+				f.Comment(fmt.Sprintf(
+					"  - %s.IsFullReplace(tx): true on PUT (Save shape)",
+					libAlias,
+				))
+				f.Comment(fmt.Sprintf(
+					"  - %s.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)",
+					libAlias,
+				))
+				// spell out the import line so the developer can drop it
+				// straight in; most _validate.go files don't already have it.
+				f.Comment("Import:")
+				f.Comment(fmt.Sprintf(
+					`  %s "github.com/threeport/threeport/pkg/api/lib/v0"`,
+					libAlias,
+				))
+			}
 			f.Func().Params(
 				Id(receiver).Op("*").Id(typeName),
 			).Id(h.userName).Params(

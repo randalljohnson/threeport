@@ -116,6 +116,12 @@ func GetThreeportControlPlaneKubernetesRuntimeInstance(apiClient *http.Client, a
 		return &kubernetesRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
+	if len(response.Data) == 0 {
+		return &kubernetesRuntimeInstance, errors.New("no kubernetes runtime instance hosting the threeport control plane found")
+	}
+	if len(response.Data) > 1 {
+		return &kubernetesRuntimeInstance, errors.New("multiple kubernetes runtime instances marked as threeport control plane host")
+	}
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return &kubernetesRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)

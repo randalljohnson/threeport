@@ -1,0 +1,64 @@
+package apiserver
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+
+	. "github.com/dave/jennifer/jen"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+)
+
+// GenObjectTaggedFields generates the tagged field vars for each API object.
+func GenObjectTaggedFields(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	for _, version := range gen.GlobalVersionConfig.Versions {
+		f := NewFile(version.VersionName)
+		f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+		f.ImportAlias(util.SetImportAlias(
+			"github.com/threeport/threeport/pkg/api-server/lib/v0",
+			"apiserver_lib",
+			"tpapiserver_lib",
+			gen.Module,
+		))
+
+		taggedFieldVars := &Statement{}
+
+		for _, name := range version.DatabaseInitNames {
+			taggedFieldVars.Id(fmt.Sprintf("%sTaggedFields", name)).Op("=").Id("make").Call(
+				Map(String()).Op("*").Qual(
+					"github.com/threeport/threeport/pkg/api-server/lib/v0",
+					"FieldsByTag",
+				),
+			)
+			taggedFieldVars.Line()
+		}
+
+		f.Var().Defs(
+			taggedFieldVars,
+		)
+
+		// write code to file if not excluded by SDK config
+		genFilepath := filepath.Join(
+			"pkg",
+			"api-server",
+			version.VersionName,
+			"tagged_fields_gen.go",
+		)
+		if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+			cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+		} else {
+			_, err := util.WriteCodeToFile(f, genFilepath, true)
+			if err != nil {
+				return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+			}
+			cli.Info(fmt.Sprintf("source code for API tagged field vars written to %s", genFilepath))
+		}
+	}
+
+	return nil
+}

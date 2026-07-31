@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	v0 "github.com/threeport/threeport/pkg/api/v0"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
@@ -45,22 +46,39 @@ type EventRecorder struct {
 	ReportingController string
 }
 
-// RecordEvent records a new event with the given information.
+// RecordEvent records a new event for the given object.
+// fullyQualifiedObjectType must be the form returned by
+// GetFullyQualifiedType.
 func (r *EventRecorder) RecordEvent(
-	event *v0.Event,
+	event *api.Event,
 	objectId uint,
-	objectVersion string,
-	objectType string,
+	fullyQualifiedObjectType string,
 ) error {
-	formatString := "reason=%s&note=%s&type=%s&objectid=%d"
-	formatArgs := []any{
+	// dedup-then-act: query for an existing event with the same
+	// content + subject. 0 matches means a new event to create;
+	// 1 match means a repeat where we bump Count and LastObservedTime
+	// on the existing row.
+
+	// the list endpoint requires the type split into its parts when
+	// filtering by id, so unpack the qualified form first.
+	namespace, version, typeName, ok := apilib.ParseQualifiedType(fullyQualifiedObjectType)
+	if !ok {
+		return fmt.Errorf("invalid fully qualified object type %q", fullyQualifiedObjectType)
+	}
+
+	// the five fields below form the dedup key: reason+note+type
+	// identify the event content; objectid plus the type triple
+	// identify the subject.
+	query := fmt.Sprintf(
+		"reason=%s&note=%s&type=%s&objectid=%d&objecttypename=%s&objectnamespace=%s&objectversion=%s",
 		url.QueryEscape(*event.Reason),
 		url.QueryEscape(*event.Note),
 		url.QueryEscape(*event.Type),
 		objectId,
-	}
-
-	query := fmt.Sprintf(formatString, formatArgs...)
+		url.QueryEscape(typeName),
+		url.QueryEscape(namespace),
+		url.QueryEscape(version),
+	)
 	events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(
 		r.APIClient,
 		r.APIServer,
@@ -70,88 +88,36 @@ func (r *EventRecorder) RecordEvent(
 		return fmt.Errorf("failed to get events by object id %d: %w", objectId, err)
 	}
 
-	var createdEvent *v0.Event
 	switch len(*events) {
 	case 0:
-		// use operations abstraction to atomically create event
-		// and attached object reference
-		operations := util.Operations{}
-		var createdAttachedObjectReference *v0.AttachedObjectReference
-
+		// first occurrence: stamp timestamps and count=1, attach the
+		// subject info on the in-memory event, and create the row.
 		event.ReportingController = &r.ReportingController
 		event.EventTime = util.Ptr(time.Now())
 		event.LastObservedTime = util.Ptr(time.Now())
 		event.Count = util.Ptr(uint(1))
-		operations.AppendOperation(util.Operation{
-			Name: "event",
-			Create: func() error {
-				createdEvent, err = client_v0.CreateEvent(r.APIClient, r.APIServer, event)
-				if err != nil {
-					return fmt.Errorf("failed to create event: %w", err)
-				}
 
-				return nil
-			},
-			Delete: func() error {
-				_, err = client_v0.DeleteEvent(r.APIClient, r.APIServer, *createdEvent.ID)
-				if err != nil {
-					return fmt.Errorf("failed to delete event: %w", err)
-				}
-				return nil
-			},
-		})
+		// carry the subject info on the in-memory Event so the API
+		// server's BeforeCreate validates and AfterCreate writes the
+		// matching AttachedObjectReference in the same transaction.
+		// gorm:"-" keeps these fields off the row; the AOR is the on-disk
+		// source of truth for the subject linkage.
+		event.ObjectType = util.Ptr(fullyQualifiedObjectType)
+		event.ObjectID = util.Ptr(objectId)
 
-		operations.AppendOperation(util.Operation{
-			Name: "attached object reference",
-			Create: func() error {
-				createdAttachedObjectReference, err = client_v0.CreateAttachedObjectReference(
-					r.APIClient,
-					r.APIServer,
-					&v0.AttachedObjectReference{
-						ObjectType:         util.Ptr(fmt.Sprintf("%s.%s", objectVersion, objectType)),
-						ObjectID:           util.Ptr(objectId),
-						AttachedObjectType: util.Ptr(util.TypeName(v0.Event{})),
-						AttachedObjectID:   createdEvent.ID,
-					},
-				)
-				if err != nil {
-					return fmt.Errorf("failed to create attached object reference: %w", err)
-				}
-				return nil
-			},
-			Delete: func() error {
-				_, err = client_v0.DeleteAttachedObjectReference(
-					r.APIClient,
-					r.APIServer,
-					*createdAttachedObjectReference.ID,
-				)
-				if err != nil {
-					return fmt.Errorf("failed to delete attached object reference: %w", err)
-				}
-				return nil
-			},
-		})
-
-		operations.AppendOperation(util.Operation{
-			Name: "update event",
-			Create: func() error {
-				event.AttachedObjectReferenceID = createdAttachedObjectReference.ID
-				_, err = client_v0.UpdateEvent(r.APIClient, r.APIServer, event)
-				if err != nil {
-					return fmt.Errorf("failed to update event: %w", err)
-				}
-				return nil
-			},
-		})
-
-		// execute all operations
-		if err := operations.Create(); err != nil {
+		if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
 			return fmt.Errorf("failed to create event: %w", err)
 		}
 	case 1:
+		// repeat: load the existing row, bump Count, and refresh
+		// LastObservedTime so the dedup window keeps advancing.
 		event = &(*events)[0]
 		event.Count = util.Ptr(uint((*event.Count + 1)))
 		event.LastObservedTime = util.Ptr(time.Now())
+		// clear projection fields; UpdateEvent() rejects them as unsupported
+		event.ObjectType = nil
+		event.ObjectID = nil
+		event.ObjectName = nil
 		_, err := client_v0.UpdateEvent(r.APIClient, r.APIServer, event)
 		if err != nil {
 			return fmt.Errorf("failed to update event: %w", err)
@@ -163,14 +129,14 @@ func (r *EventRecorder) RecordEvent(
 	return nil
 }
 
-// HandleEventOverride records the specified event
-// unless the provided error is an ErrWithEvent,
-// in which case it records the event provided
+// HandleEventOverride records the given event unless the error is an
+// ErrWithEvent, in which case it records the event carried by the
+// error. fullyQualifiedObjectType must be the form returned by
+// GetFullyQualifiedType.
 func (r *EventRecorder) HandleEventOverride(
-	event *v0.Event,
+	event *api.Event,
 	objectId uint,
-	objectVersion string,
-	objectType string,
+	fullyQualifiedObjectType string,
 	err error,
 	log *logr.Logger,
 ) {
@@ -180,8 +146,7 @@ func (r *EventRecorder) HandleEventOverride(
 		if err := r.RecordEvent(
 			&errWithEvent.Event,
 			objectId,
-			objectVersion,
-			objectType,
+			fullyQualifiedObjectType,
 		); err != nil {
 			log.Error(err, "failed to record event")
 		}
@@ -189,8 +154,7 @@ func (r *EventRecorder) HandleEventOverride(
 		if err := r.RecordEvent(
 			event,
 			objectId,
-			objectVersion,
-			objectType,
+			fullyQualifiedObjectType,
 		); err != nil {
 			log.Error(err, "failed to record event")
 		}

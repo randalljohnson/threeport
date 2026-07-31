@@ -7,13 +7,14 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/threeport/threeport/internal/sdk"
-	"github.com/threeport/threeport/internal/sdk/gen"
-	sdkcmd "github.com/threeport/threeport/internal/sdk/gen/cmd"
-	"github.com/threeport/threeport/internal/sdk/gen/internalpkg"
-	sdkpkg "github.com/threeport/threeport/internal/sdk/gen/pkg"
-	"github.com/threeport/threeport/internal/sdk/gen/root"
+
 	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	sdkcmd "github.com/threeport/threeport/pkg/sdk/v0/gen/cmd"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen/internalpkg"
+	sdkpkg "github.com/threeport/threeport/pkg/sdk/v0/gen/pkg"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen/root"
 )
 
 var genConfig string
@@ -51,6 +52,12 @@ See the Threeport SDK docs for more information: https://threeport.io/sdk/sdk-in
 			os.Exit(1)
 		}
 
+		// fail fast on invalid threeport-specific struct tags
+		if err := generator.ValidateTags(); err != nil {
+			cli.Error("invalid tags in API source", err)
+			os.Exit(1)
+		}
+
 		// build source code at root of project
 		if err := root.GenRoot(&generator, sdkConfig); err != nil {
 			cli.Error("failed to generate source code at prject root", err)
@@ -72,7 +79,7 @@ See the Threeport SDK docs for more information: https://threeport.io/sdk/sdk-in
 		// build source code for pkg packages
 		if err := sdkpkg.GenPkg(&generator, sdkConfig); err != nil {
 			cli.Error("failed to generate source code for pkg package", err)
-			//os.Exit(1)
+			os.Exit(1)
 		}
 
 		cli.Complete("source code generation complete")

@@ -5,16 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"strings"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
+	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
 var ErrObjectNotFound = errors.New("object not found")
 var ErrUnauthorized = errors.New("unauthorized")
 var ErrForbidden = errors.New("forbidden")
 var ErrConflict = errors.New("conflict")
+var ErrBadRequest = errors.New("bad request")
+var ErrObjectOwned = errors.New("object owned externally")
+var ErrMisdirectedRequest = errors.New("misdirected request")
 
 // GetResponse calls the threeport API and returns a response.
 func GetResponse(
@@ -26,18 +31,23 @@ func GetResponse(
 	expectedStatusCode int,
 ) (*apiserver_lib.Response, error) {
 
+	// If no scheme is present, determine based on transport configuration
 	urlScheme := "http://"
 
 	// check if TLS is configured
-	tlsConfigured := false
-	if transport, ok := client.Transport.(*CustomTransport); ok {
-		tlsConfigured = transport.IsTlsEnabled
+	if transport, ok := client.Transport.(*CustomTransport); ok && transport.IsTlsEnabled {
+		// with auth enabled in Threeport, a CustomTransport is used with IsTlsEnabled=true
+		urlScheme = "https://"
+	} else if transport, ok := client.Transport.(*http.Transport); ok {
+		// this is not used in Threeport, but can be used for connections to proxies and gateways
+		// that are in front of the Threeport API and require HTTPS connections but perhaps without
+		// client certificate authentication
+		if transport.TLSClientConfig != nil {
+			urlScheme = "https://"
+		}
 	}
 
-	// update url if TLS is configured
-	if tlsConfigured {
-		urlScheme = "https://"
-	}
+	// Prepend the scheme to the URL
 	url = urlScheme + url
 
 	req, err := http.NewRequest(httpMethod, url, reqBody)
@@ -56,7 +66,7 @@ func GetResponse(
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body from threeport API: %w", err)
 	}
@@ -64,23 +74,38 @@ func GetResponse(
 	var response apiserver_lib.Response
 	if resp.StatusCode != expectedStatusCode {
 		if err := json.Unmarshal(respBody, &response); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal response body from threeport API: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal response body '%s' from threeport API: %w", string(respBody), err)
 		}
 		status, err := json.MarshalIndent(response.Status, "", "  ")
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal response status from threeport API: %w", err)
 		}
+
+		// If the error message is NOT from the Threeport API, e.g. an API gateway,
+		// then use the response body as the error message
+		errMessage := response.Status.Error
+		if response.Status.Error == "" {
+			errMessage = string(respBody)
+		}
+
 		// return specific errors that need to be identified with `errors.As`
 		// elsewhere
 		switch resp.StatusCode {
+		case http.StatusBadRequest:
+			if strings.Contains(errMessage, api_v0.ErrMsgExternalUpdateBlocked) {
+				return nil, fmt.Errorf("%w: %s", ErrObjectOwned, errMessage)
+			}
+			return nil, fmt.Errorf("%w: %s", ErrBadRequest, errMessage)
 		case http.StatusNotFound:
-			return nil, fmt.Errorf("%w: %s", ErrObjectNotFound, response.Status.Error)
+			return nil, fmt.Errorf("%w: %s", ErrObjectNotFound, errMessage)
+		case http.StatusMisdirectedRequest:
+			return nil, fmt.Errorf("%w: %s", ErrMisdirectedRequest, errMessage)
 		case http.StatusUnauthorized:
-			return nil, fmt.Errorf("%w: %s", ErrUnauthorized, response.Status.Error)
+			return nil, fmt.Errorf("%w: %s", ErrUnauthorized, errMessage)
 		case http.StatusForbidden:
-			return nil, fmt.Errorf("%w: %s", ErrForbidden, response.Status.Error)
+			return nil, fmt.Errorf("%w: %s", ErrForbidden, errMessage)
 		case http.StatusConflict:
-			return nil, fmt.Errorf("%w: %s", ErrConflict, response.Status.Error)
+			return nil, fmt.Errorf("%w: %s", ErrConflict, errMessage)
 		default:
 			return nil, fmt.Errorf(
 				"API returned status: %d, %s\n%s\nexpected: %d",

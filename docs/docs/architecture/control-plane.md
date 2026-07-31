@@ -79,11 +79,8 @@ The AWS controller is responsible for managing the following managed services in
 AWS:
 
 * Elastic Kubernetes Clusters (EKS): used for Kubernetes Runtime environments to
-  deploy user workloads.
-* Relational Database Service (RDS): available as a dependency when used as a
-  part of an application stack.
-* Simple Storage Service (S3): available as a dependency when used by an
-  application to store objects.
+  deploy user workloads.  The EKS recource along with all the necessary services
+  needed for a working EKS cluster are managed for the user.
 
 We use a library called [aws-builder](https://github.com/nukleros/aws-builder)
 that was developed for use by Threeport.  It uses the [v2
@@ -126,13 +123,13 @@ records created for workloads.
 When a support service controller needs to be installed in Kubernetes, we use
 the
 [support-services-operator](https://github.com/nukleros/support-services-operator)
-to perform the install.  The Kubernetes manifest provided to the Workload is
+to perform the install.  The Kubernetes manifest provided to the KubernetesWorkload is
 actually a custom resource that is managed by the support-services-operator.  It
 installs the support services listed above in this manner.
 
 In addition to the support services installations on Kubernetes, the gateway
 controller appends Kubernetes resources to those defined by the user with the
-Workload resource to configure the support service for that workload.
+KubernetesWorkload resource to configure the support service for that workload.
 
 ### Helm Workload Controller
 
@@ -210,9 +207,9 @@ same AWS resources.
 
 > Note: Terraform is only supported for managing AWS resource at this time.
 
-### Workload Controller
+### Kubernetes Workload Controller
 
-The workload controller deploys a defined set of Kubernetes resources to a
+The kubernetes workload controller deploys a defined set of Kubernetes resources to a
 nominated (or default) Kubernetes runtime instance.  This controller is quite
 rudimentary in that the user is required to define the granular detail of all
 Kubernetes resources that constitute their workload.  However, it is useful in

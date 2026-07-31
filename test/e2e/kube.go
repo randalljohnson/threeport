@@ -2,28 +2,18 @@ package e2e_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
 func getKubeClient() (*kubernetes.Clientset, error) {
-	// get kubeconfig file path
-	kubeconfigPath, ok := os.LookupEnv("KUBECONFIG")
-	if !ok {
-		home := homedir.HomeDir()
-		if home == "" {
-			return nil, errors.New("home directory not found")
-		}
-		kubeconfigPath = filepath.Join(home, ".kube", "config")
-	}
+	// resolve kubeconfig via client-go's standard precedence
+	// ($KUBECONFIG, then ~/.kube/config)
+	kubeconfigPath := clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
 
 	// load kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
@@ -46,7 +36,7 @@ func getNamespaceByWorkloadInstanceId(workloadInstId int64) (string, error) {
 		return "", fmt.Errorf("failed to get Kubernetes client: %w", err)
 	}
 
-	labelSelector := fmt.Sprintf("control-plane.threeport.io/workload-instance=%d", workloadInstId)
+	labelSelector := fmt.Sprintf("control-plane.threeport.io/kubernetes-workload-instance=%d", workloadInstId)
 
 	// get namespace by label
 	namespaceList, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{

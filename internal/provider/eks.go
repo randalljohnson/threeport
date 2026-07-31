@@ -133,10 +133,10 @@ func (i *KubernetesRuntimeInfraEKS) GetConnection() (*kube.KubeConnectionInfo, e
 
 	// construct KubeConnectionInfo object
 	kubeConnInfo := kube.KubeConnectionInfo{
-		APIEndpoint:        eksClusterConn.APIEndpoint,
-		CACertificate:      eksClusterConn.CACertificate,
-		EKSToken:           eksClusterConn.Token,
-		EKSTokenExpiration: eksClusterConn.TokenExpiration,
+		APIEndpoint:     eksClusterConn.APIEndpoint,
+		CACertificate:   eksClusterConn.CACertificate,
+		Token:           eksClusterConn.Token,
+		TokenExpiration: eksClusterConn.TokenExpiration,
 	}
 
 	return &kubeConnInfo, nil
@@ -639,7 +639,7 @@ func IrsaControllerNames() []string {
 	return []string{
 		threeport.ThreeportAwsControllerName,
 		threeport.ThreeportSecretControllerName,
-		threeport.ThreeportWorkloadControllerName,
+		threeport.ThreeportKubernetesWorkloadControllerName,
 		threeport.ThreeportHelmWorkloadControllerName,
 		threeport.ThreeportControlPlaneControllerName,
 		threeport.ThreeportTerraformControllerName,

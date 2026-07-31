@@ -1,0 +1,94 @@
+package api
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+
+	. "github.com/dave/jennifer/jen"
+	"github.com/gertd/go-pluralize"
+	"github.com/iancoleman/strcase"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+)
+
+// GenTableNames generates the Tabler interface and API object methods that
+// specify each object's database table name. For modules it also emits a
+// package-level ApiNamespace const so generated code that needs the
+// namespace value can reference it instead of repeating the literal.
+func GenTableNames(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	pluralize := pluralize.NewClient()
+	for _, version := range gen.GlobalVersionConfig.Versions {
+		f := NewFile(version.VersionName)
+		f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+		// module-local namespace constant; mirrors lib.CoreApiNamespace
+		// on the core side so all fully qualified type-emitting code can reference a
+		// named value rather than a literal
+		if gen.Module {
+			f.Comment("ApiNamespace is the module's api namespace; used as the")
+			f.Comment("prefix in this module's fully qualified type form.")
+			f.Const().Id("ApiNamespace").Op("=").Lit(sdkConfig.ApiNamespace)
+			f.Line()
+		}
+
+		f.Comment("Tabler allows custom table names for objects in the Threeport database.")
+		f.Type().Id("Tabler").Interface(
+			Line().Id("TableName").Call().String(),
+			Line(),
+		)
+		f.Line()
+
+		for _, name := range version.DatabaseInitNames {
+			f.Comment(fmt.Sprintf(
+				"TableName sets the name of the table for the %s objects in the database.",
+				name,
+			))
+			f.Func().Params(Id(name)).Id("TableName").Params().String().BlockFunc(func(g *Group) {
+				if gen.Module {
+					tableName := util.TableName(
+						fmt.Sprintf(
+							"%s_%s_%s",
+							sdkConfig.ApiNamespace,
+							version.VersionName,
+							pluralize.Pluralize(strcase.ToSnake(name), 2, false),
+						),
+					)
+					g.Return().Lit(tableName)
+				} else {
+					tableName := util.TableName(
+						fmt.Sprintf(
+							"%s_%s",
+							version.VersionName,
+							pluralize.Pluralize(strcase.ToSnake(name), 2, false),
+						),
+					)
+					g.Return().Lit(tableName)
+				}
+			})
+			f.Line()
+		}
+
+		// write code to file if not excluded by SDK config
+		genFilepath := filepath.Join(
+			"pkg",
+			"api",
+			version.VersionName,
+			"table_name_gen.go",
+		)
+		if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+			cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+		} else {
+			_, err := util.WriteCodeToFile(f, genFilepath, true)
+			if err != nil {
+				return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+			}
+			cli.Info(fmt.Sprintf("source code for API object DB table names written to %s", genFilepath))
+		}
+	}
+
+	return nil
+}

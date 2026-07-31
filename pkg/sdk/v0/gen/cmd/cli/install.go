@@ -1,0 +1,258 @@
+package cli
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+
+	. "github.com/dave/jennifer/jen"
+	"github.com/iancoleman/strcase"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+)
+
+// GenPluginInstallCmd generates the install command for an extension module's tptctl
+// plugin.
+func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	f := NewFile("cmd")
+	f.HeaderComment(sdk.HeaderCommentGenMod)
+
+	installerPkg := fmt.Sprintf("%s/pkg/installer/v0", gen.ModulePath)
+
+	f.ImportAlias("github.com/threeport/threeport/cmd/tptctl/cmd", "tptctl_cmd")
+	f.ImportAlias("github.com/threeport/threeport/pkg/cli/v0", "cli")
+	f.ImportAlias("github.com/threeport/threeport/pkg/client/v0", "client")
+	f.ImportAlias("github.com/threeport/threeport/pkg/kube/v0", "kube")
+	f.ImportAlias(installerPkg, "installer")
+
+	f.Var().Defs(
+		Id("debug").Bool(),
+		Id("controlPlaneImageRepo").String(),
+		Id("controlPlaneImageTag").String(),
+	)
+
+	f.Comment("installCmd represents the install command")
+	f.Var().Id("installCmd").Op("=").Op("&").Qual("github.com/spf13/cobra", "Command").Values(Dict{
+		Id("Use"): Lit("install"),
+		Id("Example"): Lit(fmt.Sprintf(
+			"  tptctl %s install",
+			strcase.ToKebab(sdkConfig.ModuleName),
+		)),
+		Id("Short"): Lit(fmt.Sprintf(
+			"Install the %s module to an existing Threeport control plane",
+			sdkConfig.ModuleName,
+		)),
+		Id("Long"): Lit(fmt.Sprintf(
+			"Install the %s module to an existing Threeport control plane",
+			sdkConfig.ModuleName,
+		)),
+		Id("PreRun"): Qual(
+			"github.com/threeport/threeport/cmd/tptctl/cmd",
+			"CommandPreRunFunc",
+		),
+		Id("SilenceUsage"): Lit(true),
+		Id("Run"): Func().Params(Id("cmd").Op("*").Qual(
+			"github.com/spf13/cobra",
+			"Command",
+		), Id("args").Index().String()).Block(
+			Id("apiClient").Op(",").Id("_").Op(",").Id("apiEndpoint").Op(",").Id("requestedControlPlane").Op(":=").Qual(
+				"github.com/threeport/threeport/cmd/tptctl/cmd",
+				"GetClientContext",
+			).Call(Id("cmd")),
+			Line(),
+
+			Comment("get Kubernetes runtime instance for control plane"),
+			Id("queryString").Op(":=").Lit("ThreeportControlPlaneHost=true"),
+			Id("kubernetesRuntimeInstances").Op(",").Id("err").Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/client/v0",
+				"GetKubernetesRuntimeInstancesByQueryString",
+			).Call(
+				Line().Id("apiClient"),
+				Line().Id("apiEndpoint"),
+				Line().Id("queryString"),
+				Line(),
+			),
+			If(Id("err").Op("!=").Nil()).Block(
+				Qual(
+					"github.com/threeport/threeport/pkg/cli/v0",
+					"Error",
+				).Call(Lit("failed to get kubernetes runtime instances"), Id("err")),
+				Qual("os", "Exit").Call(Lit(1)),
+			),
+			If(Len(Op("*").Id("kubernetesRuntimeInstances")).Op("!=").Lit(1)).Block(
+				Qual("github.com/threeport/threeport/pkg/cli/v0", "Error").Call(
+					Qual("fmt", "Sprintf").Call(
+						Lit("found %d k8s runtime instances"), Len(Op("*").Id("kubernetesRuntimeInstances")),
+					), Id("err"),
+				),
+				Qual("os", "Exit").Call(Lit(1)),
+			),
+			Id("kubeRuntimes").Op(":=").Op("*").Id("kubernetesRuntimeInstances"),
+			Line(),
+
+			Comment("get threeport config"),
+			Id("threeportConfig").Op(",").Id("_").Op(",").Id("err").Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/cli/v0",
+				"GetThreeportConfig",
+			).Call(Id("requestedControlPlane")),
+			If(Id("err").Op("!=").Nil()).Block(
+				Qual(
+					"github.com/threeport/threeport/pkg/cli/v0",
+					"Error",
+				).Call(Lit("failed to get threeport config"), Id("err")),
+				Qual("os", "Exit").Call(Lit(1)),
+			),
+			Line(),
+
+			Comment("get encryption key"),
+			Id("encryptionKey").Op(",").Id("err").Op(":=").Id("threeportConfig").Dot("GetThreeportEncryptionKey").Call(
+				Id("requestedControlPlane"),
+			),
+			If(Id("err").Op("!=").Nil()).Block(
+				Qual(
+					"github.com/threeport/threeport/pkg/cli/v0",
+					"Error",
+				).Call(Lit("failed to get Threeport API encryption key"), Id("err")),
+				Qual("os", "Exit").Call(Lit(1)),
+			),
+			Line(),
+
+			Comment("determine if auth is enabled on control plane"),
+			List(Id("authEnabled"), Err()).Op(":=").Id("threeportConfig").Dot("GetThreeportAuthEnabled").Call(
+				Id("requestedControlPlane"),
+			),
+			If(Err().Op("!=").Nil()).Block(
+				Qual(
+					"github.com/threeport/threeport/pkg/cli/v0",
+					"Error",
+				).Call(Lit("failed to determine if auth is enabled"), Id("err")),
+				Qual("os", "Exit").Call(Lit(1)),
+			),
+			Line(),
+
+			Comment("get Kubernetes client"),
+			Id("dynamicInterface").Op(",").Id("restMapper").Op(",").Id("err").Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/kube/v0",
+				"GetClient",
+			).Call(
+				Line().Op("&").Id("kubeRuntimes").Index(Lit(0)),
+				Line().Lit(false),
+				Line().Id("apiClient"),
+				Line().Id("apiEndpoint"),
+				Line().Id("encryptionKey"),
+				Line(),
+			),
+			If(Id("err").Op("!=").Nil()).Block(
+				Qual(
+					"github.com/threeport/threeport/pkg/cli/v0",
+					"Error",
+				).Call(Lit("failed to get Kube client"), Id("err")),
+				Qual("os", "Exit").Call(Lit(1)),
+			),
+			Line(),
+
+			Comment("create installer"),
+			Id("inst").Op(":=").Qual(installerPkg, "NewInstaller").Call(
+				Id("dynamicInterface"), Id("restMapper"),
+			),
+			Id("inst").Dot("AuthEnabled").Op("=").Id("authEnabled"),
+			Id("inst").Dot("ControlPlaneImageRepo").Op("=").Id("controlPlaneImageRepo"),
+			Id("inst").Dot("ControlPlaneImageTag").Op("=").Id("controlPlaneImageTag"),
+			Id("inst").Dot("Debug").Op("=").Id("debug"),
+			Line(),
+
+			Comment("install extension module"),
+			If(
+				Id("err").Op(":=").Id("inst").Dot(fmt.Sprintf(
+					"Install%sModule",
+					strcase.ToCamel(sdkConfig.ModuleName),
+				)).Call(), Id("err").Op("!=").Nil(),
+			).Block(
+				Qual(
+					"github.com/threeport/threeport/pkg/cli/v0",
+					"Error",
+				).Call(
+					Lit(fmt.Sprintf(
+						"failed to install %s module",
+						sdkConfig.ModuleName,
+					)), Id("err"),
+				),
+				Qual("os", "Exit").Call(Lit(1)),
+			),
+			Line(),
+
+			Qual(
+				"github.com/threeport/threeport/pkg/cli/v0",
+				"Complete",
+			).Call(
+				Lit(fmt.Sprintf(
+					"%s module installed",
+					sdkConfig.ModuleName,
+				)),
+			),
+		),
+	})
+	f.Line()
+
+	f.Func().Id("init").Params().Block(
+		Id("rootCmd").Dot("AddCommand").Call(Id("installCmd")),
+		Line(),
+		Id("installCmd").Dot("Flags").Call().Dot("BoolVar").Call(
+			Line().Op("&").Id("debug"),
+			Line().Lit("debug"),
+			Line().Lit(false),
+			Line().Lit("If true, pod imagePullPolicy is set to Always so each rollout re-pulls the tag."),
+			Line(),
+		),
+		Id("installCmd").Dot("Flags").Call().Dot("StringVarP").Call(
+			Line().Op("&").Id("controlPlaneImageRepo"),
+			Line().List(
+				Lit("control-plane-image-namespace"),
+				Lit("r"),
+				Qual(installerPkg, "ReleaseImageNamespace"),
+				Lit("Image namespace to pull threeport control plane images from."),
+			),
+			Line(),
+		),
+		Id("installCmd").Dot("Flags").Call().Dot("StringVarP").Call(
+			Line().Op("&").Id("controlPlaneImageTag"),
+			Line().List(
+				Lit("control-plane-image-tag"),
+				Lit("t"),
+				Qual(
+					fmt.Sprintf("%s/internal/version", gen.ModulePath),
+					"GetVersion",
+				).Call(),
+				Lit("Image tag for threeport control plane images."),
+			),
+			Line(),
+		),
+	)
+	f.Line()
+
+	// write code to file if not excluded by SDK config
+	genFilepath := filepath.Join(
+		"cmd",
+		strcase.ToSnake(sdkConfig.ModuleName),
+		"cmd",
+		"install.go",
+	)
+	if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+		cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+	} else {
+		fileWritten, err := util.WriteCodeToFile(f, genFilepath, false)
+		if err != nil {
+			return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+		}
+		if fileWritten {
+			cli.Info(fmt.Sprintf("source code for plugin install command written to %s", genFilepath))
+		} else {
+			cli.Info(fmt.Sprintf("source code for plugin install command already exists at %s - not overwritten", genFilepath))
+		}
+	}
+
+	return nil
+}

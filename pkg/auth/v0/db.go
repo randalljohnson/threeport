@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/threeport/threeport/pkg/api-server/v0/database"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
 
 // DbCreds contains the DB client connection credentials.
@@ -19,7 +20,7 @@ type DbCreds struct {
 
 // GenerateDbCreds generates the CA cert and derived certs for the CRDB nodes,
 // the root DB user and the threeport user for database auth.
-func GenerateDbCreds() (*DbCreds, error) {
+func GenerateDbCreds(k8sNamespace string) (*DbCreds, error) {
 	dbAuthConfig, err := GetAuthConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate auth config for DB client cert: %w", err)
@@ -29,14 +30,14 @@ func GenerateDbCreds() (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		"node",
-		"localhost",
-		"127.0.0.1",
+		apilib.CoreApiNamespace,
+		OUDatabase,
 		"crdb",
-		"crdb.threeport-control-plane",
-		"crdb.threeport-control-plane.svc.cluster.local",
+		fmt.Sprintf("crdb.%s", k8sNamespace),
+		fmt.Sprintf("crdb.%s.svc.cluster.local", k8sNamespace),
 		"*.crdb",
-		"*.crdb.threeport-control-plane",
-		"*.crdb.threeport-control-plane.svc.cluster.local",
+		fmt.Sprintf("*.crdb.%s", k8sNamespace),
+		fmt.Sprintf("*.crdb.%s.svc.cluster.local", k8sNamespace),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB node certificate: %w", err)
@@ -46,6 +47,8 @@ func GenerateDbCreds() (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		database.ThreeportDatabaseRootUser,
+		apilib.CoreApiNamespace,
+		OUDatabase,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB client certificate: %w", err)
@@ -55,6 +58,8 @@ func GenerateDbCreds() (*DbCreds, error) {
 		dbAuthConfig.CAConfig,
 		&dbAuthConfig.CAPrivateKey,
 		database.ThreeportDatabaseUser,
+		apilib.CoreApiNamespace,
+		OUDatabase,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB client certificate: %w", err)

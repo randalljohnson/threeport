@@ -1,0 +1,124 @@
+package controller
+
+import (
+	"fmt"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+
+	. "github.com/dave/jennifer/jen"
+	"github.com/gertd/go-pluralize"
+	"github.com/iancoleman/strcase"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+)
+
+// GenNotifs generates the source code for the NATS notifications and functions
+// that provide notification subjects.
+func GenNotifs(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	pluralize := pluralize.NewClient()
+	notifPrefix := ""
+	if gen.Module {
+		prohibitedChars := regexp.MustCompile(`[\s.\*><\\/]`)
+		sanitized := prohibitedChars.ReplaceAllString(sdkConfig.ApiNamespace, "-")
+		sanitized = strings.Trim(sanitized, "-")
+		notifPrefix = sanitized + "_"
+	}
+	for _, objGroup := range gen.ApiObjectGroups {
+		if len(objGroup.ReconciledObjects) > 0 {
+			f := NewFile("notif")
+			f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+			subjects := &Statement{}
+			var subjectFuncs []string
+			for _, object := range objGroup.ReconciledObjects {
+				wildcardSubjectKey := object.Name + "Subject"
+				createSubjectKey := object.Name + "CreateSubject"
+				updateSubjectKey := object.Name + "UpdateSubject"
+				deleteSubjectKey := object.Name + "DeleteSubject"
+				subjects.Line()
+				subjects.Id(wildcardSubjectKey).Op("=").Lit(notifPrefix + strcase.ToLowerCamel(object.Name) + ".*")
+				subjects.Line()
+				subjects.Id(createSubjectKey).Op("=").Lit(notifPrefix + strcase.ToLowerCamel(object.Name) + ".create")
+				subjects.Line()
+				subjects.Id(updateSubjectKey).Op("=").Lit(notifPrefix + strcase.ToLowerCamel(object.Name) + ".update")
+				subjects.Line()
+				subjects.Id(deleteSubjectKey).Op("=").Lit(notifPrefix + strcase.ToLowerCamel(object.Name) + ".delete")
+				subjects.Line()
+				subjectFuncs = append(subjectFuncs, getObjectSubjectFuncName(object.Name))
+			}
+			f.Const().Defs(
+				Id(objGroup.StreamName).Op("=").Lit(notifPrefix+strcase.ToLowerCamel(objGroup.ControllerShortName)+"Stream"),
+				Line(),
+				subjects,
+				Line(),
+			)
+			f.Line()
+
+			// NATS subjects for each object
+			for _, object := range objGroup.ReconciledObjects {
+				f.Comment(fmt.Sprintf("%s returns the NATS subjects", getObjectSubjectFuncName(object.Name)))
+				f.Comment(fmt.Sprintf("for %s.", pluralize.Pluralize(strcase.ToDelimited(object.Name, ' '), 2, false)))
+				f.Func().Id(getObjectSubjectFuncName(object.Name)).Params().Index().String().Block(
+					Return(
+						Index().String().Block(
+							Id(object.Name+"CreateSubject").Op(","),
+							Id(object.Name+"UpdateSubject").Op(","),
+							Id(object.Name+"DeleteSubject").Op(","),
+						),
+					),
+				)
+			}
+
+			// all NATS subjects for controller domain
+			controllerSubjectsFuncName := fmt.Sprintf("Get%sSubjects", strcase.ToCamel(objGroup.ControllerShortName))
+			controllerSubjectsLower := fmt.Sprintf("%sSubjects", strcase.ToLowerCamel(objGroup.ControllerShortName))
+			subjectAppends := &Statement{}
+			for _, sf := range subjectFuncs {
+				subjectAppends.Id(controllerSubjectsLower).Op("=").Append(
+					Id(controllerSubjectsLower),
+					Id(sf).Call().Op("..."),
+				)
+				subjectAppends.Line()
+			}
+			f.Comment(fmt.Sprintf("%s returns the NATS subjects", controllerSubjectsFuncName))
+			f.Comment(fmt.Sprintf("for all %s objects.", strcase.ToDelimited(objGroup.ControllerShortName, ' ')))
+			f.Func().Id(controllerSubjectsFuncName).Params().Index().String().Block(
+				Var().Id(controllerSubjectsLower).Index().String(),
+				Line(),
+				subjectAppends,
+				Line(),
+				Return(Id(controllerSubjectsLower)),
+			)
+
+			// write code to file if not excluded by SDK config
+			genFilepath := filepath.Join(
+				"internal",
+				objGroup.ControllerShortName,
+				"notif",
+				"notif_gen.go",
+			)
+			if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+				cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+			} else {
+				_, err := util.WriteCodeToFile(f, genFilepath, true)
+				if err != nil {
+					return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+				}
+				cli.Info(fmt.Sprintf("source code for NATS notification subjects written to %s", genFilepath))
+			}
+		}
+	}
+
+	return nil
+}
+
+// getObjectSubjectFuncName returns the name of the function that returns the
+// NATS subjects for an object.
+func getObjectSubjectFuncName(objectName string) string {
+	return fmt.Sprintf("Get%sSubjects", objectName)
+}

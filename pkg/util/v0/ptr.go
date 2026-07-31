@@ -13,3 +13,17 @@ func DerefString(s *string) string {
 	}
 	return *s
 }
+
+// Deref returns the value of a pointer or the zero value of T if the
+// pointer is nil. Mirror of Ptr.
+//
+// `var zero T` declares a variable of the generic type T initialized to
+// Go's zero value for that type (nil for pointers/maps/slices/interfaces,
+// 0 for numerics, "" for strings, the struct's zero literal for structs).
+func Deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
+}

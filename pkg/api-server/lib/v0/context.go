@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -16,142 +16,67 @@ import (
 )
 
 const (
-	QueryParamPage                   = "page"
-	QueryParamSize                   = "size"
-	DefaultParamSizeValue            = 50
-	ErrMsgQueryParamInvalidPageValue = "Query parameter is not a valid integer value: " + QueryParamPage
-	ErrMsgQueryParamInvalidSizeValue = "Query parameter is not a valid integer value: " + QueryParamSize
-	ErrTokenIsNotProvided            = "OAuth token is not provided"
-	AuthorizationKey                 = "Authorization"
-	BearerKey                        = "Bearer "
+	QueryParamQueryId           = "queryid"
+	QueryParamCursor            = "cursor"
+	QueryParamLimit             = "limit"
+	DefaultPaginationLimitValue = 100
+	MaxPaginationLimitValue     = 1000
 )
 
 type CustomContext struct {
 	echo.Context
 }
 
-// GetBearerToken extracts the OAuth token from Authorization header.
-func (c *CustomContext) GetBearerToken() (token string, err error) {
+// PageRequestParams contains pagination request information from the client.  These are
+// sent by the client as query paramters in the request to the Threeport API.
+type PageRequestParams struct {
+	// QueryId is the ID of the query that produced the paginated objects.  The client receives
+	// this info with the previous page of results.
+	QueryId string `example:"1234567890-1234567890-1234567890"`
 
-	reqToken := c.Request().Header.Get(AuthorizationKey)
+	// Cursor is the unique ID of the first object in the next page of results.  The client
+	// gets this information from the `NextCursor` field in the previous page of results.
+	Cursor uint `example:"1234567890"`
 
-	splitToken := strings.Split(reqToken, BearerKey)
-
-	if len(strings.TrimSpace(reqToken)) == 0 || len(splitToken) == 1 {
-		err = errors.New(ErrTokenIsNotProvided)
-	} else {
-		token = splitToken[1]
-	}
-
-	return token, err
+	// The maximum number of objects the client wishes to receive in a page of results.
+	Limit int64 `example:"500"`
 }
 
 // GetPaginationParams parses pagination query parameters into PageRequestParams.
-func (c *CustomContext) GetPaginationParams() (params PageRequestParams, err error) {
+// If the limit is not provided, the default value is used.
+func (c *CustomContext) GetPaginationParams() (*PageRequestParams, error) {
+	params := new(PageRequestParams)
+	// extract query ID if provided
+	queryId := c.Request().URL.Query().Get(QueryParamQueryId)
+	if queryId != "" {
+		params.QueryId = queryId
+	}
 
-	strPage := c.Request().URL.Query().Get(QueryParamPage)
-	params.Page = -1
-	if strPage != "" {
-		params.Page, err = strconv.Atoi(strPage)
-		if err != nil || params.Page < -1 {
-			return params, errors.New(ErrMsgQueryParamInvalidPageValue)
+	// extract cursor if provided
+	strCursor := c.Request().URL.Query().Get(QueryParamCursor)
+	if strCursor != "" {
+		cursor, err := strconv.Atoi(strCursor)
+		if err != nil {
+			return params, fmt.Errorf("invalid cursor value: %s", strCursor)
 		}
-	} else {
-		params.Page = 1
+		params.Cursor = uint(cursor)
 	}
 
-	strSize := c.Request().URL.Query().Get(QueryParamSize)
-	// with a value as -1 for gorms Limit method, we'll get a request without limit as default
-
-	params.Size = DefaultParamSizeValue
-	if strSize != "" {
-		params.Size, err = strconv.Atoi(strSize)
-		if err != nil || params.Size < -1 {
-			return params, errors.New(ErrMsgQueryParamInvalidSizeValue)
+	// extract limit if provided
+	strLimit := c.Request().URL.Query().Get(QueryParamLimit)
+	params.Limit = DefaultPaginationLimitValue
+	if strLimit != "" {
+		limit, err := strconv.Atoi(strLimit)
+		if err != nil {
+			return params, fmt.Errorf("invalid limit value: %s", strLimit)
 		}
+		params.Limit = int64(limit)
+	}
+	if params.Limit > MaxPaginationLimitValue {
+		return params, fmt.Errorf("limit value is too large: %d - maximum value is %d", params.Limit, MaxPaginationLimitValue)
 	}
 
-	return params, err
-}
-
-// readBody Read request's body is a way so it can be red again by other methods
-func readBody(c echo.Context) []byte {
-	defer c.Request().Body.Close()
-	bodyBytes := []byte{}
-	bodyBytes, _ = ioutil.ReadAll(c.Request().Body)
-	c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	return bodyBytes
-}
-
-func getFieldNameByJsonTag(tag, key string, s interface{}) (fieldname string) {
-	rt := reflect.TypeOf(s)
-	if rt.Kind() != reflect.Struct {
-		panic("bad type")
-	}
-	for i := 0; i < rt.NumField(); i++ {
-		f := rt.Field(i)
-		v := strings.Split(f.Tag.Get(key), ",")[0] // use split to ignore tag "options"
-		if v == tag {
-			return f.Name
-		}
-	}
-	return ""
-}
-
-// CheckPayloadObject analyzes payload using Object model tags and returns providedGORMModelFields,
-// providedAssociationsFields, unsupportedFields for further decision making
-func CheckPayloadObject(apiVer string, payloadObject map[string]interface{}, objectType string, objectStruct interface{}, providedGORMModelFields *[]string, providedAssociationsFields *[]string, unsupportedFields *[]string) (int, error) {
-	var associatedFields = &[]string{}
-	var optionalFields = &[]string{}
-	var optionalAssociationsFields = &[]string{}
-	var requiredFields = &[]string{}
-
-	// error out if a GORM Model field was passed for an update
-	for k, _ := range payloadObject {
-		if util.StringSliceContains(GORMModelFields, k, false) {
-			*providedGORMModelFields = append(*providedGORMModelFields, k)
-		}
-	}
-
-	// to be able to do this, needed to introduce "validate" tag parsing into
-	// ObjectTaggedFields
-	if fieldsByTag, ok := ObjectTaggedFields[VersionObject{Version: apiVer, Object: objectType}]; ok {
-		associatedFields = &fieldsByTag.OptionalAssociations
-	} else {
-		return 500, errors.New("ObjectTaggedFields for " + apiVer + " and " + objectType + " not found")
-	}
-
-	// error out if an association was passed for an update
-	for k, _ := range payloadObject {
-		if util.StringSliceContains(*associatedFields, k, false) {
-			*providedAssociationsFields = append(*providedAssociationsFields, k)
-		}
-	}
-
-	// field not Optional, OptionalAssociation or Required - it's Unsupported
-	optionalFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].Optional
-	optionalAssociationsFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].OptionalAssociations
-	requiredFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].Required
-	for k, _ := range payloadObject {
-		// check the field k form the payload
-		if !util.StringSliceContains(*optionalFields, k, false) &&
-			!util.StringSliceContains(*optionalAssociationsFields, k, false) &&
-			!util.StringSliceContains(*requiredFields, k, false) {
-			// now we need to check the same for the alias of the k
-			kAlias := getFieldNameByJsonTag(k, "json", objectStruct)
-			if len(kAlias) > 0 {
-				if !util.StringSliceContains(*optionalFields, kAlias, false) &&
-					!util.StringSliceContains(*optionalAssociationsFields, kAlias, false) &&
-					!util.StringSliceContains(*requiredFields, kAlias, false) {
-					*unsupportedFields = append(*unsupportedFields, kAlias)
-				}
-			} else {
-				*unsupportedFields = append(*unsupportedFields, k)
-			}
-		}
-	}
-
-	return 200, nil
+	return params, nil
 }
 
 // PayloadCheck parses JSON request body into key value pairs to perform validations such as:
@@ -188,7 +113,12 @@ func PayloadCheck(
 			}
 			// check array/slice of payload objects
 			for _, v := range payloadArray {
-				if id, err := CheckPayloadObject(apiVer, v, objectType, objectStruct, &providedGORMModelFields, &providedAssociationsFields, &unsupportedFields); err != nil {
+				if id, err := checkPayloadObject(
+					apiVer, v, objectType, objectStruct,
+					&providedGORMModelFields,
+					&providedAssociationsFields,
+					&unsupportedFields,
+				); err != nil {
 					return id, err
 				}
 			}
@@ -198,7 +128,12 @@ func PayloadCheck(
 			return 400, errors.New(ErrMsgJSONPayloadEmpty)
 		}
 		// check single payload object
-		if id, err := CheckPayloadObject(apiVer, payload, objectType, objectStruct, &providedGORMModelFields, &providedAssociationsFields, &unsupportedFields); err != nil {
+		if id, err := checkPayloadObject(
+			apiVer, payload, objectType, objectStruct,
+			&providedGORMModelFields,
+			&providedAssociationsFields,
+			&unsupportedFields,
+		); err != nil {
 			return id, err
 		}
 	}
@@ -220,27 +155,68 @@ func PayloadCheck(
 	return 500, nil
 }
 
-// MiddlewareFunc is a potential replacement for PayloadCheck in the future
-func MiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		// read origin body bytes
-		var bodyBytes []byte
-		if c.Request().Body != nil {
-			bodyBytes, _ = ioutil.ReadAll(c.Request().Body)
-			// write back to request body
-			c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-			// parse json data
-			reqData := struct {
-				ID string `json:"id"`
-			}{}
-			err := json.Unmarshal(bodyBytes, &reqData)
-			if err != nil {
-				return c.JSON(400, "error json.")
-			}
-			fmt.Println(reqData.ID)
+// checkPayloadObject analyzes payload using Object model tags and returns providedGORMModelFields,
+// providedAssociationsFields, unsupportedFields for further decision making
+func checkPayloadObject(apiVer string, payloadObject map[string]interface{}, objectType string, objectStruct interface{}, providedGORMModelFields *[]string, providedAssociationsFields *[]string, unsupportedFields *[]string) (int, error) {
+	var associatedFields = &[]string{}
+	var optionalFields = &[]string{}
+	var optionalAssociationsFields = &[]string{}
+	var requiredFields = &[]string{}
+
+	// error out if a GORM Model field was passed for an update
+	for k, _ := range payloadObject {
+		if util.StringSliceContains(GORMModelFields, k, false) {
+			*providedGORMModelFields = append(*providedGORMModelFields, k)
 		}
-		return next(c)
 	}
+
+	// to be able to do this, needed to introduce "validate" tag parsing into
+	// ObjectTaggedFields
+	if fieldsByTag, ok := ObjectTaggedFields[VersionObject{Version: apiVer, Object: objectType}]; ok {
+		associatedFields = &fieldsByTag.OptionalAssociations
+	} else {
+		return 500, errors.New("ObjectTaggedFields for " + apiVer + " and " + objectType + " not found")
+	}
+
+	// error out if an association was passed for an update
+	for k, _ := range payloadObject {
+		if util.StringSliceContains(*associatedFields, k, false) {
+			*providedAssociationsFields = append(*providedAssociationsFields, k)
+		}
+	}
+
+	// field not Optional, OptionalAssociation or Required - it's Unsupported
+	optionalFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].Optional
+	optionalAssociationsFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].OptionalAssociations
+	requiredFields = &ObjectTaggedFields[VersionObject{Version: apiVer, Object: string(objectType)}].Required
+
+	// reject explicit null on a required field; gorm.Updates drops nil
+	// pointer fields silently so the violation is invisible downstream.
+	nulledRequiredFields := nullValuedRequiredFields(payloadObject, *requiredFields, objectStruct)
+	if len(nulledRequiredFields) > 0 {
+		return 400, errors.New(ErrMsgRequiredFieldsCannotBeNull + " : " + strings.Join(nulledRequiredFields, ","))
+	}
+
+	for k, _ := range payloadObject {
+		// check the field k form the payload
+		if !util.StringSliceContains(*optionalFields, k, false) &&
+			!util.StringSliceContains(*optionalAssociationsFields, k, false) &&
+			!util.StringSliceContains(*requiredFields, k, false) {
+			// now we need to check the same for the alias of the k
+			kAlias := getFieldNameByJsonTag(k, "json", objectStruct)
+			if len(kAlias) > 0 {
+				if !util.StringSliceContains(*optionalFields, kAlias, false) &&
+					!util.StringSliceContains(*optionalAssociationsFields, kAlias, false) &&
+					!util.StringSliceContains(*requiredFields, kAlias, false) {
+					*unsupportedFields = append(*unsupportedFields, kAlias)
+				}
+			} else {
+				*unsupportedFields = append(*unsupportedFields, k)
+			}
+		}
+	}
+
+	return 200, nil
 }
 
 // versionFromPath returns the API version from the REST path based on whether
@@ -251,4 +227,55 @@ func versionFromPath(path string, extension bool) string {
 		return parsedPath[2]
 	}
 	return parsedPath[1]
+}
+
+// readBody reads the request's body and returns it as a byte slice.
+func readBody(c echo.Context) []byte {
+	defer c.Request().Body.Close()
+	bodyBytes, _ := io.ReadAll(c.Request().Body)
+	c.Request().Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	return bodyBytes
+}
+
+// nullValuedRequiredFields returns Go field names of required fields
+// present in the payload with a JSON null value.
+func nullValuedRequiredFields(
+	payloadObject map[string]interface{},
+	requiredFields []string,
+	objectStruct interface{},
+) []string {
+	var nulled []string
+	for k, v := range payloadObject {
+		// only null values can violate the required contract
+		if v != nil {
+			continue
+		}
+		// payload key matches a required Go field name directly
+		if util.StringSliceContains(requiredFields, k, false) {
+			nulled = append(nulled, k)
+			continue
+		}
+		// payload key may be a json tag alias; resolve to the Go field name
+		alias := getFieldNameByJsonTag(k, "json", objectStruct)
+		if alias != "" && util.StringSliceContains(requiredFields, alias, false) {
+			nulled = append(nulled, alias)
+		}
+	}
+	return nulled
+}
+
+// getFieldNameByJsonTag returns the field name of the struct by the given tag and key.
+func getFieldNameByJsonTag(tag, key string, s interface{}) (fieldname string) {
+	rt := reflect.TypeOf(s)
+	if rt.Kind() != reflect.Struct {
+		panic("bad type")
+	}
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		v := strings.Split(f.Tag.Get(key), ",")[0] // use split to ignore tag "options"
+		if v == tag {
+			return f.Name
+		}
+	}
+	return ""
 }

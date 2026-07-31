@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 
 	cli "github.com/threeport/threeport/pkg/cli/v0"
-	config "github.com/threeport/threeport/pkg/config/v0"
 )
 
 var cliArgs = &cli.GenesisControlPlaneCLIArgs{}
@@ -24,11 +23,11 @@ var cliArgs = &cli.GenesisControlPlaneCLIArgs{}
 var rootCmd = &cobra.Command{
 	Use:   "tptctl",
 	Short: "Manage Threeport",
-	Long: `tptctl is a CLI tool for managing your application orchestration.
-It installs and manages Threeport control planes and allows you to manage your
-software delivery using Threeport.  Threeport manages the infrastructure,
+	Long: `tptctl is a CLI tool for managing application delivery with Threeport.
+It installs and manages Threeport iself, and provides commands for managing
+your application delivery using Threeport.  Threeport manages the infrastructure,
 runtime environments, managed service dependencies, installed support services,
-as well as all components of your application.
+as well as all component workloads of your application.
 
 Plugins: tptctl plugins are installed at ~/.threeport/plugins.  If you install a
 tptctl plugin in an alternative location, set the THREEPORT_PLUGIN_DIR environment
@@ -43,7 +42,7 @@ func Execute() {
 	// find installed plugins
 	pluginDir, ok := os.LookupEnv("THREEPORT_PLUGIN_DIR")
 	if !ok {
-		p, err := config.DefaultPluginDir()
+		p, err := cli.DefaultPluginDir()
 		if err != nil {
 			cli.Error("failed to determine default tptctl plugin directory", err)
 			os.Exit(1)
@@ -76,15 +75,22 @@ func Execute() {
 		if len(os.Args) > 1 && os.Args[1] == filepath.Base(plugFile) {
 			plugArgs := os.Args[2:]
 			plugCmd := exec.Command(plugFile, plugArgs...)
-			output, err := plugCmd.CombinedOutput()
-			if err != nil {
+			// wire the plugin's stdio directly to tptctl's so its output
+			// streams live rather than being buffered until the process exits
+			plugCmd.Stdin = os.Stdin
+			plugCmd.Stdout = os.Stdout
+			plugCmd.Stderr = os.Stderr
+			if err := plugCmd.Run(); err != nil {
+				// preserve the plugin's own exit code when it exits non-zero
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					os.Exit(exitErr.ExitCode())
+				}
 				cli.Error(
-					fmt.Sprintf("failed to run plugin %s with output %s", filepath.Base(plugFile), output),
+					fmt.Sprintf("failed to run plugin %s", filepath.Base(plugFile)),
 					err,
 				)
 				os.Exit(1)
 			}
-			fmt.Println(string(output))
 			os.Exit(0)
 		}
 	}
@@ -106,21 +112,25 @@ func init() {
 	)
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	cobra.OnInitialize(func() {
-		cli.InitConfig(cliArgs.CfgFile)
 		cli.InitArgs(cliArgs)
 	})
 }
 
+// CommandPreRunFunc is a function that is called before the command is executed.
+// It initializes the config and the command context.
 func CommandPreRunFunc(cmd *cobra.Command, args []string) {
+	cli.InitConfig(cmd, cliArgs.CfgFile)
+
 	if err := initializeCommandContext(cmd); err != nil {
 		cli.Error("could not initialize command in pre run:", err)
 		os.Exit(1)
 	}
 }
 
+// initializeCommandContext initializes the command context.
 func initializeCommandContext(cmd *cobra.Command) error {
 	// get threeport config and extract threeport API endpoint
-	threeportConfig, requestedControlPlane, err := config.GetThreeportConfig(cliArgs.ControlPlaneName)
+	threeportConfig, requestedControlPlane, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
 	if err != nil {
 		return fmt.Errorf("failed to get threeport config: %w", err)
 	}
@@ -144,9 +154,10 @@ func initializeCommandContext(cmd *cobra.Command) error {
 	return nil
 }
 
-func GetClientContext(cmd *cobra.Command) (*http.Client, *config.ThreeportConfig, string, string) {
+// GetClientContext gets the client context from the command context.
+func GetClientContext(cmd *cobra.Command) (*http.Client, *cli.ThreeportConfig, string, string) {
 	var apiClient *http.Client
-	var threeportConfig *config.ThreeportConfig
+	var threeportConfig *cli.ThreeportConfig
 	var apiEndpoint string
 	var requestedControlPlane string
 
@@ -159,7 +170,7 @@ func GetClientContext(cmd *cobra.Command) (*http.Client, *config.ThreeportConfig
 
 	contextThreeportConfig := cmd.Context().Value("config")
 	if contextThreeportConfig != nil {
-		if config, ok := contextThreeportConfig.(*config.ThreeportConfig); ok {
+		if config, ok := contextThreeportConfig.(*cli.ThreeportConfig); ok {
 			threeportConfig = config
 		}
 	}

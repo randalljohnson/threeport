@@ -86,10 +86,21 @@ versions as needed for future releases.
 - [] Update `DefaultKubernetesVersion` in `nukleros/aws-builder` to latest
   release of Kubernetes.  Cut new release for aws-builder and update aws-builder
   import version for Threeport.
+- [] Update `provider.KubernetesRuntimeInfraOKE.Version` in
+  `threeport/pkg/cli/v0/genesis_control_plane.go` to the latest version of Kubernetes for
+  which control plane and node images are available. (This can be verified by via the
+  cluster "Quick Create" feature in the OCI web UI. Note that Oracle may release control plane
+  version upgrades prior to node images, however the version specified in Threeport must
+  exist for both. An error will be thrown by Pulumi on `tptctl up` if this is not the case.)
 - [] Update `kindest/node` image version used for local control planes.  It is defined in two
   places in `internal/provider/kind.go`.
-- [] Update container image version to latest for CockroachDB and NATS in
+- [] Update container image version to the latest stable version for CockroachDB and NATS in
   installer.
+- [] Update Pulumi version in all Dockerfiles to match the version of the `github.com/pulumi/pulumi/sdk/v3`
+  dependency in `go.mod`.  The relevant Dockerfiles live in:
+  - `cmd/oci-controller/images`
+  - `cmd/gcp-controller/images`
+- [] Update Go version on alpine images used for all image builds in `cmd/[component]/images`.
 - [] Once all changes are committed, push PR branch
   ```bash
   git push origin 0.5-version-updates

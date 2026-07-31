@@ -1,0 +1,5 @@
+GcpProvider:
+  Name: default-project
+  ProjectID: qleet-service
+  DefaultProvider: true
+  DefaultRegion: "us-east4"

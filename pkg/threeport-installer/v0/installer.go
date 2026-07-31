@@ -54,6 +54,26 @@ type Options struct {
 	// AWS region code to install threeport control plane in.
 	AwsRegion string
 
+	// OCI region code to install threeport control plane in.
+	OciRegion string
+
+	// The OCI config profile to draw credentials from when using oke provider.
+	OciConfigProfile string
+
+	// The OCI compartment OCID to install threeport control plane in.
+	OciCompartmentOcid string
+
+	// The Google Cloud project ID where the cluster infra is provisioned.
+	GcpProjectId string
+
+	// The Google Cloud region where the cluster infra is provisioned.
+	GcpRegion string
+
+	// The GCP service account email for Workload Identity. When set, the
+	// gcp-controller's Kubernetes ServiceAccount will be annotated to use
+	// this GCP service account via Workload Identity.
+	GcpServiceAccountEmail string
+
 	// Path to config file for threeport
 	CfgFile string
 
@@ -93,17 +113,21 @@ type Options struct {
 	// If true, run in debug mode. Appropriate for development environments only.
 	Debug bool
 
-	// If true, live changes made in development will be live-reloaded into control plane components. Only applicable for kind infra-provider.
-	LiveReload bool
-
 	// If true, infrastructure is not provisioned, control plane is installed on existing infra.
 	ControlPlaneOnly bool
 
-	// Port forwards for kind infra provider
-	KindInfraPortForward []string
+	// Name of an existing kubernetes cluster to install the control plane on. Only applies
+	// when ControlPlaneOnly is true.
+	ClusterName string
 
-	// If true, an EKS load balancer is provisioned for the threeport API.
-	RestApiEksLoadBalancer bool
+	// If true, only infrastructure is provisioned.
+	InfraOnly bool
+
+	// Port mappings for kind infra provider
+	KindPortMappings []string
+
+	// If true, a cloud load balancer is provisioned for the threeport API.
+	RestApiLoadBalancer bool
 
 	// verbose logging
 	Verbose bool
@@ -114,8 +138,8 @@ type Options struct {
 	// A general map to pass around information between various install phases.
 	AdditionalOptions map[string]interface{}
 
-	// Skip teardown of control plane components if an error is encountered.
-	SkipTeardown bool
+	// Automatically tear down control plane resources if an error is encountered.
+	TeardownOnFailure bool
 
 	// Create and connect local container registry for local control plane
 	// clusters.
@@ -128,11 +152,11 @@ type ControlPlaneInstaller struct {
 
 func (cpi *ControlPlaneInstaller) SetAllImageRepo(imageRepo string) {
 	for _, c := range cpi.Opts.ControllerList {
-		c.ImageRepo = imageRepo
+		c.ImageNamespace = imageRepo
 	}
-	cpi.Opts.RestApiInfo.ImageRepo = imageRepo
-	cpi.Opts.AgentInfo.ImageRepo = imageRepo
-	cpi.Opts.DatabaseMigratorInfo.ImageRepo = imageRepo
+	cpi.Opts.RestApiInfo.ImageNamespace = imageRepo
+	cpi.Opts.AgentInfo.ImageNamespace = imageRepo
+	cpi.Opts.DatabaseMigratorInfo.ImageNamespace = imageRepo
 }
 
 func (cpi *ControlPlaneInstaller) SetAllImageTags(imageTag string) {

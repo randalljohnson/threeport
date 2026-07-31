@@ -11,7 +11,15 @@ orchestrates the delivery of software with all of its dependencies.  Those
 dependencies encompass everything from the cloud infrastructure up to the
 services needed for the application to run successfully.
 
-![Threeport Stack](../img/ThreeportStack.png)
+![Threeport Stack](../img/ThreeportStack.drawio.svg)
+
+## Requirements
+
+The following outline the primary requirements used to develop Threeport Core.
+
+* Scalable: All components of Threeport Core are designed to scale to meet the global needs of an organization's software delivery.  The API, and all controllers are horizontally scalable.
+* Resilient: Threeport Core is designed to be installed across multiple regions to remain functional in the event of a regional outage.
+* Extensible: Threeport Core is extensible via modules so that all common and specialized requirements can be accommodated in a single, coherent system.
 
 ## Requirements
 
@@ -53,7 +61,7 @@ detail.  The control plane consists primarily of:
 > complete list of the actual controllers in the Threeport control plane, see
 > the [Control Plane architecture](control-plane.md) docs.
 
-![Threeport Control Plane](../img/ThreeportControlPlaneOverview.png)
+![Threeport Control Plane](../img/ThreeportControlPlaneOverview.drawio.svg)
 
 This diagram illustrates the following process:
 
@@ -73,7 +81,7 @@ This diagram illustrates the following process:
    instruct its control plane to deploy the containerized workloads.
 1. If the workload dependencies require a support service to be installed on
    Kubernetes, the controller responsible for support services will create new
-   Workload objects in the Threeport API which, in turn, prompts the controller
+   KubernetesWorkload objects in the Threeport API which, in turn, prompts the controller
    for workloads to connect to Kubernetes to install and configure the support
    services for that workload.
 
@@ -113,7 +121,7 @@ Threeport control plane.
 > only supported runtime.  However, we plan to add additional providers and
 > runtimes in the future.
 
-![Threeport Compute Space](../img/ThreeportComputeSpace.png)
+![Threeport Compute Space](../img/ThreeportComputeSpace.drawio.svg)
 
 ## Bootstrapping Threeport
 
@@ -128,7 +136,7 @@ installing the `tptctl` command line tool.
 See the [Remote Threeport guide](../install/install-threeport-aws.md) for a
 walk through on installing Threeport in AWS using `tptctl`.
 
-![Threeport Bootstrapping](../img/ThreeportBootstrapping.png)
+![Threeport Bootstrapping](../img/ThreeportBootstrapping.drawio.svg)
 
 The `tptctl up` command executes the following steps when installing on AWS:
 

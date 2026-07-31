@@ -1,0 +1,58 @@
+package controller
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+
+	. "github.com/dave/jennifer/jen"
+	"github.com/iancoleman/strcase"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+)
+
+// GenController generates the controller internal package with constants.
+func GenController(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	for _, objGroup := range gen.ApiObjectGroups {
+		if len(objGroup.ReconciledObjects) > 0 {
+			f := NewFile(objGroup.ControllerPackageName)
+			f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+			f.Comment(fmt.Sprintf(
+				"The name and description of the NATS bucket used for %s object locks",
+				strcase.ToDelimited(objGroup.ControllerShortName, ' '),
+			))
+			f.Const().Defs(
+				Id("LockBucketName").Op("=").Lit(fmt.Sprintf(
+					"%sLock",
+					strcase.ToLowerCamel(objGroup.ControllerShortName),
+				)),
+				Id("LockBucketDescr").Op("=").Lit(fmt.Sprintf(
+					"contains locks on %s objects",
+					strcase.ToDelimited(objGroup.ControllerShortName, ' '),
+				)),
+			)
+
+			// write code to file if not excluded by SDK config
+			genFilepath := filepath.Join(
+				"internal",
+				objGroup.ControllerShortName,
+				fmt.Sprintf("%s_gen.go", strcase.ToSnake(objGroup.ControllerShortName)),
+			)
+			if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+				cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+			} else {
+				_, err := util.WriteCodeToFile(f, genFilepath, true)
+				if err != nil {
+					return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+				}
+				cli.Info(fmt.Sprintf("source code for internal controller package written to %s", genFilepath))
+			}
+		}
+	}
+
+	return nil
+}

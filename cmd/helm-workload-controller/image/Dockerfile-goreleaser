@@ -1,5 +1,0 @@
-FROM gcr.io/distroless/static:nonroot
-COPY helm-workload-controller /helm-workload-controller
-USER 65532:65532
-
-ENTRYPOINT ["/helm-workload-controller"]

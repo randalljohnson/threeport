@@ -48,7 +48,6 @@ func GetAuthConfig() (*AuthConfig, error) {
 		CAPrivateKeyPemEncoded:    caPrivateKeyEncoded,
 		CAPrivateKeyBase64Encoded: util.Base64Encode(caPrivateKeyEncoded),
 	}, nil
-
 }
 
 // GenerateCACertificate generates a certificate authority and private key for the Threeport API.
@@ -66,18 +65,10 @@ func GenerateCACertificate() (caConfig *x509.Certificate, ca []byte, caPrivateKe
 		URIs:         []*url.URL{{Scheme: "https", Host: "localhost"}},
 		DNSNames: []string{
 			"localhost",
-			"threeport-api-server",
-			"threeport-api-server.threeport-control-plane",
-			"threeport-api-server.threeport-control-plane.svc",
-			"threeport-api-server.threeport-control-plane.svc.cluster",
-			"threeport-api-server.threeport-control-plane.svc.cluster.local",
 		},
 		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
 		Subject: pkix.Name{
-			CommonName:   "localhost",
-			Organization: []string{"Threeport"},
-			Country:      []string{"US"},
-			Locality:     []string{"Tampa"},
+			CommonName: "threeport",
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0),
@@ -109,6 +100,8 @@ func GenerateCertificate(
 	caConfig *x509.Certificate,
 	caPrivateKey *rsa.PrivateKey,
 	commonName string,
+	organization string,
+	organizationalUnit string,
 	altNames ...string,
 ) (certificate string, privateKey string, err error) {
 	// generate a random identifier for use as a serial number
@@ -118,26 +111,27 @@ func GenerateCertificate(
 		return "", "", fmt.Errorf("failed to generate random serial number: %w", err)
 	}
 
-	// set config options for a new CA certificate
-	dnsNames := []string{
-		"localhost",
-		"threeport-api-server",
-		"threeport-api-server.threeport-control-plane",
-		"threeport-api-server.threeport-control-plane.svc",
-		"threeport-api-server.threeport-control-plane.svc.cluster",
-		"threeport-api-server.threeport-control-plane.svc.cluster.local",
+	dnsNames := []string{"localhost"}
+	ipAddresses := []net.IP{net.ParseIP("127.0.0.1")}
+
+	// Process altNames to separate IPs and DNS names
+	for _, altName := range altNames {
+		if ip := net.ParseIP(altName); ip != nil {
+			ipAddresses = append(ipAddresses, ip)
+		} else {
+			dnsNames = append(dnsNames, altName)
+		}
 	}
-	dnsNames = append(dnsNames, altNames...)
+
 	cert := &x509.Certificate{
 		SerialNumber: randomNumber,
 		URIs:         []*url.URL{{Scheme: "https", Host: "localhost"}},
 		DNSNames:     dnsNames,
-		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+		IPAddresses:  ipAddresses,
 		Subject: pkix.Name{
-			CommonName:   commonName,
-			Organization: []string{"Threeport"},
-			Country:      []string{"US"},
-			Locality:     []string{"Tampa"},
+			CommonName:         commonName,
+			Organization:       []string{organization},
+			OrganizationalUnit: []string{organizationalUnit},
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0),

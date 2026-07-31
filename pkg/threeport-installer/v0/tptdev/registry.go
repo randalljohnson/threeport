@@ -7,8 +7,8 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
@@ -46,7 +46,7 @@ func CreateLocalRegistry() error {
 	_, _, err = cli.ImageInspectWithRaw(ctx, registryImage)
 	if err != nil {
 		// image does not exist, pull it
-		reader, err := cli.ImagePull(ctx, registryImage, types.ImagePullOptions{})
+		reader, err := cli.ImagePull(ctx, registryImage, image.PullOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to pull registry image: %w", err)
 		}
@@ -166,10 +166,9 @@ func DeleteLocalRegistry() error {
 
 // applyK8sConfig creates a configmap to in the Kubernetes cluster.
 func applyK8sConfig(config string) error {
-	kubeconfig := os.Getenv("KUBECONFIG")
-	if kubeconfig == "" {
-		kubeconfig = clientcmd.RecommendedHomeFile
-	}
+	// resolve kubeconfig via client-go's standard precedence
+	// ($KUBECONFIG, then ~/.kube/config)
+	kubeconfig := clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
 	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to generate Kubernetes REST config from kubeconfig: %w", err)

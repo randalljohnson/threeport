@@ -9,6 +9,7 @@ import (
 
 	"github.com/threeport/threeport/pkg/api-server/v0/database"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
+	"github.com/threeport/threeport/pkg/encryption/v0"
 )
 
 const (
@@ -32,7 +33,7 @@ func (cpi *ControlPlaneInstaller) CreateThreeportControlPlaneNamespace(
 		},
 	}
 	if err := cpi.CreateOrUpdateKubeResource(namespace, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	return nil
@@ -44,7 +45,6 @@ func (cpi *ControlPlaneInstaller) CreateThreeportControlPlaneNamespace(
 func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
-	infraProvider,
 	encryptionKey string,
 	dbCreds *auth.DbCreds,
 ) error {
@@ -61,7 +61,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 				"namespace": cpi.Opts.Namespace,
 			},
 			"stringData": map[string]interface{}{
-				"ENCRYPTION_KEY": encryptionKey,
+				encryption.KeyEnvVar: encryptionKey,
 			},
 		},
 	}
@@ -96,7 +96,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsPDB, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsServiceAccount = &unstructured.Unstructured{
@@ -115,7 +115,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControlPlaneDependencies(
 		},
 	}
 	if err := cpi.CreateOrUpdateKubeResource(natsServiceAccount, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsConfig = &unstructured.Unstructured{
@@ -162,7 +162,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsConfig, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsService = &unstructured.Unstructured{
@@ -222,7 +222,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsService, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsBoxDeployment = &unstructured.Unstructured{
@@ -255,7 +255,7 @@ store_dir: /data
 						"containers": []interface{}{
 							map[string]interface{}{
 								"name":            "nats-box",
-								"image":           "natsio/nats-box:0.14.3",
+								"image":           "natsio/nats-box:0.16.0-nonroot",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       nil,
 								"env": []interface{}{
@@ -279,7 +279,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsBoxDeployment, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var natsStatefulSet = &unstructured.Unstructured{
@@ -354,7 +354,7 @@ store_dir: /data
 						"containers": []interface{}{
 							map[string]interface{}{
 								"name":            "nats",
-								"image":           "nats:2.10.12-alpine",
+								"image":           "nats:2.10.25-alpine",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       map[string]interface{}{},
 								"ports": []interface{}{
@@ -479,7 +479,7 @@ store_dir: /data
 							//################################
 							map[string]interface{}{
 								"name":            "reloader",
-								"image":           "natsio/nats-server-config-reloader:0.14.1",
+								"image":           "natsio/nats-server-config-reloader:0.16.1",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       nil,
 								"command": []interface{}{
@@ -511,7 +511,7 @@ store_dir: /data
 							//#############################
 							map[string]interface{}{
 								"name":            "metrics",
-								"image":           "natsio/prometheus-nats-exporter:0.14.0",
+								"image":           "natsio/prometheus-nats-exporter:0.16.0",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       map[string]interface{}{},
 								"args": []interface{}{
@@ -539,7 +539,7 @@ store_dir: /data
 						"metadata": map[string]interface{}{
 							"name": "datadir",
 						},
-						"spec": cpi.getVolClaimTemplateSpec(infraProvider, "5Gi"),
+						"spec": cpi.getVolClaimTemplateSpec("5Gi"),
 					},
 				},
 			},
@@ -547,7 +547,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(natsStatefulSet, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	// asdf
@@ -601,7 +601,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(crdbPDB, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var crdbService = &unstructured.Unstructured{
@@ -660,7 +660,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(crdbService, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	var crdbStatefulSet = &unstructured.Unstructured{
@@ -770,7 +770,7 @@ store_dir: /data
 									},
 									map[string]interface{}{
 										"name":  "STATEFULSET_FQDN",
-										"value": "crdb.threeport-control-plane.svc.cluster.local",
+										"value": fmt.Sprintf("crdb.%s.svc.cluster.local", cpi.Opts.Namespace),
 									},
 									map[string]interface{}{
 										"name":  "COCKROACH_CHANNEL",
@@ -836,7 +836,7 @@ store_dir: /data
 								"app.kubernetes.io/instance": "crdb",
 							},
 						},
-						"spec": cpi.getVolClaimTemplateSpec(infraProvider, "20Gi"),
+						"spec": cpi.getVolClaimTemplateSpec("20Gi"),
 					},
 				},
 			},
@@ -844,7 +844,7 @@ store_dir: /data
 	}
 
 	if err := cpi.CreateOrUpdateKubeResource(crdbStatefulSet, kubeClient, mapper); err != nil {
-		return fmt.Errorf("failed to create/update API server secret for workload controller: %w", err)
+		return fmt.Errorf("failed to create/update API server secret for kubernetes workload controller: %w", err)
 	}
 
 	// configure threeport api service
@@ -890,7 +890,6 @@ store_dir: /data
 // getVolClaimTemplateSpec returns the spec for volume claim template for the
 // specified provider with the specified storage amount.
 func (cpi *ControlPlaneInstaller) getVolClaimTemplateSpec(
-	infraProvider string,
 	storage string,
 ) map[string]interface{} {
 	volClaimTemplateSpec := map[string]interface{}{
@@ -904,7 +903,7 @@ func (cpi *ControlPlaneInstaller) getVolClaimTemplateSpec(
 		},
 	}
 
-	if infraProvider == "eks" {
+	if cpi.Opts.InfraProvider == "eks" {
 		volClaimTemplateSpec["storageClassName"] = "gp2"
 	}
 

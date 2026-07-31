@@ -1,0 +1,71 @@
+package apiserver
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+
+	. "github.com/dave/jennifer/jen"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+)
+
+// GenHandlerWrapper generates the handler wrapper that wraps Threeport handlers
+// for extensions.
+func GenHandlerWrapper(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	for _, version := range gen.GlobalVersionConfig.Versions {
+		f := NewFile("handlers")
+		f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+		f.ImportAlias("github.com/nats-io/nats.go", "nats")
+		f.ImportAlias("github.com/threeport/threeport/pkg/api-server/v0/handlers", "tp_handlers")
+
+		f.Comment("Handler is a wrapper for the threeport Handler object.")
+		f.Type().Id("Handler").Struct(
+			Id("Handler").Qual(
+				"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+				"Handler",
+			),
+		)
+
+		f.Comment("New returns a new Handler.")
+		f.Func().Id("New").Params(
+			Id("db").Op("*").Qual("gorm.io/gorm", "DB"),
+			Id("nc").Op("*").Qual("github.com/nats-io/nats.go", "Conn"),
+			Id("rc").Qual("github.com/nats-io/nats.go", "JetStreamContext"),
+			Id("logger").Op("*").Qual("go.uber.org/zap", "Logger"),
+		).Id("Handler").Block(
+			Id("handler").Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/api-server/v0/handlers",
+				"New",
+			).Call(List(Id("db"), Id("nc"), Id("rc"), Id("logger"))),
+
+			Return(Id("Handler").Values(Dict{
+				Id("Handler"): Id("handler"),
+			})),
+		)
+
+		// write code to file if not excluded by SDK config
+		genFilepath := filepath.Join(
+			"pkg",
+			"api-server",
+			version.VersionName,
+			"handlers",
+			"handlers_gen.go",
+		)
+		if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+			cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+		} else {
+			_, err := util.WriteCodeToFile(f, genFilepath, true)
+			if err != nil {
+				return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+			}
+			cli.Info(fmt.Sprintf("source code for extension handler wrapper written to %s", genFilepath))
+		}
+	}
+
+	return nil
+}

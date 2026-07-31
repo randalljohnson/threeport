@@ -10,6 +10,12 @@ const (
 	// used to query GetProviderRegionForLocation to determine the AWS region
 	AwsProvider = "aws"
 
+	// used to query GetProviderRegionForLocation to determine the OCI region
+	OciProvider = "oci"
+
+	// used to query GetProviderRegionForLocation to determine the GCP region
+	GcpProvider = "gcp"
+
 	// namespace used by the gateway system
 	GatewaySystemNamespace = "nukleros-gateway-system"
 )

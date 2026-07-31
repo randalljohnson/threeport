@@ -62,7 +62,7 @@ app. The reconcilers in the Custom Threeport Controller understand the custom
 app's requirements and creates the primitive Threeport objects on behalf of the
 developer when instances are deployed.
 
-![Primitive Object Abstraction](../img/ThreeportForPlatformEngineers.png)
+![Primitive Object Abstraction](../img/ThreeportForPlatformEngineers.drawio.svg)
 
 ### Custom Infrastructure Management
 
@@ -86,7 +86,7 @@ We generally do not recommend using an infrastructure-as-code solution such as
 Terraform or CloudFormation. These do not offer the flexibility and
 sophistication that direct integrations or Kubernetes-based abstractions do.
 
-![Custom AWS Services](../img/ThreeportExtensionCustomAWSServices.png)
+![Custom AWS Services](../img/ThreeportExtensionCustomAWSServices.drawio.svg)
 
 ### Advanced Application Orchestration
 
@@ -102,13 +102,13 @@ the Kubernetes operator where it is more effective.
 In this case, native Threeport objects can be used to provision AWS managed
 services, e.g. RDS, as well as support services, e.g. Domain Names and Gateways.
 However, by leveraging a Kubernetes operator, the custom Threeport controller
-need only create a single Workload object that defines the "CustomApp"
+need only create a single KubernetesWorkload object that defines the "CustomApp"
 Kubernetes resource, shown in this diagram in dark orange. On the Kubernetes
 cluster, the Custom App Operator, shown in light orange in this diagram, deploys
 all of the individual Kubernetes resources in response to that CustomApp
 resource being created, updated or deleted.
 
-![Advanced App Orchestration](../img/AdvancedAppOrchestration.png)
+![Advanced App Orchestration](../img/AdvancedAppOrchestration.drawio.svg)
 
 The advantages to this approach are as follows:
 

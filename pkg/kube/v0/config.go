@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -13,22 +12,12 @@ import (
 // KubeConnectionInfo contains the necessary info to connect to a Kubernetes
 // API.
 type KubeConnectionInfo struct {
-	APIEndpoint        string
-	CACertificate      string
-	Certificate        string
-	Key                string
-	EKSToken           string
-	EKSTokenExpiration time.Time
-}
-
-// DefaultKubeconfig returns the path to the user's default kubeconfig.
-func DefaultKubeconfig() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to user's home directory: %w", err)
-	}
-
-	return filepath.Join(homeDir, ".kube", "config"), nil
+	APIEndpoint     string
+	CACertificate   string
+	Certificate     string
+	Key             string
+	Token           string
+	TokenExpiration time.Time
 }
 
 // GetConnectionInfoFromKubeconfig extracts the Kubernetes API connection info

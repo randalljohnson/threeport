@@ -7,10 +7,25 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"reflect"
+	"os"
+	"strings"
 
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// KeyEnvVar is the environment variable from which the API server and
+// controllers read the shared symmetric encryption key.
+const KeyEnvVar = "ENCRYPTION_KEY"
+
+// KeyFromEnv reads the encryption key from the environment, returning an
+// error if KeyEnvVar is unset.
+func KeyFromEnv() (string, error) {
+	key := os.Getenv(KeyEnvVar)
+	if key == "" {
+		return "", fmt.Errorf("environment variable %s is not set", KeyEnvVar)
+	}
+	return key, nil
+}
 
 // GenerateKey generates a random 32-byte key for use in encryption
 // (32 bytes is the maximum key size for AES-256).
@@ -113,6 +128,25 @@ func Decrypt(key, ciphertext string) (string, error) {
 	return string(plaintext), nil
 }
 
+// DecryptEnvSlice decrypts the VALUE portion of each KEY=VALUE entry in
+// env, leaving keys in plaintext. Returns a new slice — input is not
+// mutated.
+func DecryptEnvSlice(env []string, encryptionKey string) ([]string, error) {
+	decrypted := make([]string, len(env))
+	for i, entry := range env {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			return nil, fmt.Errorf("entry %d %q is not in KEY=VALUE format", i, entry)
+		}
+		decValue, err := Decrypt(encryptionKey, value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt entry %d: %w", i, err)
+		}
+		decrypted[i] = key + "=" + decValue
+	}
+	return decrypted, nil
+}
+
 // IsEncrypted attempts to decrypt a value.  If decryption fails it returns
 // false to indicate the value provided is not encrypted.  If decryption is
 // successful it returns true to indicate the value is encrypted.
@@ -125,71 +159,14 @@ func IsEncrypted(key, value string) bool {
 	return true
 }
 
-// IsEncryptedField takes an instance of an API object and the field name as a
-// string and returns whether that field has the `encrypt:"true"` tag.
-func IsEncryptedField(obj interface{}, fieldName string) (bool, error) {
-	objVal := reflect.ValueOf(obj)
-
-	// dereference if object is a pointer
-	if objVal.Kind() == reflect.Ptr {
-		objVal = objVal.Elem()
-	}
-
-	if objVal.Kind() == reflect.Struct && objVal.FieldByName(fieldName).IsValid() {
-		fieldVal, ok := objVal.Type().FieldByName(fieldName)
-		if !ok {
-			return false, fmt.Errorf("field %s does not exist", fieldName)
-		}
-		tagValue := fieldVal.Tag.Get("encrypt")
-		return tagValue == "true", nil
-	}
-
-	return false, nil
-}
-
-// RedactEncryptedValues takes an API object, redacts the value on any
-// encrypted fields and returns the object with encrypted fields redacted.
-func RedactEncryptedValues(obj interface{}) interface{} {
-	objVal := reflect.ValueOf(obj).Elem()
-	objType := objVal.Type()
-	for i := 0; i < objType.NumField(); i++ {
-		field := objType.Field(i)
-		fieldVal := objVal.Field(i)
-		encrypt := field.Tag.Get("encrypt")
-		if encrypt == "true" {
-			fieldVal.Elem().SetString("[encrypted value redacted]")
-		}
-	}
-
-	return obj
-}
-
-// DecryptValues takes and API object and the encryption key, decrypts any
-// encrypted fields and returns the object with encrypted values decrypted.
-func DecryptValues(obj interface{}, encryptionKey string) (interface{}, error) {
-	objVal := reflect.ValueOf(obj).Elem()
-	objType := objVal.Type()
-	for i := 0; i < objType.NumField(); i++ {
-		field := objType.Field(i)
-		fieldVal := objVal.Field(i)
-		encrypt := field.Tag.Get("encrypt")
-		if encrypt == "true" {
-			underlyingVal, err := util.GetPtrValue(fieldVal)
-			if err != nil {
-				return obj, fmt.Errorf("failed to get string value for %s: %w", field.Name, err)
-			}
-
-			decryptedVal, err := Decrypt(encryptionKey, underlyingVal)
-			if err != nil {
-				return obj, fmt.Errorf("failed to decrypt value in field %s: %w", field.Name, err)
-			}
-
-			fieldVal.Elem().SetString(decryptedVal)
-		}
-	}
-
-	return obj, nil
-}
+// RedactedValuePlaceholder is the string substituted for the plaintext of an
+// encrypted field when an API object is serialized for display without the
+// encryption key. Callers that round-trip an object through tptctl get →
+// tptctl replace (without --decrypt-secrets) will see this value in their
+// config file; BeforeCreate / BeforeUpdate hooks skip encryption on fields
+// whose incoming value equals this placeholder, so the DB retains its
+// existing ciphertext rather than storing the marker as plaintext.
+const RedactedValuePlaceholder = "[encrypted value redacted]"
 
 // EncryptStringMap encrypts a map of strings using AES-GCM.
 func EncryptStringMap(key string, input map[string]string) (map[string]string, error) {

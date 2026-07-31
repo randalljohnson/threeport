@@ -1,43 +1,53 @@
 package v0
 
 import (
+	"fmt"
+
 	"github.com/threeport/threeport/internal/version"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
 const (
-	// Official image repo for threeport images
-	ThreeportImageRepo = "ghcr.io/threeport"
+	// Official image registry and namespace for threeport images
+	ThreeportImageNamespace = "ghcr.io/threeport"
 
-	// Development image repo used for local development
-	DevImageRepo = "localhost:5001"
+	// Development image namespace used for local development
+	DevImageNamespace = "localhost:5001"
 
 	// Official image names for threeport control plane components
 	ThreeportAPIImage                         = "threeport-rest-api"
 	ThreeportDatabaseMigratorImage            = "threeport-database-migrator"
-	ThreeportWorkloadControllerImage          = "threeport-workload-controller"
+	ThreeportKubernetesWorkloadControllerImage          = "threeport-kubernetes-workload-controller"
 	ThreeportKubernetesRuntimeControllerImage = "threeport-kubernetes-runtime-controller"
 	ThreeportControlPlaneControllerImage      = "threeport-control-plane-controller"
 	ThreeportAwsControllerImage               = "threeport-aws-controller"
+	ThreeportOciControllerImage               = "threeport-oci-controller"
+	ThreeportGcpControllerImage               = "threeport-gcp-controller"
 	ThreeportGatewayControllerImage           = "threeport-gateway-controller"
 	ThreeportHelmWorkloadControllerImage      = "threeport-helm-workload-controller"
 	ThreeportTerraformControllerImage         = "threeport-terraform-controller"
 	ThreeportObservabilityControllerImage     = "threeport-observability-controller"
 	ThreeportSecretControllerImage            = "threeport-secret-controller"
-	ThreeportAgentImage                       = "threeport-agent"
+	ThreeportMachineRuntimeControllerImage   = "threeport-machine-runtime-controller"
+	ThreeportMachineWorkloadControllerImage  = "threeport-machine-workload-controller"
+	ThreeportAgentImage                      = "threeport-agent"
 
 	// Name of threeport control plane components
 	ThreeportRestApiName                     = "rest-api"
 	ThreeportDatabaseMigratorName            = "database-migrator"
-	ThreeportWorkloadControllerName          = "workload-controller"
+	ThreeportKubernetesWorkloadControllerName          = "kubernetes-workload-controller"
 	ThreeportKubernetesRuntimeControllerName = "kubernetes-runtime-controller"
 	ThreeportControlPlaneControllerName      = "control-plane-controller"
 	ThreeportAwsControllerName               = "aws-controller"
+	ThreeportOciControllerName               = "oci-controller"
+	ThreeportGcpControllerName               = "gcp-controller"
 	ThreeportGatewayControllerName           = "gateway-controller"
 	ThreeportHelmWorkloadControllerName      = "helm-workload-controller"
 	ThreeportTerraformControllerName         = "terraform-controller"
 	ThreeportObservabilityControllerName     = "observability-controller"
-	ThreeportSecretControllerName            = "secret-controller"
+	ThreeportSecretControllerName             = "secret-controller"
+	ThreeportMachineRuntimeControllerName    = "machine-runtime-controller"
+	ThreeportMachineWorkloadControllerName   = "machine-workload-controller"
 	ThreeportAgentName                       = "agent"
 
 	// Endpoint for threeport API when running locally
@@ -49,13 +59,10 @@ const (
 	// Name of Kubernetes deployment resource for threeport agent
 	ThreeportAgentDeployName = "threeport-agent"
 
-	// Name of default Kuberentes service account resource
-	DefaultServiceAccount = "default"
-
 	// Cockroach db image tag
-	DatabaseImageTag = "v23.1.14"
+	DatabaseImageTag = "v24.3.3"
 
-	// The Kubernetes namespace in which the threeport control plane is
+	// The default Kubernetes namespace in which the threeport control plane is
 	// installed
 	ControlPlaneNamespace = "threeport-control-plane"
 
@@ -77,84 +84,120 @@ var enabled bool = true
 
 var ThreeportControllerList []*v0.ControlPlaneComponent = []*v0.ControlPlaneComponent{
 	{
-		Name:               ThreeportWorkloadControllerName,
-		BinaryName:         ThreeportWorkloadControllerName,
-		ImageName:          ThreeportWorkloadControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		Name:               ThreeportKubernetesWorkloadControllerName,
+		BinaryName:         ThreeportKubernetesWorkloadControllerName,
+		ImageName:          ThreeportKubernetesWorkloadControllerImage,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportKubernetesWorkloadControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportKubernetesRuntimeControllerName,
 		BinaryName:         ThreeportKubernetesRuntimeControllerName,
 		ImageName:          ThreeportKubernetesRuntimeControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportKubernetesRuntimeControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportAwsControllerName,
 		BinaryName:         ThreeportAwsControllerName,
 		ImageName:          ThreeportAwsControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportAwsControllerName,
+		Enabled:            &enabled,
+	},
+	{
+		Name:               ThreeportOciControllerName,
+		BinaryName:         ThreeportOciControllerName,
+		ImageName:          ThreeportOciControllerImage,
+		ImageNamespace:     ThreeportImageNamespace,
+		ImageTag:           version.GetVersion(),
+		ServiceAccountName: ThreeportOciControllerName,
+		Enabled:            &enabled,
+	},
+	{
+		Name:               ThreeportGcpControllerName,
+		BinaryName:         ThreeportGcpControllerName,
+		ImageName:          ThreeportGcpControllerImage,
+		ImageNamespace:     ThreeportImageNamespace,
+		ImageTag:           version.GetVersion(),
+		ServiceAccountName: ThreeportGcpControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportGatewayControllerName,
 		BinaryName:         ThreeportGatewayControllerName,
 		ImageName:          ThreeportGatewayControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportGatewayControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportControlPlaneControllerName,
 		BinaryName:         ThreeportControlPlaneControllerName,
 		ImageName:          ThreeportControlPlaneControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportControlPlaneControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportHelmWorkloadControllerName,
 		BinaryName:         ThreeportHelmWorkloadControllerName,
 		ImageName:          ThreeportHelmWorkloadControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportHelmWorkloadControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportTerraformControllerName,
 		BinaryName:         ThreeportTerraformControllerName,
 		ImageName:          ThreeportTerraformControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportTerraformControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportObservabilityControllerName,
 		BinaryName:         ThreeportObservabilityControllerName,
 		ImageName:          ThreeportObservabilityControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportObservabilityControllerName,
 		Enabled:            &enabled,
 	},
 	{
 		Name:               ThreeportSecretControllerName,
 		BinaryName:         ThreeportSecretControllerName,
 		ImageName:          ThreeportSecretControllerImage,
-		ImageRepo:          ThreeportImageRepo,
+		ImageNamespace:     ThreeportImageNamespace,
 		ImageTag:           version.GetVersion(),
-		ServiceAccountName: DefaultServiceAccount,
+		ServiceAccountName: ThreeportSecretControllerName,
+		Enabled:            &enabled,
+	},
+	{
+		Name:               ThreeportMachineRuntimeControllerName,
+		BinaryName:         ThreeportMachineRuntimeControllerName,
+		ImageName:          ThreeportMachineRuntimeControllerImage,
+		ImageNamespace:     ThreeportImageNamespace,
+		ImageTag:           version.GetVersion(),
+		ServiceAccountName: ThreeportMachineRuntimeControllerName,
+		Enabled:            &enabled,
+	},
+	{
+		Name:               ThreeportMachineWorkloadControllerName,
+		BinaryName:         ThreeportMachineWorkloadControllerName,
+		ImageName:          ThreeportMachineWorkloadControllerImage,
+		ImageNamespace:     ThreeportImageNamespace,
+		ImageTag:           version.GetVersion(),
+		ServiceAccountName: ThreeportMachineWorkloadControllerName,
 		Enabled:            &enabled,
 	},
 }
@@ -163,9 +206,9 @@ var ThreeportRestApi *v0.ControlPlaneComponent = &v0.ControlPlaneComponent{
 	Name:                ThreeportRestApiName,
 	BinaryName:          ThreeportRestApiName,
 	ImageName:           ThreeportAPIImage,
-	ImageRepo:           ThreeportImageRepo,
+	ImageNamespace:      ThreeportImageNamespace,
 	ImageTag:            version.GetVersion(),
-	ServiceAccountName:  DefaultServiceAccount,
+	ServiceAccountName:  ThreeportRestApiName,
 	ServiceResourceName: ThreeportAPIServiceResourceName,
 	Enabled:             &enabled,
 }
@@ -174,18 +217,18 @@ var ThreeportAgent *v0.ControlPlaneComponent = &v0.ControlPlaneComponent{
 	Name:               ThreeportAgentName,
 	BinaryName:         ThreeportAgentName,
 	ImageName:          ThreeportAgentImage,
-	ImageRepo:          ThreeportImageRepo,
+	ImageNamespace:     ThreeportImageNamespace,
 	ImageTag:           version.GetVersion(),
-	ServiceAccountName: DefaultServiceAccount,
+	ServiceAccountName: ThreeportAgentName,
 	Enabled:            &enabled,
 }
 
 var DatabaseMigrator *v0.ControlPlaneComponent = &v0.ControlPlaneComponent{
-	Name:       ThreeportDatabaseMigratorName,
-	BinaryName: ThreeportDatabaseMigratorName,
-	ImageName:  ThreeportDatabaseMigratorImage,
-	ImageRepo:  ThreeportImageRepo,
-	ImageTag:   version.GetVersion(),
+	Name:           ThreeportDatabaseMigratorName,
+	BinaryName:     ThreeportDatabaseMigratorName,
+	ImageName:      ThreeportDatabaseMigratorImage,
+	ImageNamespace: ThreeportImageNamespace,
+	ImageTag:       version.GetVersion(),
 }
 
 // ControlPlaneTier denotes what level of availability and data retention is
@@ -204,4 +247,15 @@ func AllControlPlaneComponents() []*v0.ControlPlaneComponent {
 	allControlPlaneComponents = append(allControlPlaneComponents, ThreeportRestApi)
 	allControlPlaneComponents = append(allControlPlaneComponents, ThreeportAgent)
 	return allControlPlaneComponents
+}
+
+// ThreeportApiAltNames returns a list of alternative names for the threeport API server certificate.
+func ThreeportApiAltNames(namespace string) []string {
+	return []string{
+		ThreeportAPIServiceResourceName,
+		fmt.Sprintf("%s.%s", ThreeportAPIServiceResourceName, namespace),
+		fmt.Sprintf("%s.%s.svc", ThreeportAPIServiceResourceName, namespace),
+		fmt.Sprintf("%s.%s.svc.cluster", ThreeportAPIServiceResourceName, namespace),
+		fmt.Sprintf("%s.%s.svc.cluster.local", ThreeportAPIServiceResourceName, namespace),
+	}
 }

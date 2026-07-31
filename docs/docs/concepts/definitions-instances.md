@@ -9,7 +9,7 @@ Most objects in Threeport are broken into two parts:
 You can deploy any number of instances for a definition.  This diagram provides
 two examples:
 
-![Definitions & Instances](../img/DefinitionsInstances.png)
+![Definitions & Instances](../img/DefinitionsInstances.drawio.svg)
 
 A Kubernetes Definition provides the configuration for a Kubernetes cluster.
 This includes attributes such as the cloud provider to run on, the node sizes and
@@ -25,11 +25,11 @@ that specifies which location the Kubernetes cluster should run in.
 > translated to different cloud providers and, thus, enable smoother multi-cloud
 > provider environments.
 
-A Workload Definition provides the configuration for a containerized workload.
+A Kubernetes Workload Definition provides the configuration for a containerized workload.
 It includes the Kubernetes resource manifests for that workload.
 
 Subsequently, a user can deploy any number of instances that use the resource
-manifests defined in the Definition.  Each time a Workload Instance is deployed,
+manifests defined in the Definition.  Each time a Kubernetes Workload Instance is deployed,
 the configuration in the definition is referenced as well as a runtime parameter
 that determines which Kubernetes cluster the workload should run on.
 
@@ -43,7 +43,7 @@ creates them in Threeport.
 
 As a result, the user can then deploy a second instance of the object
 
-![Defined Instance Abstraction](../img/DefinedInstanceAbstraction.png)
+![Defined Instance Abstraction](../img/DefinedInstanceAbstraction.drawio.svg)
 
 ## Division of Responsibility
 
@@ -51,12 +51,12 @@ These constructs allow team leads and domain experts to define the attributes
 for different objects.  Then, individual contributors can rapidly provision instances
 leveraging those detailed configs made available to them in Threeport.
 
-For example, the available definitions for AWS RDS database instances can be
-provided by a database expert for different tiers of usage, i.e. definitions
-for development, staging and production.  Then, when developers who use RDS as a
-part of their app stack need to deploy an application instance, they can
-reference the definition provided for them, rather than determining the config
-details themselves.
+For example, a database specialist can create a Terraform definition for a particular
+database managed service.  They can provide definitions for different tiers
+of deployment and make them available to developers that can derive Terraform
+instances from those provided definitions according to their purposes.  This
+allows experts and specialists to provide definitions while devs can safely
+and easily leverage well configured systems for their applicaitons.
 
 In another example, the platform team may take responsibility for defining the
 Kubernetes cluster attributes that teams may use.  Then when teams need a

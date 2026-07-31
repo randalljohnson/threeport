@@ -1,7 +1,7 @@
 ApiDocs:
   Title: "Threeport RESTful API"
   Description: "Core API server for the Threeport application orchestration control plane."
-  ContactUrl: "https://threerport.io"
+  ContactUrl: "https://threeport.io"
 ApiObjectGroups:
 - Name: secret
   Objects:
@@ -26,12 +26,16 @@ ApiObjectGroups:
     - Name: Profile
       Versions:
         - v0
+      Tptctl:
+        Enabled: true
     - Name: Tier
       Versions:
         - v0
+      Tptctl:
+        Enabled: true
 - Name: aws
   Objects:
-    - Name: AwsAccount
+    - Name: AwsProvider
       Versions:
         - v0
       Tptctl:
@@ -47,23 +51,39 @@ ApiObjectGroups:
       Reconcilable: true
       Tptctl:
         Enabled: true
-    - Name: AwsRelationalDatabaseDefinition
+- Name: oci
+  DockerfileTarget: release-pulumi
+  Objects:
+    - Name: OciProvider
       Versions:
         - v0
       Tptctl:
         Enabled: true
-    - Name: AwsRelationalDatabaseInstance
+    - Name: OciOkeKubernetesRuntimeDefinition
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: OciOkeKubernetesRuntimeInstance
       Versions:
         - v0
       Reconcilable: true
       Tptctl:
         Enabled: true
-    - Name: AwsObjectStorageBucketDefinition
+- Name: gcp
+  DockerfileTarget: release-pulumi
+  Objects:
+    - Name: GcpProvider
       Versions:
         - v0
       Tptctl:
         Enabled: true
-    - Name: AwsObjectStorageBucketInstance
+    - Name: GcpGkeKubernetesRuntimeDefinition
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: GcpGkeKubernetesRuntimeInstance
       Versions:
         - v0
       Reconcilable: true
@@ -137,6 +157,7 @@ ApiObjectGroups:
       Tptctl:
         Enabled: true
 - Name: helm_workload
+  DockerfileTarget: release-helm
   Objects:
     - Name: HelmWorkloadDefinition
       Versions:
@@ -152,6 +173,32 @@ ApiObjectGroups:
       Tptctl:
         Enabled: true
         ConfigPath: true
+- Name: machine_runtime
+  Objects:
+    - Name: MachineRuntimeDefinition
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: MachineRuntimeInstance
+      Versions:
+        - v0
+      Reconcilable: true
+      Tptctl:
+        Enabled: true
+- Name: machine_workload
+  Objects:
+    - Name: MachineWorkloadDefinition
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: MachineWorkloadInstance
+      Versions:
+        - v0
+      Reconcilable: true
+      Tptctl:
+        Enabled: true
 - Name: kubernetes_runtime
   Objects:
     - Name: KubernetesRuntimeDefinition
@@ -218,6 +265,7 @@ ApiObjectGroups:
         - v0
       Reconcilable: true
 - Name: terraform
+  DockerfileTarget: release-terraform
   Objects:
     - Name: TerraformDefinition
       Versions:
@@ -233,32 +281,29 @@ ApiObjectGroups:
       Tptctl:
         Enabled: true
         ConfigPath: true
-- Name: workload
+- Name: kubernetes_workload
   Objects:
-    - Name: WorkloadDefinition
+    - Name: KubernetesWorkloadDefinition
       Versions:
         - v0
       Reconcilable: true
       Tptctl:
         Enabled: true
         ConfigPath: true
-    - Name: WorkloadResourceDefinition
+    - Name: KubernetesWorkloadResourceDefinition
       DefinedInstance: false
       Versions:
         - v0
-    - Name: WorkloadResourceInstance
+    - Name: KubernetesWorkloadResourceInstance
       DefinedInstance: false
       Versions:
         - v0
-    - Name: WorkloadInstance
+    - Name: KubernetesWorkloadInstance
       Versions:
         - v0
       Reconcilable: true
       Tptctl:
         Enabled: true
-    - Name: WorkloadEvent
-      Versions:
-        - v0
 - Name: attached_object
   Objects:
     - Name: AttachedObjectReference
@@ -269,7 +314,21 @@ ApiObjectGroups:
     - Name: ModuleApi
       Versions:
         - v0
+      Tptctl:
+        Enabled: true
     - Name: ModuleApiRoute
       Versions:
         - v0
-
+      Tptctl:
+        Enabled: true
+    - Name: ModuleController
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: ModuleObject
+      Versions:
+        - v0
+      AllowDuplicateModelNames: true
+      Tptctl:
+        Enabled: true

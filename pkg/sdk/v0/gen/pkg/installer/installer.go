@@ -1,0 +1,1183 @@
+package installer
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+
+	. "github.com/dave/jennifer/jen"
+	"github.com/iancoleman/strcase"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
+)
+
+// GenInstaller generates the installer package for module projects that
+// installs the module components alongside an existing Threeport control
+// plane and registers that module with Threeport.
+func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	f := NewFile("v0")
+	f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+	f.ImportAlias("k8s.io/apimachinery/pkg/apis/meta/v1", "metav1")
+	f.ImportAlias("github.com/threeport/threeport/pkg/kube/v0", "kube")
+	f.ImportAlias("github.com/threeport/threeport/pkg/api-server/v0/database", "tp_database")
+	f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "tp_api")
+	f.ImportAlias("github.com/threeport/threeport/pkg/client/v0", "tp_client")
+	f.ImportAlias("github.com/threeport/threeport/pkg/auth/v0", "tp_auth")
+	f.ImportAlias("github.com/threeport/threeport/pkg/threeport-installer/v0", "tp_installer")
+	f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
+	for _, objCollection := range gen.VersionedApiObjectCollections {
+		f.ImportAlias(
+			fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version),
+			fmt.Sprintf("api_%s", objCollection.Version),
+		)
+	}
+
+	moduleNameKebab := strcase.ToKebab(sdkConfig.ModuleName)
+	moduleNameSnake := strcase.ToSnake(sdkConfig.ModuleName)
+	moduleNameCamel := strcase.ToCamel(sdkConfig.ModuleName)
+	moduleNameLowerCamel := strcase.ToLowerCamel(sdkConfig.ModuleName)
+
+	f.Const().Defs(
+		Id("ReleaseImageNamespace").Op("=").Lit(sdkConfig.ImageNamespace),
+		Id("DevImageNamespace").Op("=").Lit("localhost:5001"),
+		Id("DbInitFilename").Op("=").Lit("db.sql"),
+		Id("DbInitLocation").Op("=").Lit("/etc/threeport/db-create"),
+		Id("ThreeportApiConfigSecret").Op("=").Lit(installer.ThreeportApiConfigSecret),
+		Id("ModuleApiConfigSecret").Op("=").Lit("module-api-config"),
+		Id("defaultNamespace").Op("=").Lit(fmt.Sprintf(
+			"threeport-%s",
+			moduleNameKebab,
+		)),
+		Id("defaultThreeportNamespace").Op("=").Lit("threeport-control-plane"),
+		Id("apiServerName").Op("=").Lit(fmt.Sprintf(
+			"threeport-%s-api-server",
+			strcase.ToKebab(sdkConfig.ModuleName),
+		)),
+		Id("tpApiCaSecretName").Op("=").Lit("threeport-api-ca"),
+		Id("tpApiCertSecretName").Op("=").Lit("threeport-api-client-cert"),
+	)
+
+	f.Comment("Installer contains the values needed for a module installation.")
+	f.Type().Id("Installer").Struct(
+		Comment("dynamice interface client for Kubernetes API"),
+		Id("KubeClient").Qual("k8s.io/client-go/dynamic", "Interface"),
+
+		Line().Comment("Kubernetes API REST mapper"),
+		Id("KubeRestMapper").Op("*").Qual("k8s.io/apimachinery/pkg/api/meta", "RESTMapper"),
+
+		Line().Comment("The Kubernetes namespace to install the module components in."),
+		Id("ModuleNamespace").String(),
+
+		Line().Comment("The Kubernetes namespace the Threeport control plane is installed in."),
+		Id("ThreeportNamespace").String(),
+
+		Line().Comment("The container image repository to pull module's API server and"),
+		Comment("controller/s' container images from."),
+		Id("ControlPlaneImageRepo").String(),
+
+		Line().Comment("The container image tag to use for module's API server and"),
+		Comment("controller/s' container image."),
+		Id("ControlPlaneImageTag").String(),
+
+		Line().Comment("If true, auth is enabled on Threeport API."),
+		Id("AuthEnabled").Bool(),
+
+		Line().Comment("If true, pod imagePullPolicy is set to Always so each rollout"),
+		Comment("re-pulls the tag. Use for development iteration where you push"),
+		Comment("a moving tag like 'dev-amd64' and want the cluster to pick up"),
+		Comment("the latest push without rotating tags."),
+		Id("Debug").Bool(),
+	)
+
+	// emit getImagePullPolicy() helper on Installer so the per-deployment
+	// codegen below can call i.getImagePullPolicy() rather than hardcode
+	// a literal. Debug=true returns "Always", anything else "IfNotPresent".
+	f.Comment("getImagePullPolicy returns Always when Debug is true so a moving")
+	f.Comment("dev tag is re-pulled on every pod restart, IfNotPresent otherwise.")
+	f.Func().Params(Id("i").Op("*").Id("Installer")).Id("getImagePullPolicy").Params().String().Block(
+		If(Id("i").Dot("Debug")).Block(
+			Return().Lit("Always"),
+		),
+		Return().Lit("IfNotPresent"),
+	)
+
+	f.Comment(fmt.Sprintf(
+		"NewInstaller returns a %s module installer with default values.",
+		moduleNameKebab,
+	))
+	f.Func().Id("NewInstaller").Params(
+		Line().Id("kubeClient").Qual("k8s.io/client-go/dynamic", "Interface"),
+		Line().Id("restMapper").Op("*").Qual("k8s.io/apimachinery/pkg/api/meta", "RESTMapper"),
+		Line(),
+	).Op("*").Id("Installer").Block(
+		Id("defaultInstaller").Op(":=").Id("Installer").Values(Dict{
+			Id("KubeClient"):         Id("kubeClient"),
+			Id("KubeRestMapper"):     Id("restMapper"),
+			Id("ModuleNamespace"):    Id("defaultNamespace"),
+			Id("ThreeportNamespace"): Id("defaultThreeportNamespace"),
+		}),
+		Line(),
+
+		Return(Op("&").Id("defaultInstaller")),
+	)
+
+	installFuncName := fmt.Sprintf("Install%sModule", moduleNameCamel)
+	f.Comment(fmt.Sprintf(
+		"%s installs the controller and API for the %s module.",
+		installFuncName,
+		moduleNameKebab,
+	))
+	f.Func().Params(
+		Id("i").Op("*").Id("Installer"),
+	).Id(installFuncName).Params().Error().BlockFunc(func(g *Group) {
+		g.Comment("create namespace")
+		g.Var().Id("namespace").Op("=").Op("&").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Unstructured",
+		).Values(Dict{
+			Line().Id("Object"): Map(String()).Interface().Values(Dict{
+				Lit("apiVersion"): Lit("v1"),
+				Lit("kind"):       Lit("Namespace"),
+				Lit("metadata"): Map(String()).Interface().Values(Dict{
+					Line().Lit("name"): Id("i.ModuleNamespace").Op(",").Line(),
+				}),
+			}).Op(",").Line(),
+		})
+		g.Line()
+
+		g.If(List(Id("_"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/kube/v0",
+			"CreateOrUpdateResource",
+		).Call(
+			Line().Id("namespace"),
+			Line().Id("i.KubeClient"),
+			Line().Op("*").Id("i.KubeRestMapper"),
+			Line(),
+		), Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit(fmt.Sprintf(
+					"failed to create/update %s module namespace: %%w",
+					moduleNameKebab,
+				)),
+				Err(),
+			)),
+		)
+		g.Line()
+
+		g.Comment("copy secrets into module namespace")
+		copySecrets := []string{
+			"db-root-cert",
+			"db-threeport-cert",
+			"encryption-key",
+			"controller-config",
+			installer.ThreeportApiConfigSecret,
+		}
+		for _, secretName := range copySecrets {
+			g.If(Err().Op(":=").Id("copySecret").Call(
+				Line().Id("i.KubeClient"),
+				Line().Op("*").Id("i.KubeRestMapper"),
+				Line().Lit(secretName),
+				Line().Id("i").Dot("ThreeportNamespace"),
+				Line().Id("i").Dot("ModuleNamespace"),
+				Line(),
+			).Op(";").Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit("failed to copy secret: %w"),
+					Err(),
+				)),
+			)
+			g.Line()
+		}
+		g.Line()
+
+		g.Comment("add secret for module API config")
+		g.Var().Id("moduleApiSecret").Op("=").Op("&").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Unstructured",
+		).Values(Dict{
+			Line().Id("Object"): Map(String()).Interface().Values(Dict{
+				Lit("apiVersion"): Lit("v1"),
+				Lit("kind"):       Lit("Secret"),
+				Lit("metadata"): Map(String()).Interface().Values(Dict{
+					Lit("name"):      Id("ModuleApiConfigSecret"),
+					Lit("namespace"): Id("i.ModuleNamespace"),
+				}),
+				Lit("stringData"): Map(String()).Interface().Values(Dict{
+					Line().Lit("env"): Qual("fmt", "Sprintf").Call(
+						Lit(fmt.Sprintf(`MODULE_API_ENDPOINT=%%[1]s.%%[2]s.svc.cluster.local
+MODULE_NAMESPACE=%%[2]s
+THREEPORT_AUTH_ENABLED=%%[3]t
+`)),
+						Line().Id("apiServerName"),
+						Line().Id("i.ModuleNamespace"),
+						Line().Id("i.AuthEnabled"),
+						Line(),
+					).Op(",").Line(),
+				}),
+			}).Op(",").Line(),
+		})
+		g.If(List(Id("_"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/kube/v0",
+			"CreateOrUpdateResource",
+		).Call(
+			Id("moduleApiSecret"),
+			Id("i.KubeClient"),
+			Op("*").Id("i.KubeRestMapper"),
+		), Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit("failed to create/update module API config secret: %w"),
+				Err(),
+			)),
+		)
+		g.Line()
+
+		moduleDbName := fmt.Sprintf("threeport_%s_api", moduleNameSnake)
+		g.Comment("create configmap used to initialize API database")
+		g.Var().Id("dbCreateConfig").Op("=").Op("&").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Unstructured",
+		).Values(Dict{
+			Id("Object"): Map(String()).Interface().Values(Dict{
+				Lit("apiVersion"): Lit("v1"),
+				Lit("kind"):       Lit("ConfigMap"),
+				Lit("metadata"): Map(String()).Interface().Values(Dict{
+					Lit("name"):      Lit("db-create"),
+					Lit("namespace"): Id("i.ModuleNamespace"),
+				}),
+				Lit("data"): Map(String()).Interface().Values(Dict{
+					Line().Lit("db.sql"): Lit(fmt.Sprintf(`CREATE USER IF NOT EXISTS threeport;
+CREATE DATABASE IF NOT EXISTS %[1]s encoding='utf-8';
+GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
+				}),
+			}),
+		})
+		g.Line()
+
+		g.If(List(Id("_"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/kube/v0",
+			"CreateOrUpdateResource",
+		).Call(
+			Id("dbCreateConfig"),
+			Id("i.KubeClient"),
+			Op("*").Id("i.KubeRestMapper"),
+		), Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit(fmt.Sprintf(
+					"failed to create/update %s DB initialization configmap: %%w",
+					moduleNameKebab,
+				)),
+				Err(),
+			)),
+		)
+		g.Line()
+
+		g.Comment("establish volumes and volume mounts for the Threeport API server creds as needed")
+		g.Id("tpAuthVolumes").Op(":=").Index().Interface().Values()
+		g.Id("tpAuthVolumeMounts").Op(":=").Index().Interface().Values()
+		g.If(Id("i").Dot("AuthEnabled")).Block(
+			Comment("if auth is enabled, get the Threeport API server CA cert and key from"),
+			Comment("the Kubernetes cluster."),
+			List(Id("caCert"), Id("caKey"), Err()).Op(":=").Id("i").Dot("getApiCa").Call(),
+			If(Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(Lit("failed to retrieve Threeport API CA cert and key: %w"), Err())),
+			),
+			Line(),
+			Comment("load the cert and key"),
+			List(Id("x509CaCert"), Id("rsaCaKey"), Err()).Op(":=").Id("loadApiCa").Call(Id("caCert"), Id("caKey")),
+			If(Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(Lit("failed to load Threeport API CA cert and key: %w"), Err())),
+			),
+			Line(),
+			Comment("generate a cert and key for the controller that needs to connect to"),
+			Comment("the Threeport API"),
+			List(Id("clientCert"), Id("clientKey"), Err()).Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/auth/v0",
+				"GenerateCertificate",
+			).Call(
+				Id("x509CaCert"),
+				Id("rsaCaKey"),
+				Lit(fmt.Sprintf("%s-threeport-module", moduleNameKebab)),
+				Lit(sdkConfig.ApiNamespace),
+				Qual("github.com/threeport/threeport/pkg/auth/v0", "OUControlPlane"),
+			),
+			If(Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
+					"failed to generate client cert and key for %s controller: %%w",
+					moduleNameKebab,
+				)), Err())),
+			),
+			Line(),
+			Comment("create secrets for controller to load credentials from"),
+			If(Err().Op(":=").Id("i").Dot("createAuthCertSecrets").Call(
+				Id("string").Call(Id("caCert")),
+				Id("clientCert"),
+				Id("clientKey"),
+			), Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
+					"failed to create client auth certs for %s controller: %%w",
+					moduleNameKebab,
+				)), Err())),
+			),
+			Line(),
+			Comment("add the volumes and volume mounts for deployment manifest"),
+			Id("tpAuthVolumes").Op("=").Id("getTpAuthVolumes").Call(),
+			Id("tpAuthVolumeMounts").Op("=").Id("getTpAuthVolumeMounts").Call(),
+		)
+		g.Line()
+
+		g.Comment(fmt.Sprintf(
+			"install %s API server deployment",
+			moduleNameKebab,
+		))
+		g.Id("apiArgs").Op(":=").Index().Interface().Values(Lit("-auto-migrate=true"))
+		g.If(Op("!").Id("i").Dot("AuthEnabled")).Block(
+			Id("apiArgs").Op("=").Append(Id("apiArgs"), Lit("-auth-enabled=false")),
+		)
+		g.Id("apiVolumes").Op(":=").Id("tpAuthVolumes")
+		g.Id("apiVolumes").Op("=").Append(Id("apiVolumes"), Map(String()).Interface().Values(Dict{
+			Lit("name"): Lit("db-root-cert"),
+			Lit("secret"): Map(String()).Interface().Values(Dict{
+				Lit("defaultMode"): Lit(420),
+				Lit("secretName"):  Lit("db-root-cert"),
+			}),
+		}))
+		g.Id("apiVolumes").Op("=").Append(Id("apiVolumes"), Map(String()).Interface().Values(Dict{
+			Lit("name"): Lit("db-threeport-cert"),
+			Lit("secret"): Map(String()).Interface().Values(Dict{
+				Lit("defaultMode"): Lit(420),
+				Lit("secretName"):  Lit("db-threeport-cert"),
+			}),
+		}))
+		g.Id("apiVolumes").Op("=").Append(Id("apiVolumes"), Map(String()).Interface().Values(Dict{
+			Lit("name"): Id("ThreeportApiConfigSecret"),
+			Lit("secret"): Map(String()).Interface().Values(Dict{
+				Lit("defaultMode"): Lit(420),
+				Lit("secretName"):  Id("ThreeportApiConfigSecret"),
+			}),
+		}))
+		g.Id("apiVolumes").Op("=").Append(Id("apiVolumes"), Map(String()).Interface().Values(Dict{
+			Lit("name"): Id("ModuleApiConfigSecret"),
+			Lit("secret"): Map(String()).Interface().Values(Dict{
+				Lit("defaultMode"): Lit(420),
+				Lit("secretName"):  Id("ModuleApiConfigSecret"),
+			}),
+		}))
+		g.Id("apiVolumes").Op("=").Append(Id("apiVolumes"), Map(String()).Interface().Values(Dict{
+			Lit("configMap"): Map(String()).Interface().Values(Dict{
+				Lit("defaultMode"): Lit(420),
+				Lit("name"):        Lit("db-create"),
+			}),
+			Lit("name"): Lit("db-create"),
+		}))
+		g.Id("apiVolumeMounts").Op(":=").Id("tpAuthVolumeMounts")
+		g.Id("apiVolumeMounts").Op("=").Append(Id("apiVolumeMounts"), Map(String()).Interface().Values(Dict{
+			Lit("mountPath"): Lit("/etc/threeport/"),
+			Lit("name"):      Id("ThreeportApiConfigSecret"),
+		}))
+		g.Id("apiVolumeMounts").Op("=").Append(Id("apiVolumeMounts"), Map(String()).Interface().Values(Dict{
+			Lit("mountPath"): Lit("/etc/threeport/mod/"),
+			Lit("name"):      Id("ModuleApiConfigSecret"),
+		}))
+		g.Id("apiVolumeMounts").Op("=").Append(Id("apiVolumeMounts"), Map(String()).Interface().Values(Dict{
+			Lit("mountPath"): Lit("/etc/threeport/db-certs"),
+			Lit("name"):      Lit("db-threeport-cert"),
+		}))
+		g.Var().Id(fmt.Sprintf(
+			"%sApiDeploy",
+			moduleNameLowerCamel,
+		)).Op("=").Op("&").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Unstructured",
+		).Values(Dict{
+			Line().Id("Object"): Map(String()).Interface().Values(Dict{
+				Lit("apiVersion"): Lit("apps/v1"),
+				Lit("kind"):       Lit("Deployment"),
+				Lit("metadata"): Map(String()).Interface().Values(Dict{
+					Lit("name"):      Id("apiServerName"),
+					Lit("namespace"): Id("i.ModuleNamespace"),
+				}),
+				Lit("spec"): Map(String()).Interface().Values(Dict{
+					Lit("replicas"): Lit(1),
+					Lit("selector"): Map(String()).Interface().Values(Dict{
+						Line().Lit("matchLabels"): Map(String()).Interface().Values(Dict{
+							Line().Lit("app.kubernetes.io/name"): Id("apiServerName").Op(",").Line(),
+						}).Op(",").Line(),
+					}),
+					Lit("strategy"): Map(String()).Interface().Values(Dict{
+						Lit("rollingUpdate"): Map(String()).Interface().Values(Dict{
+							Lit("maxSurge"):       Lit("25%"),
+							Lit("maxUnavailable"): Lit("25%"),
+						}),
+						Lit("type"): Lit("RollingUpdate"),
+					}),
+					Lit("template"): Map(String()).Interface().Values(Dict{
+						Lit("metadata"): Map(String()).Interface().Values(Dict{
+							Lit("creationTimestamp"): Nil(),
+							Lit("labels"): Map(String()).Interface().Values(Dict{
+								Line().Lit("app.kubernetes.io/name"): Id("apiServerName").Op(",").Line(),
+							}),
+						}),
+						Lit("spec"): Map(String()).Interface().Values(Dict{
+							Lit("containers"): Index().Interface().Values(
+								Line().Map(String()).Interface().Values(Dict{
+									Lit("args"): Id("apiArgs"),
+									Lit("command"): Index().Interface().Values(
+										Line().Lit("/rest-api"),
+										Line(),
+									),
+									Lit("envFrom"): Index().Interface().Values(
+										Line().Map(String()).Interface().Values(Dict{
+											Line().Lit("secretRef"): Map(String()).Interface().Values(Dict{
+												Line().Lit("name"): Lit("encryption-key").Op(",").Line(),
+											}).Op(",").Line(),
+										}).Op(",").Line(),
+									),
+									Lit("image"): Qual("fmt", "Sprintf").Call(
+										Line().Lit(fmt.Sprintf(
+											"%%s/threeport-%s-rest-api:%%s",
+											moduleNameKebab,
+										)),
+										Line().Id("i").Dot("ControlPlaneImageRepo"),
+										Line().Id("i").Dot("ControlPlaneImageTag"),
+										Line(),
+									),
+									Lit("imagePullPolicy"): Id("i").Dot("getImagePullPolicy").Call(),
+									Lit("name"):            Lit("api-server"),
+									Lit("ports"): Index().Interface().Values(
+										Line().Map(String()).Interface().Values(Dict{
+											Lit("containerPort"): Lit(1323),
+											Lit("name"):          Lit("api"),
+											Lit("protocol"):      Lit("TCP"),
+										}).Op(",").Line(),
+									),
+									Lit("readinessProbe"): Map(String()).Interface().Values(Dict{
+										Lit("failureThreshold"): Lit(1),
+										Lit("httpGet"): Map(String()).Interface().Values(Dict{
+											Lit("path"):   Lit("/readyz"),
+											Lit("port"):   Lit(8081),
+											Lit("scheme"): Lit("HTTP"),
+										}),
+										Lit("initialDelaySeconds"): Lit(1),
+										Lit("periodSeconds"):       Lit(2),
+										Lit("successThreshold"):    Lit(1),
+										Lit("timeoutSeconds"):      Lit(1),
+									}),
+									Lit("volumeMounts"): Id("apiVolumeMounts"),
+								}).Op(",").Line(),
+							),
+							Lit("initContainers"): Index().Interface().Values(
+								Line().Map(String()).Interface().Values(Dict{
+									Lit("command"): Index().Interface().Values(
+										Line().Lit("bash"),
+										Line().Lit("-c"),
+										Line().Qual("fmt", "Sprintf").Call(
+											Lit("cockroach sql --certs-dir=/etc/threeport/db-certs --host crdb.%s.svc.cluster.local --port 26257 -f /etc/threeport/db-create/db.sql"),
+											Id("i").Dot("ThreeportNamespace"),
+										).Op(",").Line()),
+									Lit("image"):           Lit("cockroachdb/cockroach:v23.1.14"),
+									Lit("imagePullPolicy"): Id("i").Dot("getImagePullPolicy").Call(),
+									Lit("name"):            Lit("db-init"),
+									Lit("volumeMounts"): Index().Interface().Values(
+										Line().Map(String()).Interface().Values(Dict{
+											Lit("mountPath"): Lit("/etc/threeport/db-create"),
+											Lit("name"):      Lit("db-create"),
+										}),
+										Line().Map(String()).Interface().Values(Dict{
+											Lit("mountPath"): Lit("/etc/threeport/db-certs"),
+											Lit("name"):      Lit("db-root-cert"),
+										}).Op(",").Line(),
+									),
+								}),
+								Line().Map(String()).Interface().Values(Dict{
+									Lit("args"): Index().Interface().Values(
+										Line().Lit("-env-file=/etc/threeport/env"),
+										Line().Lit("up"),
+										Line(),
+									),
+									Lit("command"): Index().Interface().Values(
+										Line().Lit("/database-migrator"),
+										Line(),
+									),
+									Lit("image"): Qual("fmt", "Sprintf").Call(
+										Line().Lit(fmt.Sprintf(
+											"%%s/threeport-%s-database-migrator:%%s",
+											moduleNameKebab,
+										)),
+										Line().Id("i").Dot("ControlPlaneImageRepo"),
+										Line().Id("i").Dot("ControlPlaneImageTag"),
+										Line(),
+									),
+									Lit("imagePullPolicy"): Id("i").Dot("getImagePullPolicy").Call(),
+									Lit("name"):            Lit("database-migrator"),
+									Lit("volumeMounts"): Index().Interface().Values(
+										Line().Map(String()).Interface().Values(Dict{
+											Lit("mountPath"): Lit("/etc/threeport/"),
+											Lit("name"):      Id("ThreeportApiConfigSecret"),
+										}),
+										Line().Map(String()).Interface().Values(Dict{
+											Lit("mountPath"): Lit("/etc/threeport/db-certs"),
+											Lit("name"):      Lit("db-threeport-cert"),
+										}).Op(",").Line(),
+									),
+								}).Op(",").Line(),
+							),
+							Lit("restartPolicy"):                 Lit("Always"),
+							Lit("terminationGracePeriodSeconds"): Lit(30),
+							Lit("volumes"):                       Id("apiVolumes"),
+						}),
+					}),
+				}),
+			}).Op(",").Line(),
+		})
+		g.Line()
+
+		g.If(List(Id("_"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/kube/v0",
+			"CreateOrUpdateResource",
+		).Call(
+			Id(fmt.Sprintf(
+				"%sApiDeploy",
+				moduleNameLowerCamel,
+			)),
+			Id("i.KubeClient"),
+			Op("*").Id("i.KubeRestMapper"),
+		), Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit(fmt.Sprintf(
+					"failed to create/update %s API deployment: %%w",
+					moduleNameKebab,
+				)),
+				Err(),
+			)),
+		)
+		g.Line()
+
+		g.Comment(fmt.Sprintf(
+			"install %s API server service",
+			moduleNameKebab,
+		))
+		g.Var().Id(fmt.Sprintf(
+			"%sApiService",
+			moduleNameLowerCamel,
+		)).Op("=").Op("&").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Unstructured",
+		).Values(Dict{
+			Line().Id("Object"): Map(String()).Interface().Values(Dict{
+				Lit("apiVersion"): Lit("v1"),
+				Lit("kind"):       Lit("Service"),
+				Lit("metadata"): Map(String()).Interface().Values(Dict{
+					Lit("labels"): Map(String()).Interface().Values(Dict{
+						Line().Lit("app.kubernetes.io/name"): Id("apiServerName").Op(",").Line(),
+					}),
+					Lit("name"):      Id("apiServerName"),
+					Lit("namespace"): Id("i").Dot("ModuleNamespace"),
+				}),
+				Lit("spec"): Map(String()).Interface().Values(Dict{
+					Lit("ports"): Index().Interface().Values(
+						Line().Map(String()).Interface().Values(Dict{
+							Lit("name"):       Lit("http"),
+							Lit("port"):       Lit(80),
+							Lit("protocol"):   Lit("TCP"),
+							Lit("targetPort"): Lit(1323),
+						}).Op(",").Line(),
+					),
+					Lit("selector"): Map(String()).Interface().Values(Dict{
+						Line().Lit("app.kubernetes.io/name"): Id("apiServerName").Op(",").Line(),
+					}),
+				}),
+			}).Op(",").Line(),
+		})
+		g.If(
+			List(Id("_"), Err()).Op(":=").Id("kube").Dot("CreateOrUpdateResource").Call(
+				Id(fmt.Sprintf(
+					"%sApiService",
+					moduleNameLowerCamel,
+				)),
+				Id("i").Dot("KubeClient"),
+				Op("*").Id("i").Dot("KubeRestMapper"),
+			),
+			Err().Op("!=").Nil(),
+		).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit(fmt.Sprintf(
+				"failed to create/updated %s API service: %%w",
+				moduleNameKebab,
+			)), Err())),
+		)
+		g.Line()
+
+		g.Comment(fmt.Sprintf(
+			"install %s controller/s",
+			moduleNameKebab,
+		))
+		g.Comment("set auth enabled flag if auth not enabled (default is true)")
+		g.Id("controllerArgs").Op(":=").Index().Interface().Values()
+		g.If(Op("!").Id("i").Dot("AuthEnabled")).Block(
+			Id("controllerArgs").Op("=").Append(Id("controllerArgs"), Lit("-auth-enabled=false")),
+		)
+		g.Line()
+		for _, objGroup := range gen.ApiObjectGroups {
+			// skip if no controllers for this object group
+			if len(objGroup.ReconciledObjects) == 0 {
+				continue
+			}
+			g.Var().Id(fmt.Sprintf(
+				"%sControllerDeploy",
+				strcase.ToCamel(objGroup.ControllerShortName),
+			)).Op("=").Op("&").Qual(
+				"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+				"Unstructured",
+			).Values(Dict{
+				Line().Id("Object"): Map(String()).Interface().Values(Dict{
+					Lit("apiVersion"): Lit("apps/v1"),
+					Lit("kind"):       Lit("Deployment"),
+					Lit("metadata"): Map(String()).Interface().Values(Dict{
+						Lit("name"): Lit(fmt.Sprintf(
+							"threeport-%s-%s-controller",
+							moduleNameKebab,
+							objGroup.ControllerShortName,
+						)),
+						Lit("namespace"): Id("i.ModuleNamespace"),
+					}),
+					Lit("spec"): Map(String()).Interface().Values(Dict{
+						Lit("replicas"): Lit(1),
+						Lit("selector"): Map(String()).Interface().Values(Dict{
+							Line().Lit("matchLabels"): Map(String()).Interface().Values(Dict{
+								Line().Lit("app.kubernetes.io/name"): Lit(fmt.Sprintf(
+									"threeport-%s-%s-controller",
+									moduleNameKebab,
+									objGroup.ControllerShortName,
+								)).Op(",").Line(),
+							}).Op(",").Line(),
+						}),
+						Lit("strategy"): Map(String()).Interface().Values(Dict{
+							Lit("rollingUpdate"): Map(String()).Interface().Values(Dict{
+								Lit("maxSurge"):       Lit("25%"),
+								Lit("maxUnavailable"): Lit("25%"),
+							}),
+							Lit("type"): Lit("RollingUpdate"),
+						}),
+						Lit("template"): Map(String()).Interface().Values(Dict{
+							Lit("metadata"): Map(String()).Interface().Values(Dict{
+								Line().Lit("labels"): Map(String()).Interface().Values(Dict{
+									Line().Lit("app.kubernetes.io/name"): Lit(fmt.Sprintf(
+										"threeport-%s-%s-controller",
+										moduleNameKebab,
+										objGroup.ControllerShortName,
+									)).Op(",").Line(),
+								}).Op(",").Line(),
+							}),
+							Lit("spec"): Map(String()).Interface().Values(Dict{
+								Lit("containers"): Index().Interface().Values(
+									Line().Map(String()).Interface().Values(Dict{
+										Lit("args"): Id("controllerArgs"),
+										Lit("command"): Index().Interface().Values(
+											Line().Lit(fmt.Sprintf(
+												"/%s-controller",
+												objGroup.ControllerShortName,
+											)),
+											Line(),
+										),
+										Lit("envFrom"): Index().Interface().Values(
+											Line().Map(String()).Interface().Values(Dict{
+												Line().Lit("secretRef"): Map(String()).Interface().Values(Dict{
+													Line().Lit("name"): Lit("controller-config").Op(",").Line(),
+												}).Op(",").Line(),
+											}),
+											Line().Map(String()).Interface().Values(Dict{
+												Line().Lit("secretRef"): Map(String()).Interface().Values(Dict{
+													Line().Lit("name"): Lit("encryption-key").Op(",").Line(),
+												}).Op(",").Line(),
+											}).Op(",").Line(),
+										),
+										Lit("image"): Qual("fmt", "Sprintf").Call(
+											Line().Lit(fmt.Sprintf(
+												"%%s/threeport-%s-%s-controller:%%s",
+												moduleNameKebab,
+												objGroup.ControllerShortName,
+											)),
+											Line().Id("i").Dot("ControlPlaneImageRepo"),
+											Line().Id("i").Dot("ControlPlaneImageTag"),
+											Line(),
+										),
+										Lit("imagePullPolicy"): Id("i").Dot("getImagePullPolicy").Call(),
+										Lit("name"): Lit(fmt.Sprintf(
+											"%s-%s-controller",
+											moduleNameKebab,
+											objGroup.ControllerShortName,
+										)),
+										Lit("volumeMounts"): Id("tpAuthVolumeMounts"),
+										Lit("readinessProbe"): Map(String()).Interface().Values(Dict{
+											Lit("failureThreshold"): Lit(1),
+											Lit("httpGet"): Map(String()).Interface().Values(Dict{
+												Lit("path"):   Lit("/readyz"),
+												Lit("port"):   Lit(8081),
+												Lit("scheme"): Lit("HTTP"),
+											}),
+											Lit("initialDelaySeconds"): Lit(1),
+											Lit("periodSeconds"):       Lit(2),
+											Lit("successThreshold"):    Lit(1),
+											Lit("timeoutSeconds"):      Lit(1),
+										}),
+									}).Op(",").Line(),
+								),
+								Lit("restartPolicy"):                 Lit("Always"),
+								Lit("terminationGracePeriodSeconds"): Lit(30),
+								Lit("volumes"):                       Id("tpAuthVolumes"),
+							}),
+						}),
+					}),
+				}).Op(",").Line(),
+			})
+			g.Line()
+
+			g.If(List(Id("_"), Err()).Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/kube/v0",
+				"CreateOrUpdateResource",
+			).Call(
+				Id(fmt.Sprintf(
+					"%sControllerDeploy",
+					strcase.ToCamel(objGroup.ControllerShortName),
+				)),
+				Id("i.KubeClient"),
+				Op("*").Id("i.KubeRestMapper"),
+			), Err().Op("!=").Nil()).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit(fmt.Sprintf(
+						"failed to create/update %s controller deployment: %%w",
+						objGroup.ControllerShortName,
+					)),
+					Err(),
+				)),
+			)
+			g.Line()
+		}
+		g.Return(Nil())
+	})
+	f.Line()
+
+	f.Comment("copySecret copies a secret from one namespace to another.  The function")
+	f.Comment("returns without error if the secret already exists in the target namespace.")
+	f.Func().Id("copySecret").Params(
+		Line().Id("dynamicClient").Qual("k8s.io/client-go/dynamic", "Interface"),
+		Line().Id("restMapper").Qual("k8s.io/apimachinery/pkg/api/meta", "RESTMapper"),
+		Line().Id("secretName").String(),
+		Line().Id("sourceNamespace").String(),
+		Line().Id("targetNamespace").String(),
+		Line(),
+	).Params(
+		Error(),
+	).Block(
+		Id("secretGVR").Op(":=").Qual("k8s.io/apimachinery/pkg/runtime/schema", "GroupVersionResource").Values(Dict{
+			Id("Group"):    Lit(""),
+			Id("Version"):  Lit("v1"),
+			Id("Resource"): Lit("secrets"),
+		}),
+		Id("secretGK").Op(":=").Qual("k8s.io/apimachinery/pkg/runtime/schema", "GroupKind").Values(Dict{
+			Id("Group"): Lit(""),
+			Id("Kind"):  Lit("Secret"),
+		}),
+		Line(),
+
+		List(Id("mapping"), Err()).Op(":=").Id("restMapper").Dot("RESTMapping").Call(
+			Id("secretGK"),
+			Id("secretGVR").Dot("Version"),
+		),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to get RESTMapping for Secret resource: %w"), Err())),
+		),
+		Line(),
+
+		Id("targetSecretResource").Op(":=").Id("dynamicClient").Dot("Resource").Call(
+			Id("mapping").Dot("Resource"),
+		).Dot("Namespace").Call(Id("targetNamespace")),
+		List(Id("_"), Err()).Op("=").Id("targetSecretResource").Dot("Get").Call(
+			Qual("context", "TODO").Call(),
+			Id("secretName"),
+			Qual("k8s.io/apimachinery/pkg/apis/meta/v1",
+				"GetOptions").Values(),
+		),
+		If(Err().Op("==").Nil()).Block(
+			Comment("secret already exists, return nil"),
+			Return(Nil()),
+		).Else().If(Op("!").Qual("k8s.io/apimachinery/pkg/api/errors", "IsNotFound").Call(Err())).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Line().Lit("failed to check if Secret '%s' exists in namespace '%s': %w"),
+				Line().Id("secretName"),
+				Line().Id("targetNamespace"),
+				Line().Err(),
+				Line(),
+			)),
+		),
+		Line(),
+
+		Id("secretResource").Op(":=").Id("dynamicClient").Dot("Resource").Call(
+			Id("mapping").Dot("Resource"),
+		).Dot("Namespace").Call(Id("sourceNamespace")),
+		List(Id("secret"), Err()).Op(":=").Id("secretResource").Dot("Get").Call(
+			Qual("context", "TODO").Call(),
+			Id("secretName"),
+			Qual("k8s.io/apimachinery/pkg/apis/meta/v1", "GetOptions").Values(),
+		),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Line().Lit("failed to get Secret '%s' from namespace '%s': %w"),
+				Line().Id("secretName"),
+				Line().Id("sourceNamespace"),
+				Line().Err(),
+				Line(),
+			)),
+		),
+		Line(),
+
+		Id("secret").Dot("SetNamespace").Call(Id("targetNamespace")),
+		Id("secret").Dot("SetResourceVersion").Call(Lit("")),
+		Id("secret").Dot("SetUID").Call(Lit("")),
+		Id("secret").Dot("SetSelfLink").Call(Lit("")),
+		Id("secret").Dot("SetCreationTimestamp").Call(Qual("k8s.io/apimachinery/pkg/apis/meta/v1", "Time").Values()),
+		Id("secret").Dot("SetManagedFields").Call(Nil()),
+		Line(),
+
+		List(Id("_"), Err()).Op("=").Id("targetSecretResource").Dot("Create").Call(
+			Qual("context", "TODO").Call(),
+			Id("secret"),
+			Qual("k8s.io/apimachinery/pkg/apis/meta/v1", "CreateOptions").Values(),
+		),
+		If(Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit("failed to create/update Secret in namespace '%s': %w"),
+				Id("targetNamespace"),
+				Err(),
+			)),
+		),
+		Line(),
+
+		Return(Nil()),
+	)
+
+	f.Comment("getApiCa gets the Threeport API CA cert secret from the Kubernetes cluster")
+	f.Comment("and returns the base 64 decoded string value for the CA cert and key.")
+	f.Func().Params(Id("i").Op("*").Id("Installer")).Id("getApiCa").Params().Params(
+		Index().Byte(),
+		Index().Byte(),
+		Error(),
+	).Block(
+		Comment("get secret resource"),
+		List(Id("apiCaSecret"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/kube/v0",
+			"GetResource",
+		).Call(
+			Line().Lit("core"),
+			Line().Lit("v1"),
+			Line().Lit("Secret"),
+			Line().Id("i").Dot("ThreeportNamespace"),
+			Line().Qual(
+				"github.com/threeport/threeport/pkg/threeport-installer/v0",
+				"ThreeportApiCaSecret",
+			),
+			Line().Id("i").Dot("KubeClient"),
+			Line().Op("*").Id("i").Dot("KubeRestMapper"),
+			Line(),
+		),
+		If(Err().Op("!=").Nil()).Block(
+			Return(
+				Index().Byte().Values(),
+				Index().Byte().Values(),
+				Qual("fmt", "Errorf").Call(
+					Lit("failed to get Threeport API CA secret from Kubernetes cluster: %w"), Err(),
+				),
+			),
+		),
+		Line(),
+		Comment("retrieve 'data' field"),
+		List(Id("data"), Id("found"), Err()).Op(":=").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"NestedMap",
+		).Call(Id("apiCaSecret").Dot("Object"), Lit("data")),
+		If(Err().Op("!=").Nil()).Block(
+			Return(
+				Index().Byte().Values(),
+				Index().Byte().Values(),
+				Qual("fmt", "Errorf").Call(
+					Lit("failed to retrieve 'data' field: %w"), Err(),
+				),
+			),
+		),
+		If(Op("!").Id("found")).Block(
+			Return(
+				Index().Byte().Values(),
+				Index().Byte().Values(),
+				Qual("fmt", "Errorf").Call(
+					Lit("'data' field not found in the secret"),
+				),
+			),
+		),
+		Line(),
+		Comment("extract and decode tls.crt"),
+		List(
+			Id("tlsCrtBase64"),
+			Id("found"),
+		).Op(":=").Id("data").Index(Lit("tls.crt")).Assert(String()),
+		If(Op("!").Id("found")).Block(
+			Return(
+				Index().Byte().Values(),
+				Index().Byte().Values(),
+				Qual("fmt", "Errorf").Call(
+					Lit("'tls.crt' not found in the secret data"),
+				),
+			),
+		),
+		List(
+			Id("tlsCrtBytes"),
+			Err(),
+		).Op(":=").Qual(
+			"encoding/base64",
+			"StdEncoding",
+		).Dot("DecodeString").Call(Id("tlsCrtBase64")),
+		If(Err().Op("!=").Nil()).Block(
+			Return(
+				Index().Byte().Values(),
+				Index().Byte().Values(),
+				Qual("fmt", "Errorf").Call(
+					Lit("failed to decode 'tls.crt': %w"), Err(),
+				),
+			),
+		),
+		Line(),
+		Comment("extract and decode tls.key"),
+		List(
+			Id("tlsKeyBase64"),
+			Id("found"),
+		).Op(":=").Id("data").Index(Lit("tls.key")).Assert(String()),
+		If(Op("!").Id("found")).Block(
+			Return(
+				Index().Byte().Values(),
+				Index().Byte().Values(),
+				Qual("fmt", "Errorf").Call(
+					Lit("'tls.key' not found in the secret data"),
+				),
+			),
+		),
+		List(
+			Id("tlsKeyBytes"),
+			Err(),
+		).Op(":=").Qual(
+			"encoding/base64",
+			"StdEncoding",
+		).Dot("DecodeString").Call(Id("tlsKeyBase64")),
+		If(Err().Op("!=").Nil()).Block(
+			Return(
+				Index().Byte().Values(),
+				Index().Byte().Values(),
+				Qual("fmt", "Errorf").Call(
+					Lit("failed to decode 'tls.key': %w"), Err(),
+				),
+			),
+		),
+		Line(),
+		Return(Id("tlsCrtBytes"), Id("tlsKeyBytes"), Nil()),
+	)
+	f.Line()
+
+	f.Comment("loadApiCa takes the PEM encoded CA cert and key as strings and returns the")
+	f.Comment("x509.Certificate and rsa.PrivateKey objects.")
+	f.Func().Id("loadApiCa").Params(Id("caCertPem"), Id("caKeyPem").Index().Byte()).Params(
+		Op("*").Qual(
+			"crypto/x509",
+			"Certificate",
+		), Op("*").Qual(
+			"crypto/rsa",
+			"PrivateKey",
+		), Error(),
+	).Block(
+		Comment("decode PEM to extract the certificate"),
+		List(Id("block"), Op("_")).Op(":=").Qual(
+			"encoding/pem",
+			"Decode",
+		).Call(Id("caCertPem")),
+		If(Id("block").Op("==").Nil().Op("||").Id("block").Dot("Type").Op("!=").Lit("CERTIFICATE")).Block(
+			Return(
+				Nil(),
+				Nil(),
+				Qual("fmt", "Errorf").Call(Lit("failed to decode CA certificate PEM")),
+			),
+		),
+		Line(),
+		Comment("Parse the certificate"),
+		List(Id("caCert"), Err()).Op(":=").Qual(
+			"crypto/x509",
+			"ParseCertificate",
+		).Call(Id("block").Dot("Bytes")),
+		If(Err().Op("!=").Nil()).Block(
+			Return(
+				Nil(),
+				Nil(),
+				Qual("fmt", "Errorf").Call(Lit("failed to parse CA certificate: %w"), Err()),
+			),
+		),
+		Line(),
+		Comment("decode PEM to extract the private key"),
+		List(Id("block"), Op("_")).Op("=").Qual(
+			"encoding/pem",
+			"Decode",
+		).Call(Id("caKeyPem")),
+		If(Id("block").Op("==").Nil().Op("||").Id("block").Dot("Type").Op("!=").Lit("RSA PRIVATE KEY")).Block(
+			Return(
+				Nil(),
+				Nil(),
+				Qual("fmt", "Errorf").Call(Lit("failed to decode CA private key PEM")),
+			),
+		),
+		Line(),
+		Comment("Parse the RSA private key"),
+		List(Id("caPrivateKey"), Err()).Op(":=").Qual(
+			"crypto/x509",
+			"ParsePKCS1PrivateKey",
+		).Call(Id("block").Dot("Bytes")),
+		If(Err().Op("!=").Nil()).Block(
+			Return(
+				Nil(),
+				Nil(),
+				Qual("fmt", "Errorf").Call(Lit("failed to parse CA private key: %w"), Err()),
+			),
+		),
+		Line(),
+		Return(Id("caCert"), Id("caPrivateKey"), Nil()),
+	)
+
+	f.Comment("createAuthCertSecrets creates the Kubernetes secrets needed for a controller")
+	f.Comment("to connect to the Threeport API.")
+	f.Func().Params(Id("i").Op("*").Id("Installer")).Id("createAuthCertSecrets").Params(
+		Id("caCert"), Id("clientCert"), Id("clientKey").String()).Params(Error()).Block(
+		Var().Id("caCertSecret").Op("=").Op("&").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Unstructured",
+		).Values(Dict{
+			Line().Id("Object"): Map(String()).Interface().Values(Dict{
+				Lit("apiVersion"): Lit("v1"),
+				Lit("kind"):       Lit("Secret"),
+				Lit("type"):       Lit("Opaque"),
+				Lit("metadata"): Map(String()).Interface().Values(Dict{
+					Lit("name"):      Id("tpApiCaSecretName"),
+					Lit("namespace"): Id("i").Dot("ModuleNamespace"),
+				}),
+				Lit("stringData"): Map(String()).Interface().Values(Dict{
+					Line().Lit("tls.crt"): Id("caCert").Op(",").Line(),
+				}),
+			}).Op(",").Line(),
+		}),
+		If(List(Id("_"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/kube/v0",
+			"CreateOrUpdateResource",
+		).Call(
+			Id("caCertSecret"),
+			Id("i").Dot("KubeClient"),
+			Op("*").Id("i").Dot("KubeRestMapper"),
+		), Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit(fmt.Sprintf(
+					"failed to create/update %s CA cert secret: %%w",
+					moduleNameKebab,
+				)),
+				Err(),
+			)),
+		),
+		Line(),
+		Var().Id("clientCertSecret").Op("=").Op("&").Qual(
+			"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Unstructured",
+		).Values(Dict{
+			Line().Id("Object"): Map(String()).Interface().Values(Dict{
+				Lit("apiVersion"): Lit("v1"),
+				Lit("kind"):       Lit("Secret"),
+				Lit("type"):       Lit("kubernetes.io/tls"),
+				Lit("metadata"): Map(String()).Interface().Values(Dict{
+					Lit("name"):      Id("tpApiCertSecretName"),
+					Lit("namespace"): Id("i").Dot("ModuleNamespace"),
+				}),
+				Lit("stringData"): Map(String()).Interface().Values(Dict{
+					Lit("tls.crt"): Id("clientCert"),
+					Lit("tls.key"): Id("clientKey"),
+				}),
+			}).Op(",").Line(),
+		}),
+		If(List(Id("_"), Err()).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/kube/v0",
+			"CreateOrUpdateResource",
+		).Call(
+			Id("clientCertSecret"),
+			Id("i").Dot("KubeClient"),
+			Op("*").Id("i").Dot("KubeRestMapper"),
+		), Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(
+				Lit(fmt.Sprintf(
+					"failed to create/update %s client cert secret: %%w",
+					moduleNameKebab,
+				)),
+				Err(),
+			)),
+		),
+		Line(),
+		Return(Nil()),
+	)
+	f.Line()
+
+	f.Comment("getTpAuthVolumes returns the volumes for the CA and client certs needed for a")
+	f.Comment("controller to authenticate to the Threeport API.")
+	f.Func().Id("getTpAuthVolumes").Params().Params(Index().Interface()).Block(
+		Return(Index().Interface().Values(
+			Line().Map(String()).Interface().Values(Dict{
+				Lit("name"): Id("tpApiCaSecretName"),
+				Lit("secret"): Map(String()).Interface().Values(Dict{
+					Line().Lit("secretName"): Id("tpApiCaSecretName").Op(",").Line(),
+				}),
+			}),
+			Line().Map(String()).Interface().Values(Dict{
+				Lit("name"): Id("tpApiCertSecretName"),
+				Lit("secret"): Map(String()).Interface().Values(Dict{
+					Line().Lit("secretName"): Id("tpApiCertSecretName").Op(",").Line(),
+				}),
+			}).Op(",").Line(),
+		)),
+	)
+	f.Line()
+
+	f.Comment("getTpAuthVolumeMounts returns the volume mounts for the CA and client certs needed")
+	f.Comment("for a controller to authenticate to the Threeport API.")
+	f.Func().Id("getTpAuthVolumeMounts").Params().Params(Index().Interface()).Block(
+		Return(Index().Interface().Values(
+			Line().Map(String()).Interface().Values(Dict{
+				Lit("name"):      Id("tpApiCaSecretName"),
+				Lit("mountPath"): Lit("/etc/threeport/ca"),
+			}),
+			Line().Map(String()).Interface().Values(Dict{
+				Lit("name"):      Id("tpApiCertSecretName"),
+				Lit("mountPath"): Lit("/etc/threeport/cert"),
+			}).Op(",").Line(),
+		)),
+	)
+
+	// write code to file if not excluded by SDK config
+	genFilepath := filepath.Join(
+		"pkg",
+		"installer",
+		"v0",
+		"installer_gen.go",
+	)
+	if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+		cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+	} else {
+		_, err := util.WriteCodeToFile(f, genFilepath, true)
+		if err != nil {
+			return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+		}
+		cli.Info(fmt.Sprintf("source code for installer package written to %s", genFilepath))
+	}
+
+	return nil
+}

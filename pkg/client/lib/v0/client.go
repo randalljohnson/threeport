@@ -83,7 +83,7 @@ func GetHTTPClient(
 
 		rootCA = string(caCertBytes)
 	} else {
-		return nil, errors.New("could not find certificate files")
+		return nil, errors.New("could not load client authentication certificates")
 	}
 
 	// create certificate pool and add certificate authority
@@ -103,7 +103,7 @@ func GetHTTPClient(
 	var apiClient *http.Client
 	var customTransport *CustomTransport
 
-	if sessionToken != "" {
+	if sessionToken == "" {
 		customTransport = &CustomTransport{
 			CustomRoundTripper: Chain(tlsTransport),
 			IsTlsEnabled:       true,
@@ -124,8 +124,15 @@ func GetHTTPClient(
 	return apiClient, nil
 }
 
-// GetKubeDynamicClientAndMapper returns a dynamic client and rest mapper for a given kubeconfig path.
+// GetKubeDynamicClientAndMapper returns a dynamic client and rest
+// mapper for the given kubeconfig path. An empty path falls back to
+// client-go's standard kubeconfig precedence ($KUBECONFIG, then
+// ~/.kube/config).
 func GetKubeDynamicClientAndMapper(kubeconfigPath string) (*dynamic.DynamicClient, meta.RESTMapper, error) {
+	if kubeconfigPath == "" {
+		kubeconfigPath = clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
+	}
+
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	if err != nil {

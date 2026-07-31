@@ -17,7 +17,7 @@ greater up-front engineering investment from the platform engineering team which
 is why using this approach is optimal for sophisticated, revenue generating
 applications.
 
-![Threeport for Platform Engineers](../img/ThreeportForPlatformEngineers.png)
+![Threeport for Platform Engineers](../img/ThreeportForPlatformEngineers.drawio.svg)
 
 The process for optimizing application delivery with platform engineering looks
 something like this:
@@ -55,7 +55,7 @@ instance uses a small number of runtime parameters and references the definition
 to spin up the resources required.  Learn more about definitions and instances
 in the [Concepts section](definitions-instances.md).
 
-![Threeport for DevOps](../img/ThreeportForDevOps.png)
+![Threeport for DevOps](../img/ThreeportForDevOps.drawio.svg)
 
 DevOps supports developers as follows:
 
@@ -68,20 +68,20 @@ DevOps supports developers as follows:
    developer doesn't have to worry about any resource configuration since DevOps
    took care of this.  They only provide runtime parameters such as which
    Kubernetes runtime to use for their workload.
-0. Threeport deploys a kubernetes runtime and any dependencies that may be
-   needed. These dependencies can include kubernetes manifests, gateway
+0. Threeport deploys a Kubernetes runtime and any dependencies that may be
+   needed. These dependencies can include Kubernetes manifests, gateway
    resources such as load balancers, and managed AWS services such as RDS.  All
    dependencies are connected and the workload is immediately available to the
    end user as soon as resources are up. An example configuration can be found
    on the Threeport GitHub repository
-   [here](https://github.com/threeport/threeport/blob/main/samples/workload/wordpress-workload-remote.yaml).
+   [here](https://github.com/threeport/threeport/blob/main/samples/kubernetes-workload/wordpress-kubernetes-workload-remote.yaml).
 
 ## Threeport for Developers
 
 Threeport allows developers to deliver the apps they build to cloud native
 environments.
 
-![Threeport for Devs](../img/ThreeportForDevs.png)
+![Threeport for Devs](../img/ThreeportForDevs.drawio.svg)
 
 Following is a common scenario for a developer workflow using Threeport:
 

@@ -1,0 +1,6 @@
+GcpGkeKubernetesRuntimeInstance:
+  Name: test-runtime-01
+  GcpProviderName: default-account
+  Region: us-east4
+  GcpGkeKubernetesRuntimeDefinition:
+    Name: test-runtime

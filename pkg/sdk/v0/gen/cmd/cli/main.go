@@ -1,0 +1,48 @@
+package cli
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+
+	. "github.com/dave/jennifer/jen"
+	"github.com/iancoleman/strcase"
+
+	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	"github.com/threeport/threeport/pkg/sdk/v0/gen"
+	"github.com/threeport/threeport/pkg/sdk/v0/util"
+)
+
+// GenPluginMain generates the main package for extension tptctl plugins.
+func GenPluginMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
+	f := NewFile("main")
+	f.HeaderComment(sdk.HeaderCommentGenNoEdit)
+
+	packageDir := strcase.ToSnake(sdkConfig.ModuleName)
+
+	f.Func().Id("main").Params().Block(
+		Qual(
+			fmt.Sprintf("%s/cmd/%s/cmd", gen.ModulePath, packageDir),
+			"Execute",
+		).Call(),
+	)
+
+	// write code to file if not excluded by SDK config
+	genFilepath := filepath.Join(
+		"cmd",
+		packageDir,
+		"main_gen.go",
+	)
+	if slices.Contains(sdkConfig.ExcludeFiles, genFilepath) {
+		cli.Info(fmt.Sprintf("source code generation skipped for %s", genFilepath))
+	} else {
+		_, err := util.WriteCodeToFile(f, genFilepath, true)
+		if err != nil {
+			return fmt.Errorf("failed to write generated code to file %s: %w", genFilepath, err)
+		}
+		cli.Info(fmt.Sprintf("source code for extension plugin main package written to %s", genFilepath))
+	}
+
+	return nil
+}

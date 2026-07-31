@@ -20,14 +20,14 @@ cd threeport-test
 Download a sample workload config as follows:
 
 ```bash
-curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workload/wordpress-workload-local.yaml
+curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/kubernetes-workload/wordpress-kubernetes-workload-local.yaml
 ```
 
 You now have the workload config on your local file system.  If you open the file you'll
 see it has the following fields:
 
 ```yaml
-Workload:
+KubernetesWorkload:
   Name: "wordpress"
   YAMLDocument: "wordpress-manifest-local.yaml"
 ```
@@ -39,20 +39,20 @@ The `YAMLDocument` field refers to another file with the Kubernetes resource
 manifests.  Download that file as well:
 
 ```bash
-curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workload/wordpress-manifest-local.yaml
+curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/kubernetes-workload/wordpress-manifest-local.yaml
 ```
 
-## Create Workload
+## Create KubernetesWorkload
 
 We can now create the workload as follows:
 
 ```bash
-tptctl create workload --config wordpress-workload-local.yaml
+tptctl create workload --config wordpress-kubernetes-workload-local.yaml
 ```
 
-This command calls the Threeport API to create the Workload objects.
-The API notifies the workload controller via the message broker.  The workload
-controller processes the workload definition and creates the workload instance
+This command calls the Threeport API to create the KubernetesWorkload objects.
+The API notifies the kubernetes workload controller via the message broker.  The workload
+controller processes the kubernetes workload definition and creates the kubernetes workload instance
 by calling the Kubernetes API.
 
 We can use `tptctl` to view deployed workloads:
@@ -102,14 +102,14 @@ of a workload to a particular Kubernetes cluster.
 This diagram illustrates the relationships between components introduced in this
 guide.
 
-![Threeport Getting Started](../img/ThreeportGettingStartedWordpress.png)
+![Threeport Getting Started](../img/ThreeportGettingStartedWordpress.drawio.svg)
 
 When we installed Threeport using `tptctl up` we created a new
 control plane on a new Kubernetes cluster.
 
 When we installed the sample app using `tptctl create workload` we called the Threeport
 API to create the workload.  The reconciliation for these objects was carried
-out by the workload controller which created the necessary Kubernetes resources
+out by the kubernetes workload controller which created the necessary Kubernetes resources
 via the Kubernetes control plane.
 
 While this approach doesn't provide any special outcomes that you could not have
@@ -129,7 +129,7 @@ and deploying workloads there.
 
 To delete a workload:
 ```bash
-tptctl delete workload --config wordpress-workload-local.yaml
+tptctl delete workload --config wordpress-kubernetes-workload-local.yaml
 ```
 
 To uninstall the Threeport control plane locally:

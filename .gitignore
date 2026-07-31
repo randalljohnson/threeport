@@ -4,3 +4,5 @@ samples/draft
 __debug_bin*
 .envrc
 **/.DS_Store
+.claude/
+.venv/

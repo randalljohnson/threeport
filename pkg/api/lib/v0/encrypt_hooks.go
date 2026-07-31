@@ -36,17 +36,21 @@ func encryptedFieldsFor(obj interface{}) []EncryptedField {
 	return p.EncryptedFields()
 }
 
-// ProcessEncryptTaggedFields encrypts fields tagged `encrypt:"true"`.
-// On update gorm fires the hook on Statement.Model (the loaded row);
-// redirect to Statement.Dest so the inbound plaintext is read instead
-// of stale loaded values. Create paths leave Model == Dest.
+// ProcessEncryptTaggedFields encrypts fields tagged `encrypt:"true"`
+// before the row is written, replacing plaintext with ciphertext via
+// SetColumn. Fires from both BeforeCreate and BeforeUpdate hooks.
+//
+// On the update path the hook receiver may not hold the values to
+// encrypt: under a PATCH (Model(&loaded).Updates(&patch)) the receiver
+// is the loaded DB row whose encrypt-tagged fields hold existing
+// ciphertext from disk, and the new plaintext lives in
+// tx.Statement.Dest. This function routes through IncomingValues to
+// always operate on the inbound values regardless of call shape; under
+// a PUT (Save) or a create the redirect is a no-op because the
+// receiver and tx.Statement.Dest are already the same object. See
+// pkg/api/lib/v0/update_helpers.go for the full call-shape model.
 func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}) error {
-	target := obj
-	if dest, ok := tx.Statement.Dest.(EncryptedFieldProvider); ok && dest != obj {
-		target = dest
-	}
-
-	fields := encryptedFieldsFor(target)
+	fields := encryptedFieldsFor(IncomingValues(tx))
 	if len(fields) == 0 {
 		return nil
 	}

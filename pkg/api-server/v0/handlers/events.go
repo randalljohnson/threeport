@@ -66,7 +66,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	var filter v0.Event
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, pageParams, err, objectType)
 	}
 
 	// collect object IDs to filter on. The accepted shapes are:

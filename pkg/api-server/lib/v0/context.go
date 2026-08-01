@@ -72,6 +72,12 @@ func (c *CustomContext) GetPaginationParams() (*PageRequestParams, error) {
 		}
 		params.Limit = int64(limit)
 	}
+	// reject non-positive limits upfront: crdb rejects negatives at the
+	// SQL layer (leaking sqlstate) and a zero limit still triggers the
+	// materialized-view creation path, leaving orphaned views behind
+	if params.Limit <= 0 {
+		return params, fmt.Errorf("limit value must be positive: got %d", params.Limit)
+	}
 	if params.Limit > MaxPaginationLimitValue {
 		return params, fmt.Errorf("limit value is too large: %d - maximum value is %d", params.Limit, MaxPaginationLimitValue)
 	}

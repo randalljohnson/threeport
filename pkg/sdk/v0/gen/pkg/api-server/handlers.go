@@ -787,7 +787,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						}
 						h.Return(Qual(
 							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"ResponseStatus500",
+							"ResponseStatusBindErr",
 						).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 					}))
 					g.Line()
@@ -917,7 +917,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				f.Comment("@Accept json")
 				f.Comment("@Produce json")
 				f.Comment(fmt.Sprintf(
-					"@Param %s query string false \"%s search by name\"",
+					"@Param %s query string false \"filter by exact %s name (case sensitive)\"",
 					"name", // TODO: get fields from model for query params
 					strcase.ToDelimited(apiObject.TypeName, ' '),
 				))
@@ -993,9 +993,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Qual("go.uber.org/zap", "Error").Call(Id("err")),
 							)
 						}
+						// bind failures on the list endpoint reflect malformed or
+						// unknown query params; return 400 so the caller sees a
+						// client-input error, not an internal server error
 						h.Return(Qual(
 							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"ResponseStatus500",
+							"ResponseStatus400",
 						).Call(Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType")))
 					})),
 					Line(),
@@ -1597,7 +1600,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							}
 							h.Return(Qual(
 								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus500",
+								"ResponseStatusBindErr",
 							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 						}),
 					)
@@ -1900,7 +1903,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							}
 							h.Return(Qual(
 								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus500",
+								"ResponseStatusBindErr",
 							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 						}),
 					)

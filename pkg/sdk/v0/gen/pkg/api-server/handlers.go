@@ -787,7 +787,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						}
 						h.Return(Qual(
 							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"ResponseStatus500",
+							"ResponseStatusBindErr",
 						).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 					}))
 					g.Line()
@@ -1629,7 +1629,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							}
 							h.Return(Qual(
 								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus500",
+								"ResponseStatusBindErr",
 							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 						}),
 					)
@@ -1932,7 +1932,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							}
 							h.Return(Qual(
 								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus500",
+								"ResponseStatusBindErr",
 							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 						}),
 					)

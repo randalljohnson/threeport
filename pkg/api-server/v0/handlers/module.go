@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 
 	echo "github.com/labstack/echo/v4"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
@@ -34,7 +33,7 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 
 	if err := c.Bind(&moduleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -92,7 +91,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 	var filter api_v0.ModuleObject
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -124,21 +123,28 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			returnedCount = int64(len(*records))
 
 		case true:
-			// if we have to paginate, create the materialized view and use it to fetch the first page of records
-			viewName, queryId, err := h.CreateMaterializedView(objectType)
+			// paginate: dispatch to the configured pagination strategy
+			// to fetch the first page. The queryTable is the table name
+			// module objects live in; the queryId returned here is
+			// either a materialized-view suffix or an HLC snapshot.
+			queryTable := filter.TableName()
+			queryId, count, err := h.DispatchGetPaginatedRecords(
+				h.PaginationMode,
+				records,
+				queryTable,
+				pageParams,
+			)
 			if err != nil {
-				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
 			pagination.QueryId = queryId
+			returnedCount = count
 
-			query := fmt.Sprintf("SELECT * FROM %s ORDER BY ID ASC LIMIT %d", viewName, pageParams.Limit)
-			if result := h.DB.Raw(query).Find(records); result.Error != nil {
-				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-			}
-
-			// load associations for the records retrieved from materialized view
+			// load associations for the records retrieved from the
+			// paginated fetch. this Preload reads current state, not
+			// the pagination snapshot; the join list is small and
+			// stable, so drift within one page is acceptable.
 			if len(*records) > 0 {
 				var ids []uint
 				for _, record := range *records {
@@ -156,7 +162,6 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 				}
 			}
 
-			returnedCount = int64(len(*records))
 			if len(*records) > 0 {
 				pagination.NextCursor = *(*records)[len(*records)-1].ID
 			} else {
@@ -169,23 +174,27 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// use query ID to find the materialized view name
-		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+		// continuation: dispatch to the configured pagination strategy
+		// to fetch the next page. the queryId round-trips opaquely, so
+		// both modes resume from the same snapshot they anchored.
+		queryTable := filter.TableName()
+		queryId, count, err := h.DispatchGetPaginatedRecords(
+			h.PaginationMode,
+			records,
+			queryTable,
+			pageParams,
+		)
 		if err != nil {
-			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
+		pagination.QueryId = queryId
+		returnedCount = count
 
-		pagination.QueryId = pageParams.QueryId
-
-		// fetch records from the materialized view based on cursor
-		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
-		if err != nil {
-			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-		}
-
-		// load associations for the records retrieved from materialized view
+		// load associations for the records retrieved from the
+		// paginated fetch. this Preload reads current state, not the
+		// pagination snapshot; the join list is small and stable, so
+		// drift within one page is acceptable.
 		if len(*records) > 0 {
 			var ids []uint
 			for _, record := range *records {

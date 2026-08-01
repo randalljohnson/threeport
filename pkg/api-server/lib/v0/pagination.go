@@ -3,6 +3,7 @@ package v0
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -78,4 +79,30 @@ func dropPaginationViews(db *gorm.DB, logger *zap.Logger, ttlMinutes int) error 
 	}
 
 	return nil
+}
+
+// hlcTokenPattern matches a CRDB cluster_logical_timestamp() rendering:
+// digits, one dot, more digits. Anchored to guard against injection when
+// the token gets interpolated into an AS OF SYSTEM TIME clause.
+var hlcTokenPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+$`)
+
+// ValidHLCToken() reports whether s looks like a CRDB HLC decimal, so a
+// caller-supplied pagination queryid can be safely interpolated into an
+// AS OF SYSTEM TIME clause.
+func ValidHLCToken(s string) bool {
+	return hlcTokenPattern.MatchString(s)
+}
+
+// TranslatePaginationSessionError() maps a CRDB "batch timestamp below GC
+// threshold" failure into a user-facing error instructing the client to
+// restart pagination without a queryid. Any other error is returned unchanged.
+func TranslatePaginationSessionError(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "batch timestamp") && strings.Contains(msg, "replica GC threshold") {
+		return fmt.Errorf("pagination session expired, restart pagination with no queryid to obtain a fresh snapshot: %w", err)
+	}
+	return err
 }

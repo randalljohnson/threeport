@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/iancoleman/strcase"
 	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
@@ -18,14 +19,17 @@ import (
 
 const (
 	// Default event reasons for crud operations.
-	ReasonSuccessfulCreate = "SuccessfulCreate"
-	ReasonFailedCreate     = "FailedCreate"
+	ReasonCreateInProgress = "CreateInProgress"
+	ReasonCreateSuccessful = "CreateSuccessful"
+	ReasonCreateFailed     = "CreateFailed"
 
-	ReasonSuccessfulUpdate = "SuccessfulUpdate"
-	ReasonFailedUpdate     = "FailedUpdate"
+	ReasonUpdateInProgress = "UpdateInProgress"
+	ReasonUpdateSuccessful = "UpdateSuccessful"
+	ReasonUpdateFailed     = "UpdateFailed"
 
-	ReasonSuccessfulDelete = "SuccessfulDelete"
-	ReasonFailedDelete     = "FailedDelete"
+	ReasonDeleteInProgress = "DeleteInProgress"
+	ReasonDeleteSuccessful = "DeleteSuccessful"
+	ReasonDeleteFailed     = "DeleteFailed"
 
 	// Default event types
 	TypeNormal  = "Normal"
@@ -46,93 +50,45 @@ type EventRecorder struct {
 	ReportingController string
 }
 
-// RecordEvent records a new event for the given object.
-// fullyQualifiedObjectType must be the form returned by
-// GetFullyQualifiedType.
+// RecordEvent posts a new event row for the given object. Every emit
+// stores a raw Count=1 row; dedup and aggregation happen at read time
+// in the events endpoint handler, so concurrent recorders do not race
+// on a shared bump path. fullyQualifiedObjectType must be the form
+// returned by GetFullyQualifiedType.
 func (r *EventRecorder) RecordEvent(
 	event *api.Event,
 	objectId uint,
 	fullyQualifiedObjectType string,
 ) error {
-	// dedup-then-act: query for an existing event with the same
-	// content + subject. 0 matches means a new event to create;
-	// 1 match means a repeat where we bump Count and LastObservedTime
-	// on the existing row.
+	// stamp reporter, timestamps, and count on the in-memory event.
+	// count is always 1 at insert time; the meaningful aggregate lives
+	// at read time.
+	now := time.Now()
+	event.ReportingController = &r.ReportingController
+	event.EventTime = util.Ptr(now)
+	event.LastObservedTime = util.Ptr(now)
+	event.Count = util.Ptr(uint(1))
 
-	// the list endpoint requires the type split into its parts when
-	// filtering by id, so unpack the qualified form first.
-	namespace, version, typeName, ok := apilib.ParseQualifiedType(fullyQualifiedObjectType)
-	if !ok {
-		return fmt.Errorf("invalid fully qualified object type %q", fullyQualifiedObjectType)
+	// carry the subject info on the in-memory Event so the API
+	// server's beforeCreate validates and afterCreate writes the
+	// matching AttachedObjectReference in the same transaction.
+	// gorm:"-" keeps these fields off the row; the AOR is the on-disk
+	// source of truth for the subject linkage.
+	event.ObjectType = util.Ptr(fullyQualifiedObjectType)
+	event.ObjectID = util.Ptr(objectId)
+
+	if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
+		return fmt.Errorf("failed to create event: %w", err)
 	}
-
-	// the five fields below form the dedup key: reason+note+type
-	// identify the event content; objectid plus the type triple
-	// identify the subject.
-	query := fmt.Sprintf(
-		"reason=%s&note=%s&type=%s&objectid=%d&objecttypename=%s&objectnamespace=%s&objectversion=%s",
-		url.QueryEscape(*event.Reason),
-		url.QueryEscape(*event.Note),
-		url.QueryEscape(*event.Type),
-		objectId,
-		url.QueryEscape(typeName),
-		url.QueryEscape(namespace),
-		url.QueryEscape(version),
-	)
-	events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(
-		r.APIClient,
-		r.APIServer,
-		query,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get events by object id %d: %w", objectId, err)
-	}
-
-	switch len(*events) {
-	case 0:
-		// first occurrence: stamp timestamps and count=1, attach the
-		// subject info on the in-memory event, and create the row.
-		event.ReportingController = &r.ReportingController
-		event.EventTime = util.Ptr(time.Now())
-		event.LastObservedTime = util.Ptr(time.Now())
-		event.Count = util.Ptr(uint(1))
-
-		// carry the subject info on the in-memory Event so the API
-		// server's BeforeCreate validates and AfterCreate writes the
-		// matching AttachedObjectReference in the same transaction.
-		// gorm:"-" keeps these fields off the row; the AOR is the on-disk
-		// source of truth for the subject linkage.
-		event.ObjectType = util.Ptr(fullyQualifiedObjectType)
-		event.ObjectID = util.Ptr(objectId)
-
-		if _, err := client_v0.CreateEvent(r.APIClient, r.APIServer, event); err != nil {
-			return fmt.Errorf("failed to create event: %w", err)
-		}
-	case 1:
-		// repeat: load the existing row, bump Count, and refresh
-		// LastObservedTime so the dedup window keeps advancing.
-		event = &(*events)[0]
-		event.Count = util.Ptr(uint((*event.Count + 1)))
-		event.LastObservedTime = util.Ptr(time.Now())
-		// clear projection fields; UpdateEvent() rejects them as unsupported
-		event.ObjectType = nil
-		event.ObjectID = nil
-		event.ObjectName = nil
-		_, err := client_v0.UpdateEvent(r.APIClient, r.APIServer, event)
-		if err != nil {
-			return fmt.Errorf("failed to update event: %w", err)
-		}
-	default:
-		return fmt.Errorf("unexpected number of events found: %d", len(*events))
-	}
-
 	return nil
 }
 
 // HandleEventOverride records the given event unless the error is an
 // ErrWithEvent, in which case it records the event carried by the
-// error. fullyQualifiedObjectType must be the form returned by
-// GetFullyQualifiedType.
+// error. errors.As unwraps ErrWithEvent through wrapped error chains,
+// so a handler that wraps the returned error still routes the specific
+// event through the same substitution path. fullyQualifiedObjectType
+// must be the form returned by GetFullyQualifiedType.
 func (r *EventRecorder) HandleEventOverride(
 	event *api.Event,
 	objectId uint,
@@ -165,12 +121,219 @@ func (r *EventRecorder) HandleEventOverride(
 func GetSuccessReasonForOperation(operation notifications.NotificationOperation) string {
 	switch operation {
 	case notifications.NotificationOperationCreated:
-		return ReasonSuccessfulCreate
+		return ReasonCreateSuccessful
 	case notifications.NotificationOperationUpdated:
-		return ReasonSuccessfulUpdate
+		return ReasonUpdateSuccessful
 	case notifications.NotificationOperationDeleted:
-		return ReasonSuccessfulDelete
+		return ReasonDeleteSuccessful
 	default:
 		return ""
 	}
+}
+
+// CreateNote returns the Note text for a CreateInProgress event. The
+// format is:
+//
+//	"creating[; owns X, Y][; associates A, B][; marries M][; required by R]"
+//
+// Sources per clause:
+//
+//   - owns: foreign-key fields tagged relationship:"owns" from
+//     RelationshipTaggedForeignKeys()
+//   - associates: AssociationTypes() (has-many slices where the child
+//     does not require the owner back)
+//   - marries: foreign-key fields tagged relationship:"marries" plus
+//     any caller-supplied extras
+//   - required by: AssociationRequiredByTypes() (has-many slices where
+//     the child requires the owner)
+//
+// A type that appears both as a tagged foreign key and in an association
+// slice is emitted once via the foreign-key path.
+func CreateNote(
+	owner api.RelationshipTaggedForeignKeyProvider,
+	marriesExtras ...string,
+) string {
+	owns, marries := foreignKeyKinds(owner)
+	marries = append(marries, marriesExtras...)
+	associates := associationKinds(owner, owns)
+	requiredBy := associationRequiredByKinds(owner)
+
+	parts := []string{"creating"}
+	if len(owns) > 0 {
+		parts = append(parts, ownsClause(owns))
+	}
+	if len(associates) > 0 {
+		parts = append(parts, associatesClause(associates))
+	}
+	if len(marries) > 0 {
+		parts = append(parts, marriesClause(marries))
+	}
+	if len(requiredBy) > 0 {
+		parts = append(parts, requiredByClause(requiredBy))
+	}
+	return strings.Join(parts, "; ")
+}
+
+// UpdateNote returns the Note text for an UpdateInProgress event. An
+// update does not change the owner's composition, so no clauses are
+// appended.
+func UpdateNote() string {
+	return "updating"
+}
+
+// DeleteNote returns the Note text for a DeleteInProgress event. The
+// format is:
+//
+//	"deleting[; cascades to owned X, Y, Z][; married M]"
+//
+// Owns, associates, and required-by kinds fold into a single "cascades
+// to owned" list because the reconciler eagerly cascades all three.
+// Marries stays separate to preserve the bidirectional 1:1 semantic.
+// The Reason column carries the DeleteInProgress action, so the note
+// omits the redundant "delete" verb.
+func DeleteNote(
+	owner api.RelationshipTaggedForeignKeyProvider,
+	marriesExtras ...string,
+) string {
+	owns, marries := foreignKeyKinds(owner)
+	marries = append(marries, marriesExtras...)
+	associates := associationKinds(owner, owns)
+	requiredBy := associationRequiredByKinds(owner)
+
+	cascades := make([]string, 0, len(owns)+len(associates)+len(requiredBy))
+	seen := map[string]bool{}
+	for _, kind := range owns {
+		if !seen[kind] {
+			cascades = append(cascades, kind)
+			seen[kind] = true
+		}
+	}
+	for _, kind := range associates {
+		if !seen[kind] {
+			cascades = append(cascades, kind)
+			seen[kind] = true
+		}
+	}
+	for _, kind := range requiredBy {
+		if !seen[kind] {
+			cascades = append(cascades, kind)
+			seen[kind] = true
+		}
+	}
+
+	parts := []string{"deleting"}
+	if len(cascades) > 0 {
+		parts = append(parts, cascadeOwnedClause(cascades))
+	}
+	if len(marries) > 0 {
+		parts = append(parts, marriedClause(marries))
+	}
+	return strings.Join(parts, "; ")
+}
+
+// foreignKeyKinds splits the owner's relationship-tagged foreign keys
+// into the owns and marries kind lists. Owns is deduped by kebab kind;
+// marries is returned in declaration order.
+func foreignKeyKinds(owner api.RelationshipTaggedForeignKeyProvider) (owns, marries []string) {
+	seenOwns := map[string]bool{}
+	for _, fk := range owner.RelationshipTaggedForeignKeys() {
+		kind := kebabKindFromQualifiedType(fk.ObjectType)
+		switch fk.Relationship {
+		case api.RelationshipOwns:
+			if !seenOwns[kind] {
+				owns = append(owns, kind)
+				seenOwns[kind] = true
+			}
+		case api.RelationshipMarries:
+			marries = append(marries, kind)
+		}
+	}
+	return owns, marries
+}
+
+// associationKinds returns the kebab kinds from AssociationTypes(),
+// skipping any kind already present in ownsSeen. Returns nil when the
+// owner does not implement AssociationTypesProvider.
+func associationKinds(owner api.RelationshipTaggedForeignKeyProvider, ownsSeen []string) []string {
+	provider, ok := owner.(api.AssociationTypesProvider)
+	if !ok {
+		return nil
+	}
+	skip := map[string]bool{}
+	for _, kind := range ownsSeen {
+		skip[kind] = true
+	}
+	var kinds []string
+	for _, qualifiedType := range provider.AssociationTypes() {
+		kind := kebabKindFromQualifiedType(qualifiedType)
+		if skip[kind] {
+			continue
+		}
+		kinds = append(kinds, kind)
+		skip[kind] = true
+	}
+	return kinds
+}
+
+// associationRequiredByKinds returns the kebab kinds from
+// AssociationRequiredByTypes(). Returns nil when the owner does not
+// implement AssociationRequiredByTypesProvider.
+func associationRequiredByKinds(owner api.RelationshipTaggedForeignKeyProvider) []string {
+	provider, ok := owner.(api.AssociationRequiredByTypesProvider)
+	if !ok {
+		return nil
+	}
+	seen := map[string]bool{}
+	var kinds []string
+	for _, qualifiedType := range provider.AssociationRequiredByTypes() {
+		kind := kebabKindFromQualifiedType(qualifiedType)
+		if seen[kind] {
+			continue
+		}
+		kinds = append(kinds, kind)
+		seen[kind] = true
+	}
+	return kinds
+}
+
+// ownsClause formats "owns X, Y".
+func ownsClause(kinds []string) string {
+	return "owns " + strings.Join(kinds, ", ")
+}
+
+// associatesClause formats "associates A, B".
+func associatesClause(kinds []string) string {
+	return "associates " + strings.Join(kinds, ", ")
+}
+
+// marriesClause formats "marries M".
+func marriesClause(kinds []string) string {
+	return "marries " + strings.Join(kinds, ", ")
+}
+
+// requiredByClause formats "required by R".
+func requiredByClause(kinds []string) string {
+	return "required by " + strings.Join(kinds, ", ")
+}
+
+// cascadeOwnedClause formats "cascades to owned X, Y, Z".
+func cascadeOwnedClause(kinds []string) string {
+	return "cascades to owned " + strings.Join(kinds, ", ")
+}
+
+// marriedClause formats "married M".
+func marriedClause(kinds []string) string {
+	return "married " + strings.Join(kinds, ", ")
+}
+
+// kebabKindFromQualifiedType parses a fully-qualified type name like
+// "threeport.io/v0.MachineRuntimeDefinition" and returns the kebab-case
+// kind ("machine-runtime-definition"). Falls back to the raw input on
+// parse failure.
+func kebabKindFromQualifiedType(qualifiedType string) string {
+	_, _, typeName, ok := apilib.ParseQualifiedType(qualifiedType)
+	if !ok {
+		return qualifiedType
+	}
+	return strcase.ToKebab(typeName)
 }

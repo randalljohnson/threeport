@@ -3,27 +3,20 @@
 // a small fake provider.InfraProvider; no GCP, Pulumi, or NATS infrastructure is
 // touched.
 //
-// Coverage contract (every reachable branch in the two hand-written adapter
-// files): GetReconciliation field mapping + nil-CreationFailed guard + GET
-// error; BuildInfra / buildGkeInfra projection, each fetch error, the
-// credentials gate, and nil-required-field validation; IsCreateComplete edge
-// cases + GET error; OnCreateConfirmed wrong-infra-type error; the extracted
+// Coverage spans every reachable branch in the two hand-written adapter files:
+// GetReconciliation field mapping plus nil-CreationFailed guard and GET error;
+// BuildInfra / buildGkeInfra projection, each fetch error, the credentials
+// gate, and nil-required-field validation; IsCreateComplete edge cases plus
+// GET error; OnCreateConfirmed wrong-infra-type error; the extracted
 // updateKubeRuntimeConnection helper (PATCH target, five fields, every error
 // path, incomplete-connection guard); the ten reconciliation-update methods
-// (exact PATCH body + error); OnDeleteConfirmed nil; the two publish methods
-// (success subject + publish error); the reconciler entry points (Created
-// confirmed-noop, Updated noop, Deleted scheduled-and-confirmed noop, Deleted
-// not-scheduled error); and N-instance concurrency under -race.
+// (exact PATCH body plus error); OnDeleteConfirmed nil; the two publish
+// methods (success subject plus publish error); the reconciler entry points
+// (Created confirmed-noop, Updated noop, Deleted scheduled-and-confirmed noop,
+// Deleted not-scheduled error); and N-instance concurrency under -race.
 //
-// DEFERRED / accepted gaps: the GetConnection call line in OnCreateConfirmed is
-// environment-dependent (real GCP auth + cluster-manager client) and covered
-// indirectly via the helper; the NotificationPayload marshal-error branch is
-// not forced (would require an artificial invalid inventory); semaphore, stale-
-// ack, requeue, goroutine-leak, fsnotify, and context behavior live in
-// internal/provider and belong to PR1. This PR makes none of those claims.
-//
-// Same-package collision rule (PR6 adds GCE tests to this package): every
-// package-level identifier here is gke-prefixed and there is no TestMain.
+// Every package-level identifier is gke-prefixed and there is no TestMain, so
+// GCE tests sharing this package do not collide.
 package gcp
 
 import (
@@ -49,6 +42,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -398,12 +392,20 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 	t.Run("happy path projects all fields", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
-		prov.ServiceAccountCredentials = util.Ptr(`{"type":"service_account"}`)
+		// seed the credential encrypted with a fresh key so BuildInfra decrypts it
+		key, err := encryption.GenerateKey()
+		require.NoError(t, err)
+		enc, err := encryption.Encrypt(key, `{"type":"service_account"}`)
+		require.NoError(t, err)
+		prov.ServiceAccountCredentials = util.Ptr(enc)
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
 		gkeServeProvider(t, api, prov, http.StatusOK)
 
-		infra, err := gkeNewLifecycle(api, inst).BuildInfra()
+		// wire the matching key into the reconciler so the decrypt succeeds
+		lc := gkeNewLifecycle(api, inst)
+		lc.r.EncryptionKey = key
+		infra, err := lc.BuildInfra()
 		require.NoError(t, err)
 
 		infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)
@@ -415,30 +417,33 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, `{"type":"service_account"}`, infraGKE.ServiceAccountCredentials)
 	})
 
-	t.Run("nil credentials leave field empty", func(t *testing.T) {
+	t.Run("nil credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
+		// nil credentials must fail fast so a misconfigured provider does not
+		// defer the failure to the gke create and hang on interactive oauth
 		prov.ServiceAccountCredentials = nil
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
 		gkeServeProvider(t, api, prov, http.StatusOK)
 
-		infra, err := gkeNewLifecycle(api, inst).BuildInfra()
-		require.NoError(t, err)
-		assert.Empty(t, infra.(*provider.KubernetesRuntimeInfraGKE).ServiceAccountCredentials)
+		_, err := gkeNewLifecycle(api, inst).BuildInfra()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no service account credentials")
 	})
 
-	t.Run("empty credentials leave field empty", func(t *testing.T) {
+	t.Run("empty credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
+		// empty credentials must fail fast the same as nil
 		prov.ServiceAccountCredentials = util.Ptr("")
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
 		gkeServeProvider(t, api, prov, http.StatusOK)
 
-		infra, err := gkeNewLifecycle(api, inst).BuildInfra()
-		require.NoError(t, err)
-		assert.Empty(t, infra.(*provider.KubernetesRuntimeInfraGKE).ServiceAccountCredentials)
+		_, err := gkeNewLifecycle(api, inst).BuildInfra()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no service account credentials")
 	})
 
 	t.Run("instance fetch error", func(t *testing.T) {

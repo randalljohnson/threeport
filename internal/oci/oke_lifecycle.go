@@ -43,6 +43,15 @@ func newOkeLifecycleProvider(
 	}
 }
 
+// StackKey returns the runtime instance name so per-stack serialization
+// keys off the same identifier that names the pulumi stack on disk.
+func (o *okeLifecycle) StackKey() string {
+	if o.instance == nil || o.instance.Name == nil {
+		return ""
+	}
+	return *o.instance.Name
+}
+
 // GetReconciliation fetches the latest reconciliation state from the API.
 func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
 	latest, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
@@ -57,6 +66,10 @@ func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 	if latest.CreationFailed != nil {
 		creationFailed = *latest.CreationFailed
 	}
+	deletionFailed := false
+	if latest.DeletionFailed != nil {
+		deletionFailed = *latest.DeletionFailed
+	}
 	return &provider.ReconciliationSnapshot{
 		CreationAcknowledged: latest.CreationAcknowledged,
 		CreationConfirmed:    latest.CreationConfirmed,
@@ -64,6 +77,7 @@ func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 		DeletionScheduled:    latest.DeletionScheduled,
 		DeletionAcknowledged: latest.DeletionAcknowledged,
 		DeletionConfirmed:    latest.DeletionConfirmed,
+		DeletionFailed:       deletionFailed,
 		ResourceInventory:    latest.ResourceInventory,
 	}, nil
 }
@@ -328,6 +342,21 @@ func (o *okeLifecycle) RefreshDeletionAck() error {
 	}
 	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
 		o.r.APIClient, o.r.APIServer, &ackUpdate,
+	)
+	return err
+}
+
+// SetDeletionFailed marks DeletionFailed=true in the API.
+func (o *okeLifecycle) SetDeletionFailed() error {
+	deletionFailed := true
+	failedUpdate := v0.OciOkeKubernetesRuntimeInstance{
+		Common: v0.Common{ID: &o.instanceID},
+		Reconciliation: v0.Reconciliation{
+			DeletionFailed: &deletionFailed,
+		},
+	}
+	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
+		o.r.APIClient, o.r.APIServer, &failedUpdate,
 	)
 	return err
 }

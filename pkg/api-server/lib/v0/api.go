@@ -1,9 +1,10 @@
 package v0
 
 import (
-	"github.com/labstack/echo/v4"
-
+	"errors"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 var Versions = make(map[int]string)
@@ -61,6 +62,24 @@ func ResponseStatus409(c echo.Context, params *PageRequestParams, error error, o
 
 func ResponseStatus500(c echo.Context, params *PageRequestParams, error error, objectType string) error {
 	return c.JSON(http.StatusInternalServerError, CreateResponseWithError500(params, error, objectType))
+}
+
+// ResponseStatusBindErr maps an echo request-binding error to an HTTP
+// response. echo's binder returns *echo.HTTPError with a client-facing
+// code (typically 400 for JSON unmarshal or type mismatches); return
+// that as a client error instead of masking it as a 500. Any error
+// that isn't an *echo.HTTPError, or that carries a 5xx code, is
+// treated as an internal error.
+func ResponseStatusBindErr(c echo.Context, params *PageRequestParams, err error, objectType string) error {
+	var httpErr *echo.HTTPError
+	if errors.As(err, &httpErr) && httpErr.Code >= 400 && httpErr.Code < 500 {
+		return c.JSON(httpErr.Code, CreateResponseErrorWithStatus(
+			params,
+			CreateStatus(httpErr.Code, http.StatusText(httpErr.Code), err.Error()),
+			objectType,
+		))
+	}
+	return ResponseStatus500(c, params, err, objectType)
 }
 
 func ResponseStatusErr(id int, c echo.Context, params *PageRequestParams, error error, objectType string) error {

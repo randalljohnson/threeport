@@ -372,10 +372,19 @@ func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 // generated public key injected into ssh-keys metadata.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
-		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", &gcp.ProviderArgs{
+		// thread service account credentials directly into the gcp provider
+		// for this stack rather than relying on a process-global env var, so
+		// two concurrent gce creates for different service accounts each get
+		// their own provider credentials
+		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
-		})
+		}
+		if i.ServiceAccountCredentials != "" {
+			providerArgs.Credentials = pulumi.String(i.ServiceAccountCredentials)
+		}
+
+		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", providerArgs)
 		if err != nil {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
@@ -669,7 +678,7 @@ func generateSSHKeyPair() (privPEM, pubAuthorized string, err error) {
 		Bytes: privDER,
 	})
 	if privPEMBytes == nil {
-		return "", "", fmt.Errorf("failed to encode private key to PEM")
+		return "", "", errors.New("failed to encode private key to PEM")
 	}
 
 	pub, err := ssh.NewPublicKey(&key.PublicKey)
@@ -798,7 +807,7 @@ func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey s
 // than persisted separately so no extra stored field is needed.
 func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	if sshPrivateKeyPEM == "" {
-		return fmt.Errorf("cannot seed SSH key pair from empty private key")
+		return errors.New("cannot seed SSH key pair from empty private key")
 	}
 	signer, err := ssh.ParsePrivateKey([]byte(sshPrivateKeyPEM))
 	if err != nil {

@@ -124,7 +124,7 @@ func main() {
 	}
 
 	// add module router middleware
-	if err := api_v0.InitModuleRouter(db, e); err != nil {
+	if err := api_v0.InitModuleRouter(db, e, authEnabled); err != nil {
 		e.Logger.Fatalf("failed to initialize module proxy router: %v", err)
 	}
 

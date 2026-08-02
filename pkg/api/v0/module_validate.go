@@ -115,12 +115,13 @@ func (m *ModuleApiRoute) afterCreate(tx *gorm.DB) error {
 	// add the route path to the module router
 	ModRouter.AddRoute(*m.Path, func(c echo.Context) error {
 		proxyUrl, err := url.Parse(
-			fmt.Sprintf("http://%s", *modApi.Endpoint),
+			fmt.Sprintf("%s://%s", moduleRouteScheme, *modApi.Endpoint),
 		)
 		if err != nil {
 			return fmt.Errorf("failed to parse module's proxy target URL: %w", err)
 		}
 		proxy := httputil.NewSingleHostReverseProxy(proxyUrl)
+		proxy.Transport = moduleRouteTransport
 		proxy.ServeHTTP(c.Response().Writer, c.Request())
 		return nil
 	})

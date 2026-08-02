@@ -288,10 +288,9 @@ func saveADCCredentials(token *oauth2.Token) error {
 }
 
 // getADCPath returns the standard well-known path for Application Default
-// Credentials. Intentionally ignores GOOGLE_APPLICATION_CREDENTIALS — that
-// env var may point to a service account temp file set by
-// configureServiceAccountCredentials, and overwriting it with OAuth user
-// credentials would silently destroy those service account credentials.
+// Credentials. It intentionally ignores GOOGLE_APPLICATION_CREDENTIALS: that
+// env var points at a key file the operator chose, and overwriting it with
+// OAuth user credentials would silently destroy that key.
 func getADCPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

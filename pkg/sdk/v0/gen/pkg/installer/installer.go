@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	. "github.com/dave/jennifer/jen"
+	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
 	cli "github.com/threeport/threeport/pkg/cli/v0"
@@ -27,6 +28,7 @@ func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.ImportAlias("github.com/threeport/threeport/pkg/api-server/v0/database", "tp_database")
 	f.ImportAlias("github.com/threeport/threeport/pkg/api/v0", "tp_api")
 	f.ImportAlias("github.com/threeport/threeport/pkg/client/v0", "tp_client")
+	f.ImportAlias("github.com/threeport/threeport/pkg/client/lib/v0", "client_lib")
 	f.ImportAlias("github.com/threeport/threeport/pkg/auth/v0", "tp_auth")
 	f.ImportAlias("github.com/threeport/threeport/pkg/threeport-installer/v0", "tp_installer")
 	f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
@@ -37,10 +39,37 @@ func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	}
 
+	pluralizeClient := pluralize.NewClient()
+
 	moduleNameKebab := strcase.ToKebab(sdkConfig.ModuleName)
 	moduleNameSnake := strcase.ToSnake(sdkConfig.ModuleName)
 	moduleNameCamel := strcase.ToCamel(sdkConfig.ModuleName)
 	moduleNameLowerCamel := strcase.ToLowerCamel(sdkConfig.ModuleName)
+
+	// pick the module's first generated API object as the route to poll for
+	// readiness. Its versioned api package exposes a Path<PluralTypeName>
+	// constant naming the REST collection route, which is served through the
+	// Threeport API once the module API server is running.
+	var readinessRouteVersion string
+	var readinessRoutePathConst string
+	for _, objCollection := range gen.VersionedApiObjectCollections {
+		for _, objGroup := range objCollection.VersionedApiObjectGroups {
+			for _, apiObject := range objGroup.ApiObjects {
+				readinessRouteVersion = objCollection.Version
+				readinessRoutePathConst = fmt.Sprintf(
+					"Path%s",
+					pluralizeClient.Pluralize(apiObject.TypeName, 2, false),
+				)
+				break
+			}
+			if readinessRoutePathConst != "" {
+				break
+			}
+		}
+		if readinessRoutePathConst != "" {
+			break
+		}
+	}
 
 	f.Const().Defs(
 		Id("ReleaseImageNamespace").Op("=").Lit(sdkConfig.ImageNamespace),
@@ -75,6 +104,15 @@ func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 		Line().Comment("The Kubernetes namespace the Threeport control plane is installed in."),
 		Id("ThreeportNamespace").String(),
+
+		Line().Comment("HTTP client for calls to the Threeport API. The module API server is"),
+		Comment("reached through the Threeport API, so this client is used to confirm the"),
+		Comment("module API server is serving before the install returns."),
+		Id("ApiClient").Op("*").Qual("net/http", "Client"),
+
+		Line().Comment("The Threeport API endpoint. Module routes are served through this"),
+		Comment("endpoint, so a module route is polled here to confirm readiness."),
+		Id("ApiEndpoint").String(),
 
 		Line().Comment("The container image repository to pull module's API server and"),
 		Comment("controller/s' container images from."),
@@ -768,6 +806,95 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 			)
 			g.Line()
 		}
+
+		// emit the readiness poll last so it confirms the whole module is serving:
+		// the module API server is reached through the Threeport API, so poll one of
+		// the module's collection routes through the Threeport API client until it
+		// returns HTTP 200. The API server Service and controllers are created above,
+		// so by the time the poll runs the proxied request can reach a serving pod;
+		// until then the proxied call returns an empty or error body rather than a
+		// decodable response, so the retry keeps waiting before the install returns.
+		if readinessRoutePathConst != "" {
+			readinessRoutePackage := fmt.Sprintf(
+				"%s/pkg/api/%s",
+				gen.ModulePath,
+				readinessRouteVersion,
+			)
+			g.Comment("wait for the module API server to start serving")
+			g.Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
+				Qual("fmt", "Sprintf").Call(
+					Lit(fmt.Sprintf(
+						"Waiting for %s module API to start running at %%s",
+						moduleNameKebab,
+					)),
+					Id("i").Dot("ApiEndpoint"),
+				),
+			)
+			g.Id("attemptsMax").Op(":=").Lit(60)
+			g.Id("waitDurationSeconds").Op(":=").Lit(5)
+			g.If(
+				Err().Op(":=").Qual(
+					"github.com/threeport/threeport/pkg/util/v0",
+					"Retry",
+				).Call(
+					Line().Id("attemptsMax"),
+					Line().Id("waitDurationSeconds"),
+					Line().Func().Params().Error().Block(
+						List(Id("_"), Err()).Op(":=").Qual(
+							"github.com/threeport/threeport/pkg/client/lib/v0",
+							"GetResponse",
+						).Call(
+							Line().Id("i").Dot("ApiClient"),
+							Line().Qual("fmt", "Sprintf").Call(
+								Lit("%s%s"),
+								Id("i").Dot("ApiEndpoint"),
+								Qual(readinessRoutePackage, readinessRoutePathConst),
+							),
+							Line().Qual("net/http", "MethodGet"),
+							Line().Qual("bytes", "NewBuffer").Call(Index().Byte().Values()),
+							Line().Map(String()).String().Values(),
+							Line().Qual("net/http", "StatusOK"),
+							Line(),
+						),
+						If(Err().Op("!=").Nil()).Block(
+							Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
+								Qual("fmt", "Sprintf").Call(
+									Lit("Connection attempt result: %s"),
+									Err(),
+								),
+							),
+							Return(Qual("fmt", "Errorf").Call(
+								Lit(fmt.Sprintf(
+									"failed to reach %s module API: %%w",
+									moduleNameKebab,
+								)),
+								Err(),
+							)),
+						),
+						Return(Nil()),
+					),
+					Line(),
+				),
+				Err().Op("!=").Nil(),
+			).Block(
+				Return(Qual("fmt", "Errorf").Call(
+					Lit(fmt.Sprintf(
+						"timed out after %%d seconds waiting for 200 response from %s module API: %%w",
+						moduleNameKebab,
+					)),
+					Id("attemptsMax").Op("*").Id("waitDurationSeconds"),
+					Err(),
+				)),
+			)
+			g.Qual("github.com/threeport/threeport/pkg/cli/v0", "Info").Call(
+				Lit(fmt.Sprintf(
+					"%s module API is running",
+					moduleNameCamel,
+				)),
+			)
+			g.Line()
+		}
+
 		g.Return(Nil())
 	})
 	f.Line()

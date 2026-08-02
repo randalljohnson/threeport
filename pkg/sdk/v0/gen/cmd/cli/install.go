@@ -162,6 +162,8 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Id("inst").Dot("ControlPlaneImageRepo").Op("=").Id("controlPlaneImageRepo"),
 			Id("inst").Dot("ControlPlaneImageTag").Op("=").Id("controlPlaneImageTag"),
 			Id("inst").Dot("Debug").Op("=").Id("debug"),
+			Id("inst").Dot("ApiClient").Op("=").Id("apiClient"),
+			Id("inst").Dot("ApiEndpoint").Op("=").Id("apiEndpoint"),
 			Line(),
 
 			Comment("install extension module"),

@@ -383,7 +383,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// count fits under the threshold, serve the fetched records
 		// directly and skip the materialized view path.
 		findQuery := JoinEventsToAttachedObjectReferences(
-			h.DB.Order("ID asc").Limit(int(threshold)+1),
+			h.DB.Order("event_time ASC, id ASC").Limit(int(threshold)+1),
 			fullyQualifiedEventType,
 		)
 		if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
@@ -411,6 +411,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// the two modes are peers: MV materializes the join into a
 			// fresh view; AOST captures an HLC and re-runs the join at
 			// that timestamp on every page.
+
+			// the probe fetch above already loaded threshold+1 rows;
+			// discard them so the snapshot path below refills from its
+			// own query rather than appending to a partial result
+			*records = (*records)[:0]
 
 			// base WHERE excludes soft-deleted events and reference
 			// rows; raw SQL doesn't pick up gorm's deleted_at
@@ -498,14 +503,17 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				// the join each time
 				viewName, queryId := GenerateMaterializedViewName()
 
-				// build and execute the CREATE MATERIALIZED VIEW
+				// build and execute the CREATE MATERIALIZED VIEW.
+				// materialize in causal order so the view reads as the
+				// sequence the events actually happened in, with id
+				// breaking intra-second ties.
 				createView := fmt.Sprintf(`
 					CREATE MATERIALIZED VIEW %s AS
 					SELECT v0_events.*
 					FROM v0_events
 					%s
 					%s
-					ORDER BY v0_events.id ASC
+					ORDER BY v0_events.event_time ASC, v0_events.id ASC
 				`,
 					viewName,
 					joinClause,
@@ -559,6 +567,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// preserve the queryId across pages so the client keeps using
 		// the same snapshot for subsequent continuation requests
 		pagination.QueryId = pageParams.QueryId
+
+		// MV mode pages over a named view and drops it once the client
+		// walks off the end. AOST mode has no view to drop, so this
+		// stays empty and the drop below is skipped.
+		var viewName string
 
 		switch h.PaginationMode {
 		case apiserver_lib.PaginationModeAsOfSystemTime:
@@ -633,11 +646,12 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		default:
 			// use the query ID to find the materialized view name (the view
 			// name is deterministic from the queryId)
-			viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+			resolvedViewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 			if err != nil {
 				h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
+			viewName = resolvedViewName
 
 			// fetch the next page from the view starting just past the
 			// previous cursor. the ID index built at create-time keeps
@@ -666,17 +680,12 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// off the end of the result set so the backing storage is freed
 		// immediately, not deferred to the TTL sweeper. Failures here are
 		// logged, not returned: the response body is already correct, and
-		// the TTL sweeper still drops the view on its next pass. AOST
-		// mode has no view to drop.
-		if !pagination.HasMore && h.PaginationMode != apiserver_lib.PaginationModeAsOfSystemTime {
-			viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
-			if err != nil {
-				h.Logger.Error("handler error: error resolving materialized view for drop", zap.Error(err))
-			} else {
-				dropQuery := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", viewName)
-				if result := h.DB.Exec(dropQuery); result.Error != nil {
-					h.Logger.Error("handler error: error dropping materialized view on last page", zap.String("viewName", viewName), zap.Error(result.Error))
-				}
+		// the TTL sweeper still drops the view on its next pass. Only MV
+		// mode reaches this; AOST mode leaves viewName empty.
+		if !pagination.HasMore && viewName != "" {
+			dropQuery := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", viewName)
+			if result := h.DB.Exec(dropQuery); result.Error != nil {
+				h.Logger.Error("handler error: error dropping materialized view on last page", zap.String("viewName", viewName), zap.Error(result.Error))
 			}
 		}
 	}

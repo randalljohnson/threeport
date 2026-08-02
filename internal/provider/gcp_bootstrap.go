@@ -83,14 +83,17 @@ type GCPServiceAccountWithKey struct {
 func (i *KubernetesRuntimeInfraGKE) createGCPServiceAccountAndCredentials() error {
 	ctx := context.Background()
 
-	// Create IAM service client
-	iamService, err := iam.NewService(ctx, option.WithScopes(iam.CloudPlatformScope))
+	// Create IAM service client with this instance's service account
+	// credentials threaded per call, so a bootstrap running alongside another
+	// create authenticates as its own account rather than a shared global
+	iamService, err := iam.NewService(ctx, i.gcpClientOptions(option.WithScopes(iam.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM service client: %w", err)
 	}
 
-	// Create Cloud Resource Manager service client for IAM bindings
-	crmService, err := cloudresourcemanager.NewService(ctx, option.WithScopes(cloudresourcemanager.CloudPlatformScope))
+	// Create Cloud Resource Manager service client for IAM bindings, with the
+	// same per-call credentials
+	crmService, err := cloudresourcemanager.NewService(ctx, i.gcpClientOptions(option.WithScopes(cloudresourcemanager.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create Cloud Resource Manager service client: %w", err)
 	}
@@ -349,9 +352,9 @@ func (i *KubernetesRuntimeInfraGKE) validateGCPServiceAccountPropagation(
 
 	// Drain status updates into statusMap until all goroutines finish
 	// and the closer goroutine closes the channel. Without this drain,
-	// workers block on send once the buffer fills and statusMap is never
-	// populated, so the failure check below sees no failures and swallows
-	// real IAM propagation errors.
+	// workers block on send once the buffer fills and statusMap keeps its
+	// zero-valued entries, so the failure check below sees no failures and
+	// swallows real IAM propagation errors.
 	for update := range statusChan {
 		statusMap[update.serviceID] = &update.status
 	}

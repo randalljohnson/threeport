@@ -420,7 +420,7 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 	t.Run("nil credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
-		// nil credentials must fail-fast so a misconfigured provider does not
+		// nil credentials must fail fast so a misconfigured provider does not
 		// defer the failure to the gke create and hang on interactive oauth
 		prov.ServiceAccountCredentials = nil
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
@@ -435,7 +435,7 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 	t.Run("empty credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
-		// empty credentials must fail-fast the same as nil
+		// empty credentials must fail fast the same as nil
 		prov.ServiceAccountCredentials = util.Ptr("")
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)

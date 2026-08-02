@@ -437,7 +437,7 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		s := gceNewAPIStub(t)
 		s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 		prov := gceBaseProvider()
-		// empty credentials must fail-fast so a misconfigured provider does
+		// empty credentials must fail fast so a misconfigured provider does
 		// not defer the failure to the adopt step and hang on interactive oauth
 		prov.ServiceAccountCredentials = gcePtr("")
 		s.gceHandleProvider(t, gceTestProviderID, prov)
@@ -453,7 +453,7 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		s := gceNewAPIStub(t)
 		s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 		// gceBaseProvider defaults ServiceAccountCredentials to nil, which must
-		// fail-fast the same as an empty string
+		// fail fast the same as an empty string
 		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
 

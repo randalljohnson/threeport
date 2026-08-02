@@ -39,7 +39,7 @@ type gceMachineLifecycle struct {
 // compile-time assertion that the adapter implements all interface methods.
 var _ provider.InfraLifecycleProvider = (*gceMachineLifecycle)(nil)
 
-// StackKey() returns the runtime-instance name so the shared state machine
+// StackKey returns the runtime-instance name so the shared state machine
 // can serialize infra operations per stack. Two reconciles for the same
 // instance name resolve to the same key and cannot spawn racing pulumi
 // subprocesses against the same local state directory. A malformed instance

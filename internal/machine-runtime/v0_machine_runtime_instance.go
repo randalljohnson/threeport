@@ -205,9 +205,9 @@ func v0MachineRuntimeInstanceCreated(
 	}
 
 	// defer the ssh dial until the machine has a hostname. an imported machine
-	// with no def, or a provider machine still being provisioned, may reach
-	// this point before the hostname is populated; requeue without erroring
-	// and leave Reconciled unset until the hostname is set
+	// with no definition, or a provider machine still being provisioned, may
+	// reach this point before the hostname is populated; requeue without
+	// erroring and leave Reconciled unset until the hostname is set
 	if machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "" {
 		return unpopulatedRequeueDelaySeconds, nil
 	}

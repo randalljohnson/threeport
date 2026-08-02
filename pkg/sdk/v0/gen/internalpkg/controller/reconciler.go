@@ -583,7 +583,7 @@ func operationCase(
 					Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
 						Qual(
 							"github.com/threeport/threeport/pkg/event/v0",
-							fmt.Sprintf("ReasonFailed%s", uppoerOp),
+							fmt.Sprintf("Reason%sFailed", uppoerOp),
 						),
 					),
 					Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("errorMsg")),

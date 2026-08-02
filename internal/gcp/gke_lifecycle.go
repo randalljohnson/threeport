@@ -136,7 +136,7 @@ func (g *gkeLifecycle) IsCreateComplete() (bool, error) {
 func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 	infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)
 	if !ok {
-		return errors.New("expected a GKE infra provider")
+		return fmt.Errorf("expected a GKE infra provider but got %T", infra)
 	}
 	kubeConnectionInfo, err := infraGKE.GetConnection()
 	if err != nil {

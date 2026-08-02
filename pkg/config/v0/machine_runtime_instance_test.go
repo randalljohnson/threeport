@@ -29,8 +29,8 @@ import (
 func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 	// track per-ID definition fetch counts so we can assert on dedupe behavior
 	var (
-		mu           sync.Mutex
-		defHitsByID  = map[uint]int{}
+		mu          sync.Mutex
+		defHitsByID = map[uint]int{}
 	)
 
 	sharedDefName := util.Ptr("shared-def")

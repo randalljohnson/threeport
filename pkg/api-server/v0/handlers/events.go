@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,22 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// objectNamespacePattern matches DNS-like api namespaces such as
+// "sxalable.io" or "threeport.io". Anchored so the value can be safely
+// interpolated into a LIKE clause on v0_attached_object_references.object_type.
+var objectNamespacePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.-]*$`)
+
+// objectVersionPattern matches api version tokens such as "v0" or
+// "v1alpha1". Anchored so the value can be safely interpolated into a
+// LIKE clause on v0_attached_object_references.object_type.
+var objectVersionPattern = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+
+// reasonPattern matches event Reason values, which are Go-identifier
+// CamelCase tokens (e.g. "SuccessfulCreate", "Reconcile_Fail"). Anchored
+// so the value can be safely interpolated into equality and LIKE
+// predicates on v0_events.reason.
+var reasonPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
 // materializedViewThresholdFloor is the minimum total-count above which
 // the event listing spins up a materialized view for cursor pagination.
@@ -54,6 +71,8 @@ func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventTyp
 // @Param objectversion query string false "narrow objecttypename match to one version (e.g. 'v0')"
 // @Param objectnamespace query string false "narrow objecttypename match to one api namespace (e.g. 'threeport.io')"
 // @Param objectname query string false "filter events by object name (with objecttypename)"
+// @Param reason query string false "filter events by exact Reason match (case-sensitive CamelCase, e.g. 'SuccessfulCreate')"
+// @Param reasonprefix query string false "filter events by Reason prefix (case-sensitive CamelCase, matches Reason values starting with this token)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -90,6 +109,42 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	targetNamespace := c.QueryParam("objectnamespace")
 	targetName := c.QueryParam("objectname")
 	directObjectId := c.QueryParam("objectid")
+	targetReason := c.QueryParam("reason")
+	targetReasonPrefix := c.QueryParam("reasonprefix")
+
+	// validate the narrow-filter tokens that get interpolated into the
+	// AOR object_type LIKE clause below. The regexes reject anything
+	// outside the DNS-like namespace / alphanumeric-version shape so
+	// caller-supplied text cannot inject SQL.
+	if targetNamespace != "" && !objectNamespacePattern.MatchString(targetNamespace) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid objectnamespace %q: expected DNS-like value", targetNamespace),
+			objectType)
+	}
+	if targetVersion != "" && !objectVersionPattern.MatchString(targetVersion) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid objectversion %q: expected alphanumeric token", targetVersion),
+			objectType)
+	}
+	// reason and reasonprefix flow into equality / LIKE predicates on
+	// v0_events.reason. The regex restricts the accepted alphabet to
+	// Go-identifier CamelCase tokens so caller text cannot inject SQL
+	// when interpolated into the raw-SQL pagination paths below.
+	if targetReason != "" && targetReasonPrefix != "" {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			errors.New("provide either reason or reasonprefix, not both"),
+			objectType)
+	}
+	if targetReason != "" && !reasonPattern.MatchString(targetReason) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid reason %q: expected CamelCase token", targetReason),
+			objectType)
+	}
+	if targetReasonPrefix != "" && !reasonPattern.MatchString(targetReasonPrefix) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid reasonprefix %q: expected CamelCase token", targetReasonPrefix),
+			objectType)
+	}
 
 	var ids []uint
 	var fullyQualifiedTypes []string
@@ -105,9 +160,33 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 		return apiserver_lib.FilterQualifiedTypes(types, targetNamespace, targetVersion), nil
 	}
+
+	// buildNamespaceVersionPattern returns the LIKE pattern that narrows
+	// AOR.object_type to the caller-supplied namespace and version.
+	// Types are stored as "<namespace>/<version>.<TypeName>", so patterns
+	// anchor on the slash and dot separators. Returns active=false when
+	// neither filter is set so callers can skip the extra predicate.
+	buildNamespaceVersionPattern := func() (pattern string, active bool) {
+		switch {
+		case targetNamespace != "" && targetVersion != "":
+			return fmt.Sprintf("%s/%s.%%", targetNamespace, targetVersion), true
+		case targetNamespace != "":
+			return fmt.Sprintf("%s/%%", targetNamespace), true
+		case targetVersion != "":
+			return fmt.Sprintf("%%/%s.%%", targetVersion), true
+		default:
+			return "", false
+		}
+	}
+
 	switch {
-	case targetTypeName == "" && targetName == "" && directObjectId == "":
+	case targetTypeName == "" && targetName == "" && directObjectId == "" && targetNamespace == "" && targetVersion == "":
 		// no filter supplied; fall through to the unfiltered query
+
+	case targetTypeName == "" && targetName == "" && directObjectId == "":
+		// namespace or version supplied without a bare kind, id, or name.
+		// skip type/id resolution and let the AOR object_type LIKE
+		// predicate below narrow events to the requested api group.
 
 	case targetTypeName == "":
 		// caller supplied a name or id but no type. type is the only
@@ -196,18 +275,45 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	records := &[]v0.Event{}
 	var returnedCount int64
 
-	// apply the subject filter only when ids were supplied. The
-	// filter is the Cartesian product (object_type IN types AND
-	// object_id IN ids) - intentional, so a multi-type bare kind
-	// surfaces every (resolved type, id) pair instead of forcing
-	// namespace disambiguation up front.
-	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
-		if len(ids) == 0 {
-			return query
+	// buildReasonRawWhere returns a raw-SQL predicate fragment for the
+	// reason / reasonprefix filter, or ("", false) when neither is set.
+	// Values are pre-validated against reasonPattern above, so they are
+	// safe to interpolate into the returned literal.
+	buildReasonRawWhere := func() (string, bool) {
+		switch {
+		case targetReason != "":
+			return fmt.Sprintf("v0_events.reason = '%s'", targetReason), true
+		case targetReasonPrefix != "":
+			return fmt.Sprintf("v0_events.reason LIKE '%s%%'", targetReasonPrefix), true
+		default:
+			return "", false
 		}
-		return query.
-			Where("v0_attached_object_references.object_type IN ?", fullyQualifiedTypes).
-			Where("v0_attached_object_references.object_id IN ?", ids)
+	}
+
+	// apply the subject filter when ids or a namespace/version filter
+	// were supplied. The id half is the Cartesian product
+	// (object_type IN types AND object_id IN ids) - intentional, so a
+	// multi-type bare kind surfaces every (resolved type, id) pair
+	// instead of forcing namespace disambiguation up front. The
+	// namespace/version half narrows AOR.object_type via a LIKE prefix
+	// so an --api-group / --object-version call without a bare kind
+	// still constrains the row set.
+	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
+		if len(ids) > 0 {
+			query = query.
+				Where("v0_attached_object_references.object_type IN ?", fullyQualifiedTypes).
+				Where("v0_attached_object_references.object_id IN ?", ids)
+		}
+		if pattern, active := buildNamespaceVersionPattern(); active {
+			query = query.Where("v0_attached_object_references.object_type LIKE ?", pattern)
+		}
+		if targetReason != "" {
+			query = query.Where("v0_events.reason = ?", targetReason)
+		}
+		if targetReasonPrefix != "" {
+			query = query.Where("v0_events.reason LIKE ?", targetReasonPrefix+"%")
+		}
+		return query
 	}
 
 	switch {
@@ -281,6 +387,20 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 					strings.Join(typeStrs, ", "),
 					strings.Join(idStrs, ", "),
 				)
+			}
+			if pattern, active := buildNamespaceVersionPattern(); active {
+				// narrow AOR.object_type by qualified-type prefix so a
+				// namespace-only or version-only filter still constrains
+				// the row set. The regex-validated pattern is safe to
+				// interpolate into the LIKE literal.
+				whereClause += fmt.Sprintf(
+					" AND v0_attached_object_references.object_type LIKE '%s'",
+					pattern,
+				)
+			}
+			if reasonFrag, active := buildReasonRawWhere(); active {
+				// pre-validated by reasonPattern, safe to interpolate
+				whereClause += " AND " + reasonFrag
 			}
 
 			// build the join clause once; used by both mode branches
@@ -437,6 +557,19 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 					strings.Join(typeStrs, ", "),
 					strings.Join(idStrs, ", "),
 				)
+			}
+			if pattern, active := buildNamespaceVersionPattern(); active {
+				// mirror the first-page filter so the continuation reads
+				// the same subset of the snapshot; the regex-validated
+				// pattern is safe to interpolate into the LIKE literal.
+				whereClause += fmt.Sprintf(
+					" AND v0_attached_object_references.object_type LIKE '%s'",
+					pattern,
+				)
+			}
+			if reasonFrag, active := buildReasonRawWhere(); active {
+				// mirror the first-page reason filter under the same snapshot
+				whereClause += " AND " + reasonFrag
 			}
 			whereClause += fmt.Sprintf(" AND v0_events.id > %d", pageParams.Cursor)
 

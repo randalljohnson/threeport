@@ -619,3 +619,24 @@ func TestMachineWorkloadInstanceDeleted_ScriptFails(t *testing.T) {
 	// records no events
 	assert.Empty(t, f.recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
+
+// TestMachineWorkloadInstanceDeleted_ScriptFailsPastGracePeriod covers the
+// reachable-but-failing grace cap: the host is reachable, the delete script
+// keeps failing, and deletion was scheduled longer ago than the grace period.
+// The handler confirms the deletion anyway - returns (0, nil) so a delete
+// script that can never succeed does not strand the upstream machine - and
+// records a DeleteScriptFailedGraceExceeded warning.
+func TestMachineWorkloadInstanceDeleted_ScriptFailsPastGracePeriod(t *testing.T) {
+	// reachable host whose delete script exits non-zero
+	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
+	// schedule deletion far enough in the past to exceed the grace period
+	f.mwi.DeletionScheduled = util.Ptr(time.Now().Add(-2 * unreachableDeleteGracePeriod))
+	log := logr.Discard()
+
+	delay, err := v0MachineWorkloadInstanceDeleted(f.r, f.mwi, &log)
+	// past the grace period the failing delete confirms rather than requeues
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), delay)
+	// the script ran and failed before the grace cap fired, so both reasons land
+	assert.Equal(t, []string{"ScriptFailed", "DeleteScriptFailedGraceExceeded"}, f.recorder.GetReasons())
+}

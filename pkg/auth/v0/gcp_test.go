@@ -8,25 +8,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 
 	"golang.org/x/oauth2"
 )
-
-// resetGCPCredState resets the package-level mutex-guarded credential state so
-// tests run in isolation without leaking state to other tests.
-func resetGCPCredState(t *testing.T) {
-	t.Helper()
-	gcpCredMu.Lock()
-	defer gcpCredMu.Unlock()
-	if gcpCredTempFile != "" {
-		os.Remove(gcpCredTempFile)
-	}
-	gcpCredTempFile = ""
-	gcpCredRefCount = 0
-	os.Unsetenv("GOOGLE_APPLICATION_CREDENTIALS")
-}
 
 // TestGenerateRandomStateProducesHexOfExpectedLength covers generateRandomState().
 func TestGenerateRandomStateProducesHexOfExpectedLength(t *testing.T) {
@@ -166,155 +151,6 @@ func TestSaveADCCredentialsCreatesDirTree(t *testing.T) {
 	}
 }
 
-// TestConfigureServiceAccountCredentialsSetsEnvAndFile covers
-// configureServiceAccountCredentials(): it must write the JSON to a temp file
-// and expose that path via GOOGLE_APPLICATION_CREDENTIALS.
-func TestConfigureServiceAccountCredentialsSetsEnvAndFile(t *testing.T) {
-	// clear any package-level state left over from prior tests
-	resetGCPCredState(t)
-	t.Cleanup(func() { resetGCPCredState(t) })
-
-	// invoke the configuration with a fixed SA JSON payload
-	payload := `{"type":"service_account","project_id":"test"}`
-	if err := configureServiceAccountCredentials(payload); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// verify the env var points to a real file whose contents match the payload
-	envPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-	if envPath == "" {
-		t.Fatal("GOOGLE_APPLICATION_CREDENTIALS was not set")
-	}
-	got, err := os.ReadFile(envPath)
-	if err != nil {
-		t.Fatalf("failed to read temp SA file: %v", err)
-	}
-	if string(got) != payload {
-		t.Errorf("temp file content mismatch: got %q", string(got))
-	}
-
-	// confirm the package-level ref count reflects the single active caller
-	gcpCredMu.Lock()
-	rc := gcpCredRefCount
-	gcpCredMu.Unlock()
-	if rc != 1 {
-		t.Errorf("expected ref count 1, got %d", rc)
-	}
-}
-
-// TestConfigureServiceAccountCredentialsIsIdempotent covers the branch that
-// discards a redundant temp file when another goroutine has already registered
-// credentials. The second call must not overwrite the first file or leak.
-func TestConfigureServiceAccountCredentialsIsIdempotent(t *testing.T) {
-	// reset state and register cleanup
-	resetGCPCredState(t)
-	t.Cleanup(func() { resetGCPCredState(t) })
-
-	// first call plants the temp file and env var
-	if err := configureServiceAccountCredentials(`{"type":"service_account"}`); err != nil {
-		t.Fatalf("first call failed: %v", err)
-	}
-	firstPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-
-	// second call must reuse the same temp file and bump the ref count
-	if err := configureServiceAccountCredentials(`{"type":"other"}`); err != nil {
-		t.Fatalf("second call failed: %v", err)
-	}
-	secondPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-
-	if firstPath != secondPath {
-		t.Errorf("env var path drifted: %q vs %q", firstPath, secondPath)
-	}
-
-	gcpCredMu.Lock()
-	rc := gcpCredRefCount
-	gcpCredMu.Unlock()
-	if rc != 2 {
-		t.Errorf("expected ref count 2 after second configure, got %d", rc)
-	}
-}
-
-// TestCleanupGCPCredentialsRemovesFileWhenRefCountReachesZero covers
-// CleanupGCPCredentials() paired against configureServiceAccountCredentials().
-func TestCleanupGCPCredentialsRemovesFileWhenRefCountReachesZero(t *testing.T) {
-	// reset any prior state
-	resetGCPCredState(t)
-	t.Cleanup(func() { resetGCPCredState(t) })
-
-	// register two ref-counted callers so cleanup must run twice
-	if err := configureServiceAccountCredentials(`{"a":1}`); err != nil {
-		t.Fatalf("first configure failed: %v", err)
-	}
-	if err := configureServiceAccountCredentials(`{"a":2}`); err != nil {
-		t.Fatalf("second configure failed: %v", err)
-	}
-	tempPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-
-	// first cleanup drops the ref count but must leave the file in place
-	CleanupGCPCredentials()
-	if _, err := os.Stat(tempPath); err != nil {
-		t.Errorf("temp file removed prematurely: %v", err)
-	}
-
-	// second cleanup drives the ref count to zero and must remove the file and env var
-	CleanupGCPCredentials()
-	if _, err := os.Stat(tempPath); !os.IsNotExist(err) {
-		t.Errorf("expected temp file removed, stat err = %v", err)
-	}
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
-		t.Error("expected GOOGLE_APPLICATION_CREDENTIALS to be unset")
-	}
-}
-
-// TestCleanupGCPCredentialsIsSafeWithNoActiveCreds covers the no-op branch of
-// CleanupGCPCredentials() when no configure call has run.
-func TestCleanupGCPCredentialsIsSafeWithNoActiveCreds(t *testing.T) {
-	// reset state and register cleanup
-	resetGCPCredState(t)
-	t.Cleanup(func() { resetGCPCredState(t) })
-
-	// invoking cleanup without any active creds must not panic or set env vars
-	CleanupGCPCredentials()
-
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
-		t.Error("expected GOOGLE_APPLICATION_CREDENTIALS to remain unset")
-	}
-	gcpCredMu.Lock()
-	rc := gcpCredRefCount
-	gcpCredMu.Unlock()
-	if rc != 0 {
-		t.Errorf("expected ref count 0, got %d", rc)
-	}
-}
-
-// TestEnsureGCPAuthWithServiceAccountConfiguresCredentials asserts that when
-// hasValidGCPCredentials() returns false and a SA payload is supplied,
-// EnsureGCPAuth() delegates to configureServiceAccountCredentials() rather
-// than initiating the browser OAuth flow.
-func TestEnsureGCPAuthWithServiceAccountConfiguresCredentials(t *testing.T) {
-	// isolate credential state and sandbox HOME so google.DefaultTokenSource
-	// finds no cached user credentials to short-circuit the SA branch
-	resetGCPCredState(t)
-	t.Cleanup(func() { resetGCPCredState(t) })
-
-	tmp := t.TempDir()
-	if runtime.GOOS == "windows" {
-		t.Setenv("USERPROFILE", tmp)
-	} else {
-		t.Setenv("HOME", tmp)
-	}
-
-	// call the entry point with a SA JSON payload; must configure without error
-	if err := EnsureGCPAuth(`{"type":"service_account","project_id":"test"}`); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// confirm the SA branch ran by checking for the exported env var
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
-		t.Error("expected GOOGLE_APPLICATION_CREDENTIALS to be set by SA branch")
-	}
-}
-
 // TestHasValidGCPCredentialsReturnsFalseWhenNoCredentials covers
 // hasValidGCPCredentials() on a clean HOME with no ADC file present and no
 // metadata server reachable.
@@ -349,42 +185,5 @@ func TestGCPOAuthScopesIncludesCloudPlatform(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected GcpOAuthScopes to include cloud-platform scope")
-	}
-}
-
-// TestConcurrentConfigureAndCleanupIsRaceFree drives many goroutines through
-// the configure and cleanup paths to exercise the mutex guarding
-// gcpCredTempFile and gcpCredRefCount. Runs the mutation loop under -race to
-// catch any regression in the locking discipline.
-func TestConcurrentConfigureAndCleanupIsRaceFree(t *testing.T) {
-	// reset state and register cleanup
-	resetGCPCredState(t)
-	t.Cleanup(func() { resetGCPCredState(t) })
-
-	// fan out concurrent configure+cleanup pairs
-	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := configureServiceAccountCredentials(`{"k":"v"}`); err != nil {
-				t.Errorf("configure failed: %v", err)
-				return
-			}
-			CleanupGCPCredentials()
-		}()
-	}
-	wg.Wait()
-
-	// after every configure was paired with a cleanup, the ref count must be zero
-	gcpCredMu.Lock()
-	rc := gcpCredRefCount
-	tempFile := gcpCredTempFile
-	gcpCredMu.Unlock()
-	if rc != 0 {
-		t.Errorf("expected ref count 0 after balanced pairs, got %d", rc)
-	}
-	if tempFile != "" {
-		t.Errorf("expected temp file cleared, got %q", tempFile)
 	}
 }

@@ -361,6 +361,21 @@ func (f *fixture) patchedStatuses() []string {
 	return out
 }
 
+// patchedReconciled returns the Reconciled pointer sent in every PATCH body
+// received, in order. Tests use it to assert the honesty invariant: a failed
+// script must not flip Reconciled to true.
+func (f *fixture) patchedReconciled() []*bool {
+	f.patchesMu.Lock()
+	defer f.patchesMu.Unlock()
+	out := make([]*bool, 0, len(f.patches))
+	for _, body := range f.patches {
+		var mwi v0.MachineWorkloadInstance
+		require.NoError(f.t, json.Unmarshal(body, &mwi))
+		out = append(out, mwi.Reconciled)
+	}
+	return out
+}
+
 // TestMachineWorkloadInstanceCreated_HappyPath confirms the Created
 // reconciler runs the create script, persists Reconciled=true with a
 // Healthy status, and logs the successful completion. The wrapper's
@@ -379,6 +394,13 @@ func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 
 	// status persists as Healthy so consumers see the current state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
+
+	// Reconciled flips to true only on the success path, keeping the
+	// owner-wait chain honest
+	reconciled := f.patchedReconciled()
+	require.Len(t, reconciled, 1)
+	require.NotNil(t, reconciled[0])
+	assert.True(t, *reconciled[0], "successful create should mark Reconciled=true")
 
 	// successful script emits no event; the wrapper's SuccessfulCreate
 	// event carries the outcome and the log line covers the diagnostic
@@ -418,6 +440,12 @@ func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 
 	// status persists as Unhealthy so consumers see the last-known state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusUnhealthy)}, f.patchedStatuses())
+
+	// Reconciled stays unset so upstream owner-wait chains do not treat a
+	// failed create as complete
+	reconciled := f.patchedReconciled()
+	require.Len(t, reconciled, 1)
+	assert.Nil(t, reconciled[0], "failed create must leave Reconciled unset in the patch")
 
 	// error carries the specific-reason event the wrapper will substitute
 	// for the generic FailedCreate row
@@ -474,10 +502,54 @@ func TestMachineWorkloadInstanceUpdated_HappyPath(t *testing.T) {
 	// status persists as Healthy so consumers see the current state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
 
+	// Reconciled flips to true only on the success path, keeping the
+	// owner-wait chain honest
+	reconciled := f.patchedReconciled()
+	require.Len(t, reconciled, 1)
+	require.NotNil(t, reconciled[0])
+	assert.True(t, *reconciled[0], "successful update should mark Reconciled=true")
+
 	// successful script emits no event; the wrapper's SuccessfulUpdate
 	// event carries the outcome and the log line covers the diagnostic
 	// detail
 	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulUpdate event carries the outcome and the log line covers the diagnostic detail")
+}
+
+// TestMachineWorkloadInstanceUpdated_ScriptFails covers the non-zero exit
+// path for update: status persisted as Unhealthy, Reconciled left unset so
+// the owner-wait chain holds Provisioning, the reconciler returns an
+// ErrWithEvent whose Reason is ScriptFailed so the wrapper substitutes it
+// for the generic FailedUpdate row, and the delay pins a 30s requeue.
+func TestMachineWorkloadInstanceUpdated_ScriptFails(t *testing.T) {
+	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
+	log := logr.Discard()
+
+	// drive the Updated reconciler with a script that exits non-zero
+	delay, err := v0MachineWorkloadInstanceUpdated(f.r, f.mwi, &log)
+
+	// reconciler surfaces the failure with a 30s requeue for retry
+	require.Error(t, err)
+	assert.Equal(t, int64(30), delay)
+
+	// status persists as Unhealthy so consumers see the last-known state
+	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusUnhealthy)}, f.patchedStatuses())
+
+	// Reconciled stays unset so upstream owner-wait chains do not treat a
+	// failed update as complete
+	reconciled := f.patchedReconciled()
+	require.Len(t, reconciled, 1)
+	assert.Nil(t, reconciled[0], "failed update must leave Reconciled unset in the patch")
+
+	// error carries the specific-reason event the wrapper will substitute
+	// for the generic FailedUpdate row
+	var errWithEvent *tp_errors.ErrWithEvent
+	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.NotNil(t, errWithEvent.Event.Reason)
+	assert.Equal(t, "ScriptFailed", *errWithEvent.Event.Reason)
+
+	// failure path defers emission to the wrapper, so the reconciler itself
+	// records no events
+	assert.Empty(t, f.recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
 // TestMachineWorkloadInstanceUpdated_NoUpdateScript covers the early-return

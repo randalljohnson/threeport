@@ -29,6 +29,12 @@ var objectNamespacePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.-]*$`)
 // LIKE clause on v0_attached_object_references.object_type.
 var objectVersionPattern = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 
+// reasonPattern matches event Reason values, which are Go-identifier
+// CamelCase tokens (e.g. "SuccessfulCreate", "Reconcile_Fail"). Anchored
+// so the value can be safely interpolated into equality and LIKE
+// predicates on v0_events.reason.
+var reasonPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
 // materializedViewThresholdFloor is the minimum total-count above which
 // the event listing spins up a materialized view for cursor pagination.
 // Below the floor (or below limit*10 when the caller asks for larger
@@ -65,6 +71,8 @@ func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventTyp
 // @Param objectversion query string false "narrow objecttypename match to one version (e.g. 'v0')"
 // @Param objectnamespace query string false "narrow objecttypename match to one api namespace (e.g. 'threeport.io')"
 // @Param objectname query string false "filter events by object name (with objecttypename)"
+// @Param reason query string false "filter events by exact Reason match (case-sensitive CamelCase, e.g. 'SuccessfulCreate')"
+// @Param reasonprefix query string false "filter events by Reason prefix (case-sensitive CamelCase, matches Reason values starting with this token)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -101,6 +109,8 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	targetNamespace := c.QueryParam("objectnamespace")
 	targetName := c.QueryParam("objectname")
 	directObjectId := c.QueryParam("objectid")
+	targetReason := c.QueryParam("reason")
+	targetReasonPrefix := c.QueryParam("reasonprefix")
 
 	// validate the narrow-filter tokens that get interpolated into the
 	// AOR object_type LIKE clause below. The regexes reject anything
@@ -114,6 +124,25 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	if targetVersion != "" && !objectVersionPattern.MatchString(targetVersion) {
 		return apiserver_lib.ResponseStatus400(c, pageParams,
 			fmt.Errorf("invalid objectversion %q: expected alphanumeric token", targetVersion),
+			objectType)
+	}
+	// reason and reasonprefix flow into equality / LIKE predicates on
+	// v0_events.reason. The regex restricts the accepted alphabet to
+	// Go-identifier CamelCase tokens so caller text cannot inject SQL
+	// when interpolated into the raw-SQL pagination paths below.
+	if targetReason != "" && targetReasonPrefix != "" {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			errors.New("provide either reason or reasonprefix, not both"),
+			objectType)
+	}
+	if targetReason != "" && !reasonPattern.MatchString(targetReason) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid reason %q: expected CamelCase token", targetReason),
+			objectType)
+	}
+	if targetReasonPrefix != "" && !reasonPattern.MatchString(targetReasonPrefix) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid reasonprefix %q: expected CamelCase token", targetReasonPrefix),
 			objectType)
 	}
 
@@ -246,6 +275,21 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	records := &[]v0.Event{}
 	var returnedCount int64
 
+	// buildReasonRawWhere returns a raw-SQL predicate fragment for the
+	// reason / reasonprefix filter, or ("", false) when neither is set.
+	// Values are pre-validated against reasonPattern above, so they are
+	// safe to interpolate into the returned literal.
+	buildReasonRawWhere := func() (string, bool) {
+		switch {
+		case targetReason != "":
+			return fmt.Sprintf("v0_events.reason = '%s'", targetReason), true
+		case targetReasonPrefix != "":
+			return fmt.Sprintf("v0_events.reason LIKE '%s%%'", targetReasonPrefix), true
+		default:
+			return "", false
+		}
+	}
+
 	// apply the subject filter when ids or a namespace/version filter
 	// were supplied. The id half is the Cartesian product
 	// (object_type IN types AND object_id IN ids) - intentional, so a
@@ -262,6 +306,12 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 		if pattern, active := buildNamespaceVersionPattern(); active {
 			query = query.Where("v0_attached_object_references.object_type LIKE ?", pattern)
+		}
+		if targetReason != "" {
+			query = query.Where("v0_events.reason = ?", targetReason)
+		}
+		if targetReasonPrefix != "" {
+			query = query.Where("v0_events.reason LIKE ?", targetReasonPrefix+"%")
 		}
 		return query
 	}
@@ -347,6 +397,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 					" AND v0_attached_object_references.object_type LIKE '%s'",
 					pattern,
 				)
+			}
+			if reasonFrag, active := buildReasonRawWhere(); active {
+				// pre-validated by reasonPattern, safe to interpolate
+				whereClause += " AND " + reasonFrag
 			}
 
 			// build the join clause once; used by both mode branches
@@ -512,6 +566,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 					" AND v0_attached_object_references.object_type LIKE '%s'",
 					pattern,
 				)
+			}
+			if reasonFrag, active := buildReasonRawWhere(); active {
+				// mirror the first-page reason filter under the same snapshot
+				whereClause += " AND " + reasonFrag
 			}
 			whereClause += fmt.Sprintf(" AND v0_events.id > %d", pageParams.Cursor)
 

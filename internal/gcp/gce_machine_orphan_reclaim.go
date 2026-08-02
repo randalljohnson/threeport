@@ -95,7 +95,7 @@ func newComputeOrphanReclaimCloud(gceInfra *machine.GceMachineInfra) (*computeOr
 	}
 
 	ctx := context.Background()
-	service, err := computev1.NewService(ctx, option.WithScopes(computev1.ComputeScope))
+	service, err := computev1.NewService(ctx, gceInfra.GcpClientOptions(option.WithScopes(computev1.ComputeScope))...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create compute service: %w", err)
 	}

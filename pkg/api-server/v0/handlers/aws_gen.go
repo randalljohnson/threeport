@@ -79,7 +79,9 @@ func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&awsEksKubernetesRuntimeDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&awsEksKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -308,7 +310,9 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingAwsEksKubernetesRuntimeDefinition).Updates(&updatedAwsEksKubernetesRuntimeDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingAwsEksKubernetesRuntimeDefinition).Updates(&updatedAwsEksKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -383,7 +387,9 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error 
 
 	// persist provided data
 	updatedAwsEksKubernetesRuntimeDefinition.ID = existingAwsEksKubernetesRuntimeDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAwsEksKubernetesRuntimeDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAwsEksKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -447,7 +453,9 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.RequestDB(c).Delete(&awsEksKubernetesRuntimeDefinition); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Delete(&awsEksKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -543,7 +551,9 @@ func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&awsEksKubernetesRuntimeInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&awsEksKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -786,7 +796,9 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingAwsEksKubernetesRuntimeInstance).Updates(&updatedAwsEksKubernetesRuntimeInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingAwsEksKubernetesRuntimeInstance).Updates(&updatedAwsEksKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -875,7 +887,9 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedAwsEksKubernetesRuntimeInstance.ID = existingAwsEksKubernetesRuntimeInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAwsEksKubernetesRuntimeInstance); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAwsEksKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -956,7 +970,9 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&awsEksKubernetesRuntimeInstance).Updates(&scheduledAwsEksKubernetesRuntimeInstance); result.Error != nil {
+		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+			return h.RequestDB(c).Model(&awsEksKubernetesRuntimeInstance).Updates(&scheduledAwsEksKubernetesRuntimeInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
@@ -982,7 +998,9 @@ func (h Handler) DeleteAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&awsEksKubernetesRuntimeInstance); result.Error != nil {
+			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+				return h.RequestDB(c).Delete(&awsEksKubernetesRuntimeInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -1080,7 +1098,9 @@ func (h Handler) AddAwsProvider(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&awsProvider); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Create(&awsProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1309,7 +1329,9 @@ func (h Handler) UpdateAwsProvider(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingAwsProvider).Updates(&updatedAwsProvider); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Model(&existingAwsProvider).Updates(&updatedAwsProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1384,7 +1406,9 @@ func (h Handler) ReplaceAwsProvider(c echo.Context) error {
 
 	// persist provided data
 	updatedAwsProvider.ID = existingAwsProvider.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAwsProvider); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedAwsProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -1442,7 +1466,9 @@ func (h Handler) DeleteAwsProvider(c echo.Context) error {
 	}
 
 	// delete object
-	if result := h.RequestDB(c).Delete(&awsProvider); result.Error != nil {
+	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
+		return h.RequestDB(c).Delete(&awsProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError

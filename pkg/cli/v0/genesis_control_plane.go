@@ -722,36 +722,60 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		return uninstaller.cleanOnCreateError("failed to install threeport support services CRDs", err)
 	}
 
-	// create the default compute space kubernetes runtime definition in threeport API
+	// register the default compute space kubernetes runtime definition and
+	// instance in the threeport API. On a fresh install this is always a
+	// create. Under --control-plane-only, tptctl installs onto a cluster
+	// that already exists (either provisioned by tptctl on a prior run or
+	// registered externally), so re-running the create would collide with
+	// the prior registration. Look up by name first: reuse the existing
+	// records when found, create when not. Keeps the operation idempotent
+	// across repeat --control-plane-only invocations while preserving the
+	// original create-only path for fresh installs on every provider.
 	kubernetesRuntimeDefName := provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName)
 	defReconciled := true // this definition for the bootstrap cluster does not require reconcilation
-	kubernetesRuntimeDefinition := v0.KubernetesRuntimeDefinition{
-		Definition: v0.Definition{
-			Name: &kubernetesRuntimeDefName,
-		},
-		Reconciliation: v0.Reconciliation{
-			Reconciled: &defReconciled,
-		},
-		InfraProvider: &cpi.Opts.InfraProvider,
-	}
-	kubernetesRuntimeDefResult, err := client.CreateKubernetesRuntimeDefinition(
-		apiClient,
-		threeportAPIEndpoint,
-		&kubernetesRuntimeDefinition,
-	)
-	if err != nil {
-		return uninstaller.cleanOnCreateError("failed to create new kubernetes runtime definition for default compute space", err)
-	}
+	var kubernetesRuntimeDefResult *v0.KubernetesRuntimeDefinition
+	var kubernetesRuntimeInstResult *v0.KubernetesRuntimeInstance
+	if cpi.Opts.ControlPlaneOnly {
+		kubernetesRuntimeDefResult, kubernetesRuntimeInstResult, err = ensureBootstrapKubernetesRuntime(
+			apiClient,
+			threeportAPIEndpoint,
+			kubernetesRuntimeDefName,
+			kubernetesRuntimeInstName,
+			defReconciled,
+			cpi.Opts.InfraProvider,
+			kubernetesRuntimeInstance,
+		)
+		if err != nil {
+			return uninstaller.cleanOnCreateError("failed to register kubernetes runtime for default compute space", err)
+		}
+	} else {
+		kubernetesRuntimeDefinition := v0.KubernetesRuntimeDefinition{
+			Definition: v0.Definition{
+				Name: &kubernetesRuntimeDefName,
+			},
+			Reconciliation: v0.Reconciliation{
+				Reconciled: &defReconciled,
+			},
+			InfraProvider: &cpi.Opts.InfraProvider,
+		}
+		kubernetesRuntimeDefResult, err = client.CreateKubernetesRuntimeDefinition(
+			apiClient,
+			threeportAPIEndpoint,
+			&kubernetesRuntimeDefinition,
+		)
+		if err != nil {
+			return uninstaller.cleanOnCreateError("failed to create new kubernetes runtime definition for default compute space", err)
+		}
 
-	// create default compute space kubernetes runtime instance in threeport API
-	kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID = kubernetesRuntimeDefResult.ID
-	kubernetesRuntimeInstResult, err := client.CreateKubernetesRuntimeInstance(
-		apiClient,
-		threeportAPIEndpoint,
-		kubernetesRuntimeInstance,
-	)
-	if err != nil {
-		return uninstaller.cleanOnCreateError("failed to create new kubernetes runtime instance for default compute space", err)
+		kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID = kubernetesRuntimeDefResult.ID
+		kubernetesRuntimeInstResult, err = client.CreateKubernetesRuntimeInstance(
+			apiClient,
+			threeportAPIEndpoint,
+			kubernetesRuntimeInstance,
+		)
+		if err != nil {
+			return uninstaller.cleanOnCreateError("failed to create new kubernetes runtime instance for default compute space", err)
+		}
 	}
 
 	// configure control plane with provider-specific details by adding the
@@ -1371,4 +1395,59 @@ func runtimeInstanceName(opts threeport.Options) string {
 	// ThreeportRuntimeName enforces the "threeport-" prefix so every
 	// tptctl-provisioned cluster is discoverable by that convention.
 	return provider.ThreeportRuntimeName(opts.ControlPlaneName)
+}
+
+// ensureBootstrapKubernetesRuntime looks up the bootstrap kubernetes
+// runtime definition and instance by name and creates whichever is
+// missing. Under --control-plane-only, tptctl installs onto a cluster
+// that already exists, so on a repeat run the definition and instance
+// records may already be present from a prior invocation; a plain
+// create would collide on the unique name. Returning the existing
+// records when found lets the caller proceed without failing on the
+// duplicate, and falling through to create when not found covers the
+// first-run case where nothing has been registered yet.
+func ensureBootstrapKubernetesRuntime(
+	apiClient *http.Client,
+	apiEndpoint string,
+	defName string,
+	instName string,
+	defReconciled bool,
+	infraProvider string,
+	kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance,
+) (*v0.KubernetesRuntimeDefinition, *v0.KubernetesRuntimeInstance, error) {
+	// look up the definition; create it when the API reports it missing
+	def, err := client.GetKubernetesRuntimeDefinitionByName(apiClient, apiEndpoint, defName)
+	if err != nil {
+		if !errors.Is(err, client_lib.ErrObjectNotFound) {
+			return nil, nil, fmt.Errorf("failed to look up kubernetes runtime definition by name: %w", err)
+		}
+		newDef := v0.KubernetesRuntimeDefinition{
+			Definition: v0.Definition{
+				Name: &defName,
+			},
+			Reconciliation: v0.Reconciliation{
+				Reconciled: &defReconciled,
+			},
+			InfraProvider: &infraProvider,
+		}
+		def, err = client.CreateKubernetesRuntimeDefinition(apiClient, apiEndpoint, &newDef)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create kubernetes runtime definition: %w", err)
+		}
+	}
+
+	// look up the instance; create it when the API reports it missing
+	inst, err := client.GetKubernetesRuntimeInstanceByName(apiClient, apiEndpoint, instName)
+	if err != nil {
+		if !errors.Is(err, client_lib.ErrObjectNotFound) {
+			return nil, nil, fmt.Errorf("failed to look up kubernetes runtime instance by name: %w", err)
+		}
+		kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID = def.ID
+		inst, err = client.CreateKubernetesRuntimeInstance(apiClient, apiEndpoint, kubernetesRuntimeInstance)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create kubernetes runtime instance: %w", err)
+		}
+	}
+
+	return def, inst, nil
 }

@@ -119,6 +119,9 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestHelmWorkloadInstance tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					helmWorkloadInstance.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestHelmWorkloadInstance = latestObject
 				getLatestErr = err
 			default:
@@ -170,13 +176,26 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of helm workload instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"helm workload instance create deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							helmWorkloadInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile created helm workload instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonCreateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						helmWorkloadInstance.GetId(),
 						helmWorkloadInstance.GetFullyQualifiedType(),
@@ -192,7 +211,7 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						helmWorkloadInstance,
 						customRequeueDelay,
@@ -217,13 +236,26 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of helm workload instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"helm workload instance update deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							helmWorkloadInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile updated helm workload instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						helmWorkloadInstance.GetId(),
 						helmWorkloadInstance.GetFullyQualifiedType(),
@@ -239,7 +271,7 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						helmWorkloadInstance,
 						customRequeueDelay,
@@ -264,13 +296,26 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of helm workload instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"helm workload instance delete deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							helmWorkloadInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted helm workload instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						helmWorkloadInstance.GetId(),
 						helmWorkloadInstance.GetFullyQualifiedType(),
@@ -286,7 +331,7 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						helmWorkloadInstance,
 						customRequeueDelay,
@@ -320,6 +365,19 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 					helmWorkloadInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"helm workload instance deletion already in progress, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							helmWorkloadInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete helm workload instance")
 					r.UnlockAndRequeue(helmWorkloadInstance, requeueDelay, lockReleased, msg)
 					continue
@@ -367,23 +425,25 @@ func HelmWorkloadInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("helm workload instance unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"helm workload instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				helmWorkloadInstance.GetId(),
-				helmWorkloadInstance.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful helm workload instance reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"helm workload instance successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					helmWorkloadInstance.GetId(),
+					helmWorkloadInstance.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful helm workload instance reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

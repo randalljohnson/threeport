@@ -604,6 +604,30 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 	}
 }
 
+// TestDeployInfra_ReportsAllMissingFields asserts the validation collects every
+// missing required field into one error rather than stopping at the first.
+func TestDeployInfra_ReportsAllMissingFields(t *testing.T) {
+	// build an infra missing several required fields at once
+	i := &GceMachineInfra{
+		PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: "validate"},
+		ProjectID:       "p",
+		ImageID:         "img",
+	}
+	// validation runs before any cloud call and returns a single error
+	err := i.DeployInfra()
+	if err == nil {
+		t.Fatal("expected error for multiple missing fields, got nil")
+	}
+	// the one error names every field left empty, not just the first;
+	// NetworkID here is the substring in the "NetworkID or NetworkCIDR" phrasing
+	// the validator uses when neither network field is set
+	for _, field := range []string{"Zone", "MachineType", "SSHUser", "NetworkID"} {
+		if !strings.Contains(err.Error(), field) {
+			t.Errorf("error %q does not name missing field %q", err.Error(), field)
+		}
+	}
+}
+
 // TestDeployInfra_NetworkFieldsExclusive covers the mutually-exclusive rule
 // between NetworkID and NetworkCIDR: neither set is a missing-field error, both
 // set is an exclusivity error, and either one set alone passes validation

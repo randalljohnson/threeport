@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -46,10 +45,12 @@ type adcCredentials struct {
 }
 
 // EnsureGCPAuth prepares GCP credentials for a controller-side caller and never
-// falls back to the interactive browser OAuth flow. It first accepts any valid
-// ambient credentials (Workload Identity in GKE, or a previously configured
-// GOOGLE_APPLICATION_CREDENTIALS file), then, when a service account JSON is
-// provided, writes it to a temp file and points the Google SDK at it.
+// falls back to the interactive browser OAuth flow. When a service account JSON
+// is provided it is checked for validity and nothing else; the caller passes
+// that same JSON to each GCP client per call, which is what keeps two
+// concurrent operations for different service accounts from authenticating as
+// each other. Otherwise any valid ambient credential is accepted, meaning
+// Workload Identity in GKE or user credentials from gcloud auth.
 //
 // When neither an ambient credential nor a service account JSON is available,
 // this returns a descriptive error instead of hanging on the browser flow: a
@@ -77,30 +78,18 @@ func EnsureGCPAuthWithBrowser(serviceAccountCredentials string) error {
 func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	ctx := context.Background()
 
-	// accept any valid ambient credentials first, in this order of preference:
-	// workload identity in gke, user credentials from gcloud auth, or a
-	// previously configured service account key file via GOOGLE_APPLICATION_CREDENTIALS
-	if hasValidGCPCredentials(ctx) {
-		// only increment the ref count when a temp sa file is actually in use.
-		// when workload identity or user adc provided the valid credentials,
-		// gcpCredTempFile is empty and no cleanup pairing is needed.
-		if serviceAccountCredentials != "" {
-			gcpCredMu.Lock()
-			if gcpCredTempFile != "" {
-				gcpCredRefCount++
-			}
-			gcpCredMu.Unlock()
-		}
-		return nil
+	// a service account json wins when provided. confirm it parses and return;
+	// the caller threads the same json into each gcp client per call, so
+	// nothing is stored here. this is the controller path for a controller
+	// running outside gcp.
+	if serviceAccountCredentials != "" {
+		return validateServiceAccountCredentials(ctx, serviceAccountCredentials)
 	}
 
-	// when no ambient credentials exist and a service account json is provided,
-	// write it to a temp file and point the google sdk at it. this is the
-	// controller path for a controller running outside gcp.
-	if serviceAccountCredentials != "" {
-		if err := configureServiceAccountCredentials(serviceAccountCredentials); err != nil {
-			return fmt.Errorf("failed to configure service account credentials: %w", err)
-		}
+	// otherwise accept any valid ambient credentials, in this order of
+	// preference: workload identity in gke, then user credentials from
+	// gcloud auth.
+	if hasValidGCPCredentials(ctx) {
 		return nil
 	}
 
@@ -122,70 +111,23 @@ func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	return nil
 }
 
-// gcpCredMu guards gcpCredTempFile and gcpCredRefCount against concurrent access.
-var gcpCredMu sync.Mutex
-
-// gcpCredTempFile holds the path of any temp credentials file written by
-// configureServiceAccountCredentials so it can be removed when no longer needed.
-var gcpCredTempFile string
-
-// gcpCredRefCount tracks how many concurrent operations are relying on the
-// temp credentials file. The file is removed when this reaches zero.
-var gcpCredRefCount int
-
-// CleanupGCPCredentials decrements the credential ref count and removes the
-// temporary service account key file once all concurrent operations have
-// released it. Each call to EnsureGCPAuth with a non-empty
-// serviceAccountCredentials must be paired with exactly one CleanupGCPCredentials.
-func CleanupGCPCredentials() {
-	gcpCredMu.Lock()
-	defer gcpCredMu.Unlock()
-	if gcpCredRefCount > 0 {
-		gcpCredRefCount--
+// validateServiceAccountCredentials confirms the service account JSON parses
+// into GCP credentials, so malformed JSON or an unsupported credential type
+// fails here with a clear error rather than deep inside the first cloud call.
+// It is the same parse the per-call client options perform, so anything it
+// accepts the clients accept. Note that it does not reach the private key:
+// a well-formed document holding a corrupt key still fails later, at the
+// first token request.
+//
+// It deliberately stores nothing. Credentials reach the Google SDK as a
+// per-call option built from this same JSON, so two concurrent operations for
+// different service accounts stay independent. Writing the key to a temp file
+// and exporting GOOGLE_APPLICATION_CREDENTIALS would reintroduce exactly the
+// process-global both operations raced on.
+func validateServiceAccountCredentials(ctx context.Context, credentialsJSON string) error {
+	if _, err := google.CredentialsFromJSON(ctx, []byte(credentialsJSON), GcpOAuthScopes...); err != nil {
+		return fmt.Errorf("failed to parse service account credentials: %w", err)
 	}
-	if gcpCredRefCount == 0 && gcpCredTempFile != "" {
-		os.Remove(gcpCredTempFile)
-		os.Unsetenv("GOOGLE_APPLICATION_CREDENTIALS")
-		gcpCredTempFile = ""
-	}
-}
-
-// configureServiceAccountCredentials writes the service account JSON to a
-// temporary file and sets the GOOGLE_APPLICATION_CREDENTIALS environment
-// variable to point to it. The file must persist for the process lifetime
-// since the Google SDK reads it on every token refresh; call
-// CleanupGCPCredentials at shutdown to remove it.
-func configureServiceAccountCredentials(credentialsJSON string) error {
-	tmpFile, err := os.CreateTemp("", "gcp-sa-*.json")
-	if err != nil {
-		return fmt.Errorf("failed to create temp credentials file: %w", err)
-	}
-
-	if _, err := tmpFile.WriteString(credentialsJSON); err != nil {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
-		return fmt.Errorf("failed to write credentials to temp file: %w", err)
-	}
-
-	if err := tmpFile.Close(); err != nil {
-		os.Remove(tmpFile.Name())
-		return fmt.Errorf("failed to close temp credentials file: %w", err)
-	}
-
-	gcpCredMu.Lock()
-	if gcpCredTempFile != "" {
-		// Another goroutine registered credentials while we were writing the
-		// file — discard ours and reuse the existing one to avoid orphaning
-		// a file containing key material.
-		os.Remove(tmpFile.Name())
-		gcpCredRefCount++
-		gcpCredMu.Unlock()
-		return nil
-	}
-	gcpCredTempFile = tmpFile.Name()
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", tmpFile.Name())
-	gcpCredRefCount++
-	gcpCredMu.Unlock()
 	return nil
 }
 

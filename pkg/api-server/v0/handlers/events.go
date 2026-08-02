@@ -146,21 +146,6 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			objectType)
 	}
 
-	// validate the narrow-filter tokens that get interpolated into the
-	// AOR object_type LIKE clause below. The regexes reject anything
-	// outside the DNS-like namespace / alphanumeric-version shape so
-	// caller-supplied text cannot inject SQL.
-	if targetNamespace != "" && !objectNamespacePattern.MatchString(targetNamespace) {
-		return apiserver_lib.ResponseStatus400(c, pageParams,
-			fmt.Errorf("invalid objectnamespace %q: expected DNS-like value", targetNamespace),
-			objectType)
-	}
-	if targetVersion != "" && !objectVersionPattern.MatchString(targetVersion) {
-		return apiserver_lib.ResponseStatus400(c, pageParams,
-			fmt.Errorf("invalid objectversion %q: expected alphanumeric token", targetVersion),
-			objectType)
-	}
-
 	var ids []uint
 	var fullyQualifiedTypes []string
 

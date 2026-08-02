@@ -2,8 +2,6 @@ module github.com/threeport/threeport
 
 go 1.26.4
 
-toolchain go1.24.6
-
 require (
 	cloud.google.com/go/container v1.45.0
 	github.com/aws/aws-sdk-go-v2 v1.34.0

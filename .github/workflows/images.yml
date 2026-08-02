@@ -6,7 +6,7 @@
 # `mage release:dev | rc | ga` synthesizes the tag and pushes it, which
 # fires both this workflow (component images) and release.yml (the
 # tptctl + threeport-sdk binaries). Dev commits don't build images on
-# their own — that's deliberate: per-commit image builds were redundant
+# their own, and that is deliberate: per-commit image builds were redundant
 # with the per-tag build, and untagged snapshot images had nobody pinning
 # them. Use `mage release:dev` to mint a snapshot when you need it.
 #

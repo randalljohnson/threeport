@@ -561,6 +561,214 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	)
 	f.Line()
 
+	// emit prior module-name aliases so a rename can be self-healed instead of
+	// orphaning the old module_api row
+	priorNameValues := make([]Code, 0, len(sdkConfig.PriorModuleNames))
+	for _, prior := range sdkConfig.PriorModuleNames {
+		priorNameValues = append(priorNameValues, Lit(prior))
+	}
+	f.Var().Id("priorModuleNames").Op("=").Index().String().Values(priorNameValues...)
+	f.Line()
+
+	// resolveModuleApi looks up the module API by its current name, then by any
+	// declared prior name so a rename lands in place. Emitted as a helper so the
+	// registration entrypoint stays flat.
+	f.Comment("resolveModuleApi looks up the module API by its current name; when not")
+	f.Comment("found, it falls back to any prior name declared in the SDK config and")
+	f.Comment("renames the existing record in place so its controller and object rows")
+	f.Comment("are not orphaned.")
+	f.Func().Id("resolveModuleApi").Params(
+		Id("tpApiClient").Op("*").Qual("net/http", "Client"),
+		Id("tpApiAddr").String(),
+		Id("moduleApiEndpoint").String(),
+	).Params(
+		Op("*").Qual("github.com/threeport/threeport/pkg/api/v0", "ModuleApi"),
+		Bool(),
+		Error(),
+	).Block(
+		List(Id("existingModApi"), Id("err")).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/client/v0",
+			"GetModuleApiByName",
+		).Call(
+			Id("tpApiClient"),
+			Id("tpApiAddr"),
+			Id("moduleName"),
+		),
+		If(Id("err").Op("==").Nil()).Block(
+			Qual("log", "Printf").Call(
+				Lit("register-module: found module api under current name %q"),
+				Id("moduleName"),
+			),
+			Return(Id("existingModApi"), False(), Nil()),
+		),
+		If(Op("!").Qual("errors", "Is").Call(
+			Id("err"),
+			Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrObjectNotFound"),
+		)).Block(
+			Return(Nil(), False(), Qual("fmt", "Errorf").Call(
+				Lit("failed to check for existing module API: %w"),
+				Id("err"),
+			)),
+		),
+		Line(),
+		For(List(Id("_"), Id("priorName")).Op(":=").Range().Id("priorModuleNames")).Block(
+			Qual("log", "Printf").Call(
+				Lit("register-module: looking up module api by prior name %q"),
+				Id("priorName"),
+			),
+			List(Id("priorApi"), Id("priorErr")).Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/client/v0",
+				"GetModuleApiByName",
+			).Call(
+				Id("tpApiClient"),
+				Id("tpApiAddr"),
+				Id("priorName"),
+			),
+			If(Id("priorErr").Op("!=").Nil()).Block(
+				If(Qual("errors", "Is").Call(
+					Id("priorErr"),
+					Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrObjectNotFound"),
+				)).Block(
+					Continue(),
+				),
+				Return(Nil(), False(), Qual("fmt", "Errorf").Call(
+					Lit("failed to look up module api by prior name %q: %w"),
+					Id("priorName"),
+					Id("priorErr"),
+				)),
+			),
+			Qual("log", "Printf").Call(
+				Lit("register-module: found module api under prior name %q; renaming to %q"),
+				Id("priorName"),
+				Id("moduleName"),
+			),
+			Id("priorApi").Dot("Name").Op("=").Qual(
+				"github.com/threeport/threeport/pkg/util/v0",
+				"Ptr",
+			).Call(Id("moduleName")),
+			Id("priorApi").Dot("Endpoint").Op("=").Qual(
+				"github.com/threeport/threeport/pkg/util/v0",
+				"Ptr",
+			).Call(Id("moduleApiEndpoint")),
+			Id("priorApi").Dot("ApiNamespace").Op("=").Qual(
+				"github.com/threeport/threeport/pkg/util/v0",
+				"Ptr",
+			).Call(Qual(
+				fmt.Sprintf("%s/pkg/api/v0", gen.ModulePath),
+				"ApiNamespace",
+			)),
+			List(Id("renamed"), Id("upErr")).Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/client/v0",
+				"UpdateModuleApi",
+			).Call(
+				Id("tpApiClient"),
+				Id("tpApiAddr"),
+				Id("priorApi"),
+			),
+			If(Id("upErr").Op("!=").Nil()).Block(
+				Return(Nil(), False(), Qual("fmt", "Errorf").Call(
+					Lit("failed to rename module api from %q to %q: %w"),
+					Id("priorName"),
+					Id("moduleName"),
+					Id("upErr"),
+				)),
+			),
+			Return(Id("renamed"), False(), Nil()),
+		),
+		Line(),
+		Return(Nil(), True(), Nil()),
+	)
+	f.Line()
+
+	// upsertModuleController creates the module controller under the current
+	// module API and self-heals a rename orphan when the controller name is
+	// already taken by a row bound to a different module API.
+	f.Comment("upsertModuleController creates the module controller. When the create")
+	f.Comment("hits a name conflict, it looks up the existing row by name alone and, if")
+	f.Comment("that row points at a different module_api_id, updates it to the current")
+	f.Comment("one so a renamed module reclaims its controller instead of colliding.")
+	f.Func().Id("upsertModuleController").Params(
+		Id("tpApiClient").Op("*").Qual("net/http", "Client"),
+		Id("tpApiAddr").String(),
+		Id("controller").Op("*").Qual("github.com/threeport/threeport/pkg/api/v0", "ModuleController"),
+		Id("moduleApiID").Op("*").Uint(),
+	).Params(
+		Op("*").Qual("github.com/threeport/threeport/pkg/api/v0", "ModuleController"),
+		Error(),
+	).Block(
+		List(Id("created"), Id("createErr")).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/client/v0",
+			"CreateModuleController",
+		).Call(
+			Id("tpApiClient"),
+			Id("tpApiAddr"),
+			Id("controller"),
+		),
+		If(Id("createErr").Op("==").Nil()).Block(
+			Return(Id("created"), Nil()),
+		),
+		If(Op("!").Qual("errors", "Is").Call(
+			Id("createErr"),
+			Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
+		)).Block(
+			Return(Nil(), Id("createErr")),
+		),
+		Line(),
+		Qual("log", "Printf").Call(
+			Lit("register-module: controller %q create hit conflict; checking for rename orphan"),
+			Op("*").Id("controller").Dot("Name"),
+		),
+		List(Id("existing"), Id("lookupErr")).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/client/v0",
+			"GetModuleControllerByName",
+		).Call(
+			Id("tpApiClient"),
+			Id("tpApiAddr"),
+			Op("*").Id("controller").Dot("Name"),
+		),
+		If(Id("lookupErr").Op("!=").Nil()).Block(
+			Return(Nil(), Qual("fmt", "Errorf").Call(
+				Lit("failed to look up conflicting controller %q by name: %w"),
+				Op("*").Id("controller").Dot("Name"),
+				Id("lookupErr"),
+			)),
+		),
+		If(Id("existing").Dot("ModuleApiID").Op("!=").Nil().Op("&&").
+			Op("*").Id("existing").Dot("ModuleApiID").Op("==").Op("*").Id("moduleApiID")).Block(
+			Qual("log", "Printf").Call(
+				Lit("register-module: controller %q already bound to current module api %d"),
+				Op("*").Id("controller").Dot("Name"),
+				Op("*").Id("moduleApiID"),
+			),
+			Return(Id("existing"), Nil()),
+		),
+		Qual("log", "Printf").Call(
+			Lit("register-module: rebinding controller %q from module api %v to %d"),
+			Op("*").Id("controller").Dot("Name"),
+			Id("existing").Dot("ModuleApiID"),
+			Op("*").Id("moduleApiID"),
+		),
+		Id("existing").Dot("ModuleApiID").Op("=").Id("moduleApiID"),
+		Id("existing").Dot("DeploymentName").Op("=").Id("controller").Dot("DeploymentName"),
+		List(Id("updated"), Id("upErr")).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/client/v0",
+			"UpdateModuleController",
+		).Call(
+			Id("tpApiClient"),
+			Id("tpApiAddr"),
+			Id("existing"),
+		),
+		If(Id("upErr").Op("!=").Nil()).Block(
+			Return(Nil(), Qual("fmt", "Errorf").Call(
+				Lit("failed to rebind controller %q to current module api: %w"),
+				Op("*").Id("controller").Dot("Name"),
+				Id("upErr"),
+			)),
+		),
+		Return(Id("updated"), Nil()),
+	)
+	f.Line()
+
 	// Generate RegisterModule function
 	f.Comment("RegisterModule calls the Threeport API to register the module with core Threeport.")
 	f.Comment("This ensures that module object requests are proxied to the module API by the")
@@ -572,59 +780,54 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Line().Id("moduleNamespace").String(),
 		Line(),
 	).Error().BlockFunc(func(g *Group) {
-		g.Comment("check to see if module is already registered")
-		g.List(Id("existingModApi"), Id("err")).Op(":=").Qual(
-			"github.com/threeport/threeport/pkg/client/v0",
-			"GetModuleApiByName",
-		).Call(
+		g.Comment("resolve the module API by current name, falling back to any prior")
+		g.Comment("names so a rename is healed in place rather than orphaning the row")
+		g.List(Id("existingModApi"), Id("createFresh"), Id("err")).Op(":=").Id("resolveModuleApi").Call(
 			Id("tpApiClient"),
 			Id("tpApiAddr"),
-			Id("moduleName"),
+			Id("moduleApiEndpoint"),
 		)
 		g.If(Id("err").Op("!=").Nil()).Block(
-			If(Qual("errors", "Is").Call(Id("err"), Qual(
-				"github.com/threeport/threeport/pkg/client/lib/v0",
-				"ErrObjectNotFound",
-			))).Block(
-				Comment("register the module in the Threeport API with the ModuleApi object"),
-				Id("moduleApi").Op(":=").Qual(
-					"github.com/threeport/threeport/pkg/api/v0",
-					"ModuleApi",
-				).Values(Dict{
-					Id("Endpoint"): Qual(
-						"github.com/threeport/threeport/pkg/util/v0",
-						"Ptr",
-					).Call(Id("moduleApiEndpoint")),
-					Id("Name"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("moduleName")),
-					Id("ApiNamespace"): Qual(
-						"github.com/threeport/threeport/pkg/util/v0",
-						"Ptr",
-					).Call(Qual(
-						fmt.Sprintf("%s/pkg/api/v0", gen.ModulePath),
-						"ApiNamespace",
-					)),
-				}),
-				List(Id("createdModApi"), Id("err")).Op(":=").Qual(
-					"github.com/threeport/threeport/pkg/client/v0",
-					"CreateModuleApi",
-				).Call(
-					Id("tpApiClient"),
-					Id("tpApiAddr"),
-					Op("&").Id("moduleApi"),
-				),
-				If(Id("err").Op("!=").Nil()).Block(
-					Return(Qual("fmt", "Errorf").Call(
-						Lit("failed to create module API object in Threeport API: %w"),
-						Id("err"),
-					)),
-				),
-				Id("existingModApi").Op("=").Id("createdModApi"),
-			).Else().Block(
+			Return(Id("err")),
+		)
+		g.If(Id("createFresh")).Block(
+			Comment("register the module in the Threeport API with the ModuleApi object"),
+			Qual("log", "Printf").Call(
+				Lit("register-module: no existing module api under current or prior names; creating %q"),
+				Id("moduleName"),
+			),
+			Id("moduleApi").Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/api/v0",
+				"ModuleApi",
+			).Values(Dict{
+				Id("Endpoint"): Qual(
+					"github.com/threeport/threeport/pkg/util/v0",
+					"Ptr",
+				).Call(Id("moduleApiEndpoint")),
+				Id("Name"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("moduleName")),
+				Id("ApiNamespace"): Qual(
+					"github.com/threeport/threeport/pkg/util/v0",
+					"Ptr",
+				).Call(Qual(
+					fmt.Sprintf("%s/pkg/api/v0", gen.ModulePath),
+					"ApiNamespace",
+				)),
+			}),
+			List(Id("createdModApi"), Id("createErr")).Op(":=").Qual(
+				"github.com/threeport/threeport/pkg/client/v0",
+				"CreateModuleApi",
+			).Call(
+				Id("tpApiClient"),
+				Id("tpApiAddr"),
+				Op("&").Id("moduleApi"),
+			),
+			If(Id("createErr").Op("!=").Nil()).Block(
 				Return(Qual("fmt", "Errorf").Call(
-					Lit("failed to check for existing module API: %w"),
-					Id("err"),
+					Lit("failed to create module API object in Threeport API: %w"),
+					Id("createErr"),
 				)),
 			),
+			Id("existingModApi").Op("=").Id("createdModApi"),
 		)
 
 		for _, objGroup := range gen.ApiObjectGroups {

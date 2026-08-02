@@ -34,6 +34,10 @@ var (
 	eventsType       string
 )
 
+const (
+	eventShortAlias = "ev"
+)
+
 // topLevelObjectKinds lists the core API type names considered
 // top-level for the --top-level filter. Sub-object types
 // (GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance,
@@ -70,7 +74,7 @@ var topLevelObjectKinds = map[string]bool{
 
 // GetEventsCmd represents the command 'tptctl get events'
 var GetEventsCmd = &cobra.Command{
-	Aliases: []string{"event"},
+	Aliases: []string{"event", eventShortAlias},
 	Example: `  # get all events
   tptctl get events
 

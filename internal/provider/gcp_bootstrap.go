@@ -119,7 +119,7 @@ func (i *KubernetesRuntimeInfraGKE) createGCPServiceAccount(iamService *iam.Serv
 	displayName := fmt.Sprintf(serviceAccountDisplayFormat, i.RuntimeInstanceName)
 	description := fmt.Sprintf("Service account for Threeport instance %s to manage GCP resources", i.RuntimeInstanceName)
 
-	account, err := createServiceAccountForProject(iamService, i.ProjectID, serviceAccountID, displayName, description)
+	account, _, err := createServiceAccountForProject(iamService, i.ProjectID, serviceAccountID, displayName, description)
 	if err != nil {
 		return err
 	}
@@ -462,17 +462,27 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 	displayName := fmt.Sprintf(serviceAccountDisplayFormat, accountName)
 	description := fmt.Sprintf("Service account for Threeport GcpProvider %s to manage GCP resources", accountName)
 
-	account, err := createServiceAccountForProject(iamService, projectID, serviceAccountID, displayName, description)
+	account, existed, err := createServiceAccountForProject(iamService, projectID, serviceAccountID, displayName, description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create service account: %w", err)
 	}
 
-	// Grant IAM roles to the service account
+	// grant IAM roles to the service account
 	if err := grantServiceAccountRolesForProject(crmService, projectID, account.Email); err != nil {
 		return nil, fmt.Errorf("failed to grant IAM roles: %w", err)
 	}
 
-	// Create and export a key for the service account
+	// when reusing an existing service account, prune stale user-managed keys
+	// before minting a new one; GCP caps a service account at ten user-managed
+	// keys, and rerunning tptctl against a long-lived account would otherwise
+	// exhaust the quota
+	if existed {
+		if err := pruneUserManagedServiceAccountKeys(iamService, projectID, account.Email); err != nil {
+			return nil, fmt.Errorf("failed to prune stale service account keys: %w", err)
+		}
+	}
+
+	// create and export a key for the service account
 	keyRequest := &iam.CreateServiceAccountKeyRequest{
 		PrivateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
 	}
@@ -543,33 +553,34 @@ func DeleteGCPServiceAccountWithKey(projectID, accountName string) error {
 	return nil
 }
 
-// createServiceAccountForProject creates a GCP service account in the specified project.
-// This is the common implementation used by both the KubernetesRuntimeInfraGKE method
-// and the standalone CreateGCPServiceAccountWithKey function.
+// createServiceAccountForProject creates a GCP service account in the specified
+// project, or returns the existing one when it is already present. The returned
+// bool reports whether the service account already existed (true) versus was
+// created by this call (false), so the caller can decide whether to prune stale
+// user-managed keys before issuing a fresh key.
 func createServiceAccountForProject(
 	iamService *iam.Service,
 	projectID string,
 	serviceAccountID string,
 	displayName string,
 	description string,
-) (*iam.ServiceAccount, error) {
+) (*iam.ServiceAccount, bool, error) {
 	serviceAccountEmail := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", serviceAccountID, projectID)
 	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
 
-	// Check if service account already exists
+	// check if service account already exists
 	existingAccount, err := iamService.Projects.ServiceAccounts.Get(serviceAccountResource).Do()
 	if err == nil {
-		// Service account exists, return it
 		fmt.Printf("Using existing GCP service account: %s\n", existingAccount.Email)
-		return existingAccount, nil
+		return existingAccount, true, nil
 	}
 
-	// Check if error is "not found" - if so, create the account
+	// only "not found" is a signal to create; other errors are fatal
 	if !isNotFoundError(err) {
-		return nil, fmt.Errorf("failed to check for existing service account: %w", err)
+		return nil, false, fmt.Errorf("failed to check for existing service account: %w", err)
 	}
 
-	// Create new service account
+	// create a new service account
 	createRequest := &iam.CreateServiceAccountRequest{
 		AccountId: serviceAccountID,
 		ServiceAccount: &iam.ServiceAccount{
@@ -583,12 +594,58 @@ func createServiceAccountForProject(
 		createRequest,
 	).Do()
 	if err != nil {
-		return nil, wrapIAMServiceAccountCreateError(projectID, err)
+		return nil, false, wrapIAMServiceAccountCreateError(projectID, err)
 	}
 
 	fmt.Printf("Created GCP service account: %s\n", account.Email)
 
-	return account, nil
+	return account, false, nil
+}
+
+// pruneUserManagedServiceAccountKeys deletes every user-managed key on the given
+// service account so a fresh key can be minted below the ten-key GCP quota.
+// System-managed keys are skipped because Google rotates them and the delete
+// call would fail. The IDs of the pruned keys are logged for audit.
+func pruneUserManagedServiceAccountKeys(iamService *iam.Service, projectID, serviceAccountEmail string) error {
+	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
+
+	// list only user-managed keys; system-managed keys stay untouched
+	keys, err := iamService.Projects.ServiceAccounts.Keys.List(serviceAccountResource).
+		KeyTypes("USER_MANAGED").
+		Do()
+	if err != nil {
+		return fmt.Errorf("failed to list service account keys: %w", err)
+	}
+
+	prunedIDs := make([]string, 0, len(keys.Keys))
+	for _, key := range keys.Keys {
+		// double-guard the key type in case a filter regression slips a system key through
+		if key.KeyType == "SYSTEM_MANAGED" {
+			continue
+		}
+
+		if _, err := iamService.Projects.ServiceAccounts.Keys.Delete(key.Name).Do(); err != nil {
+			return fmt.Errorf("failed to delete service account key %s: %w", key.Name, err)
+		}
+
+		// the key resource name is projects/.../serviceAccounts/.../keys/<id>; report the id tail for auditing
+		keyID := key.Name
+		if idx := strings.LastIndex(keyID, "/"); idx != -1 {
+			keyID = keyID[idx+1:]
+		}
+		prunedIDs = append(prunedIDs, keyID)
+	}
+
+	if len(prunedIDs) > 0 {
+		util.CliOutputInfo(fmt.Sprintf(
+			"Pruned %d user-managed key(s) from existing GCP service account %s: %s",
+			len(prunedIDs),
+			serviceAccountEmail,
+			strings.Join(prunedIDs, ", "),
+		))
+	}
+
+	return nil
 }
 
 // removeServiceAccountRolesForProject removes all IAM roles granted to a service account.

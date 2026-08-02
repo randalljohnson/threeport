@@ -20,6 +20,7 @@ import (
 
 	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	"github.com/threeport/threeport/internal/provider"
+	"github.com/threeport/threeport/internal/version"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
@@ -141,6 +142,16 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 
 	if a.ControlPlaneImageTag != "" {
 		cpi.SetAllImageTags(a.ControlPlaneImageTag)
+	} else if a.ControlPlaneImageRepo == threeport.DevImageNamespace && os.Getenv("GITHUB_ACTIONS") == "" {
+		// local dev against the local registry: match the sha-suffixed tag the
+		// local image build produced so the deployment references the exact
+		// commit built rather than the mutable base tag. gated on being outside
+		// CI so the CI install path keeps its existing tag behavior unchanged.
+		devTag, err := util.ResolveImageTag(version.GetVersion())
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve dev image tag: %w", err)
+		}
+		cpi.SetAllImageTags(devTag)
 	}
 
 	cpi.Opts.AuthEnabled = a.AuthEnabled

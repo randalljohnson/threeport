@@ -592,7 +592,7 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 											Lit("cockroach sql --certs-dir=/etc/threeport/db-certs --host crdb.%s.svc.cluster.local --port 26257 -f /etc/threeport/db-create/db.sql"),
 											Id("i").Dot("ThreeportNamespace"),
 										).Op(",").Line()),
-									Lit("image"):           Lit("cockroachdb/cockroach:v23.1.14"),
+									Lit("image"):           Lit("docker.io/cockroachdb/cockroach:v23.1.14"),
 									Lit("imagePullPolicy"): Id("i").Dot("getImagePullPolicy").Call(),
 									Lit("name"):            Lit("db-init"),
 									Lit("volumeMounts"): Index().Interface().Values(

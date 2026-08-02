@@ -148,7 +148,6 @@ Use --wide to widen the MESSAGE column to the terminal width so long notes rende
 
 AGE column: a single value is the event's age; a "first..last" span (e.g. 1h5m..1h4m) means the event was first observed at "first" ago and last observed at "last" ago.
 
-
 Full event notes (including captured script stdout/stderr) can be viewed with -o yaml.`,
 	PreRun: CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {

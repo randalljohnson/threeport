@@ -197,10 +197,18 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						).Op(",").Op("*").Id("notifPayload")),
 					))
 
-					// update notifications
-					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required")
+					// update notifications: publish only when the incoming update
+					// actually changed a reconciliation-relevant field, so idempotent
+					// patches do not retrigger the controller in a tight loop
+					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and reconciliation state changed")
 					notifyControllersUpdateHandler.Line()
-					notifyControllersUpdateHandler.If(Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Block(
+					notifyControllersUpdateHandler.If(Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("!=").Nil().Op("&&").Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("&&").Qual(
+						"github.com/threeport/threeport/pkg/api/v0",
+						"ReconciliationStateChanged",
+					).Call(
+						Id("prevReconciliation"),
+						Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation"),
+					).Block(
 						Id("notifPayload").Op(",").Id("err").Op(":=").Id(
 							fmt.Sprintf("existing%s", apiObject.TypeName),
 						).Dot("NotificationPayload").Call(
@@ -1630,6 +1638,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 						}),
 					)
+					if apiObject.Reconciler {
+						g.Line()
+						g.Comment("snapshot reconciliation state before update so the notify block")
+						g.Comment("can skip publishing when the update did not touch any state marker")
+						g.Id("prevReconciliation").Op(":=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation")
+					}
 					g.Line()
 					g.Comment("update object in database")
 					g.If(
@@ -1961,6 +1975,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Id("err").Dot("Error").Call()).Op(",").Id("objectType")))
 						}),
 					)
+					if apiObject.Reconciler {
+						g.Line()
+						g.Comment("snapshot reconciliation state before replace so the notify block")
+						g.Comment("can skip publishing when the replace did not touch any state marker")
+						g.Id("prevReconciliation").Op(":=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation")
+					}
 					g.Line()
 					g.Comment("persist provided data")
 					g.Id(fmt.Sprintf("updated%s", apiObject.TypeName)).Dot("ID").Op("=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("ID")
@@ -2058,6 +2078,8 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Id("c").Op(",").Nil().Op(",").Id("result").Dot("Error").Op(",").Id("objectType")))
 						}),
 					)
+					g.Line()
+					g.Add(notifyControllersUpdateHandler)
 					g.Line()
 					g.Id("response").Op(",").Id("err").Op(":=").Qual(
 						"github.com/threeport/threeport/pkg/api-server/lib/v0",

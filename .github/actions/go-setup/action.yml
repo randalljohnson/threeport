@@ -21,8 +21,12 @@ runs:
     # Free runner disk so a full Go build does not run out of space. The fast
     # removals (tool cache, Android, .NET, Haskell, Docker images) clear
     # tens of GB in seconds; large-packages is disabled because purging apt
-    # packages adds minutes for little extra room a Go build needs.
+    # packages adds minutes for little extra room a Go build needs. Skipped
+    # when CI_RUNS_ON is set (self-hosted): self-hosted runners ship without
+    # the preinstalled bulk this purges, and docker-images=true would
+    # `docker rmi` against the shared dind layer cache.
     - name: Free disk space
+      if: vars.CI_RUNS_ON == ''
       uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
       with:
         tool-cache: true
@@ -34,7 +38,7 @@ runs:
         swap-storage: false   # keep swap so a tight runner has an oom cushion
 
     # go-version-file reads the version from the caller repo's go.mod (resolved
-    # against the workspace root after checkout)
+    # against the workspace root after checkout).
     - name: Set up Go
       uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
       with:
@@ -46,8 +50,12 @@ runs:
     # version on purpose: Go's build cache already keys every compiled action on
     # the compiler version and its inputs, so it reuses what is still valid and
     # recompiles the rest. Letting Go own invalidation avoids a stale token
-    # someone must bump.
+    # someone must bump. Skipped when CI_RUNS_ON is set (self-hosted): the
+    # runner pod already mounts GOCACHE / GOMODCACHE on a per-node hostPath
+    # that persists across runs, so a GitHub-side cache round-trip is pure
+    # overhead.
     - name: Cache Go build + module dirs
+      if: vars.CI_RUNS_ON == ''
       uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
       with:
         path: |

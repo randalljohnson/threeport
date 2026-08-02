@@ -26,7 +26,7 @@ permissions:
 jobs:
   unit-tests:
     name: Unit Tests
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     steps:
     - name: Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -48,7 +48,7 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     env:
       # target the local registry for both the image build and the install
       # step; mage self-derives the base tag (no per-arch suffix), so build and
@@ -84,3 +84,11 @@ jobs:
 
     - name: Integration tests
       run: mage test:integration
+
+    # Always run: tear down the kind cluster + tptctl state + local registry
+    # so a failed run doesn't leave orphaned containers/networks in the
+    # shared /opt/dind-storage hostPath that would trip the next run on the
+    # same node with a "node(s) already exist for a cluster" error.
+    - name: Teardown
+      if: always()
+      run: mage ci:teardown

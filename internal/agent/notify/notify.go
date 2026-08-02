@@ -112,7 +112,7 @@ func Notify(
 			// notif received on channel
 			// add operation details received from resource watch if
 			// applicable
-			// Note: when the workload instance type is "HelmWorkloadInstance"
+			// Note: when the kubernetes workload instance type is "HelmWorkloadInstance"
 			// we discard this operation since helm workloads have no equivalent
 			// of a KubernetesWorkloadResourceInstance in which to store this info in
 			// Threeport. If we want to capture this info, we'll need to add

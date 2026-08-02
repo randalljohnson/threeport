@@ -356,9 +356,6 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			returnedCount = int64(len(*records))
 
 		case true:
-			// large result set: discard the probe fetch and rebuild
-			// through the pagination-mode path for stable pagination
-			*records = (*records)[:0]
 			// large result set: pin a snapshot so subsequent cursor
 			// pages see the same rows even under concurrent writes.
 			// the two modes are peers: MV materializes the join into a

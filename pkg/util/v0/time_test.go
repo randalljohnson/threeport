@@ -66,7 +66,12 @@ func TestGetAgeFormatted(t *testing.T) {
 		age  time.Duration
 		want string
 	}{
+		{"zero renders as 0s", 0, "0s"},
+		{"sub-minute renders raw seconds", 45 * time.Second, "45s"},
+		{"whole minute drops trailing 0s", 60 * time.Second, "1m"},
+		{"minute plus seconds keeps both", 65 * time.Second, "1m5s"},
 		{"<hour keeps seconds", 5*time.Minute + 23*time.Second, "5m23s"},
+		{"hour plus minutes unchanged", 1*time.Hour + 5*time.Minute, "1h5m"},
 		{"hours only when minutes=0", 2 * time.Hour, "2h"},
 		{"hours+minutes when minutes>0", 2*time.Hour + 15*time.Minute, "2h15m"},
 		{"days only when hours=0", 3 * 24 * time.Hour, "3d"},

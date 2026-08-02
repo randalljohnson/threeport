@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -13,8 +14,8 @@ import (
 	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
-	api "github.com/threeport/threeport/pkg/api/v0"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	api "github.com/threeport/threeport/pkg/api/v0"
 	sdk "github.com/threeport/threeport/pkg/sdk/v0"
 	sdkutil "github.com/threeport/threeport/pkg/sdk/v0/util"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -57,6 +58,17 @@ type Generator struct {
 	// per-struct effective-key set.
 	// Shape: typeName -> fieldName -> tagKey -> tagValue.
 	EmbedTypes map[string]map[string]map[string]string
+
+	// RelationshipDependencies maps each API type to the API types its table's
+	// foreign-key columns reference, following where gorm places those columns:
+	// a has-many slice keys the child, a belongs-to association keys the owning
+	// struct, and a bare key column with no association field adds no edge.
+	// Built by scanning every model source file, so it captures types whose
+	// associations do not land in any ApiObjectGroup's StructTags (route-excluded
+	// types and types split into auxiliary source files). The migration sort
+	// reads this to order referenced tables ahead of referencing tables.
+	// Shape: referencingType -> []referencedType.
+	RelationshipDependencies map[string][]string
 }
 
 // GlobalVersionConfig contains all API versions for which code is being
@@ -439,6 +451,21 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 		}
 	}
 
+	//////////////// populate Generator.RelationshipDependencies ////////////////
+	// scan every model source file per version so the foreign-key dependency
+	// graph captures route-excluded types and types split into auxiliary
+	// files, which never reach any ApiObjectGroup's StructTags
+	g.RelationshipDependencies = map[string][]string{}
+	for version := range versionObjMap {
+		versionDeps, err := parseRelationshipDependencies(filepath.Join("pkg", "api", version))
+		if err != nil {
+			return fmt.Errorf("failed to parse relationship dependencies for version %s: %w", version, err)
+		}
+		for typeName, referenced := range versionDeps {
+			g.RelationshipDependencies[typeName] = referenced
+		}
+	}
+
 	/////////////////// populate Generator.ApiObjectGroups /////////////////////
 	for _, apiObjectGroup := range sdkConfig.ApiObjectConfig.ApiObjectGroups {
 		filename := fmt.Sprintf("%s.go", *apiObjectGroup.Name)
@@ -574,16 +601,14 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 				return apiObjects[i].TypeName < apiObjects[j].TypeName
 			})
 
-			// inspect source code
-			filepath := filepath.Join("pkg", "api", version, filename)
-			fset := token.NewFileSet()
-			pf, err := parser.ParseFile(fset, filepath, nil, parser.ParseComments|parser.AllErrors)
-			if err != nil {
-				return fmt.Errorf("failed to parse source code file: %w", err)
+			// set of this group's object names, used to attribute tags from
+			// model files other than the group file: a group object declared in
+			// its own source file contributes its tags, while unrelated types in
+			// the version directory are skipped
+			groupObjectNames := make(map[string]bool)
+			for _, c := range apiObjects {
+				groupObjectNames[c.TypeName] = true
 			}
-
-			// create a comment map to associate comments with AST nodes
-			commentMap := ast.NewCommentMap(fset, pf, pf.Comments)
 
 			// determine which objects must be reconciled and build a map
 			// of struct tags for each object
@@ -593,97 +618,145 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			// can flatten embedded fields into the collision check
 			structEmbeds := make(map[string][]string)
 
-			// inspect the syntax tree for the object models
-			for _, node := range pf.Decls {
-				switch node.(type) {
-				case *ast.GenDecl:
-					var objectName string
-					genDecl := node.(*ast.GenDecl)
-					for _, spec := range genDecl.Specs {
-						switch spec.(type) {
-						// in the case we're looking at a struct type definition, inspect
-						case *ast.TypeSpec:
-							// if the spec is a type spec, get the type spec and
-							// its name
-							typeSpec := spec.(*ast.TypeSpec)
-							objectName = typeSpec.Name.Name
+			// list the hand-authored model files in the version directory so a
+			// group object declared in its own file is parsed alongside the
+			// group file; generated, validation, and test files carry no model
+			// definitions
+			versionDir := filepath.Join("pkg", "api", version)
+			modelFileEntries, err := os.ReadDir(versionDir)
+			if err != nil {
+				return fmt.Errorf("failed to read model directory %s: %w", versionDir, err)
+			}
+			var modelFilenames []string
+			for _, entry := range modelFileEntries {
+				name := entry.Name()
+				if entry.IsDir() || !strings.HasSuffix(name, ".go") {
+					continue
+				}
+				if strings.HasSuffix(name, "_gen.go") ||
+					strings.HasSuffix(name, "_test.go") ||
+					strings.HasSuffix(name, "_validate.go") {
+					continue
+				}
+				modelFilenames = append(modelFilenames, name)
+			}
+			sort.Strings(modelFilenames)
 
-							// check if this is a struct type
-							if structType, ok := typeSpec.Type.(*ast.StructType); ok {
-								var mc *ApiObject
-								for _, c := range apiObjects {
-									if c.TypeName == objectName {
-										mc = c
-									}
-								}
+			// inspect each model file's syntax tree for the object models
+			for _, modelFilename := range modelFilenames {
+				// the group file records every struct it declares, including
+				// nested helper types; other files contribute only this group's
+				// objects so unrelated types are not pulled into the group
+				isGroupFile := modelFilename == filename
 
-								// extract comment description for the struct type
-								if mc != nil {
-									if commentGroups, exists := commentMap[genDecl]; exists && len(commentGroups) > 0 {
-										// extract the comment text from the first comment group and clean it up
-										commentText := commentGroups[0].Text()
-										commentText = strings.TrimSpace(commentText)
-										// normalize whitespace and remove unnecessary line breaks
-										commentText = strings.ReplaceAll(commentText, "\n", " ")
-										commentText = strings.ReplaceAll(commentText, "\r", " ")
-										// replace multiple consecutive spaces with single space
-										for strings.Contains(commentText, "  ") {
-											commentText = strings.ReplaceAll(commentText, "  ", " ")
-										}
-										commentText = strings.TrimSpace(commentText)
-										mc.Description = commentText
-									}
-								}
+				modelFilepath := filepath.Join(versionDir, modelFilename)
+				fset := token.NewFileSet()
+				pf, err := parser.ParseFile(fset, modelFilepath, nil, parser.ParseComments|parser.AllErrors)
+				if err != nil {
+					return fmt.Errorf("failed to parse source code file: %w", err)
+				}
 
-								structTags[objectName] = make(map[string]map[string]string)
-								fieldTypes[objectName] = make(map[string]string)
+				// create a comment map to associate comments with AST nodes
+				commentMap := ast.NewCommentMap(fset, pf, pf.Comments)
 
-								// if so, iterate over the fields
-								for _, field := range structType.Fields.List {
-									// fields will be of type *ast.Ident
-									if identType, ok := field.Type.(*ast.Ident); ok {
-										if util.StringSliceContains(nameFields(), identType.Name, true) {
-											mc.NameField = true
-										}
-									}
-									// structs will be of type *ast.SelectorExpr
-									if identType, ok := field.Type.(*ast.SelectorExpr); ok {
-										if util.StringSliceContains(nameFields(), identType.Sel.Name, true) {
-											mc.NameField = true
-										}
-									}
-									// each field is an *ast.Field, which has a Names field that
-									// is a []*ast.Ident - iterate over those names to find the
-									// one we're looking for
-									for _, name := range field.Names {
-										if util.StringSliceContains(nameFields(), name.Name, true) {
-											mc.NameField = true
-										}
-									}
+				for _, node := range pf.Decls {
+					switch node.(type) {
+					case *ast.GenDecl:
+						var objectName string
+						genDecl := node.(*ast.GenDecl)
+						for _, spec := range genDecl.Specs {
+							switch spec.(type) {
+							// in the case we're looking at a struct type definition, inspect
+							case *ast.TypeSpec:
+								// if the spec is a type spec, get the type spec and
+								// its name
+								typeSpec := spec.(*ast.TypeSpec)
+								objectName = typeSpec.Name.Name
 
-									// anonymous embed: record the embed type name on
-									// this struct, then move on. The embed's own field
-									// tags live in g.EmbedTypes (parsed once up front).
-									if len(field.Names) == 0 {
-										// anon embed type is either a bare identifier
-										// (e.g. `Common`) or a selector (e.g.
-										// `pkgalias.SomeType`); only the bare-ident case
-										// applies to threeport's in-package embeds
-										if ident, ok := field.Type.(*ast.Ident); ok {
-											structEmbeds[objectName] = append(structEmbeds[objectName], ident.Name)
-										}
+								// check if this is a struct type
+								if structType, ok := typeSpec.Type.(*ast.StructType); ok {
+									// outside the group file, record only this group's
+									// objects so a type split into its own file
+									// contributes its tags without pulling in
+									// unrelated types from the version directory
+									if !isGroupFile && !groupObjectNames[objectName] {
 										continue
 									}
-									fieldName := field.Names[0].Name
-									if field.Tag == nil {
-										return fmt.Errorf(
-											"field %s in object %s has no struct tags defined",
-											fieldName, objectName,
-										)
+									var mc *ApiObject
+									for _, c := range apiObjects {
+										if c.TypeName == objectName {
+											mc = c
+										}
 									}
-									tagMap := util.ParseStructTag(field.Tag.Value)
-									structTags[objectName][fieldName] = tagMap
-									fieldTypes[objectName][fieldName] = types.ExprString(field.Type)
+
+									// extract comment description for the struct type
+									if mc != nil {
+										if commentGroups, exists := commentMap[genDecl]; exists && len(commentGroups) > 0 {
+											// extract the comment text from the first comment group and clean it up
+											commentText := commentGroups[0].Text()
+											commentText = strings.TrimSpace(commentText)
+											// normalize whitespace and remove unnecessary line breaks
+											commentText = strings.ReplaceAll(commentText, "\n", " ")
+											commentText = strings.ReplaceAll(commentText, "\r", " ")
+											// replace multiple consecutive spaces with single space
+											for strings.Contains(commentText, "  ") {
+												commentText = strings.ReplaceAll(commentText, "  ", " ")
+											}
+											commentText = strings.TrimSpace(commentText)
+											mc.Description = commentText
+										}
+									}
+
+									structTags[objectName] = make(map[string]map[string]string)
+									fieldTypes[objectName] = make(map[string]string)
+
+									// if so, iterate over the fields
+									for _, field := range structType.Fields.List {
+										// fields will be of type *ast.Ident
+										if identType, ok := field.Type.(*ast.Ident); ok {
+											if util.StringSliceContains(nameFields(), identType.Name, true) {
+												mc.NameField = true
+											}
+										}
+										// structs will be of type *ast.SelectorExpr
+										if identType, ok := field.Type.(*ast.SelectorExpr); ok {
+											if util.StringSliceContains(nameFields(), identType.Sel.Name, true) {
+												mc.NameField = true
+											}
+										}
+										// each field is an *ast.Field, which has a Names field that
+										// is a []*ast.Ident - iterate over those names to find the
+										// one we're looking for
+										for _, name := range field.Names {
+											if util.StringSliceContains(nameFields(), name.Name, true) {
+												mc.NameField = true
+											}
+										}
+
+										// anonymous embed: record the embed type name on
+										// this struct, then move on. The embed's own field
+										// tags live in g.EmbedTypes (parsed once up front).
+										if len(field.Names) == 0 {
+											// anon embed type is either a bare identifier
+											// (e.g. `Common`) or a selector (e.g.
+											// `pkgalias.SomeType`); only the bare-ident case
+											// applies to threeport's in-package embeds
+											if ident, ok := field.Type.(*ast.Ident); ok {
+												structEmbeds[objectName] = append(structEmbeds[objectName], ident.Name)
+											}
+											continue
+										}
+										fieldName := field.Names[0].Name
+										if field.Tag == nil {
+											return fmt.Errorf(
+												"field %s in object %s has no struct tags defined",
+												fieldName, objectName,
+											)
+										}
+										tagMap := util.ParseStructTag(field.Tag.Value)
+										structTags[objectName][fieldName] = tagMap
+										fieldTypes[objectName][fieldName] = types.ExprString(field.Type)
+									}
 								}
 							}
 						}
@@ -1130,6 +1203,240 @@ func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]st
 		modifiers[k] = v
 	}
 	return
+}
+
+// SortDatabaseInitNamesByDependency returns names reordered so that every
+// referenced type precedes the types whose foreign-key columns point at it.
+// gorm AutoMigrate creates each model's foreign-key constraints
+// as it walks the slice, so a referenced table must appear before any model
+// that references it or the migration fails with a missing-relation error.
+// Ties are broken alphabetically so the generated order is stable across runs.
+// Names not present in the input are ignored; if a true cycle exists, the
+// remaining names are appended in alphabetical order so generation still
+// produces deterministic output.
+func (g *Generator) SortDatabaseInitNamesByDependency(names []string) []string {
+	// build the set of names being migrated so cross-module references
+	// (types migrated elsewhere) do not introduce edges into this list
+	inList := make(map[string]bool, len(names))
+	for _, name := range names {
+		inList[name] = true
+	}
+
+	// dependsOn[name] holds the in-list types that name's foreign keys
+	// reference; each such type must be migrated before name
+	dependsOn := make(map[string]map[string]bool, len(names))
+	for _, name := range names {
+		dependsOn[name] = make(map[string]bool)
+		for _, referenced := range g.RelationshipDependencies[name] {
+			if inList[referenced] && referenced != name {
+				dependsOn[name][referenced] = true
+			}
+		}
+	}
+
+	// Kahn's algorithm: repeatedly emit the alphabetically-first name whose
+	// dependencies have all been emitted, so referenced tables land ahead of
+	// the tables that reference them
+	emitted := make(map[string]bool, len(names))
+	sorted := make([]string, 0, len(names))
+	for len(sorted) < len(names) {
+		var ready []string
+		for _, name := range names {
+			if emitted[name] {
+				continue
+			}
+			allDepsEmitted := true
+			for dep := range dependsOn[name] {
+				if !emitted[dep] {
+					allDepsEmitted = false
+					break
+				}
+			}
+			if allDepsEmitted {
+				ready = append(ready, name)
+			}
+		}
+		if len(ready) == 0 {
+			// remaining names form a dependency cycle; append them in
+			// alphabetical order so output stays deterministic
+			var remaining []string
+			for _, name := range names {
+				if !emitted[name] {
+					remaining = append(remaining, name)
+				}
+			}
+			sort.Strings(remaining)
+			sorted = append(sorted, remaining...)
+			break
+		}
+		sort.Strings(ready)
+		next := ready[0]
+		sorted = append(sorted, next)
+		emitted[next] = true
+	}
+
+	return sorted
+}
+
+// parseRelationshipDependencies scans every model source file in dir and
+// returns each struct's foreign-key dependencies keyed by struct name, where a
+// dependency means the struct's table carries a foreign-key column referencing
+// the named type and so must be migrated after it. The edges mirror where gorm
+// places foreign-key columns rather than the relationship tags: a has-many
+// slice field puts the key on the child, and a belongs-to association field
+// puts the key on the owning struct. A bare key field with no association field
+// is a plain column that gorm does not constrain, so it contributes no edge.
+// Generated, validation, and test files are skipped so only hand-authored model
+// definitions contribute.
+func parseRelationshipDependencies(dir string) (map[string][]string, error) {
+	structs, err := parseModelStructs(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	// the set of model type names in this directory bounds association
+	// detection: only fields whose element or singular type names another
+	// local model produce a gorm foreign key inside this migration list
+	modelNames := make(map[string]bool, len(structs))
+	for name := range structs {
+		modelNames[name] = true
+	}
+
+	dependencies := map[string][]string{}
+	for typeName, structType := range structs {
+		// collect the struct's key field names so a singular association can
+		// be confirmed to carry a matching XID column before it counts as a
+		// belongs-to that places the foreign key on this struct
+		keyFields := make(map[string]bool)
+		for _, field := range structType.Fields.List {
+			for _, name := range field.Names {
+				if strings.HasSuffix(name.Name, "ID") {
+					keyFields[name.Name] = true
+				}
+			}
+		}
+
+		for _, field := range structType.Fields.List {
+			// embedded fields carry no name and never declare an association
+			if len(field.Names) == 0 {
+				continue
+			}
+
+			// a has-many slice puts the foreign key on the child, so the child
+			// depends on this parent
+			if child, ok := sliceElementModel(field.Type, modelNames); ok {
+				dependencies[child] = append(dependencies[child], typeName)
+				continue
+			}
+
+			// a belongs-to singular association puts the foreign key on this
+			// struct, so this struct depends on the referenced type; require a
+			// matching XID key field so a plain unconstrained column does not
+			// register as an association
+			if referenced, ok := singularModel(field.Type, modelNames); ok {
+				if keyFields[referenced+"ID"] {
+					dependencies[typeName] = append(dependencies[typeName], referenced)
+				}
+			}
+		}
+	}
+
+	return dependencies, nil
+}
+
+// parseModelStructs returns every hand-authored struct type declared in dir
+// keyed by type name. Generated, validation, and test files are skipped so the
+// set matches the model definitions that drive migration ordering.
+func parseModelStructs(dir string) (map[string]*ast.StructType, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		// a missing version directory is not fatal; nothing to scan
+		if os.IsNotExist(err) {
+			return map[string]*ast.StructType{}, nil
+		}
+		return nil, fmt.Errorf("failed to read model directory %s: %w", dir, err)
+	}
+
+	structs := map[string]*ast.StructType{}
+	for _, entry := range entries {
+		fileName := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(fileName, ".go") {
+			continue
+		}
+		// skip non-model files: generated code, validators, and tests carry
+		// no hand-authored model definitions
+		if strings.HasSuffix(fileName, "_gen.go") ||
+			strings.HasSuffix(fileName, "_test.go") ||
+			strings.HasSuffix(fileName, "_validate.go") {
+			continue
+		}
+
+		filePath := filepath.Join(dir, fileName)
+		fset := token.NewFileSet()
+		parsedFile, err := parser.ParseFile(fset, filePath, nil, parser.AllErrors)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse model file %s: %w", filePath, err)
+		}
+
+		for _, decl := range parsedFile.Decls {
+			genDecl, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range genDecl.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				structType, ok := typeSpec.Type.(*ast.StructType)
+				if !ok {
+					continue
+				}
+				structs[typeSpec.Name.Name] = structType
+			}
+		}
+	}
+
+	return structs, nil
+}
+
+// sliceElementModel reports the local model type named by a has-many slice
+// field. It matches []*Model and []Model element types and ignores slices of
+// non-model or cross-package element types, which place no foreign key inside
+// this migration list.
+func sliceElementModel(expr ast.Expr, modelNames map[string]bool) (string, bool) {
+	arrayType, ok := expr.(*ast.ArrayType)
+	if !ok || arrayType.Len != nil {
+		return "", false
+	}
+	if name, ok := identModel(arrayType.Elt, modelNames); ok {
+		return name, true
+	}
+	return "", false
+}
+
+// singularModel reports the local model type named by a singular association
+// field. It matches *Model and Model field types and ignores embedded or
+// cross-package types, which carry a package qualifier rather than a bare
+// identifier.
+func singularModel(expr ast.Expr, modelNames map[string]bool) (string, bool) {
+	return identModel(expr, modelNames)
+}
+
+// identModel reports the model type named by a bare identifier or pointer to a
+// bare identifier when that name belongs to the local model set.
+func identModel(expr ast.Expr, modelNames map[string]bool) (string, bool) {
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	ident, ok := expr.(*ast.Ident)
+	if !ok {
+		return "", false
+	}
+	if modelNames[ident.Name] {
+		return ident.Name, true
+	}
+	return "", false
 }
 
 // validateRelationshipTag returns one error per problem in a relationship

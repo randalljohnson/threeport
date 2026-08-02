@@ -83,8 +83,8 @@ func TestChangeDetectionFuzz(t *testing.T) {
 	// build a struct-copy pair: two independent copies of the same
 	// Reconciliation value. Different memory, identical fields.
 	// ReconciliationStateChanged must report false.
-	base := makeReconciliation(true, false, instant, instant, instant, instant, instant)
-	copyOf := makeReconciliation(true, false, instant, instant, instant, instant, instant)
+	base := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
+	copyOf := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
 	if got := ReconciliationStateChanged(base, copyOf); got {
 		t.Errorf("ReconciliationStateChanged(identical copies) = true, want false")
 	}
@@ -92,15 +92,15 @@ func TestChangeDetectionFuzz(t *testing.T) {
 	// feed the monotonic-vs-stripped pair through ReconciliationStateChanged
 	// on a one-shot field (CreationConfirmed): the round-trip strips
 	// monotonic reading, and a naive DeepEqual would flag this as a change.
-	fresh := makeReconciliation(true, false, withMono, withMono, withMono, withMono, withMono)
-	fromDB := makeReconciliation(true, false, stripped, stripped, stripped, stripped, stripped)
+	fresh := makeReconciliation(true, false, false, withMono, withMono, withMono, withMono, withMono)
+	fromDB := makeReconciliation(true, false, false, stripped, stripped, stripped, stripped, stripped)
 	if got := ReconciliationStateChanged(fresh, fromDB); got {
 		t.Errorf("ReconciliationStateChanged(fresh vs DB-round-trip) = true, want false")
 	}
 
 	// feed the UTC-vs-Local same-instant pair through ReconciliationStateChanged.
-	utc := makeReconciliation(true, false, instant, instant, instant, instant, instant)
-	local := makeReconciliation(true, false, sameInstantLocal, sameInstantLocal, sameInstantLocal, sameInstantLocal, sameInstantLocal)
+	utc := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
+	local := makeReconciliation(true, false, false, sameInstantLocal, sameInstantLocal, sameInstantLocal, sameInstantLocal, sameInstantLocal)
 	if got := ReconciliationStateChanged(utc, local); got {
 		t.Errorf("ReconciliationStateChanged(UTC vs Local same instant) = true, want false")
 	}
@@ -110,8 +110,8 @@ func TestChangeDetectionFuzz(t *testing.T) {
 	// full second (so it survives DB precision), all other markers hold.
 	// timePtrSet must treat both as set and report no change.
 	later := instant.Add(1 * time.Second)
-	prev := makeReconciliation(true, false, instant, instant, instant, instant, instant)
-	restamped := makeReconciliation(true, false, later, instant, instant, later, instant)
+	prev := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
+	restamped := makeReconciliation(true, false, false, later, instant, instant, later, instant)
 	if got := ReconciliationStateChanged(prev, restamped); got {
 		t.Errorf("ReconciliationStateChanged(ack re-stamp) = true, want false")
 	}
@@ -142,7 +142,7 @@ func TestChangeDetectionFuzz(t *testing.T) {
 // makeReconciliation builds a Reconciliation whose every marker is set
 // so a single field flip in a caller's copy shows up as the only diff.
 func makeReconciliation(
-	reconciled, creationFailed bool,
+	reconciled, creationFailed, deletionFailed bool,
 	creationAck, creationConfirmed, deletionScheduled, deletionAck, deletionConfirmed time.Time,
 ) Reconciliation {
 	return Reconciliation{
@@ -153,6 +153,7 @@ func makeReconciliation(
 		DeletionScheduled:    ptrTime(deletionScheduled),
 		DeletionAcknowledged: ptrTime(deletionAck),
 		DeletionConfirmed:    ptrTime(deletionConfirmed),
+		DeletionFailed:       ptrBool(deletionFailed),
 	}
 }
 

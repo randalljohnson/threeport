@@ -19,17 +19,21 @@ type MachineRuntimeConfig struct {
 
 // MachineRuntimeValues contains all the attributes needed to manage the
 // MachineRuntimeDefinition and MachineRuntimeInstance API objects
-// together with a single operation.
+// together with a single operation. For sensitive values, the *File
+// variants take a path to a file whose contents are read at API-call
+// time and encrypted at rest by the server.
 type MachineRuntimeValues struct {
-	Name        *string `json:",omitempty"`
-	Hostname    *string `json:",omitempty"`
-	SSHUser     *string `json:",omitempty"`
-	SSHKey      *string `json:",omitempty"`
-	SSHPassword *string `json:",omitempty"`
-	Port        *int    `json:",omitempty"`
-	HostKey     *string `json:",omitempty"`
-	Status      *string `json:",omitempty"`
-	Age         *string `json:",omitempty"`
+	Name            *string `json:",omitempty"`
+	Hostname        *string `json:",omitempty"`
+	SSHUser         *string `json:",omitempty"`
+	SSHKey          *string `json:",omitempty"`
+	SSHKeyFile      *string `json:",omitempty"`
+	SSHPassword     *string `json:",omitempty"`
+	SSHPasswordFile *string `json:",omitempty"`
+	Port            *int    `json:",omitempty"`
+	HostKey         *string `json:",omitempty"`
+	Status          *string `json:",omitempty"`
+	Age             *string `json:",omitempty"`
 }
 
 // Get gets a machine runtime definition and instance from the Threeport API.
@@ -196,13 +200,15 @@ func (m *MachineRuntimeConfig) GetOperations(
 	// add machine runtime instance operation
 	machineRuntimeInstanceConfig := MachineRuntimeInstanceConfig{
 		MachineRuntimeInstance: MachineRuntimeInstanceValues{
-			Name:        machineRuntimeValues.Name,
-			Hostname:    machineRuntimeValues.Hostname,
-			SSHUser:     machineRuntimeValues.SSHUser,
-			SSHKey:      machineRuntimeValues.SSHKey,
-			SSHPassword: machineRuntimeValues.SSHPassword,
-			Port:        machineRuntimeValues.Port,
-			HostKey:     machineRuntimeValues.HostKey,
+			Name:            machineRuntimeValues.Name,
+			Hostname:        machineRuntimeValues.Hostname,
+			SSHUser:         machineRuntimeValues.SSHUser,
+			SSHKey:          machineRuntimeValues.SSHKey,
+			SSHKeyFile:      machineRuntimeValues.SSHKeyFile,
+			SSHPassword:     machineRuntimeValues.SSHPassword,
+			SSHPasswordFile: machineRuntimeValues.SSHPasswordFile,
+			Port:            machineRuntimeValues.Port,
+			HostKey:         machineRuntimeValues.HostKey,
 			MachineRuntimeDefinition: &MachineRuntimeDefinitionValues{
 				Name: machineRuntimeValues.Name,
 			},

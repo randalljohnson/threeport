@@ -318,7 +318,7 @@ func (i *GceMachineInfra) createInfra() error {
 // compute API reports the instance is not found, so a pulumi program that
 // silently skipped the instance resource cannot masquerade as create success.
 func (i *GceMachineInfra) verifyInstanceExists(ctx context.Context) error {
-	service, err := computev1.NewService(ctx, option.WithScopes(computev1.ComputeReadonlyScope))
+	service, err := computev1.NewService(ctx, i.GcpClientOptions(option.WithScopes(computev1.ComputeReadonlyScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create GCE compute service for existence check: %w", err)
 	}
@@ -607,7 +607,7 @@ func (i *GceMachineInfra) DiscoverAndAdopt() error {
 	}
 
 	ctx := context.Background()
-	service, err := computev1.NewService(ctx, option.WithScopes(computev1.ComputeReadonlyScope))
+	service, err := computev1.NewService(ctx, i.GcpClientOptions(option.WithScopes(computev1.ComputeReadonlyScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create GCE compute service: %w", err)
 	}
@@ -816,4 +816,18 @@ func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	i.sshPrivateKeyPEM = sshPrivateKeyPEM
 	i.sshPublicKeyAuthorized = string(ssh.MarshalAuthorizedKey(signer.PublicKey()))
 	return nil
+}
+
+// GcpClientOptions returns the client options for GCP SDK clients built on
+// behalf of this instance. When ServiceAccountCredentials is set, the JSON key
+// is threaded in per call so two concurrent operations for different service
+// accounts authenticate independently rather than sharing whatever ambient
+// credentials the process happens to hold. Base options such as scopes are
+// preserved ahead of the credentials option. It is exported because the orphan
+// reclaim client is built outside this package from the same provider.
+func (i *GceMachineInfra) GcpClientOptions(base ...option.ClientOption) []option.ClientOption {
+	if i.ServiceAccountCredentials == "" {
+		return base
+	}
+	return append(base, option.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
 }

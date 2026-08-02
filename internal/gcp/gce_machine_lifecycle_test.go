@@ -90,6 +90,23 @@ func (s *gceAPIStub) gceRecordPatch(path string, body []byte) {
 	s.patches[path] = append(s.patches[path], body)
 }
 
+// gceCountAckPatches returns how many captured PATCH bodies for the path carry a
+// non-nil CreationAcknowledged, counting how many times the path was acked.
+func (s *gceAPIStub) gceCountAckPatches(t *testing.T, path string) int {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	count := 0
+	for _, body := range s.patches[path] {
+		var updated v0.GcpGceMachineRuntimeInstance
+		require.NoError(t, json.Unmarshal(body, &updated))
+		if updated.CreationAcknowledged != nil {
+			count++
+		}
+	}
+	return count
+}
+
 // gceLastPatch returns the most recently captured PATCH body for the path.
 func (s *gceAPIStub) gceLastPatch(t *testing.T, path string) v0.GcpGceMachineRuntimeInstance {
 	t.Helper()
@@ -1045,8 +1062,153 @@ func TestGceInstanceCreatedRequeuesWhenAckedNotStale(t *testing.T) {
 	assert.Equal(t, int64(120), delay)
 }
 
-func TestGceInstanceUpdatedNoop(t *testing.T) {
+// gceNewUpdateLifecycle constructs the update-pass adapter against the stub for
+// a given instance.
+func gceNewUpdateLifecycle(s *gceAPIStub, instance *v0.GcpGceMachineRuntimeInstance) *gceMachineUpdateLifecycle {
+	return &gceMachineUpdateLifecycle{gceMachineLifecycle: gceNewLifecycle(s, instance)}
+}
+
+// TestGceUpdateLifecycleGetReconciliationClearsConfirmation asserts the update
+// adapter reports the creation as unconfirmed and unacknowledged while leaving
+// the resource inventory intact, so the create state machine relaunches the up
+// against the saved stack state rather than short-circuiting or provisioning
+// fresh.
+func TestGceUpdateLifecycleGetReconciliationClearsConfirmation(t *testing.T) {
 	s := gceNewAPIStub(t)
+	// the latest state shows a fully confirmed prior create with saved inventory;
+	// a settled create acknowledges before it confirms, so the ack predates the
+	// confirmation and belongs to that prior create rather than this update
+	now := time.Now().UTC()
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(now)
+	latest.CreationAcknowledged = gcePtr(now.Add(-time.Minute))
+	inventory := datatypes.JSON([]byte(`{"checkpoint":{}}`))
+	latest.ResourceInventory = &inventory
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+
+	g := gceNewUpdateLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	snap, err := g.GetReconciliation()
+	require.NoError(t, err)
+	// verify the confirmation fields are cleared so the create handler reopens
+	assert.Nil(t, snap.CreationConfirmed, "confirmation must be cleared to reopen the create state machine")
+	assert.Nil(t, snap.CreationAcknowledged, "the prior create ack must be cleared so the first update pass relaunches the up")
+	// verify the saved inventory survives so the up diffs rather than provisions fresh
+	require.NotNil(t, snap.ResourceInventory)
+	assert.JSONEq(t, `{"checkpoint":{}}`, string(*snap.ResourceInventory))
+}
+
+// TestGceUpdateLifecycleSaveCreateOutputsMarksReconciled asserts the update
+// adapter persists the surfaced outputs and then marks the instance reconciled,
+// since the update pass relaunches the up but never reaches the confirm step a
+// first create uses to settle the object.
+func TestGceUpdateLifecycleSaveCreateOutputsMarksReconciled(t *testing.T) {
+	s := gceNewAPIStub(t)
+	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+
+	g := gceNewUpdateLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	gceInfra := machine.NewGceMachineInfra(gceTestInstanceName)
+	gceInfra.SetCreateOutputs("vm.example", "203.0.113.7", "PRIVATE-KEY")
+	state := datatypes.JSON([]byte(`{"checkpoint":{}}`))
+
+	require.NoError(t, g.SaveCreateOutputs(gceInfra, &state))
+
+	// the last PATCH must carry Reconciled=true so the update settles the object
+	patch := s.gceLastPatch(t, gceInstancePath(gceTestInstanceID))
+	require.NotNil(t, patch.Reconciled)
+	assert.True(t, *patch.Reconciled, "the update pass must mark the instance reconciled after the up succeeds")
+}
+
+// TestGceUpdateLifecycleGetReconciliationReconciledNoop asserts the update
+// adapter leaves the confirmation intact once the instance is reconciled, so a
+// requeued update pass short-circuits instead of relaunching the up
+// indefinitely.
+func TestGceUpdateLifecycleGetReconciliationReconciledNoop(t *testing.T) {
+	s := gceNewAPIStub(t)
+	// the latest state shows a confirmed, reconciled instance from a settled
+	// prior update
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(time.Now().UTC())
+	latest.CreationAcknowledged = gcePtr(time.Now().UTC())
+	latest.Reconciled = gcePtr(true)
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+
+	g := gceNewUpdateLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	snap, err := g.GetReconciliation()
+	require.NoError(t, err)
+	// verify the confirmation survives so the create handler short-circuits
+	assert.NotNil(t, snap.CreationConfirmed, "a reconciled instance must keep its confirmation so the update no-ops")
+}
+
+// TestGceUpdateLifecycleSecondPassPreservesFreshAck asserts the update adapter
+// preserves the acknowledgement once an update pass has acked and launched the
+// up. The first pass clears the prior create's ack so the create handler
+// relaunches; the second pass, finding a fresh ack that post-dates the
+// confirmation, leaves it intact so the create handler's not-stale short-circuit
+// requeues rather than acknowledging and launching a second concurrent up.
+func TestGceUpdateLifecycleSecondPassPreservesFreshAck(t *testing.T) {
+	confirmed := time.Now().UTC()
+
+	// first pass: the ack belongs to the settled prior create, so it predates
+	// the confirmation and the adapter clears it to relaunch the up
+	s1 := gceNewAPIStub(t)
+	firstPass := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	firstPass.CreationConfirmed = gcePtr(confirmed)
+	firstPass.CreationAcknowledged = gcePtr(confirmed.Add(-time.Minute))
+	inventory := datatypes.JSON([]byte(`{"checkpoint":{}}`))
+	firstPass.ResourceInventory = &inventory
+	s1.gceHandleInstance(t, gceTestInstanceID, firstPass)
+
+	g1 := gceNewUpdateLifecycle(s1, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	snap1, err := g1.GetReconciliation()
+	require.NoError(t, err)
+	// the prior create ack is cleared so the create handler falls through to ack
+	// and launch the up on the first pass
+	assert.Nil(t, snap1.CreationAcknowledged, "first pass must clear the prior create ack so the up launches")
+
+	// second pass: the up launched by the first pass has acknowledged, so the
+	// ack now post-dates the confirmation and is fresh against the stale
+	// threshold; the adapter must leave it intact so the create handler requeues
+	s2 := gceNewAPIStub(t)
+	secondPass := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	secondPass.CreationConfirmed = gcePtr(confirmed)
+	secondPass.CreationAcknowledged = gcePtr(confirmed.Add(time.Second))
+	secondPass.ResourceInventory = &inventory
+	s2.gceHandleInstance(t, gceTestInstanceID, secondPass)
+
+	g2 := gceNewUpdateLifecycle(s2, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+	snap2, err := g2.GetReconciliation()
+	require.NoError(t, err)
+	// the fresh update ack survives so the create handler's not-stale check fires
+	require.NotNil(t, snap2.CreationAcknowledged, "second pass must preserve the fresh update ack")
+	assert.True(t, snap2.CreationAcknowledged.Equal(confirmed.Add(time.Second)), "the preserved ack must be the fresh update ack")
+
+	// drive the full Updated handler on the second pass: with the fresh ack
+	// preserved and the inventory incomplete, the create handler requeues at 120
+	// seconds without acknowledging again or launching a second up
+	log := logr.Discard()
+	delay, err := v0GcpGceMachineRuntimeInstanceUpdated(
+		s2.gceReconciler(),
+		gceBaseInstance(gceTestInstanceID, gceTestInstanceName),
+		&log,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, int64(120), delay, "the second pass must requeue rather than launch a second up")
+	// no PATCH on the second pass carried an acknowledgement, proving the create
+	// handler did not re-ack and therefore did not launch a second concurrent up
+	assert.Equal(t, 0, s2.gceCountAckPatches(t, gceInstancePath(gceTestInstanceID)), "the second pass must not acknowledge again")
+}
+
+// TestGceInstanceUpdatedReconciledNoop drives the Updated reconciler against a
+// reconciled instance and asserts it returns cleanly without launching an up,
+// proving a requeue after a settled update does not loop.
+func TestGceInstanceUpdatedReconciledNoop(t *testing.T) {
+	s := gceNewAPIStub(t)
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(time.Now().UTC())
+	latest.CreationAcknowledged = gcePtr(time.Now().UTC())
+	latest.Reconciled = gcePtr(true)
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+
 	log := logr.Discard()
 	delay, err := v0GcpGceMachineRuntimeInstanceUpdated(
 		s.gceReconciler(),
@@ -1054,7 +1216,37 @@ func TestGceInstanceUpdatedNoop(t *testing.T) {
 		&log,
 	)
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
+	assert.Equal(t, int64(0), delay, "a reconciled instance must no-op on update rather than relaunch the up")
+}
+
+// TestGceInstanceUpdatedAbortsWhenDeletionScheduled drives the Updated
+// reconciler through the create state machine to the deletion-abort branch:
+// with the creation confirmation cleared by the update adapter and a deletion
+// already scheduled, the handler returns cleanly without launching an up.
+func TestGceInstanceUpdatedAbortsWhenDeletionScheduled(t *testing.T) {
+	s := gceNewAPIStub(t)
+	// the latest state has a deletion scheduled, so the create handler aborts
+	// after acknowledging rather than launching the up; the ack predates the
+	// confirmation so this models the first update pass, which clears the prior
+	// create ack and falls through to acknowledge before the abort check
+	now := time.Now().UTC()
+	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+	latest.CreationConfirmed = gcePtr(now)
+	latest.CreationAcknowledged = gcePtr(now.Add(-time.Minute))
+	latest.DeletionScheduled = gcePtr(now)
+	s.gceHandleInstance(t, gceTestInstanceID, latest)
+	// BuildInfra reads the provider and definition before the deletion re-check
+	s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+	s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
+
+	log := logr.Discard()
+	delay, err := v0GcpGceMachineRuntimeInstanceUpdated(
+		s.gceReconciler(),
+		gceBaseInstance(gceTestInstanceID, gceTestInstanceName),
+		&log,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), delay, "a scheduled deletion aborts the update up")
 }
 
 func TestGceInstanceDeletedConfirmedNoop(t *testing.T) {

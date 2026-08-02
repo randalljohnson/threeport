@@ -84,9 +84,19 @@ func GetAgeFormatted(timestamp *time.Time) string {
 	duration := *roundedDuration
 
 	switch {
-	case duration < hour:
-		// Less than 1 hour: show full precision (already rounded to seconds)
+	case duration < minute:
+		// under one minute: render raw seconds so callers can distinguish
+		// a fresh event from a stale one at 30s resolution
 		return duration.String()
+	case duration < hour:
+		// one minute to one hour: format as "Nm" or "NmXs" so a whole
+		// minute value doesn't carry a trailing 0s from duration.String()
+		minutes := int(duration.Minutes())
+		seconds := int(duration.Seconds()) % 60
+		if seconds == 0 {
+			return fmt.Sprintf("%dm", minutes)
+		}
+		return fmt.Sprintf("%dm%ds", minutes, seconds)
 	case duration < day:
 		// 1 hour to 24 hours: show hours and minutes only (rounded to minutes)
 		hours := int(duration.Hours())

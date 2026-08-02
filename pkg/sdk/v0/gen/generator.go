@@ -1065,7 +1065,8 @@ const allowedEmbedNames = "Common, Definition, Instance, or Reconciliation"
 //   - encrypt: value matches EncryptTrue
 //   - validate: value matches a recognized validator value
 //   - persist: value matches PersistFalse (true is the default; omit the tag)
-//   - query: value matches queryNamePattern
+//   - query: rejected outright; query keys derive from the lowercased field
+//     name, so an explicit override is redundant and a rename hazard
 func (g *Generator) ValidateTags() error {
 	// build the set of registered API type names so the relationship
 	// validator can verify that any `type:<TypeName>` modifier names a
@@ -1124,11 +1125,11 @@ func (g *Generator) ValidateTags() error {
 					validateValue == string(lib.ValidateOptional) ||
 					validateValue == string(lib.ValidateOptionalAssociation) {
 					j, ok := tagMap[string(lib.JsonTag)]
-					if !ok || !strings.Contains(j, lib.JsonOmitempty) {
+					if !ok || !strings.Contains(j, lib.JSONOmitempty) {
 						problems = append(problems, fmt.Sprintf(
 							"%s.%s: %s:%q field requires json:%q",
 							objectName, fieldName,
-							lib.ValidateTag, validateValue, ","+lib.JsonOmitempty,
+							lib.ValidateTag, validateValue, ","+lib.JSONOmitempty,
 						))
 					}
 				}

@@ -21,7 +21,6 @@ func GenUtilJetstream(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 	f.ImportAlias("github.com/nats-io/nats.go", "nats")
-	f.ImportAlias("github.com/threeport/threeport/pkg/notifications/v0", "notifications")
 	f.ImportAlias("github.com/threeport/threeport/internal/aws/notif", "aws_notif")
 	f.ImportAlias("github.com/threeport/threeport/internal/control-plane/notif", "controlplane_notif")
 	f.ImportAlias("github.com/threeport/threeport/internal/gateway/notif", "gateway_notif")
@@ -47,14 +46,10 @@ func GenUtilJetstream(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				Qual("fmt", "Errorf").Call(Lit("failed to create jetstream context: %w"), Err())),
 		)
 		g.Line()
-		g.Comment("add controller streams idempotently so a rest-api restart succeeds")
+		g.Comment("add controller streams")
 		for _, objGroup := range gen.ApiObjectGroups {
 			if len(objGroup.ReconciledObjects) > 0 {
-				g.Id("err").Op("=").Qual(
-					"github.com/threeport/threeport/pkg/notifications/v0",
-					"EnsureStream",
-				).Call(
-					Id("js"),
+				g.Id("_").Op(",").Id("err").Op("=").Id("js").Dot("AddStream").Call(
 					Op("&").Qual("github.com/nats-io/nats.go", "StreamConfig").Values(
 						Dict{
 							Id("Name"): Qual(
@@ -72,7 +67,7 @@ func GenUtilJetstream(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Return(
 						Nil(),
 						Qual("fmt", "Errorf").Call(
-							Lit("could not ensure stream %s: %w"), Qual(
+							Lit("could not add stream %s: %w"), Qual(
 								fmt.Sprintf("%s/internal/%s/notif", gen.ModulePath, objGroup.ControllerShortName),
 								objGroup.StreamName,
 							),

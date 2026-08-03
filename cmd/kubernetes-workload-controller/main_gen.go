@@ -17,7 +17,6 @@ import (
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
-	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	zap "go.uber.org/zap"
 	"net/http"
@@ -148,29 +147,11 @@ func main() {
 
 		// create JetStream consumer
 		consumer := r.Name + "Consumer"
-		consumerConfig := &natsgo.ConsumerConfig{
+		js.AddConsumer(notif.KubernetesWorkloadStreamName, &natsgo.ConsumerConfig{
 			AckPolicy:     natsgo.AckExplicitPolicy,
-			BackOff:       []time.Duration{5 * time.Minute, 30 * time.Second, 60 * time.Second, 120 * time.Second, 240 * time.Second, 300 * time.Second},
-			DeliverPolicy: natsgo.DeliverAllPolicy,
 			Durable:       consumer,
 			FilterSubject: r.NotifSubject,
-			MaxAckPending: r.ConcurrentReconciles * 100,
-			MaxDeliver:    100,
-		}
-		consumerInfo, err := notifications.EnsureConsumer(js, notif.KubernetesWorkloadStreamName, consumerConfig)
-		if err != nil {
-			log.Error(err, "failed to ensure JetStream consumer", "reconcilerName", r.Name)
-			os.Exit(1)
-		}
-		log.Info(
-			"JetStream consumer ready",
-			"reconcilerName", r.Name,
-			"consumer", consumerInfo.Config.Durable,
-			"ackWait", consumerInfo.Config.AckWait,
-			"maxDeliver", consumerInfo.Config.MaxDeliver,
-			"maxAckPending", consumerInfo.Config.MaxAckPending,
-			"filterSubject", consumerInfo.Config.FilterSubject,
-		)
+		})
 
 		// create durable pull subscription
 		sub, err := js.PullSubscribe(r.NotifSubject, consumer, natsgo.BindStream(notif.KubernetesWorkloadStreamName))

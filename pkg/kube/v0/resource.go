@@ -29,8 +29,8 @@ import (
 const createRetryAttempts = 5
 
 // createRetryBaseDelay backs off exponentially between retries starting
-// from this base (250ms, 500ms, 1s, 2s, 4s) so the apiserver has a chance
-// to catch up on quota evaluation before the next attempt.
+// from this base (250ms, 500ms, 1s, 2s) so the apiserver has a chance to
+// catch up on quota evaluation before the next attempt.
 const createRetryBaseDelay = 250 * time.Millisecond
 
 // isTransientKubeError reports whether a Kubernetes API error is worth
@@ -129,8 +129,10 @@ func CreateResource(
 		if !isTransientKubeError(err) {
 			return nil, fmt.Errorf("failed to create kubernetes resource:%w", err)
 		}
-		time.Sleep(delay)
-		delay *= 2
+		if attempt < createRetryAttempts-1 {
+			time.Sleep(delay)
+			delay *= 2
+		}
 	}
 	return nil, fmt.Errorf("failed to create kubernetes resource after %d retries:%w", createRetryAttempts, err)
 

@@ -24,13 +24,13 @@ import (
 // createRetryAttempts is the number of times a transient kube-apiserver
 // error (server-side timeouts, quota-evaluator timeouts) is retried before
 // the caller sees the failure. Enough tries to ride out a short apiserver
-// backpressure spike during control-plane bring-up on a busy kind node,
-// but not so many that a genuine misconfiguration hides for minutes.
+// backpressure spike during control plane bring-up, but not so many that a
+// genuine misconfiguration hides for minutes.
 const createRetryAttempts = 5
 
 // createRetryBaseDelay backs off exponentially between retries starting
-// from this base (250ms, 500ms, 1s, 2s, 4s) so the apiserver has a chance
-// to catch up on quota evaluation before the next attempt.
+// from this base (250ms, 500ms, 1s, 2s) so the apiserver has a chance to
+// catch up on quota evaluation before the next attempt.
 const createRetryBaseDelay = 250 * time.Millisecond
 
 // isTransientKubeError reports whether a Kubernetes API error is worth
@@ -129,8 +129,10 @@ func CreateResource(
 		if !isTransientKubeError(err) {
 			return nil, fmt.Errorf("failed to create kubernetes resource:%w", err)
 		}
-		time.Sleep(delay)
-		delay *= 2
+		if attempt < createRetryAttempts-1 {
+			time.Sleep(delay)
+			delay *= 2
+		}
 	}
 	return nil, fmt.Errorf("failed to create kubernetes resource after %d retries:%w", createRetryAttempts, err)
 
@@ -222,16 +224,12 @@ func UpdateResource(
 // DeleteResource takes an unstructured object, dynamic client interface and rest
 // mapper and deletes the resource in the target Kubernetes cluster.
 //
-// A missing CRD on the target cluster (no REST mapping for the object's
-// GroupKind) is treated as "already deleted": if the kind isn't registered,
-// the resource can't exist, and the delete-reconciliation loop shouldn't
-// hang retrying forever on a resource that has nowhere to live. This
-// mirrors the existing IsNotFound handling on the actual delete call — the
-// two together mean any state that could satisfy the intent of "gone" does.
-//
-// A missing CRD in the create/update flow is still a hard error; callers
-// that want create-with-CRD-missing to succeed should install the CRD (or
-// skip the resource) explicitly.
+// A missing CRD on the target cluster, meaning no REST mapping for the
+// object's GroupKind, counts as already deleted: an unregistered kind cannot
+// have instances, so there is nothing left to remove. That matches how a
+// NotFound on the delete call itself is treated, and together they keep a
+// delete reconciler from retrying forever on a resource that has nowhere to
+// live.
 func DeleteResource(
 	kubeObject *unstructured.Unstructured,
 	kubeClient dynamic.Interface,

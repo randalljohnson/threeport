@@ -8,11 +8,11 @@ import (
 
 	logr "github.com/go-logr/logr"
 
-	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -95,7 +95,7 @@ func v0MachineRuntimeDefinitionCreated(
 			// map the abstract size and profile to a Google Cloud Platform
 			// machine type; the mapping keys on the cloud provider token, not
 			// the machine runtime infra provider token
-			machineType, err := tpapi_lib.GetMachineType(
+			machineType, err := mapping.GetMachineType(
 				util.GcpProvider,
 				machineProfile,
 				machineSize,

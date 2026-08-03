@@ -21,10 +21,10 @@ import (
 	"k8s.io/client-go/dynamic"
 
 	"github.com/threeport/threeport/internal/provider"
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -254,7 +254,7 @@ func ConfigureEksKubernetesRuntimeInstance(
 		return uninstaller.cleanOnCreateError("failed to update resource manager role", err)
 	}
 
-	location, err := apilib.GetLocationForAwsRegion(awsConfigResourceManager.Region)
+	location, err := mapping.GetLocationForAwsRegion(awsConfigResourceManager.Region)
 	if err != nil {
 		return uninstaller.cleanOnCreateError(fmt.Sprintf("failed to get threeport location for AWS region %s", awsConfigResourceManager.Region), err)
 	}

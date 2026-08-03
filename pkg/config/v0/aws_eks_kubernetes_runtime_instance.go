@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -162,7 +162,7 @@ func (a *AwsEksKubernetesRuntimeInstanceConfig) Create(
 	}
 
 	// get location for provider AWS region
-	location, err := apilib.GetLocationForAwsRegion(*awsEksKubernetesRuntimeInstanceValues.Region)
+	location, err := mapping.GetLocationForAwsRegion(*awsEksKubernetesRuntimeInstanceValues.Region)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Threeport location for AWS region %s: %w", *awsEksKubernetesRuntimeInstanceValues.Region, err)
 	}

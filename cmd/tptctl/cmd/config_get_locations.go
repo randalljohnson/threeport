@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 )
 
 var (
@@ -52,7 +52,7 @@ var ConfigGetLocationsCmd = &cobra.Command{
 		}
 
 		// get the region map and print to table
-		regionMap := apilib.GetRegionMap()
+		regionMap := mapping.GetRegionMap()
 		writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 		fmt.Fprintln(writer, "LOCATION\t AWS REGION\t OCI REGION")
 		filterFound := false

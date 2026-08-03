@@ -10,12 +10,12 @@ import (
 
 	"github.com/go-logr/logr"
 
-	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -61,7 +61,7 @@ func v0KubernetesRuntimeInstanceCreated(
 		}
 
 		// add AWS EKS runtime instance
-		region, err := tpapi_lib.GetProviderRegionForLocation(util.AwsProvider, *kubernetesRuntimeInstance.Location)
+		region, err := mapping.GetProviderRegionForLocation(util.AwsProvider, *kubernetesRuntimeInstance.Location)
 		if err != nil {
 			return 0, fmt.Errorf("failed to map threeport location to AWS region: %w", err)
 		}
@@ -118,7 +118,7 @@ func v0KubernetesRuntimeInstanceCreated(
 		}
 
 		// add GCP GKE runtime instance
-		region, err := tpapi_lib.GetProviderRegionForLocation(util.GcpProvider, *kubernetesRuntimeInstance.Location)
+		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *kubernetesRuntimeInstance.Location)
 		if err != nil {
 			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
 		}

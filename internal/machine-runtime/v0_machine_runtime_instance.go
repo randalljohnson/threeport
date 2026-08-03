@@ -12,7 +12,7 @@ import (
 	logr "github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
@@ -356,7 +356,7 @@ func reconcileProviderInstance(
 		// map the abstract location to a GCP region; a GCE VM is zonal, so
 		// derive a zone within that region. the mapping keys on the cloud
 		// provider token, not the machine runtime infra provider token
-		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
+		region, err := tpapi_lib.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
 		if err != nil {
 			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
 		}

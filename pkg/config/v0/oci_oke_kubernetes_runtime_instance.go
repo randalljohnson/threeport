@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
@@ -176,7 +176,7 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Create(
 	}
 
 	// get location for OCI region
-	location, err := mapping.GetLocationForOciRegion(*ociOkeKubernetesRuntimeInstanceValues.Region)
+	location, err := apilib.GetLocationForOciRegion(*ociOkeKubernetesRuntimeInstanceValues.Region)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Threeport location for OCI region %s: %w", *ociOkeKubernetesRuntimeInstanceValues.Region, err)
 	}

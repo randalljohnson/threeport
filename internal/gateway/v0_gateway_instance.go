@@ -13,8 +13,8 @@ import (
 	"gorm.io/datatypes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	workload_util "github.com/threeport/threeport/internal/kubernetes-workload/util"
+	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
@@ -1016,7 +1016,7 @@ func configureIssuer(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider for infra provider: %w", err)
 	}
-	infraProviderRegion, err := mapping.GetProviderRegionForLocation(provider, *kubernetesRuntimeInstance.Location)
+	infraProviderRegion, err := tpapi_lib.GetProviderRegionForLocation(provider, *kubernetesRuntimeInstance.Location)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get infra provider region for location: %w", err)
 	}

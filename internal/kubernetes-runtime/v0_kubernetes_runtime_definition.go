@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	logr "github.com/go-logr/logr"
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
@@ -39,7 +39,7 @@ func v0KubernetesRuntimeDefinitionCreated(
 		} else {
 			zoneCount = 2
 		}
-		nodeGroupInstanceType, err := mapping.GetMachineType(
+		nodeGroupInstanceType, err := tpapi_lib.GetMachineType(
 			"aws",
 			*kubernetesRuntimeDefinition.NodeProfile,
 			*kubernetesRuntimeDefinition.NodeSize,
@@ -76,7 +76,7 @@ func v0KubernetesRuntimeDefinitionCreated(
 		} else {
 			zoneCount = 2
 		}
-		nodeGroupInstanceType, err := mapping.GetMachineType(
+		nodeGroupInstanceType, err := tpapi_lib.GetMachineType(
 			"gcp",
 			*kubernetesRuntimeDefinition.NodeProfile,
 			*kubernetesRuntimeDefinition.NodeSize,

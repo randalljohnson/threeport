@@ -29,7 +29,7 @@ by defining the API types and the controller that reconciles them.
 The definition allows you to specify which infrastructure provider to use
 (currently only EKS on AWS is supported).  You can also specify the node sizes
 and profiles.  Currently, you can reference the [source
-code](https://github.com/threeport/threeport/blob/main/internal/kubernetes-runtime/mapping/node.go)
+code](https://github.com/threeport/threeport/blob/main/pkg/api/lib/v0/node.go)
 to see which NodeSize and NodeProfile values are available and what AWS machine
 types these translate to.  All Kubernetes Runtimes use cluster autoscaling and
 you can specify the maximum number of nodes to allow in the cluster.
@@ -41,7 +41,7 @@ Reference:
 
 This represents a deployed instance of a Kubernetes cluster.  You can specify
 which location you would like to use.  Currently, you can reference the [source
-code](https://github.com/threeport/threeport/blob/main/internal/kubernetes-runtime/mapping/location.go)
+code](https://github.com/threeport/threeport/blob/main/pkg/api/lib/v0/location.go)
 for the available Location values and which AWS regions they correspond
 to.
 

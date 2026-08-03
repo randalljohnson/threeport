@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 )
 
@@ -52,7 +52,7 @@ var ConfigGetMachinesCmd = &cobra.Command{
 		}
 
 		// get the machine type map and print to table
-		machineTypeMap := mapping.GetMachineTypeMap()
+		machineTypeMap := apilib.GetMachineTypeMap()
 		writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 		fmt.Fprintln(writer, "NODE PROFILE\t NODE SIZE\t AWS MACHINE TYPE\t OCI MACHINE TYPE")
 		filterFound := false

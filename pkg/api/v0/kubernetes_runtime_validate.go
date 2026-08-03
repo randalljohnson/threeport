@@ -7,7 +7,6 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )
@@ -103,7 +102,7 @@ func (k *KubernetesRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 // database.
 func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	// validate location
-	if !mapping.ValidLocation(*k.Location) {
+	if !lib.ValidLocation(*k.Location) {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
 				"location %s is not supported for a kubernetes runtime instance",

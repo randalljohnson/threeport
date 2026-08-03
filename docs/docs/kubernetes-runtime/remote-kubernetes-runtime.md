@@ -63,7 +63,7 @@ a common set of locations, regardless of provider.  For AWS, this translates to
 the `us-east-1` region.  When other cloud providers are supported, it will
 reference the appropriate region for the cloud provider being used.  For now,
 you can reference the [Threeport source
-code](https://github.com/threeport/threeport/blob/main/internal/kubernetes-runtime/mapping/location.go#L49)
+code](https://github.com/threeport/threeport/blob/main/pkg/api/lib/v0/location.go#L49)
 to see which locations map to which regions in AWS.
 
 The `DefaultRuntime` field indicates that, when deploying workloads, if a

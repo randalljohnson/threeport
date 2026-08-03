@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
@@ -163,7 +163,7 @@ func (g *GcpGkeKubernetesRuntimeInstanceConfig) Create(
 	}
 
 	// get location for provider GCP region
-	location, err := mapping.GetLocationForGcpRegion(*gcpGkeKubernetesRuntimeInstanceValues.Region)
+	location, err := apilib.GetLocationForGcpRegion(*gcpGkeKubernetesRuntimeInstanceValues.Region)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Threeport location for GCP region %s: %w", *gcpGkeKubernetesRuntimeInstanceValues.Region, err)
 	}

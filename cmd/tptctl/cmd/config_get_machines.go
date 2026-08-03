@@ -20,6 +20,7 @@ var (
 	nodeSize       string
 	awsMachineType string
 	ociMachineType string
+	gcpMachineType string
 )
 
 // ConfigGetControlPlanesCmd represents the get-instances command
@@ -33,16 +34,19 @@ var ConfigGetMachinesCmd = &cobra.Command{
 		// validate flags
 		providedFlags := []string{}
 		if nodeProfile != "" {
-			providedFlags = append(providedFlags, "--location")
+			providedFlags = append(providedFlags, "--node-profile")
 		}
 		if nodeSize != "" {
-			providedFlags = append(providedFlags, "--continent")
+			providedFlags = append(providedFlags, "--node-size")
 		}
 		if awsMachineType != "" {
-			providedFlags = append(providedFlags, "--aws-region")
+			providedFlags = append(providedFlags, "--aws-machine-type")
 		}
 		if ociMachineType != "" {
-			providedFlags = append(providedFlags, "--oci-region")
+			providedFlags = append(providedFlags, "--oci-machine-type")
+		}
+		if gcpMachineType != "" {
+			providedFlags = append(providedFlags, "--gcp-machine-type")
 		}
 
 		if len(providedFlags) > 1 {
@@ -89,6 +93,14 @@ var ConfigGetMachinesCmd = &cobra.Command{
 				filterFound = true
 				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType, "\t", machineType.GcpMachineType)
 			}
+		case gcpMachineType != "":
+			for _, machineType := range *machineTypeMap {
+				if machineType.GcpMachineType != gcpMachineType {
+					continue
+				}
+				filterFound = true
+				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType, "\t", machineType.GcpMachineType)
+			}
 		default:
 			filterFound = true
 			for _, machineType := range *machineTypeMap {
@@ -121,5 +133,9 @@ func init() {
 	ConfigGetMachinesCmd.Flags().StringVarP(
 		&ociMachineType,
 		"oci-machine-type", "o", "", "OCI machine type to get machines for",
+	)
+	ConfigGetMachinesCmd.Flags().StringVarP(
+		&gcpMachineType,
+		"gcp-machine-type", "g", "", "GCP machine type to get machines for",
 	)
 }

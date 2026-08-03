@@ -270,10 +270,26 @@ func GetMachineTypeMap() *[]MachineTypeMap {
 }
 
 // ValidMachineSize reports whether the machine size matches a supported node
-// size in the machine type map.
+// size under any node profile. Each profile carries its own subset of sizes,
+// so a size accepted here can still be unsupported for the profile a caller
+// ends up using. Prefer ValidMachineSizeForProfile whenever the profile is
+// known.
 func ValidMachineSize(machineSize string) bool {
 	for _, machineType := range *GetMachineTypeMap() {
 		if machineSize == machineType.NodeSize {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidMachineSizeForProfile reports whether the machine size is supported for
+// the given node profile. This pairs the two values the same way machine type
+// resolution does, so a caller that validates here will not be turned away
+// later when the machine type is looked up.
+func ValidMachineSizeForProfile(nodeProfile, machineSize string) bool {
+	for _, machineType := range *GetMachineTypeMap() {
+		if machineType.NodeProfile == nodeProfile && machineType.NodeSize == machineSize {
 			return true
 		}
 	}

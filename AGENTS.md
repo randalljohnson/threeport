@@ -1371,19 +1371,3 @@ Recommendation: Update Pulumi CLI and SDK first - version mismatches often cause
 ```
 
 **Why This Matters**: Many debugging issues (especially marshaling errors, nil pointers, and compatibility problems) are caused by version mismatches between external dependencies. Always rule out version issues before deep-diving into code analysis.
-
-# PR Description Style
-
-Flat prose, no headers, no checkboxes. For comment-only or docs-only PRs, one or two sentences is enough. Lead with what changed and why; skip the test-plan boilerplate unless the PR genuinely needs verification steps. Match the style the user already writes in: terse, no marketing tone, no AI flourishes.
-
-Do not hard-wrap lines inside paragraphs. Write each paragraph as one logical line and let the browser reflow it on render. Hard-wrapped 70-char lines render as a narrow column in GitHub's editor and preview panes even though markdown collapses the breaks in the final view. Use newlines only between paragraphs and inside fenced code blocks.
-
-# Branch Names
-
-Branch names use conventional-commits prefixes mirroring the commit-subject types: `feat-`, `fix-`, `refactor-`, `docs-`, `chore-`. Prefix is followed by a hyphen, then a kebab-case description. The description follows the same rules as commit subjects (lowercase, plain English, no CamelCase type names, no stage markers).
-
-Format: `<type>-<kebab-description>`.
-
-Examples: `feat-aor-delete-guards`, `fix-control-plane-only-cluster-name`, `refactor-extract-encrypt-hooks-to-api-lib`, `docs-add-boilerplate-scaffolding-markers`.
-
-Avoid: non-conventional prefixes like `add-`, `improve-`, or descriptive-only names with no prefix at all.

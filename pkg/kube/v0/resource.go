@@ -179,6 +179,13 @@ func UpdateResource(
 
 // DeleteResource takes an unstructured object, dynamic client interface and rest
 // mapper and deletes the resource in the target Kubernetes cluster.
+//
+// A missing CRD on the target cluster, meaning no REST mapping for the
+// object's GroupKind, counts as already deleted: an unregistered kind cannot
+// have instances, so there is nothing left to remove. That matches how a
+// NotFound on the delete call itself is treated, and together they keep a
+// delete reconciler from retrying forever on a resource that has nowhere to
+// live.
 func DeleteResource(
 	kubeObject *unstructured.Unstructured,
 	kubeClient dynamic.Interface,
@@ -187,6 +194,9 @@ func DeleteResource(
 	// get the mapping for resource from kube object's group, kind
 	mapping, err := getResourceMapping(kubeObject, mapper)
 	if err != nil {
+		if meta.IsNoMatchError(errors.Unwrap(err)) || meta.IsNoMatchError(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to get REST mapping for kubernetes resource: %w", err)
 	}
 

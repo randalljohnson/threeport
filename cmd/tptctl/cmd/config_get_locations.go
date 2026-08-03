@@ -54,7 +54,7 @@ var ConfigGetLocationsCmd = &cobra.Command{
 		// get the region map and print to table
 		regionMap := mapping.GetRegionMap()
 		writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-		fmt.Fprintln(writer, "LOCATION\t AWS REGION\t OCI REGION")
+		fmt.Fprintln(writer, "LOCATION\t AWS REGION\t OCI REGION\t GCP REGION")
 		filterFound := false
 		switch {
 		case locationName != "":
@@ -63,7 +63,7 @@ var ConfigGetLocationsCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion)
+				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion, "\t", region.GcpRegion)
 			}
 		case locationContinent != "":
 			for _, region := range *regionMap {
@@ -73,7 +73,7 @@ var ConfigGetLocationsCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion)
+				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion, "\t", region.GcpRegion)
 			}
 		case locationAwsRegion != "":
 			for _, region := range *regionMap {
@@ -81,7 +81,7 @@ var ConfigGetLocationsCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion)
+				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion, "\t", region.GcpRegion)
 			}
 		case locationOciRegion != "":
 			for _, region := range *regionMap {
@@ -89,12 +89,12 @@ var ConfigGetLocationsCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion)
+				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion, "\t", region.GcpRegion)
 			}
 		default:
 			filterFound = true
 			for _, region := range *regionMap {
-				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion)
+				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion, "\t", region.GcpRegion)
 			}
 		}
 		if !filterFound {

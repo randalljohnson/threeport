@@ -49,8 +49,7 @@ helpful.
 ## Naming
 
 Use the Go convention of camel case or lower camel case for naming types,
-functions, variables, etc.  Do not use all caps for acronyms, e.g. use
-`inputJson` instead of `inputJSON`.
+functions, variables, etc.
 
 ## Merges
 

@@ -54,7 +54,7 @@ var ConfigGetMachinesCmd = &cobra.Command{
 		// get the machine type map and print to table
 		machineTypeMap := mapping.GetMachineTypeMap()
 		writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-		fmt.Fprintln(writer, "NODE PROFILE\t NODE SIZE\t AWS MACHINE TYPE\t OCI MACHINE TYPE")
+		fmt.Fprintln(writer, "NODE PROFILE\t NODE SIZE\t AWS MACHINE TYPE\t OCI MACHINE TYPE\t GCP MACHINE TYPE")
 		filterFound := false
 		switch {
 		case nodeProfile != "":
@@ -63,7 +63,7 @@ var ConfigGetMachinesCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType)
+				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType, "\t", machineType.GcpMachineType)
 			}
 		case nodeSize != "":
 			for _, machineType := range *machineTypeMap {
@@ -71,7 +71,7 @@ var ConfigGetMachinesCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType)
+				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType, "\t", machineType.GcpMachineType)
 			}
 		case awsMachineType != "":
 			for _, machineType := range *machineTypeMap {
@@ -79,7 +79,7 @@ var ConfigGetMachinesCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType)
+				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType, "\t", machineType.GcpMachineType)
 			}
 		case ociMachineType != "":
 			for _, machineType := range *machineTypeMap {
@@ -87,12 +87,12 @@ var ConfigGetMachinesCmd = &cobra.Command{
 					continue
 				}
 				filterFound = true
-				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType)
+				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType, "\t", machineType.GcpMachineType)
 			}
 		default:
 			filterFound = true
 			for _, machineType := range *machineTypeMap {
-				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType)
+				fmt.Fprintln(writer, machineType.NodeProfile, "\t", machineType.NodeSize, "\t", machineType.AwsMachineType, "\t", machineType.OciMachineType, "\t", machineType.GcpMachineType)
 			}
 		}
 		if !filterFound {

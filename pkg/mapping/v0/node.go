@@ -287,11 +287,11 @@ func GetMachineType(provider, nodeProfile, nodeSize string) (string, error) {
 		if m.NodeProfile == nodeProfile {
 			if m.NodeSize == nodeSize {
 				switch provider {
-				case "aws":
+				case util.AwsProvider:
 					return m.AwsMachineType, nil
-				case "oci":
+				case util.OciProvider:
 					return m.OciMachineType, nil
-				case "gcp":
+				case util.GcpProvider:
 					return m.GcpMachineType, nil
 				default:
 					msg := fmt.Sprintf("provider %s not supported", provider)

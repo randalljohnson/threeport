@@ -20,6 +20,7 @@ var (
 	locationContinent string
 	locationAwsRegion string
 	locationOciRegion string
+	locationGcpRegion string
 )
 
 // ConfigGetControlPlanesCmd represents the get-instances command
@@ -43,6 +44,9 @@ var ConfigGetLocationsCmd = &cobra.Command{
 		}
 		if locationOciRegion != "" {
 			providedFlags = append(providedFlags, "--oci-region")
+		}
+		if locationGcpRegion != "" {
+			providedFlags = append(providedFlags, "--gcp-region")
 		}
 
 		if len(providedFlags) > 1 {
@@ -91,6 +95,14 @@ var ConfigGetLocationsCmd = &cobra.Command{
 				filterFound = true
 				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion, "\t", region.GcpRegion)
 			}
+		case locationGcpRegion != "":
+			for _, region := range *regionMap {
+				if region.GcpRegion != locationGcpRegion {
+					continue
+				}
+				filterFound = true
+				fmt.Fprintln(writer, region.Location, "\t", region.AwsRegion, "\t", region.OciRegion, "\t", region.GcpRegion)
+			}
 		default:
 			filterFound = true
 			for _, region := range *regionMap {
@@ -123,5 +135,9 @@ func init() {
 	ConfigGetLocationsCmd.Flags().StringVarP(
 		&locationOciRegion,
 		"oci-region", "o", "", "OCI region to get locations for",
+	)
+	ConfigGetLocationsCmd.Flags().StringVarP(
+		&locationGcpRegion,
+		"gcp-region", "g", "", "GCP region to get locations for",
 	)
 }

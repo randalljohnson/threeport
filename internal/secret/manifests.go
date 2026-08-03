@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	runtime "github.com/threeport/threeport/internal/kubernetes-runtime"
-	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -46,7 +46,7 @@ func (c *SecretInstanceConfig) getSecretStore() (*unstructured.Unstructured, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider for infra provider: %w", err)
 	}
-	region, err := tpapi_lib.GetProviderRegionForLocation(provider, *c.kubernetesRuntimeInstance.Location)
+	region, err := mapping.GetProviderRegionForLocation(provider, *c.kubernetesRuntimeInstance.Location)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider region for location: %w", err)
 	}

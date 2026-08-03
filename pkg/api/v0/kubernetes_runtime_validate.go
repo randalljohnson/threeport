@@ -9,6 +9,7 @@ import (
 
 	util "github.com/threeport/threeport/pkg/util/v0"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 )
 
 // KubernetesRuntimeInfraProvider indicates which infrastructure provider is being
@@ -102,7 +103,7 @@ func (k *KubernetesRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 // database.
 func (k *KubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	// validate location
-	if !lib.ValidLocation(*k.Location) {
+	if !mapping.ValidLocation(*k.Location) {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
 				"location %s is not supported for a kubernetes runtime instance",

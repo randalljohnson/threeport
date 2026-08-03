@@ -7,10 +7,10 @@ import (
 	"fmt"
 
 	logr "github.com/go-logr/logr"
-	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 )
 
 // v0KubernetesRuntimeDefinitionCreated performs reconciliation when a v0 KubernetesRuntimeDefinition
@@ -39,7 +39,7 @@ func v0KubernetesRuntimeDefinitionCreated(
 		} else {
 			zoneCount = 2
 		}
-		nodeGroupInstanceType, err := tpapi_lib.GetMachineType(
+		nodeGroupInstanceType, err := mapping.GetMachineType(
 			"aws",
 			*kubernetesRuntimeDefinition.NodeProfile,
 			*kubernetesRuntimeDefinition.NodeSize,
@@ -76,7 +76,7 @@ func v0KubernetesRuntimeDefinitionCreated(
 		} else {
 			zoneCount = 2
 		}
-		nodeGroupInstanceType, err := tpapi_lib.GetMachineType(
+		nodeGroupInstanceType, err := mapping.GetMachineType(
 			"gcp",
 			*kubernetesRuntimeDefinition.NodeProfile,
 			*kubernetesRuntimeDefinition.NodeSize,

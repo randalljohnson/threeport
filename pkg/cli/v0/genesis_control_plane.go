@@ -19,13 +19,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/threeport/threeport/internal/provider"
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	"github.com/threeport/threeport/pkg/encryption/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -416,7 +416,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 			return t, err
 		}
 
-		location, err := apilib.GetLocationForOciRegion(kubernetesRuntimeInfraOKE.Region)
+		location, err := mapping.GetLocationForOciRegion(kubernetesRuntimeInfraOKE.Region)
 		if err != nil {
 			return uninstaller.cleanOnCreateError(
 				fmt.Sprintf("failed to get threeport location for OKE region %s", kubernetesRuntimeInfraOKE.Region),
@@ -440,7 +440,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}
 	case v0.KubernetesRuntimeInfraProviderGKE:
 		kubernetesRuntimeInfraGKE := kubernetesRuntimeInfra.(*provider.KubernetesRuntimeInfraGKE)
-		location, err := apilib.GetLocationForGcpRegion(kubernetesRuntimeInfraGKE.Region)
+		location, err := mapping.GetLocationForGcpRegion(kubernetesRuntimeInfraGKE.Region)
 		if err != nil {
 			return uninstaller.cleanOnCreateError(
 				fmt.Sprintf("failed to get threeport location for GKE region %s", kubernetesRuntimeInfraGKE.Region),

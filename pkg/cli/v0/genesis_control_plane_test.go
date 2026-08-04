@@ -41,10 +41,27 @@ func testControlPlaneConfig(name string) *ControlPlane {
 	}
 }
 
+// testCloudControlPlaneConfig returns a threeport config entry for a control
+// plane hosted on a cloud provider. A cloud install authenticates to the kube
+// API with a bearer token, so it records no client certificate or key, and the
+// token it does record goes stale about an hour later with no expiration
+// written beside it.
+func testCloudControlPlaneConfig(name string, infraProvider string) *ControlPlane {
+	controlPlaneConfig := testControlPlaneConfig(name)
+	controlPlaneConfig.Provider = infraProvider
+	controlPlaneConfig.KubeAPI.APIEndpoint = "https://cloud-kube-api.example.com"
+	controlPlaneConfig.KubeAPI.Certificate = ""
+	controlPlaneConfig.KubeAPI.Key = ""
+	controlPlaneConfig.KubeAPI.Token = util.Base64Encode("install-time-token")
+
+	return controlPlaneConfig
+}
+
 // TestBootstrapKubernetesRuntimeInstance asserts the kubernetes runtime
 // instance is rebuilt from the threeport config with the connection info
 // decoded and the flags that make it discoverable as the default runtime and
-// the control plane's host.
+// the control plane's host. A local cluster authenticates with a client
+// certificate, which the rebuild carries over.
 func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
 	controlPlaneConfig := testControlPlaneConfig("dev-0")
 
@@ -68,6 +85,9 @@ func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
 	if got := *kubernetesRuntimeInstance.CertificateKey; got != "kube-client-key" {
 		t.Errorf("expected decoded certificate key kube-client-key, got %s", got)
 	}
+	if kubernetesRuntimeInstance.ConnectionToken != nil {
+		t.Errorf("expected no connection token, got %s", *kubernetesRuntimeInstance.ConnectionToken)
+	}
 	if got := *kubernetesRuntimeInstance.Location; got != "Local" {
 		t.Errorf("expected location Local, got %s", got)
 	}
@@ -82,29 +102,105 @@ func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
 	}
 }
 
-// TestBootstrapKubernetesRuntimeInstanceRejectsIncompleteConfig asserts the
-// rebuild refuses a config it cannot turn into a usable runtime instance
-// rather than registering one that cannot reach the kube API.
-func TestBootstrapKubernetesRuntimeInstanceRejectsIncompleteConfig(t *testing.T) {
+// TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders asserts that a
+// control plane on GKE or OKE is rebuilt even though its threeport config holds
+// no client certificate or key. Neither provider reads a token off the runtime
+// record: each mints one per request from its own infra provider, so a record
+// carrying no kube API credential at all is still usable. The rebuild also has
+// no location to work from, since the config never records the one the install
+// derived from its region.
+func TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders(t *testing.T) {
 	tests := []struct {
-		name        string
-		mutate      func(*ControlPlane)
-		errContains string
+		name     string
+		provider string
 	}{
 		{
-			name:        "non-kind provider is refused",
-			mutate:      func(c *ControlPlane) { c.Provider = v0.KubernetesRuntimeInfraProviderEKS },
-			errContains: "only kind is supported",
+			name:     "gke control plane is rebuilt with no kube API credential",
+			provider: v0.KubernetesRuntimeInfraProviderGKE,
 		},
 		{
-			name:        "missing client certificate is refused",
-			mutate:      func(c *ControlPlane) { c.KubeAPI.Certificate = "" },
-			errContains: "no kubernetes API client certificate and key",
+			name:     "oke control plane is rebuilt with no kube API credential",
+			provider: v0.KubernetesRuntimeInfraProviderOKE,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			controlPlaneConfig := testCloudControlPlaneConfig("dev-0", test.provider)
+
+			kubernetesRuntimeInstance, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got := *kubernetesRuntimeInstance.Name; got != "threeport-dev-0" {
+				t.Errorf("expected name threeport-dev-0, got %s", got)
+			}
+			if got := *kubernetesRuntimeInstance.APIEndpoint; got != "https://cloud-kube-api.example.com" {
+				t.Errorf("expected API endpoint https://cloud-kube-api.example.com, got %s", got)
+			}
+			if got := *kubernetesRuntimeInstance.CACertificate; got != "kube-ca-cert" {
+				t.Errorf("expected decoded CA certificate kube-ca-cert, got %s", got)
+			}
+			if got := *kubernetesRuntimeInstance.Location; got != localRuntimeLocation {
+				t.Errorf("expected location %s, got %s", localRuntimeLocation, got)
+			}
+			if kubernetesRuntimeInstance.Certificate != nil {
+				t.Errorf("expected no client certificate, got %s", *kubernetesRuntimeInstance.Certificate)
+			}
+			if kubernetesRuntimeInstance.CertificateKey != nil {
+				t.Errorf("expected no client certificate key, got %s", *kubernetesRuntimeInstance.CertificateKey)
+			}
+			// the token the config holds expired about an hour after the
+			// install, so carrying it over would register a credential
+			// that fails rather than one the provider replaces
+			if kubernetesRuntimeInstance.ConnectionToken != nil {
+				t.Errorf("expected no connection token, got %s", *kubernetesRuntimeInstance.ConnectionToken)
+			}
+			if !*kubernetesRuntimeInstance.DefaultRuntime {
+				t.Error("expected the runtime to be marked as the default runtime")
+			}
+			if !*kubernetesRuntimeInstance.ThreeportControlPlaneHost {
+				t.Error("expected the runtime to be marked as the control plane host")
+			}
+		})
+	}
+}
+
+// TestBootstrapKubernetesRuntimeInstanceRefusesEks asserts the rebuild refuses
+// an EKS control plane rather than registering a runtime with no way to reach
+// its kube API. EKS is the one provider that authenticates with the token
+// stored on the runtime record, and the only copy the threeport config holds
+// expired about an hour after the install.
+func TestBootstrapKubernetesRuntimeInstanceRefusesEks(t *testing.T) {
+	controlPlaneConfig := testCloudControlPlaneConfig("dev-0", v0.KubernetesRuntimeInfraProviderEKS)
+
+	_, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
+	if err == nil {
+		t.Fatal("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), v0.KubernetesRuntimeInfraProviderEKS) {
+		t.Errorf("expected error to name the provider %q, got %q", v0.KubernetesRuntimeInfraProviderEKS, err.Error())
+	}
+}
+
+// TestBootstrapKubernetesRuntimeInstanceOmitsHalfCertificatePair asserts that a
+// certificate without its key, or the reverse, is left off the rebuilt record
+// entirely. Half a pair authenticates to nothing, and registering it would
+// send the kube client down the certificate path with a credential that cannot
+// complete a handshake.
+func TestBootstrapKubernetesRuntimeInstanceOmitsHalfCertificatePair(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*ControlPlane)
+	}{
+		{
+			name:   "certificate without a key is omitted",
+			mutate: func(c *ControlPlane) { c.KubeAPI.Key = "" },
 		},
 		{
-			name:        "missing client key is refused",
-			mutate:      func(c *ControlPlane) { c.KubeAPI.Key = "" },
-			errContains: "no kubernetes API client certificate and key",
+			name:   "key without a certificate is omitted",
+			mutate: func(c *ControlPlane) { c.KubeAPI.Certificate = "" },
 		},
 	}
 
@@ -113,12 +209,105 @@ func TestBootstrapKubernetesRuntimeInstanceRejectsIncompleteConfig(t *testing.T)
 			controlPlaneConfig := testControlPlaneConfig("dev-0")
 			test.mutate(controlPlaneConfig)
 
-			_, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
+			kubernetesRuntimeInstance, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if kubernetesRuntimeInstance.Certificate != nil {
+				t.Errorf("expected no client certificate, got %s", *kubernetesRuntimeInstance.Certificate)
+			}
+			if kubernetesRuntimeInstance.CertificateKey != nil {
+				t.Errorf("expected no client certificate key, got %s", *kubernetesRuntimeInstance.CertificateKey)
+			}
+		})
+	}
+}
+
+// TestValidateCreateGenesisControlPlaneFlagsTier asserts that both recognized
+// tiers are accepted on any provider, so a control plane on a cloud provider
+// can be installed as a development one, and that anything else is refused with
+// a message naming the values that are allowed. A typo that slipped through
+// would produce a control plane the database drop treats as untrusted.
+func TestValidateCreateGenesisControlPlaneFlagsTier(t *testing.T) {
+	tests := []struct {
+		name          string
+		tier          string
+		infraProvider string
+		wantErr       bool
+	}{
+		{
+			name:          "development tier on a cloud provider is accepted",
+			tier:          threeport.ControlPlaneTierDev,
+			infraProvider: v0.KubernetesRuntimeInfraProviderEKS,
+			wantErr:       false,
+		},
+		{
+			name:          "production tier on a cloud provider is accepted",
+			tier:          threeport.ControlPlaneTierProd,
+			infraProvider: v0.KubernetesRuntimeInfraProviderEKS,
+			wantErr:       false,
+		},
+		{
+			name:          "development tier on the local provider is accepted",
+			tier:          threeport.ControlPlaneTierDev,
+			infraProvider: v0.KubernetesRuntimeInfraProviderKind,
+			wantErr:       false,
+		},
+		{
+			name:          "unrecognized tier is refused",
+			tier:          "staging",
+			infraProvider: v0.KubernetesRuntimeInfraProviderEKS,
+			wantErr:       true,
+		},
+		{
+			name:          "misspelled tier is refused",
+			tier:          "developement",
+			infraProvider: v0.KubernetesRuntimeInfraProviderKind,
+			wantErr:       true,
+		},
+		{
+			name:          "empty tier is refused",
+			tier:          "",
+			infraProvider: v0.KubernetesRuntimeInfraProviderKind,
+			wantErr:       true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateCreateGenesisControlPlaneFlags(
+				"dev-0",
+				test.infraProvider,
+				test.tier,
+				"",
+				true,
+				nil,
+				false,
+				"",
+			)
+
+			if !test.wantErr {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+
+				return
+			}
+
 			if err == nil {
 				t.Fatal("expected an error, got none")
 			}
-			if !strings.Contains(err.Error(), test.errContains) {
-				t.Errorf("expected error containing %q, got %q", test.errContains, err.Error())
+			// the message has to name the values the caller may use,
+			// since the tier is not otherwise discoverable from the error
+			for _, want := range []string{
+				test.tier,
+				threeport.ControlPlaneTierDev,
+				threeport.ControlPlaneTierProd,
+			} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected error to name %q, got %q", want, err.Error())
+				}
 			}
 		})
 	}

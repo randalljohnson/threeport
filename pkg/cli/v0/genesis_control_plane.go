@@ -34,6 +34,13 @@ import (
 
 var ErrThreeportConfigAlreadyExists = errors.New("threeport config already contains a control plane with the requested name")
 
+// localRuntimeLocation is the location recorded for a kubernetes runtime that
+// has no region to derive one from. A cloud install maps the region it runs in
+// to a location; a local cluster has no region, and a rebuild from the local
+// threeport config has no region either, because the config never records the
+// location the install used.
+const localRuntimeLocation = "Local"
+
 // GenesisControlPlaneCLIArgs is the set of control plane arguments passed to one of
 // the CLI tools.
 type GenesisControlPlaneCLIArgs struct {
@@ -388,7 +395,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	var kubernetesRuntimeInstance *v0.KubernetesRuntimeInstance
 	switch controlPlane.InfraProvider {
 	case v0.KubernetesRuntimeInfraProviderKind:
-		location := "Local"
+		location := localRuntimeLocation
 		kubernetesRuntimeInstance = &v0.KubernetesRuntimeInstance{
 			Instance: v0.Instance{
 				Name: &kubernetesRuntimeInstName,
@@ -1559,15 +1566,24 @@ func EnsureBootstrapObjects(cpi *threeport.ControlPlaneInstaller) error {
 // encoded while the API stores it decoded, so each value is decoded on the way
 // through.
 //
-// Only kind is supported: the API requires a location, and kind is the one
-// provider whose location ("Local") is known without a region the config does
-// not record.
+// A local cluster records a client certificate and key, and the rebuilt record
+// carries them over. A cloud install records neither, and on GKE and OKE it
+// needs neither: both mint a kube API token per request from the runtime's
+// infra provider instead of reading one off this record. EKS does read the
+// token off the record, and the only copy the config keeps has expired long
+// before a rebuild runs, so an EKS control plane is refused rather than
+// registered with no way to reach its kube API.
+//
+// The location is recorded as Local on every provider, because the config does
+// not record the one the install derived from its region. On a cloud runtime
+// that is not the real location, and the features that map a location back to
+// a provider region, gateway and secret among them, will read the wrong region
+// from it.
 func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.KubernetesRuntimeInstance, error) {
-	if controlPlaneConfig.Provider != v0.KubernetesRuntimeInfraProviderKind {
+	if controlPlaneConfig.Provider == v0.KubernetesRuntimeInfraProviderEKS {
 		return nil, fmt.Errorf(
-			"cannot rebuild kubernetes runtime instance for control plane on provider %s: only %s is supported",
+			"cannot rebuild kubernetes runtime instance for control plane on provider %s: it authenticates to the kube API with a stored token that the threeport config cannot supply",
 			controlPlaneConfig.Provider,
-			v0.KubernetesRuntimeInfraProviderKind,
 		)
 	}
 
@@ -1583,17 +1599,14 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode kubernetes API client key: %w", err)
 	}
-	if certificate == "" || key == "" {
-		return nil, errors.New("threeport config has no kubernetes API client certificate and key")
-	}
 
 	name := provider.ThreeportRuntimeName(controlPlaneConfig.Name)
-	location := "Local"
+	location := localRuntimeLocation
 	instReconciled := true // the cluster already exists - nothing to reconcile
 	controlPlaneHost := true
 	defaultRuntime := true
 
-	return &v0.KubernetesRuntimeInstance{
+	kubernetesRuntimeInstance := &v0.KubernetesRuntimeInstance{
 		Instance: v0.Instance{
 			Name: &name,
 		},
@@ -1603,11 +1616,18 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 		ThreeportControlPlaneHost: &controlPlaneHost,
 		APIEndpoint:               &controlPlaneConfig.KubeAPI.APIEndpoint,
 		CACertificate:             &caCertificate,
-		Certificate:               &certificate,
-		CertificateKey:            &key,
 		DefaultRuntime:            &defaultRuntime,
 		Location:                  &location,
-	}, nil
+	}
+
+	// a certificate without its key, or the reverse, authenticates to nothing,
+	// so the pair is carried over only when the config holds both
+	if certificate != "" && key != "" {
+		kubernetesRuntimeInstance.Certificate = &certificate
+		kubernetesRuntimeInstance.CertificateKey = &key
+	}
+
+	return kubernetesRuntimeInstance, nil
 }
 
 // ensureBootstrapControlPlane looks up the control plane definition and

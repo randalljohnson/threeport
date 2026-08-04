@@ -34,6 +34,12 @@ var reinstallDropDatabase bool
 // name the caller typed back to authorize dropping the database.
 var reinstallConfirm string
 
+// reinstallRestoreBootstrap holds the --restore-bootstrap flag value:
+// whether to recreate the threeport API records the control plane needs
+// in order to accept work. Implied by --drop-database, which destroys
+// them; on its own it covers a database emptied some other way.
+var reinstallRestoreBootstrap bool
+
 // reinstallCmd represents the reinstall command. Dev-only: sweeps
 // installer-managed stateless deployments and reapplies the install
 // path so devs pick up source changes without losing database state
@@ -56,10 +62,19 @@ Pass --drop-database to delete the database and its data as well, so
 the migrations run against an empty schema. That data is not
 recoverable, so the flag also requires --confirm with the control plane
 name, and the target cluster must record itself as a development
-installation. Certificates survive a drop, so no credentials need to be
-re-issued or re-downloaded afterward, and the kubernetes runtime and
-control plane records the API needs in order to accept work are
-recreated from the local threeport config once the API is back up.
+installation, which a cloud-hosted control plane does by being
+installed with 'tptctl up --tier development'. Certificates survive a
+drop, so no credentials need to be re-issued or re-downloaded
+afterward, and the kubernetes runtime and control plane records the API
+needs in order to accept work are recreated from the local threeport
+config once the API is back up.
+
+Pass --restore-bootstrap to recreate those same records without
+dropping anything. Use it when the database was emptied by something
+other than this command, such as a database dropped by hand so that
+renumbered migrations reapply from scratch. It creates only the records
+that are missing, so running it against a control plane that still has
+them changes nothing.
 
 Intended for dev environments only. The reinstall command does not
 build images; run 'tptdev build --push' first if the image needs to
@@ -166,8 +181,10 @@ change.`,
 		// the genesis install wrote through the threeport API went out
 		// with the dropped database, so restore them; without them the
 		// control plane comes back with no default kubernetes runtime
-		// to place workloads on and no record of itself.
-		if reinstallDropDatabase {
+		// to place workloads on and no record of itself. Restoring is
+		// also available on its own, for a database emptied by
+		// something other than this command.
+		if reinstallDropDatabase || reinstallRestoreBootstrap {
 			if err := cli.EnsureBootstrapObjects(cpi); err != nil {
 				cli.Error("failed to restore control plane bootstrap objects", err)
 				os.Exit(1)
@@ -212,5 +229,9 @@ func init() {
 	reinstallCmd.Flags().StringVar(
 		&reinstallConfirm,
 		"confirm", "", "Name of the control plane whose database is being dropped. Must match --name. Required with --drop-database.",
+	)
+	reinstallCmd.Flags().BoolVar(
+		&reinstallRestoreBootstrap,
+		"restore-bootstrap", false, "Recreate the kubernetes runtime and control plane records the API needs in order to accept work, for a database emptied outside this command. Creates only the records that are missing. Implied by --drop-database.",
 	)
 }

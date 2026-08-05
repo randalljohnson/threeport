@@ -35,15 +35,15 @@ changing behavior it describes, and update them in the same change.
 # Documentation Lockstep
 
 A change to behavior the documentation describes updates that documentation in the same
-change. The surfaces that go stale fastest are `tptctl` commands and their flags, the API
-types in `pkg/api/v0` that the object pages describe, the mage targets the build and
-release pages tell a reader to run, and the sample files under `samples/` that the guides
-download.
+change. What goes stale fastest is `tptctl` commands and flags, the API types the object
+pages describe, the mage targets the build pages name, and the samples they download.
 
-Two checks hold the line on every pull request. `mage test:docsLinks` builds the site
-strictly, so a dead link, a missing anchor, or a page left out of the navigation fails.
-`mage test:docsCommands` reads every shell block under `docs/` and fails on a `tptctl`
-command, a `make` or `mage` target, or a downloaded sample that does not exist.
+Two checks run on every pull request, and they cover names only. `mage test:docsLinks`
+builds the site strictly, failing on a dead link, a missing anchor, or a page left out of
+the navigation. `mage test:docsCommands` reads every shell block under `docs/` and fails
+on a `tptctl` command, a `make` or `mage` target, or a downloaded sample that does not
+exist. Nothing checks a flag, a field description, or whether prose still matches
+behavior, so those stay with whoever makes the change.
 
 # Architecture Overview
 

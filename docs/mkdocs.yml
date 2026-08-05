@@ -96,6 +96,15 @@ theme:
 plugins:
     - search
 
+# Raise every link and nav problem to a warning so `mkdocs build --strict`
+# fails on it. Without these, a malformed relative link is only logged at info
+# level and reaches the published site as a dead link.
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
 extra:
   social:
     - icon: fontawesome/brands/github

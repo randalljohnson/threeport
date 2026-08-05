@@ -22,7 +22,7 @@ mkdir threeport-runtime-test
 cd threeport-runtime-test
 ```
 
-To get started, a valid `AwsAccount` object must be created. Use the [Basic AWS Setup guide](../aws/basic-aws-setup.md) for instructions.
+To get started, a valid `AwsProvider` object must be created. Use the [Basic AWS Setup guide](../aws/basic-aws-setup.md) for instructions.
 
 ## Deployment
 

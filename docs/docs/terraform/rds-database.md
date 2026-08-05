@@ -41,10 +41,10 @@ curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/aws/d
 Open this file:
 
 ```yaml
-AwsAccount:
+AwsProvider:
   Name: default-account
   AccountID: "555555555555"
-  DefaultAccount: true
+  DefaultProvider: true
 
   # option 1: provide explicit configs/credentials
   #DefaultRegion: us-east-1
@@ -75,7 +75,7 @@ Edit the file to make the following changes:
 Now, register the AWS account with Threeport.
 
 ```bash
-tptctl create aws-account --config default-aws-account.yaml
+tptctl create aws-provider --config default-aws-account.yaml
 ```
 
 ## Create Terraform Definition
@@ -135,7 +135,7 @@ TerraformInstance:
   VarsDocument: config/terraform.tfvars
   TerraformDefinition:
     Name: rds-instance
-  AwsAccount:
+  AwsProvider:
     Name: default-account
 ```
 
@@ -144,7 +144,7 @@ This config specifies:
 * An arbitrary name for the RDS instance
 * Terraform variables to use for this deployment
 * The name of the definition we just created
-* The AWS account we registered earlier
+* The AWS provider we registered earlier
 
 Download Terraform a sample variables file:
 

@@ -979,7 +979,7 @@ Local or Remote environment.
     can view them with this command.
 
     ```bash
-    tptctl get workloads
+    tptctl get kubernetes-workloads
     ```
 
     Delete the support service workloads.

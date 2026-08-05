@@ -78,10 +78,10 @@ versions as needed for future releases.
 - [] Re-build and test to make sure the dependency updates didn't break
   anything obvious.
   ```
-  make build-tptdev
+  mage build:tptdev
   ./bin/tptdev build
   ./bin/tptdev up
-  make tests
+  mage test:integration
   ```
 - [] Update `DefaultKubernetesVersion` in `nukleros/aws-builder` to latest
   release of Kubernetes.  Cut new release for aws-builder and update aws-builder

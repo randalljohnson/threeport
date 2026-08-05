@@ -12,7 +12,7 @@ provision these separately.
 
 ## AWS Account
 
-An AWS Account object allows you to register AWS account information with
+An `AwsProvider` object allows you to register AWS account information with
 Threeport so that it can be used to deploy runtimes, workloads and managed
 services in that account.  A
 [genesis](../control-planes/control-plane-intro.md#control-plane-instance)
@@ -28,7 +28,7 @@ account.
 You can register and use as many AWS accounts in Threeport as you wish.
 
 Reference:
-[AwsAccount](https://pkg.go.dev/github.com/threeport/threeport/pkg/api/v0#AwsAccount)
+[AwsProvider](https://pkg.go.dev/github.com/threeport/threeport/pkg/api/v0#AwsProvider)
 
 ## AWS EKS Kubernetes Runtime Definition
 

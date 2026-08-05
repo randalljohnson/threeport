@@ -81,7 +81,7 @@ tptctl create kubernetes-workload-instance -c unmanaged-nginx-workload-instance-
 We can now see the objects we created in Threeport.
 
 ```bash
-tptctl get workloads
+tptctl get kubernetes-workloads
 ```
 
 You should see the following output.
@@ -180,7 +180,7 @@ tptctl create kubernetes-workload-instance -c managed-nginx-workload-instance-0.
 List the Threeport workloads.
 
 ```bash
-tptctl get workloads
+tptctl get kubernetes-workloads
 ```
 
 You should see the following output.
@@ -224,7 +224,7 @@ tptctl create kubernetes-workload-instance -c managed-nginx-workload-instance-1.
 Now you can list Threeport workloads again.
 
 ```bash
-tptctl get workloads
+tptctl get kubernetes-workloads
 ```
 
 You should see the following:

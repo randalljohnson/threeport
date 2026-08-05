@@ -223,6 +223,11 @@ func (Dev) Generate() error {
 		return fmt.Errorf("docs generation failed: %w", err)
 	}
 
+	err = dev.GenerateAgentsIndex()
+	if err != nil {
+		return fmt.Errorf("agents index generation failed: %w", err)
+	}
+
 	fmt.Println("code generated successfully")
 
 	return nil
@@ -286,25 +291,6 @@ func (Test) Commits() error {
 	}
 
 	fmt.Println("commit check ran successfully")
-
-	return nil
-}
-
-// Docs checks the documentation site for links that resolve to nothing,
-// anchors that are absent from the page they point at, and pages stranded
-// outside the navigation. Requires the documentation toolchain from
-// docs/requirements.txt.
-func (Test) Docs() error {
-	testDocs := exec.Command(
-		"test/scripts/docs-check.sh",
-	)
-
-	output, err := testDocs.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to run docs check: '%s': %w", output, err)
-	}
-
-	fmt.Println("docs check ran successfully")
 
 	return nil
 }

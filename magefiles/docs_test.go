@@ -144,6 +144,71 @@ func TestCheckTargetsRejectsUndeclaredTargets(t *testing.T) {
 	}
 }
 
+// TestCheckSampleFilesFindsRenamedSamples asserts that a download URL is
+// resolved against the tree rather than the network, so a sample renamed in
+// this repository is reported even while the URL's branch still serves the old
+// path.
+func TestCheckSampleFilesFindsRenamedSamples(t *testing.T) {
+	repoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repoRoot, "samples", "helm"), 0755); err != nil {
+		t.Fatalf("failed to create the test samples tree: %v", err)
+	}
+	present := filepath.Join(repoRoot, "samples", "helm", "wordpress.yaml")
+	if err := os.WriteFile(present, []byte("{}\n"), 0644); err != nil {
+		t.Fatalf("failed to write the test sample: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		lines []string
+		want  []string
+	}{
+		{
+			name:  "a sample this repository carries passes",
+			lines: []string{"curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/helm/wordpress.yaml"},
+			want:  []string{},
+		},
+		{
+			name:  "a sample renamed away is reported",
+			lines: []string{"curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workload/gone.yaml"},
+			want:  []string{"samples/workload/gone.yaml: no such sample in this repository"},
+		},
+		{
+			name:  "the branch in the URL does not matter",
+			lines: []string{"curl -O https://raw.githubusercontent.com/threeport/threeport/0.7/samples/helm/wordpress.yaml"},
+			want:  []string{},
+		},
+		{
+			name:  "a different repository is not checked against this tree",
+			lines: []string{"curl -O https://raw.githubusercontent.com/threeport/releases/main/samples/k8s-runtime.yaml"},
+			want:  []string{},
+		},
+		{
+			name: "a repeated missing sample is reported once",
+			lines: []string{
+				"curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workload/gone.yaml",
+				"curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/workload/gone.yaml",
+			},
+			want: []string{"samples/workload/gone.yaml: no such sample in this repository"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := checkSampleFiles(test.lines, repoRoot)
+
+			if len(got) != len(test.want) {
+				t.Fatalf("got %q, want %q", got, test.want)
+			}
+			for index := range got {
+				if got[index] != test.want[index] {
+					t.Errorf("problem %d: got %q, want %q", index, got[index], test.want[index])
+				}
+			}
+		})
+	}
+}
+
 // TestReadMakefileTargetsReadsDeclarationsOnly asserts that target names come
 // from declaration lines and that recipe lines and comments are ignored.
 func TestReadMakefileTargetsReadsDeclarationsOnly(t *testing.T) {

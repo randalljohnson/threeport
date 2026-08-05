@@ -29,15 +29,23 @@ import (
 
 // imageBuildTarget returns the Dockerfile target for a component.
 // terraform-controller needs the terraform CLI on PATH at runtime;
-// oci-controller and gcp-controller both need the pulumi CLI. Those
-// route to the `release-terraform` / `release-pulumi` targets;
+// oci-controller and gcp-controller both need the pulumi CLI;
+// helm-workload-controller needs writable helm cache and data
+// directories, which the plain target does not provide. Those route to
+// the `release-terraform` / `release-pulumi` / `release-helm` targets;
 // everything else uses the distroless `release` target.
+//
+// This mapping is duplicated by the mage build path, so a component
+// added here is added there too or the two builds produce different
+// images for the same component.
 func imageBuildTarget(componentName string) string {
 	switch componentName {
 	case installer.ThreeportTerraformControllerName:
 		return "release-terraform"
 	case installer.ThreeportOciControllerName, installer.ThreeportGcpControllerName:
 		return "release-pulumi"
+	case installer.ThreeportHelmWorkloadControllerName:
+		return "release-helm"
 	}
 	return "release"
 }

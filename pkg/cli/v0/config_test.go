@@ -7,9 +7,9 @@ import (
 
 // TestValidateControlPlaneName asserts that a name the config knows is
 // accepted, and that every name it does not know is refused with a message
-// showing what the config holds. The reinstall reads the name only at the very
-// end of its run, so a name that resolves to nothing has to be caught here or
-// it is not caught until every pod has been rolled.
+// showing what the config holds. Callers validate before they act, so the
+// refusal has to be complete here: a name that gets past this is not rejected
+// until something downstream tries to resolve it.
 func TestValidateControlPlaneName(t *testing.T) {
 	populated := &ThreeportConfig{
 		ControlPlanes: []ControlPlane{

@@ -124,8 +124,7 @@ func testTokenMintingRuntime() *v0.KubernetesRuntimeInstance {
 // This is the branch a local cluster can never reach. Kind records a client
 // certificate and no infra provider that mints, so it takes the certificate
 // path every time, and a green run against it says nothing about whether the
-// minting path still works. Every credential failure this covers was invisible
-// to a local run that placed a workload successfully.
+// minting path still works.
 func TestGetRestConfigMintsTokenInsteadOfUsingCertificate(t *testing.T) {
 	apiServer := &okeRuntimeApiServer{}
 	apiClient, apiAddr := apiServer.serve(t)
@@ -216,8 +215,8 @@ func TestGetRestConfigUsesCertificateWithoutTokenMintingProvider(t *testing.T) {
 
 // TestGetRestConfigRefusesRuntimeWithNoCredential asserts that a runtime
 // carrying no certificate pair, no token, and no minting provider is refused
-// rather than returned as a config that cannot authenticate. A restore that
-// writes such a record is the failure this names.
+// rather than returned as a config that cannot authenticate. Anything that
+// writes a runtime record without one of the three fails here.
 func TestGetRestConfigRefusesRuntimeWithNoCredential(t *testing.T) {
 	runtime := testTokenMintingRuntime()
 	runtime.KubernetesRuntimeDefinitionID = nil

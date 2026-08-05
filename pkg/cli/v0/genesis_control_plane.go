@@ -1532,18 +1532,15 @@ func EnsureBootstrapObjects(cpi *threeport.ControlPlaneInstaller) error {
 // running control plane needs neither: both mint a kube API token per request
 // from the runtime's infra provider instead of reading one off this record.
 //
-// The install-time token is still carried over when there is no certificate
-// pair, because per-request minting is not something every reader of this
-// record knows how to do. A client that predates it, or one talking to a
-// provider that has no minting path, looks for a credential on the record and
-// gives up when it finds none. Writing the token means such a client fails on
-// an expired credential, which says what is wrong, rather than on a record
-// that carries no credential at all, which reads as a broken restore. The
-// token is written without an expiration, matching what the threeport config
-// records, so nothing treats it as refreshable.
+// The install-time token is carried over when there is no certificate pair, so
+// the record always holds some credential. Per-request minting is not
+// something every reader of this record does, and one that doesn't looks here:
+// a token it can try, even an expired one, beats nothing to try at all. It is
+// written without an expiration, matching what the threeport config records,
+// so nothing treats it as refreshable.
 //
 // EKS is refused instead. It is the one provider with no per-request minting,
-// so the stale token would be the only credential the record ever has, and the
+// so the token would be the only credential the record ever has, and the
 // refresh path that would replace it only runs against an expiration the
 // config does not record.
 //

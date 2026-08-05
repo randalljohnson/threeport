@@ -223,7 +223,7 @@ The value stored is the controller's UUID. Consumer names follow: `{ReconcilerNa
 | Resource | Name Pattern | Source |
 |---|---|---|
 | Helm release | `{instanceName}-release` | `internal/helm-workload/v0_helm_workload_instance.go` |
-| ThreeportWorkload CRD instance | `workload-instance-{ID}` or `helm-workload-instance-{ID}` | `internal/agent/agent.go` |
+| ThreeportWorkload CRD instance | `kubernetes-workload-instance-{ID}` or `helm-workload-instance-{ID}` | `internal/agent/agent.go` |
 
 ## ThreeportWorkload CRD
 
@@ -244,6 +244,8 @@ From `pkg/kube/v0/metadata.go` and `internal/agent/agent.go`:
 | `control-plane.threeport.io/managed-by` | `threeport` | All managed resources + namespaces |
 | `control-plane.threeport.io/kubernetes-workload-instance` | `{ID}` | Workload resources |
 | `control-plane.threeport.io/helm-workload-instance` | `{ID}` | Helm workload resources |
+
+These are defaults, not guarantees. `AddLabels()` writes each key only when the resource does not already carry it, so a manifest that sets `app.kubernetes.io/name` or `app.kubernetes.io/instance` itself keeps its own value and the table's `app.kubernetes.io/*` rows will not match. On the kinds that manage pods (`Deployment`, `StatefulSet`, `DaemonSet`, `ReplicaSet`, `Job`) the `control-plane.threeport.io/*` labels are written into the pod template unconditionally, so query by those when you need to find what Threeport is managing.
 
 ## kubectl Examples
 
@@ -463,7 +465,7 @@ tptctl get kubernetes-workload-instances
 tptctl {verb} {object-type} [flags]
 ```
 
-**Verbs:** `get`, `create`, `delete`, `replace`, `describe`
+**Verbs:** `get`, `create`, `delete`, `replace`
 
 **Common flags:**
 - `-n, --name`: Object name
@@ -491,12 +493,15 @@ KubernetesWorkload:
     Name: my-app
 EOF
 
-# CORRECT: with variable substitution for credentials
-cat <<EOF | tptctl create aws-account --stdin
-AwsAccount:
+# CORRECT: name the credential files instead of the credentials themselves
+cat <<EOF | tptctl create aws-provider --stdin
+AwsProvider:
   Name: my-aws
-  AccessKeyID: $AWS_ACCESS_KEY_ID
-  SecretAccessKey: $AWS_SECRET_ACCESS_KEY
+  AccountID: "555555555555"
+  DefaultProvider: true
+  LocalConfig: /path/to/.aws/config
+  LocalCredentials: /path/to/.aws/credentials
+  LocalProfile: default
 EOF
 
 # WRONG: don't write config files
@@ -505,14 +510,34 @@ tptctl create kubernetes-workload --config /tmp/workload.yaml
 
 ## Credential Safety
 
-**NEVER** read private keys, credentials, or secrets directly with the Read tool. If a credential file exists on disk, load it into a shell variable first:
+**NEVER** read private keys, credentials, or secrets directly with the Read tool.
+
+**Preferred: hand tptctl the paths and let it do the reading.** The AWS provider config takes `LocalConfig`, `LocalCredentials`, and `LocalProfile` in place of the credentials themselves. tptctl reads the named profile out of those files as it builds the create request, and the API server stores `AccessKeyID` and `SecretAccessKey` encrypted at rest. The secret never lands in the command, the shell history, or the transcript. A config supplies either those three fields or the explicit trio of `DefaultRegion`, `AccessKeyID`, and `SecretAccessKey`, never both.
+
+```bash
+# CORRECT: name the credential files instead of the credentials themselves
+cat <<EOF | tptctl create aws-provider --stdin
+AwsProvider:
+  Name: my-aws
+  AccountID: "555555555555"
+  DefaultProvider: true
+  LocalConfig: /path/to/.aws/config
+  LocalCredentials: /path/to/.aws/credentials
+  LocalProfile: default
+EOF
+```
+
+**Fallback: a shell variable.** When the credential does not live in an AWS config file, load it into a shell variable first and reference the variable in the heredoc:
 
 ```bash
 # CORRECT: load credential into variable, reference in heredoc
 AWS_KEY=$(cat ~/.aws/secret-key)
-cat <<EOF | tptctl create aws-account --stdin
-AwsAccount:
+cat <<EOF | tptctl create aws-provider --stdin
+AwsProvider:
   Name: my-aws
+  AccountID: "555555555555"
+  DefaultRegion: us-east-1
+  AccessKeyID: $AWS_ACCESS_KEY_ID
   SecretAccessKey: $AWS_KEY
 EOF
 

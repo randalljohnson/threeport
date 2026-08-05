@@ -116,18 +116,9 @@ each controller's `main_gen.go`.
 
 # Reconciliation Fields and Lifecycle
 
-## Reconciliation Struct (`pkg/api/v0/common.go`)
-
-| Field | Type | Purpose |
-|---|---|---|
-| `Reconciled` | `*bool` | `false` until controller finishes; set `true` on success |
-| `CreationAcknowledged` | `*time.Time` | Controller acknowledges creation has begun |
-| `CreationConfirmed` | `*time.Time` | Controller confirms creation is complete |
-| `CreationFailed` | `*bool` | Set `true` if creation fails |
-| `DeletionScheduled` | `*time.Time` | API server sets on first DELETE call |
-| `DeletionAcknowledged` | `*time.Time` | Controller acknowledges deletion has begun |
-| `DeletionConfirmed` | `*time.Time` | Controller confirms deletion is complete |
-| `InterruptReconciliation` | `*bool` | Stops future reconciliation (e.g., to prevent runaway infra) |
+Every reconcilable object embeds the `Reconciliation` struct in `pkg/api/v0/common.go`.
+That struct is the field list: each field carries its own comment saying what sets it and
+what it means, so read it there. The lifecycles below say when those fields move.
 
 ## Create Lifecycle
 

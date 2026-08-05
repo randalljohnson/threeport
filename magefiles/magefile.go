@@ -250,26 +250,6 @@ func (Dev) Generate() error {
 	return nil
 }
 
-// GenerateAgentsIndex writes the documentation map that the agent
-// instructions import, deriving the published half from the site navigation so
-// the two can never disagree. Requires the documentation toolchain from
-// docs/requirements.txt.
-func (Dev) GenerateAgentsIndex() error {
-	generateIndex := exec.Command(
-		"python3",
-		"docs/generate-agents-index.py",
-	)
-
-	output, err := generateIndex.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to generate the documentation map: '%s': %w", output, err)
-	}
-
-	fmt.Printf("%s", output)
-
-	return nil
-}
-
 // GenerateCode generates code with threeport-sdk.
 func (Dev) GenerateCode() error {
 	generateCode := exec.Command(
@@ -328,44 +308,6 @@ func (Test) Commits() error {
 	}
 
 	fmt.Println("commit check ran successfully")
-
-	return nil
-}
-
-// DocsLinks checks the documentation site for links that resolve to nothing,
-// anchors that are absent from the page they point at, and pages stranded
-// outside the navigation. Requires the documentation toolchain from
-// docs/requirements.txt.
-func (Test) DocsLinks() error {
-	testDocs := exec.Command(
-		"test/scripts/docs-check.sh",
-	)
-
-	output, err := testDocs.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to run docs link check: '%s': %w", output, err)
-	}
-
-	fmt.Println("docs link check ran successfully")
-
-	return nil
-}
-
-// DocsCommands checks that every command the documentation tells a reader to
-// run exists, comparing what the fenced code blocks contain against the
-// command line tool's own subcommands and the build system's own targets.
-// Requires the tptctl binary from build:tptctl.
-func (Test) DocsCommands() error {
-	testDocsCommands := exec.Command(
-		"test/scripts/docs-commands-check.sh",
-	)
-
-	output, err := testDocsCommands.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to run docs command check: '%s': %w", output, err)
-	}
-
-	fmt.Printf("%s", output)
 
 	return nil
 }

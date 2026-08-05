@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
+	"github.com/threeport/threeport/pkg/api-server/v0/database"
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -64,40 +65,42 @@ var deleteTargets = []deleteTarget{
 // the rest-api deployment to roll back to ready after install.
 const restApiDeploymentReadyTimeout = 5 * time.Minute
 
-// crdbStatefulSetName is the name of the database statefulset the
-// installer creates, and the prefix its volume claim carries.
-const crdbStatefulSetName = "crdb"
+// dropDatabaseJobName is the one-off job that issues the drop against
+// the running database. The name is fixed, so a job left behind by an
+// interrupted run is replaced instead of accumulating alongside it.
+const dropDatabaseJobName = "threeport-drop-database"
 
-// crdbDataVolumeClaimName is the volume claim holding the database's
-// data directory. A statefulset's claim is named from its volume claim
-// template and ordinal, so a single-replica database has exactly one.
-const crdbDataVolumeClaimName = "datadir-crdb-0"
+// dropDatabaseJobBackoffLimit is how many times kubernetes replaces the
+// drop job's pod before it reports the job failed. Retries cover a
+// database still finishing its own startup when the job first runs.
+const dropDatabaseJobBackoffLimit = 3
 
-// statefulSetGVR and volumeClaimGVR are the kinds the database drop
-// deletes. Neither appears in deleteTargets: the ordinary reinstall
-// must never touch them.
-var (
-	statefulSetGVR = schema.GroupVersionResource{
-		Group:    "apps",
-		Version:  "v1",
-		Resource: "statefulsets",
-	}
-	volumeClaimGVR = schema.GroupVersionResource{
-		Group:    "",
-		Version:  "v1",
-		Resource: "persistentvolumeclaims",
-	}
-)
+// dbRootCertsMountPath is where the drop job mounts the database's root
+// credentials. The cockroach client reads the whole directory, so the
+// three files the secret holds are named the way it expects.
+const dbRootCertsMountPath = "/cockroach/cockroach-certs"
+
+// dbRootCertsFileMode makes the mounted credentials readable only by
+// the user running the job. The cockroach client refuses a client key
+// that anyone else can read.
+const dbRootCertsFileMode = 0600
+
+// jobGVR is the kind the database drop creates. It appears in no delete
+// target list: the drop removes its own job.
+var jobGVR = schema.GroupVersionResource{
+	Group:    "batch",
+	Version:  "v1",
+	Resource: "jobs",
+}
 
 // ErrControlPlaneNotDevelopment reports that an operation restricted to
 // development control planes was attempted against one installed at a
 // different tier, or against one whose tier cannot be established.
 var ErrControlPlaneNotDevelopment = errors.New("control plane is not installed at the development tier")
 
-// DropDatabase deletes the control plane's database and the volume
-// holding its data, so the next install brings up an empty database and
-// the migrations run against a fresh schema. The data is not
-// recoverable afterward.
+// DropDatabase drops the control plane's schema, so the next install
+// recreates the database empty and the migrations run from scratch. The
+// data is not recoverable afterward.
 //
 // Only a control plane installed at the development tier may be
 // dropped. The tier is read from the namespace in the target cluster
@@ -106,10 +109,17 @@ var ErrControlPlaneNotDevelopment = errors.New("control plane is not installed a
 // how it was installed. A namespace carrying no tier is refused too,
 // which covers control planes installed before the tier was recorded.
 //
-// The certificate authority, the signed certificates, the message
-// broker's data, and the api's external endpoint all survive: they are
-// separate resources, so nobody has to re-issue or re-download
-// credentials after a drop.
+// The drop is issued as SQL against the running database rather than by
+// deleting the database's kubernetes resources, so everything outside
+// the schema survives: the volume holding the data directory, the
+// database's own certificates, the certificate authority, the message
+// broker's data, and the api's external endpoint. Nobody has to
+// re-issue or re-download credentials afterward, and no volume has to
+// be reprovisioned.
+//
+// Control plane deployments are scaled to zero first, so no component
+// is writing to the schema while it is being dropped. The install that
+// follows brings them back.
 func (cpi *ControlPlaneInstaller) DropDatabase(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
@@ -127,54 +137,176 @@ func (cpi *ControlPlaneInstaller) DropDatabase(
 		)
 	}
 
-	// foreground cascade so the pod is gone before the volume claim is
-	// released; deleting the claim out from under a running database
-	// leaves the volume attached and the replacement pod unschedulable.
-	fmt.Printf("Info: deleting database statefulset %s and volume claim %s\n", crdbStatefulSetName, crdbDataVolumeClaimName)
-	deletePolicy := metav1.DeletePropagationForeground
-	deleteOpts := metav1.DeleteOptions{PropagationPolicy: &deletePolicy}
-
-	if err := kubeClient.Resource(statefulSetGVR).Namespace(namespace).Delete(
-		context.Background(), crdbStatefulSetName, deleteOpts,
-	); err != nil && !k8serrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete database statefulset %s: %w", crdbStatefulSetName, err)
+	// quiesce the control plane first so nothing is mid-write when its
+	// tables go away
+	if err := cpi.scaleDownDeployments(kubeClient, namespace); err != nil {
+		return fmt.Errorf("failed to scale control plane down before the drop: %w", err)
 	}
 
-	if err := kubeClient.Resource(volumeClaimGVR).Namespace(namespace).Delete(
-		context.Background(), crdbDataVolumeClaimName, deleteOpts,
-	); err != nil && !k8serrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete database volume claim %s: %w", crdbDataVolumeClaimName, err)
-	}
-
-	// wait for both to leave the api. the install that follows treats an
-	// existing statefulset as already installed and skips it, so a
-	// still-terminating one would be read as present and the database
-	// would never come back.
-	fmt.Println("Info: waiting for database statefulset and volume claim to be fully removed")
-	if err := util.Retry(60, 3, func() error {
-		for _, pending := range []struct {
-			gvr  schema.GroupVersionResource
-			name string
-		}{
-			{gvr: statefulSetGVR, name: crdbStatefulSetName},
-			{gvr: volumeClaimGVR, name: crdbDataVolumeClaimName},
-		} {
-			_, err := kubeClient.Resource(pending.gvr).Namespace(namespace).Get(
-				context.Background(), pending.name, metav1.GetOptions{},
-			)
-			if err == nil {
-				return fmt.Errorf("%s/%s still terminating", pending.gvr.Resource, pending.name)
-			}
-			if !k8serrors.IsNotFound(err) {
-				return fmt.Errorf("failed to check %s/%s: %w", pending.gvr.Resource, pending.name, err)
-			}
-		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("database resources did not finish terminating: %w", err)
+	if err := cpi.runDropDatabaseJob(kubeClient, namespace); err != nil {
+		return err
 	}
 
 	fmt.Println("Info: database dropped, it will be recreated empty by the install that follows")
+
+	return nil
+}
+
+// runDropDatabaseJob issues the drop from a one-off job in the control
+// plane namespace, waits for it to report success, and removes it. The
+// job runs the cockroach client against the running database with the
+// same root credentials the installer already keeps in the cluster for
+// database initialization.
+func (cpi *ControlPlaneInstaller) runDropDatabaseJob(
+	kubeClient dynamic.Interface,
+	namespace string,
+) error {
+	// clear a job left behind by an interrupted run: a job's pod
+	// template is immutable, so creating over one is refused
+	if err := cpi.deleteDropDatabaseJob(kubeClient, namespace); err != nil {
+		return err
+	}
+
+	statement := fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE", database.ThreeportDatabaseName)
+	fmt.Printf("Info: running %q against the database\n", statement)
+
+	job := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "batch/v1",
+			"kind":       "Job",
+			"metadata": map[string]interface{}{
+				"name":      dropDatabaseJobName,
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"backoffLimit": int64(dropDatabaseJobBackoffLimit),
+				"template": map[string]interface{}{
+					"spec": map[string]interface{}{
+						"restartPolicy": "Never",
+						"containers": []interface{}{
+							map[string]interface{}{
+								"name":  "drop-database",
+								"image": fmt.Sprintf("cockroachdb/cockroach:%s", DatabaseImageTag),
+								"command": []interface{}{
+									"/cockroach/cockroach",
+									"sql",
+									fmt.Sprintf("--certs-dir=%s", dbRootCertsMountPath),
+									fmt.Sprintf("--host=%s", database.ThreeportDatabaseHost),
+									fmt.Sprintf("--port=%s", database.ThreeportDatabasePort),
+									"--execute",
+									statement,
+								},
+								"volumeMounts": []interface{}{
+									map[string]interface{}{
+										"name":      dbRootCertSecretName,
+										"mountPath": dbRootCertsMountPath,
+									},
+								},
+							},
+						},
+						"volumes": []interface{}{
+							map[string]interface{}{
+								"name": dbRootCertSecretName,
+								"secret": map[string]interface{}{
+									"secretName":  dbRootCertSecretName,
+									"defaultMode": int64(dbRootCertsFileMode),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if _, err := kubeClient.Resource(jobGVR).Namespace(namespace).Create(
+		context.Background(), job, metav1.CreateOptions{},
+	); err != nil {
+		return fmt.Errorf("failed to create database drop job %s: %w", dropDatabaseJobName, err)
+	}
+
+	if err := cpi.waitForDropDatabaseJob(kubeClient, namespace); err != nil {
+		return err
+	}
+
+	// the job's pod holds the only record of what the drop reported, so
+	// it is cleared only once the job has reported success
+	return cpi.deleteDropDatabaseJob(kubeClient, namespace)
+}
+
+// waitForDropDatabaseJob polls the drop job until it reports one
+// successful completion, or reports that its pod has failed as many
+// times as the job allows. A job that has exhausted its retries will
+// not recover, so it is reported straight away rather than waited out.
+func (cpi *ControlPlaneInstaller) waitForDropDatabaseJob(
+	kubeClient dynamic.Interface,
+	namespace string,
+) error {
+	var jobFailed error
+
+	// 3s poll x 60 attempts = 3 minute aggregate deadline.
+	if err := util.Retry(60, 3, func() error {
+		job, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
+			context.Background(), dropDatabaseJobName, metav1.GetOptions{},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to read database drop job status: %w", err)
+		}
+
+		failed, _, _ := util.NestedInt64OrFloat64(job.Object, "status", "failed")
+		if failed > dropDatabaseJobBackoffLimit {
+			jobFailed = fmt.Errorf(
+				"database drop job %s failed after %d pod attempt(s): inspect its pod logs in namespace %s",
+				dropDatabaseJobName, failed, namespace,
+			)
+			return nil
+		}
+
+		succeeded, _, _ := util.NestedInt64OrFloat64(job.Object, "status", "succeeded")
+		if succeeded > 0 {
+			return nil
+		}
+
+		return fmt.Errorf("database drop job %s has not completed", dropDatabaseJobName)
+	}); err != nil {
+		return fmt.Errorf("database drop did not complete: %w", err)
+	}
+
+	return jobFailed
+}
+
+// deleteDropDatabaseJob removes the drop job and waits for it to leave
+// the api. The delete cascades to the job's pod, so a completed pod
+// does not linger in the control plane namespace.
+func (cpi *ControlPlaneInstaller) deleteDropDatabaseJob(
+	kubeClient dynamic.Interface,
+	namespace string,
+) error {
+	deletePolicy := metav1.DeletePropagationForeground
+	deleteOpts := metav1.DeleteOptions{PropagationPolicy: &deletePolicy}
+
+	if err := kubeClient.Resource(jobGVR).Namespace(namespace).Delete(
+		context.Background(), dropDatabaseJobName, deleteOpts,
+	); err != nil && !k8serrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete database drop job %s: %w", dropDatabaseJobName, err)
+	}
+
+	// 3s poll x 20 attempts = 1 minute aggregate deadline.
+	if err := util.Retry(20, 3, func() error {
+		_, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
+			context.Background(), dropDatabaseJobName, metav1.GetOptions{},
+		)
+		if err == nil {
+			return fmt.Errorf("database drop job %s still terminating", dropDatabaseJobName)
+		}
+		if !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("failed to check database drop job %s: %w", dropDatabaseJobName, err)
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("database drop job did not finish terminating: %w", err)
+	}
 
 	return nil
 }
@@ -298,51 +430,8 @@ func (cpi *ControlPlaneInstaller) deleteForReinstall(
 		LabelPersistent, LabelPersistentValue,
 	)
 
-	// scale every installer-managed Deployment to zero so in-cluster
-	// reconcilers stop driving state before the delete fan-out.
-	fmt.Println("Info: scaling all control plane deployments to 0 and waiting for pods to terminate")
-	deployList, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
-		context.Background(), metav1.ListOptions{LabelSelector: selector},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to list control plane deployments: %w", err)
-	}
-	patch := []byte(`{"spec":{"replicas":0}}`)
-	for _, dep := range deployList.Items {
-		name := dep.GetName()
-		_, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).Patch(
-			context.Background(),
-			name,
-			"application/strategic-merge-patch+json",
-			patch,
-			metav1.PatchOptions{},
-		)
-		if err != nil && !k8serrors.IsNotFound(err) {
-			return fmt.Errorf("failed to scale deployment %s to zero: %w", name, err)
-		}
-	}
-
-	// 3s poll x 60 attempts = 3 minute aggregate deadline.
-	if err := util.Retry(60, 3, func() error {
-		current, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
-			context.Background(), metav1.ListOptions{LabelSelector: selector},
-		)
-		if err != nil {
-			return fmt.Errorf("failed to list deployments while waiting for scale-down: %w", err)
-		}
-		pending := 0
-		for _, dep := range current.Items {
-			ready, _, _ := util.NestedInt64OrFloat64(dep.Object, "status", "readyReplicas")
-			if ready > 0 {
-				pending += int(ready)
-			}
-		}
-		if pending > 0 {
-			return fmt.Errorf("%d ready replica(s) still present", pending)
-		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("control plane deployments did not scale to zero: %w", err)
+	if err := cpi.scaleDownDeployments(kubeClient, namespace); err != nil {
+		return err
 	}
 
 	// foreground-cascade delete the stateless resource set. foreground
@@ -424,6 +513,70 @@ func (cpi *ControlPlaneInstaller) deleteForReinstall(
 		return nil
 	}); err != nil {
 		return fmt.Errorf("control plane resources did not finish terminating: %w", err)
+	}
+
+	return nil
+}
+
+// scaleDownDeployments scales every installer-managed Deployment in the
+// namespace to zero and waits for their pods to drain. Both callers
+// need the control plane to stop driving state before they act on it:
+// the reinstall so in-cluster reconcilers don't recreate resources it
+// just deleted, and the database drop so no component is writing to a
+// schema being dropped.
+func (cpi *ControlPlaneInstaller) scaleDownDeployments(
+	kubeClient dynamic.Interface,
+	namespace string,
+) error {
+	selector := fmt.Sprintf(
+		"%s=%s,%s!=%s",
+		LabelManagedBy, LabelManagedByValue,
+		LabelPersistent, LabelPersistentValue,
+	)
+
+	fmt.Println("Info: scaling all control plane deployments to 0 and waiting for pods to terminate")
+	deployList, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
+		context.Background(), metav1.ListOptions{LabelSelector: selector},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to list control plane deployments: %w", err)
+	}
+	patch := []byte(`{"spec":{"replicas":0}}`)
+	for _, dep := range deployList.Items {
+		name := dep.GetName()
+		_, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).Patch(
+			context.Background(),
+			name,
+			"application/strategic-merge-patch+json",
+			patch,
+			metav1.PatchOptions{},
+		)
+		if err != nil && !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("failed to scale deployment %s to zero: %w", name, err)
+		}
+	}
+
+	// 3s poll x 60 attempts = 3 minute aggregate deadline.
+	if err := util.Retry(60, 3, func() error {
+		current, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
+			context.Background(), metav1.ListOptions{LabelSelector: selector},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to list deployments while waiting for scale-down: %w", err)
+		}
+		pending := 0
+		for _, dep := range current.Items {
+			ready, _, _ := util.NestedInt64OrFloat64(dep.Object, "status", "readyReplicas")
+			if ready > 0 {
+				pending += int(ready)
+			}
+		}
+		if pending > 0 {
+			return fmt.Errorf("%d ready replica(s) still present", pending)
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("control plane deployments did not scale to zero: %w", err)
 	}
 
 	return nil

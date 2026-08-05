@@ -26,8 +26,8 @@ import (
 var reinstallApis string
 
 // reinstallDropDatabase holds the --drop-database flag value: whether
-// to delete the database and its data before reapplying the install,
-// so the migrations run against an empty schema.
+// to drop the database schema before reapplying the install, so the
+// migrations run from scratch.
 var reinstallDropDatabase bool
 
 // reinstallConfirm holds the --confirm flag value: the control plane
@@ -58,16 +58,22 @@ certificate authority and signed certs, and the rest-api's external
 service ip. Everything else (controller and api-server pods, their
 configmaps, rbac) is recreated.
 
-Pass --drop-database to delete the database and its data as well, so
-the migrations run against an empty schema. That data is not
-recoverable, so the flag also requires --confirm with the control plane
-name, and the target cluster must record itself as a development
-installation, which a cloud-hosted control plane does by being
-installed with 'tptctl up --tier development'. Certificates survive a
-drop, so no credentials need to be re-issued or re-downloaded
-afterward, and the kubernetes runtime and control plane records the API
-needs in order to accept work are recreated from the local threeport
-config once the API is back up.
+Pass --drop-database to reset the database as well, taking the whole
+control plane from running to running with an empty schema in one
+command: the control plane is scaled down, its schema is dropped by a
+statement issued against the running database, the install reapplies,
+and the migrations run from scratch. That data is not recoverable, so
+the flag also requires --confirm with the control plane name, and the
+target cluster must record itself as a development installation, which
+a cloud-hosted control plane does by being installed with 'tptctl up
+--tier development'.
+
+The database's data volume, its certificates and the certificate
+authority all survive a drop, so no volume is reprovisioned and no
+credentials need to be re-issued or re-downloaded afterward. The
+kubernetes runtime and control plane records the API needs in order to
+accept work go out with the schema and are recreated from the local
+threeport config once the API is back up.
 
 Pass --restore-bootstrap to recreate those same records without
 dropping anything. Use it when the database was emptied by something
@@ -224,7 +230,7 @@ func init() {
 	)
 	reinstallCmd.Flags().BoolVar(
 		&reinstallDropDatabase,
-		"drop-database", false, "Delete the database and its data before reapplying, so the migrations run against an empty schema. Requires --confirm and a control plane installed at the development tier. The data cannot be recovered.",
+		"drop-database", false, "Drop the database schema before reapplying, so the migrations run from scratch. Requires --confirm and a control plane installed at the development tier. The data cannot be recovered.",
 	)
 	reinstallCmd.Flags().StringVar(
 		&reinstallConfirm,

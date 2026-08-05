@@ -3,6 +3,7 @@ package v0
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -10,8 +11,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
+	k8stesting "k8s.io/client-go/testing"
+
+	"github.com/threeport/threeport/pkg/api-server/v0/database"
 )
 
 // testNamespaceMapper returns a mapper that resolves the Namespace kind,
@@ -43,21 +46,122 @@ func testNamespace(name, tier string) *unstructured.Unstructured {
 	return namespace
 }
 
+// testStatefulSet returns a statefulset standing in for one of the
+// stateful components the drop must leave alone.
+func testStatefulSet(name, namespace string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "apps/v1",
+			"kind":       "StatefulSet",
+			"metadata": map[string]interface{}{
+				"name":      name,
+				"namespace": namespace,
+			},
+		},
+	}
+}
+
+// testVolumeClaim returns a volume claim standing in for the one
+// holding the database's data directory.
+func testVolumeClaim(name, namespace string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "PersistentVolumeClaim",
+			"metadata": map[string]interface{}{
+				"name":      name,
+				"namespace": namespace,
+			},
+		},
+	}
+}
+
+// testManagedDeployment returns an installer-managed deployment with no
+// ready replicas, standing in for one whose pods have already drained.
+// The scale-down waits on ready replicas, so a deployment reporting any
+// would hold the test for the full drain deadline.
+func testManagedDeployment(name, namespace string) *unstructured.Unstructured {
+	deployment := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"metadata": map[string]interface{}{
+				"name":      name,
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"replicas": int64(1),
+			},
+		},
+	}
+	deployment.SetLabels(map[string]string{LabelManagedBy: LabelManagedByValue})
+
+	return deployment
+}
+
 // testKubeClient returns a fake dynamic client seeded with the supplied
-// objects and a scheme that knows the Namespace list kind.
-func testKubeClient(objects ...runtime.Object) dynamic.Interface {
+// objects and a scheme that knows every list kind the reinstall reads.
+func testKubeClient(objects ...runtime.Object) *dynamicfake.FakeDynamicClient {
 	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Version: "v1", Kind: "NamespaceList"},
-		&unstructured.UnstructuredList{},
-	)
+	for _, listKind := range []schema.GroupVersionKind{
+		{Version: "v1", Kind: "NamespaceList"},
+		{Version: "v1", Kind: "PersistentVolumeClaimList"},
+		{Group: "apps", Version: "v1", Kind: "DeploymentList"},
+		{Group: "apps", Version: "v1", Kind: "StatefulSetList"},
+		{Group: "batch", Version: "v1", Kind: "JobList"},
+	} {
+		scheme.AddKnownTypeWithName(listKind, &unstructured.UnstructuredList{})
+	}
 
 	return dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 }
 
+// succeedDropDatabaseJob makes the fake client answer the drop job's
+// status the way a cluster would once its pod has exited cleanly. The
+// reactor stamps the status onto the object on its way into the
+// tracker and leaves the create itself to the default handler, so the
+// poll that follows reads a completed job.
+func succeedDropDatabaseJob(kubeClient *dynamicfake.FakeDynamicClient) *unstructured.Unstructured {
+	created := &unstructured.Unstructured{}
+
+	kubeClient.PrependReactor("create", "jobs", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		job, ok := action.(k8stesting.CreateAction).GetObject().(*unstructured.Unstructured)
+		if !ok {
+			return false, nil, nil
+		}
+		created.Object = job.Object
+		if err := unstructured.SetNestedField(job.Object, int64(1), "status", "succeeded"); err != nil {
+			return false, nil, err
+		}
+
+		return false, nil, nil
+	})
+
+	return created
+}
+
+// allowDeploymentScaleDown makes the fake client accept the scale-down
+// patch and records which deployments it was issued against. The fake
+// client cannot apply a strategic merge patch to an unstructured
+// object, so the reactor answers with the scaled-down deployment
+// itself.
+func allowDeploymentScaleDown(kubeClient *dynamicfake.FakeDynamicClient, scaled *[]string) {
+	kubeClient.PrependReactor("patch", "deployments", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		patch := action.(k8stesting.PatchAction)
+		*scaled = append(*scaled, patch.GetName())
+
+		deployment := testManagedDeployment(patch.GetName(), patch.GetNamespace())
+		if err := unstructured.SetNestedField(deployment.Object, int64(0), "spec", "replicas"); err != nil {
+			return true, nil, err
+		}
+
+		return true, deployment, nil
+	})
+}
+
 // TestDropDatabaseRejectsNonDevelopmentControlPlane asserts that the
 // database drop refuses every control plane it cannot confirm is a
-// development installation, and that it deletes nothing when it
+// development installation, and that it touches nothing when it
 // refuses.
 func TestDropDatabaseRejectsNonDevelopmentControlPlane(t *testing.T) {
 	tests := []struct {
@@ -80,22 +184,15 @@ func TestDropDatabaseRejectsNonDevelopmentControlPlane(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// seed a namespace at the tier under test alongside the
-			// database resources the drop would delete
+			// seed a namespace at the tier under test alongside a
+			// running control plane the drop would otherwise act on
 			namespace := "threeport-control-plane"
 			kubeClient := testKubeClient(
 				testNamespace(namespace, test.tier),
-				&unstructured.Unstructured{
-					Object: map[string]interface{}{
-						"apiVersion": "apps/v1",
-						"kind":       "StatefulSet",
-						"metadata": map[string]interface{}{
-							"name":      crdbStatefulSetName,
-							"namespace": namespace,
-						},
-					},
-				},
+				testManagedDeployment("threeport-api-server", namespace),
 			)
+			var scaled []string
+			allowDeploymentScaleDown(kubeClient, &scaled)
 			mapper := testNamespaceMapper()
 			cpi := &ControlPlaneInstaller{Opts: Options{Namespace: namespace}}
 
@@ -110,57 +207,38 @@ func TestDropDatabaseRejectsNonDevelopmentControlPlane(t *testing.T) {
 				t.Errorf("expected error to match ErrControlPlaneNotDevelopment, got: %v", err)
 			}
 
-			// nothing is deleted on a refusal, so the database survives
-			_, getErr := kubeClient.Resource(statefulSetGVR).Namespace(namespace).Get(
-				context.Background(), crdbStatefulSetName, metav1.GetOptions{},
-			)
-			if getErr != nil {
-				t.Errorf("expected database statefulset to survive a refused drop, got: %v", getErr)
+			// a refused drop leaves the control plane running: nothing
+			// is scaled down and no drop is issued
+			if len(scaled) > 0 {
+				t.Errorf("expected no deployment to be scaled down on a refused drop, got %v", scaled)
+			}
+			if _, getErr := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
+				context.Background(), dropDatabaseJobName, metav1.GetOptions{},
+			); getErr == nil {
+				t.Error("expected no database drop job to be created on a refused drop")
 			}
 		})
 	}
 }
 
-// TestDropDatabaseDeletesDatabaseOnDevelopmentControlPlane asserts that
-// a development control plane's database and its data volume are both
-// removed, while the message broker's data is left in place.
-func TestDropDatabaseDeletesDatabaseOnDevelopmentControlPlane(t *testing.T) {
-	// seed a development namespace with the database, its data volume,
-	// and an unrelated statefulset that must not be touched
+// TestDropDatabaseRunsDropStatementOnDevelopmentControlPlane asserts
+// that a development control plane is quiesced and its schema dropped
+// by a statement issued against the running database, and that every
+// stateful resource the database depends on is left in place.
+func TestDropDatabaseRunsDropStatementOnDevelopmentControlPlane(t *testing.T) {
+	// seed a development namespace with a running control plane, the
+	// database, its data volume, and the message broker
 	namespace := "threeport-control-plane"
 	kubeClient := testKubeClient(
 		testNamespace(namespace, ControlPlaneTierDev),
-		&unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": "apps/v1",
-				"kind":       "StatefulSet",
-				"metadata": map[string]interface{}{
-					"name":      crdbStatefulSetName,
-					"namespace": namespace,
-				},
-			},
-		},
-		&unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": "apps/v1",
-				"kind":       "StatefulSet",
-				"metadata": map[string]interface{}{
-					"name":      "nats-js",
-					"namespace": namespace,
-				},
-			},
-		},
-		&unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": "v1",
-				"kind":       "PersistentVolumeClaim",
-				"metadata": map[string]interface{}{
-					"name":      crdbDataVolumeClaimName,
-					"namespace": namespace,
-				},
-			},
-		},
+		testManagedDeployment("threeport-api-server", namespace),
+		testStatefulSet("crdb", namespace),
+		testStatefulSet("nats-js", namespace),
+		testVolumeClaim("datadir-crdb-0", namespace),
 	)
+	var scaled []string
+	allowDeploymentScaleDown(kubeClient, &scaled)
+	createdJob := succeedDropDatabaseJob(kubeClient)
 	mapper := testNamespaceMapper()
 	cpi := &ControlPlaneInstaller{Opts: Options{Namespace: namespace}}
 
@@ -168,22 +246,107 @@ func TestDropDatabaseDeletesDatabaseOnDevelopmentControlPlane(t *testing.T) {
 		t.Fatalf("expected drop to succeed on a development control plane, got: %v", err)
 	}
 
-	// the database and the volume holding its data are both gone
-	if _, err := kubeClient.Resource(statefulSetGVR).Namespace(namespace).Get(
-		context.Background(), crdbStatefulSetName, metav1.GetOptions{},
-	); err == nil {
-		t.Error("expected database statefulset to be deleted")
-	}
-	if _, err := kubeClient.Resource(volumeClaimGVR).Namespace(namespace).Get(
-		context.Background(), crdbDataVolumeClaimName, metav1.GetOptions{},
-	); err == nil {
-		t.Error("expected database volume claim to be deleted")
+	// nothing may be writing to the schema while it is dropped
+	if len(scaled) != 1 || scaled[0] != "threeport-api-server" {
+		t.Errorf("expected the api server deployment to be scaled down, got %v", scaled)
 	}
 
-	// the message broker is a separate statefulset and keeps its data
-	if _, err := kubeClient.Resource(statefulSetGVR).Namespace(namespace).Get(
-		context.Background(), "nats-js", metav1.GetOptions{},
-	); err != nil {
-		t.Errorf("expected message broker statefulset to survive the drop, got: %v", err)
+	// the drop is a statement against the running database, naming the
+	// database and cascading to everything in it
+	statement := dropDatabaseJobStatement(t, createdJob)
+	for _, want := range []string{"DROP DATABASE", database.ThreeportDatabaseName, "CASCADE"} {
+		if !strings.Contains(statement, want) {
+			t.Errorf("expected the drop statement to contain %q, got %q", want, statement)
+		}
 	}
+
+	// the job runs once and is cleared, so a later drop is not refused
+	// by a job left behind by this one
+	if _, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
+		context.Background(), dropDatabaseJobName, metav1.GetOptions{},
+	); err == nil {
+		t.Error("expected the database drop job to be removed once it succeeded")
+	}
+
+	// the data volume, the database and the message broker are all
+	// outside the schema and survive the drop
+	for _, survivor := range []struct {
+		gvr  schema.GroupVersionResource
+		name string
+	}{
+		{gvr: schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}, name: "crdb"},
+		{gvr: schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}, name: "nats-js"},
+		{gvr: schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumeclaims"}, name: "datadir-crdb-0"},
+	} {
+		if _, err := kubeClient.Resource(survivor.gvr).Namespace(namespace).Get(
+			context.Background(), survivor.name, metav1.GetOptions{},
+		); err != nil {
+			t.Errorf("expected %s/%s to survive the drop, got: %v", survivor.gvr.Resource, survivor.name, err)
+		}
+	}
+}
+
+// TestDropDatabaseReportsFailedJob asserts that a drop whose pod keeps
+// failing is reported rather than waited out, and that the failure
+// names where to look for what the database said.
+func TestDropDatabaseReportsFailedJob(t *testing.T) {
+	namespace := "threeport-control-plane"
+	kubeClient := testKubeClient(testNamespace(namespace, ControlPlaneTierDev))
+	kubeClient.PrependReactor("create", "jobs", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		job, ok := action.(k8stesting.CreateAction).GetObject().(*unstructured.Unstructured)
+		if !ok {
+			return false, nil, nil
+		}
+		// one more failure than the job allows, which is where
+		// kubernetes stops replacing the pod
+		if err := unstructured.SetNestedField(
+			job.Object, int64(dropDatabaseJobBackoffLimit+1), "status", "failed",
+		); err != nil {
+			return false, nil, err
+		}
+
+		return false, nil, nil
+	})
+	mapper := testNamespaceMapper()
+	cpi := &ControlPlaneInstaller{Opts: Options{Namespace: namespace}}
+
+	err := cpi.DropDatabase(kubeClient, &mapper)
+	if err == nil {
+		t.Fatal("expected a failed drop job to be reported, got nil error")
+	}
+	if !strings.Contains(err.Error(), namespace) {
+		t.Errorf("expected the error to name the namespace to inspect, got: %v", err)
+	}
+}
+
+// dropDatabaseJobStatement returns the SQL the drop job was created to
+// run, read back out of the job's container command.
+func dropDatabaseJobStatement(t *testing.T, job *unstructured.Unstructured) string {
+	t.Helper()
+
+	containers, found, err := unstructured.NestedSlice(job.Object, "spec", "template", "spec", "containers")
+	if err != nil || !found || len(containers) == 0 {
+		t.Fatalf("expected the drop job to define a container, got found=%v err=%v", found, err)
+	}
+
+	container, ok := containers[0].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected the drop job's container to be an object")
+	}
+
+	command, found, err := unstructured.NestedStringSlice(container, "command")
+	if err != nil || !found {
+		t.Fatalf("expected the drop job's container to define a command, got found=%v err=%v", found, err)
+	}
+
+	// the statement is the argument the client is told to execute
+	for i, arg := range command {
+		if arg == "--execute" && i+1 < len(command) {
+			return command[i+1]
+		}
+	}
+
+	t.Fatalf("expected the command to execute a statement, got %v", command)
+
+	return ""
 }

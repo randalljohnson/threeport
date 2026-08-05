@@ -185,6 +185,43 @@ change.`,
 			}
 		}
 
+		// modules share the control plane's database, so they have to
+		// stop before it is dropped. Which namespaces they run in comes
+		// from the control plane's own registry of registered modules,
+		// which lives in the database being dropped, so it is read
+		// first and held.
+		var moduleScales []installer.ModuleDeploymentScale
+		if reinstallDropDatabase {
+			apiClient, err := threeportConfig.GetHTTPClient(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get threeport API client", err)
+				os.Exit(1)
+			}
+			controlPlaneConfig, err := threeportConfig.GetControlPlaneConfig(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get threeport control plane config", err)
+				os.Exit(1)
+			}
+
+			moduleNamespaces, err := cpi.DiscoverModuleNamespaces(apiClient, controlPlaneConfig.APIServer)
+			if err != nil {
+				cli.Error("failed to discover registered module namespaces", err)
+				os.Exit(1)
+			}
+			if len(moduleNamespaces) > 0 {
+				cli.Info(fmt.Sprintf(
+					"scaling down %d module namespace(s): %s",
+					len(moduleNamespaces), strings.Join(moduleNamespaces, ", "),
+				))
+			}
+
+			moduleScales, err = cpi.ScaleDownModules(kubeClient, moduleNamespaces)
+			if err != nil {
+				cli.Error("failed to scale down module deployments", err)
+				os.Exit(1)
+			}
+		}
+
 		// drop the database before the reapply so the install that
 		// follows recreates it empty and the migrations run from scratch
 		if reinstallDropDatabase {
@@ -211,6 +248,15 @@ change.`,
 				cli.Error("failed to restore control plane bootstrap objects", err)
 				os.Exit(1)
 			}
+		}
+
+		// bring the modules back last, once the API they register with
+		// is answering again. Each one rebuilds its own schema and
+		// re-registers itself as it starts, so nothing else has to run
+		// to make the control plane whole.
+		if err := cpi.RestoreModuleScale(kubeClient, moduleScales); err != nil {
+			cli.Error("failed to restore module deployments", err)
+			os.Exit(1)
 		}
 
 		cli.Complete("threeport control plane reinstalled")

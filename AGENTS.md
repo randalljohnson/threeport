@@ -534,23 +534,9 @@ After making code changes:
 
 ## Makefile Targets
 
-| Target | Description |
-|---|---|
-| `dev-logs-api` | Follow API server logs |
-| `dev-logs-wrk` | Follow kubernetes workload controller logs |
-| `dev-logs-gw` | Follow gateway controller logs |
-| `dev-logs-kr` | Follow kubernetes runtime controller logs |
-| `dev-logs-aws` | Follow AWS controller logs |
-| `dev-logs-cp` | Follow control plane controller logs |
-| `dev-logs-agent` | Follow agent logs |
-| `dev-query-crdb` | Open CockroachDB SQL shell |
-| `dev-reset-crdb` | Truncate all working tables in CockroachDB |
-| `dev-purge-streams` | Purge all NATS JetStream streams |
-| `dev-sub-nats` | Subscribe to all NATS messages for debugging |
-| `dev-uninstall-helm` | Uninstall helm releases installed by the control plane |
-| `dev-debug-api` | Start delve session for API server |
-| `dev-debug-wrk` | Start delve session for kubernetes workload controller |
-| `dev-debug-gateway` | Start delve session for gateway controller |
+The Makefile carries the log-following, database, NATS, and delve helpers used during
+local development. Run `make` with no argument to list them, each with a one-line
+description.
 
 # Debugging Decision Trees
 

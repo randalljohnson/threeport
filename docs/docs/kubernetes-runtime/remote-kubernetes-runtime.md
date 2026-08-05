@@ -100,6 +100,6 @@ tptctl delete kubernetes-runtime-instance --name eks-remote
 
 Clean up the downloaded config files:
 ```bash
-rm aws-account.yaml
+rm aws-provider.yaml
 rm k8s-runtime.yaml
 ```

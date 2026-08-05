@@ -32,13 +32,8 @@ to use (the same one used to deploy EKS for the Threeport control plane).  If
 you'd like to use a different AWS account for this guide - or if you installed
 Threeport locally, you'll need to register an AWS account with Threeport.
 
-Download a config to register AWS with Threeport.
-
-```bash
-curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/aws/default-aws-account.yaml
-```
-
-Open this file:
+Save the following config to `default-aws-provider.yaml` to register AWS with
+Threeport.
 
 ```yaml
 AwsProvider:
@@ -75,7 +70,7 @@ Edit the file to make the following changes:
 Now, register the AWS account with Threeport.
 
 ```bash
-tptctl create aws-provider --config default-aws-account.yaml
+tptctl create aws-provider --config default-aws-provider.yaml
 ```
 
 ## Create Terraform Definition

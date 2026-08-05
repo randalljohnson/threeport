@@ -21,15 +21,11 @@ AwsProvider:
   LocalProfile: default
 ```
 
-Paste the following command to download `aws-account.yaml`. Open the file and update `AccountID`,
-`LocalConfig`, and `LocalCredentials` to the appropriate values for your environment.
+Save that config to `aws-provider.yaml` and update `AccountID`, `LocalConfig`, and
+`LocalCredentials` to the appropriate values for your environment.
 
-```bash
-curl -O https://raw.githubusercontent.com/threeport/releases/main/samples/aws-account.yaml
-```
-
-Once `aws-account.yaml` is prepared, run the following command to create the `AwsProvider`
+Once `aws-provider.yaml` is prepared, run the following command to create the `AwsProvider`
 object in the Threeport API:
 ```bash
-tptctl create aws-provider --config aws-account.yaml
+tptctl create aws-provider --config aws-provider.yaml
 ```

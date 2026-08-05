@@ -239,6 +239,108 @@ func TestReadMakefileTargetsReadsDeclarationsOnly(t *testing.T) {
 	}
 }
 
+// TestSpliceAgentsIndexWritesBetweenTheMarkers asserts that the documentation
+// map lands between the marker lines and nowhere else, that the markers survive
+// so the next run has somewhere to write, and that writing the same map a
+// second time leaves the file byte for byte as it was. Without that last
+// property every regeneration would show up as a change to the agent
+// instructions whether or not the site navigation moved.
+func TestSpliceAgentsIndexWritesBetweenTheMarkers(t *testing.T) {
+	prologue := "# Instructions\n\n"
+	epilogue := "\n\n# Architecture\n"
+	instructions := prologue +
+		agentsIndexBeginMarker + "\nan out of date map\n" + agentsIndexEndMarker +
+		epilogue
+
+	path := filepath.Join(t.TempDir(), "AGENTS.md")
+	if err := os.WriteFile(path, []byte(instructions), 0644); err != nil {
+		t.Fatalf("failed to write the test instructions: %v", err)
+	}
+
+	block := "\n# Documentation map\n\n| Topic | Where |\n|---|---|\n| SDK | `docs/docs/sdk/` |\n"
+	if err := spliceAgentsIndex(path, block); err != nil {
+		t.Fatalf("failed to splice the documentation map: %v", err)
+	}
+
+	spliced, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read the spliced instructions: %v", err)
+	}
+
+	want := prologue +
+		agentsIndexBeginMarker + "\n" + block + "\n" + agentsIndexEndMarker +
+		epilogue
+	if string(spliced) != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", spliced, want)
+	}
+
+	if err := spliceAgentsIndex(path, block); err != nil {
+		t.Fatalf("failed to splice the documentation map a second time: %v", err)
+	}
+
+	respliced, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read the respliced instructions: %v", err)
+	}
+	if string(respliced) != string(spliced) {
+		t.Errorf("a second splice changed the file, got:\n%s\nwant:\n%s", respliced, spliced)
+	}
+}
+
+// TestSpliceAgentsIndexRejectsBrokenMarkers asserts that a file whose markers
+// have been lost, reordered, or duplicated is reported. Writing nothing and
+// reporting success would leave the map frozen at whatever it last said, which
+// is the failure this check exists to prevent.
+func TestSpliceAgentsIndexRejectsBrokenMarkers(t *testing.T) {
+	tests := []struct {
+		name         string
+		instructions string
+	}{
+		{
+			name:         "no markers at all",
+			instructions: "# Instructions\n\nno map here\n",
+		},
+		{
+			name:         "only the begin marker",
+			instructions: agentsIndexBeginMarker + "\na map with no end\n",
+		},
+		{
+			name:         "only the end marker",
+			instructions: "a map with no beginning\n" + agentsIndexEndMarker + "\n",
+		},
+		{
+			name:         "the markers the wrong way round",
+			instructions: agentsIndexEndMarker + "\nprose\n" + agentsIndexBeginMarker + "\n",
+		},
+		{
+			name: "the begin marker twice",
+			instructions: agentsIndexBeginMarker + "\nfirst\n" +
+				agentsIndexBeginMarker + "\nsecond\n" + agentsIndexEndMarker + "\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "AGENTS.md")
+			if err := os.WriteFile(path, []byte(test.instructions), 0644); err != nil {
+				t.Fatalf("failed to write the test instructions: %v", err)
+			}
+
+			if err := spliceAgentsIndex(path, "\n# Documentation map\n"); err == nil {
+				t.Fatal("got no error, want a report that the markers cannot be used")
+			}
+
+			unchanged, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("failed to read the instructions back: %v", err)
+			}
+			if string(unchanged) != test.instructions {
+				t.Errorf("the file was rewritten despite the error, got:\n%s", unchanged)
+			}
+		})
+	}
+}
+
 // TestCollectPagePathsReachesEveryNestingDepth asserts that pages are found
 // under a nested navigation section, which is how the object and runtime
 // sections of the site are arranged.

@@ -3,6 +3,15 @@
 Orientation and conventions for working in the threeport codebase. `CLAUDE.md` in this
 directory imports this file, so tools that discover either name load the same content.
 
+This file carries the big picture and nothing else. Conventions that matter only while
+editing one kind of file belong in a path-scoped rule under `.claude/rules/`, so they
+arrive when they are needed rather than on every request.
+
+The documentation map below says which directory covers which topic. A change to
+behavior the documentation describes updates that documentation in the same change.
+
+@docs/agents-index.md
+
 # Architecture Overview
 
 Threeport is a control plane for managing application workloads across Kubernetes clusters. The system uses four core components:

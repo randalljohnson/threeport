@@ -4,8 +4,10 @@ Orientation and conventions for working in the threeport codebase. `CLAUDE.md` i
 directory imports this file, so tools that discover either name load the same content.
 
 This file carries the big picture and nothing else. Conventions that matter only while
-editing one kind of file belong in a path-scoped rule under `.claude/rules/`, so they
-arrive when they are needed rather than on every request.
+editing one kind of file belong in the contributor docs under `docs/dev/`, where
+`docs/dev/style-guide.md` holds the prose and naming rules. Splitting them further into
+per-path rule files that load only for the files they govern is planned and has not
+landed, so read the relevant page under `docs/dev/` instead.
 
 The documentation map below says which directory covers which topic. A change to
 behavior the documentation describes updates that documentation in the same change.
@@ -410,6 +412,22 @@ To change the shape a scaffolding file is *born* with, edit the same generator, 
 - `pkg/kube/v0/*.go`: Kubernetes helpers
 - `cmd/tptdev/cmd/*.go`: developer tool
 
+## Hand-Written Mage Targets Alongside Generated Ones
+
+`magefiles/` holds a hand-written `magefile.go` next to the generated `magefile_gen.go`.
+That is the supported arrangement, not a conflict with the generator. Mage compiles every
+Go file in the directory into a single binary, so targets from both files land in one
+list: `mage -l` shows `build:sdk`, `install:sdk`, and `test:e2e` from the hand-written
+file beside `test:unit`, `test:integration`, and `build:apiBin` from the generated one.
+
+The generated file owns the namespace declarations (`Build`, `Test`, `Install`, `Dev`,
+`Package`, `Download`). `magefile.go` declares no types of its own; it hangs additional
+methods off those same namespaces. Add a target by writing it in `magefile.go`. A
+regenerate rewrites `magefile_gen.go` and leaves `magefile.go` untouched, so the target
+survives. The one constraint is naming: two methods with the same name on the same
+namespace type will not compile, so a hand-written target cannot reuse a name the
+generator emits.
+
 ## SDK Code Generation Circular Dependency
 
 `mage install:sdk` compiles the entire project because the magefiles import project packages. If you rename or change a type in `pkg/api/v0/*.go`, the stale `_gen.go` files reference the old type and will not compile, which blocks the SDK binary build needed to regenerate them.
@@ -612,14 +630,22 @@ Debug mode is implemented across several functions in `pkg/threeport-installer/v
 | Aspect | Default | Debug Enabled |
 |---|---|---|
 | Image pull policy | `IfNotPresent` (cached) | `Always` (always pull fresh) |
-| REST API verbose logging | Off | `--verbose=true` |
+| REST API verbose logging | Off | `-verbose=true` |
 
-**Functions involved:** `getImagePullPolicy()`, `getRestApiArgs()`, `getControllerArgs()`, `getAgentArgs()`, `getCommand()`, all in `components.go`.
+**Functions involved:** `getImagePullPolicy()` and `getAPIArgs()` in `components.go` are
+the two that change what gets deployed. `getControllerArgs()` and `getAgentArgs()` also
+branch on `cpi.Opts.Debug`, but each branch builds the same argument list, so neither
+changes a controller or agent deployment.
+
+Debug mode does not put a debugger in the cluster. No component image carries `dlv`, and
+`getCommand()` returns the plain binary path whether or not debug mode is on. To step
+through code with delve, run it locally against a port-forwarded control plane with the
+`dev-debug-*` Makefile targets.
 
 ## Commands
 
 ```bash
-# Enable debug mode for all components (sets debug images, enables delve, ImagePullPolicy=Always)
+# Enable debug mode for all components (ImagePullPolicy=Always, verbose API server logging)
 tptdev debug
 
 # Debug specific components only
@@ -628,7 +654,7 @@ tptdev debug --names rest-api,kubernetes-workload-controller
 # Enable verbose logging
 tptdev debug --verbose
 
-# Disable debug mode (reverts ImagePullPolicy, removes debug images)
+# Disable debug mode (ImagePullPolicy back to IfNotPresent, API server logging back to quiet)
 tptdev debug --disable
 
 # Build and push images to remote registry, limiting concurrent builds
@@ -646,7 +672,10 @@ Raise `--parallel` above 2 only if the machine has resources to spare.
 ## Flags
 
 - Always push container images to a remote registry; never assume local images are sufficient
-- Always use `-n <name>` for `tptdev up/down/debug`
+- Always pass the control plane name: `-n <name>` on `tptdev up` and `tptdev down`, where
+  `-n` is short for `--name`. On `tptdev debug`, `-n` is short for `--names`, the
+  comma-delimited list of components to update; that command spells the control plane name
+  `-c, --control-plane-name`.
 - Use `-t <branch>` for image tags in worktrees (auto-detection breaks)
 - Temporarily reduce sleep/backoff durations for dev loops, and don't commit those changes
 
@@ -770,7 +799,9 @@ tptctl get terraform-instances -o json
 ## OCI Free Tier Testing Strategy
 
 - OKE control plane creation is free; only worker nodes incur cost
-- For workload cluster testing, set `workerInitialNodeCount` to 0
+- For workload cluster testing, set `WorkerNodeInitialCount` to 0. The field lives on
+  `OciOkeKubernetesRuntimeDefinition`, not on the instance, so it is set on the definition
+  half of the config.
 - Genesis control planes can be left running (free tier)
 
 # Dockerfile Patterns

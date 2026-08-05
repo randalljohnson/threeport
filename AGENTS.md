@@ -93,7 +93,7 @@ type Common struct {
 | `ObservabilityDashboardDefinition` | `ObservabilityDashboardInstance` | observability |
 | `MetricsDefinition` | `MetricsInstance` | observability |
 | `LoggingDefinition` | `LoggingInstance` | observability |
-| `LogStorageDefinition` | `LogStorageInstance` | observability |
+| `LogStorageDefinition` | `LogStorageInstance` | log |
 
 API object structs are in `pkg/api/v0/*.go`. The SDK config `sdk-config.yaml` declares which
 objects are `Reconcilable: true`. Not every pair above is reconcilable on both halves. For the

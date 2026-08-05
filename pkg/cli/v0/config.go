@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	aws_config "github.com/aws/aws-sdk-go-v2/config"
@@ -127,6 +128,34 @@ func (cfg *ThreeportConfig) CheckThreeportConfigEmpty() bool {
 func (cfg *ThreeportConfig) CheckThreeportControlPlaneExists(createThreeportControlPlaneName string) bool {
 	_, err := cfg.GetControlPlaneConfig(createThreeportControlPlaneName)
 	return err == nil
+}
+
+// ValidateControlPlaneName reports an error when the config holds no control
+// plane by the given name, listing the names it does hold. Commands that act
+// on a running control plane call it before they act, so a name that resolves
+// to nothing is refused up front rather than partway through.
+//
+// The name that matters is the control plane's, which is not the name of the
+// cluster hosting it, and the two are easy to confuse. An unrecognized name
+// often means the caller supplied the cluster's, so the error says so and
+// shows what the config actually knows.
+func (cfg *ThreeportConfig) ValidateControlPlaneName(name string) error {
+	if cfg.CheckThreeportControlPlaneExists(name) {
+		return nil
+	}
+
+	if cfg.CheckThreeportConfigEmpty() {
+		return fmt.Errorf(
+			"control plane %q not found: the threeport config holds no control planes at all",
+			name,
+		)
+	}
+
+	return fmt.Errorf(
+		"control plane %q not found in the threeport config, which names the control plane rather than the cluster hosting it; available control planes: %s",
+		name,
+		strings.Join(cfg.GetAllControlPlaneNames(), ", "),
+	)
 }
 
 // GetThreeportAPIEndpoint returns the threeport API endpoint from threeport

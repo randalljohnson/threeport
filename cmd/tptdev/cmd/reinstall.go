@@ -88,6 +88,22 @@ change.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cliArgs.GetControlPlaneEnvVars()
 
+		// refuse a control plane name the local config doesn't know
+		// before anything is touched. the reinstall itself never reads
+		// the name (its namespace is a constant), so a wrong one stays
+		// invisible until the bootstrap restore looks it up, by which
+		// point every pod has already been rolled.
+		threeportConfig, requestedControlPlane, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
+		if err != nil {
+			cli.Error("failed to get threeport config", err)
+			os.Exit(1)
+		}
+		if err := threeportConfig.ValidateControlPlaneName(requestedControlPlane); err != nil {
+			cli.Error("cannot reinstall", err)
+			os.Exit(1)
+		}
+		cliArgs.ControlPlaneName = requestedControlPlane
+
 		// require the control plane name typed back before dropping the
 		// database. The installer refuses the drop outright on anything
 		// but a development control plane; this catches the case where

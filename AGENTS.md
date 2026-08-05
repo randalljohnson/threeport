@@ -83,32 +83,13 @@ type Common struct {
 }
 ```
 
-## All Definition/Instance Pairs
+## Which Pairs Exist
 
-| Definition | Instance | Domain |
-|---|---|---|
-| `KubernetesWorkloadDefinition` | `KubernetesWorkloadInstance` | kubernetes-workload |
-| `HelmWorkloadDefinition` | `HelmWorkloadInstance` | helm-workload |
-| `MachineWorkloadDefinition` | `MachineWorkloadInstance` | machine-workload |
-| `KubernetesRuntimeDefinition` | `KubernetesRuntimeInstance` | kubernetes-runtime |
-| `MachineRuntimeDefinition` | `MachineRuntimeInstance` | machine-runtime |
-| `AwsEksKubernetesRuntimeDefinition` | `AwsEksKubernetesRuntimeInstance` | aws |
-| `OciOkeKubernetesRuntimeDefinition` | `OciOkeKubernetesRuntimeInstance` | oci |
-| `GcpGkeKubernetesRuntimeDefinition` | `GcpGkeKubernetesRuntimeInstance` | gcp |
-| `GatewayDefinition` | `GatewayInstance` | gateway |
-| `DomainNameDefinition` | `DomainNameInstance` | gateway |
-| `SecretDefinition` | `SecretInstance` | secret |
-| `TerraformDefinition` | `TerraformInstance` | terraform |
-| `ControlPlaneDefinition` | `ControlPlaneInstance` | control-plane |
-| `ObservabilityStackDefinition` | `ObservabilityStackInstance` | observability |
-| `ObservabilityDashboardDefinition` | `ObservabilityDashboardInstance` | observability |
-| `MetricsDefinition` | `MetricsInstance` | observability |
-| `LoggingDefinition` | `LoggingInstance` | observability |
-| `LogStorageDefinition` | `LogStorageInstance` | log |
-
-API object structs are in `pkg/api/v0/*.go`. The SDK config `sdk-config.yaml` declares which
-objects are `Reconcilable: true`. Not every pair above is reconcilable on both halves. For the
-cloud runtime domains and the machine domains, only the instance is reconcilable.
+`sdk-config.yaml` declares the definition and instance objects each domain owns, so read
+the pairs there rather than from a list here. The structs themselves are in
+`pkg/api/v0/*.go`. Alongside each object, `sdk-config.yaml` sets `Reconcilable`, which says
+whether a controller reconciles that object at all. It is set per object, not per pair, so
+a pair can have a reconcilable instance and a definition no controller ever touches.
 
 # NATS Streams, Subjects, Locks
 

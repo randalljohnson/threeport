@@ -8,7 +8,7 @@ the Threeport API.
 
 This section covers importing the Threeport API swagger definition into Postman.
 Ensure you have any new structs properly defined (with comments) and that you
-have run `make generate` to generate all boilerplate.
+have run `mage dev:generate` to generate all boilerplate.
 
 ### Delete Existing APIs & Collections
 

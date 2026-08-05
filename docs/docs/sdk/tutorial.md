@@ -763,14 +763,15 @@ available for installation.
 === "Remote Environment"
 
     If using a remote AWS environment, build for the release architecture (amd64).
-    This step will build the binaries and container images, then push them to your
-    registry (as defined in the `sdk-config.yaml` file).  This may take a few
-    minutes as three container images will be pushed to your remote container
-    registry.  You will need to be logged in to your container registry from your
-    command line.
+    This step will build the binaries and container images, then push them to the
+    image namespace and tag you pass on the command line.  Use the same
+    `ImageNamespace` you set in `sdk-config.yaml` so the install step below finds
+    the images.  This may take a few minutes as three container images will be
+    pushed to your remote container registry.  You will need to be logged in to
+    your container registry from your command line.
 
     ```bash
-    mage build:allImagesRelease
+    mage build:allImages ghcr.io/myorg [image tag] amd64
     ```
 
 ## Threeport Control Plane

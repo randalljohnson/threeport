@@ -18,7 +18,7 @@ operations:
 Spin up a local dev control plane:
 
 ```bash
-make dev-up
+mage dev:up
 ```
 
 This will start a local kind cluster and install the control plane.  You can now
@@ -37,6 +37,6 @@ curl localhost/swagger/index.html
 Delete a local dev control plane:
 
 ```bash
-make dev-down
+mage dev:down
 ```
 

@@ -52,92 +52,104 @@ The following steps outline creating a new controller.  Examples are used for
 the kubernetes-runtime-controller.  Refer to the code for that controller and
 its objects for examples.
 
-1. Create a data model for the objects that will be used and reconciled.
-   Example: `pkg/api/v0/kubernetes_runtime.go`.
-1. Add the following generate marker to the top of the source file:
-   ```go
-   //go:generate threeport-sdk codegen controller --filename $GOFILE
-   ```
-1. Add the reconciler marker to those objects that will require reconcilation:
-   ```go
-   // +threeport-sdk:reconciler
-   ```
-   See the `KubernetesRuntimeDefinition` and `KubernetesRuntimeInstance` objects in
-   `pkg/api/v0/kubernetes_runtime.go`.
+1. Add an API object group to `sdk-config.yaml`.  The group's `Name` determines
+   the names derived from it, so the `kubernetes_runtime` group reads its data
+   model from `pkg/api/v0/kubernetes_runtime.go` and produces
+   `cmd/kubernetes-runtime-controller` and `internal/kubernetes-runtime`.  List
+   every API object the controller works with under `Objects`.
+1. Set `Reconcilable: true` on those objects that will require reconciliation.
+   See the `KubernetesRuntimeDefinition` and `KubernetesRuntimeInstance`
+   entries in `sdk-config.yaml`.
    Note: not all objects necessarily require reconciliation.  Some just store
    data that is referred to when reconciling state for other objects.
-1. If you have any "Definition" or "Instance objects that are getting a
-   reconciler, you will need to include a `Reconciled` field of type `*bool`.
-   The generated code will expect this.  This is not required if no reconciler
-   exists for the object.
-1. Create the following directories based on the name of the source file in the
-   API.  For example:
-   * `cmd/kubernetes-runtime-controller`
-   * `internal/kubernetes-runtime`
-1. Run code generation:
+1. Create a data model for the objects that will be used and reconciled.
+   Example: `pkg/api/v0/kubernetes_runtime.go`.  To start from generated
+   scaffolding rather than an empty file, create the API object source files
+   from the SDK config.
+
    ```bash
+   threeport-sdk create -c sdk-config.yaml
+   ```
+1. Embed the `Reconciliation` struct in each object you marked
+   `Reconcilable: true`.  It carries the `Reconciled` field and the creation
+   and deletion timestamps that the generated code expects.  This is not
+   required if no reconciler exists for the object.
+1. Build the SDK and run code generation.  Generation writes the controller's
+   main package, its reconcilers, its NATS subjects and its lock bucket,
+   creating any directories those files need.  It also registers the
+   controller's NATS stream with the REST API in
+   `cmd/rest-api/util/controller_stream_gen.go`, which is boilerplate and is
+   rewritten on every generate, so never edit it by hand.
+
+   ```bash
+   mage install:sdk
    mage dev:generate
    ```
-1. You will find a new files in `internal/kubernetes-runtime` for each object being
-   reconciled.  This example has two objects with a reconciler marker that get
-   corresponding reconciler files:
-   * `KubernetesRuntimeDefinition`: `internal/kubernetes-runtime/kubernetes_runtime_definition_gen.go`
-   * `KubernetesRuntimeInstance`: `internal/kubernetes-runtime/kubernetes_runtime_instance_gen.go`
-   In each reconciler file, you will find calls to some  as-yet-undefined
-   functions.  In `internal/kubernetes-runtime/kubernetes_runtime_definition_gen.go`
-   is:
-   * `kubernetesRuntimeDefinitionCreated`
-   * `kubernetesRuntimeDefinitionUpdate`
-   * `kubernetesRuntimeDefinitionDelete`
-1. Create a new file called `internal/kubernetes-runtime/kubernetes_runtime_definition.go`
-   and add each of those functions
-   with the business logic to reconcile the system when each of those actions
-   occur, i.e. when a kubernetes runtime definition is created, update or deleted.
-   The empty functions in
-   `internal/kubernetes-runtime/kubernetes_runtime_definition.go` will look as
-   follows.
+1. You will find a new file in `internal/kubernetes-runtime` for each
+   reconciled object and API version.  This example has two objects marked
+   `Reconcilable: true` in v0, so it gets two files:
+   * `KubernetesRuntimeDefinition`:
+     `internal/kubernetes-runtime/v0_kubernetes_runtime_definition.go`
+   * `KubernetesRuntimeInstance`:
+     `internal/kubernetes-runtime/v0_kubernetes_runtime_instance.go`
+1. Add the business logic to reconcile the system to the empty functions in
+   those files, i.e. what happens when a kubernetes runtime definition is
+   created, updated or deleted.  These files are scaffolding, so the generator
+   writes them once and leaves them alone from then on.  Each function returns
+   the number of seconds to wait before reconciling the object again, or zero
+   when the object needs no further reconciliation, along with any error.  The
+   empty functions in
+   `internal/kubernetes-runtime/v0_kubernetes_runtime_definition.go` will look
+   as follows.
+
    ```go
-    // kubernetesRuntimeDefinitionCreated reconciles state for a new kubernetes
-    // runtime definition.
-    func kubernetesRuntimeDefinitionCreated(
-        r *controller.Reconciler,
-        kubernetesRuntimeDefinition *v0.KubernetesRuntimeDefinition,
-        log *logr.Logger,
-    ) error {
-        return nil
-    }
+   // v0KubernetesRuntimeDefinitionCreated performs reconciliation when a v0
+   // KubernetesRuntimeDefinition has been created.
+   func v0KubernetesRuntimeDefinitionCreated(
+       r *controller.Reconciler,
+       kubernetesRuntimeDefinition *v0.KubernetesRuntimeDefinition,
+       log *logr.Logger,
+   ) (int64, error) {
+       return 0, nil
+   }
 
-    // kubernetesRuntimeDefinitionCreated reconciles state for a kubernetes
-    // runtime definition whenever it is changed.
-    func kubernetesRuntimeDefinitionUpdated(
-        r *controller.Reconciler,
-        kubernetesRuntimeDefinition *v0.KubernetesRuntimeDefinition,
-        log *logr.Logger,
-    ) error {
-        return nil
-    }
+   // v0KubernetesRuntimeDefinitionUpdated performs reconciliation when a v0
+   // KubernetesRuntimeDefinition has been updated.
+   func v0KubernetesRuntimeDefinitionUpdated(
+       r *controller.Reconciler,
+       kubernetesRuntimeDefinition *v0.KubernetesRuntimeDefinition,
+       log *logr.Logger,
+   ) (int64, error) {
+       return 0, nil
+   }
 
-    // kubernetesRuntimeDefinitionCreated reconciles state for a kubernetes
-    // runtime definition whenever it is removed.
-    func kubernetesRuntimeDefinitionDeleted(
-        r *controller.Reconciler,
-        kubernetesRuntimeDefinition *v0.KubernetesRuntimeDefinition,
-        log *logr.Logger,
-    ) error {
-        return nil
-    }
+   // v0KubernetesRuntimeDefinitionDeleted performs reconciliation when a v0
+   // KubernetesRuntimeDefinition has been deleted.
+   func v0KubernetesRuntimeDefinitionDeleted(
+       r *controller.Reconciler,
+       kubernetesRuntimeDefinition *v0.KubernetesRuntimeDefinition,
+       log *logr.Logger,
+   ) (int64, error) {
+       return 0, nil
+   }
    ```
    Repeat for each reconciler.
-1. Manually update the REST API main package where the NATS streams for
-   controller notifications is added.  Look for the calls to `js.AddStream()`
-   for other controllers and add the stream name and subjects for the new
-   controller.  Follow the same naming pattern - the necessary constants will
-   in the API package, e.g. `pkg/api/v0/kubernetes_runtime_gen.go`.
-1. Create an image directory to build container images for the new controller.
-   For now, copy an existing controllers Dockerfiles and modify to suit the new
-   controller.
-   Example:
+1. Register the new controller with the control plane installer in
+   `pkg/threeport-installer/v0/threeport.go`.  Add an image name constant and a
+   component name constant next to those for the other controllers, then add an
+   entry for the new controller to `ThreeportControllerList` so that it is
+   deployed with the control plane.
+1. Add a database migration for the tables that hold the new objects.  See
+   [Threeport Data Model Updates](data-model-updates.md).
+1. Build a container image for the new controller.  A single Dockerfile at the
+   root of the repo builds every component, and code generation adds the build
+   targets for the new controller, so there is nothing to add per controller.
+   If the controller needs another tool in its image at runtime, set
+   `DockerfileTarget` on its object group in `sdk-config.yaml` to one of that
+   Dockerfile's release targets, e.g. `release-helm`.
+
    ```bash
-   cp -R cmd/kubernetes-workload-controller/image cmd/kubernetes-runtime-controller
+   mage build:tptdev
+   ./bin/tptdev build --names kubernetes-runtime-controller
    ```
 

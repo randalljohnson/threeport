@@ -85,6 +85,8 @@ func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
 	if got := *kubernetesRuntimeInstance.CertificateKey; got != "kube-client-key" {
 		t.Errorf("expected decoded certificate key kube-client-key, got %s", got)
 	}
+	// the certificate pair authenticates on its own, so the token is not
+	// carried over beside it
 	if kubernetesRuntimeInstance.ConnectionToken != nil {
 		t.Errorf("expected no connection token, got %s", *kubernetesRuntimeInstance.ConnectionToken)
 	}
@@ -104,11 +106,13 @@ func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
 
 // TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders asserts that a
 // control plane on GKE or OKE is rebuilt even though its threeport config holds
-// no client certificate or key. Neither provider reads a token off the runtime
-// record: each mints one per request from its own infra provider, so a record
-// carrying no kube API credential at all is still usable. The rebuild also has
-// no location to work from, since the config never records the one the install
-// derived from its region.
+// no client certificate or key, and that the install-time token is written to
+// the record in their place. The running control plane mints a token per
+// request from its own infra provider and never reads this one, but a client
+// that does not know how to mint looks here, and a record carrying no
+// credential at all fails in a way that reads as a broken restore. The rebuild
+// also has no location to work from, since the config never records the one the
+// install derived from its region.
 func TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -151,11 +155,18 @@ func TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders(t *testing.T)
 			if kubernetesRuntimeInstance.CertificateKey != nil {
 				t.Errorf("expected no client certificate key, got %s", *kubernetesRuntimeInstance.CertificateKey)
 			}
-			// the token the config holds expired about an hour after the
-			// install, so carrying it over would register a credential
-			// that fails rather than one the provider replaces
-			if kubernetesRuntimeInstance.ConnectionToken != nil {
-				t.Errorf("expected no connection token, got %s", *kubernetesRuntimeInstance.ConnectionToken)
+			// the token is decoded on the way through, like every other
+			// credential the config holds base64 encoded
+			if kubernetesRuntimeInstance.ConnectionToken == nil {
+				t.Fatal("expected the install-time token to be carried over as the fallback credential")
+			}
+			if got := *kubernetesRuntimeInstance.ConnectionToken; got != "install-time-token" {
+				t.Errorf("expected decoded connection token install-time-token, got %s", got)
+			}
+			// nothing may treat the carried-over token as refreshable,
+			// since the config records no expiration to refresh against
+			if kubernetesRuntimeInstance.ConnectionTokenExpiration != nil {
+				t.Errorf("expected no connection token expiration, got %v", *kubernetesRuntimeInstance.ConnectionTokenExpiration)
 			}
 			if !*kubernetesRuntimeInstance.DefaultRuntime {
 				t.Error("expected the runtime to be marked as the default runtime")
@@ -188,11 +199,13 @@ func TestBootstrapKubernetesRuntimeInstanceRefusesEks(t *testing.T) {
 // certificate without its key, or the reverse, is left off the rebuilt record
 // entirely. Half a pair authenticates to nothing, and registering it would
 // send the kube client down the certificate path with a credential that cannot
-// complete a handshake.
+// complete a handshake. A config that holds a token falls back to it, since
+// half a pair is no better than none.
 func TestBootstrapKubernetesRuntimeInstanceOmitsHalfCertificatePair(t *testing.T) {
 	tests := []struct {
-		name   string
-		mutate func(*ControlPlane)
+		name      string
+		mutate    func(*ControlPlane)
+		wantToken bool
 	}{
 		{
 			name:   "certificate without a key is omitted",
@@ -201,6 +214,14 @@ func TestBootstrapKubernetesRuntimeInstanceOmitsHalfCertificatePair(t *testing.T
 		{
 			name:   "key without a certificate is omitted",
 			mutate: func(c *ControlPlane) { c.KubeAPI.Certificate = "" },
+		},
+		{
+			name: "half a pair falls back to the token",
+			mutate: func(c *ControlPlane) {
+				c.KubeAPI.Key = ""
+				c.KubeAPI.Token = util.Base64Encode("install-time-token")
+			},
+			wantToken: true,
 		},
 	}
 
@@ -219,6 +240,21 @@ func TestBootstrapKubernetesRuntimeInstanceOmitsHalfCertificatePair(t *testing.T
 			}
 			if kubernetesRuntimeInstance.CertificateKey != nil {
 				t.Errorf("expected no client certificate key, got %s", *kubernetesRuntimeInstance.CertificateKey)
+			}
+
+			if !test.wantToken {
+				if kubernetesRuntimeInstance.ConnectionToken != nil {
+					t.Errorf("expected no connection token, got %s", *kubernetesRuntimeInstance.ConnectionToken)
+				}
+
+				return
+			}
+
+			if kubernetesRuntimeInstance.ConnectionToken == nil {
+				t.Fatal("expected the token to be used when the certificate pair is incomplete")
+			}
+			if got := *kubernetesRuntimeInstance.ConnectionToken; got != "install-time-token" {
+				t.Errorf("expected decoded connection token install-time-token, got %s", got)
 			}
 		})
 	}

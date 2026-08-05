@@ -1528,12 +1528,24 @@ func EnsureBootstrapObjects(cpi *threeport.ControlPlaneInstaller) error {
 // through.
 //
 // A local cluster records a client certificate and key, and the rebuilt record
-// carries them over. A cloud install records neither, and on GKE and OKE it
-// needs neither: both mint a kube API token per request from the runtime's
-// infra provider instead of reading one off this record. EKS does read the
-// token off the record, and the only copy the config keeps has expired long
-// before a rebuild runs, so an EKS control plane is refused rather than
-// registered with no way to reach its kube API.
+// carries them over. A cloud install records neither, and on GKE and OKE the
+// running control plane needs neither: both mint a kube API token per request
+// from the runtime's infra provider instead of reading one off this record.
+//
+// The install-time token is still carried over when there is no certificate
+// pair, because per-request minting is not something every reader of this
+// record knows how to do. A client that predates it, or one talking to a
+// provider that has no minting path, looks for a credential on the record and
+// gives up when it finds none. Writing the token means such a client fails on
+// an expired credential, which says what is wrong, rather than on a record
+// that carries no credential at all, which reads as a broken restore. The
+// token is written without an expiration, matching what the threeport config
+// records, so nothing treats it as refreshable.
+//
+// EKS is refused instead. It is the one provider with no per-request minting,
+// so the stale token would be the only credential the record ever has, and the
+// refresh path that would replace it only runs against an expiration the
+// config does not record.
 //
 // The location is recorded as Local on every provider, because the config does
 // not record the one the install derived from its region. On a cloud runtime
@@ -1560,6 +1572,10 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode kubernetes API client key: %w", err)
 	}
+	token, err := util.Base64Decode(controlPlaneConfig.KubeAPI.Token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode kubernetes API connection token: %w", err)
+	}
 
 	name := provider.ThreeportRuntimeName(controlPlaneConfig.Name)
 	location := localRuntimeLocation
@@ -1582,10 +1598,15 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 	}
 
 	// a certificate without its key, or the reverse, authenticates to nothing,
-	// so the pair is carried over only when the config holds both
-	if certificate != "" && key != "" {
+	// so the pair is carried over only when the config holds both. the token
+	// is the fallback for a config that holds no usable pair, which is every
+	// cloud install
+	switch {
+	case certificate != "" && key != "":
 		kubernetesRuntimeInstance.Certificate = &certificate
 		kubernetesRuntimeInstance.CertificateKey = &key
+	case token != "":
+		kubernetesRuntimeInstance.ConnectionToken = &token
 	}
 
 	return kubernetesRuntimeInstance, nil

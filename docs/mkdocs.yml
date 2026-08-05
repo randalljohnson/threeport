@@ -105,6 +105,15 @@ validation:
   unrecognized_links: warn
   anchors: warn
 
+# Pages deliberately kept out of the navigation above. Listing them here keeps
+# the omitted_files check meaningful: these stay quiet, and any other stranded
+# page still fails the build.
+not_in_nav: |
+  managed-threeport.md
+  sdk/advanced-app-abstraction.md
+  sdk/config-abstraction.md
+  sdk/workload-abstraction.md
+
 extra:
   social:
     - icon: fontawesome/brands/github

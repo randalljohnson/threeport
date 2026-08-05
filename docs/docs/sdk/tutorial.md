@@ -793,7 +793,7 @@ If you don't aleady have one, install a Threeport control plane for testing.
 
     For more info on installing Threeport locally, see the
     [documentation to Install Threeport
-    Locally](../../install/install-threeport-local).
+    Locally](../install/install-threeport-local.md).
 
 === "Remote Environment"
 
@@ -808,7 +808,7 @@ If you don't aleady have one, install a Threeport control plane for testing.
     ```
 
     For more info on installing Threeport remotely, see the
-    [documentation to Install Threeport on AWS](../../install/install-threeport-aws).
+    [documentation to Install Threeport on AWS](../install/install-threeport-aws.md).
 
 ## Install WordPress Module
 

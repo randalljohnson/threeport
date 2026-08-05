@@ -290,6 +290,25 @@ func (Test) Commits() error {
 	return nil
 }
 
+// Docs checks the documentation site for links that resolve to nothing,
+// anchors that are absent from the page they point at, and pages stranded
+// outside the navigation. Requires the documentation toolchain from
+// docs/requirements.txt.
+func (Test) Docs() error {
+	testDocs := exec.Command(
+		"test/scripts/docs-check.sh",
+	)
+
+	output, err := testDocs.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to run docs check: '%s': %w", output, err)
+	}
+
+	fmt.Println("docs check ran successfully")
+
+	return nil
+}
+
 // Up spins up a control plane using tptctl and a local registry for testing.
 // It resolves the same image repo and tag the image build self-derives, so
 // the control plane pulls the images that build:allImages just pushed.

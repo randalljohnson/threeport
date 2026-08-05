@@ -16,7 +16,7 @@ Following is an overview of what lives at the root of this repo:
   * [agent](../../cmd/agent/README.md) is the runtime control plane agent.
   * [aws-controller](../../cmd/aws-controller/README.md) is the threeport
     controller that manages AWS resources as workload dependencies.
-  * [codegen](../../cmd/codegen/README.md) generates scaffolding and boilerplate code
+  * [sdk](../../cmd/sdk/README.md) generates scaffolding and boilerplate code
     for various components and packages.
   * [gateway-controller](../../cmd/gateway-controller/README.md) is the threeport
     controller that manages network ingress gateways and DNS records for workloads.
@@ -31,8 +31,28 @@ Following is an overview of what lives at the root of this repo:
     controller that manages containerized workloads on Kubernetes for users.
   * [control-plane-controller](../../cmd/control-plane-controller/README.md) is the threeport
     controller that manages control planes created by the threeport control plane itself.
+  * [database-migrator](../../cmd/database-migrator/README.md) applies the
+    database schema migrations required by the threeport API.
+  * gcp-controller is the threeport controller that manages GKE clusters on
+    Google Cloud.
+  * [helm-workload-controller](../../cmd/helm-workload-controller/README.md)
+    is the threeport controller that manages containerized workloads on
+    Kubernetes using Helm charts.
+  * machine-runtime-controller is the threeport controller that manages
+    SSH-reachable machines as runtime environments for workloads.
+  * machine-workload-controller is the threeport controller that manages
+    workloads deployed to machine runtimes over SSH.
+  * [observability-controller](../../cmd/observability-controller/README.md)
+    is the threeport controller that manages metrics collection, log
+    aggregation and observability dashboards for workloads.
+  * oci-controller is the threeport controller that manages OKE clusters on
+    Oracle Cloud Infrastructure.
+  * [secret-controller](../../cmd/secret-controller/README.md) is the threeport
+    controller that manages sensitive secrets for workloads.
+  * [terraform-controller](../../cmd/terraform-controller/README.md) is the
+    threeport controller that manages cloud infrastructure with Terraform.
 * The `docs` directory contains these developer docs.
-* The `example` directory contains example configurations for testing threeport.
+* The `samples` directory contains example configurations for testing threeport.
 * The `hack` directory contains ad hoc scripts and utilities that have not made
   into a real package or `tptdev`.
 * The `internal` directory contains packages that are used internally by core
@@ -61,26 +81,26 @@ a list of available operations.
 
 Following is an index of package documentation:
 * [`internal/agent`](../../internal/agent/README.md)
-* [`internal/api`](../../internal/api/README.md)
 * [`internal/aws`](../../internal/aws/README.md)
-* [`internal/cli`](../../internal/cli/README.md)
-* [`internal/codegen`](../../internal/codegen/README.md)
 * [`internal/gateway`](../../internal/gateway/README.md)
-* [`internal/kube`](../../internal/kube/README.md)
-* [`internal/kubernetesruntime`](../../internal/kubernetesruntime/README.md)
-* [`internal/log`](../../internal/log/README.md)
+* [`internal/kubernetes-runtime`](../../internal/kubernetes-runtime/README.md)
+* [`internal/kubernetes-workload`](../../internal/kubernetes-workload/README.md)
 * [`internal/provider`](../../internal/provider/README.md)
-* [`internal/threeport`](../../internal/threeport/README.md)
-* [`internal/tptdev`](../../internal/tptdev/README.md)
-* [`internal/util`](../../internal/util/README.md)
 * [`internal/version`](../../internal/version/README.md)
-* [`internal/workload`](../../internal/workload/README.md)
 * [`pkg/agent`](../../pkg/agent/README.md)
 * [`pkg/api`](../../pkg/api/README.md)
+* [`pkg/api-server`](../../pkg/api-server/README.md)
 * [`pkg/auth`](../../pkg/auth/README.md)
+* [`pkg/cli`](../../pkg/cli/README.md)
 * [`pkg/client`](../../pkg/client/README.md)
 * [`pkg/config`](../../pkg/config/README.md)
 * [`pkg/controller`](../../pkg/controller/README.md)
 * [`pkg/encryption`](../../pkg/encryption/README.md)
+* [`pkg/kube`](../../pkg/kube/README.md)
+* [`pkg/log`](../../pkg/log/README.md)
 * [`pkg/notifications`](../../pkg/notifications/README.md)
+* [`pkg/sdk`](../../pkg/sdk/README.md)
+* [`pkg/threeport-installer`](../../pkg/threeport-installer/README.md)
+* [`pkg/threeport-installer/v0/tptdev`](../../pkg/threeport-installer/v0/tptdev/README.md)
+* [`pkg/util`](../../pkg/util/README.md)
 

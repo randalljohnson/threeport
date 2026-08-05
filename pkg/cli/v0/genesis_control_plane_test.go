@@ -109,10 +109,9 @@ func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
 // no client certificate or key, and that the install-time token is written to
 // the record in their place. The running control plane mints a token per
 // request from its own infra provider and never reads this one, but a client
-// that does not know how to mint looks here, and a record carrying no
-// credential at all fails in a way that reads as a broken restore. The rebuild
-// also has no location to work from, since the config never records the one the
-// install derived from its region.
+// that does not mint looks here, and a record carrying no credential at all
+// leaves it nothing to try. The rebuild also has no location to work from,
+// since the config never records the one the install derived from its region.
 func TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -89,10 +89,10 @@ change.`,
 		cliArgs.GetControlPlaneEnvVars()
 
 		// refuse a control plane name the local config doesn't know
-		// before anything is touched. the reinstall itself never reads
-		// the name (its namespace is a constant), so a wrong one stays
-		// invisible until the bootstrap restore looks it up, by which
-		// point every pod has already been rolled.
+		// before anything is touched. the reinstall works off a
+		// constant namespace and never reads the name itself, so an
+		// unrecognized one goes unnoticed until the bootstrap restore
+		// resolves it at the very end.
 		threeportConfig, requestedControlPlane, err := cli.GetThreeportConfig(cliArgs.ControlPlaneName)
 		if err != nil {
 			cli.Error("failed to get threeport config", err)

@@ -26,7 +26,11 @@ jobs:
       with:
         go-version: '1.26'
     - run: go install github.com/magefile/mage@latest
-    - run: mage test:docs
+    - run: mage test:docsLinks
+    # The command check asks tptctl for its own subcommands, so the binary has
+    # to exist before it runs.
+    - run: mage build:tptctl
+    - run: mage test:docsCommands
 
   deploy:
     if: github.event_name == 'push'

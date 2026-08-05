@@ -307,21 +307,40 @@ func (Test) Commits() error {
 	return nil
 }
 
-// Docs checks the documentation site for links that resolve to nothing,
+// DocsLinks checks the documentation site for links that resolve to nothing,
 // anchors that are absent from the page they point at, and pages stranded
 // outside the navigation. Requires the documentation toolchain from
 // docs/requirements.txt.
-func (Test) Docs() error {
+func (Test) DocsLinks() error {
 	testDocs := exec.Command(
 		"test/scripts/docs-check.sh",
 	)
 
 	output, err := testDocs.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to run docs check: '%s': %w", output, err)
+		return fmt.Errorf("failed to run docs link check: '%s': %w", output, err)
 	}
 
-	fmt.Println("docs check ran successfully")
+	fmt.Println("docs link check ran successfully")
+
+	return nil
+}
+
+// DocsCommands checks that every command the documentation tells a reader to
+// run exists, comparing what the fenced code blocks contain against the
+// command line tool's own subcommands and the build system's own targets.
+// Requires the tptctl binary from build:tptctl.
+func (Test) DocsCommands() error {
+	testDocsCommands := exec.Command(
+		"test/scripts/docs-commands-check.sh",
+	)
+
+	output, err := testDocsCommands.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to run docs command check: '%s': %w", output, err)
+	}
+
+	fmt.Printf("%s", output)
 
 	return nil
 }

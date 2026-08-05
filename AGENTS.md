@@ -244,83 +244,26 @@ kubectl logs deploy/threeport-kubernetes-runtime-controller -n threeport-control
 
 # Directory Layout
 
-```
-threeport/
-├── cmd/                           # Binary entry points
-│   ├── rest-api/                  # API server [generated main_gen.go]
-│   ├── kubernetes-workload-controller/       # [generated main_gen.go]
-│   ├── helm-workload-controller/  # [generated main_gen.go]
-│   ├── machine-workload-controller/
-│   ├── kubernetes-runtime-controller/
-│   ├── machine-runtime-controller/
-│   ├── gateway-controller/
-│   ├── aws-controller/
-│   ├── oci-controller/
-│   ├── gcp-controller/
-│   ├── control-plane-controller/
-│   ├── observability-controller/
-│   ├── secret-controller/
-│   ├── terraform-controller/
-│   ├── database-migrator/         # [generated main_gen.go]
-│   ├── agent/                     # Kubernetes agent
-│   ├── tptctl/                    # CLI tool [generated-then-modified cmd/*.go]
-│   ├── tptdev/                    # Developer tool [hand-written]
-│   └── sdk/                       # SDK code generation tool
-├── internal/                      # Controller reconciliation logic (per domain)
-│   ├── kubernetes-workload/
-│   │   ├── kubernetes_workload_gen.go                          # [generated] lock bucket consts
-│   │   ├── notif/notif_gen.go                                  # [generated] stream/subject consts
-│   │   ├── kubernetes_workload_instance_reconciler_gen.go      # [generated] reconciler loop
-│   │   ├── v0_kubernetes_workload_instance.go                  # [hand-written] business logic
-│   │   └── v0_kubernetes_workload_definition.go                # [hand-written] business logic
-│   ├── helm-workload/             # Same pattern as kubernetes-workload/
-│   ├── machine-workload/
-│   ├── kubernetes-runtime/
-│   ├── machine-runtime/
-│   ├── gateway/
-│   ├── aws/
-│   ├── oci/
-│   ├── gcp/
-│   ├── control-plane/
-│   ├── observability/
-│   ├── secret/
-│   ├── terraform/
-│   ├── agent/                     # Agent constants and helpers
-│   ├── provider/                  # Cloud provider utilities
-│   └── version/
-├── pkg/                           # Shared library packages
-│   ├── api/v0/                    # [hand-written] API object struct definitions
-│   │   ├── *_gen.go               # [generated] interface method implementations
-│   │   ├── common.go              # Common, Reconciliation structs
-│   │   ├── class.go               # Definition, Instance base structs
-│   │   ├── kubernetes_workload.go # KubernetesWorkloadDefinition, KubernetesWorkloadInstance
-│   │   └── ...                    # Other domain object definitions
-│   ├── api/lib/v0/                # ReconciledThreeportApiObject interface
-│   ├── api-server/v0/
-│   │   ├── handlers/*_gen.go      # [generated] REST CRUD handlers
-│   │   ├── handlers/handlers.go   # [hand-written] Handler struct
-│   │   ├── routes/*_gen.go        # [generated] route registrations
-│   │   └── database/database_gen.go # [generated] DB init
-│   ├── client/v0/*_gen.go         # [generated] API client functions
-│   ├── controller/v0/             # [hand-written] controller framework
-│   │   ├── reconcile.go           # Reconciler struct, PullMessage, Lock, ReleaseLock
-│   │   └── requeue.go             # Backoff delay calculation
-│   ├── notifications/v0/          # [hand-written] Notification types
-│   ├── config/v0/                 # [generated] CLI config structures
-│   ├── cli/v0/                    # CLI output utilities (JSON, YAML, tabular)
-│   ├── kube/v0/                   # Kubernetes helpers (namespace, labels, client)
-│   ├── agent/api/v1alpha1/        # ThreeportWorkload CRD types
-│   ├── threeport-installer/v0/    # Control plane installer
-│   └── util/v0/                   # General utilities (random strings, constants)
-├── docs/                          # Documentation
-├── hack/                          # Development helper files (env files, scripts)
-├── magefiles/                     # Mage build system files
-├── samples/                       # Example config files
-├── test/                          # Tests
-├── sdk-config.yaml                # SDK code generation configuration
-├── Makefile                       # Dev/debug targets
-└── go.mod
-```
+Run `ls` or `tree` for the layout itself. Three top-level directories carry the
+code: `cmd/` holds one binary per component, with a controller binary per
+domain; `internal/` holds reconciliation logic, one package per domain, and the
+directory names there are the domain names the NATS and lock naming rules use;
+`pkg/` holds the shared libraries. The rest are `docs/`, `magefiles/`,
+`samples/`, `test/`, and `hack/` for uncommitted scratch.
+
+Which files in those directories you may edit is the next section, not a
+property of where they sit.
+
+A few things are worth knowing by path because searching for them is slow:
+
+- `pkg/api/v0/common.go`: the `Common` and `Reconciliation` structs
+- `pkg/api/v0/class.go`: the `Definition` and `Instance` base structs
+- `pkg/controller/v0/reconcile.go`: the reconciler loop, locking, and lock keys
+- `pkg/controller/v0/requeue.go`: requeue backoff
+- `pkg/kube/v0/`: namespace generation, label application, client construction
+- `pkg/mapping/v0/`: node size and location mapping to per-provider values
+- `pkg/agent/api/v1alpha1/`: the ThreeportWorkload custom resource types
+- `cmd/rest-api/util/controller_stream_gen.go`: where NATS streams are created
 
 # Generated Files
 

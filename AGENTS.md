@@ -112,67 +112,26 @@ cloud runtime domains and the machine domains, only the instance is reconcilable
 
 # NATS Streams, Subjects, Locks
 
-## Streams
+Domains are the directories under `internal/`. Each gets one JetStream stream
+named `<domain>Stream` and one NATS KV lock bucket named `<domain>Lock`, both in
+camel case: `kubernetes-workload` gives `kubernetesWorkloadStream` and
+`kubernetesWorkloadLock`. Streams are created in
+`cmd/rest-api/util/controller_stream_gen.go`, and the constants live in
+`internal/*/notif/notif_gen.go` and `internal/*/<domain>_gen.go`.
 
-Each controller domain has one JetStream stream. Streams are created in `cmd/rest-api/util/controller_stream_gen.go` and named in `internal/*/notif/notif_gen.go`.
+A stream carries one subject family per **reconcilable** object in its domain,
+so do not assume both halves of a Definition/Instance pair are present. Read
+`Reconcilable` per object in `sdk-config.yaml` before relying on a subject.
 
-| Stream | Subjects (object types) |
-|---|---|
-| `kubernetesWorkloadStream` | `kubernetesWorkloadDefinition.*`, `kubernetesWorkloadInstance.*` |
-| `helmWorkloadStream` | `helmWorkloadDefinition.*`, `helmWorkloadInstance.*` |
-| `machineWorkloadStream` | `machineWorkloadInstance.*` |
-| `kubernetesRuntimeStream` | `kubernetesRuntimeDefinition.*`, `kubernetesRuntimeInstance.*` |
-| `machineRuntimeStream` | `machineRuntimeInstance.*` |
-| `awsStream` | `awsEksKubernetesRuntimeInstance.*` |
-| `ociStream` | `ociOkeKubernetesRuntimeInstance.*` |
-| `gcpStream` | `gcpGkeKubernetesRuntimeInstance.*` |
-| `gatewayStream` | `gatewayDefinition.*`, `gatewayInstance.*`, `domainNameInstance.*` |
-| `secretStream` | `secretDefinition.*`, `secretInstance.*` |
-| `terraformStream` | `terraformDefinition.*`, `terraformInstance.*` |
-| `controlPlaneStream` | `controlPlaneDefinition.*`, `controlPlaneInstance.*` |
-| `observabilityStream` | `observabilityStack{Definition,Instance}.*`, `observabilityDashboard{Definition,Instance}.*`, `metrics{Definition,Instance}.*`, `logging{Definition,Instance}.*` |
+Subjects are `{camelCaseObjectType}.{operation}` where operation is `create`,
+`update`, or `delete`, as in `kubernetesWorkloadInstance.create`. Controllers
+subscribe to the wildcard `{camelCaseObjectType}.*`.
 
-## Subject Pattern
-
-Format: `{camelCaseObjectType}.{operation}` where operation is `create`, `update`, or `delete`.
-
-Examples: `kubernetesWorkloadInstance.create`, `helmWorkloadDefinition.update`, `secretInstance.delete`
-
-Controllers subscribe to wildcard: `{camelCaseObjectType}.*`
-
-## Lock Buckets
-
-Each domain has a NATS KV bucket for distributed locks (`internal/*/<domain>_gen.go`):
-
-| Bucket | Domain |
-|---|---|
-| `kubernetesWorkloadLock` | kubernetes-workload |
-| `helmWorkloadLock` | helm-workload |
-| `machineWorkloadLock` | machine-workload |
-| `kubernetesRuntimeLock` | kubernetes-runtime |
-| `machineRuntimeLock` | machine-runtime |
-| `awsLock` | aws |
-| `ociLock` | oci |
-| `gcpLock` | gcp |
-| `gatewayLock` | gateway |
-| `secretLock` | secret |
-| `terraformLock` | terraform |
-| `controlPlaneLock` | control-plane |
-| `observabilityLock` | observability |
-
-**Lock TTL:** 20 minutes (set in each controller's `main_gen.go`).
-
-## Lock Key Format
-
-From `pkg/controller/v0/reconcile.go`:
-
-```
-{ReconcilerName}.{ObjectID}
-```
-
-Example: `KubernetesWorkloadInstanceReconciler.42`
-
-The value stored is the controller's UUID. Consumer names follow: `{ReconcilerName}Consumer`.
+Lock keys are `{ReconcilerName}.{ObjectID}`, as in
+`KubernetesWorkloadInstanceReconciler.42`, defined in
+`pkg/controller/v0/reconcile.go`. The value is the controller's UUID, consumers
+are named `{ReconcilerName}Consumer`, and the lock TTL is 20 minutes, set in
+each controller's `main_gen.go`.
 
 # Reconciliation Fields and Lifecycle
 

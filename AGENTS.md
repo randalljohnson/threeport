@@ -417,41 +417,6 @@ EOF
 # Read tool on ~/.aws/credentials  <-- DO NOT DO THIS
 ```
 
-## Examples
-
-```bash
-# List all kubernetes workload instances as JSON
-tptctl get kubernetes-workload-instances -o json
-
-# Get a specific kubernetes workload definition as YAML
-tptctl get kubernetes-workload-definitions --name my-def -o yaml
-
-# List all helm workload instances
-tptctl get helm-workload-instances -o json
-
-# List all kubernetes runtime instances
-tptctl get kubernetes-runtime-instances -o json
-
-# Create a kubernetes workload via stdin
-cat <<EOF | tptctl create kubernetes-workload --stdin
-KubernetesWorkload:
-  Name: my-app
-  YAMLDocument: path/to/manifest.yaml
-  KubernetesWorkloadInstance:
-    Name: my-app
-EOF
-
-# Delete a kubernetes workload instance by name
-tptctl delete kubernetes-workload-instance --name my-instance
-
-# Replace (update) a kubernetes workload definition
-cat <<EOF | tptctl replace kubernetes-workload-definition --stdin --name existing-def
-KubernetesWorkloadDefinition:
-  Name: existing-def
-  YAMLDocument: path/to/new-manifest.yaml
-EOF
-```
-
 # tptdev Debug Workflow
 
 ## Development Setup

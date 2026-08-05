@@ -32,19 +32,14 @@ to use (the same one used to deploy EKS for the Threeport control plane).  If
 you'd like to use a different AWS account for this guide - or if you installed
 Threeport locally, you'll need to register an AWS account with Threeport.
 
-Download a config to register AWS with Threeport.
-
-```bash
-curl -O https://raw.githubusercontent.com/threeport/threeport/main/samples/aws/default-aws-account.yaml
-```
-
-Open this file:
+Save the following config to `default-aws-provider.yaml` to register AWS with
+Threeport.
 
 ```yaml
-AwsAccount:
+AwsProvider:
   Name: default-account
   AccountID: "555555555555"
-  DefaultAccount: true
+  DefaultProvider: true
 
   # option 1: provide explicit configs/credentials
   #DefaultRegion: us-east-1
@@ -75,7 +70,7 @@ Edit the file to make the following changes:
 Now, register the AWS account with Threeport.
 
 ```bash
-tptctl create aws-account --config default-aws-account.yaml
+tptctl create aws-provider --config default-aws-provider.yaml
 ```
 
 ## Create Terraform Definition
@@ -135,7 +130,7 @@ TerraformInstance:
   VarsDocument: config/terraform.tfvars
   TerraformDefinition:
     Name: rds-instance
-  AwsAccount:
+  AwsProvider:
     Name: default-account
 ```
 
@@ -144,7 +139,7 @@ This config specifies:
 * An arbitrary name for the RDS instance
 * Terraform variables to use for this deployment
 * The name of the definition we just created
-* The AWS account we registered earlier
+* The AWS provider we registered earlier
 
 Download Terraform a sample variables file:
 
@@ -208,17 +203,17 @@ database.
 Once the RDS instance is up, get those outputs as follows:
 
 ```bash
-tptctl describe terraform-instance -n rds-instance-01 -o yaml
+tptctl get terraform-instances -n rds-instance-01 -o yaml
 ```
 
-You'll notice the sensitive encrypted values are redacted.  You can view those
-values by requesting specific fields.
+You'll notice the sensitive encrypted values are redacted.  Add `-d` to decrypt
+them using the encryption key from your Threeport config.
 
 ```bash
-tptctl describe terraform-instance -n rds-instance-01 -f Outputs
+tptctl get terraform-instances -n rds-instance-01 -o yaml -d
 ```
 
-You'll see the Terraform outputs in JSON format similar to this:
+The `Outputs` field holds the Terraform outputs in JSON format similar to this:
 
 ```json
 {

@@ -240,6 +240,11 @@ func (Dev) Generate() error {
 		return fmt.Errorf("docs generation failed: %w", err)
 	}
 
+	err = dev.GenerateAgentsIndex()
+	if err != nil {
+		return fmt.Errorf("agents index generation failed: %w", err)
+	}
+
 	fmt.Println("code generated successfully")
 
 	return nil

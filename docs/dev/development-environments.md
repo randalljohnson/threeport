@@ -10,14 +10,14 @@ and use them without having to wait for pushes to - and pulls from - a remote
 registry.
 
 ```bash
-mage createLocalRegistry
+mage dev:localRegistryUp
 ```
 
 Build contianer images for each of the control plane components and push them to
 the local container registry.
 
 ```bash
-mage buildTptdev
+mage build:tptdev
 ./bin/tptdev build -r localhost:5001 -t dev --push
 ```
 
@@ -57,6 +57,6 @@ Spin down the control plane cluster.
 Stop and remove the registry container.
 
 ```bash
-mage cleanLocalRegistry
+mage dev:localRegistryDown
 ```
 

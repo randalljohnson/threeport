@@ -190,5 +190,5 @@ If you'd like to try out Threeport for yourself, visit our [getting started
 guide](../getting-started.md).
 
 If you'd like to learn about the architecture, check out our [architecture
-overview](../architecture/overview.md).
+overview](../architecture/threeport-core.md).
 

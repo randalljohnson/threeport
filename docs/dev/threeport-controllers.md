@@ -76,7 +76,7 @@ its objects for examples.
    * `internal/kubernetes-runtime`
 1. Run code generation:
    ```bash
-   make generate
+   mage dev:generate
    ```
 1. You will find a new files in `internal/kubernetes-runtime` for each object being
    reconciled.  This example has two objects with a reconciler marker that get

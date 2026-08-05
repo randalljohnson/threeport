@@ -46,6 +46,7 @@ var (
 	makeCall       = regexp.MustCompile(`^\s*\$?\s*make ([a-zA-Z0-9][a-zA-Z0-9_-]*)`)
 	mageCall       = regexp.MustCompile(`^\s*\$?\s*mage ([a-zA-Z0-9][a-zA-Z0-9:]*)`)
 	makefileTarget = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9_-]*):`)
+	sampleUrl      = regexp.MustCompile(`https://raw\.githubusercontent\.com/threeport/threeport/[^/]+/(samples/[^\s)"']+)`)
 )
 
 // DocsLinks checks the documentation site for links that resolve to nothing,
@@ -109,6 +110,8 @@ func (Test) DocsCommands() error {
 		return fmt.Errorf("failed to read the mage targets: %w", err)
 	}
 	problems = append(problems, checkTargets(lines, mageCall, "mage", mageTargets, allowedMageTargets)...)
+
+	problems = append(problems, checkSampleFiles(lines, ".")...)
 
 	if len(problems) > 0 {
 		sort.Strings(problems)
@@ -439,6 +442,37 @@ func checkTargets(lines []string, call *regexp.Regexp, tool string, declared, al
 		}
 
 		problems = append(problems, fmt.Sprintf("%s %s: no such target", tool, target))
+	}
+
+	return problems
+}
+
+// checkSampleFiles returns one message per sample file the documentation tells
+// a reader to download that this repository does not carry. The download URL
+// names a branch, so a sample renamed here keeps resolving against whichever
+// branch the URL happens to name until a reader follows the guide and finds
+// the config no longer matches what the page describes. Checking the path
+// against the tree catches the rename instead of waiting for the branches to
+// converge, and needs no network.
+func checkSampleFiles(lines []string, repoRoot string) []string {
+	problems := make([]string, 0)
+	seen := make(map[string]bool)
+
+	for _, line := range lines {
+		match := sampleUrl.FindStringSubmatch(line)
+		if match == nil {
+			continue
+		}
+
+		samplePath := match[1]
+		if seen[samplePath] {
+			continue
+		}
+		seen[samplePath] = true
+
+		if _, err := os.Stat(filepath.Join(repoRoot, samplePath)); err != nil {
+			problems = append(problems, fmt.Sprintf("%s: no such sample in this repository", samplePath))
+		}
 	}
 
 	return problems

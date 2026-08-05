@@ -240,7 +240,32 @@ func (Dev) Generate() error {
 		return fmt.Errorf("docs generation failed: %w", err)
 	}
 
+	err = dev.GenerateAgentsIndex()
+	if err != nil {
+		return fmt.Errorf("agents index generation failed: %w", err)
+	}
+
 	fmt.Println("code generated successfully")
+
+	return nil
+}
+
+// GenerateAgentsIndex writes the documentation map that the agent
+// instructions import, deriving the published half from the site navigation so
+// the two can never disagree. Requires the documentation toolchain from
+// docs/requirements.txt.
+func (Dev) GenerateAgentsIndex() error {
+	generateIndex := exec.Command(
+		"python3",
+		"docs/generate-agents-index.py",
+	)
+
+	output, err := generateIndex.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to generate the documentation map: '%s': %w", output, err)
+	}
+
+	fmt.Printf("%s", output)
 
 	return nil
 }

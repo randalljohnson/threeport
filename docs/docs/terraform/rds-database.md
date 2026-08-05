@@ -208,17 +208,17 @@ database.
 Once the RDS instance is up, get those outputs as follows:
 
 ```bash
-tptctl describe terraform-instance -n rds-instance-01 -o yaml
+tptctl get terraform-instances -n rds-instance-01 -o yaml
 ```
 
-You'll notice the sensitive encrypted values are redacted.  You can view those
-values by requesting specific fields.
+You'll notice the sensitive encrypted values are redacted.  Add `-d` to decrypt
+them using the encryption key from your Threeport config.
 
 ```bash
-tptctl describe terraform-instance -n rds-instance-01 -f Outputs
+tptctl get terraform-instances -n rds-instance-01 -o yaml -d
 ```
 
-You'll see the Terraform outputs in JSON format similar to this:
+The `Outputs` field holds the Terraform outputs in JSON format similar to this:
 
 ```json
 {

@@ -26,12 +26,10 @@ jobs:
       with:
         go-version: '1.26'
     - run: go install github.com/magefile/mage@latest
-    - run: mage test:docsLinks
     # The command check asks tptctl for its own subcommands, so the binary has
-    # to exist before it runs.
+    # to exist before the checks run.
     - run: mage build:tptctl
-    - run: mage test:docsCommands
-    - run: mage test:docsProse
+    - run: mage test:docs
     # The documentation map is derived from the site navigation, so a nav
     # change that was not regenerated shows up here as a diff.
     - run: mage dev:generateAgentsIndex

@@ -25,10 +25,10 @@ const (
 	makefilePath       = "Makefile"
 	magefilesSourceDir = "magefiles"
 
-	// The column prose wraps at. A line may run past it only inside a fence
+	// The column body text wraps at. A line may run past it only inside a fence
 	// or in a table row, neither of which can be wrapped without changing what
 	// the reader sees.
-	proseColumnLimit = 80
+	formatColumnLimit = 80
 
 	// The lines the documentation map is written between. They stay in the
 	// agent instructions across regenerations and everything they enclose is
@@ -52,13 +52,13 @@ var (
 // runnable, so those blocks are skipped.
 var runnableFenceLanguages = []string{"", "bash", "sh", "shell"}
 
-// The trees the prose rules cover. They are the corpus the rules were measured
+// The trees the format rules cover. They are the corpus the rules were measured
 // from, and they are the whole of it. The published site under docs/docs is
 // deliberately excluded: it is written to the documentation theme's
 // conventions, which use admonition blocks, bold, and lines run to the width of
 // the rendered page, so these rules report hundreds of findings there that are
 // not defects. Widening this list is not a fix for that.
-var proseDirs = []string{"docs/dev", "docs/design"}
+var formatDirs = []string{"docs/dev", "docs/design"}
 
 var (
 	fenceMarker    = regexp.MustCompile("^\\s*```")
@@ -86,7 +86,7 @@ var (
 	sentenceBreak = regexp.MustCompile("[A-Za-z0-9)\"'`]\\. [A-Z]")
 )
 
-// The characters the prose rules ban outright, each with the name it is
+// The characters the format rules ban outright, each with the name it is
 // reported under. Written as escapes so the rule and the source that carries
 // it cannot disagree about which character is meant.
 var bannedCharacters = []struct {
@@ -102,6 +102,24 @@ var bannedCharacters = []struct {
 // Link text that names nothing, so a reader scanning for a destination learns
 // only that a link exists.
 var uninformativeLinkText = []string{"here", "this", "click here"}
+
+// Docs runs every documentation check. The three it calls stay separately
+// callable because each needs a different thing present: the link check needs
+// the documentation toolchain, the command check needs the command line binary
+// built, and the format check needs neither. Reach for one of those while
+// editing, and for this before pushing.
+func (Test) Docs() error {
+	test := Test{}
+	if err := test.DocsLinks(); err != nil {
+		return err
+	}
+
+	if err := test.DocsCommands(); err != nil {
+		return err
+	}
+
+	return test.DocsFormat()
+}
 
 // DocsLinks checks the documentation site for links that resolve to nothing,
 // anchors that are absent from the page they point at, and pages stranded
@@ -182,18 +200,18 @@ func (Test) DocsCommands() error {
 	return nil
 }
 
-// DocsProse checks the contributor and design documentation against the prose
+// DocsFormat checks the contributor and design documentation against the
 // conventions those two trees are written to: no dash or arrow characters,
-// prose hard-wrapped at 80 columns, two spaces between sentences, no heading
+// body text hard-wrapped at 80 columns, two spaces between sentences, no heading
 // deeper than three levels, `*` list markers, fences that carry no shell
 // prompt and never sit directly under a heading, and link text that names its
 // destination. Link targets are not resolved; test:docsLinks does that for the
 // published site.
-func (Test) DocsProse() error {
-	problems := make([]proseProblem, 0)
+func (Test) DocsFormat() error {
+	problems := make([]formatProblem, 0)
 
-	for _, dir := range proseDirs {
-		found, err := checkProseDir(dir)
+	for _, dir := range formatDirs {
+		found, err := checkFormatDir(dir)
 		if err != nil {
 			return fmt.Errorf("failed to check %s: %w", dir, err)
 		}
@@ -222,19 +240,19 @@ func (Test) DocsProse() error {
 		}
 
 		return fmt.Errorf(
-			"docs prose check failed, %d line(s) in the documentation break a prose convention:\n%s",
+			"docs format check failed, %d line(s) in the documentation break a formatting convention:\n%s",
 			len(problems),
 			strings.Join(reported, "\n"),
 		)
 	}
 
-	fmt.Println("docs prose check ran successfully")
+	fmt.Println("docs format check ran successfully")
 
 	return nil
 }
 
-// proseProblem is one broken convention, at the line that breaks it.
-type proseProblem struct {
+// formatProblem is one broken convention, at the line that breaks it.
+type formatProblem struct {
 	path   string
 	line   int
 	rule   string
@@ -243,14 +261,14 @@ type proseProblem struct {
 
 // String renders a problem for a reader who has to go and fix it, naming the
 // file and line first so an editor can jump straight to it.
-func (problem proseProblem) String() string {
+func (problem formatProblem) String() string {
 	return fmt.Sprintf("%s:%d: %s: %s", problem.path, problem.line, problem.rule, problem.detail)
 }
 
-// checkProseDir returns every broken convention in the markdown under the given
+// checkFormatDir returns every broken convention in the markdown under the given
 // directory.
-func checkProseDir(root string) ([]proseProblem, error) {
-	problems := make([]proseProblem, 0)
+func checkFormatDir(root string) ([]formatProblem, error) {
+	problems := make([]formatProblem, 0)
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -264,7 +282,7 @@ func checkProseDir(root string) ([]proseProblem, error) {
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", path, err)
 		}
-		problems = append(problems, checkProse(path, string(markdown))...)
+		problems = append(problems, checkFormat(path, string(markdown))...)
 
 		return nil
 	})
@@ -275,14 +293,14 @@ func checkProseDir(root string) ([]proseProblem, error) {
 	return problems, nil
 }
 
-// checkProse returns every broken convention in one markdown file, in the order
+// checkFormat returns every broken convention in one markdown file, in the order
 // the lines appear. Which rules a line is held to depends on where it sits: a
 // fenced block holds commands and output rather than prose, so only the rules
 // about what a command may contain reach inside one, while the banned
 // characters are rejected wherever they appear because a command carrying one
 // is broken rather than merely styled differently.
-func checkProse(path, markdown string) []proseProblem {
-	problems := make([]proseProblem, 0)
+func checkFormat(path, markdown string) []formatProblem {
+	problems := make([]formatProblem, 0)
 	insideFence := false
 	previousNonBlank := ""
 
@@ -295,7 +313,7 @@ func checkProse(path, markdown string) []proseProblem {
 					continue
 				}
 
-				problems = append(problems, proseProblem{
+				problems = append(problems, formatProblem{
 					path:   path,
 					line:   number,
 					rule:   "dash or arrow character",
@@ -306,7 +324,7 @@ func checkProse(path, markdown string) []proseProblem {
 
 		if fenceMarker.MatchString(line) {
 			if !insideFence && heading.MatchString(previousNonBlank) {
-				problems = append(problems, proseProblem{
+				problems = append(problems, formatProblem{
 					path:   path,
 					line:   number,
 					rule:   "fence lead-in",
@@ -321,7 +339,7 @@ func checkProse(path, markdown string) []proseProblem {
 
 		if insideFence {
 			if shellPrompt.MatchString(line) {
-				problems = append(problems, proseProblem{
+				problems = append(problems, formatProblem{
 					path:   path,
 					line:   number,
 					rule:   "prompt character",
@@ -329,7 +347,7 @@ func checkProse(path, markdown string) []proseProblem {
 				})
 			}
 		} else {
-			problems = append(problems, checkProseLine(path, number, line)...)
+			problems = append(problems, checkFormatLine(path, number, line)...)
 		}
 
 		if strings.TrimSpace(line) != "" {
@@ -340,21 +358,21 @@ func checkProse(path, markdown string) []proseProblem {
 	return problems
 }
 
-// checkProseLine returns every broken convention on one line of prose, meaning
+// checkFormatLine returns every broken convention on one line of prose, meaning
 // a line outside any fenced block.
-func checkProseLine(path string, number int, line string) []proseProblem {
-	problems := make([]proseProblem, 0)
+func checkFormatLine(path string, number int, line string) []formatProblem {
+	problems := make([]formatProblem, 0)
 	report := func(rule, detail string) {
-		problems = append(problems, proseProblem{path: path, line: number, rule: rule, detail: detail})
+		problems = append(problems, formatProblem{path: path, line: number, rule: rule, detail: detail})
 	}
 
 	// A table row is exempt from the column limit because splitting one across
 	// two lines stops it being a row at all, and a line that is one indivisible
 	// token is exempt because there is nowhere in it to break. Everything else
 	// that runs long has a space in it and can be wrapped.
-	if columns := utf8.RuneCountInString(line); columns > proseColumnLimit &&
+	if columns := utf8.RuneCountInString(line); columns > formatColumnLimit &&
 		!tableRow.MatchString(line) && !indivisible(line) {
-		report("line length", fmt.Sprintf("%d columns, wrap at %d", columns, proseColumnLimit))
+		report("line length", fmt.Sprintf("%d columns, wrap at %d", columns, formatColumnLimit))
 	}
 
 	if deepHeading.MatchString(line) {

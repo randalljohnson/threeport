@@ -7,14 +7,14 @@ import (
 	"testing"
 )
 
-// TestCheckProseFindsBrokenConventions asserts that each prose rule reports the
+// TestCheckFormatFindsBrokenConventions asserts that each prose rule reports the
 // line that breaks it and leaves the writing the conventions allow alone. The
 // cases that matter are the ones where the same text is a defect in one place
 // and correct in another: a long line is only a defect outside a fence and
 // outside a table row, a `-` only outside the checkbox form, and a banned
 // character is a defect wherever it appears because a command carrying one is
 // broken rather than merely styled differently.
-func TestCheckProseFindsBrokenConventions(t *testing.T) {
+func TestCheckFormatFindsBrokenConventions(t *testing.T) {
 	overLimit := "The reconciler holds the lock for " + strings.Repeat("a very long time ", 4)
 	underLimit := "The reconciler holds the lock until it finishes."
 
@@ -160,7 +160,7 @@ func TestCheckProseFindsBrokenConventions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			problems := checkProse("page.md", test.markdown)
+			problems := checkFormat("page.md", test.markdown)
 
 			got := make([]string, 0, len(problems))
 			for _, problem := range problems {
@@ -179,10 +179,10 @@ func TestCheckProseFindsBrokenConventions(t *testing.T) {
 	}
 }
 
-// TestCheckProseDirReadsEveryPageBeneathIt asserts that the walk reaches
+// TestCheckFormatDirReadsEveryPageBeneathIt asserts that the walk reaches
 // markdown at any depth and reads nothing else, so a page filed in a
 // subdirectory is held to the same conventions as one at the top.
-func TestCheckProseDirReadsEveryPageBeneathIt(t *testing.T) {
+func TestCheckFormatDirReadsEveryPageBeneathIt(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "proposals"), 0755); err != nil {
 		t.Fatalf("failed to create the test docs tree: %v", err)
@@ -200,7 +200,7 @@ func TestCheckProseDirReadsEveryPageBeneathIt(t *testing.T) {
 		}
 	}
 
-	problems, err := checkProseDir(root)
+	problems, err := checkFormatDir(root)
 	if err != nil {
 		t.Fatalf("failed to check the test docs tree: %v", err)
 	}
@@ -219,19 +219,19 @@ func TestCheckProseDirReadsEveryPageBeneathIt(t *testing.T) {
 	}
 }
 
-// TestProseScopeCoversTheMeasuredTreesOnly asserts that the check stays on the
+// TestFormatScopeCoversTheMeasuredTreesOnly asserts that the check stays on the
 // two trees the conventions were measured from. The published site follows the
 // documentation theme's conventions instead, so adding it here reports hundreds
 // of findings that are not defects.
-func TestProseScopeCoversTheMeasuredTreesOnly(t *testing.T) {
+func TestFormatScopeCoversTheMeasuredTreesOnly(t *testing.T) {
 	want := []string{"docs/dev", "docs/design"}
 
-	if len(proseDirs) != len(want) {
-		t.Fatalf("got %q, want %q", proseDirs, want)
+	if len(formatDirs) != len(want) {
+		t.Fatalf("got %q, want %q", formatDirs, want)
 	}
 	for index := range want {
-		if proseDirs[index] != want[index] {
-			t.Errorf("directory %d: got %q, want %q", index, proseDirs[index], want[index])
+		if formatDirs[index] != want[index] {
+			t.Errorf("directory %d: got %q, want %q", index, formatDirs[index], want[index])
 		}
 	}
 }

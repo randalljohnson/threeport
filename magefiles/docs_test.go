@@ -3,8 +3,238 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// TestCheckProseFindsBrokenConventions asserts that each prose rule reports the
+// line that breaks it and leaves the writing the conventions allow alone. The
+// cases that matter are the ones where the same text is a defect in one place
+// and correct in another: a long line is only a defect outside a fence and
+// outside a table row, a `-` only outside the checkbox form, and a banned
+// character is a defect wherever it appears because a command carrying one is
+// broken rather than merely styled differently.
+func TestCheckProseFindsBrokenConventions(t *testing.T) {
+	overLimit := "The reconciler holds the lock for " + strings.Repeat("a very long time ", 4)
+	underLimit := "The reconciler holds the lock until it finishes."
+
+	tests := []struct {
+		name     string
+		markdown string
+		want     []string
+	}{
+		{
+			name:     "an em dash in prose is reported",
+			markdown: "The controller \u2014 which holds the lock \u2014 acknowledges it.\n",
+			want: []string{
+				"page.md:1: dash or arrow character: em dash (U+2014) at column 16",
+				"page.md:1: dash or arrow character: em dash (U+2014) at column 39",
+			},
+		},
+		{
+			name:     "an en dash and an arrow are reported by name",
+			markdown: "Ports 1323\u20131324 map \u2192 the API and \u21d2 the agent.\n",
+			want: []string{
+				"page.md:1: dash or arrow character: en dash (U+2013) at column 11",
+				"page.md:1: dash or arrow character: rightwards arrow (U+2192) at column 21",
+				"page.md:1: dash or arrow character: rightwards double arrow (U+21D2) at column 35",
+			},
+		},
+		{
+			name:     "a banned character inside a fence is still reported",
+			markdown: "Run the reconciler.\n\n```bash\ntptctl get workloads \u2192 output\n```\n",
+			want:     []string{"page.md:4: dash or arrow character: rightwards arrow (U+2192) at column 22"},
+		},
+		{
+			name:     "prose past the column limit is reported",
+			markdown: overLimit + "\n",
+			want:     []string{"page.md:1: line length: 102 columns, wrap at 80"},
+		},
+		{
+			name:     "prose within the column limit passes",
+			markdown: underLimit + "\n",
+			want:     []string{},
+		},
+		{
+			name:     "a long line inside a fence passes",
+			markdown: "Run the reconciler.\n\n```bash\n" + overLimit + "\n```\n",
+			want:     []string{},
+		},
+		{
+			name:     "a list item holding only a long link passes",
+			markdown: "  * [kubernetes-workload-controller](../../cmd/kubernetes-workload-controller/README.md)\n",
+			want:     []string{},
+		},
+		{
+			name:     "a long link with words after it is reported",
+			markdown: "  * [kubernetes-workload-controller](../../cmd/kubernetes-workload-controller/README.md) manages workloads\n",
+			want:     []string{"page.md:1: line length: 106 columns, wrap at 80"},
+		},
+		{
+			name:     "a long table row passes",
+			markdown: "| Field | Meaning |\n|---|---|\n| Reconciled | " + overLimit + " |\n",
+			want:     []string{},
+		},
+		{
+			name:     "one space between sentences is reported",
+			markdown: "The lock expires. The message is requeued.\n",
+			want:     []string{`page.md:1: sentence spacing: one space in "s. T", use two`},
+		},
+		{
+			name:     "two spaces between sentences pass",
+			markdown: "The lock expires.  The message is requeued.\n",
+			want:     []string{},
+		},
+		{
+			name:     "an ordered list marker is not a sentence break",
+			markdown: "1. Spin up a control plane.\n1. Check the tables.\n",
+			want:     []string{},
+		},
+		{
+			name:     "a heading deeper than three levels is reported",
+			markdown: "#### Lock Buckets\n",
+			want:     []string{"page.md:1: heading depth: 4 levels deep, go no deeper than 3"},
+		},
+		{
+			name:     "a third level heading passes",
+			markdown: "### Lock Buckets\n",
+			want:     []string{},
+		},
+		{
+			name:     "a hyphen list marker is reported",
+			markdown: "* the API server\n- the controllers\n+ the agent\n",
+			want: []string{
+				"page.md:2: bullet marker: list item opens with -, use *",
+				"page.md:3: bullet marker: list item opens with +, use *",
+			},
+		},
+		{
+			name:     "the checkbox form passes",
+			markdown: "- [] Cut the release.\n- [x] Update the version.\n",
+			want:     []string{},
+		},
+		{
+			name:     "a prompt inside a fence is reported",
+			markdown: "Create the workload.\n\n```bash\n$ tptctl create kubernetes-workload\n```\n",
+			want:     []string{"page.md:4: prompt character: command carries a $ prompt"},
+		},
+		{
+			name:     "a bare command inside a fence passes",
+			markdown: "Create the workload.\n\n```bash\ntptctl create kubernetes-workload\n```\n",
+			want:     []string{},
+		},
+		{
+			name:     "a fence directly under a heading is reported",
+			markdown: "## Installation\n\n```bash\nmage build:tptctl\n```\n",
+			want:     []string{`page.md:3: fence lead-in: fence opens directly under "## Installation"`},
+		},
+		{
+			name:     "a fence under a sentence passes",
+			markdown: "## Installation\n\nBuild the command line tool.\n\n```bash\nmage build:tptctl\n```\n",
+			want:     []string{},
+		},
+		{
+			name:     "a second fence is judged by its own lead-in",
+			markdown: "## Building\n\nBuild it.\n\n```bash\nmage build:tptctl\n```\n\nInstall it.\n\n```bash\nmage install:tptctl\n```\n",
+			want:     []string{},
+		},
+		{
+			name:     "markdown syntax inside a fence is read as command text",
+			markdown: "```bash\n#### print the section\n- an argument, not a list item\n```\n",
+			want:     []string{},
+		},
+		{
+			name:     "link text naming no destination is reported",
+			markdown: "The config is described [here](threeport-config.md) and [this](testing.md).\n",
+			want: []string{
+				`page.md:1: link text: link text "here" names no destination`,
+				`page.md:1: link text: link text "this" names no destination`,
+			},
+		},
+		{
+			name:     "link text naming its destination passes",
+			markdown: "The config is described in the [Threeport config doc](threeport-config.md).\n",
+			want:     []string{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			problems := checkProse("page.md", test.markdown)
+
+			got := make([]string, 0, len(problems))
+			for _, problem := range problems {
+				got = append(got, problem.String())
+			}
+
+			if len(got) != len(test.want) {
+				t.Fatalf("got %q, want %q", got, test.want)
+			}
+			for index := range got {
+				if got[index] != test.want[index] {
+					t.Errorf("problem %d: got %q, want %q", index, got[index], test.want[index])
+				}
+			}
+		})
+	}
+}
+
+// TestCheckProseDirReadsEveryPageBeneathIt asserts that the walk reaches
+// markdown at any depth and reads nothing else, so a page filed in a
+// subdirectory is held to the same conventions as one at the top.
+func TestCheckProseDirReadsEveryPageBeneathIt(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "proposals"), 0755); err != nil {
+		t.Fatalf("failed to create the test docs tree: %v", err)
+	}
+
+	pages := map[string]string{
+		"index.md":               "#### Too Deep\n",
+		"proposals/extension.md": "- a hyphen marker\n",
+		"proposals/diagram.svg":  "#### not markdown\n",
+		"proposals/notes.txt":    "- not markdown\n",
+	}
+	for name, contents := range pages {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(contents), 0644); err != nil {
+			t.Fatalf("failed to write %s: %v", name, err)
+		}
+	}
+
+	problems, err := checkProseDir(root)
+	if err != nil {
+		t.Fatalf("failed to check the test docs tree: %v", err)
+	}
+
+	want := []string{
+		filepath.Join(root, "index.md") + ":1: heading depth: 4 levels deep, go no deeper than 3",
+		filepath.Join(root, "proposals", "extension.md") + ":1: bullet marker: list item opens with -, use *",
+	}
+	if len(problems) != len(want) {
+		t.Fatalf("got %v, want %q", problems, want)
+	}
+	for index := range want {
+		if problems[index].String() != want[index] {
+			t.Errorf("problem %d: got %q, want %q", index, problems[index].String(), want[index])
+		}
+	}
+}
+
+// TestProseScopeCoversTheMeasuredTreesOnly asserts that the check stays on the
+// two trees the conventions were measured from. The published site follows the
+// documentation theme's conventions instead, so adding it here reports hundreds
+// of findings that are not defects.
+func TestProseScopeCoversTheMeasuredTreesOnly(t *testing.T) {
+	want := []string{"docs/dev", "docs/design"}
+
+	if len(proseDirs) != len(want) {
+		t.Fatalf("got %q, want %q", proseDirs, want)
+	}
+	for index := range want {
+		if proseDirs[index] != want[index] {
+			t.Errorf("directory %d: got %q, want %q", index, proseDirs[index], want[index])
+		}
+	}
+}
 
 // TestReadRunnableLinesReadsOnlyShellBlocks asserts that the fence reader
 // returns the contents of shell and unlabelled blocks and nothing else. The

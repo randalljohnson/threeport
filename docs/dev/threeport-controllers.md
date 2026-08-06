@@ -38,13 +38,14 @@ A controller consists of one or more reconcilers.  Each reconciler is
 responsible for reconciling state for a single object.  For example, the
 kubernetes-workload-controller has two reconcilers:
 
-* Kubernetes Workload Definition Reconciler:  It is responsible for reconciling state for
-  `KubernetesWorkloadDefinition` objects.  It parses the `YAMLDocument` into separate
-  Kubernetes resources and stores them each in a distinct
-  `KubernetesWorkloadResourceDefinition` object.
-* Kubernetes Workload Instance Reconciler:  It is responsible for reconciling state for
-  `KubernetesWorkloadInstance` objects.  It takes all the `KubernetesWorkloadResourceDefinitions`
-  and installs them in a target Kubernetes cluster.
+* Kubernetes Workload Definition Reconciler:  It is responsible for reconciling
+  state for `KubernetesWorkloadDefinition` objects.  It parses the
+  `YAMLDocument` into separate Kubernetes resources and stores them each in a
+  distinct `KubernetesWorkloadResourceDefinition` object.
+* Kubernetes Workload Instance Reconciler:  It is responsible for reconciling
+  state for `KubernetesWorkloadInstance` objects.  It takes all the
+  `KubernetesWorkloadResourceDefinitions` and installs them in a target
+  Kubernetes cluster.
 
 ## Creating a New Controller
 

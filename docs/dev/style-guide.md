@@ -2,8 +2,9 @@
 
 The following style guide exists to promote consistency and readability in the
 Threeport codebase.  As with most rules, there are exceptions.  And there are
-legacy violations of this style guide that we hope to resolve over time.  Prioritize
-code simplicity, readability and useful commenting over any style guidance.
+legacy violations of this style guide that we hope to resolve over time.
+Prioritize code simplicity, readability and useful commenting over any style
+guidance.
 
 ## Imports
 

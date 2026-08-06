@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	yaml "gopkg.in/yaml.v3"
 )
@@ -23,6 +24,11 @@ const (
 	tptctlBinaryPath   = "./bin/tptctl"
 	makefilePath       = "Makefile"
 	magefilesSourceDir = "magefiles"
+
+	// The column prose wraps at. A line may run past it only inside a fence
+	// or in a table row, neither of which can be wrapped without changing what
+	// the reader sees.
+	proseColumnLimit = 80
 
 	// The lines the documentation map is written between. They stay in the
 	// agent instructions across regenerations and everything they enclose is
@@ -46,6 +52,14 @@ var (
 // runnable, so those blocks are skipped.
 var runnableFenceLanguages = []string{"", "bash", "sh", "shell"}
 
+// The trees the prose rules cover. They are the corpus the rules were measured
+// from, and they are the whole of it. The published site under docs/docs is
+// deliberately excluded: it is written to the documentation theme's
+// conventions, which use admonition blocks, bold, and lines run to the width of
+// the rendered page, so these rules report hundreds of findings there that are
+// not defects. Widening this list is not a fix for that.
+var proseDirs = []string{"docs/dev", "docs/design"}
+
 var (
 	fenceMarker    = regexp.MustCompile("^\\s*```")
 	tptctlCall     = regexp.MustCompile(`^\s*\$?\s*tptctl ([a-z][a-z0-9-]*)(?: ([a-z][a-z0-9-]*))?`)
@@ -54,6 +68,40 @@ var (
 	makefileTarget = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9_-]*):`)
 	sampleUrl      = regexp.MustCompile(`https://raw\.githubusercontent\.com/threeport/threeport/[^/]+/(samples/[^\s)"']+)`)
 )
+
+var (
+	heading      = regexp.MustCompile(`^#{1,6}\s`)
+	deepHeading  = regexp.MustCompile(`^#{4,}\s`)
+	tableRow     = regexp.MustCompile(`^\s*\|`)
+	listMarker   = regexp.MustCompile(`^\s*([-+])\s+(.*)$`)
+	itemPrefix   = regexp.MustCompile(`^\s*(?:[*+-]\s+|\d+\.\s+)?`)
+	checkboxItem = regexp.MustCompile(`^\[[ xX]?\]`)
+	shellPrompt  = regexp.MustCompile(`^\s*\$ `)
+	inlineLink   = regexp.MustCompile(`\[([^\]]*)\]\(`)
+
+	// The number that opens an ordered list item, which puts a period, a
+	// space, and a capital letter at the head of a line without any sentence
+	// having ended there.
+	orderedMarker = regexp.MustCompile(`^\s*\d+\.\s`)
+	sentenceBreak = regexp.MustCompile("[A-Za-z0-9)\"'`]\\. [A-Z]")
+)
+
+// The characters the prose rules ban outright, each with the name it is
+// reported under. Written as escapes so the rule and the source that carries
+// it cannot disagree about which character is meant.
+var bannedCharacters = []struct {
+	character rune
+	name      string
+}{
+	{'\u2014', "em dash"},
+	{'\u2013', "en dash"},
+	{'\u2192', "rightwards arrow"},
+	{'\u21d2', "rightwards double arrow"},
+}
+
+// Link text that names nothing, so a reader scanning for a destination learns
+// only that a link exists.
+var uninformativeLinkText = []string{"here", "this", "click here"}
 
 // DocsLinks checks the documentation site for links that resolve to nothing,
 // anchors that are absent from the page they point at, and pages stranded
@@ -132,6 +180,217 @@ func (Test) DocsCommands() error {
 	fmt.Println("docs command check ran successfully")
 
 	return nil
+}
+
+// DocsProse checks the contributor and design documentation against the prose
+// conventions those two trees are written to: no dash or arrow characters,
+// prose hard-wrapped at 80 columns, two spaces between sentences, no heading
+// deeper than three levels, `*` list markers, fences that carry no shell
+// prompt and never sit directly under a heading, and link text that names its
+// destination. Link targets are not resolved; test:docsLinks does that for the
+// published site.
+func (Test) DocsProse() error {
+	problems := make([]proseProblem, 0)
+
+	for _, dir := range proseDirs {
+		found, err := checkProseDir(dir)
+		if err != nil {
+			return fmt.Errorf("failed to check %s: %w", dir, err)
+		}
+		problems = append(problems, found...)
+	}
+
+	if len(problems) > 0 {
+		sort.Slice(problems, func(first, second int) bool {
+			left, right := problems[first], problems[second]
+			if left.path != right.path {
+				return left.path < right.path
+			}
+			if left.line != right.line {
+				return left.line < right.line
+			}
+			if left.rule != right.rule {
+				return left.rule < right.rule
+			}
+
+			return left.detail < right.detail
+		})
+
+		reported := make([]string, 0, len(problems))
+		for _, problem := range problems {
+			reported = append(reported, problem.String())
+		}
+
+		return fmt.Errorf(
+			"docs prose check failed, %d line(s) in the documentation break a prose convention:\n%s",
+			len(problems),
+			strings.Join(reported, "\n"),
+		)
+	}
+
+	fmt.Println("docs prose check ran successfully")
+
+	return nil
+}
+
+// proseProblem is one broken convention, at the line that breaks it.
+type proseProblem struct {
+	path   string
+	line   int
+	rule   string
+	detail string
+}
+
+// String renders a problem for a reader who has to go and fix it, naming the
+// file and line first so an editor can jump straight to it.
+func (problem proseProblem) String() string {
+	return fmt.Sprintf("%s:%d: %s: %s", problem.path, problem.line, problem.rule, problem.detail)
+}
+
+// checkProseDir returns every broken convention in the markdown under the given
+// directory.
+func checkProseDir(root string) ([]proseProblem, error) {
+	problems := make([]proseProblem, 0)
+
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || filepath.Ext(path) != ".md" {
+			return nil
+		}
+
+		markdown, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", path, err)
+		}
+		problems = append(problems, checkProse(path, string(markdown))...)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return problems, nil
+}
+
+// checkProse returns every broken convention in one markdown file, in the order
+// the lines appear. Which rules a line is held to depends on where it sits: a
+// fenced block holds commands and output rather than prose, so only the rules
+// about what a command may contain reach inside one, while the banned
+// characters are rejected wherever they appear because a command carrying one
+// is broken rather than merely styled differently.
+func checkProse(path, markdown string) []proseProblem {
+	problems := make([]proseProblem, 0)
+	insideFence := false
+	previousNonBlank := ""
+
+	for index, line := range strings.Split(markdown, "\n") {
+		number := index + 1
+
+		for column, character := range []rune(line) {
+			for _, banned := range bannedCharacters {
+				if character != banned.character {
+					continue
+				}
+
+				problems = append(problems, proseProblem{
+					path:   path,
+					line:   number,
+					rule:   "dash or arrow character",
+					detail: fmt.Sprintf("%s (U+%04X) at column %d", banned.name, banned.character, column+1),
+				})
+			}
+		}
+
+		if fenceMarker.MatchString(line) {
+			if !insideFence && heading.MatchString(previousNonBlank) {
+				problems = append(problems, proseProblem{
+					path:   path,
+					line:   number,
+					rule:   "fence lead-in",
+					detail: fmt.Sprintf("fence opens directly under %q", strings.TrimSpace(previousNonBlank)),
+				})
+			}
+			insideFence = !insideFence
+			previousNonBlank = line
+
+			continue
+		}
+
+		if insideFence {
+			if shellPrompt.MatchString(line) {
+				problems = append(problems, proseProblem{
+					path:   path,
+					line:   number,
+					rule:   "prompt character",
+					detail: "command carries a $ prompt",
+				})
+			}
+		} else {
+			problems = append(problems, checkProseLine(path, number, line)...)
+		}
+
+		if strings.TrimSpace(line) != "" {
+			previousNonBlank = line
+		}
+	}
+
+	return problems
+}
+
+// checkProseLine returns every broken convention on one line of prose, meaning
+// a line outside any fenced block.
+func checkProseLine(path string, number int, line string) []proseProblem {
+	problems := make([]proseProblem, 0)
+	report := func(rule, detail string) {
+		problems = append(problems, proseProblem{path: path, line: number, rule: rule, detail: detail})
+	}
+
+	// A table row is exempt from the column limit because splitting one across
+	// two lines stops it being a row at all, and a line that is one indivisible
+	// token is exempt because there is nowhere in it to break. Everything else
+	// that runs long has a space in it and can be wrapped.
+	if columns := utf8.RuneCountInString(line); columns > proseColumnLimit &&
+		!tableRow.MatchString(line) && !indivisible(line) {
+		report("line length", fmt.Sprintf("%d columns, wrap at %d", columns, proseColumnLimit))
+	}
+
+	if deepHeading.MatchString(line) {
+		depth := len(line) - len(strings.TrimLeft(line, "#"))
+		report("heading depth", fmt.Sprintf("%d levels deep, go no deeper than 3", depth))
+	}
+
+	if match := listMarker.FindStringSubmatch(line); match != nil && !checkboxItem.MatchString(match[2]) {
+		report("bullet marker", fmt.Sprintf("list item opens with %s, use *", match[1]))
+	}
+
+	for _, match := range sentenceBreak.FindAllString(orderedMarker.ReplaceAllString(line, ""), -1) {
+		report("sentence spacing", fmt.Sprintf("one space in %q, use two", match))
+	}
+
+	for _, match := range inlineLink.FindAllStringSubmatch(line, -1) {
+		text := strings.TrimSpace(match[1])
+		if containsFold(uninformativeLinkText, text) {
+			report("link text", fmt.Sprintf("link text %q names no destination", text))
+		}
+	}
+
+	return problems
+}
+
+// indivisible reports whether the line carries one token and nothing else,
+// which is what a list item holding only a long link or path looks like. A
+// break inside a link target stops it being a link, so a line with no
+// whitespace left to wrap at has already been wrapped as far as it goes and
+// runs past the column limit the way a table row does. A line that still has a
+// space in it is not this: wrapping it moves the words that follow the link
+// down a line and leaves the link itself intact.
+func indivisible(line string) bool {
+	content := strings.TrimSpace(itemPrefix.ReplaceAllString(line, ""))
+
+	return content != "" && !strings.ContainsAny(content, " \t")
 }
 
 // GenerateAgentsIndex writes the documentation map into the agent

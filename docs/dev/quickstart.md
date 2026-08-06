@@ -7,10 +7,11 @@ following installed:
 * [kind](https://kind.sigs.k8s.io/)
 * [kubectl](https://kubernetes.io/docs/reference/kubectl/)
 
-The following will also need to be installed locally for the relevant development
-operations:
+The following will also need to be installed locally for the relevant
+development operations:
 
-* [swag CLI](https://github.com/swaggo/swag) `>=v1.16.2,<v2.0.0` for generating API docs.
+* [swag CLI](https://github.com/swaggo/swag) `>=v1.16.2,<v2.0.0` for generating
+  API docs.
 * [NATS CLI](https://github.com/nats-io/natscli) for interacting with NATS
   messages used by the control plane.
 * [mage](https://magefile.org/) for using mage targets.

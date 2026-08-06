@@ -31,6 +31,7 @@ jobs:
     # to exist before it runs.
     - run: mage build:tptctl
     - run: mage test:docsCommands
+    - run: mage test:docsProse
     # The documentation map is derived from the site navigation, so a nav
     # change that was not regenerated shows up here as a diff.
     - run: mage dev:generateAgentsIndex

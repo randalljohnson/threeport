@@ -17,7 +17,8 @@ plane and local registry.
 mage test:e2eLocal
 ```
 
-The e2e tests create and use a Threeport config located at `/tmp/e2e-threeport-config.yaml`
+The e2e tests create and use a Threeport config located at
+`/tmp/e2e-threeport-config.yaml`
 
 ## Integration
 
@@ -28,6 +29,8 @@ The end-to-end tests require an existing control plane.  You can either
 provision on with `mage dev:up` or use the control plane used by e2e tests.
 
 ### Using tptdev
+
+Spin up a local dev control plane, then run the integration tests against it.
 
 ```bash
 mage dev:up

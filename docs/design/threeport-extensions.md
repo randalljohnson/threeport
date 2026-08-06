@@ -7,9 +7,9 @@ using the Threeport SDK.
 
 Requirements:
 
-* The Threeport SDK must support extensions that are developed in their own repo,
-  outside the threeport/threeport repo and added to running Threeport control
-  plane.
+* The Threeport SDK must support extensions that are developed in their own
+  repo, outside the threeport/threeport repo and added to running Threeport
+  control plane.
 * Any number of Threeport extensions must be able to be added that are unknown
   at the time the core Threeport control plane is deployed.
 
@@ -17,8 +17,8 @@ Implications:
 * We will need to provide a namespacing mechanism in the Threeport API that
   prevents naming collisions between API objects.
   e.g. if two extensions that are used in the same control plane include an
-  object called `FancyWorkload`, the API route path will collide.  They will both
-  be `[base]/v1/fancy-workload`.  If each extensions contains a namespace
+  object called `FancyWorkload`, the API route path will collide.  They will
+  both be `[base]/v1/fancy-workload`.  If each extensions contains a namespace
   prefix, naming collisions are prevented.  Since theses are esssentially global
   namespaces, we should use domain names for global uniquenss.
   e.g. `[base]/acmecorp.com/v1/fancy-workload` and

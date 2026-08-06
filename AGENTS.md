@@ -38,12 +38,11 @@ A change to behavior the documentation describes updates that documentation in t
 change. What goes stale fastest is `tptctl` commands and flags, the API types the object
 pages describe, the mage targets the build pages name, and the samples they download.
 
-Three checks run on every pull request. `test:docsLinks` builds the site strictly, failing
-on a dead link, a missing anchor, or a stranded page. `test:docsCommands` fails on a
-`tptctl` command, a `make` or `mage` target, or a sample download named in a shell
-block that does not exist. `test:docsProse` holds `docs/dev/` and `docs/design/` to the prose
-conventions. All three read names and form, so flags, field descriptions, and
-whether prose matches the code stay with whoever changes it.
+`mage test:docs` runs on every pull request. It builds the site strictly, failing on a
+dead link, a missing anchor, or a stranded page; fails on a `tptctl` command, a `make` or
+`mage` target, or a sample download named in a shell block that does not exist; and holds
+`docs/dev/` and `docs/design/` to the formatting conventions. It reads names and form, so flags,
+field descriptions, and whether prose matches the code stay with whoever changes it.
 
 # Architecture Overview
 

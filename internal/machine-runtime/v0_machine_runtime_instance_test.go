@@ -178,9 +178,9 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 
 	api := machinetest.NewAPIStub(t)
 	var (
-		patches    [][]byte
-		patchesMu  sync.Mutex
-		patchPath  = fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, 7)
+		patches   [][]byte
+		patchesMu sync.Mutex
+		patchPath = fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, 7)
 	)
 	api.Mux.HandleFunc(patchPath, func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPatch, r.Method)
@@ -249,9 +249,10 @@ func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 	// drive the Created reconciler against the unreachable host
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 
-	// reconciler surfaces the failure with a 30s requeue for retry
+	// reconciler surfaces the failure and leaves the requeue delay to the
+	// wrapper, which is what acts on it when an error is returned
 	require.Error(t, err)
-	assert.Equal(t, int64(30), delay, "network-class errors should be retried after 30s")
+	assert.Equal(t, int64(0), delay, "a network-class error leaves the requeue delay to the reconciler wrapper")
 
 	// error carries the specific-reason event the wrapper will substitute
 	// for the generic FailedCreate row
@@ -299,9 +300,9 @@ func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 	// drive the Created reconciler against the mismatched host key
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 
-	// ssh-client failures always retry after 30s
+	// ssh-client failures always retry, on the wrapper's requeue delay
 	require.Error(t, err)
-	assert.Equal(t, int64(30), delay, "ssh-client errors always retry")
+	assert.Equal(t, int64(0), delay, "an ssh-client error leaves the requeue delay to the reconciler wrapper")
 
 	// error carries the specific-reason event the wrapper will substitute
 	// for the generic FailedCreate row
@@ -314,16 +315,6 @@ func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 	// direct RecordEvent call is the CreateInProgress lifecycle marker at the
 	// top of the run; no SSHConnectFailed event fires here
 	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
-}
-
-// overrideRetryDelay shrinks the package retry delay for one test and
-// restores it on cleanup. Tests in this package run sequentially, so
-// mutating the package var is safe.
-func overrideRetryDelay(t *testing.T, seconds int64) {
-	t.Helper()
-	prev := sshRetryDelaySeconds
-	sshRetryDelaySeconds = seconds
-	t.Cleanup(func() { sshRetryDelaySeconds = prev })
 }
 
 // overrideUnpopulatedRequeueDelay sets the unpopulated-instance requeue
@@ -446,7 +437,6 @@ func TestMachineRuntimeInstanceCreated_IdempotentOnDoubleCall(t *testing.T) {
 // event the wrapper substitutes for the generic FailedCreate row, and no
 // update is persisted.
 func TestMachineRuntimeInstanceCreated_SSHPingFails_Retries(t *testing.T) {
-	overrideRetryDelay(t, 7)
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 1})
@@ -473,7 +463,7 @@ func TestMachineRuntimeInstanceCreated_SSHPingFails_Retries(t *testing.T) {
 	// the first failure on this instance requeues at the base delay, before
 	// the backoff has had a chance to double it
 	require.Error(t, err)
-	assert.Equal(t, int64(7), delay, "the first ping failure requeues with the configurable base delay")
+	assert.Equal(t, int64(0), delay, "a ping failure leaves the requeue delay to the reconciler wrapper")
 
 	// error carries the specific-reason event the wrapper will substitute
 	// for the generic FailedCreate row
@@ -605,7 +595,6 @@ func TestMachineRuntimeInstanceCreated_EventRecordingFailure_Continues(t *testin
 // connect's client is closed behind it so no connection or goroutine is
 // left hanging.
 func TestMachineRuntimeInstanceCreated_ContextCancellation_AbortsSSH(t *testing.T) {
-	overrideRetryDelay(t, 5)
 	overrideReconcileContext(t, func() (context.Context, context.CancelFunc) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -642,7 +631,7 @@ func TestMachineRuntimeInstanceCreated_ContextCancellation_AbortsSSH(t *testing.
 	// the canceled context aborts the connect instead of waiting it out
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), context.Canceled.Error(), "the aborted connect must name the cancellation in its message")
-	assert.Equal(t, int64(5), delay)
+	assert.Equal(t, int64(0), delay)
 	assert.Less(t, elapsed, 5*time.Second, "an already-canceled context must abort the reconcile promptly")
 
 	// the abort surfaces as a connect failure the wrapper can substitute for
@@ -666,7 +655,6 @@ func TestMachineRuntimeInstanceCreated_ContextCancellation_AbortsSSH(t *testing.
 // timeout window with the configurable retry delay, instead of hanging for
 // the full hold.
 func TestMachineRuntimeInstanceCreated_SSHOperationTimeout_ReturnsErrorWithDelay(t *testing.T) {
-	overrideRetryDelay(t, 9)
 	overrideSSHTimeout(t, 100*time.Millisecond)
 
 	key := machinetest.NewEncryptionKey(t)
@@ -695,7 +683,7 @@ func TestMachineRuntimeInstanceCreated_SSHOperationTimeout_ReturnsErrorWithDelay
 	// the operation timeout fires and reports the expired deadline as the cause
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error(), "the aborted ping must name the expired deadline in its message")
-	assert.Equal(t, int64(9), delay)
+	assert.Equal(t, int64(0), delay)
 	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held session would release")
 
 	// the abort surfaces as a ping failure the wrapper can substitute for the
@@ -713,7 +701,6 @@ func TestMachineRuntimeInstanceCreated_SSHOperationTimeout_ReturnsErrorWithDelay
 // as if the host were not responding, and the handler must return within
 // the operation timeout with the configurable retry delay.
 func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t *testing.T) {
-	overrideRetryDelay(t, 11)
 	overrideSSHTimeout(t, 100*time.Millisecond)
 
 	key := machinetest.NewEncryptionKey(t)
@@ -740,7 +727,7 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 	// the operation timeout fires and reports the expired deadline as the cause
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error(), "the aborted connect must name the expired deadline in its message")
-	assert.Equal(t, int64(11), delay)
+	assert.Equal(t, int64(0), delay)
 	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held handshake would release")
 
 	// the abort surfaces as a connect failure the wrapper can substitute for

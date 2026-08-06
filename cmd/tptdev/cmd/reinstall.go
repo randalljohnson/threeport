@@ -58,11 +58,21 @@ certificate authority and signed certs, and the rest-api's external
 service ip. Everything else (controller and api-server pods, their
 configmaps, rbac) is recreated.
 
-Pass --drop-database to reset the database as well, taking the whole
+Pass --drop-database to reset the stored state as well, taking the whole
 control plane from running to running with an empty schema in one
 command: the control plane is scaled down, its schema is dropped by a
-statement issued against the running database, the install reapplies,
-and the migrations run from scratch. That data is not recoverable, so
+statement issued against the running database, every nats stream is
+removed, the install reapplies, and the migrations run from scratch.
+
+The nats streams go with the schema rather than as a separate choice.
+They carry notifications naming rows by identifier, and the key-value
+buckets carry reconciliation locks keyed the same way, so keeping them
+across a drop leaves both pointing at rows that no longer exist. A
+durable consumer also keeps whatever configuration created it, so a
+delivery limit set by an older release would otherwise outlive every
+later install with nothing reporting the divergence.
+
+That data is not recoverable, so
 the flag also requires --confirm with the control plane name, and the
 target cluster must record itself as a development installation, which
 a cloud-hosted control plane does by being installed with 'tptctl up
@@ -227,6 +237,14 @@ change.`,
 		if reinstallDropDatabase {
 			if err := cpi.DropDatabase(kubeClient, &mapper); err != nil {
 				cli.Error("failed to drop control plane database", err)
+				os.Exit(1)
+			}
+
+			// the broker's streams carry notifications naming rows by
+			// identifier and its buckets carry locks keyed the same way,
+			// so they go with the schema rather than outliving it
+			if err := cpi.DropMessageBrokerState(kubeClient, &mapper); err != nil {
+				cli.Error("failed to drop control plane message broker state", err)
 				os.Exit(1)
 			}
 		}

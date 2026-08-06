@@ -3,6 +3,7 @@ package v0
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -116,12 +117,12 @@ func testKubeClient(objects ...runtime.Object) *dynamicfake.FakeDynamicClient {
 	return dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 }
 
-// succeedDropDatabaseJob makes the fake client answer the drop job's
-// status the way a cluster would once its pod has exited cleanly. The
-// reactor stamps the status onto the object on its way into the
-// tracker and leaves the create itself to the default handler, so the
-// poll that follows reads a completed job.
-func succeedDropDatabaseJob(kubeClient *dynamicfake.FakeDynamicClient) *unstructured.Unstructured {
+// succeedDropJob makes the fake client answer a drop job's status the
+// way a cluster would once its pod has exited cleanly. The reactor
+// stamps the status onto the object on its way into the tracker and
+// leaves the create itself to the default handler, so the poll that
+// follows reads a completed job.
+func succeedDropJob(kubeClient *dynamicfake.FakeDynamicClient) *unstructured.Unstructured {
 	created := &unstructured.Unstructured{}
 
 	kubeClient.PrependReactor("create", "jobs", func(action k8stesting.Action) (bool, runtime.Object, error) {
@@ -238,7 +239,7 @@ func TestDropDatabaseRunsDropStatementOnDevelopmentControlPlane(t *testing.T) {
 	)
 	var scaled []string
 	allowDeploymentScaleDown(kubeClient, &scaled)
-	createdJob := succeedDropDatabaseJob(kubeClient)
+	createdJob := succeedDropJob(kubeClient)
 	mapper := testNamespaceMapper()
 	cpi := &ControlPlaneInstaller{Opts: Options{Namespace: namespace}}
 
@@ -319,9 +320,133 @@ func TestDropDatabaseReportsFailedJob(t *testing.T) {
 	}
 }
 
+// TestDropMessageBrokerStateRejectsNonDevelopmentControlPlane asserts
+// that the broker drop refuses every control plane it cannot confirm is
+// a development installation, and that it touches nothing when it
+// refuses.
+func TestDropMessageBrokerStateRejectsNonDevelopmentControlPlane(t *testing.T) {
+	for _, tier := range []string{ControlPlaneTierProd, "staging", ""} {
+		t.Run(fmt.Sprintf("tier %q is refused", tier), func(t *testing.T) {
+			namespace := "threeport-control-plane"
+			kubeClient := testKubeClient(testNamespace(namespace, tier))
+			mapper := testNamespaceMapper()
+			cpi := &ControlPlaneInstaller{Opts: Options{Namespace: namespace}}
+
+			err := cpi.DropMessageBrokerState(kubeClient, &mapper)
+
+			// the refusal is reported as the tier error so callers can
+			// match it without reading the message
+			if err == nil {
+				t.Fatal("expected drop to be refused, got nil error")
+			}
+			if !errors.Is(err, ErrControlPlaneNotDevelopment) {
+				t.Errorf("expected error to match ErrControlPlaneNotDevelopment, got: %v", err)
+			}
+
+			// a refused drop issues nothing against the broker
+			if _, getErr := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
+				context.Background(), dropMessageBrokerJobName, metav1.GetOptions{},
+			); getErr == nil {
+				t.Error("expected no message broker drop job to be created on a refused drop")
+			}
+		})
+	}
+}
+
+// TestDropMessageBrokerStateRemovesEveryStreamOnDevelopmentControlPlane
+// asserts that the broker drop removes streams by name rather than
+// naming any one of them, so notification streams and the key-value
+// buckets holding reconciliation locks both go, and that the broker
+// itself and its data volume are left in place.
+func TestDropMessageBrokerStateRemovesEveryStreamOnDevelopmentControlPlane(t *testing.T) {
+	namespace := "threeport-control-plane"
+	kubeClient := testKubeClient(
+		testNamespace(namespace, ControlPlaneTierDev),
+		testStatefulSet("nats-js", namespace),
+		testVolumeClaim("datadir-nats-js-0", namespace),
+	)
+	createdJob := succeedDropJob(kubeClient)
+	mapper := testNamespaceMapper()
+	cpi := &ControlPlaneInstaller{Opts: Options{Namespace: namespace}}
+
+	if err := cpi.DropMessageBrokerState(kubeClient, &mapper); err != nil {
+		t.Fatalf("expected drop to succeed on a development control plane, got: %v", err)
+	}
+
+	// the removal enumerates whatever the broker holds and removes each
+	// one, so a stream added by a later release needs no change here
+	script := dropJobShellScript(t, createdJob)
+	for _, want := range []string{"nats stream ls --names", "nats stream rm", "--force"} {
+		if !strings.Contains(script, want) {
+			t.Errorf("expected the drop script to contain %q, got %q", want, script)
+		}
+	}
+
+	// the job runs once and is cleared, so a later drop is not refused
+	// by a job left behind by this one
+	if _, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
+		context.Background(), dropMessageBrokerJobName, metav1.GetOptions{},
+	); err == nil {
+		t.Error("expected the message broker drop job to be removed once it succeeded")
+	}
+
+	// the broker and its data volume are outside the streams and survive
+	for _, survivor := range []struct {
+		gvr  schema.GroupVersionResource
+		name string
+	}{
+		{gvr: schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}, name: "nats-js"},
+		{gvr: schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumeclaims"}, name: "datadir-nats-js-0"},
+	} {
+		if _, err := kubeClient.Resource(survivor.gvr).Namespace(namespace).Get(
+			context.Background(), survivor.name, metav1.GetOptions{},
+		); err != nil {
+			t.Errorf("expected %s/%s to survive the drop, got: %v", survivor.gvr.Resource, survivor.name, err)
+		}
+	}
+}
+
+// dropJobShellScript returns the shell script the drop job was created
+// to run, read back out of the job's container command.
+func dropJobShellScript(t *testing.T, job *unstructured.Unstructured) string {
+	t.Helper()
+
+	command := dropJobCommand(t, job)
+
+	// the script is the argument the shell is told to interpret
+	for i, arg := range command {
+		if arg == "-c" && i+1 < len(command) {
+			return command[i+1]
+		}
+	}
+
+	t.Fatalf("expected the command to interpret a script, got %v", command)
+
+	return ""
+}
+
 // dropDatabaseJobStatement returns the SQL the drop job was created to
 // run, read back out of the job's container command.
 func dropDatabaseJobStatement(t *testing.T, job *unstructured.Unstructured) string {
+	t.Helper()
+
+	command := dropJobCommand(t, job)
+
+	// the statement is the argument the client is told to execute
+	for i, arg := range command {
+		if arg == "--execute" && i+1 < len(command) {
+			return command[i+1]
+		}
+	}
+
+	t.Fatalf("expected the command to execute a statement, got %v", command)
+
+	return ""
+}
+
+// dropJobCommand returns the container command a drop job was created
+// with, so a caller can assert on the argument it cares about.
+func dropJobCommand(t *testing.T, job *unstructured.Unstructured) []string {
 	t.Helper()
 
 	containers, found, err := unstructured.NestedSlice(job.Object, "spec", "template", "spec", "containers")
@@ -339,14 +464,5 @@ func dropDatabaseJobStatement(t *testing.T, job *unstructured.Unstructured) stri
 		t.Fatalf("expected the drop job's container to define a command, got found=%v err=%v", found, err)
 	}
 
-	// the statement is the argument the client is told to execute
-	for i, arg := range command {
-		if arg == "--execute" && i+1 < len(command) {
-			return command[i+1]
-		}
-	}
-
-	t.Fatalf("expected the command to execute a statement, got %v", command)
-
-	return ""
+	return command
 }

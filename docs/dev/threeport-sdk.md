@@ -88,6 +88,10 @@ order of operations for the `gen` command is:
   * `internalpkg` contains the `internal` package generation for the managed
     project.
   * `pkg` contains the `pkg` package generation for the managed project.
-  * `root` contains the generation of source code files that live at the root of
-    the managed project.
+  * `root` contains the generation of the files a managed project needs outside
+    its Go packages: the magefile, the `Dockerfile` and the developer style
+    guide at `docs/dev/style-guide.md`.  The last two are scaffolding written
+    only when absent, so a project that has written its own keeps it.  The
+    style guide lands at the same path this project keeps its own, so a
+    contributor moving between a module and Threeport looks in one place.
 

@@ -19,8 +19,10 @@ const (
 	// natsBoxImage carries the message broker's command line client. The
 	// installer runs it as a long-lived pod for interactive use, and the
 	// state drop runs the same image as a one-off job, so both reach the
-	// broker with a client of the same version.
-	natsBoxImage = "natsio/nats-box:0.16.0-nonroot"
+	// broker with a client of the same version. The registry is spelled
+	// out because a container runtime that resolves no default registry
+	// cannot pull a bare name.
+	natsBoxImage = "docker.io/natsio/nats-box:0.16.0-nonroot"
 )
 
 // CreateThreeportControlPlaneNamespace creates the threeport control plane

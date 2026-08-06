@@ -253,12 +253,27 @@ func TestDropDatabaseRunsDropStatementOnDevelopmentControlPlane(t *testing.T) {
 	}
 
 	// the drop is a statement against the running database, naming the
-	// database and cascading to everything in it
+	// database and cascading to everything in it. it first cancels any
+	// paused schema change, which would otherwise hold the drop open
+	// forever waiting on a change that never resumes
 	statement := dropDatabaseJobStatement(t, createdJob)
-	for _, want := range []string{"DROP DATABASE", database.ThreeportDatabaseName, "CASCADE"} {
+	for _, want := range []string{
+		"CANCEL JOBS",
+		"paused",
+		"NEW SCHEMA CHANGE",
+		"DROP DATABASE",
+		database.ThreeportDatabaseName,
+		"CASCADE",
+	} {
 		if !strings.Contains(statement, want) {
 			t.Errorf("expected the drop statement to contain %q, got %q", want, statement)
 		}
+	}
+
+	// the cancel has to precede the drop, since cancelling afterward would
+	// not release a drop that is already blocked
+	if strings.Index(statement, "CANCEL JOBS") > strings.Index(statement, "DROP DATABASE") {
+		t.Errorf("expected the cancel to precede the drop, got %q", statement)
 	}
 
 	// the job runs once and is cleared, so a later drop is not refused

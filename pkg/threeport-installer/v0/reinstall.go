@@ -296,7 +296,16 @@ func (cpi *ControlPlaneInstaller) runDropDatabaseJob(
 		return err
 	}
 
-	statement := fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE", database.ThreeportDatabaseName)
+	// a paused schema change holds the drop open indefinitely, because the
+	// drop waits for an in-flight change that will never resume. migrations
+	// interrupted by an earlier drop leave exactly that behind, so clear any
+	// before issuing the drop rather than waiting out a deadline that cannot
+	// be met. the cancel is scoped to paused jobs, so a schema change that is
+	// genuinely running is left to finish.
+	statement := fmt.Sprintf(
+		"CANCEL JOBS (SELECT job_id FROM [SHOW JOBS] WHERE status = 'paused' AND job_type = 'NEW SCHEMA CHANGE'); DROP DATABASE IF EXISTS %s CASCADE",
+		database.ThreeportDatabaseName,
+	)
 	fmt.Printf("Info: running %q against the database\n", statement)
 
 	job := &unstructured.Unstructured{

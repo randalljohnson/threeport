@@ -15,9 +15,10 @@ const Done int64 = 0
 // Reconciled=true state before marking the parent reconciled.
 const Requeue30s int64 = 30
 
-// SetRequeueDelay sets the requeue delay.  It will be set to the initial delay
-// value if the first requeue for the object.  It will be set to double the
-// previous delay if not the first, or the max delay if reached.
+// SetRequeueDelay returns the delay before an object is reconciled again. The
+// delay grows with how long ago the notification was published, starting at
+// the initial delay and reaching twice the elapsed time, and it never exceeds
+// the maximum delay.
 func SetRequeueDelay(creationTime *int64) int64 {
 	var requeueDelay int64
 
@@ -26,10 +27,14 @@ func SetRequeueDelay(creationTime *int64) int64 {
 
 	if elapsedTime < DefaultInitialRequeueDelay {
 		requeueDelay = DefaultInitialRequeueDelay
-	} else if elapsedTime > DefaultMaxRequeueDelay {
-		requeueDelay = DefaultMaxRequeueDelay
 	} else {
 		requeueDelay = elapsedTime * 2
+	}
+
+	// cap the result rather than the elapsed time it was derived from: an
+	// elapsed time just under the maximum doubles to well above it
+	if requeueDelay > DefaultMaxRequeueDelay {
+		requeueDelay = DefaultMaxRequeueDelay
 	}
 
 	return requeueDelay

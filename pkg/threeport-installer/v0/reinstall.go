@@ -75,6 +75,16 @@ const dropDatabaseJobName = "threeport-drop-database"
 // database still finishing its own startup when the job first runs.
 const dropDatabaseJobBackoffLimit = 3
 
+// dropMessageBrokerJobName is the one-off job that removes the message
+// broker's streams. Fixed for the same reason the database drop job's
+// name is fixed.
+const dropMessageBrokerJobName = "threeport-drop-message-broker"
+
+// dropMessageBrokerJobBackoffLimit is how many times kubernetes replaces
+// the broker drop job's pod before it reports the job failed. Retries
+// cover a broker still electing its leader when the job first runs.
+const dropMessageBrokerJobBackoffLimit = 3
+
 // dbRootCertsMountPath is where the drop job mounts the database's root
 // credentials. The cockroach client reads the whole directory, so the
 // three files the secret holds are named the way it expects.
@@ -152,6 +162,125 @@ func (cpi *ControlPlaneInstaller) DropDatabase(
 	return nil
 }
 
+// DropMessageBrokerState removes every stream the message broker holds,
+// which takes their consumers and any undelivered notifications with
+// them. The next install recreates the streams, and each controller
+// recreates its own consumer and lock bucket as it starts.
+//
+// This belongs with the database drop rather than beside it as a choice.
+// The broker's streams carry notifications naming rows by identifier and
+// its key-value buckets carry reconciliation locks keyed the same way,
+// so dropping the database without dropping the broker leaves messages
+// and locks pointing at rows that no longer exist. Worse, a durable
+// consumer keeps whatever configuration it was created with: a delivery
+// limit set by an older release survives every later install, and
+// nothing reports the divergence, so an object can stop being reconciled
+// with no record of anything having given up.
+//
+// The caller quiesces the control plane before calling this, which the
+// database drop already does, so no controller is holding a lock or
+// mid-delivery while the streams go away.
+//
+// The removal is issued with the broker's own command line client over
+// the network, so the volume holding the broker's data directory
+// survives and no volume has to be reprovisioned.
+func (cpi *ControlPlaneInstaller) DropMessageBrokerState(
+	kubeClient dynamic.Interface,
+	mapper *meta.RESTMapper,
+) error {
+	namespace := cpi.Opts.Namespace
+
+	tier, err := cpi.getInstalledTier(kubeClient, mapper)
+	if err != nil {
+		return err
+	}
+	if tier != ControlPlaneTierDev {
+		return fmt.Errorf(
+			"%w: namespace %s reports tier %q, refusing to drop its message broker state",
+			ErrControlPlaneNotDevelopment, namespace, tier,
+		)
+	}
+
+	if err := cpi.runDropMessageBrokerJob(kubeClient, namespace); err != nil {
+		return err
+	}
+
+	fmt.Println("Info: message broker streams dropped, they will be recreated by the install that follows")
+
+	return nil
+}
+
+// runDropMessageBrokerJob removes every stream from a one-off job in the
+// control plane namespace, waits for it to report success, and removes
+// it. Key-value buckets are streams too, so listing by name reaches the
+// reconciliation lock buckets alongside the notification streams and one
+// pass clears both.
+func (cpi *ControlPlaneInstaller) runDropMessageBrokerJob(
+	kubeClient dynamic.Interface,
+	namespace string,
+) error {
+	// clear a job left behind by an interrupted run: a job's pod
+	// template is immutable, so creating over one is refused
+	if err := cpi.deleteDropJob(
+		kubeClient, namespace, dropMessageBrokerJobName, "message broker",
+	); err != nil {
+		return err
+	}
+
+	// remove each stream by name. an empty broker yields an empty list
+	// and the loop does nothing, so a repeat run is not an error
+	script := "set -e; for stream in $(nats stream ls --names); do nats stream rm \"$stream\" --force; done"
+	fmt.Println("Info: removing every message broker stream and key-value bucket")
+
+	job := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "batch/v1",
+			"kind":       "Job",
+			"metadata": map[string]interface{}{
+				"name":      dropMessageBrokerJobName,
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"backoffLimit": int64(dropMessageBrokerJobBackoffLimit),
+				"template": map[string]interface{}{
+					"spec": map[string]interface{}{
+						"restartPolicy": "Never",
+						"containers": []interface{}{
+							map[string]interface{}{
+								"name":  "drop-message-broker",
+								"image": natsBoxImage,
+								"env": []interface{}{
+									map[string]interface{}{
+										"name":  "NATS_URL",
+										"value": natsServiceName,
+									},
+								},
+								"command": []interface{}{"/bin/sh", "-c", script},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if _, err := kubeClient.Resource(jobGVR).Namespace(namespace).Create(
+		context.Background(), job, metav1.CreateOptions{},
+	); err != nil {
+		return fmt.Errorf("failed to create message broker drop job %s: %w", dropMessageBrokerJobName, err)
+	}
+
+	if err := cpi.waitForDropJob(
+		kubeClient, namespace, dropMessageBrokerJobName, dropMessageBrokerJobBackoffLimit, "message broker",
+	); err != nil {
+		return err
+	}
+
+	// the job's pod holds the only record of what the drop reported, so
+	// it is cleared only once the job has reported success
+	return cpi.deleteDropJob(kubeClient, namespace, dropMessageBrokerJobName, "message broker")
+}
+
 // runDropDatabaseJob issues the drop from a one-off job in the control
 // plane namespace, waits for it to report success, and removes it. The
 // job runs the cockroach client against the running database with the
@@ -163,7 +292,7 @@ func (cpi *ControlPlaneInstaller) runDropDatabaseJob(
 ) error {
 	// clear a job left behind by an interrupted run: a job's pod
 	// template is immutable, so creating over one is refused
-	if err := cpi.deleteDropDatabaseJob(kubeClient, namespace); err != nil {
+	if err := cpi.deleteDropJob(kubeClient, namespace, dropDatabaseJobName, "database"); err != nil {
 		return err
 	}
 
@@ -225,39 +354,45 @@ func (cpi *ControlPlaneInstaller) runDropDatabaseJob(
 		return fmt.Errorf("failed to create database drop job %s: %w", dropDatabaseJobName, err)
 	}
 
-	if err := cpi.waitForDropDatabaseJob(kubeClient, namespace); err != nil {
+	if err := cpi.waitForDropJob(
+		kubeClient, namespace, dropDatabaseJobName, dropDatabaseJobBackoffLimit, "database",
+	); err != nil {
 		return err
 	}
 
 	// the job's pod holds the only record of what the drop reported, so
 	// it is cleared only once the job has reported success
-	return cpi.deleteDropDatabaseJob(kubeClient, namespace)
+	return cpi.deleteDropJob(kubeClient, namespace, dropDatabaseJobName, "database")
 }
 
-// waitForDropDatabaseJob polls the drop job until it reports one
-// successful completion, or reports that its pod has failed as many
-// times as the job allows. A job that has exhausted its retries will
-// not recover, so it is reported straight away rather than waited out.
-func (cpi *ControlPlaneInstaller) waitForDropDatabaseJob(
+// waitForDropJob polls a drop job until it reports one successful
+// completion, or reports that its pod has failed as many times as the
+// job allows. A job that has exhausted its retries will not recover, so
+// it is reported straight away rather than waited out. The subject names
+// what is being dropped, so the caller's failure reads in its own terms.
+func (cpi *ControlPlaneInstaller) waitForDropJob(
 	kubeClient dynamic.Interface,
 	namespace string,
+	jobName string,
+	backoffLimit int64,
+	subject string,
 ) error {
 	var jobFailed error
 
 	// 3s poll x 60 attempts = 3 minute aggregate deadline.
 	if err := util.Retry(60, 3, func() error {
 		job, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
-			context.Background(), dropDatabaseJobName, metav1.GetOptions{},
+			context.Background(), jobName, metav1.GetOptions{},
 		)
 		if err != nil {
-			return fmt.Errorf("failed to read database drop job status: %w", err)
+			return fmt.Errorf("failed to read %s drop job status: %w", subject, err)
 		}
 
 		failed, _, _ := util.NestedInt64OrFloat64(job.Object, "status", "failed")
-		if failed > dropDatabaseJobBackoffLimit {
+		if failed > backoffLimit {
 			jobFailed = fmt.Errorf(
-				"database drop job %s failed after %d pod attempt(s): inspect its pod logs in namespace %s",
-				dropDatabaseJobName, failed, namespace,
+				"%s drop job %s failed after %d pod attempt(s): inspect its pod logs in namespace %s",
+				subject, jobName, failed, namespace,
 			)
 			return nil
 		}
@@ -267,45 +402,47 @@ func (cpi *ControlPlaneInstaller) waitForDropDatabaseJob(
 			return nil
 		}
 
-		return fmt.Errorf("database drop job %s has not completed", dropDatabaseJobName)
+		return fmt.Errorf("%s drop job %s has not completed", subject, jobName)
 	}); err != nil {
-		return fmt.Errorf("database drop did not complete: %w", err)
+		return fmt.Errorf("%s drop did not complete: %w", subject, err)
 	}
 
 	return jobFailed
 }
 
-// deleteDropDatabaseJob removes the drop job and waits for it to leave
-// the api. The delete cascades to the job's pod, so a completed pod
-// does not linger in the control plane namespace.
-func (cpi *ControlPlaneInstaller) deleteDropDatabaseJob(
+// deleteDropJob removes a drop job and waits for it to leave the api.
+// The delete cascades to the job's pod, so a completed pod does not
+// linger in the control plane namespace.
+func (cpi *ControlPlaneInstaller) deleteDropJob(
 	kubeClient dynamic.Interface,
 	namespace string,
+	jobName string,
+	subject string,
 ) error {
 	deletePolicy := metav1.DeletePropagationForeground
 	deleteOpts := metav1.DeleteOptions{PropagationPolicy: &deletePolicy}
 
 	if err := kubeClient.Resource(jobGVR).Namespace(namespace).Delete(
-		context.Background(), dropDatabaseJobName, deleteOpts,
+		context.Background(), jobName, deleteOpts,
 	); err != nil && !k8serrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete database drop job %s: %w", dropDatabaseJobName, err)
+		return fmt.Errorf("failed to delete %s drop job %s: %w", subject, jobName, err)
 	}
 
 	// 3s poll x 20 attempts = 1 minute aggregate deadline.
 	if err := util.Retry(20, 3, func() error {
 		_, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
-			context.Background(), dropDatabaseJobName, metav1.GetOptions{},
+			context.Background(), jobName, metav1.GetOptions{},
 		)
 		if err == nil {
-			return fmt.Errorf("database drop job %s still terminating", dropDatabaseJobName)
+			return fmt.Errorf("%s drop job %s still terminating", subject, jobName)
 		}
 		if !k8serrors.IsNotFound(err) {
-			return fmt.Errorf("failed to check database drop job %s: %w", dropDatabaseJobName, err)
+			return fmt.Errorf("failed to check %s drop job %s: %w", subject, jobName, err)
 		}
 
 		return nil
 	}); err != nil {
-		return fmt.Errorf("database drop job did not finish terminating: %w", err)
+		return fmt.Errorf("%s drop job did not finish terminating: %w", subject, err)
 	}
 
 	return nil

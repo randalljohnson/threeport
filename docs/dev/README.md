@@ -18,19 +18,23 @@ Following is an overview of what lives at the root of this repo:
     controller that manages AWS resources as workload dependencies.
   * [sdk](../../cmd/sdk/README.md) generates scaffolding and boilerplate code
     for various components and packages.
-  * [gateway-controller](../../cmd/gateway-controller/README.md) is the threeport
-    controller that manages network ingress gateways and DNS records for workloads.
+  * [gateway-controller](../../cmd/gateway-controller/README.md) is the
+    threeport controller that manages network ingress gateways and DNS records
+    for workloads.
   * [kubernetes-runtime-controller](../../cmd/kubernetes-runtime-controller/README.md)
     is the threeport controller that manages Kubernetes clusters as runtime
     environments for workloads.
-  * [rest-api](../../cmd/rest-api/README.md) is the RESTful API for the threeport
-    control plane.
-  * [tptctl](../../cmd/tptctl/README.md) is the primary client CLI for threeport uers.
+  * [rest-api](../../cmd/rest-api/README.md) is the RESTful API for the
+    threeport control plane.
+  * [tptctl](../../cmd/tptctl/README.md) is the primary client CLI for
+    threeport uers.
   * [tptdev](../../cmd/tptdev/README.md) is a developer tool for threeport.
-  * [kubernetes-workload-controller](../../cmd/kubernetes-workload-controller/README.md) is the threeport
-    controller that manages containerized workloads on Kubernetes for users.
-  * [control-plane-controller](../../cmd/control-plane-controller/README.md) is the threeport
-    controller that manages control planes created by the threeport control plane itself.
+  * [kubernetes-workload-controller](../../cmd/kubernetes-workload-controller/README.md)
+    is the threeport controller that manages containerized workloads on
+    Kubernetes for users.
+  * [control-plane-controller](../../cmd/control-plane-controller/README.md) is
+    the threeport controller that manages control planes created by the
+    threeport control plane itself.
   * [database-migrator](../../cmd/database-migrator/README.md) applies the
     database schema migrations required by the threeport API.
   * gcp-controller is the threeport controller that manages GKE clusters on

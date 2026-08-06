@@ -16,9 +16,10 @@ deeper logging and metrics data.
 
 ## Interface with Kubernetes
 
-When a kubernetes workload instance controller creates resources in Kubernetes, it uses a
-custom `ThreeportWorkload` resource created in the same cluster to inform the
-Threeport Agent of Kubernetes resources it sould watch and report upon.
+When a kubernetes workload instance controller creates resources in Kubernetes,
+it uses a custom `ThreeportWorkload` resource created in the same cluster to
+inform the Threeport Agent of Kubernetes resources it sould watch and report
+upon.
 
 The Threeport Agent watches `ThreeportWorkload` resources and places new watches
 based on the information found therein.

@@ -24,7 +24,7 @@ act -W .github/workflows/test.yml  # runs automated tests
 When a secret is needed to run an action, a new secret must first be created in
 the [github actions secrets
 page](https://github.com/threeport/threeport/settings/secrets/actions) to run
-from your local machine. The name of the Repository secret is unimportant but
+from your local machine.  The name of the Repository secret is unimportant but
 the contents must look as follows:
 
 ```

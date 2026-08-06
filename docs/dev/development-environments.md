@@ -5,9 +5,9 @@
 The following instructions allow you to stand up a local Threeport control plane
 built from the code you have locally.
 
-Create a local container registry.  This allows you to build new container images
-and use them without having to wait for pushes to - and pulls from - a remote
-registry.
+Create a local container registry.  This allows you to build new container
+images and use them without having to wait for pushes to - and pulls from - a
+remote registry.
 
 ```bash
 mage dev:localRegistryUp

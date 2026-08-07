@@ -238,7 +238,7 @@ func DeleteResource(
 	// get the mapping for resource from kube object's group, kind
 	mapping, err := getResourceMapping(kubeObject, mapper)
 	if err != nil {
-		if meta.IsNoMatchError(errors.Unwrap(err)) || meta.IsNoMatchError(err) {
+		if meta.IsNoMatchError(err) {
 			return nil
 		}
 		return fmt.Errorf("failed to get REST mapping for kubernetes resource: %w", err)

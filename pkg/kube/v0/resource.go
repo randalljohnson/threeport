@@ -134,7 +134,7 @@ func CreateResource(
 			delay *= 2
 		}
 	}
-	return nil, fmt.Errorf("failed to create kubernetes resource after %d retries:%w", createRetryAttempts, err)
+	return nil, fmt.Errorf("failed to create kubernetes resource after %d attempts:%w", createRetryAttempts, err)
 
 }
 

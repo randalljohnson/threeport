@@ -30,8 +30,9 @@ const createRetryAttempts = 5
 
 // createRetryBaseDelay backs off exponentially between retries starting
 // from this base (250ms, 500ms, 1s, 2s) so the apiserver has a chance to
-// catch up on quota evaluation before the next attempt.
-const createRetryBaseDelay = 250 * time.Millisecond
+// catch up on quota evaluation before the next attempt. It is a variable
+// rather than a constant so tests can shrink the wait.
+var createRetryBaseDelay = 250 * time.Millisecond
 
 // isTransientKubeError reports whether a Kubernetes API error is worth
 // retrying. Covers server-side timeouts, temporary service unavailable

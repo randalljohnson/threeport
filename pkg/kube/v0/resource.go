@@ -30,8 +30,9 @@ const createRetryAttempts = 5
 
 // createRetryBaseDelay backs off exponentially between retries starting
 // from this base (250ms, 500ms, 1s, 2s) so the apiserver has a chance to
-// catch up on quota evaluation before the next attempt.
-const createRetryBaseDelay = 250 * time.Millisecond
+// catch up on quota evaluation before the next attempt. It is a variable
+// rather than a constant so tests can shrink the wait.
+var createRetryBaseDelay = 250 * time.Millisecond
 
 // isTransientKubeError reports whether a Kubernetes API error is worth
 // retrying. Covers server-side timeouts, temporary service unavailable
@@ -134,7 +135,7 @@ func CreateResource(
 			delay *= 2
 		}
 	}
-	return nil, fmt.Errorf("failed to create kubernetes resource after %d retries:%w", createRetryAttempts, err)
+	return nil, fmt.Errorf("failed to create kubernetes resource after %d attempts:%w", createRetryAttempts, err)
 
 }
 
@@ -238,7 +239,7 @@ func DeleteResource(
 	// get the mapping for resource from kube object's group, kind
 	mapping, err := getResourceMapping(kubeObject, mapper)
 	if err != nil {
-		if meta.IsNoMatchError(errors.Unwrap(err)) || meta.IsNoMatchError(err) {
+		if meta.IsNoMatchError(err) {
 			return nil
 		}
 		return fmt.Errorf("failed to get REST mapping for kubernetes resource: %w", err)

@@ -322,13 +322,52 @@ const multiArchBuilderName = "threeport-multi"
 // RunParallel don't race on inspect-then-create against the docker daemon.
 var multiArchBuilderMu sync.Mutex
 
+// multiArchBuilderMaxCacheSize caps the build cache the multi-arch builder
+// keeps. The docker-container driver runs its own buildkit with its own
+// garbage collection, so the docker daemon's builder settings never reach it.
+// Left alone it sizes its policy off the whole disk and holds tens of
+// gigabytes of cache that nothing reclaims until the disk runs low.
+const multiArchBuilderMaxCacheSize = "20GB"
+
+// multiArchBuilderConfig is the buildkit daemon config handed to the multi-arch
+// builder when it is created. The single policy covers every cache entry and
+// reclaims whatever sits above the cap.
+const multiArchBuilderConfig = `[worker.oci]
+  gc = true
+  maxUsedSpace = "` + multiArchBuilderMaxCacheSize + `"
+
+  [[worker.oci.gcpolicy]]
+    all = true
+    maxUsedSpace = "` + multiArchBuilderMaxCacheSize + `"
+`
+
+// writeMultiArchBuilderConfig writes the buildkit daemon config to a temporary
+// file and returns its path. buildx reads the file while it creates the
+// builder and copies the content into the builder itself, so the caller
+// removes the file as soon as create returns.
+func writeMultiArchBuilderConfig() (string, error) {
+	file, err := os.CreateTemp("", "threeport-buildkitd-*.toml")
+	if err != nil {
+		return "", fmt.Errorf("failed to create buildkit config file: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString(multiArchBuilderConfig); err != nil {
+		os.Remove(file.Name())
+		return "", fmt.Errorf("failed to write buildkit config file: %w", err)
+	}
+	return file.Name(), nil
+}
+
 // ensureMultiArchBuilder makes sure a docker-container builder named
-// multiArchBuilderName exists. The mutex serializes setup across
-// goroutines so concurrent parallel image builds don't all race to
-// create the builder and have all but one fail. Every call re-runs
-// `docker buildx inspect` so external deletion of the builder
-// (e.g. `docker buildx rm threeport-multi` in another terminal, or a
-// Docker Desktop reset) is recovered transparently on the next call.
+// multiArchBuilderName exists, with a garbage collection policy that caps its
+// build cache. The mutex serializes setup across goroutines so concurrent
+// parallel image builds don't all race to create the builder and have all but
+// one fail. Every call re-runs `docker buildx inspect` so external deletion of
+// the builder (e.g. `docker buildx rm threeport-multi` in another terminal, or
+// a Docker Desktop reset) is recovered transparently on the next call. An
+// existing builder keeps whatever policy it was created with; remove it and
+// let the next build recreate it to pick up a changed cap.
 func ensureMultiArchBuilder() error {
 	multiArchBuilderMu.Lock()
 	defer multiArchBuilderMu.Unlock()
@@ -337,11 +376,20 @@ func ensureMultiArchBuilder() error {
 	if err := inspect.Run(); err == nil {
 		return nil
 	}
+
+	// hand the builder its cache cap at create time, the only point buildx reads it
+	configPath, err := writeMultiArchBuilderConfig()
+	if err != nil {
+		return err
+	}
+	defer os.Remove(configPath)
+
 	fmt.Printf("creating docker-container buildx builder %q for multi-arch builds...\n", multiArchBuilderName)
 	create := exec.Command(
 		"docker", "buildx", "create",
 		"--name", multiArchBuilderName,
 		"--driver", "docker-container",
+		"--buildkitd-config", configPath,
 		"--bootstrap",
 	)
 	create.Stdout = os.Stdout

@@ -9,10 +9,11 @@ project uses for the same purpose, so the two are read the same way.
 
 The core Threeport project governs everything else.  Its own
 `docs/dev/style-guide.md` is authoritative for Go code, imports, naming and
-code comments, and its documentation tree sets the prose defaults this
-repository matches: address the reader as "you", wrap prose at 80 columns, two
-spaces after a sentence, no serial comma and no dashes other than a plain
-hyphen.  Nothing here contradicts either.
+code comments.  The prose in this repository follows Google developer
+documentation style, with these defaults: address the reader as "you", wrap
+prose at 80 columns, two spaces after a sentence, use the serial comma, and use
+no dash other than a plain hyphen.  Nothing here contradicts the core style
+guide.
 
 ## Terminology
 

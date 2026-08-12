@@ -1108,6 +1108,24 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 												s.Id("h")
 											}
 										}).Dot("PaginationMode"),
+										// the page reads through the same request-scoped, filtered db the
+										// count used, so both see one set of rows
+										Do(func(s *Statement) {
+											if gen.Module {
+												s.Id("h").Dot("Handler")
+											} else {
+												s.Id("h")
+											}
+										}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
+											Op("&").Qual(
+												fmt.Sprintf(
+													"%s/pkg/api/%s",
+													gen.ModulePath,
+													objCollection.Version,
+												),
+												apiObject.TypeName,
+											).Values(),
+										).Dot("Where").Call(Op("&").Id("filter")),
 										Id("records"),
 										Id("queryTable"),
 										Id("pageParams"),
@@ -1169,6 +1187,24 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										s.Id("h")
 									}
 								}).Dot("PaginationMode"),
+								// the page reads through the same request-scoped, filtered db the
+								// count used, so both see one set of rows
+								Do(func(s *Statement) {
+									if gen.Module {
+										s.Id("h").Dot("Handler")
+									} else {
+										s.Id("h")
+									}
+								}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
+									Op("&").Qual(
+										fmt.Sprintf(
+											"%s/pkg/api/%s",
+											gen.ModulePath,
+											objCollection.Version,
+										),
+										apiObject.TypeName,
+									).Values(),
+								).Dot("Where").Call(Op("&").Id("filter")),
 								Id("records"),
 								Id("queryTable"),
 								Id("pageParams"),

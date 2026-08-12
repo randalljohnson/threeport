@@ -53,7 +53,7 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 
 	if err := c.Bind(&machineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -109,7 +109,7 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 // @ID get-v0-machineWorkloadDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "machine workload definition search by name"
+// @Param name query string false "filter by exact machine workload definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -127,7 +127,7 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 	var filter api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -160,7 +160,7 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.MachineWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -181,7 +181,7 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.MachineWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -291,7 +291,7 @@ func (h Handler) UpdateMachineWorkloadDefinition(c echo.Context) error {
 	var updatedMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&updatedMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -359,7 +359,7 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 	var updatedMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&updatedMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -504,7 +504,7 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 
 	if err := c.Bind(&machineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -574,7 +574,7 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 // @ID get-v0-machineWorkloadInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "machine workload instance search by name"
+// @Param name query string false "filter by exact machine workload instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -592,7 +592,7 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 	var filter api_v0.MachineWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -625,7 +625,7 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.MachineWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -646,7 +646,7 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.MachineWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -756,7 +756,7 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	var updatedMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if err := c.Bind(&updatedMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -838,7 +838,7 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 	var updatedMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if err := c.Bind(&updatedMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

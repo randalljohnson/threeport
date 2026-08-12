@@ -53,7 +53,7 @@ func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 
 	if err := c.Bind(&awsEksKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -109,7 +109,7 @@ func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 // @ID get-v0-awsEksKubernetesRuntimeDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "aws eks kubernetes runtime definition search by name"
+// @Param name query string false "filter by exact aws eks kubernetes runtime definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -127,7 +127,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinitions(c echo.Context) error {
 	var filter api_v0.AwsEksKubernetesRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -160,7 +160,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.AwsEksKubernetesRuntimeDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -181,7 +181,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.AwsEksKubernetesRuntimeDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -291,7 +291,7 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 	var updatedAwsEksKubernetesRuntimeDefinition api_v0.AwsEksKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedAwsEksKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -359,7 +359,7 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error 
 	var updatedAwsEksKubernetesRuntimeDefinition api_v0.AwsEksKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedAwsEksKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -504,7 +504,7 @@ func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 
 	if err := c.Bind(&awsEksKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -574,7 +574,7 @@ func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 // @ID get-v0-awsEksKubernetesRuntimeInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "aws eks kubernetes runtime instance search by name"
+// @Param name query string false "filter by exact aws eks kubernetes runtime instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -592,7 +592,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstances(c echo.Context) error {
 	var filter api_v0.AwsEksKubernetesRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -625,7 +625,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.AwsEksKubernetesRuntimeInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -646,7 +646,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.AwsEksKubernetesRuntimeInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -756,7 +756,7 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 	var updatedAwsEksKubernetesRuntimeInstance api_v0.AwsEksKubernetesRuntimeInstance
 	if err := c.Bind(&updatedAwsEksKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -838,7 +838,7 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 	var updatedAwsEksKubernetesRuntimeInstance api_v0.AwsEksKubernetesRuntimeInstance
 	if err := c.Bind(&updatedAwsEksKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1028,7 +1028,7 @@ func (h Handler) AddAwsProvider(c echo.Context) error {
 
 	if err := c.Bind(&awsProvider); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1084,7 +1084,7 @@ func (h Handler) AddAwsProvider(c echo.Context) error {
 // @ID get-v0-awsProviders
 // @Accept json
 // @Produce json
-// @Param name query string false "aws provider search by name"
+// @Param name query string false "filter by exact aws provider name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1102,7 +1102,7 @@ func (h Handler) GetAwsProviders(c echo.Context) error {
 	var filter api_v0.AwsProvider
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1135,7 +1135,7 @@ func (h Handler) GetAwsProviders(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.AwsProvider{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1156,7 +1156,7 @@ func (h Handler) GetAwsProviders(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.AwsProvider{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1266,7 +1266,7 @@ func (h Handler) UpdateAwsProvider(c echo.Context) error {
 	var updatedAwsProvider api_v0.AwsProvider
 	if err := c.Bind(&updatedAwsProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1334,7 +1334,7 @@ func (h Handler) ReplaceAwsProvider(c echo.Context) error {
 	var updatedAwsProvider api_v0.AwsProvider
 	if err := c.Bind(&updatedAwsProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

@@ -53,7 +53,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 
 	if err := c.Bind(&helmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -123,7 +123,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 // @ID get-v0-helmWorkloadDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "helm workload definition search by name"
+// @Param name query string false "filter by exact helm workload definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -141,7 +141,7 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 	var filter api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -174,7 +174,7 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.HelmWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -195,7 +195,7 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.HelmWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -305,7 +305,7 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 	var updatedHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&updatedHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -387,7 +387,7 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 	var updatedHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&updatedHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -583,7 +583,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 
 	if err := c.Bind(&helmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -653,7 +653,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 // @ID get-v0-helmWorkloadInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "helm workload instance search by name"
+// @Param name query string false "filter by exact helm workload instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -671,7 +671,7 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 	var filter api_v0.HelmWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -704,7 +704,7 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.HelmWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -725,7 +725,7 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.HelmWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -835,7 +835,7 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 	var updatedHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if err := c.Bind(&updatedHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -917,7 +917,7 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 	var updatedHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if err := c.Bind(&updatedHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

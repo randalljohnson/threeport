@@ -95,7 +95,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	var filter v0.Event
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// collect object IDs to filter on. The accepted shapes are:
@@ -358,9 +358,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		case true:
 			// large result set: pin a snapshot so subsequent cursor
 			// pages see the same rows even under concurrent writes.
-			// the two modes are peers: MV materializes the join into a
-			// fresh view; AOST captures an HLC and re-runs the join at
-			// that timestamp on every page.
+			// the two modes are peers: materialized-view mode
+			// materializes the join into a fresh view; as-of-system-time
+			// mode captures an HLC and re-runs the join at that
+			// timestamp on every page.
 
 			// the probe fetch above already loaded threshold+1 rows;
 			// discard them so the snapshot path below refills from its
@@ -510,9 +511,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation request: client gave a QueryId+Cursor pair,
-		// resume from the snapshot the first-page call anchored. The
-		// queryId opacity is preserved end-to-end: MV mode reads it as
-		// a view suffix, AOST mode reads it as an HLC.
+		// resume from the snapshot the first-page call anchored. the
+		// queryId stays opaque to the client: materialized-view mode
+		// reads it as a view suffix, as-of-system-time mode reads it as
+		// an HLC.
 
 		// preserve the queryId across pages so the client keeps using
 		// the same snapshot for subsequent continuation requests
@@ -527,7 +529,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		case apiserver_lib.PaginationModeAsOfSystemTime:
 			// treat the caller queryId as an HLC token; validate to
 			// reject anything that would smuggle SQL into AS OF SYSTEM
-			// TIME. On mismatch we surface a 400 with the restart hint.
+			// TIME
 			if !apiserver_lib.ValidHLCToken(pageParams.QueryId) {
 				return apiserver_lib.ResponseStatus400(c, pageParams,
 					errors.New("invalid queryid: not a valid HLC token; restart pagination with no queryid to obtain a fresh snapshot"),

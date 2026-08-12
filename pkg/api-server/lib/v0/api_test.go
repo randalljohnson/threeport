@@ -29,9 +29,9 @@ func newHelperContext(body []byte) (echo.Context, *httptest.ResponseRecorder) {
 	return e.NewContext(req, rec), rec
 }
 
-// TestResponseStatusBindErr_UnmarshalTypeErrorReturns400 reproduces the
-// PATCH-with-wrong-type bug: a JSON string bound to a uint field must
-// surface as 400, not 500, because the client sent bad data.
+// TestResponseStatusBindErr_UnmarshalTypeErrorReturns400 asserts a JSON
+// string bound to a uint field surfaces as 400, with the unmarshal message
+// in the response body so the client can see which field went wrong.
 func TestResponseStatusBindErr_UnmarshalTypeErrorReturns400(t *testing.T) {
 	// arrange a request body that fails Bind on the uint field
 	body := []byte(`{"KubernetesRuntimeDefinitionID":"not-a-number"}`)

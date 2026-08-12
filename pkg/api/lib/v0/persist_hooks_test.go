@@ -27,13 +27,11 @@ func (t *testTransient) BeforeCreate(tx *gorm.DB) error {
 	return ProcessPersistFalseTaggedFields(tx, t)
 }
 
-// testTransient mirrors the BeforeUpdate wiring used by encrypt
-// hooks so the update-path behavior can be pinned. Current
-// production wiring does NOT call ProcessPersistFalseTaggedFields
-// on BeforeUpdate (see ProcessCoreTaggedFieldsBeforeUpdate in
-// pkg/api/v0/tagged_fields.go), but the function itself supports
-// it via the dest redirect. The test struct opts in so we can
-// also exercise that branch directly.
+// BeforeUpdate mirrors the update wiring in
+// ProcessCoreTaggedFieldsBeforeUpdate so the update branch can be
+// exercised here. That wiring lives in pkg/api/v0, which this
+// package cannot import, so the test proving the production path
+// is TestSecretDefinitionDataNotStoredOnUpdate in pkg/api/v0.
 func (t *testTransient) BeforeUpdate(tx *gorm.DB) error {
 	return ProcessPersistFalseTaggedFields(tx, t)
 }
@@ -115,53 +113,34 @@ func TestPersistFalseHookNullsRegardlessOfInboundValue(t *testing.T) {
 	}
 }
 
-// TestPersistFalseHookProductionUpdatePathPersistsTaggedField
-// pins the current production wiring: persist:"false" fields
-// only get nulled on BeforeCreate, not BeforeUpdate (see
-// ProcessCoreTaggedFieldsBeforeUpdate in
-// pkg/api/v0/tagged_fields.go). A PATCH that includes the
-// tagged field therefore WILL store the value. This is
-// known-but-pending-design-decision and the test pins it so
-// any change to the wiring surfaces here first.
-//
-// The hook is exercised through gorm's BeforeUpdate to mirror
-// what would happen if the wiring were added; the assertion
-// below documents what the production wiring does today by
-// using db.Updates with only the untagged field, so the hook
-// has nothing to null and the existing tagged value survives.
-func TestPersistFalseHookProductionUpdatePathPersistsTaggedField(t *testing.T) {
+// TestPersistFalseHookWithoutTheHookTheValuePersists is the
+// negative control for the update path. Running the update with
+// hooks skipped lands the inbound value in the row, which is what
+// makes TestPersistFalseHookUpdateLeavesInboundValueUnwritten the
+// hook's doing rather than something GORM would have done anyway.
+func TestPersistFalseHookWithoutTheHookTheValuePersists(t *testing.T) {
 	db := setupPersistTestDB(t)
 
-	// seed the row directly so a Secret value lands in the db,
-	// bypassing the create-time null
-	seeded := &testTransient{Name: "seed", Secret: testStringPtr("seeded-value")}
-	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(seeded).Error)
+	seeded := &testTransient{Name: "seed"}
+	require.NoError(t, db.Create(seeded).Error)
 
 	var loaded testTransient
 	require.NoError(t, db.First(&loaded, seeded.ID).Error)
-	require.NotNil(t, loaded.Secret)
-	require.Equal(t, "seeded-value", *loaded.Secret)
 
-	// production wiring: BeforeUpdate does NOT call the
-	// persist-false hook, so this test calls the gorm Update
-	// path with hooks skipped to simulate that. An inbound
-	// Secret would persist.
 	inbound := &testTransient{Secret: testStringPtr("new-value")}
 	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Model(&loaded).Updates(inbound).Error)
 
 	var stored testTransient
 	require.NoError(t, db.First(&stored, seeded.ID).Error)
-	require.NotNil(t, stored.Secret, "persist:false field still persists on the update path today")
-	assert.Equal(t, "new-value", *stored.Secret, "production update wiring leaves the tagged field intact")
+	require.NotNil(t, stored.Secret, "with no hook the inbound value reaches the row")
+	assert.Equal(t, "new-value", *stored.Secret)
 }
 
-// TestPersistFalseHookUpdateBranchNullsViaDestRedirect exercises
-// the dest-redirect branch in ProcessPersistFalseTaggedFields: if
-// the wiring is ever extended to fire on BeforeUpdate, the hook
-// must null the tagged column on the inbound side instead of
-// the loaded row. The test struct's BeforeUpdate opts in so we
-// can confirm the branch works end-to-end.
-func TestPersistFalseHookUpdateBranchNullsViaDestRedirect(t *testing.T) {
+// TestPersistFalseHookUpdateLeavesInboundValueUnwritten exercises
+// the dest-redirect branch: on an update the hook nulls the
+// inbound column, so the value the caller sent is not written and
+// whatever the row already held is left alone.
+func TestPersistFalseHookUpdateLeavesInboundValueUnwritten(t *testing.T) {
 	db := setupPersistTestDB(t)
 
 	seeded := &testTransient{Name: "seed", Secret: testStringPtr("seeded-value")}

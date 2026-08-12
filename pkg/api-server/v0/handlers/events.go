@@ -61,6 +61,43 @@ func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventTyp
 		Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
 }
 
+// boundEventFilterClause renders the event columns a client bound onto the
+// filter struct as a raw SQL fragment plus its bind values, for the paginated
+// branches that build their query as a string rather than through gorm. Each
+// value stays a placeholder, so no caller input reaches the SQL text.
+//
+// Reason is left out: the handler reads the reason and reasonprefix query
+// params directly and builds its own predicate for them. The time columns are
+// left out because the query binder rejects time values, so they never arrive
+// on a list request.
+func boundEventFilterClause(filter *v0.Event) (string, []interface{}) {
+	var fragments []string
+	var values []interface{}
+
+	add := func(column string, value interface{}) {
+		fragments = append(fragments, fmt.Sprintf(" AND v0_events.%s = ?", column))
+		values = append(values, value)
+	}
+
+	if filter.ID != nil {
+		add("id", *filter.ID)
+	}
+	if filter.Note != nil {
+		add("note", *filter.Note)
+	}
+	if filter.Count != nil {
+		add("count", *filter.Count)
+	}
+	if filter.Type != nil {
+		add("type", *filter.Type)
+	}
+	if filter.ReportingController != nil {
+		add("reporting_controller", *filter.ReportingController)
+	}
+
+	return strings.Join(fragments, ""), values
+}
+
 // @Summary gets all events joined with attached object references.
 // @Description Get all events joined with attached object references from the Threeport database.
 // @ID get-v0-events-join-attached-object-references
@@ -428,21 +465,25 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				// re-run the join at the captured snapshot for the
 				// first page. AS OF SYSTEM TIME sits between FROM and
 				// WHERE (CRDB syntax); id ordering matches MV mode.
+				// the columns bound onto the filter struct ride as bind
+				// values, so a page holds the same rows the count did
+				boundClause, boundValues := boundEventFilterClause(&filter)
 				query := fmt.Sprintf(`
 					SELECT v0_events.*
 					FROM v0_events
 					%s
 					AS OF SYSTEM TIME '%s'
-					%s
+					%s%s
 					ORDER BY v0_events.id ASC
 					LIMIT %d
 				`,
 					joinClause,
 					hlc,
 					whereClause,
+					boundClause,
 					pageParams.Limit,
 				)
-				if result := h.DB.Raw(query).Find(records); result.Error != nil {
+				if result := h.DB.Raw(query, boundValues...).Find(records); result.Error != nil {
 					h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 					return apiserver_lib.ResponseStatus500(c, pageParams, apiserver_lib.TranslatePaginationSessionError(result.Error), objectType)
 				}
@@ -575,21 +616,25 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			}
 			whereClause += fmt.Sprintf(" AND v0_events.id > %d", pageParams.Cursor)
 
+			// mirror the first page's bound-column filter so the
+			// continuation reads the same subset of the snapshot
+			boundClause, boundValues := boundEventFilterClause(&filter)
 			recordsQuery := fmt.Sprintf(`
 				SELECT v0_events.*
 				FROM v0_events
 				%s
 				AS OF SYSTEM TIME '%s'
-				%s
+				%s%s
 				ORDER BY v0_events.id ASC
 				LIMIT %d
 			`,
 				joinClause,
 				pageParams.QueryId,
 				whereClause,
+				boundClause,
 				pageParams.Limit,
 			)
-			if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+			if result := h.DB.Raw(recordsQuery, boundValues...).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding records", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, apiserver_lib.TranslatePaginationSessionError(result.Error), objectType)
 			}
@@ -603,13 +648,29 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
+			// a queryid that names no live view means the snapshot is
+			// gone. An empty name would otherwise build SQL with no table
+			// and fail as a syntax error.
+			if resolvedViewName == "" {
+				return apiserver_lib.ResponseStatus400(c, pageParams, apiserver_lib.ErrPaginationSessionExpired, objectType)
+			}
 			viewName = resolvedViewName
 
 			// fetch the next page from the view starting just past the
 			// previous cursor. the ID index built at create-time keeps
-			// this O(limit) rather than O(view size)
-			recordsQuery := fmt.Sprintf("SELECT * FROM %s WHERE ID > %d ORDER BY ID ASC LIMIT %d", viewName, pageParams.Cursor, pageParams.Limit)
-			if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+			// this O(limit) rather than O(view size). The view definition
+			// carries the subject filters; the columns bound onto the
+			// filter struct apply here, as bind values, because a view
+			// definition cannot take placeholders.
+			boundClause, boundValues := boundEventFilterClause(&filter)
+			recordsQuery := fmt.Sprintf(
+				"SELECT * FROM %s WHERE ID > %d%s ORDER BY ID ASC LIMIT %d",
+				viewName,
+				pageParams.Cursor,
+				strings.ReplaceAll(boundClause, "v0_events.", ""),
+				pageParams.Limit,
+			)
+			if result := h.DB.Raw(recordsQuery, boundValues...).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding records", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}

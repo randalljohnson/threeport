@@ -10,8 +10,13 @@ import (
 	"gorm.io/gorm/schema"
 
 	"github.com/google/uuid"
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// awsAccessKeyPairingMessage is the rejection both AwsProvider hooks
+// return. Create and update enforce one rule, so they name it once.
+const awsAccessKeyPairingMessage = "both access key id and secret access key must be set if one of them is provided"
 
 // beforeCreate validates a AWS Provider before persisting to the
 // database.
@@ -60,9 +65,7 @@ func (a *AwsProvider) beforeCreate(tx *gorm.DB) error {
 	// validate access & secret access keys
 	if isAccessKeyIDSet && !isSecretAccessKeySet ||
 		!isAccessKeyIDSet && isSecretAccessKeySet {
-		return util.NewBadRequestError(
-			"both access key id and secret access key must be set if one of them is provided",
-		)
+		return util.NewBadRequestError(awsAccessKeyPairingMessage)
 	}
 
 	// generate and set external ID
@@ -87,39 +90,43 @@ func (a *AwsProvider) beforeCreate(tx *gorm.DB) error {
 // Import:
 //   lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (a *AwsProvider) beforeUpdate(tx *gorm.DB) error {
-	// Re-enforce the create-time pairing invariant: access key id and
-	// secret access key must both be set or both be unset. Skip when
-	// neither field is in the patch so unrelated updates do not have to
-	// load credentials to remain valid.
-	accessKeyIDChanged := tx.Statement.Changed("AccessKeyID")
-	secretAccessKeyChanged := tx.Statement.Changed("SecretAccessKey")
+	// Re-enforce the create-time rule: both keys set, or neither.
+	accessKeyIDChanged, err := lib.IsFieldChanged(tx, "AccessKeyID")
+	if err != nil {
+		return err
+	}
+	secretAccessKeyChanged, err := lib.IsFieldChanged(tx, "SecretAccessKey")
+	if err != nil {
+		return err
+	}
+
+	// Skip when neither field is part of the update so an unrelated update
+	// does not have to reason about credentials.
 	if !accessKeyIDChanged && !secretAccessKeyChanged {
 		return nil
 	}
 
-	patch, ok := tx.Statement.Dest.(*AwsProvider)
+	incoming, ok := lib.IncomingValues(tx).(*AwsProvider)
 	if !ok {
 		return nil
 	}
 
-	// Resolve each field's post-update value: take the patch when the
-	// field is being modified, otherwise keep the loaded row's value.
+	// Resolve what each field will hold once the update lands: the inbound
+	// value when it is changing, the receiver's otherwise.
 	resultingAccessKeyID := a.AccessKeyID
 	if accessKeyIDChanged {
-		resultingAccessKeyID = patch.AccessKeyID
+		resultingAccessKeyID = incoming.AccessKeyID
 	}
 	resultingSecretAccessKey := a.SecretAccessKey
 	if secretAccessKeyChanged {
-		resultingSecretAccessKey = patch.SecretAccessKey
+		resultingSecretAccessKey = incoming.SecretAccessKey
 	}
 
 	isAccessKeyIDSet := resultingAccessKeyID != nil && *resultingAccessKeyID != ""
 	isSecretAccessKeySet := resultingSecretAccessKey != nil && *resultingSecretAccessKey != ""
 
 	if isAccessKeyIDSet != isSecretAccessKeySet {
-		return util.NewBadRequestError(
-			"both access key id and secret access key must be set if one of them is provided",
-		)
+		return util.NewBadRequestError(awsAccessKeyPairingMessage)
 	}
 
 	return nil

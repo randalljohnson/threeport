@@ -49,7 +49,7 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 
 	if err := c.Bind(&logBackend); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -105,7 +105,7 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 // @ID get-v0-logBackends
 // @Accept json
 // @Produce json
-// @Param name query string false "log backend search by name"
+// @Param name query string false "filter by exact log backend name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -123,7 +123,7 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 	var filter api_v0.LogBackend
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -156,7 +156,7 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.LogBackend{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -177,7 +177,7 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.LogBackend{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -287,7 +287,7 @@ func (h Handler) UpdateLogBackend(c echo.Context) error {
 	var updatedLogBackend api_v0.LogBackend
 	if err := c.Bind(&updatedLogBackend); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -355,7 +355,7 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 	var updatedLogBackend api_v0.LogBackend
 	if err := c.Bind(&updatedLogBackend); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -494,7 +494,7 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 
 	if err := c.Bind(&logStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -550,7 +550,7 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 // @ID get-v0-logStorageDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "log storage definition search by name"
+// @Param name query string false "filter by exact log storage definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -568,7 +568,7 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 	var filter api_v0.LogStorageDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -601,7 +601,7 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.LogStorageDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -622,7 +622,7 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.LogStorageDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -732,7 +732,7 @@ func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 	var updatedLogStorageDefinition api_v0.LogStorageDefinition
 	if err := c.Bind(&updatedLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -800,7 +800,7 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 	var updatedLogStorageDefinition api_v0.LogStorageDefinition
 	if err := c.Bind(&updatedLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -945,7 +945,7 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 
 	if err := c.Bind(&logStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1001,7 +1001,7 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 // @ID get-v0-logStorageInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "log storage instance search by name"
+// @Param name query string false "filter by exact log storage instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1019,7 +1019,7 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 	var filter api_v0.LogStorageInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1052,7 +1052,7 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.LogStorageInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1073,7 +1073,7 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.LogStorageInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1183,7 +1183,7 @@ func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 	var updatedLogStorageInstance api_v0.LogStorageInstance
 	if err := c.Bind(&updatedLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1251,7 +1251,7 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 	var updatedLogStorageInstance api_v0.LogStorageInstance
 	if err := c.Bind(&updatedLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

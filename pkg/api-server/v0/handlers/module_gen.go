@@ -49,7 +49,7 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 
 	if err := c.Bind(&moduleApi); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -105,7 +105,7 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 // @ID get-v0-moduleApis
 // @Accept json
 // @Produce json
-// @Param name query string false "module api search by name"
+// @Param name query string false "filter by exact module api name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -123,7 +123,7 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 	var filter api_v0.ModuleApi
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -156,7 +156,7 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleApi{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -177,7 +177,7 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleApi{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -287,7 +287,7 @@ func (h Handler) UpdateModuleApi(c echo.Context) error {
 	var updatedModuleApi api_v0.ModuleApi
 	if err := c.Bind(&updatedModuleApi); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -355,7 +355,7 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 	var updatedModuleApi api_v0.ModuleApi
 	if err := c.Bind(&updatedModuleApi); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -494,7 +494,7 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 
 	if err := c.Bind(&moduleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -534,7 +534,7 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 // @ID get-v0-moduleApiRoutes
 // @Accept json
 // @Produce json
-// @Param name query string false "module api route search by name"
+// @Param name query string false "filter by exact module api route name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -552,7 +552,7 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 	var filter api_v0.ModuleApiRoute
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -585,7 +585,7 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleApiRoute{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -606,7 +606,7 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleApiRoute{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -716,7 +716,7 @@ func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
 	var updatedModuleApiRoute api_v0.ModuleApiRoute
 	if err := c.Bind(&updatedModuleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -784,7 +784,7 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 	var updatedModuleApiRoute api_v0.ModuleApiRoute
 	if err := c.Bind(&updatedModuleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -923,7 +923,7 @@ func (h Handler) AddModuleController(c echo.Context) error {
 
 	if err := c.Bind(&moduleController); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -979,7 +979,7 @@ func (h Handler) AddModuleController(c echo.Context) error {
 // @ID get-v0-moduleControllers
 // @Accept json
 // @Produce json
-// @Param name query string false "module controller search by name"
+// @Param name query string false "filter by exact module controller name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -997,7 +997,7 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 	var filter api_v0.ModuleController
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1030,7 +1030,7 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleController{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1051,7 +1051,7 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleController{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1161,7 +1161,7 @@ func (h Handler) UpdateModuleController(c echo.Context) error {
 	var updatedModuleController api_v0.ModuleController
 	if err := c.Bind(&updatedModuleController); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1229,7 +1229,7 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 	var updatedModuleController api_v0.ModuleController
 	if err := c.Bind(&updatedModuleController); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1368,7 +1368,7 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 
 	if err := c.Bind(&moduleObject); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1408,7 +1408,7 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 // @ID get-v0-moduleObjects
 // @Accept json
 // @Produce json
-// @Param name query string false "module object search by name"
+// @Param name query string false "filter by exact module object name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1426,7 +1426,7 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 	var filter api_v0.ModuleObject
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1459,7 +1459,7 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1480,7 +1480,7 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1590,7 +1590,7 @@ func (h Handler) UpdateModuleObject(c echo.Context) error {
 	var updatedModuleObject api_v0.ModuleObject
 	if err := c.Bind(&updatedModuleObject); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1658,7 +1658,7 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 	var updatedModuleObject api_v0.ModuleObject
 	if err := c.Bind(&updatedModuleObject); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

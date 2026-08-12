@@ -54,7 +54,7 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 
 	if err := c.Bind(&controlPlaneDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -124,7 +124,7 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 // @ID get-v0-controlPlaneDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "control plane definition search by name"
+// @Param name query string false "filter by exact control plane definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -142,7 +142,7 @@ func (h Handler) GetControlPlaneDefinitions(c echo.Context) error {
 	var filter api_v0.ControlPlaneDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -175,7 +175,7 @@ func (h Handler) GetControlPlaneDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ControlPlaneDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -196,7 +196,7 @@ func (h Handler) GetControlPlaneDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ControlPlaneDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -306,7 +306,7 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 	var updatedControlPlaneDefinition api_v0.ControlPlaneDefinition
 	if err := c.Bind(&updatedControlPlaneDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -388,7 +388,7 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 	var updatedControlPlaneDefinition api_v0.ControlPlaneDefinition
 	if err := c.Bind(&updatedControlPlaneDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -584,7 +584,7 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 
 	if err := c.Bind(&controlPlaneInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -654,7 +654,7 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 // @ID get-v0-controlPlaneInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "control plane instance search by name"
+// @Param name query string false "filter by exact control plane instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -672,7 +672,7 @@ func (h Handler) GetControlPlaneInstances(c echo.Context) error {
 	var filter api_v0.ControlPlaneInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -705,7 +705,7 @@ func (h Handler) GetControlPlaneInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ControlPlaneInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -726,7 +726,7 @@ func (h Handler) GetControlPlaneInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.ControlPlaneInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -836,7 +836,7 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 	var updatedControlPlaneInstance api_v0.ControlPlaneInstance
 	if err := c.Bind(&updatedControlPlaneInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -918,7 +918,7 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 	var updatedControlPlaneInstance api_v0.ControlPlaneInstance
 	if err := c.Bind(&updatedControlPlaneInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

@@ -175,7 +175,7 @@ func TerraformInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
+							Reason: util.Ptr(event.ReasonCreateFailed),
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						terraformInstance.GetId(),
@@ -222,7 +222,7 @@ func TerraformInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						terraformInstance.GetId(),
@@ -269,7 +269,7 @@ func TerraformInstanceReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
 							Type:   util.Ptr(event.TypeNormal),
 						},
 						terraformInstance.GetId(),

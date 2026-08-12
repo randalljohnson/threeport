@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -32,26 +31,8 @@ var ConfigGetMachinesCmd = &cobra.Command{
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		// validate flags
-		providedFlags := []string{}
-		if nodeProfile != "" {
-			providedFlags = append(providedFlags, "--node-profile")
-		}
-		if nodeSize != "" {
-			providedFlags = append(providedFlags, "--node-size")
-		}
-		if awsMachineType != "" {
-			providedFlags = append(providedFlags, "--aws-machine-type")
-		}
-		if ociMachineType != "" {
-			providedFlags = append(providedFlags, "--oci-machine-type")
-		}
-		if gcpMachineType != "" {
-			providedFlags = append(providedFlags, "--gcp-machine-type")
-		}
-
-		if len(providedFlags) > 1 {
-			err := fmt.Sprintf("only one filter flag can be provided at a time. Provided flags: %s\n", strings.Join(providedFlags, ", "))
-			cli.Error(err, nil)
+		if err := validateSingleFilterFlag(cmd); err != nil {
+			cli.Error(err.Error(), nil)
 			os.Exit(1)
 		}
 

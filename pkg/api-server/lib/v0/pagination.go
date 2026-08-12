@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -86,23 +87,29 @@ func dropPaginationViews(db *gorm.DB, logger *zap.Logger, ttlMinutes int) error 
 // the token gets interpolated into an AS OF SYSTEM TIME clause.
 var hlcTokenPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+$`)
 
-// ValidHLCToken() reports whether s looks like a CRDB HLC decimal, so a
+// ValidHLCToken reports whether s looks like a CRDB HLC decimal, so a
 // caller-supplied pagination queryid can be safely interpolated into an
 // AS OF SYSTEM TIME clause.
 func ValidHLCToken(s string) bool {
 	return hlcTokenPattern.MatchString(s)
 }
 
-// TranslatePaginationSessionError() maps a CRDB "batch timestamp below GC
-// threshold" failure into a user-facing error instructing the client to
-// restart pagination without a queryid. Any other error is returned unchanged.
+// ErrPaginationSessionExpired reports that the snapshot a queryid names is
+// gone, so the client has to start the result set over with no queryid. Both
+// pagination modes reach it: an as-of-system-time snapshot that has passed the
+// garbage-collection threshold, and a materialized view that has been dropped.
+var ErrPaginationSessionExpired = errors.New("pagination session expired, restart pagination with no queryid to obtain a fresh snapshot")
+
+// TranslatePaginationSessionError maps a CRDB "batch timestamp below GC
+// threshold" failure onto ErrPaginationSessionExpired, keeping the original
+// wrapped for the logs. Any other error is returned unchanged.
 func TranslatePaginationSessionError(err error) error {
 	if err == nil {
 		return nil
 	}
 	msg := err.Error()
 	if strings.Contains(msg, "batch timestamp") && strings.Contains(msg, "replica GC threshold") {
-		return fmt.Errorf("pagination session expired, restart pagination with no queryid to obtain a fresh snapshot: %w", err)
+		return fmt.Errorf("%w: %w", ErrPaginationSessionExpired, err)
 	}
 	return err
 }

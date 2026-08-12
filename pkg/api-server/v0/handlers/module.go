@@ -91,7 +91,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 	var filter api_v0.ModuleObject
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -128,8 +128,9 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			// module objects live in; the queryId returned here is
 			// either a materialized-view suffix or an HLC snapshot.
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(
+			queryId, _, err := h.DispatchGetPaginatedRecords(
 				h.PaginationMode,
+				h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter),
 				records,
 				queryTable,
 				pageParams,
@@ -139,7 +140,6 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
 			pagination.QueryId = queryId
-			returnedCount = count
 
 			// load associations for the records retrieved from the
 			// paginated fetch. this Preload reads current state, not
@@ -162,6 +162,11 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 				}
 			}
 
+			// count what ships, not what the paginated fetch returned:
+			// the association re-query above is soft-delete scoped and
+			// can come back with fewer rows
+			returnedCount = int64(len(*records))
+
 			if len(*records) > 0 {
 				pagination.NextCursor = *(*records)[len(*records)-1].ID
 			} else {
@@ -178,8 +183,9 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 		// to fetch the next page. the queryId round-trips opaquely, so
 		// both modes resume from the same snapshot they anchored.
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(
+		queryId, fetchedCount, err := h.DispatchGetPaginatedRecords(
 			h.PaginationMode,
+			h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter),
 			records,
 			queryTable,
 			pageParams,
@@ -189,7 +195,6 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
 		pagination.QueryId = queryId
-		returnedCount = count
 
 		// load associations for the records retrieved from the
 		// paginated fetch. this Preload reads current state, not the
@@ -212,6 +217,11 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			}
 		}
 
+		// count what ships, not what the paginated fetch returned: the
+		// association re-query above is soft-delete scoped and can come
+		// back with fewer rows
+		returnedCount = int64(len(*records))
+
 		// set the next cursor
 		if len(*records) > 0 {
 			pagination.NextCursor = *(*records)[len(*records)-1].ID
@@ -219,8 +229,9 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			pagination.NextCursor = 0
 		}
 
-		// see if we fetched the last of the records
-		pagination.HasMore = returnedCount >= pagination.Limit
+		// a full page from the paginated fetch means rows remain, so test
+		// the fetched count rather than the shipped count
+		pagination.HasMore = fetchedCount >= pagination.Limit
 	}
 
 	// construct response

@@ -31,12 +31,6 @@ var ConfigGetLocationsCmd = &cobra.Command{
 	Long:         `Get a list of available Threeport locations and what cloud provider regions they map to.`,
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		// validate flags
-		if err := validateSingleFilterFlag(cmd); err != nil {
-			cli.Error(err.Error(), nil)
-			os.Exit(1)
-		}
-
 		// get the region map and print to table
 		regionMap := mapping.GetRegionMap()
 		writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
@@ -121,5 +115,16 @@ func init() {
 	ConfigGetLocationsCmd.Flags().StringVarP(
 		&locationGcpRegion,
 		"gcp-region", "g", "", "GCP region to get locations for",
+	)
+
+	// One filter at a time. cobra enforces this before Run and panics at
+	// startup on a name no flag declares, so a name here that no longer
+	// matches a declaration above fails loudly instead of silently.
+	ConfigGetLocationsCmd.MarkFlagsMutuallyExclusive(
+		"location",
+		"continent",
+		"aws-region",
+		"oci-region",
+		"gcp-region",
 	)
 }

@@ -87,7 +87,12 @@ func ProcessEncryptTaggedFields(tx *gorm.DB, obj interface{}) error {
 			for j, entry := range *v {
 				key, value, ok := strings.Cut(entry, "=")
 				if !ok {
-					return fmt.Errorf("%s[%d] is not in KEY=VALUE format", field.Name, j)
+					// a bad-request error so the handler answers 400; a
+					// plain error here reads as a server fault and the
+					// caller never learns which entry to fix
+					return util.NewBadRequestError(
+						fmt.Sprintf("%s[%d] is not in KEY=VALUE format", field.Name, j),
+					)
 				}
 				encValue, err := encryptValue(tx, encryptionKey, value, fmt.Sprintf("%s[%d]", field.Name, j))
 				if err != nil {

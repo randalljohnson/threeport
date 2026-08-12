@@ -30,12 +30,6 @@ var ConfigGetMachinesCmd = &cobra.Command{
 	Long:         `Get a list of available Threeport node profiles and node sizes with their corresponding cloud provider machine types.`,
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		// validate flags
-		if err := validateSingleFilterFlag(cmd); err != nil {
-			cli.Error(err.Error(), nil)
-			os.Exit(1)
-		}
-
 		// get the machine type map and print to table
 		machineTypeMap := mapping.GetMachineTypeMap()
 		writer := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
@@ -118,5 +112,16 @@ func init() {
 	ConfigGetMachinesCmd.Flags().StringVarP(
 		&gcpMachineType,
 		"gcp-machine-type", "g", "", "GCP machine type to get machines for",
+	)
+
+	// One filter at a time. cobra enforces this before Run and panics at
+	// startup on a name no flag declares, so a name here that no longer
+	// matches a declaration above fails loudly instead of silently.
+	ConfigGetMachinesCmd.MarkFlagsMutuallyExclusive(
+		"node-profile",
+		"node-size",
+		"aws-machine-type",
+		"oci-machine-type",
+		"gcp-machine-type",
 	)
 }

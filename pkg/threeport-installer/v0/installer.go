@@ -154,10 +154,10 @@ type Options struct {
 	// control plane namespace at install time.
 	Tier ControlPlaneTier
 
-	// PaginationMode overrides the REST API server's pagination strategy.
-	// When nil or empty, the binary default applies. Set to
-	// "as-of-system-time" or "materialized-view" to force a mode without
-	// rebuilding the image.
+	// PaginationMode sets the REST API server's pagination strategy through
+	// the `-pagination-mode` flag. Accepted values are `as-of-system-time`
+	// and `materialized-view`. A nil or empty value omits the flag, so the
+	// API server applies its own default.
 	PaginationMode *string
 }
 

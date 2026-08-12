@@ -9,6 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
@@ -16,7 +17,7 @@ import (
 )
 
 // Handler is the main handler for the API server.  It contains the database connection,
-// NATS connection, JetStream context, and logger.
+// NATS connection, JetStream context, logger, and pagination mode.
 type Handler struct {
 	DB             *gorm.DB
 	NC             *nats.Conn
@@ -25,7 +26,7 @@ type Handler struct {
 	PaginationMode apiserver_lib.PaginationMode
 }
 
-// New() returns a new Handler configured with the given pagination mode.
+// New returns a new Handler configured with the given pagination mode.
 func New(db *gorm.DB, nc *nats.Conn, rc nats.JetStreamContext, logger *zap.Logger, paginationMode apiserver_lib.PaginationMode) Handler {
 	return Handler{DB: db, NC: nc, JS: rc, Logger: logger, PaginationMode: paginationMode}
 }
@@ -106,26 +107,36 @@ func (h Handler) GetMaterializedViewName(queryId string) (string, error) {
 	return viewName, nil
 }
 
-// GetMaterializedViewRecords fetches records from a materialized view based on a cursor
-// for pagination.  This function uses reflection to work with any slice type.  It will
-// use a cursor to fetch the next page of results if a cursor is included in the page
-// request parameters.
+// GetMaterializedViewRecords fetches a page of records from a materialized
+// view. query carries the caller's bound filter and the request's soft-delete
+// scoping, and reading them off the view rather than baking them into its
+// definition keeps every filter value a bound parameter. The view holds every
+// column of the source table, so both predicates resolve against it. A cursor
+// in pageParams resumes from the row after it.
 func (h Handler) GetMaterializedViewRecords(
+	query *gorm.DB,
 	records interface{},
 	viewName string,
 	pageParams *apiserver_lib.PageRequestParams,
 ) (int64, error) {
-	var recordsQuery string
-	if pageParams.Cursor == 0 {
-		recordsQuery = fmt.Sprintf("SELECT * FROM %s ORDER BY ID ASC LIMIT %d", viewName, pageParams.Limit)
-	} else {
-		recordsQuery = fmt.Sprintf("SELECT * FROM %s WHERE ID > %d ORDER BY ID ASC LIMIT %d", viewName, pageParams.Cursor, pageParams.Limit)
+	recordsQuery := query.Table(viewName)
+	if pageParams.Cursor != 0 {
+		recordsQuery = recordsQuery.Where("id > ?", pageParams.Cursor)
 	}
-	if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+	if result := recordsQuery.
+		Order("id asc").
+		Limit(int(pageParams.Limit)).
+		Find(records); result.Error != nil {
 		return 0, fmt.Errorf("handler error: error finding records: %w", result.Error)
 	}
 
-	// Use reflection to get the length of the slice
+	return sliceLen(records)
+}
+
+// sliceLen returns the number of rows a Find wrote into records, which must be
+// a pointer to a slice. Reflection is what lets the pagination helpers work
+// with any api object's slice type.
+func sliceLen(records interface{}) (int64, error) {
 	recordsValue := reflect.ValueOf(records)
 	if recordsValue.Kind() == reflect.Ptr {
 		recordsValue = recordsValue.Elem()
@@ -153,14 +164,16 @@ func GenerateMaterializedViewName() (string, string) {
 	return viewName, queryId
 }
 
-// GetPaginatedRecordsAsOfSystemTime() fetches a page of records from queryTable
-// against a stable HLC snapshot without creating a materialized view. When
-// queryId is empty a fresh HLC is captured via cluster_logical_timestamp() and
-// returned so the caller can echo it back as the pagination queryId; when
-// queryId is non-empty it is used verbatim as the HLC. Reads use uses
-// reflection to work with any slice type. Reads use AS OF SYSTEM TIME so
-// subsequent pages see the same snapshot even under concurrent writes.
+// GetPaginatedRecordsAsOfSystemTime fetches a page of records from queryTable
+// against a stable HLC snapshot without creating a materialized view. query
+// carries the caller's bound filter and the request's soft-delete scoping, so
+// a page holds the same rows the caller's count did. An empty queryId captures
+// a fresh HLC via `cluster_logical_timestamp()` and returns it so the caller
+// can echo it back as the pagination queryId; a non-empty queryId is validated
+// as an HLC token and used as the snapshot. The read runs AS OF SYSTEM TIME so
+// every page sees the same snapshot under concurrent writes.
 func (h Handler) GetPaginatedRecordsAsOfSystemTime(
+	query *gorm.DB,
 	records interface{},
 	queryTable string,
 	queryId string,
@@ -181,56 +194,70 @@ func (h Handler) GetPaginatedRecordsAsOfSystemTime(
 		return "", 0, fmt.Errorf("handler error: invalid queryid: not a valid HLC token")
 	}
 
-	var recordsQuery string
-	if pageParams.Cursor == 0 {
-		recordsQuery = fmt.Sprintf(
-			"SELECT * FROM %s AS OF SYSTEM TIME '%s' ORDER BY ID ASC LIMIT %d",
-			queryTable, hlc, pageParams.Limit,
-		)
-	} else {
-		recordsQuery = fmt.Sprintf(
-			"SELECT * FROM %s AS OF SYSTEM TIME '%s' WHERE ID > %d ORDER BY ID ASC LIMIT %d",
-			queryTable, hlc, pageParams.Cursor, pageParams.Limit,
-		)
+	// the snapshot rides in the FROM clause as a raw table expression. It
+	// is the one piece that cannot be a bound parameter, which is why the
+	// token is validated above. Everything else, the caller's filter, the
+	// soft-delete scoping, and the cursor, stays parameterized.
+	recordsQuery := query.Clauses(clause.From{
+		Tables: []clause.Table{{
+			Name: fmt.Sprintf("%s AS OF SYSTEM TIME '%s'", queryTable, hlc),
+			Raw:  true,
+		}},
+	})
+	if pageParams.Cursor != 0 {
+		recordsQuery = recordsQuery.Where("id > ?", pageParams.Cursor)
 	}
-	if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+	if result := recordsQuery.
+		Order("id asc").
+		Limit(int(pageParams.Limit)).
+		Find(records); result.Error != nil {
 		return hlc, 0, fmt.Errorf("handler error: error finding records: %w", result.Error)
 	}
 
-	// reflect through the slice pointer to get the returned row count
-	recordsValue := reflect.ValueOf(records)
-	if recordsValue.Kind() == reflect.Ptr {
-		recordsValue = recordsValue.Elem()
-	}
-	if recordsValue.Kind() != reflect.Slice {
-		return hlc, 0, fmt.Errorf("records must be a slice")
+	count, err := sliceLen(records)
+	if err != nil {
+		return hlc, 0, err
 	}
 
-	return hlc, int64(recordsValue.Len()), nil
+	return hlc, count, nil
 }
 
-// DispatchGetPaginatedRecords() fetches one page of results from queryTable
-// using mode as the pagination strategy. Returns the queryId to echo back to
-// the client (a view-name suffix in MaterializedView mode, an HLC token in
-// AsOfSystemTime mode), the row count for this page, and any error.
+// DispatchGetPaginatedRecords fetches one page of results from queryTable
+// using mode as the pagination strategy. query is the caller's request-scoped,
+// model-bound, filtered db, and both modes read through it so a page carries
+// the same predicates the caller's count did. It returns the queryId to echo
+// back to the client (a view-name suffix under
+// `PaginationModeMaterializedView`, an HLC token under
+// `PaginationModeAsOfSystemTime`), the row count for this page, and any error.
 //
-// In MaterializedView mode a view is created on the initial call (empty
-// pageParams.QueryId) and looked up by queryId on continuation; the view is
-// dropped when this page is the last page (returned count < limit) so the
-// TTL sweeper doesn't have to. In AsOfSystemTime mode a fresh HLC is captured
-// on the initial call and the caller's queryId is used verbatim on
-// continuation; page-SELECT errors are translated via
-// TranslatePaginationSessionError so a GC-expired snapshot surfaces the
-// restart-without-queryid hint.
+// Filters apply per request, not per snapshot, so a continuation has to repeat
+// the same filter query params it sent on the first page. The generated
+// handlers do this by binding the filter before every call.
+//
+// Under `PaginationModeMaterializedView` a view is created on the initial call
+// (empty pageParams.QueryId) and looked up by queryId on continuation; the view
+// is dropped once a page comes back shorter than the limit, so the TTL sweeper
+// doesn't have to, and a queryid naming no live view returns
+// `ErrPaginationSessionExpired`. Under `PaginationModeAsOfSystemTime` a fresh
+// HLC is captured on the initial call and the caller's queryId is validated and
+// reused on continuation; page-SELECT errors pass through
+// `TranslatePaginationSessionError()` so a GC-expired snapshot reaches the
+// client as the same expired-session error.
 func (h Handler) DispatchGetPaginatedRecords(
 	mode apiserver_lib.PaginationMode,
+	query *gorm.DB,
 	records interface{},
 	queryTable string,
 	pageParams *apiserver_lib.PageRequestParams,
 ) (string, int64, error) {
+	// take a session so every chained call below clones the statement
+	// instead of mutating the caller's db, which keeps the caller free to
+	// reuse it and lets materialized-view mode build two statements from it
+	query = query.Session(&gorm.Session{})
+
 	switch mode {
 	case apiserver_lib.PaginationModeAsOfSystemTime:
-		hlc, count, err := h.GetPaginatedRecordsAsOfSystemTime(records, queryTable, pageParams.QueryId, pageParams)
+		hlc, count, err := h.GetPaginatedRecordsAsOfSystemTime(query, records, queryTable, pageParams.QueryId, pageParams)
 		if err != nil {
 			return hlc, count, apiserver_lib.TranslatePaginationSessionError(err)
 		}
@@ -254,9 +281,16 @@ func (h Handler) DispatchGetPaginatedRecords(
 			if err != nil {
 				return queryId, 0, err
 			}
+			// a queryid that names no live view means the snapshot is
+			// gone, either dropped with the tail page below or swept by
+			// the TTL. An empty name would otherwise build SQL with no
+			// table and fail as a syntax error.
+			if viewName == "" {
+				return queryId, 0, apiserver_lib.ErrPaginationSessionExpired
+			}
 		}
 
-		count, err := h.GetMaterializedViewRecords(records, viewName, pageParams)
+		count, err := h.GetMaterializedViewRecords(query, records, viewName, pageParams)
 		if err != nil {
 			return queryId, count, err
 		}

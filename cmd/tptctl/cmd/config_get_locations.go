@@ -32,26 +32,8 @@ var ConfigGetLocationsCmd = &cobra.Command{
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		// validate flags
-		providedFlags := []string{}
-		if locationName != "" {
-			providedFlags = append(providedFlags, "--location")
-		}
-		if locationContinent != "" {
-			providedFlags = append(providedFlags, "--continent")
-		}
-		if locationAwsRegion != "" {
-			providedFlags = append(providedFlags, "--aws-region")
-		}
-		if locationOciRegion != "" {
-			providedFlags = append(providedFlags, "--oci-region")
-		}
-		if locationGcpRegion != "" {
-			providedFlags = append(providedFlags, "--gcp-region")
-		}
-
-		if len(providedFlags) > 1 {
-			err := fmt.Sprintf("only one filter flag can be provided at a time. Provided flags: %s\n", strings.Join(providedFlags, ", "))
-			cli.Error(err, nil)
+		if err := validateSingleFilterFlag(cmd); err != nil {
+			cli.Error(err.Error(), nil)
 			os.Exit(1)
 		}
 

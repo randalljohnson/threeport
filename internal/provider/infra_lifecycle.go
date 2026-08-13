@@ -19,10 +19,26 @@ import (
 // lifecycle state machine. Production uses the defaults; tests
 // override via setLifecycleConfig.
 type LifecycleConfig struct {
+	// StaleAckThreshold is how long an acknowledgement may go unrefreshed
+	// before another control plane replica may take the operation over.
 	StaleAckThreshold time.Duration
-	RefreshInterval   time.Duration
+
+	// RefreshInterval is how often a running operation refreshes its
+	// acknowledgement so other replicas can see it is still alive.
+	RefreshInterval time.Duration
+
+	// SemaphoreCapacity is how many infrastructure operations this process
+	// runs at once. Requests past the cap are requeued rather than held in
+	// memory.
 	SemaphoreCapacity int
-	PersistRetries    int
+
+	// PersistRetries is how many times a failure is written back to the API
+	// before the operation gives up and leaves recovery to stale ack
+	// detection.
+	PersistRetries int
+
+	// PersistRetryDelay is how long to wait between attempts to write a
+	// failure back to the API.
 	PersistRetryDelay time.Duration
 }
 

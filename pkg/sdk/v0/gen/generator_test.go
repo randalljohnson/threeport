@@ -497,6 +497,25 @@ func TestSortDatabaseInitNamesByDependency_ReferencedBeforeReferencing(t *testin
 	assert.Less(t, parentIdx, childIdx, "referenced table must precede referencing table")
 }
 
+// TestSortDatabaseInitNamesByDependency_DropsDuplicateNames covers a repeated
+// entry in the input: it is emitted once and no other name is lost.
+//
+// Before the input was deduplicated, the emit loop ran until it had emitted as
+// many names as it was handed. A repeat left it one short, the cycle fallback
+// found nothing remaining, and the result came back missing a table that the
+// generated AutoMigrate call would then never create.
+func TestSortDatabaseInitNamesByDependency_DropsDuplicateNames(t *testing.T) {
+	// B is listed twice and A depends on it
+	g := sortFixture(map[string][]string{
+		"A": {"B"},
+	})
+
+	sorted := g.SortDatabaseInitNamesByDependency([]string{"A", "B", "B"})
+
+	// both distinct tables survive, in dependency order, with no repeat
+	assert.Equal(t, []string{"B", "A"}, sorted)
+}
+
 // TestSortDatabaseInitNamesByDependency_TransitiveChain covers a multi-hop
 // chain: A references B and B references C, so the emitted order must be
 // C, B, A regardless of input order.

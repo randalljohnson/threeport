@@ -96,11 +96,18 @@ func (h Handler) CreateMaterializedView(queryTable string) (string, string, erro
 }
 
 // GetMaterializedViewName finds the name of the materialized view created for a given pagination query ID.
+// The query ID comes from the client, so it is checked against the shape the server issues and then
+// matched as a bound parameter, keeping it out of the SQL text.
 func (h Handler) GetMaterializedViewName(queryId string) (string, error) {
+	if !apiserver_lib.ValidPaginationQueryId(queryId) {
+		return "", fmt.Errorf("handler error: invalid queryid: not a server-issued pagination query id")
+	}
+
 	// find the materialized view name by query ID
-	viewQuery := fmt.Sprintf("SELECT table_name FROM information_schema.tables WHERE table_type = 'VIEW' AND table_name LIKE 'paginated_%%_%s'", queryId)
+	viewQuery := "SELECT table_name FROM information_schema.tables WHERE table_type = 'VIEW' AND table_name LIKE ?"
+	viewPattern := fmt.Sprintf("%s_%%_%s", apiserver_lib.PaginationViewPrefix, queryId)
 	var viewName string
-	if result := h.DB.Raw(viewQuery).Scan(&viewName); result.Error != nil {
+	if result := h.DB.Raw(viewQuery, viewPattern).Scan(&viewName); result.Error != nil {
 		return "", fmt.Errorf("handler error: error finding materialized view: %w", result.Error)
 	}
 

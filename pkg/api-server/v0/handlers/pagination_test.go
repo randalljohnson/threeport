@@ -181,6 +181,40 @@ func TestDispatchRejectsInvalidHLCToken(t *testing.T) {
 	assert.Contains(t, err.Error(), "not a valid HLC token")
 }
 
+// TestViewLookupRejectsInjectedQueryId verifies a caller-supplied queryid that
+// is not one the server issued never reaches the materialized-view lookup. The
+// lookup matches the queryid inside a LIKE pattern, so an unchecked value that
+// closed the string literal could read any table name out of
+// information_schema and steer the page query that follows.
+func TestViewLookupRejectsInjectedQueryId(t *testing.T) {
+	injected := "' UNION SELECT table_name FROM information_schema.tables WHERE '1'='1"
+
+	t.Run("through the dispatcher", func(t *testing.T) {
+		h, _ := newDryRunHandler(t, apiserver_lib.PaginationModeMaterializedView)
+		c := newListContext("/v0/kubernetes-workload-definitions")
+
+		_, _, err := h.DispatchGetPaginatedRecords(
+			h.listQuery(c, &api_v0.KubernetesWorkloadDefinition{}),
+			&[]api_v0.KubernetesWorkloadDefinition{},
+			"v0_kubernetes_workload_definitions",
+			&apiserver_lib.PageRequestParams{QueryId: injected, Cursor: 1, Limit: 100},
+		)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a server-issued pagination query id")
+	})
+
+	t.Run("at the lookup itself", func(t *testing.T) {
+		h, _ := newDryRunHandler(t, apiserver_lib.PaginationModeMaterializedView)
+
+		viewName, err := h.GetMaterializedViewName(injected)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a server-issued pagination query id")
+		assert.Empty(t, viewName, "no view name is returned for a rejected queryid")
+	})
+}
+
 // TestDispatchRejectsUnknownMode verifies a mode that reached the handler
 // without passing ValidPaginationMode is refused rather than silently paging
 // through one of the two real strategies.

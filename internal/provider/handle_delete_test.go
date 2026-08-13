@@ -20,7 +20,7 @@ var deleteTestBase = time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 func drainDeleteOps(t *testing.T) {
 	t.Helper()
 	require.Eventually(t, func() bool {
-		return inFlightCount() == 0 && len(infraSemaphore) == 0
+		return inFlightCount() == 0 && len(currentSemaphore()) == 0
 	}, 5*time.Second, 5*time.Millisecond, "in-flight infrastructure operations did not drain")
 }
 

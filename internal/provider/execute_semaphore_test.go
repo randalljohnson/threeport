@@ -38,14 +38,14 @@ func waitForSemaphoreDrain(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
-		if inFlightCount() == 0 && len(infraSemaphore) == 0 {
+		if inFlightCount() == 0 && len(currentSemaphore()) == 0 {
 			return
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
 	t.Errorf(
 		"lifecycle goroutines did not drain: inFlight=%d, heldSlots=%d",
-		inFlightCount(), len(infraSemaphore),
+		inFlightCount(), len(currentSemaphore()),
 	)
 }
 

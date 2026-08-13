@@ -2126,12 +2126,22 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					"@Description Delete a %s by ID from the database.",
 					strcase.ToDelimited(apiObject.TypeName, ' '),
 				))
-				// cascade semantics: children tagged relationship:owns and
-				// relationship:describes are removed with the parent; children
-				// pointing back via relationship:requires surface as a 409 with
-				// the blockers listed in the response body.
+				// blocking semantics: an incoming reference tagged
+				// relationship:requires always blocks the delete;
+				// relationship:owns and relationship:marries block it as well
+				// unless the caller is a control plane component;
+				// relationship:describes never blocks. A blocked delete returns
+				// 409 with the blockers listed in the response body.
 				f.Comment(fmt.Sprintf(
-					"@Description Cascade: children of this %s attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.",
+					"@Description Blocking: attached object references pointing at this %s with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.",
+					strcase.ToDelimited(apiObject.TypeName, ' '),
+				))
+				// cascade semantics: the delete removes the attached object
+				// reference rows this object holds as the attacher, since they
+				// orphan once the row is gone. The objects those rows point at
+				// are left alone.
+				f.Comment(fmt.Sprintf(
+					"@Description Cascade: deleting a %s also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.",
 					strcase.ToDelimited(apiObject.TypeName, ' '),
 				))
 				// reconciled vs non-reconciled semantics: reconciled types

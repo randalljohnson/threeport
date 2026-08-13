@@ -440,12 +440,29 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			returnedCount = int64(len(*records))
 
 		default:
+			// treat the caller queryId as a view suffix; validate to
+			// reject anything that would smuggle SQL into the view lookup
+			if !apiserver_lib.ValidPaginationQueryId(pageParams.QueryId) {
+				return apiserver_lib.ResponseStatus400(c, pageParams,
+					errors.New("invalid queryid: not a server-issued pagination query id, restart pagination with no queryid to obtain a fresh snapshot"),
+					objectType)
+			}
+
 			// use the query ID to find the materialized view name (the view
 			// name is deterministic from the queryId)
 			viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 			if err != nil {
 				h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
+
+			// a queryid naming no live view means the snapshot is gone,
+			// either dropped with the tail page or swept by the TTL. An
+			// empty name would otherwise build SQL with no table and fail
+			// as a syntax error.
+			if viewName == "" {
+				return apiserver_lib.ResponseStatus400(c, pageParams,
+					apiserver_lib.ErrPaginationSessionExpired, objectType)
 			}
 
 			// fetch the next page from the view starting just past the

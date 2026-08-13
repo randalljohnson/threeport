@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 
 	echo "github.com/labstack/echo/v4"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
@@ -75,6 +76,61 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 // @Produce json
 // @Param name query string false "module object search by name"
 // @Success 200 {object} v0.Response "OK"
+// fetchModuleObjectPage fetches one page of module objects through the
+// configured pagination strategy, then reloads that page's rows together with
+// their api-route associations. It stamps the queryId and next cursor onto
+// pagination, and returns the page's records alongside the row count the fetch
+// produced before the association reload, which is the count that says whether
+// more pages remain.
+//
+// The association reload reads current state rather than the pagination
+// snapshot. The api-route list per object is small and stable, so drift within
+// one page is acceptable. It is also soft-delete scoped, so it can return fewer
+// rows than the fetch did, which is why the two counts are reported separately.
+func (h Handler) fetchModuleObjectPage(
+	c echo.Context,
+	filter *api_v0.ModuleObject,
+	pageParams *apiserver_lib.PageRequestParams,
+	pagination *apiserver_lib.Pagination,
+) (*[]api_v0.ModuleObject, int64, error) {
+	records := &[]api_v0.ModuleObject{}
+
+	queryId, fetchedCount, err := h.DispatchGetPaginatedRecords(
+		h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(filter),
+		records,
+		filter.TableName(),
+		pageParams,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	pagination.QueryId = queryId
+
+	if len(*records) > 0 {
+		var ids []uint
+		for _, record := range *records {
+			if record.ID != nil {
+				ids = append(ids, *record.ID)
+			}
+		}
+		if len(ids) > 0 {
+			recordsWithPreload := &[]api_v0.ModuleObject{}
+			if result := h.DB.Where("id IN ?", ids).Preload("ModuleApiRoutes").Find(recordsWithPreload); result.Error != nil {
+				return nil, 0, fmt.Errorf("failed to preload associations: %w", result.Error)
+			}
+			records = recordsWithPreload
+		}
+	}
+
+	if len(*records) > 0 {
+		pagination.NextCursor = *(*records)[len(*records)-1].ID
+	} else {
+		pagination.NextCursor = 0
+	}
+
+	return records, fetchedCount, nil
+}
+
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects-with-module-api-routes [GET]
@@ -123,55 +179,17 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			returnedCount = int64(len(*records))
 
 		case true:
-			// paginate: dispatch to the configured pagination strategy
-			// to fetch the first page. The queryTable is the table name
-			// module objects live in; the queryId returned here is
-			// either a materialized-view suffix or an HLC snapshot.
-			queryTable := filter.TableName()
-			queryId, _, err := h.DispatchGetPaginatedRecords(
-				h.PaginationMode,
-				h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter),
-				records,
-				queryTable,
-				pageParams,
-			)
+			// paginate: fetch the first page. HasMore is already known
+			// from the total count above, so the fetched count is unused
+			page, _, err := h.fetchModuleObjectPage(c, &filter, pageParams, pagination)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
+			records = page
 
-			// load associations for the records retrieved from the
-			// paginated fetch. this Preload reads current state, not
-			// the pagination snapshot; the join list is small and
-			// stable, so drift within one page is acceptable.
-			if len(*records) > 0 {
-				var ids []uint
-				for _, record := range *records {
-					if record.ID != nil {
-						ids = append(ids, *record.ID)
-					}
-				}
-				if len(ids) > 0 {
-					recordsWithPreload := &[]api_v0.ModuleObject{}
-					if result := h.DB.Where("id IN ?", ids).Preload("ModuleApiRoutes").Find(recordsWithPreload); result.Error != nil {
-						h.Logger.Error("handler error: error preloading associations", zap.Error(result.Error))
-						return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-					}
-					records = recordsWithPreload
-				}
-			}
-
-			// count what ships, not what the paginated fetch returned:
-			// the association re-query above is soft-delete scoped and
-			// can come back with fewer rows
+			// count what ships, not what the paginated fetch returned
 			returnedCount = int64(len(*records))
-
-			if len(*records) > 0 {
-				pagination.NextCursor = *(*records)[len(*records)-1].ID
-			} else {
-				pagination.NextCursor = 0
-			}
 		}
 
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
@@ -179,55 +197,18 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy
-		// to fetch the next page. the queryId round-trips opaquely, so
-		// both modes resume from the same snapshot they anchored.
-		queryTable := filter.TableName()
-		queryId, fetchedCount, err := h.DispatchGetPaginatedRecords(
-			h.PaginationMode,
-			h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter),
-			records,
-			queryTable,
-			pageParams,
-		)
+		// continuation: fetch the next page. the queryId round-trips
+		// opaquely, so both strategies resume from the snapshot they
+		// anchored on the first page
+		page, fetchedCount, err := h.fetchModuleObjectPage(c, &filter, pageParams, pagination)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
+		records = page
 
-		// load associations for the records retrieved from the
-		// paginated fetch. this Preload reads current state, not the
-		// pagination snapshot; the join list is small and stable, so
-		// drift within one page is acceptable.
-		if len(*records) > 0 {
-			var ids []uint
-			for _, record := range *records {
-				if record.ID != nil {
-					ids = append(ids, *record.ID)
-				}
-			}
-			if len(ids) > 0 {
-				recordsWithPreload := &[]api_v0.ModuleObject{}
-				if result := h.DB.Where("id IN ?", ids).Preload("ModuleApiRoutes").Find(recordsWithPreload); result.Error != nil {
-					h.Logger.Error("handler error: error preloading associations", zap.Error(result.Error))
-					return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
-				}
-				records = recordsWithPreload
-			}
-		}
-
-		// count what ships, not what the paginated fetch returned: the
-		// association re-query above is soft-delete scoped and can come
-		// back with fewer rows
+		// count what ships, not what the paginated fetch returned
 		returnedCount = int64(len(*records))
-
-		// set the next cursor
-		if len(*records) > 0 {
-			pagination.NextCursor = *(*records)[len(*records)-1].ID
-		} else {
-			pagination.NextCursor = 0
-		}
 
 		// a full page from the paginated fetch means rows remain, so test
 		// the fetched count rather than the shipped count

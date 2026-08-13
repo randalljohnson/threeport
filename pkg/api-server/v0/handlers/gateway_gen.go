@@ -163,7 +163,7 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.DomainNameDefinition{}).Where(&filter), records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -184,7 +184,7 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.DomainNameDefinition{}).Where(&filter), records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -645,7 +645,7 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.DomainNameInstance{}).Where(&filter), records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -666,7 +666,7 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.DomainNameInstance{}).Where(&filter), records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1203,7 +1203,7 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayDefinition{}).Where(&filter), records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1224,7 +1224,7 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayDefinition{}).Where(&filter), records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1744,7 +1744,7 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayHttpPort{}).Where(&filter), records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayHttpPort{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -1765,7 +1765,7 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayHttpPort{}).Where(&filter), records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayHttpPort{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -2213,7 +2213,7 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayInstance{}).Where(&filter), records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -2234,7 +2234,7 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayInstance{}).Where(&filter), records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -2741,7 +2741,7 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayTcpPort{}).Where(&filter), records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayTcpPort{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
@@ -2762,7 +2762,7 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, h.RequestDB(c).Model(&api_v0.GatewayTcpPort{}).Where(&filter), records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayTcpPort{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)

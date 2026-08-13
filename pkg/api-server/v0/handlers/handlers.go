@@ -164,34 +164,45 @@ func GenerateMaterializedViewName() (string, string) {
 	return viewName, queryId
 }
 
+// resolveHLCSnapshot returns the HLC timestamp a page of results reads at. An
+// empty queryId anchors a new result set by capturing a fresh HLC, which the
+// caller echoes back to the client so later pages land on the same snapshot. A
+// non-empty one came from a client and is accepted only when it is a bare
+// decimal, because it reaches the AS OF SYSTEM TIME clause as text rather than
+// as a bind parameter.
+func (h Handler) resolveHLCSnapshot(queryId string) (string, error) {
+	if queryId == "" {
+		var hlc string
+		if result := h.DB.Raw("SELECT cluster_logical_timestamp()").Scan(&hlc); result.Error != nil {
+			return "", fmt.Errorf("handler error: error capturing HLC snapshot: %w", result.Error)
+		}
+		return hlc, nil
+	}
+
+	if !apiserver_lib.ValidHLCToken(queryId) {
+		return "", fmt.Errorf("handler error: invalid queryid: not a valid HLC token")
+	}
+
+	return queryId, nil
+}
+
 // GetPaginatedRecordsAsOfSystemTime fetches a page of records from queryTable
 // against a stable HLC snapshot without creating a materialized view. query
 // carries the caller's bound filter and the request's soft-delete scoping, so
-// a page holds the same rows the caller's count did. An empty queryId captures
-// a fresh HLC via `cluster_logical_timestamp()` and returns it so the caller
-// can echo it back as the pagination queryId; a non-empty queryId is validated
-// as an HLC token and used as the snapshot. The read runs AS OF SYSTEM TIME so
-// every page sees the same snapshot under concurrent writes.
+// a page holds the same rows the caller's count did. An empty queryId on
+// pageParams captures a fresh HLC via `cluster_logical_timestamp()` and returns
+// it so the caller can echo it back as the pagination queryId; a non-empty one
+// is validated as an HLC token and used as the snapshot. The read runs AS OF
+// SYSTEM TIME so every page sees the same snapshot under concurrent writes.
 func (h Handler) GetPaginatedRecordsAsOfSystemTime(
 	query *gorm.DB,
 	records interface{},
 	queryTable string,
-	queryId string,
 	pageParams *apiserver_lib.PageRequestParams,
 ) (string, int64, error) {
-	hlc := queryId
-	if hlc == "" {
-		// capture a fresh HLC to anchor the first page; every later page
-		// echoes this token back so the whole result set sees the same
-		// snapshot even under concurrent writes
-		if result := h.DB.Raw("SELECT cluster_logical_timestamp()").Scan(&hlc); result.Error != nil {
-			return "", 0, fmt.Errorf("handler error: error capturing HLC snapshot: %w", result.Error)
-		}
-	} else if !apiserver_lib.ValidHLCToken(hlc) {
-		// reject caller-supplied tokens that aren't a bare decimal so a
-		// stray queryid can't slip arbitrary SQL into the AS OF SYSTEM
-		// TIME clause; only tokens produced above pass this check
-		return "", 0, fmt.Errorf("handler error: invalid queryid: not a valid HLC token")
+	hlc, err := h.resolveHLCSnapshot(pageParams.QueryId)
+	if err != nil {
+		return "", 0, err
 	}
 
 	// the snapshot rides in the FROM clause as a raw table expression. It
@@ -223,10 +234,10 @@ func (h Handler) GetPaginatedRecordsAsOfSystemTime(
 }
 
 // DispatchGetPaginatedRecords fetches one page of results from queryTable
-// using mode as the pagination strategy. query is the caller's request-scoped,
-// model-bound, filtered db, and both modes read through it so a page carries
-// the same predicates the caller's count did. It returns the queryId to echo
-// back to the client (a view-name suffix under
+// using the handler's configured pagination strategy. query is the caller's
+// request-scoped, model-bound, filtered db, and both strategies read through it
+// so a page carries the same predicates the caller's count did. It returns the
+// queryId to echo back to the client (a view-name suffix under
 // `PaginationModeMaterializedView`, an HLC token under
 // `PaginationModeAsOfSystemTime`), the row count for this page, and any error.
 //
@@ -244,7 +255,6 @@ func (h Handler) GetPaginatedRecordsAsOfSystemTime(
 // `TranslatePaginationSessionError()` so a GC-expired snapshot reaches the
 // client as the same expired-session error.
 func (h Handler) DispatchGetPaginatedRecords(
-	mode apiserver_lib.PaginationMode,
 	query *gorm.DB,
 	records interface{},
 	queryTable string,
@@ -255,9 +265,9 @@ func (h Handler) DispatchGetPaginatedRecords(
 	// reuse it and lets materialized-view mode build two statements from it
 	query = query.Session(&gorm.Session{})
 
-	switch mode {
+	switch h.PaginationMode {
 	case apiserver_lib.PaginationModeAsOfSystemTime:
-		hlc, count, err := h.GetPaginatedRecordsAsOfSystemTime(query, records, queryTable, pageParams.QueryId, pageParams)
+		hlc, count, err := h.GetPaginatedRecordsAsOfSystemTime(query, records, queryTable, pageParams)
 		if err != nil {
 			return hlc, count, apiserver_lib.TranslatePaginationSessionError(err)
 		}
@@ -308,6 +318,6 @@ func (h Handler) DispatchGetPaginatedRecords(
 		return queryId, count, nil
 
 	default:
-		return "", 0, fmt.Errorf("handler error: unknown pagination mode: %s", mode)
+		return "", 0, fmt.Errorf("handler error: unknown pagination mode: %s", h.PaginationMode)
 	}
 }

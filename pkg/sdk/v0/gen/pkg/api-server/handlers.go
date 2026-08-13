@@ -1101,13 +1101,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											s.Id("h")
 										}
 									}).Dot("DispatchGetPaginatedRecords").Call(
-										Do(func(s *Statement) {
-											if gen.Module {
-												s.Id("h").Dot("Handler")
-											} else {
-												s.Id("h")
-											}
-										}).Dot("PaginationMode"),
 										// the page reads through the same request-scoped, filtered db the
 										// count used, so both see one set of rows
 										Do(func(s *Statement) {
@@ -1180,13 +1173,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									s.Id("h")
 								}
 							}).Dot("DispatchGetPaginatedRecords").Call(
-								Do(func(s *Statement) {
-									if gen.Module {
-										s.Id("h").Dot("Handler")
-									} else {
-										s.Id("h")
-									}
-								}).Dot("PaginationMode"),
 								// the page reads through the same request-scoped, filtered db the
 								// count used, so both see one set of rows
 								Do(func(s *Statement) {

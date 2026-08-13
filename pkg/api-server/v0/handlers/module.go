@@ -69,13 +69,6 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 	return apiserver_lib.ResponseStatus201(c, *response)
 }
 
-// @Summary gets all module objects with associated module api routes.
-// @Description Get all module objects from the Threeport database with associated module api routes.
-// @ID get-v0-moduleObjectsModuleApiRoutes
-// @Accept json
-// @Produce json
-// @Param name query string false "module object search by name"
-// @Success 200 {object} v0.Response "OK"
 // fetchModuleObjectPage fetches one page of module objects through the
 // configured pagination strategy, then reloads that page's rows together with
 // their api-route associations. It stamps the queryId and next cursor onto
@@ -85,8 +78,9 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 //
 // The association reload reads current state rather than the pagination
 // snapshot. The api-route list per object is small and stable, so drift within
-// one page is acceptable. It is also soft-delete scoped, so it can return fewer
-// rows than the fetch did, which is why the two counts are reported separately.
+// one page is acceptable. It answers to the same request scoping as the fetch,
+// and the next cursor is taken from the page as fetched, so a row the reload
+// misses cannot pull the cursor backward and serve the same rows again.
 func (h Handler) fetchModuleObjectPage(
 	c echo.Context,
 	filter *api_v0.ModuleObject,
@@ -107,6 +101,12 @@ func (h Handler) fetchModuleObjectPage(
 	pagination.QueryId = queryId
 
 	if len(*records) > 0 {
+		pagination.NextCursor = *(*records)[len(*records)-1].ID
+	} else {
+		pagination.NextCursor = 0
+	}
+
+	if len(*records) > 0 {
 		var ids []uint
 		for _, record := range *records {
 			if record.ID != nil {
@@ -115,22 +115,23 @@ func (h Handler) fetchModuleObjectPage(
 		}
 		if len(ids) > 0 {
 			recordsWithPreload := &[]api_v0.ModuleObject{}
-			if result := h.DB.Where("id IN ?", ids).Preload("ModuleApiRoutes").Find(recordsWithPreload); result.Error != nil {
-				return nil, 0, fmt.Errorf("failed to preload associations: %w", result.Error)
+			if result := h.RequestDB(c).Where("id IN ?", ids).Preload("ModuleApiRoutes").Find(recordsWithPreload); result.Error != nil {
+				return nil, 0, fmt.Errorf("handler error: error preloading associations: %w", result.Error)
 			}
 			records = recordsWithPreload
 		}
 	}
 
-	if len(*records) > 0 {
-		pagination.NextCursor = *(*records)[len(*records)-1].ID
-	} else {
-		pagination.NextCursor = 0
-	}
-
 	return records, fetchedCount, nil
 }
 
+// @Summary gets all module objects with associated module api routes.
+// @Description Get all module objects from the Threeport database with associated module api routes.
+// @ID get-v0-moduleObjectsModuleApiRoutes
+// @Accept json
+// @Produce json
+// @Param name query string false "filter by exact module object name (case sensitive)"
+// @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects-with-module-api-routes [GET]
@@ -161,7 +162,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 		// no query ID provided, so the client is not requesting a specific page of results
 		// count total number of objects
 		var totalCount int64
-		if result := h.DB.Model(&api_v0.ModuleObject{}).Where(&filter).Count(&totalCount); result.Error != nil {
+		if result := h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
@@ -172,7 +173,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 		switch pagination.HasMore {
 		case false:
 			// if we don't have to paginate, return all records
-			if result := h.DB.Order("ID asc").Where(&filter).Preload("ModuleApiRoutes").Find(records); result.Error != nil {
+			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Preload("ModuleApiRoutes").Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}

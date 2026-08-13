@@ -252,6 +252,17 @@ func (h Handler) GetPaginatedRecordsAsOfSystemTime(
 	return hlc, count, nil
 }
 
+// paginationMode returns the strategy this handler pages with. An unset field
+// reads as the default, so a handler assembled without one still pages, and
+// every paginating handler agrees on which strategy that is.
+func (h Handler) paginationMode() apiserver_lib.PaginationMode {
+	if h.PaginationMode == "" {
+		return apiserver_lib.PaginationModeAsOfSystemTime
+	}
+
+	return h.PaginationMode
+}
+
 // DispatchGetPaginatedRecords fetches one page of results from queryTable
 // using the handler's configured pagination strategy. query is the caller's
 // request-scoped, model-bound, filtered db, and both strategies read through it
@@ -285,14 +296,7 @@ func (h Handler) DispatchGetPaginatedRecords(
 	// reuse it once the page has been fetched
 	query = query.Session(&gorm.Session{})
 
-	// an unset mode reads as the default, so a handler assembled without one
-	// still pages rather than failing on an unknown strategy
-	mode := h.PaginationMode
-	if mode == "" {
-		mode = apiserver_lib.PaginationModeAsOfSystemTime
-	}
-
-	switch mode {
+	switch h.paginationMode() {
 	case apiserver_lib.PaginationModeAsOfSystemTime:
 		hlc, count, err := h.GetPaginatedRecordsAsOfSystemTime(query, records, queryTable, pageParams)
 		if err != nil {

@@ -279,7 +279,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				1,
 			)
 
-			switch h.PaginationMode {
+			switch h.paginationMode() {
 			case apiserver_lib.PaginationModeAsOfSystemTime:
 				// capture the HLC once; the client echoes it back on
 				// every continuation so all pages read the same snapshot
@@ -382,7 +382,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// the same snapshot for subsequent continuation requests
 		pagination.QueryId = pageParams.QueryId
 
-		switch h.PaginationMode {
+		switch h.paginationMode() {
 		case apiserver_lib.PaginationModeAsOfSystemTime:
 			// treat the caller queryId as an HLC token; validate to
 			// reject anything that would smuggle SQL into AS OF SYSTEM

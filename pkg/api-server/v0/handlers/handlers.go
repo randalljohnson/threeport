@@ -183,6 +183,13 @@ func (h Handler) resolveHLCSnapshot(queryId string) (string, error) {
 		if result := h.DB.Raw("SELECT cluster_logical_timestamp()").Scan(&hlc); result.Error != nil {
 			return "", fmt.Errorf("handler error: error capturing HLC snapshot: %w", result.Error)
 		}
+		// a scan that matched no row leaves the destination empty and
+		// reports no error, and an empty token would reach the clause as
+		// AS OF SYSTEM TIME '' and be echoed to the client as a queryid
+		// that fails validation on every continuation
+		if !apiserver_lib.ValidHLCToken(hlc) {
+			return "", fmt.Errorf("handler error: error capturing HLC snapshot: got %q", hlc)
+		}
 		return hlc, nil
 	}
 
@@ -268,8 +275,8 @@ func (h Handler) DispatchGetPaginatedRecords(
 	pageParams *apiserver_lib.PageRequestParams,
 ) (string, int64, error) {
 	// take a session so every chained call below clones the statement
-	// instead of mutating the caller's db, which keeps the caller free to
-	// reuse it and lets materialized-view mode build two statements from it
+	// instead of mutating the caller's db, which leaves the caller free to
+	// reuse it once the page has been fetched
 	query = query.Session(&gorm.Session{})
 
 	switch h.PaginationMode {

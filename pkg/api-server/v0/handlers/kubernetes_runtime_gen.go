@@ -342,8 +342,8 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -446,8 +446,8 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -920,8 +920,8 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1024,8 +1024,8 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

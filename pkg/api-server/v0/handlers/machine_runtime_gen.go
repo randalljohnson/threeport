@@ -817,8 +817,8 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingMachineRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -921,8 +921,8 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingMachineRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

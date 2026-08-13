@@ -817,8 +817,8 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingDomainNameInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
 		notifPayload, err := existingDomainNameInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -921,8 +921,8 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingDomainNameInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
 		notifPayload, err := existingDomainNameInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1389,8 +1389,8 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
 		notifPayload, err := existingGatewayDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1493,8 +1493,8 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
 		notifPayload, err := existingGatewayDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2420,8 +2420,8 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
 		notifPayload, err := existingGatewayInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2524,8 +2524,8 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
 		notifPayload, err := existingGatewayInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

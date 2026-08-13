@@ -342,8 +342,8 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretDefinition.Reconciliation) {
 		notifPayload, err := existingSecretDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -446,8 +446,8 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretDefinition.Reconciliation) {
 		notifPayload, err := existingSecretDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -920,8 +920,8 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretInstance.Reconciliation) {
 		notifPayload, err := existingSecretInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1024,8 +1024,8 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretInstance.Reconciliation) {
 		notifPayload, err := existingSecretInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

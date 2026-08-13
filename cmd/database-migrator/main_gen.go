@@ -149,7 +149,7 @@ func ensureUniqueGooseVersionId(gormdb *gorm.DB) error {
 
 	// collapse duplicate rows left by concurrent migrator runs, keeping the
 	// earliest row recorded for each version
-	if err := gormdb.Exec("DELETE FROM threeport_goose_db_version WHERE id NOT IN (SELECT min(id) FROM threeport_goose_db_version GROUP BY version_id)").Error; err != nil {
+	if err := gormdb.Exec("DELETE FROM threeport_goose_db_version WHERE id NOT IN (SELECT max(id) FROM threeport_goose_db_version GROUP BY version_id)").Error; err != nil {
 		return fmt.Errorf("failed to remove duplicate version rows: %w", err)
 	}
 

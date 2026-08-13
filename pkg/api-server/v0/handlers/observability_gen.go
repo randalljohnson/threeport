@@ -342,8 +342,8 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingDefinition.Reconciliation) {
 		notifPayload, err := existingLoggingDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -446,8 +446,8 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingDefinition.Reconciliation) {
 		notifPayload, err := existingLoggingDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -920,8 +920,8 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingInstance.Reconciliation) {
 		notifPayload, err := existingLoggingInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1024,8 +1024,8 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingInstance.Reconciliation) {
 		notifPayload, err := existingLoggingInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1492,8 +1492,8 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsDefinition.Reconciliation) {
 		notifPayload, err := existingMetricsDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1596,8 +1596,8 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsDefinition.Reconciliation) {
 		notifPayload, err := existingMetricsDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2070,8 +2070,8 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsInstance.Reconciliation) {
 		notifPayload, err := existingMetricsInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2174,8 +2174,8 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsInstance.Reconciliation) {
 		notifPayload, err := existingMetricsInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2642,8 +2642,8 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2746,8 +2746,8 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3220,8 +3220,8 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3324,8 +3324,8 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3792,8 +3792,8 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3896,8 +3896,8 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -4370,8 +4370,8 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -4474,8 +4474,8 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

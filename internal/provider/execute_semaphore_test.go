@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"gorm.io/datatypes"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // compile-time interface satisfaction check for the order recorder.
@@ -203,7 +205,7 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	fi := newFakeInfra()
 	fi.setDestroy(infraPanic, nil)
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 	})
 	fl.setInfra(fi)
 
@@ -221,7 +223,7 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	// with capacity 1, a successful follow-up launch proves the panicking
 	// goroutine released its slot
 	fl2 := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 	})
 	requeue, err = HandleInfraDelete(fl2, log)
 	require.NoError(t, err)
@@ -364,7 +366,7 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 
 	fi := newFakeInfra()
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 		ResourceInventory: jsonPtr(`{"deployment":{"resources":[`),
 	})
 	fl.setInfra(fi)
@@ -396,7 +398,7 @@ func TestExecuteInfraDelete_DestroyError_CapturesRemainingState(t *testing.T) {
 	fi := newFakeInfra()
 	fi.setDestroy(infraError, errDestroy)
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 	})
 	fl.setInfra(fi)
 
@@ -485,7 +487,7 @@ func TestExecuteInfraDelete_RefreshError_StillDestroys(t *testing.T) {
 	ri := newFakeRefreshableInfra()
 	ri.setRefreshErr(errors.New("refresh could not reach the cloud provider"))
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(deleteTestBase.Add(-time.Hour)),
+		DeletionScheduled: util.Ptr(deleteTestBase.Add(-time.Hour)),
 		ResourceInventory: validStackState(),
 	})
 	fl.setInfra(ri)

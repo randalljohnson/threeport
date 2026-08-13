@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // peakWatcher samples inFlightCount and records the highest value it saw.
@@ -175,7 +177,7 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 		fi := newFakeInfra()
 		fi.setDestroy(infraSucceed, nil)
 		fl := newFakeLifecycle(&ReconciliationSnapshot{
-			DeletionScheduled: timePtr(deleteTestBase.Add(-time.Minute)),
+			DeletionScheduled: util.Ptr(deleteTestBase.Add(-time.Minute)),
 		})
 		fl.setInfra(fi)
 		deleteFls[i] = fl

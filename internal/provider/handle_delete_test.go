@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // deleteTestBase is the frozen reference time used by the delete handler
@@ -47,8 +49,8 @@ func TestHandleInfraDelete_NotScheduled_Error(t *testing.T) {
 // without acknowledging, building infra, or launching anything.
 func TestHandleInfraDelete_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(deleteTestBase.Add(-time.Hour)),
-		DeletionConfirmed: timePtr(deleteTestBase.Add(-time.Minute)),
+		DeletionScheduled: util.Ptr(deleteTestBase.Add(-time.Hour)),
+		DeletionConfirmed: util.Ptr(deleteTestBase.Add(-time.Minute)),
 	})
 
 	requeue, err := HandleInfraDelete(fl, newTestLogger())
@@ -74,8 +76,8 @@ func TestHandleInfraDelete_CrossReplicaSafety_Requeue60(t *testing.T) {
 
 	// ack aged one minute against a 240 second threshold: fresh
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
-		CreationAcknowledged: timePtr(deleteTestBase.Add(-time.Minute)),
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		CreationAcknowledged: util.Ptr(deleteTestBase.Add(-time.Minute)),
 	})
 
 	requeue, err := HandleInfraDelete(fl, newTestLogger())
@@ -105,8 +107,8 @@ func TestHandleInfraDelete_StaleCreateAck_AllowsDelete(t *testing.T) {
 	fi.setDestroy(infraBlock, nil)
 	// ack aged ten minutes against a 240 second threshold: stale
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
-		CreationAcknowledged: timePtr(deleteTestBase.Add(-10 * time.Minute)),
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		CreationAcknowledged: util.Ptr(deleteTestBase.Add(-10 * time.Minute)),
 	})
 	fl.setInfra(fi)
 
@@ -143,8 +145,8 @@ func TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60(t *testing.T)
 	t.Cleanup(restoreClk)
 
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
-		CreationAcknowledged: timePtr(deleteTestBase.Add(-time.Minute)),
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		CreationAcknowledged: util.Ptr(deleteTestBase.Add(-time.Minute)),
 		CreationFailed:       true,
 	})
 
@@ -165,8 +167,8 @@ func TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60(t *testing.T)
 func TestHandleInfraDelete_AckedInventoryCleared_Confirms(t *testing.T) {
 	// "{}" is one of the values that count as cleared inventory
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
-		DeletionAcknowledged: timePtr(deleteTestBase.Add(-time.Minute)),
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		DeletionAcknowledged: util.Ptr(deleteTestBase.Add(-time.Minute)),
 		ResourceInventory:    jsonPtr("{}"),
 	})
 
@@ -189,8 +191,8 @@ func TestHandleInfraDelete_AckedInventoryCleared_Confirms(t *testing.T) {
 // the cleanup.
 func TestHandleInfraDelete_OnDeleteConfirmedError_Requeue60(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
-		DeletionAcknowledged: timePtr(deleteTestBase.Add(-time.Minute)),
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		DeletionAcknowledged: util.Ptr(deleteTestBase.Add(-time.Minute)),
 		ResourceInventory:    jsonPtr("{}"),
 	})
 	fl.setErr("OnDeleteConfirmed", errors.New("injected: post-deletion cleanup failure"))
@@ -217,8 +219,8 @@ func TestHandleInfraDelete_AckedInventoryNotCleared_FreshAck_Requeue60(t *testin
 	t.Cleanup(restoreClk)
 
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
-		DeletionAcknowledged: timePtr(deleteTestBase.Add(-time.Minute)),
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		DeletionAcknowledged: util.Ptr(deleteTestBase.Add(-time.Minute)),
 		ResourceInventory:    validStackState(),
 	})
 
@@ -251,8 +253,8 @@ func TestHandleInfraDelete_AckedInventoryNotCleared_StaleAck_Relaunches(t *testi
 	fi.setDestroy(infraBlock, nil)
 	inventory := validStackState()
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
-		DeletionAcknowledged: timePtr(deleteTestBase.Add(-10 * time.Minute)),
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		DeletionAcknowledged: util.Ptr(deleteTestBase.Add(-10 * time.Minute)),
 		ResourceInventory:    inventory,
 	})
 	fl.setInfra(fi)
@@ -291,7 +293,7 @@ func TestHandleInfraDelete_NewRequest_AcksBuildsLaunches(t *testing.T) {
 	fi := newFakeInfra()
 	fi.setDestroy(infraBlock, nil)
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(deleteTestBase.Add(-time.Minute)),
+		DeletionScheduled: util.Ptr(deleteTestBase.Add(-time.Minute)),
 	})
 	fl.setInfra(fi)
 

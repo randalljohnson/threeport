@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // createTestConfig returns lifecycle tunables for create handler tests:
@@ -43,7 +45,7 @@ func waitForCreateCond(t *testing.T, desc string, cond func() bool) {
 // after the initial fetch with no further calls on the provider.
 func TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		CreationConfirmed: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreationConfirmed: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	})
 
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
@@ -67,7 +69,7 @@ func TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 // post-creation failure prevents confirmation.
 func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		CreationAcknowledged: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreationAcknowledged: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	})
 	fl.setCreateComplete(true)
 	fi := newFakeInfra()
@@ -95,7 +97,7 @@ func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
 func TestHandleInfraCreate_OnCreateConfirmedError_Propagates(t *testing.T) {
 	errPostCreate := errors.New("post-creation work failed")
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		CreationAcknowledged: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreationAcknowledged: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	})
 	fl.setCreateComplete(true)
 	fl.setErr("OnCreateConfirmed", errPostCreate)
@@ -125,7 +127,7 @@ func TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120(t *testing.T) {
 	// acked at the clock's current time: zero elapsed, well inside the
 	// stale threshold
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		CreationAcknowledged: timePtr(base),
+		CreationAcknowledged: util.Ptr(base),
 	})
 
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
@@ -154,7 +156,7 @@ func TestHandleInfraCreate_StaleAck_Relaunches(t *testing.T) {
 	fi := newFakeInfra()
 	fi.setDeploy(infraBlock, nil)
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		CreationAcknowledged: timePtr(base),
+		CreationAcknowledged: util.Ptr(base),
 	})
 	fl.setInfra(fi)
 
@@ -236,7 +238,7 @@ func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
 	fl := newFakeLifecycle(
 		&ReconciliationSnapshot{},
 		&ReconciliationSnapshot{
-			DeletionScheduled: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+			DeletionScheduled: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 		},
 	)
 	fl.setInfra(fi)
@@ -271,7 +273,7 @@ func TestHandleInfraCreate_DeletionScheduledDuringInfra_SuppressesNotification(t
 		&ReconciliationSnapshot{},
 		&ReconciliationSnapshot{},
 		&ReconciliationSnapshot{
-			DeletionScheduled: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+			DeletionScheduled: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 		},
 	)
 	fl.setInfra(fi)

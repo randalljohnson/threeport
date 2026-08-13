@@ -86,12 +86,6 @@ func newTestLogger() *logr.Logger {
 	return &l
 }
 
-// timePtr returns a pointer to the given time, for building
-// reconciliation snapshots inline.
-func timePtr(t time.Time) *time.Time {
-	return &t
-}
-
 // jsonPtr returns a pointer to the given string as a JSON value, for
 // building resource inventories inline.
 func jsonPtr(s string) *datatypes.JSON {

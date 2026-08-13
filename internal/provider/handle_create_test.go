@@ -62,8 +62,9 @@ func TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 // builds infra, runs post-creation work, confirms creation, and returns
 // (0, nil) without re-acking or launching. The fakes record counts, not
 // sequence, so the BuildInfra -> OnCreateConfirmed -> ConfirmCreation
-// order is pinned indirectly by the error-propagation test below, which
-// shows a post-creation failure prevents confirmation.
+// order is covered indirectly by
+// TestHandleInfraCreate_OnCreateConfirmedError_Propagates, which shows a
+// post-creation failure prevents confirmation.
 func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		CreationAcknowledged: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),

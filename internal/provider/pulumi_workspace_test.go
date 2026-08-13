@@ -102,10 +102,10 @@ func TestNewPulumiWorkspace_DefaultRoot(t *testing.T) {
 	assert.True(t, info.IsDir())
 }
 
-// TestGetStateFilePath_EmptyName pins the empty-name guard added by the
-// seam: an empty runtime instance name returns an error refusing to build
-// the path, before any filesystem side effects, so two unnamed instances
-// can never collide on the same state file.
+// TestGetStateFilePath_EmptyName covers the empty-name guard: an empty
+// runtime instance name returns an error refusing to build the path,
+// before any filesystem side effects, so two unnamed instances can never
+// collide on the same state file.
 func TestGetStateFilePath_EmptyName(t *testing.T) {
 	root := t.TempDir()
 	w := NewPulumiWorkspace("", "oke", WithStateDirRoot(root))
@@ -147,22 +147,17 @@ func TestSetStackState_CheckpointRoundTrip(t *testing.T) {
 	assert.Equal(t, state, string(*readBack))
 }
 
-// TestSetStackState_AtomicTempThenRename pins the atomic temp-then-rename
-// write of the checkpoint branch in three parts. Success: the target holds
-// the content and no temp file remains. Temp-write failure: a directory
-// occupying the temp path makes the temp write fail, the temp-write error
-// surfaces, and the previously written state is left intact, which is the
-// atomicity guarantee. Rename failure: the implementation exposes no
-// injectable rename failure, so the test simulates one by pre-creating the
-// target as a directory. Reading the live code, the simulation is expected
-// to be intercepted before the rename: the backend stack upsert fails
-// first because the file backend treats a directory as a missing blob and
-// then cannot write its own snapshot over it, leaving the production
-// rename branch unreachable from outside. Because that interception cannot
-// be confirmed without a live backend run, the test pins the invariants
-// shared by both candidate failure points: an error surfaces, no temp file
-// survives (the rename branch removes its temp file on failure), and the
-// directory occupying the target is untouched.
+// TestSetStackState_AtomicTempThenRename covers the atomic
+// temp-then-rename write of the checkpoint branch in two parts. On
+// success, the target holds the content and no temp file remains. On a
+// temp-write failure, forced by occupying the temp path with a directory,
+// the error surfaces and the previously written state is left intact,
+// which is the atomicity guarantee.
+//
+// The rename half of the pair is not covered here. The implementation
+// exposes no injectable rename failure, and reaching it from outside means
+// making the rename fail without making the backend stack upsert fail
+// first, which needs a seam the code does not have.
 func TestSetStackState_AtomicTempThenRename(t *testing.T) {
 	requirePulumiCLI(t)
 
@@ -231,9 +226,9 @@ func TestSetStackState_ExportFormatRequiresBackend(t *testing.T) {
 // TestPulumiWorkspace_ZeroValueStillWorks pins zero-value compatibility
 // for the embedder pattern: a workspace built as a plain struct literal
 // with only the name fields set, no constructor and no options, still
-// resolves the state file path through the home-dir fallback exactly as
-// before the seams. The home dir is redirected to a temp dir so the path
-// resolution side effects stay out of the real home dir.
+// resolves the state file path through the home-dir fallback. The home dir
+// is redirected to a temp dir so the path resolution side effects stay out
+// of the real home dir.
 func TestPulumiWorkspace_ZeroValueStillWorks(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

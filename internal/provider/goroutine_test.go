@@ -226,7 +226,7 @@ func TestStreamState_ValidJSON_SavesImmediately(t *testing.T) {
 	h.start()
 
 	// streamState must create the watch directory before the test writes
-	// anything; this pins the production MkdirAll on the parent dir
+	// anything, so wait for the parent dir to appear
 	stateDir := filepath.Dir(h.path)
 	require.Eventually(t, func() bool {
 		_, err := os.Stat(stateDir)

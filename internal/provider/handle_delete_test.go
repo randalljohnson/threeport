@@ -128,7 +128,7 @@ func TestHandleInfraDelete_StaleCreateAck_AllowsDelete(t *testing.T) {
 }
 
 // TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60 is a
-// behavior pin for hardening item 11: the cross-replica guard ignores
+// behavior pin for the cross-replica guard: it ignores
 // CreationFailed by design today, so a fresh CreationAcknowledged with
 // CreationFailed set and no CreationConfirmed still requeues at 60 seconds
 // without launching. A failed create may be retried by another replica at
@@ -163,7 +163,7 @@ func TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60(t *testing.T)
 // then refreshes the ack, builds infra, runs post-deletion cleanup, confirms
 // deletion, and returns (0, nil) without launching a goroutine.
 func TestHandleInfraDelete_AckedInventoryCleared_Confirms(t *testing.T) {
-	// "{}" is one of the cleared inventory sentinels
+	// "{}" is one of the values that count as cleared inventory
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
 		DeletionAcknowledged: timePtr(deleteTestBase.Add(-time.Minute)),

@@ -802,24 +802,42 @@ func refreshAck(
 // failed. If the call fails, it is retried on the configured delay up to the
 // configured retry count. After exhausting retries, the goroutine returns and
 // stale ack detection will recover the operation.
+//
+// The caller runs inside a launch goroutine that holds a semaphore slot for
+// this whole window, so every sleep here is capacity the pool cannot hand to
+// another instance.
 func persistFailure(
 	persist func() error,
 	log *logr.Logger,
 ) {
 	cfg := currentConfig()
 	maxRetries := cfg.PersistRetries
+
+	var lastErr error
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		if err := persist(); err != nil {
-			log.Error(err, "failed to persist creation failure - retrying",
-				"attempt", attempt+1, "maxRetries", maxRetries,
-				"retryDelay", cfg.PersistRetryDelay)
-			time.Sleep(cfg.PersistRetryDelay)
-			continue
+		lastErr = persist()
+		if lastErr == nil {
+			return
 		}
-		return
+
+		// sleeping after the final attempt buys nothing and holds the slot
+		// for one more delay
+		if attempt == maxRetries-1 {
+			break
+		}
+
+		log.Error(lastErr, "failed to persist creation failure, retrying",
+			"attempt", attempt+1, "maxRetries", maxRetries,
+			"retryDelay", cfg.PersistRetryDelay)
+		time.Sleep(cfg.PersistRetryDelay)
+	}
+
+	exhausted := fmt.Errorf("exhausted %d retries", maxRetries)
+	if lastErr != nil {
+		exhausted = fmt.Errorf("exhausted %d retries: %w", maxRetries, lastErr)
 	}
 	log.Error(
-		fmt.Errorf("exhausted %d retries", maxRetries),
+		exhausted,
 		"failed to persist creation failure, stale ack detection will recover",
 	)
 }

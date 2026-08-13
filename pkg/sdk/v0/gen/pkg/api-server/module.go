@@ -742,10 +742,19 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			),
 			Return(Id("existing"), Nil()),
 		),
+		// the prior binding is nil when the conflicting row was never bound, so
+		// render it separately rather than formatting the pointer itself
+		Id("priorModuleApi").Op(":=").Lit("none"),
+		If(Id("existing").Dot("ModuleApiID").Op("!=").Nil()).Block(
+			Id("priorModuleApi").Op("=").Qual("fmt", "Sprintf").Call(
+				Lit("%d"),
+				Op("*").Id("existing").Dot("ModuleApiID"),
+			),
+		),
 		Qual("log", "Printf").Call(
-			Lit("register-module: rebinding controller %q from module api %v to %d"),
+			Lit("register-module: rebinding controller %q from module api %s to %d"),
 			Op("*").Id("controller").Dot("Name"),
-			Id("existing").Dot("ModuleApiID"),
+			Id("priorModuleApi"),
 			Op("*").Id("moduleApiID"),
 		),
 		Id("existing").Dot("ModuleApiID").Op("=").Id("moduleApiID"),

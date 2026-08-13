@@ -793,8 +793,9 @@ func persistFailure(
 	maxRetries := cfg.PersistRetries
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if err := persist(); err != nil {
-			log.Error(err, "failed to persist creation failure - retrying in 10 sec",
-				"attempt", attempt+1, "maxRetries", maxRetries)
+			log.Error(err, "failed to persist creation failure - retrying",
+				"attempt", attempt+1, "maxRetries", maxRetries,
+				"retryDelay", cfg.PersistRetryDelay)
 			time.Sleep(cfg.PersistRetryDelay)
 			continue
 		}

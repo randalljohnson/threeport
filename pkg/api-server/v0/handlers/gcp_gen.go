@@ -1191,6 +1191,9 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 			queryTable := filter.TableName()
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GcpGkeKubernetesRuntimeDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -1212,6 +1215,9 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GcpGkeKubernetesRuntimeDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -1673,6 +1679,9 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 			queryTable := filter.TableName()
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GcpGkeKubernetesRuntimeInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -1694,6 +1703,9 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GcpGkeKubernetesRuntimeInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -2217,6 +2229,9 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 			queryTable := filter.TableName()
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GcpProvider{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -2238,6 +2253,9 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GcpProvider{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}

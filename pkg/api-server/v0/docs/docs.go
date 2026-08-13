@@ -12482,7 +12482,30 @@ const docTemplate = `{
         },
         "/v0/module-objects-with-module-api-routes": {
             "get": {
+                "description": "Get all module objects from the Threeport database with associated module api routes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "gets all module objects with associated module api routes.",
+                "operationId": "get-v0-moduleObjectsModuleApiRoutes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "filter by exact module object name (case sensitive)",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "400": {
                         "description": "Bad Request",
                         "schema": {

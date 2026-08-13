@@ -94,6 +94,25 @@ func ValidHLCToken(s string) bool {
 	return hlcTokenPattern.MatchString(s)
 }
 
+// queryIdPattern matches the queryid GenerateMaterializedViewName() hands out:
+// sixteen characters drawn from the lowercase alphanumeric set. Anchored so a
+// caller-supplied value cannot carry SQL into the view lookup.
+var queryIdPattern = regexp.MustCompile(`^[a-z0-9]{16}$`)
+
+// ValidPaginationQueryId reports whether s has the shape of a queryid the
+// server issues for a materialized-view pagination window.
+func ValidPaginationQueryId(s string) bool {
+	return queryIdPattern.MatchString(s)
+}
+
+// ErrInvalidPaginationQueryId reports that a caller-supplied queryid is not one
+// the server could have issued, so it names no snapshot and reaches no query.
+// Both pagination modes wrap it: an as-of-system-time token that is not a bare
+// HLC decimal, and a materialized-view id that is not the shape
+// GenerateMaterializedViewName() hands out. Handlers match on it to answer a
+// client error rather than reporting a server fault.
+var ErrInvalidPaginationQueryId = errors.New("invalid queryid")
+
 // ErrPaginationSessionExpired reports that the snapshot a queryid names is
 // gone, so the client has to start the result set over with no queryid. Both
 // pagination modes reach it: an as-of-system-time snapshot that has passed the

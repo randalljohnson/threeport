@@ -223,24 +223,9 @@ func (Dev) Generate() error {
 }
 
 // GenerateCode generates code with threeport-sdk.
-//
-// Outside dev, a threeport-sdk built in this worktree takes precedence over the
-// one on PATH. That PATH binary is one file every worktree shares, and a merge
-// into dev reinstalls it, so a regen elsewhere can otherwise run a generator
-// built from source this worktree does not hold and rewrite files it never
-// asked to change. On dev the PATH binary is the one to run: it is installed
-// from dev, and module repositories resolve it expecting dev's latest.
 func (Dev) GenerateCode() error {
-	sdk := "threeport-sdk"
-	branch, err := gitOutput("rev-parse", "--abbrev-ref", "HEAD")
-	if err == nil && branch != "dev" {
-		if _, statErr := os.Stat("bin/threeport-sdk"); statErr == nil {
-			sdk = "./bin/threeport-sdk"
-		}
-	}
-
 	generateCode := exec.Command(
-		sdk,
+		"threeport-sdk",
 		"gen",
 		"-c",
 		"sdk-config.yaml",
@@ -250,7 +235,7 @@ func (Dev) GenerateCode() error {
 		return fmt.Errorf("code generation failed with output: '%s': %w", output, err)
 	}
 
-	fmt.Printf("code generated successfully with %s\n", sdk)
+	fmt.Println("code generated successfully")
 
 	return nil
 }

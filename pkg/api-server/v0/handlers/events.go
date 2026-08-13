@@ -433,9 +433,16 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				whereClause,
 				pageParams.Limit,
 			)
+			// a snapshot past the garbage-collection threshold is the
+			// client's to recover from by restarting pagination, so it
+			// answers 400 the way the generated list handlers do
 			if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+				pageErr := apiserver_lib.TranslatePaginationSessionError(result.Error)
+				if errors.Is(pageErr, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, pageErr, objectType)
+				}
 				h.Logger.Error("handler error: error finding records", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, apiserver_lib.TranslatePaginationSessionError(result.Error), objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 
@@ -469,7 +476,15 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// previous cursor. the ID index built at create-time keeps
 			// this O(limit) rather than O(view size)
 			recordsQuery := fmt.Sprintf("SELECT * FROM %s WHERE ID > %d ORDER BY ID ASC LIMIT %d", viewName, pageParams.Cursor, pageParams.Limit)
+
+			// the TTL sweeper can drop the view between the lookup above
+			// and this read, which leaves the client in the same place an
+			// expired snapshot does: restart pagination with no queryid
 			if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+				pageErr := apiserver_lib.TranslateDroppedViewError(result.Error, viewName)
+				if errors.Is(pageErr, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, pageErr, objectType)
+				}
 				h.Logger.Error("handler error: error finding records", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}

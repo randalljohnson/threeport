@@ -267,10 +267,11 @@ func (h Handler) GetPaginatedRecordsAsOfSystemTime(
 // Under `PaginationModeMaterializedView` a view is created on the initial call
 // (empty pageParams.QueryId) and looked up by queryId on continuation; the view
 // is dropped once a page comes back shorter than the limit, so the TTL sweeper
-// doesn't have to, and a queryid naming no live view returns
-// `ErrPaginationSessionExpired`. Under `PaginationModeAsOfSystemTime` a fresh
-// HLC is captured on the initial call and the caller's queryId is validated and
-// reused on continuation; page-SELECT errors pass through
+// doesn't have to. A queryid naming no live view returns
+// `ErrPaginationSessionExpired`, and so does a view that the sweeper drops
+// between that lookup and the page read. Under `PaginationModeAsOfSystemTime` a
+// fresh HLC is captured on the initial call and the caller's queryId is
+// validated and reused on continuation; page-SELECT errors pass through
 // `TranslatePaginationSessionError()` so a GC-expired snapshot reaches the
 // client as the same expired-session error.
 func (h Handler) DispatchGetPaginatedRecords(
@@ -328,6 +329,15 @@ func (h Handler) DispatchGetPaginatedRecords(
 
 		count, err := h.GetMaterializedViewRecords(query, records, viewName, pageParams)
 		if err != nil {
+			// a continuation races the TTL sweeper: the view resolved
+			// above can be dropped before this read runs, and the
+			// undefined-table failure that comes back means the snapshot
+			// is gone rather than the server being broken. A first page
+			// reads a view it created a moment earlier, so the same
+			// failure there is a real fault and stays one.
+			if pageParams.QueryId != "" {
+				return queryId, count, apiserver_lib.TranslateDroppedViewError(err, viewName)
+			}
 			return queryId, count, err
 		}
 

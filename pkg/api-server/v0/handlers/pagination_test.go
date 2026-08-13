@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -39,7 +40,7 @@ func newDryRunHandler(t *testing.T, mode apiserver_lib.PaginationMode) (Handler,
 		func(tx *gorm.DB) { captured = tx.Statement.SQL.String() },
 	))
 
-	return Handler{DB: db, PaginationMode: mode}, &captured
+	return Handler{DB: db, PaginationMode: mode, Logger: zap.NewNop()}, &captured
 }
 
 // newListContext returns the echo context a generated list handler receives for

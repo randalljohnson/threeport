@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,16 +67,6 @@ func (Test) E2eClean() error {
 	}
 
 	return nil
-}
-
-// installDir returns the directory `go install` writes binaries to:
-// $GOBIN if set, otherwise $GOPATH/bin. build.Default.GOPATH falls back
-// to ~/go when $GOPATH is unset, so the result is always non-empty.
-func installDir() string {
-	if gobin := os.Getenv("GOBIN"); gobin != "" {
-		return gobin
-	}
-	return filepath.Join(build.Default.GOPATH, "bin")
 }
 
 // Sdk builds the threeport-sdk binary.
@@ -290,6 +279,11 @@ func (Test) Commits() error {
 	return nil
 }
 
+// testControlPlaneName is the control plane test:up creates and ci:teardown
+// removes. Both read it here so a rename cannot leave the teardown naming a
+// control plane that no longer exists.
+const testControlPlaneName = "dev-0"
+
 // Up spins up a control plane using tptctl and a local registry for testing.
 // It resolves the same image repo and tag the image build self-derives, so
 // the control plane pulls the images that build:allImages just pushed.
@@ -307,7 +301,7 @@ func (Test) Up() error {
 		"-t",
 		imageTag,
 		"-n",
-		"dev-0",
+		testControlPlaneName,
 		"--local-registry",
 	)
 

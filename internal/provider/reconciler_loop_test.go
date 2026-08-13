@@ -13,24 +13,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// peakWatcher samples inFlightCount in a tight loop and records the
-// highest value seen, so a test can assert the semaphore cap was never
-// exceeded at any instant rather than only at the sampling points.
+// peakWatcher samples inFlightCount and records the highest value it saw.
+// Sampling can only miss a spike, never invent one, so a peak above the cap
+// is proof the cap broke while a peak at or below it is corroborating
+// evidence rather than a guarantee. The semaphore is what enforces the cap.
 type peakWatcher struct {
 	peak int64
 	stop chan struct{}
 	done chan struct{}
 }
 
+// peakSampleInterval paces the sampling loop. Without it the watcher pins a
+// core for the length of the test and competes with the goroutines it is
+// measuring, which on a two-core runner changes the result it reports.
+const peakSampleInterval = 100 * time.Microsecond
+
 func startPeakWatcher() *peakWatcher {
 	w := &peakWatcher{stop: make(chan struct{}), done: make(chan struct{})}
 	go func() {
 		defer close(w.done)
+		ticker := time.NewTicker(peakSampleInterval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-w.stop:
 				return
-			default:
+			case <-ticker.C:
 				cur := inFlightCount()
 				for {
 					old := atomic.LoadInt64(&w.peak)

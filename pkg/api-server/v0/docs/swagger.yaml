@@ -12523,23 +12523,7 @@ paths:
       summary: adds a new module object.
   /v0/module-objects-with-module-api-routes:
     get:
-      consumes:
-      - application/json
-      description: Get all module objects from the Threeport database with associated
-        module api routes.
-      operationId: get-v0-moduleObjectsModuleApiRoutes
-      parameters:
-      - description: module object search by name
-        in: query
-        name: name
-        type: string
-      produces:
-      - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
           schema:
@@ -12548,7 +12532,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: gets all module objects with associated module api routes.
   /v0/module-objects-with-module-api-routes/{id}:
     get:
       consumes:

@@ -198,8 +198,7 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 // exported constructor with a shared temp root and asserts each resolves
 // to a distinct state file path, then writes to all of them concurrently
 // to prove the per-instance directories never collide. The writes go
-// straight to the resolved paths so the test needs no Pulumi backend; that
-// is the isolation invariant the machine provider depends on.
+// straight to the resolved paths so the test needs no Pulumi backend.
 func TestPerInstanceStateDirIsolation(t *testing.T) {
 	const n = 100
 	root := t.TempDir()
@@ -215,17 +214,26 @@ func TestPerInstanceStateDirIsolation(t *testing.T) {
 		paths[i] = p
 	}
 
+	// each goroutine reports through assert rather than require: require
+	// calls t.FailNow, which stops only the goroutine it runs on, so the
+	// read-back loop below would then fail on a file nobody wrote and bury
+	// the real cause
 	var wg sync.WaitGroup
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			require.NoError(t, os.MkdirAll(filepath.Dir(paths[i]), 0o755))
+			if !assert.NoError(t, os.MkdirAll(filepath.Dir(paths[i]), 0o755)) {
+				return
+			}
 			content := fmt.Sprintf("state-for-inst-%d", i)
-			require.NoError(t, os.WriteFile(paths[i], []byte(content), 0o644))
+			assert.NoError(t, os.WriteFile(paths[i], []byte(content), 0o644))
 		}(i)
 	}
 	wg.Wait()
+	if t.Failed() {
+		t.Fatal("concurrent state file writes failed; skipping read-back")
+	}
 
 	for i := 0; i < n; i++ {
 		got, err := os.ReadFile(paths[i])

@@ -327,6 +327,58 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 	}
 
+	// buildRawJoinAndWhere renders the join and the WHERE that every
+	// raw-SQL pagination branch below shares. The first page and its
+	// continuations have to select from the same row set, so they build
+	// these from one place rather than each assembling its own copy.
+	//
+	// The base WHERE excludes soft-deleted events and reference rows,
+	// because raw SQL does not pick up gorm's deleted_at scoping. Every
+	// value interpolated here is either a fully qualified type this
+	// handler resolved or a regex-validated pattern; values a client
+	// supplies travel separately as bind parameters.
+	buildRawJoinAndWhere := func() (string, string) {
+		joinClause := strings.Replace(
+			eventJoinAttachedObjectReferenceClause,
+			"?",
+			fmt.Sprintf("'%s'", fullyQualifiedEventType),
+			1,
+		)
+
+		whereClause := " WHERE " + apiserver_lib.LiveRowsFilter("v0_events", "v0_attached_object_references")
+		if len(ids) > 0 {
+			// constrain both object_type and object_id; id alone would
+			// let unrelated types with the same id leak in
+			typeStrs := make([]string, len(fullyQualifiedTypes))
+			for i, t := range fullyQualifiedTypes {
+				typeStrs[i] = fmt.Sprintf("'%s'", t)
+			}
+			idStrs := make([]string, len(ids))
+			for i, id := range ids {
+				idStrs[i] = fmt.Sprintf("'%d'", id)
+			}
+			whereClause += fmt.Sprintf(
+				" AND v0_attached_object_references.object_type IN (%s) AND v0_attached_object_references.object_id IN (%s)",
+				strings.Join(typeStrs, ", "),
+				strings.Join(idStrs, ", "),
+			)
+		}
+		if pattern, active := buildNamespaceVersionPattern(); active {
+			// narrow the reference object_type by qualified-type prefix
+			// so a namespace-only or version-only filter still
+			// constrains the row set
+			whereClause += fmt.Sprintf(
+				" AND v0_attached_object_references.object_type LIKE '%s'",
+				pattern,
+			)
+		}
+		if reasonFrag, active := buildReasonRawWhere(); active {
+			whereClause += " AND " + reasonFrag
+		}
+
+		return joinClause, whereClause
+	}
+
 	// apply the subject filter when ids or a namespace/version filter
 	// were supplied. The id half is the Cartesian product
 	// (object_type IN types AND object_id IN ids) - intentional, so a
@@ -405,60 +457,16 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// own query rather than appending to a partial result
 			*records = (*records)[:0]
 
-			// base WHERE excludes soft-deleted events and reference
-			// rows; raw SQL doesn't pick up gorm's deleted_at
-			// scoping. Subject filters (when supplied) AND on after.
-			whereClause := " WHERE " + apiserver_lib.LiveRowsFilter("v0_events", "v0_attached_object_references")
-			if len(ids) > 0 {
-				// constrain both object_type and object_id; id alone
-				// would let unrelated types with the same id leak in
-				typeStrs := make([]string, len(fullyQualifiedTypes))
-				for i, t := range fullyQualifiedTypes {
-					typeStrs[i] = fmt.Sprintf("'%s'", t)
-				}
-				idStrs := make([]string, len(ids))
-				for i, id := range ids {
-					idStrs[i] = fmt.Sprintf("'%d'", id)
-				}
-				whereClause += fmt.Sprintf(
-					" AND v0_attached_object_references.object_type IN (%s) AND v0_attached_object_references.object_id IN (%s)",
-					strings.Join(typeStrs, ", "),
-					strings.Join(idStrs, ", "),
-				)
-			}
-			if pattern, active := buildNamespaceVersionPattern(); active {
-				// narrow AOR.object_type by qualified-type prefix so a
-				// namespace-only or version-only filter still constrains
-				// the row set. The regex-validated pattern is safe to
-				// interpolate into the LIKE literal.
-				whereClause += fmt.Sprintf(
-					" AND v0_attached_object_references.object_type LIKE '%s'",
-					pattern,
-				)
-			}
-			if reasonFrag, active := buildReasonRawWhere(); active {
-				// pre-validated by reasonPattern, safe to interpolate
-				whereClause += " AND " + reasonFrag
-			}
-
-			// build the join clause once; used by both mode branches
-			// below. Raw SQL, so substitute the literal event type in
-			// place of gorm's `?` placeholder.
-			joinClause := strings.Replace(
-				eventJoinAttachedObjectReferenceClause,
-				"?",
-				fmt.Sprintf("'%s'", fullyQualifiedEventType),
-				1,
-			)
+			joinClause, whereClause := buildRawJoinAndWhere()
 
 			switch h.PaginationMode {
 			case apiserver_lib.PaginationModeAsOfSystemTime:
 				// capture the HLC once; the client echoes it back on
 				// every continuation so all pages read the same snapshot
-				var hlc string
-				if result := h.DB.Raw("SELECT cluster_logical_timestamp()").Scan(&hlc); result.Error != nil {
-					h.Logger.Error("handler error: error capturing HLC snapshot", zap.Error(result.Error))
-					return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				hlc, err := h.resolveHLCSnapshot("")
+				if err != nil {
+					h.Logger.Error("handler error: error capturing HLC snapshot", zap.Error(err))
+					return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 				}
 				pagination.QueryId = hlc
 
@@ -577,43 +585,9 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 					objectType)
 			}
 
-			// rebuild the join clause the first page used so the tail
-			// of the result set is scanned at the same snapshot
-			joinClause := strings.Replace(
-				eventJoinAttachedObjectReferenceClause,
-				"?",
-				fmt.Sprintf("'%s'", fullyQualifiedEventType),
-				1,
-			)
-			whereClause := " WHERE " + apiserver_lib.LiveRowsFilter("v0_events", "v0_attached_object_references")
-			if len(ids) > 0 {
-				typeStrs := make([]string, len(fullyQualifiedTypes))
-				for i, t := range fullyQualifiedTypes {
-					typeStrs[i] = fmt.Sprintf("'%s'", t)
-				}
-				idStrs := make([]string, len(ids))
-				for i, id := range ids {
-					idStrs[i] = fmt.Sprintf("'%d'", id)
-				}
-				whereClause += fmt.Sprintf(
-					" AND v0_attached_object_references.object_type IN (%s) AND v0_attached_object_references.object_id IN (%s)",
-					strings.Join(typeStrs, ", "),
-					strings.Join(idStrs, ", "),
-				)
-			}
-			if pattern, active := buildNamespaceVersionPattern(); active {
-				// mirror the first-page filter so the continuation reads
-				// the same subset of the snapshot; the regex-validated
-				// pattern is safe to interpolate into the LIKE literal.
-				whereClause += fmt.Sprintf(
-					" AND v0_attached_object_references.object_type LIKE '%s'",
-					pattern,
-				)
-			}
-			if reasonFrag, active := buildReasonRawWhere(); active {
-				// mirror the first-page reason filter under the same snapshot
-				whereClause += " AND " + reasonFrag
-			}
+			// rebuild what the first page used so the tail of the
+			// result set is scanned over the same row set
+			joinClause, whereClause := buildRawJoinAndWhere()
 			whereClause += fmt.Sprintf(" AND v0_events.id > %d", pageParams.Cursor)
 
 			// mirror the first page's bound-column filter so the

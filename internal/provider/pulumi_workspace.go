@@ -58,22 +58,28 @@ type PulumiWorkspace struct {
 // NewPulumiWorkspace.
 type PulumiWorkspaceOption func(*PulumiWorkspace)
 
-// WithStateDirRoot overrides the root directory under which the
-// workspace builds its per-instance state dir. Tests pass a temp dir
-// so a run touches no real state. Every method that resolves the state
-// dir honors the override, so a workspace built with it reads, writes,
-// and deletes under that root only.
+// WithStateDirRoot overrides the root directory under which the workspace
+// builds its per-instance state dir, so tests can point stack state at a
+// temp dir. Every method that resolves the state dir honors it, including
+// the existence check and the delete.
+//
+// It covers the state dir and nothing else. The pulumi home dir still
+// resolves from os.UserHomeDir(), so a caller that wants a run confined to
+// a temp dir has to redirect HOME as well.
 func WithStateDirRoot(root string) PulumiWorkspaceOption {
 	return func(w *PulumiWorkspace) {
 		w.stateDirRoot = root
 	}
 }
 
-// NewPulumiWorkspace returns a workspace for the named runtime
-// instance under the given pulumi project. Both values are
-// required: the state file path resolves to
-// stateDir/.pulumi/stacks/<project>/<name>.json, so an empty
-// project produces a malformed path.
+// NewPulumiWorkspace returns a workspace for the named runtime instance
+// under the given pulumi project. The state file path resolves to
+// stateDir/.pulumi/stacks/<project>/<name>.json.
+//
+// The name is required and resolving a state dir without one returns an
+// error. The project is not enforced here, because the gke path builds a
+// workspace first and fills the project in afterwards; passing an empty
+// project yields a path with an empty project segment until it is set.
 func NewPulumiWorkspace(name, project string, opts ...PulumiWorkspaceOption) *PulumiWorkspace {
 	w := &PulumiWorkspace{
 		RuntimeInstanceName: name,

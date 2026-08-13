@@ -569,10 +569,14 @@ func GenRestApiMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				"GetVersion",
 			).Call()),
 			Id("configureHealthCheckEndpoint").Call(),
-			If(Id("server.ListenAndServeTLS").Call(Lit(""), Lit("")).Op("!=").Qual(
-				"net/http", "ErrServerClosed",
-			)).Block(
-				Id("e.Logger.Fatal").Call(Id("err")),
+			// bind the serve result to its own name: err still holds the
+			// certificate authority read above, which is nil once that read
+			// succeeded, so logging it reports <nil> for every serve failure
+			If(
+				Id("serveErr").Op(":=").Id("server").Dot("ListenAndServeTLS").Call(Lit(""), Lit("")),
+				Id("serveErr").Op("!=").Qual("net/http", "ErrServerClosed"),
+			).Block(
+				Id("e.Logger.Fatal").Call(Id("serveErr")),
 			),
 		).Else().Block(
 			Comment("configure http server"),
@@ -587,8 +591,11 @@ func GenRestApiMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				"GetVersion",
 			).Call()),
 			Id("configureHealthCheckEndpoint").Call(),
-			If(Id("server.ListenAndServe").Call().Op("!=").Qual("net/http", "ErrServerClosed")).Block(
-				Id("e.Logger.Fatal").Call(Id("err")),
+			If(
+				Id("serveErr").Op(":=").Id("server").Dot("ListenAndServe").Call(),
+				Id("serveErr").Op("!=").Qual("net/http", "ErrServerClosed"),
+			).Block(
+				Id("e.Logger.Fatal").Call(Id("serveErr")),
 			),
 		)
 	})

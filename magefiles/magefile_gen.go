@@ -41,6 +41,7 @@ func (Test) Unit() error {
 	args := []string{
 		"test",
 		"-count=1",
+		fmt.Sprintf("-p=%d", util.BuildParallelism()),
 		"./pkg/...",
 		"./internal/...",
 		"./cmd/...",
@@ -59,6 +60,7 @@ func (Test) Integration() error {
 	args := []string{
 		"test",
 		"-v",
+		fmt.Sprintf("-p=%d", util.BuildParallelism()),
 		"./test/integration",
 		"-count=1",
 	}

@@ -51,10 +51,11 @@ var defaultLifecycleConfig = LifecycleConfig{
 	PersistRetryDelay: 10 * time.Second,
 }
 
-// lifecycleMu guards lifecycleConfig and infraSemaphore. Production sets
-// them once at init and only reads, so the read lock is uncontended;
-// tests swap them via setLifecycleConfig, and the lock keeps that swap
-// from racing the background goroutines that read the values.
+// lifecycleMu guards lifecycleConfig, infraSemaphore, and lifecycleClock.
+// Production sets them once at init and only reads, so the read lock is
+// uncontended; tests swap them via setLifecycleConfig and setLifecycleClock,
+// and the lock keeps that swap from racing the background goroutines that
+// read the values.
 var lifecycleMu sync.RWMutex
 
 // lifecycleConfig is the active configuration read by the lifecycle
@@ -114,14 +115,24 @@ func (realClock) Now() time.Time { return time.Now() }
 // lifecycleClock is the clock used for stale-ack checks.
 var lifecycleClock Clock = realClock{}
 
-// setLifecycleClock swaps the lifecycle clock. Returns a restore func
-// for t.Cleanup. Only for tests; not concurrency-safe, call before
-// spawning goroutines.
+// currentClock returns the active lifecycle clock.
+func currentClock() Clock {
+	lifecycleMu.RLock()
+	defer lifecycleMu.RUnlock()
+	return lifecycleClock
+}
+
+// setLifecycleClock swaps the lifecycle clock and returns a restore func
+// for t.Cleanup. Only for tests.
 func setLifecycleClock(c Clock) (restore func()) {
+	lifecycleMu.Lock()
 	oldClock := lifecycleClock
 	lifecycleClock = c
+	lifecycleMu.Unlock()
 	return func() {
+		lifecycleMu.Lock()
 		lifecycleClock = oldClock
+		lifecycleMu.Unlock()
 	}
 }
 
@@ -471,7 +482,7 @@ type infraConfig struct {
 // checkStaleAck returns true if the given acknowledgement timestamp has gone
 // stale, indicating the operation was interrupted (e.g. pod restart).
 func checkStaleAck(ackTimestamp time.Time) bool {
-	duration := lifecycleClock.Now().UTC().Sub(ackTimestamp)
+	duration := currentClock().Now().UTC().Sub(ackTimestamp)
 	return duration > currentConfig().StaleAckThreshold
 }
 

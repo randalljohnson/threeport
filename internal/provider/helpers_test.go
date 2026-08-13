@@ -278,3 +278,23 @@ func TestPersistFailure_Exhaustion(t *testing.T) {
 
 	assert.Equal(t, 3, calls)
 }
+
+// TestDefaultLifecycleConfig_ProductionValues pins the tunables the control
+// plane actually runs on. Changing any of them changes provisioning timing
+// or capacity in production, so the change has to be deliberate enough to
+// update this test alongside it.
+func TestDefaultLifecycleConfig_ProductionValues(t *testing.T) {
+	assert.Equal(t, 240*time.Second, defaultLifecycleConfig.StaleAckThreshold)
+	assert.Equal(t, 60*time.Second, defaultLifecycleConfig.RefreshInterval)
+	assert.Equal(t, 5, defaultLifecycleConfig.SemaphoreCapacity)
+	assert.Equal(t, 30, defaultLifecycleConfig.PersistRetries)
+	assert.Equal(t, 10*time.Second, defaultLifecycleConfig.PersistRetryDelay)
+}
+
+// TestInfraSemaphore_CapacityMatchesDefaultConfig proves the pool that gates
+// concurrent operations and the tunable that documents it are one value. Two
+// independent literals would let a capacity change land in the config and
+// never reach the pool.
+func TestInfraSemaphore_CapacityMatchesDefaultConfig(t *testing.T) {
+	assert.Equal(t, defaultLifecycleConfig.SemaphoreCapacity, cap(currentSemaphore()))
+}

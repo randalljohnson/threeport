@@ -46,8 +46,9 @@ var lifecycleMu sync.RWMutex
 var lifecycleConfig = defaultLifecycleConfig
 
 // infraSemaphore limits concurrent infrastructure operations to prevent OOM
-// from too many simultaneous deployments.
-var infraSemaphore = make(chan struct{}, 5)
+// from too many simultaneous deployments. Its capacity comes from the
+// default config so the tunable and the running pool cannot drift apart.
+var infraSemaphore = make(chan struct{}, defaultLifecycleConfig.SemaphoreCapacity)
 
 // currentConfig returns the active lifecycle configuration.
 func currentConfig() LifecycleConfig {

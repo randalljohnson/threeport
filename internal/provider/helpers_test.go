@@ -343,3 +343,35 @@ func TestCheckStaleAck_AdvancingClock(t *testing.T) {
 	clk.Advance(time.Second)
 	assert.True(t, checkStaleAck(ack), "an ack aged past the threshold is stale")
 }
+
+// TestSetLifecycleConfig_ZeroFieldsFallBackToDefaults covers the guard on
+// the config seam. A zero value is not a setting: a zero refresh interval
+// spins the ack-refresh loop against the API, a zero capacity requeues
+// every instance forever, and a zero retry count skips the persist call
+// the caller asked for.
+func TestSetLifecycleConfig_ZeroFieldsFallBackToDefaults(t *testing.T) {
+	restore := setLifecycleConfig(LifecycleConfig{})
+	t.Cleanup(restore)
+
+	assert.Equal(t, defaultLifecycleConfig, currentConfig())
+	assert.Equal(t, defaultLifecycleConfig.SemaphoreCapacity, cap(currentSemaphore()))
+}
+
+// TestSetLifecycleConfig_SetFieldsSurvive covers the other half of the
+// guard: a field the caller set is left alone, and only the unset ones
+// take a default.
+func TestSetLifecycleConfig_SetFieldsSurvive(t *testing.T) {
+	restore := setLifecycleConfig(LifecycleConfig{
+		StaleAckThreshold: time.Second,
+		SemaphoreCapacity: 2,
+	})
+	t.Cleanup(restore)
+
+	got := currentConfig()
+	assert.Equal(t, time.Second, got.StaleAckThreshold)
+	assert.Equal(t, 2, got.SemaphoreCapacity)
+	assert.Equal(t, 2, cap(currentSemaphore()))
+	assert.Equal(t, defaultLifecycleConfig.RefreshInterval, got.RefreshInterval)
+	assert.Equal(t, defaultLifecycleConfig.PersistRetries, got.PersistRetries)
+	assert.Equal(t, defaultLifecycleConfig.PersistRetryDelay, got.PersistRetryDelay)
+}

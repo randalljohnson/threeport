@@ -84,10 +84,38 @@ func currentSemaphore() chan struct{} {
 	return infraSemaphore
 }
 
+// withDefaults returns the config with any unset field filled from the
+// production defaults. A zero value is never a usable setting: a zero
+// refresh interval spins the ack-refresh loop against the API as fast as
+// the CPU allows, a zero capacity builds an unbuffered channel that
+// requeues every instance forever, and a zero retry count skips the
+// persist call the caller asked for.
+func (c LifecycleConfig) withDefaults() LifecycleConfig {
+	if c.StaleAckThreshold <= 0 {
+		c.StaleAckThreshold = defaultLifecycleConfig.StaleAckThreshold
+	}
+	if c.RefreshInterval <= 0 {
+		c.RefreshInterval = defaultLifecycleConfig.RefreshInterval
+	}
+	if c.SemaphoreCapacity <= 0 {
+		c.SemaphoreCapacity = defaultLifecycleConfig.SemaphoreCapacity
+	}
+	if c.PersistRetries <= 0 {
+		c.PersistRetries = defaultLifecycleConfig.PersistRetries
+	}
+	if c.PersistRetryDelay <= 0 {
+		c.PersistRetryDelay = defaultLifecycleConfig.PersistRetryDelay
+	}
+	return c
+}
+
 // setLifecycleConfig swaps the lifecycle tunables and re-creates the
-// semaphore channel at the new capacity. Returns a restore func for
-// t.Cleanup. Only for tests.
+// semaphore channel at the new capacity. Unset fields fall back to the
+// production defaults. Returns a restore func for t.Cleanup. Only for
+// tests.
 func setLifecycleConfig(c LifecycleConfig) (restore func()) {
+	c = c.withDefaults()
+
 	lifecycleMu.Lock()
 	oldConfig := lifecycleConfig
 	oldSemaphore := infraSemaphore

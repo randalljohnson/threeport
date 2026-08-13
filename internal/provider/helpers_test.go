@@ -298,3 +298,48 @@ func TestDefaultLifecycleConfig_ProductionValues(t *testing.T) {
 func TestInfraSemaphore_CapacityMatchesDefaultConfig(t *testing.T) {
 	assert.Equal(t, defaultLifecycleConfig.SemaphoreCapacity, cap(currentSemaphore()))
 }
+
+// TestCheckStaleAck_RealClock exercises the clock the control plane runs on.
+// Every other stale ack test injects a fake, so without this the default
+// clock is never called by the suite.
+func TestCheckStaleAck_RealClock(t *testing.T) {
+	restoreClock := setLifecycleClock(realClock{})
+	t.Cleanup(restoreClock)
+
+	cfg := testLifecycleConfig()
+	restoreConfig := setLifecycleConfig(cfg)
+	t.Cleanup(restoreConfig)
+
+	assert.False(
+		t,
+		checkStaleAck(time.Now().UTC()),
+		"an ack taken just now is not stale",
+	)
+	assert.True(
+		t,
+		checkStaleAck(time.Now().UTC().Add(-cfg.StaleAckThreshold-time.Second)),
+		"an ack older than the threshold is stale",
+	)
+}
+
+// TestCheckStaleAck_AdvancingClock walks one acknowledgement across the
+// threshold to prove the check reads the clock on every call rather than
+// caching the first read.
+func TestCheckStaleAck_AdvancingClock(t *testing.T) {
+	clk := newFakeClock(time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
+	restoreClock := setLifecycleClock(clk)
+	t.Cleanup(restoreClock)
+
+	cfg := testLifecycleConfig()
+	restoreConfig := setLifecycleConfig(cfg)
+	t.Cleanup(restoreConfig)
+
+	ack := clk.Now()
+	assert.False(t, checkStaleAck(ack), "a fresh ack is not stale")
+
+	clk.Advance(cfg.StaleAckThreshold)
+	assert.False(t, checkStaleAck(ack), "an ack aged exactly to the threshold is not stale")
+
+	clk.Advance(time.Second)
+	assert.True(t, checkStaleAck(ack), "an ack aged past the threshold is stale")
+}

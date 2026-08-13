@@ -108,6 +108,7 @@ type Clock interface{ Now() time.Time }
 // realClock implements Clock using the system wall clock.
 type realClock struct{}
 
+// Now returns the current system wall-clock time.
 func (realClock) Now() time.Time { return time.Now() }
 
 // lifecycleClock is the clock used for stale-ack checks.

@@ -18,8 +18,13 @@ import (
 // is proof the cap broke while a peak at or below it is corroborating
 // evidence rather than a guarantee. The semaphore is what enforces the cap.
 type peakWatcher struct {
+	// peak is the highest in-flight count any sample observed.
 	peak int64
+
+	// stop closes to end the sampling loop.
 	stop chan struct{}
+
+	// done closes once the sampling goroutine has returned.
 	done chan struct{}
 }
 
@@ -28,6 +33,8 @@ type peakWatcher struct {
 // measuring, which on a two-core runner changes the result it reports.
 const peakSampleInterval = 100 * time.Microsecond
 
+// startPeakWatcher launches the sampling goroutine and returns the watcher
+// it samples into.
 func startPeakWatcher() *peakWatcher {
 	w := &peakWatcher{stop: make(chan struct{}), done: make(chan struct{})}
 	go func() {
@@ -52,6 +59,8 @@ func startPeakWatcher() *peakWatcher {
 	return w
 }
 
+// stopAndPeak stops the sampling goroutine, waits for it to exit, and
+// returns the highest in-flight count recorded.
 func (w *peakWatcher) stopAndPeak() int64 {
 	close(w.stop)
 	<-w.done

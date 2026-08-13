@@ -170,6 +170,19 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes workload definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"kubernetes workload definition create deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile created kubernetes workload definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -192,7 +205,7 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						kubernetesWorkloadDefinition,
 						customRequeueDelay,
@@ -217,6 +230,19 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes workload definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"kubernetes workload definition update deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile updated kubernetes workload definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -239,7 +265,7 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						kubernetesWorkloadDefinition,
 						customRequeueDelay,
@@ -264,6 +290,19 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes workload definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"kubernetes workload definition delete deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted kubernetes workload definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -286,7 +325,7 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						kubernetesWorkloadDefinition,
 						customRequeueDelay,
@@ -320,6 +359,19 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					kubernetesWorkloadDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"kubernetes workload definition deletion already in progress, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete kubernetes workload definition")
 					r.UnlockAndRequeue(kubernetesWorkloadDefinition, requeueDelay, lockReleased, msg)
 					continue

@@ -170,6 +170,19 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gcp gke kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"gcp gke kubernetes runtime instance create deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							gcpGkeKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile created gcp gke kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -192,7 +205,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gcpGkeKubernetesRuntimeInstance,
 						customRequeueDelay,
@@ -217,6 +230,19 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gcp gke kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"gcp gke kubernetes runtime instance update deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							gcpGkeKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile updated gcp gke kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -239,7 +265,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gcpGkeKubernetesRuntimeInstance,
 						customRequeueDelay,
@@ -264,6 +290,19 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gcp gke kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"gcp gke kubernetes runtime instance delete deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							gcpGkeKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted gcp gke kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -286,7 +325,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gcpGkeKubernetesRuntimeInstance,
 						customRequeueDelay,
@@ -320,6 +359,19 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					gcpGkeKubernetesRuntimeInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"gcp gke kubernetes runtime instance deletion already in progress, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							gcpGkeKubernetesRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete gcp gke kubernetes runtime instance")
 					r.UnlockAndRequeue(gcpGkeKubernetesRuntimeInstance, requeueDelay, lockReleased, msg)
 					continue

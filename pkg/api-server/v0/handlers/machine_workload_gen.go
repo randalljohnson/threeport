@@ -425,6 +425,9 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a machine workload definition.
 // @Description Delete a machine workload definition by ID from the database.
+// @Description Blocking: attached object references pointing at this machine workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a machine workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the machine workload definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-machineWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -795,6 +798,10 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingMachineWorkloadInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingMachineWorkloadInstance).Updates(&updatedMachineWorkloadInstance)
@@ -810,8 +817,8 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingMachineWorkloadInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -885,6 +892,10 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMachineWorkloadInstance.Reconciliation
+
 	// persist provided data
 	updatedMachineWorkloadInstance.ID = existingMachineWorkloadInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -910,6 +921,20 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
+		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineWorkloadInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMachineWorkloadInstance,
@@ -925,6 +950,9 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a machine workload instance.
 // @Description Delete a machine workload instance by ID from the database.
+// @Description Blocking: attached object references pointing at this machine workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a machine workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the machine workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-machineWorkloadInstance
 // @Accept json
 // @Produce json

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	tpclient_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
@@ -140,6 +141,19 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of secret definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"secret definition create deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							secretDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile created secret definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -162,7 +176,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						secretDefinition,
 						customRequeueDelay,
@@ -187,6 +201,19 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of secret definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"secret definition update deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							secretDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile updated secret definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -209,7 +236,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						secretDefinition,
 						customRequeueDelay,
@@ -234,6 +261,19 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of secret definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"secret definition delete deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							secretDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted secret definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -256,7 +296,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						secretDefinition,
 						customRequeueDelay,
@@ -290,6 +330,19 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					secretDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"secret definition deletion already in progress, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							secretDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete secret definition")
 					r.UnlockAndRequeue(secretDefinition, requeueDelay, lockReleased, msg)
 					continue

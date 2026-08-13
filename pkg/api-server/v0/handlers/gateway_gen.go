@@ -425,6 +425,9 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 
 // @Summary deletes a domain name definition.
 // @Description Delete a domain name definition by ID from the database.
+// @Description Blocking: attached object references pointing at this domain name definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a domain name definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the domain name definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-domainNameDefinition
 // @Accept json
 // @Produce json
@@ -795,6 +798,10 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingDomainNameInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingDomainNameInstance).Updates(&updatedDomainNameInstance)
@@ -810,8 +817,8 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingDomainNameInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingDomainNameInstance.Reconciliation) {
 		notifPayload, err := existingDomainNameInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -885,6 +892,10 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingDomainNameInstance.Reconciliation
+
 	// persist provided data
 	updatedDomainNameInstance.ID = existingDomainNameInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -910,6 +921,20 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingDomainNameInstance.Reconciliation) {
+		notifPayload, err := existingDomainNameInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.DomainNameInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingDomainNameInstance,
@@ -925,6 +950,9 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 
 // @Summary deletes a domain name instance.
 // @Description Delete a domain name instance by ID from the database.
+// @Description Blocking: attached object references pointing at this domain name instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a domain name instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the domain name instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-domainNameInstance
 // @Accept json
 // @Produce json
@@ -1342,6 +1370,10 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingGatewayDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingGatewayDefinition).Updates(&updatedGatewayDefinition)
@@ -1357,8 +1389,8 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingGatewayDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayDefinition.Reconciliation) {
 		notifPayload, err := existingGatewayDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1432,6 +1464,10 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingGatewayDefinition.Reconciliation
+
 	// persist provided data
 	updatedGatewayDefinition.ID = existingGatewayDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -1457,6 +1493,20 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayDefinition.Reconciliation) {
+		notifPayload, err := existingGatewayDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.GatewayDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGatewayDefinition,
@@ -1472,6 +1522,9 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 
 // @Summary deletes a gateway definition.
 // @Description Delete a gateway definition by ID from the database.
+// @Description Blocking: attached object references pointing at this gateway definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a gateway definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gateway definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gatewayDefinition
 // @Accept json
 // @Produce json
@@ -1981,6 +2034,9 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 
 // @Summary deletes a gateway http port.
 // @Description Delete a gateway http port by ID from the database.
+// @Description Blocking: attached object references pointing at this gateway http port with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a gateway http port also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the gateway http port row and any cascading children have been removed synchronously.
 // @ID delete-v0-gatewayHttpPort
 // @Accept json
 // @Produce json
@@ -2345,6 +2401,10 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingGatewayInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingGatewayInstance).Updates(&updatedGatewayInstance)
@@ -2360,8 +2420,8 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingGatewayInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayInstance.Reconciliation) {
 		notifPayload, err := existingGatewayInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2435,6 +2495,10 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingGatewayInstance.Reconciliation
+
 	// persist provided data
 	updatedGatewayInstance.ID = existingGatewayInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -2460,6 +2524,20 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGatewayInstance.Reconciliation) {
+		notifPayload, err := existingGatewayInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.GatewayInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGatewayInstance,
@@ -2475,6 +2553,9 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 
 // @Summary deletes a gateway instance.
 // @Description Delete a gateway instance by ID from the database.
+// @Description Blocking: attached object references pointing at this gateway instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a gateway instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gateway instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gatewayInstance
 // @Accept json
 // @Produce json
@@ -2978,6 +3059,9 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 
 // @Summary deletes a gateway tcp port.
 // @Description Delete a gateway tcp port by ID from the database.
+// @Description Blocking: attached object references pointing at this gateway tcp port with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a gateway tcp port also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the gateway tcp port row and any cascading children have been removed synchronously.
 // @ID delete-v0-gatewayTcpPort
 // @Accept json
 // @Produce json

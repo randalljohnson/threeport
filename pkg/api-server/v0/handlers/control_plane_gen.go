@@ -324,6 +324,10 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingControlPlaneDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingControlPlaneDefinition).Updates(&updatedControlPlaneDefinition)
@@ -339,8 +343,8 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingControlPlaneDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
 		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -414,6 +418,10 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingControlPlaneDefinition.Reconciliation
+
 	// persist provided data
 	updatedControlPlaneDefinition.ID = existingControlPlaneDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -439,6 +447,20 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
+		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ControlPlaneDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingControlPlaneDefinition,
@@ -454,6 +476,9 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 
 // @Summary deletes a control plane definition.
 // @Description Delete a control plane definition by ID from the database.
+// @Description Blocking: attached object references pointing at this control plane definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a control plane definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the control plane definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-controlPlaneDefinition
 // @Accept json
 // @Produce json
@@ -877,6 +902,10 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingControlPlaneInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingControlPlaneInstance).Updates(&updatedControlPlaneInstance)
@@ -892,8 +921,8 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingControlPlaneInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
 		notifPayload, err := existingControlPlaneInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -967,6 +996,10 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingControlPlaneInstance.Reconciliation
+
 	// persist provided data
 	updatedControlPlaneInstance.ID = existingControlPlaneInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -992,6 +1025,20 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
+		notifPayload, err := existingControlPlaneInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ControlPlaneInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingControlPlaneInstance,
@@ -1007,6 +1054,9 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 
 // @Summary deletes a control plane instance.
 // @Description Delete a control plane instance by ID from the database.
+// @Description Blocking: attached object references pointing at this control plane instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a control plane instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the control plane instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-controlPlaneInstance
 // @Accept json
 // @Produce json

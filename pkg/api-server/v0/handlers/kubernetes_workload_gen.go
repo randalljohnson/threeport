@@ -323,6 +323,10 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingKubernetesWorkloadDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingKubernetesWorkloadDefinition).Updates(&updatedKubernetesWorkloadDefinition)
@@ -338,8 +342,8 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingKubernetesWorkloadDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -413,6 +417,10 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingKubernetesWorkloadDefinition.Reconciliation
+
 	// persist provided data
 	updatedKubernetesWorkloadDefinition.ID = existingKubernetesWorkloadDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -438,6 +446,20 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
+		notifPayload, err := existingKubernetesWorkloadDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.KubernetesWorkloadDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadDefinition,
@@ -453,6 +475,9 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a kubernetes workload definition.
 // @Description Delete a kubernetes workload definition by ID from the database.
+// @Description Blocking: attached object references pointing at this kubernetes workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -876,6 +901,10 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingKubernetesWorkloadInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingKubernetesWorkloadInstance).Updates(&updatedKubernetesWorkloadInstance)
@@ -891,8 +920,8 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingKubernetesWorkloadInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -966,6 +995,10 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingKubernetesWorkloadInstance.Reconciliation
+
 	// persist provided data
 	updatedKubernetesWorkloadInstance.ID = existingKubernetesWorkloadInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -991,6 +1024,20 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
+		notifPayload, err := existingKubernetesWorkloadInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.KubernetesWorkloadInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadInstance,
@@ -1006,6 +1053,9 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a kubernetes workload instance.
 // @Description Delete a kubernetes workload instance by ID from the database.
+// @Description Blocking: attached object references pointing at this kubernetes workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesWorkloadInstance
 // @Accept json
 // @Produce json
@@ -1509,6 +1559,9 @@ func (h Handler) ReplaceKubernetesWorkloadResourceDefinition(c echo.Context) err
 
 // @Summary deletes a kubernetes workload resource definition.
 // @Description Delete a kubernetes workload resource definition by ID from the database.
+// @Description Blocking: attached object references pointing at this kubernetes workload resource definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes workload resource definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the kubernetes workload resource definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-kubernetesWorkloadResourceDefinition
 // @Accept json
 // @Produce json
@@ -1959,6 +2012,9 @@ func (h Handler) ReplaceKubernetesWorkloadResourceInstance(c echo.Context) error
 
 // @Summary deletes a kubernetes workload resource instance.
 // @Description Delete a kubernetes workload resource instance by ID from the database.
+// @Description Blocking: attached object references pointing at this kubernetes workload resource instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes workload resource instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the kubernetes workload resource instance row and any cascading children have been removed synchronously.
 // @ID delete-v0-kubernetesWorkloadResourceInstance
 // @Accept json
 // @Produce json

@@ -323,6 +323,10 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingLoggingDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingLoggingDefinition).Updates(&updatedLoggingDefinition)
@@ -338,8 +342,8 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingLoggingDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingDefinition.Reconciliation) {
 		notifPayload, err := existingLoggingDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -413,6 +417,10 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingLoggingDefinition.Reconciliation
+
 	// persist provided data
 	updatedLoggingDefinition.ID = existingLoggingDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -438,6 +446,20 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingDefinition.Reconciliation) {
+		notifPayload, err := existingLoggingDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.LoggingDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLoggingDefinition,
@@ -453,6 +475,9 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 
 // @Summary deletes a logging definition.
 // @Description Delete a logging definition by ID from the database.
+// @Description Blocking: attached object references pointing at this logging definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a logging definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the logging definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-loggingDefinition
 // @Accept json
 // @Produce json
@@ -876,6 +901,10 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingLoggingInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingLoggingInstance).Updates(&updatedLoggingInstance)
@@ -891,8 +920,8 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingLoggingInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingInstance.Reconciliation) {
 		notifPayload, err := existingLoggingInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -966,6 +995,10 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingLoggingInstance.Reconciliation
+
 	// persist provided data
 	updatedLoggingInstance.ID = existingLoggingInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -991,6 +1024,20 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingInstance.Reconciliation) {
+		notifPayload, err := existingLoggingInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.LoggingInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLoggingInstance,
@@ -1006,6 +1053,9 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 
 // @Summary deletes a logging instance.
 // @Description Delete a logging instance by ID from the database.
+// @Description Blocking: attached object references pointing at this logging instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a logging instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the logging instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-loggingInstance
 // @Accept json
 // @Produce json
@@ -1423,6 +1473,10 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingMetricsDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingMetricsDefinition).Updates(&updatedMetricsDefinition)
@@ -1438,8 +1492,8 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingMetricsDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsDefinition.Reconciliation) {
 		notifPayload, err := existingMetricsDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1513,6 +1567,10 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMetricsDefinition.Reconciliation
+
 	// persist provided data
 	updatedMetricsDefinition.ID = existingMetricsDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -1538,6 +1596,20 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsDefinition.Reconciliation) {
+		notifPayload, err := existingMetricsDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MetricsDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMetricsDefinition,
@@ -1553,6 +1625,9 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 
 // @Summary deletes a metrics definition.
 // @Description Delete a metrics definition by ID from the database.
+// @Description Blocking: attached object references pointing at this metrics definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a metrics definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the metrics definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-metricsDefinition
 // @Accept json
 // @Produce json
@@ -1976,6 +2051,10 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingMetricsInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingMetricsInstance).Updates(&updatedMetricsInstance)
@@ -1991,8 +2070,8 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingMetricsInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsInstance.Reconciliation) {
 		notifPayload, err := existingMetricsInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2066,6 +2145,10 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMetricsInstance.Reconciliation
+
 	// persist provided data
 	updatedMetricsInstance.ID = existingMetricsInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -2091,6 +2174,20 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsInstance.Reconciliation) {
+		notifPayload, err := existingMetricsInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MetricsInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMetricsInstance,
@@ -2106,6 +2203,9 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 
 // @Summary deletes a metrics instance.
 // @Description Delete a metrics instance by ID from the database.
+// @Description Blocking: attached object references pointing at this metrics instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a metrics instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the metrics instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-metricsInstance
 // @Accept json
 // @Produce json
@@ -2523,6 +2623,10 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingObservabilityDashboardDefinition).Updates(&updatedObservabilityDashboardDefinition)
@@ -2538,8 +2642,8 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityDashboardDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2613,6 +2717,10 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardDefinition.Reconciliation
+
 	// persist provided data
 	updatedObservabilityDashboardDefinition.ID = existingObservabilityDashboardDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -2638,6 +2746,20 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
+		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityDashboardDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingObservabilityDashboardDefinition,
@@ -2653,6 +2775,9 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 
 // @Summary deletes a observability dashboard definition.
 // @Description Delete a observability dashboard definition by ID from the database.
+// @Description Blocking: attached object references pointing at this observability dashboard definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a observability dashboard definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability dashboard definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityDashboardDefinition
 // @Accept json
 // @Produce json
@@ -3076,6 +3201,10 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingObservabilityDashboardInstance).Updates(&updatedObservabilityDashboardInstance)
@@ -3091,8 +3220,8 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityDashboardInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3166,6 +3295,10 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardInstance.Reconciliation
+
 	// persist provided data
 	updatedObservabilityDashboardInstance.ID = existingObservabilityDashboardInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -3191,6 +3324,20 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
+		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityDashboardInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingObservabilityDashboardInstance,
@@ -3206,6 +3353,9 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 
 // @Summary deletes a observability dashboard instance.
 // @Description Delete a observability dashboard instance by ID from the database.
+// @Description Blocking: attached object references pointing at this observability dashboard instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a observability dashboard instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability dashboard instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityDashboardInstance
 // @Accept json
 // @Produce json
@@ -3623,6 +3773,10 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityStackDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingObservabilityStackDefinition).Updates(&updatedObservabilityStackDefinition)
@@ -3638,8 +3792,8 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityStackDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3713,6 +3867,10 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityStackDefinition.Reconciliation
+
 	// persist provided data
 	updatedObservabilityStackDefinition.ID = existingObservabilityStackDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -3738,6 +3896,20 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
+		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityStackDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingObservabilityStackDefinition,
@@ -3753,6 +3925,9 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 
 // @Summary deletes a observability stack definition.
 // @Description Delete a observability stack definition by ID from the database.
+// @Description Blocking: attached object references pointing at this observability stack definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a observability stack definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability stack definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityStackDefinition
 // @Accept json
 // @Produce json
@@ -4176,6 +4351,10 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityStackInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingObservabilityStackInstance).Updates(&updatedObservabilityStackInstance)
@@ -4191,8 +4370,8 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityStackInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -4266,6 +4445,10 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingObservabilityStackInstance.Reconciliation
+
 	// persist provided data
 	updatedObservabilityStackInstance.ID = existingObservabilityStackInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -4291,6 +4474,20 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
+		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.ObservabilityStackInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingObservabilityStackInstance,
@@ -4306,6 +4503,9 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 
 // @Summary deletes a observability stack instance.
 // @Description Delete a observability stack instance by ID from the database.
+// @Description Blocking: attached object references pointing at this observability stack instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a observability stack instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability stack instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityStackInstance
 // @Accept json
 // @Produce json

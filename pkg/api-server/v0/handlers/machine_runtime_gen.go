@@ -425,6 +425,9 @@ func (h Handler) ReplaceMachineRuntimeDefinition(c echo.Context) error {
 
 // @Summary deletes a machine runtime definition.
 // @Description Delete a machine runtime definition by ID from the database.
+// @Description Blocking: attached object references pointing at this machine runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a machine runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the machine runtime definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-machineRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -795,6 +798,10 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingMachineRuntimeInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingMachineRuntimeInstance).Updates(&updatedMachineRuntimeInstance)
@@ -810,8 +817,8 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingMachineRuntimeInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingMachineRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -885,6 +892,10 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingMachineRuntimeInstance.Reconciliation
+
 	// persist provided data
 	updatedMachineRuntimeInstance.ID = existingMachineRuntimeInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -910,6 +921,20 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
+		notifPayload, err := existingMachineRuntimeInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineRuntimeInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMachineRuntimeInstance,
@@ -925,6 +950,9 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a machine runtime instance.
 // @Description Delete a machine runtime instance by ID from the database.
+// @Description Blocking: attached object references pointing at this machine runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a machine runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the machine runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-machineRuntimeInstance
 // @Accept json
 // @Produce json

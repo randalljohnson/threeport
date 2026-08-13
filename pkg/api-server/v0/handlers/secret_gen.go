@@ -323,6 +323,10 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingSecretDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingSecretDefinition).Updates(&updatedSecretDefinition)
@@ -338,8 +342,8 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingSecretDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretDefinition.Reconciliation) {
 		notifPayload, err := existingSecretDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -413,6 +417,10 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingSecretDefinition.Reconciliation
+
 	// persist provided data
 	updatedSecretDefinition.ID = existingSecretDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -438,6 +446,20 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretDefinition.Reconciliation) {
+		notifPayload, err := existingSecretDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.SecretDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingSecretDefinition,
@@ -453,6 +475,9 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 
 // @Summary deletes a secret definition.
 // @Description Delete a secret definition by ID from the database.
+// @Description Blocking: attached object references pointing at this secret definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a secret definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the secret definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-secretDefinition
 // @Accept json
 // @Produce json
@@ -876,6 +901,10 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingSecretInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingSecretInstance).Updates(&updatedSecretInstance)
@@ -891,8 +920,8 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingSecretInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretInstance.Reconciliation) {
 		notifPayload, err := existingSecretInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -966,6 +995,10 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingSecretInstance.Reconciliation
+
 	// persist provided data
 	updatedSecretInstance.ID = existingSecretInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -991,6 +1024,20 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingSecretInstance.Reconciliation) {
+		notifPayload, err := existingSecretInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.SecretInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingSecretInstance,
@@ -1006,6 +1053,9 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 
 // @Summary deletes a secret instance.
 // @Description Delete a secret instance by ID from the database.
+// @Description Blocking: attached object references pointing at this secret instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a secret instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the secret instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-secretInstance
 // @Accept json
 // @Produce json

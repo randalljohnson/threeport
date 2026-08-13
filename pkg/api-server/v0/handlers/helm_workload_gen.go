@@ -323,6 +323,10 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingHelmWorkloadDefinition).Updates(&updatedHelmWorkloadDefinition)
@@ -338,8 +342,8 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingHelmWorkloadDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadDefinition.Reconciled != nil && !*existingHelmWorkloadDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadDefinition.Reconciliation) {
 		notifPayload, err := existingHelmWorkloadDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -413,6 +417,10 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
+
 	// persist provided data
 	updatedHelmWorkloadDefinition.ID = existingHelmWorkloadDefinition.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -438,6 +446,20 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadDefinition.Reconciled != nil && !*existingHelmWorkloadDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadDefinition.Reconciliation) {
+		notifPayload, err := existingHelmWorkloadDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.HelmWorkloadDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingHelmWorkloadDefinition,
@@ -453,6 +475,9 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a helm workload definition.
 // @Description Delete a helm workload definition by ID from the database.
+// @Description Blocking: attached object references pointing at this helm workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a helm workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the helm workload definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-helmWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -876,6 +901,10 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
+
 	// update object in database
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
 		return h.RequestDB(c).Model(&existingHelmWorkloadInstance).Updates(&updatedHelmWorkloadInstance)
@@ -891,8 +920,8 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingHelmWorkloadInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadInstance.Reconciled != nil && !*existingHelmWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingHelmWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -966,6 +995,10 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
+
 	// persist provided data
 	updatedHelmWorkloadInstance.ID = existingHelmWorkloadInstance.ID
 	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
@@ -991,6 +1024,20 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadInstance.Reconciled != nil && !*existingHelmWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadInstance.Reconciliation) {
+		notifPayload, err := existingHelmWorkloadInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.HelmWorkloadInstanceUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingHelmWorkloadInstance,
@@ -1006,6 +1053,9 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a helm workload instance.
 // @Description Delete a helm workload instance by ID from the database.
+// @Description Blocking: attached object references pointing at this helm workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a helm workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the helm workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-helmWorkloadInstance
 // @Accept json
 // @Produce json

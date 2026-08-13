@@ -570,12 +570,16 @@ func operationCase(
 		})
 		h.If(Id("operationErr").Op("!=").Nil()).Block(
 			// treat 409 conflict as a soft requeue: a child object is still being
-			// deleted and the reconciler should wait rather than loop on errors
+			// deleted and the reconciler should wait rather than loop on errors.
+			// The client maps every 409 to this error, so a permanent conflict such
+			// as a duplicate name lands here too and requeues until the stream stops
+			// redelivering. That is why the line below logs at Info: a conflict that
+			// repeats has to be visible in the default log stream to be diagnosable
 			If(Qual("errors", "Is").Call(
 				Id("operationErr"),
 				Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
 			)).Block(
-				Id("log").Dot("V").Call(Lit(1)).Dot("Info").Call(
+				Id("log").Dot("Info").Call(
 					Line().Lit(fmt.Sprintf(
 						"%s %s deferred pending in-flight deletion, requeueing",
 						strcase.ToDelimited(obj.Name, ' '),
@@ -721,7 +725,7 @@ func operationCase(
 					Id("err"),
 					Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
 				)).Block(
-					Id("log").Dot("V").Call(Lit(1)).Dot("Info").Call(
+					Id("log").Dot("Info").Call(
 						Line().Lit(fmt.Sprintf(
 							"%s deletion already in progress, requeueing",
 							strcase.ToDelimited(obj.Name, ' '),

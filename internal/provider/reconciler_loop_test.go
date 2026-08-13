@@ -125,9 +125,19 @@ func TestReconcilerLoop_2000Instances_SemaphoreCapped(t *testing.T) {
 		}
 	}
 
-	// the k blocked deploys should now hold every slot
-	require.Eventually(t, func() bool { return inFlightCount() == int64(k) }, 5*time.Second, time.Millisecond,
-		"expected exactly %d blocked operations, got %d", k, inFlightCount())
+	// the k blocked deploys should now hold every slot. the observed count
+	// is recorded by the condition and reported after the wait: passing
+	// inFlightCount() as a format argument reports the value from before
+	// the wait started, which is always zero here. the store is atomic
+	// because testify runs the condition on its own goroutine
+	var lastCount atomic.Int64
+	reached := assert.Eventually(t, func() bool {
+		c := inFlightCount()
+		lastCount.Store(c)
+		return c == int64(k)
+	}, 5*time.Second, time.Millisecond)
+	require.True(t, reached,
+		"expected exactly %d blocked operations, last saw %d", k, lastCount.Load())
 
 	peak := watcher.stopAndPeak()
 	assert.LessOrEqual(t, peak, int64(k), "concurrently executing operations must never exceed the semaphore capacity")
@@ -174,17 +184,30 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 	watcher := startPeakWatcher()
 	log := newTestLogger()
 
+	// the driver takes a stop channel and collects its own error rather
+	// than calling t.Errorf: on the timeout path below the test goroutine
+	// has already finished, and logging from a goroutine after its test
+	// completes panics the whole binary
+	stop := make(chan struct{})
+	defer close(stop)
+
 	done := make(chan struct{})
+	var driverErr error
 	go func() {
 		defer close(done)
 		for pass := 0; pass < 10; pass++ {
 			for i := 0; i < creates; i++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
 				if _, err := HandleInfraCreate(createFls[i], log); err != nil {
-					t.Errorf("create handler errored: %v", err)
+					driverErr = fmt.Errorf("create handler errored: %w", err)
 					return
 				}
 				if _, err := HandleInfraDelete(deleteFls[i], log); err != nil {
-					t.Errorf("delete handler errored: %v", err)
+					driverErr = fmt.Errorf("delete handler errored: %w", err)
 					return
 				}
 			}
@@ -193,6 +216,7 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 
 	select {
 	case <-done:
+		require.NoError(t, driverErr)
 	case <-time.After(60 * time.Second):
 		t.Fatal("mixed reconciler loop deadlocked or made no progress within 60s")
 	}

@@ -259,3 +259,57 @@ func TestPulumiWorkspace_ZeroValueStillWorks(t *testing.T) {
 		"path %q should be under the redirected home dir %q", path, home,
 	)
 }
+
+// TestResolveStateDir_EmptyName covers every path that resolves a state
+// directory, not just the one that formats a file path. An empty instance
+// name joins to the shared base directory, so two unnamed instances would
+// read and write the same state.
+func TestResolveStateDir_EmptyName(t *testing.T) {
+	w := NewPulumiWorkspace("", "oke", WithStateDirRoot(t.TempDir()))
+
+	dir, err := w.resolveStateDir()
+	require.Error(t, err)
+	assert.Empty(t, dir)
+	assert.Contains(t, err.Error(), "runtime instance name is empty")
+
+	require.Error(t, w.setStateDir(), "setStateDir must refuse an empty name")
+
+	path, err := w.GetStateFilePath()
+	require.Error(t, err)
+	assert.Empty(t, path)
+
+	assert.False(t, w.HasStateDir(), "an unnamed workspace claims no state dir")
+	require.Error(t, w.DeleteStackState(), "DeleteStackState must refuse an empty name")
+}
+
+// TestStateDirRoot_HonoredByEveryMethod proves the injected root governs
+// existence checks and deletion as well as writes. A method resolving the
+// default runtime state dir instead would delete real state while the
+// caller believed it was confined to a temp dir.
+func TestStateDirRoot_HonoredByEveryMethod(t *testing.T) {
+	root := t.TempDir()
+	w := NewPulumiWorkspace("instance-a", "oke", WithStateDirRoot(root))
+
+	assert.False(t, w.HasStateDir(), "no state dir exists before one is created")
+
+	require.NoError(t, w.setStateDir())
+	stateDir := filepath.Join(root, "instance-a")
+	assert.DirExists(t, stateDir, "the state dir lands under the injected root")
+	assert.True(t, w.HasStateDir(), "the state dir is visible once created")
+
+	marker := filepath.Join(stateDir, "marker")
+	require.NoError(t, os.WriteFile(marker, []byte("state"), 0o644))
+
+	require.NoError(t, w.DeleteStackState())
+	assert.NoDirExists(t, stateDir, "deletion removes the dir under the injected root")
+	assert.False(t, w.HasStateDir(), "the state dir is gone after deletion")
+}
+
+// TestDeleteStackState_MissingDirIsNotAnError pins the tolerant delete: a
+// second delete, or a delete of an instance whose infrastructure never
+// reached the state-writing stage, is a no-op rather than a failure.
+func TestDeleteStackState_MissingDirIsNotAnError(t *testing.T) {
+	w := NewPulumiWorkspace("never-created", "oke", WithStateDirRoot(t.TempDir()))
+
+	assert.NoError(t, w.DeleteStackState())
+}

@@ -417,3 +417,84 @@ func TestExecuteInfraDelete_DestroyError_CapturesRemainingState(t *testing.T) {
 	require.Equal(t, 0, fl.callCount("ClearInventory"))
 	require.Equal(t, 0, fl.callCount("PublishDeleteNotification"))
 }
+
+// TestExecuteInfraCreate_RestoreError_PersistsFailureWithoutDeploying
+// covers the restore failure branch of the create goroutine. A retry whose
+// stored inventory cannot be loaded back into the provider must not deploy,
+// because deploying without the previous state would build a second copy of
+// resources the first attempt already created.
+func TestExecuteInfraCreate_RestoreError_PersistsFailureWithoutDeploying(t *testing.T) {
+	configureSemaphoreTest(t, 1)
+	log := newTestLogger()
+
+	fi := newFakeInfra()
+	fi.setSetStackStateErr(errors.New("state blob is corrupt"))
+	fl := newFakeLifecycle(&ReconciliationSnapshot{
+		ResourceInventory: validStackState(),
+	})
+	fl.setInfra(fi)
+
+	requeue, err := HandleInfraCreate(fl, log)
+	require.NoError(t, err)
+	require.Equal(t, int64(120), requeue)
+
+	waitForSemaphoreDrain(t)
+
+	require.Equal(t, 1, fi.setStackStateCallCount(), "the restore is attempted once")
+	require.Equal(t, 0, fi.deployCallCount(), "a failed restore must not deploy")
+	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
+	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
+	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
+}
+
+// TestExecuteInfraCreate_RefreshError_PersistsFailureWithoutDeploying
+// covers the create side of the refresh policy. Create treats a failed
+// refresh as fatal, because deploying against state that does not match
+// cloud reality can duplicate or orphan resources.
+func TestExecuteInfraCreate_RefreshError_PersistsFailureWithoutDeploying(t *testing.T) {
+	configureSemaphoreTest(t, 1)
+	log := newTestLogger()
+
+	ri := newFakeRefreshableInfra()
+	ri.setRefreshErr(errors.New("refresh could not reach the cloud provider"))
+	fl := newFakeLifecycle(&ReconciliationSnapshot{
+		ResourceInventory: validStackState(),
+	})
+	fl.setInfra(ri)
+
+	requeue, err := HandleInfraCreate(fl, log)
+	require.NoError(t, err)
+	require.Equal(t, int64(120), requeue)
+
+	waitForSemaphoreDrain(t)
+
+	require.Equal(t, 1, ri.refreshCallCount())
+	require.Equal(t, 0, ri.deployCallCount(), "a failed refresh must not deploy on create")
+	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
+	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
+}
+
+// TestExecuteInfraDelete_RefreshError_StillDestroys covers the delete side
+// of the same refresh policy, which is the opposite of create. Delete logs
+// a failed refresh and destroys anyway, because refusing to destroy would
+// strand the cloud resources the caller asked to remove.
+func TestExecuteInfraDelete_RefreshError_StillDestroys(t *testing.T) {
+	configureSemaphoreTest(t, 1)
+	log := newTestLogger()
+
+	ri := newFakeRefreshableInfra()
+	ri.setRefreshErr(errors.New("refresh could not reach the cloud provider"))
+	fl := newFakeLifecycle(&ReconciliationSnapshot{
+		DeletionScheduled: timePtr(deleteTestBase.Add(-time.Hour)),
+		ResourceInventory: validStackState(),
+	})
+	fl.setInfra(ri)
+
+	_, err := HandleInfraDelete(fl, log)
+	require.NoError(t, err)
+
+	waitForSemaphoreDrain(t)
+
+	require.Equal(t, 1, ri.refreshCallCount())
+	require.Equal(t, 1, ri.destroyCallCount(), "a failed refresh must not block the destroy")
+}

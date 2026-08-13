@@ -6,6 +6,41 @@ import (
 	"time"
 )
 
+// TestReconciliationUpdateNotifiable covers the three writes that reach the
+// generated update handler's notify gate on an unreconciled object: a reconciler
+// refreshing an acknowledgement timestamp, an edit that leaves reconciliation
+// state alone, and a write that moves a state marker. Only the first stays
+// quiet; suppressing either of the others strands the object, because nothing
+// else flips a marker on its behalf.
+func TestReconciliationUpdateNotifiable(t *testing.T) {
+	earlier := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
+	later := earlier.Add(time.Minute)
+	no := false
+
+	// a reconciler pass refreshes CreationAcknowledged and changes nothing else
+	restamped := Reconciliation{Reconciled: &no, CreationAcknowledged: &earlier}
+	after := Reconciliation{Reconciled: &no, CreationAcknowledged: &later}
+	if ReconciliationUpdateNotifiable(restamped, after) {
+		t.Errorf("a refreshed acknowledgement alone must not notify; that is the publish loop")
+	}
+
+	// an edit to the object's spec leaves every reconciliation field untouched.
+	// This is the retry an operator makes after a failed reconcile, and the
+	// clear of InterruptReconciliation that resumes a halted object
+	unchanged := Reconciliation{Reconciled: &no, CreationAcknowledged: &earlier}
+	if !ReconciliationUpdateNotifiable(unchanged, unchanged) {
+		t.Errorf("a spec edit leaves reconciliation state equal and must still notify")
+	}
+
+	// a write that moves a state marker notifies through ReconciliationStateChanged
+	failed := Reconciliation{Reconciled: &no, CreationAcknowledged: &earlier}
+	yes := true
+	nowFailed := Reconciliation{Reconciled: &no, CreationAcknowledged: &earlier, CreationFailed: &yes}
+	if !ReconciliationUpdateNotifiable(failed, nowFailed) {
+		t.Errorf("a moved state marker must notify")
+	}
+}
+
 // TestChangeDetectionFuzz feeds pairs of logically-equal values through
 // the change-detection helpers and ReconciliationStateChanged() and
 // records where a naive comparator (reflect.DeepEqual on *time.Time,

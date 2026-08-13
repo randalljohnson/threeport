@@ -74,6 +74,44 @@ func ReconciliationStateChanged(a, b Reconciliation) bool {
 		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed)
 }
 
+// ReconciliationUpdateNotifiable reports whether an update to an unreconciled
+// object should wake its controller. Three kinds of write reach this point and
+// only one of them must stay quiet.
+//
+// A write that moved a reconciliation state marker is notifiable. So is a write
+// that left reconciliation state untouched: that is what an edit to the object's
+// spec looks like, including the edit an operator makes to retry after a failed
+// reconcile and the one that clears InterruptReconciliation to resume a halted
+// object. Suppressing those strands the object, because nothing else will flip a
+// marker on its behalf.
+//
+// The write that must stay quiet is a reconciler pass that refreshed an
+// acknowledgement timestamp and changed nothing else. Publishing on that wakes
+// the reconciler, which refreshes again, which is the loop this gate exists to
+// break.
+func ReconciliationUpdateNotifiable(a, b Reconciliation) bool {
+	if ReconciliationStateChanged(a, b) {
+		return true
+	}
+	return !acknowledgementRefreshed(a, b)
+}
+
+// acknowledgementRefreshed reports whether either acknowledgement marker names a
+// different instant on the two values while both remain set. Reconcilers stamp
+// these on every pass, so a moved instant with no other change is the signature
+// of a reconciler write rather than a caller's edit.
+func acknowledgementRefreshed(a, b Reconciliation) bool {
+	return timePtrRefreshed(a.CreationAcknowledged, b.CreationAcknowledged) ||
+		timePtrRefreshed(a.DeletionAcknowledged, b.DeletionAcknowledged)
+}
+
+// timePtrRefreshed reports whether both pointers are set and name different
+// instants. A pointer moving between nil and set is a state change rather than a
+// refresh, so it reports false and ReconciliationStateChanged covers it.
+func timePtrRefreshed(a, b *time.Time) bool {
+	return a != nil && b != nil && !a.Equal(*b)
+}
+
 // boolPtrEqual reports whether two nil-safe bool pointers refer to the
 // same value. Two nil pointers are equal; a nil and a non-nil pointer
 // are not.

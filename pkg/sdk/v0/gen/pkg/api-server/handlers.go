@@ -197,14 +197,16 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						).Op(",").Op("*").Id("notifPayload")),
 					))
 
-					// update notifications: publish only when the incoming update
-					// actually changed a reconciliation-relevant field, so idempotent
-					// patches do not retrigger the controller in a tight loop
-					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and reconciliation state changed")
+					// update notifications: publish unless the write was a reconciler
+					// refreshing an acknowledgement timestamp and nothing else, which is
+					// the loop this gate exists to break. An edit to the object's spec
+					// leaves reconciliation state untouched and still has to publish, or
+					// a retry after a failed reconcile never reaches the controller
+					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and the update is notifiable")
 					notifyControllersUpdateHandler.Line()
 					notifyControllersUpdateHandler.If(Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("!=").Nil().Op("&&").Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("&&").Qual(
 						"github.com/threeport/threeport/pkg/api/v0",
-						"ReconciliationStateChanged",
+						"ReconciliationUpdateNotifiable",
 					).Call(
 						Id("prevReconciliation"),
 						Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation"),

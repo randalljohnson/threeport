@@ -19,16 +19,21 @@ import (
 // Handler is the main handler for the API server.  It contains the database connection,
 // NATS connection, JetStream context, logger, and pagination mode.
 type Handler struct {
-	DB             *gorm.DB
-	NC             *nats.Conn
-	JS             nats.JetStreamContext
-	Logger         *zap.Logger
+	DB     *gorm.DB
+	NC     *nats.Conn
+	JS     nats.JetStreamContext
+	Logger *zap.Logger
+
+	// PaginationMode selects the strategy paginated list reads use. The
+	// zero value means `PaginationModeAsOfSystemTime`, so a handler built
+	// without one pages the way the flag's default does.
 	PaginationMode apiserver_lib.PaginationMode
 }
 
-// New returns a new Handler configured with the given pagination mode.
-func New(db *gorm.DB, nc *nats.Conn, rc nats.JetStreamContext, logger *zap.Logger, paginationMode apiserver_lib.PaginationMode) Handler {
-	return Handler{DB: db, NC: nc, JS: rc, Logger: logger, PaginationMode: paginationMode}
+// New returns a new Handler. It leaves PaginationMode at its zero value, which
+// reads as the default strategy; assign the field to select the other one.
+func New(db *gorm.DB, nc *nats.Conn, rc nats.JetStreamContext, logger *zap.Logger) Handler {
+	return Handler{DB: db, NC: nc, JS: rc, Logger: logger}
 }
 
 // RequestDB returns the handler DB scoped to the HTTP request, with query
@@ -279,7 +284,14 @@ func (h Handler) DispatchGetPaginatedRecords(
 	// reuse it once the page has been fetched
 	query = query.Session(&gorm.Session{})
 
-	switch h.PaginationMode {
+	// an unset mode reads as the default, so a handler assembled without one
+	// still pages rather than failing on an unknown strategy
+	mode := h.PaginationMode
+	if mode == "" {
+		mode = apiserver_lib.PaginationModeAsOfSystemTime
+	}
+
+	switch mode {
 	case apiserver_lib.PaginationModeAsOfSystemTime:
 		hlc, count, err := h.GetPaginatedRecordsAsOfSystemTime(query, records, queryTable, pageParams)
 		if err != nil {

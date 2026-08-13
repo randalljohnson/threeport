@@ -49,11 +49,21 @@ func GenRestApiMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Id("nc"),
 			Op("*").Id("js"),
 			Op("&").Id("logger"),
-			Qual(
-				"github.com/threeport/threeport/pkg/api-server/lib/v0",
-				"PaginationMode",
-			).Call(Id("paginationMode")),
 		))
+
+		// assign the pagination mode rather than passing it to the
+		// constructor, so adding or dropping the knob never changes a
+		// signature a module compiles against
+		handlerRegistration.Line()
+		if gen.Module {
+			handlerRegistration.Id(fmt.Sprintf("h_%s", versionConf.VersionName)).Dot("Handler").Dot("PaginationMode")
+		} else {
+			handlerRegistration.Id(fmt.Sprintf("h_%s", versionConf.VersionName)).Dot("PaginationMode")
+		}
+		handlerRegistration.Op("=").Qual(
+			"github.com/threeport/threeport/pkg/api-server/lib/v0",
+			"PaginationMode",
+		).Call(Id("paginationMode"))
 	}
 	handlerRegistration.Line()
 

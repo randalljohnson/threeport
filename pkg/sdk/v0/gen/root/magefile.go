@@ -96,6 +96,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// download targets shared by every repo that runs the generator, fetching
 	// the threeport binaries from a github release and installing them where
 	// the install targets place locally-built binaries.
+	emitInstallDirFunc(f)
 	emitDownloadHelper(f)
 	emitDownloadFunc(f, "Sdk", "threeport-sdk")
 	emitDownloadFunc(f, "Tptctl", "tptctl")
@@ -747,7 +748,7 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 
 // emitTestUnitFunc writes a no-arg `func (Test) Unit() error` that runs the
 // unit tests across the threeport packages via util.RunCommandStreamOutput.
-// -p is sized at runtime from util.BuildParallelism() — the cgo-enabled
+// -p is sized at runtime from util.BuildParallelism(), because the cgo-enabled
 // go-sqlite3 build pulls per-package memory above the default GOMAXPROCS
 // concurrency on small CI runners, so honoring the same memory-aware worker
 // count the build targets use keeps `go test` from OOM-killing the pod.
@@ -826,6 +827,29 @@ func emitDownloadFunc(f *File, funcName, binary string) {
 	f.Comment("it where the install targets place locally-built binaries.")
 	f.Func().Params(Id("Download")).Id(funcName).Params().Error().Block(
 		Return(Id("downloadThreeportBinary").Call(Lit(binary))),
+	)
+	f.Line()
+}
+
+// emitInstallDirFunc writes the helper that resolves where go install places
+// binaries. Both the install targets and the download targets write there, and
+// emitting it keeps a repo that has no hand-written magefile from generating a
+// call to a function nothing defines.
+func emitInstallDirFunc(f *File) {
+	f.Comment("installDir returns the directory `go install` writes binaries to:")
+	f.Comment("$GOBIN if set, otherwise $GOPATH/bin. build.Default.GOPATH falls back")
+	f.Comment("to ~/go when $GOPATH is unset, so the result is always non-empty.")
+	f.Func().Id("installDir").Params().String().Block(
+		If(
+			Id("gobin").Op(":=").Qual("os", "Getenv").Call(Lit("GOBIN")),
+			Id("gobin").Op("!=").Lit(""),
+		).Block(
+			Return(Id("gobin")),
+		),
+		Return(Qual("path/filepath", "Join").Call(
+			Qual("go/build", "Default").Dot("GOPATH"),
+			Lit("bin"),
+		)),
 	)
 	f.Line()
 }

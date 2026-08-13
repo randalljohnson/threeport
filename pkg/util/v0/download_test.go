@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -110,5 +111,160 @@ func TestExtractBinary_RejectsArchiveWithoutMatch(t *testing.T) {
 	// extract the missing binary and assert an error is returned
 	if err := extractBinary(archive, "threeport-sdk", destDir); err == nil {
 		t.Fatalf("expected error for missing binary, got nil")
+	}
+}
+
+// TestExtractBinary_LeavesNoPartialBinaryOnTruncatedArchive asserts a read that
+// dies mid-entry installs nothing, so a later invocation cannot run a truncated
+// executable.
+func TestExtractBinary_LeavesNoPartialBinaryOnTruncatedArchive(t *testing.T) {
+	// cut the archive short so the entry header parses but its contents do not
+	full := gzippedTar(t, "v1.2.3-dist/threeport-sdk", bytes.Repeat([]byte("x"), 4096))
+	truncated := bytes.NewReader(full.Bytes()[:full.Len()-64])
+	destDir := t.TempDir()
+
+	// extract from the truncated archive and assert it fails
+	if err := extractBinary(truncated, "threeport-sdk", destDir); err == nil {
+		t.Fatalf("expected error for truncated archive, got nil")
+	}
+
+	// assert no binary was installed at the destination
+	if _, err := os.Stat(filepath.Join(destDir, "threeport-sdk")); !os.IsNotExist(err) {
+		t.Fatalf("Stat error=%v, want a not-exist error", err)
+	}
+
+	// assert no staging file was left behind
+	entries, err := os.ReadDir(destDir)
+	if err != nil {
+		t.Fatalf("ReadDir error: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("destDir holds %d entries, want 0", len(entries))
+	}
+}
+
+// TestParseChecksums_SelectsTheRequestedAsset asserts the digest returned is the
+// one recorded for the requested asset and not a neighbouring line.
+func TestParseChecksums_SelectsTheRequestedAsset(t *testing.T) {
+	// build a checksum list holding several assets
+	body := strings.Join([]string{
+		"1111111111111111111111111111111111111111111111111111111111111111  threeport_Darwin_arm64.tar.gz",
+		"2222222222222222222222222222222222222222222222222222222222222222  threeport_Linux_x86_64.tar.gz",
+		"3333333333333333333333333333333333333333333333333333333333333333  threeport_Linux_arm64.tar.gz",
+		"",
+	}, "\n")
+
+	// look up the linux amd64 archive
+	got, err := parseChecksums(body, "threeport_Linux_x86_64.tar.gz")
+	if err != nil {
+		t.Fatalf("parseChecksums error: %v", err)
+	}
+
+	// assert the digest belongs to the requested asset
+	want := "2222222222222222222222222222222222222222222222222222222222222222"
+	if got != want {
+		t.Fatalf("digest=%q, want %q", got, want)
+	}
+}
+
+// TestParseChecksums_RejectsMissingAsset asserts an asset absent from the list
+// is an error rather than an empty digest that would compare equal to nothing.
+func TestParseChecksums_RejectsMissingAsset(t *testing.T) {
+	// look up an asset the list does not cover
+	body := "4444444444444444444444444444444444444444444444444444444444444444  threeport_Linux_arm64.tar.gz\n"
+	if _, err := parseChecksums(body, "threeport_Linux_x86_64.tar.gz"); err == nil {
+		t.Fatalf("expected error for missing asset, got nil")
+	}
+}
+
+// TestValidateRepo_RejectsPathTraversal asserts only an owner/name path is
+// accepted, so a crafted value cannot move the request to another endpoint.
+func TestValidateRepo_RejectsPathTraversal(t *testing.T) {
+	// each case pairs a repository value with whether it should be accepted
+	cases := []struct {
+		repo string
+		ok   bool
+	}{
+		{"threeport/threeport", true},   // the ordinary owner/name form
+		{"a.b-c/d_e.f", true},           // punctuation GitHub allows
+		{"../threeport", false},         // a traversal segment as the owner
+		{"threeport/..", false},         // a traversal segment as the name
+		{"threeport", false},            // no name segment
+		{"a/b/c", false},                // an extra path segment
+		{"", false},                     // empty
+		{"threeport/thr eeport", false}, // a space
+		{".hidden/threeport", false},    // a leading dot
+		{"threeport/threeport/", false}, // a trailing separator
+		{"http://x/threeport", false},   // a scheme
+	}
+
+	// assert each value is accepted or rejected as expected
+	for _, c := range cases {
+		err := validateRepo(c.repo)
+		if c.ok && err != nil {
+			t.Errorf("validateRepo(%q) error=%v, want nil", c.repo, err)
+		}
+		if !c.ok && err == nil {
+			t.Errorf("validateRepo(%q)=nil, want an error", c.repo)
+		}
+	}
+}
+
+// TestValidateTag_RejectsPathTraversal asserts only a v-prefixed version tag is
+// accepted, covering the prerelease and pseudo-version forms the release
+// targets produce.
+func TestValidateTag_RejectsPathTraversal(t *testing.T) {
+	// each case pairs a tag value with whether it should be accepted
+	cases := []struct {
+		tag string
+		ok  bool
+	}{
+		{"v0.7.0", true},                               // a GA tag
+		{"v0.7.0-dev.19", true},                        // a dev channel tag
+		{"v0.7.0-rc.1", true},                          // an rc channel tag
+		{"v0.7.0-0.20260731214756-abcdef123456", true}, // a go pseudo-version
+		{"../v0.7.0", false},                           // a traversal prefix
+		{"v0.7.0/../../x", false},                      // an embedded traversal
+		{"0.7.0", false},                               // no v prefix
+		{"latest", false},                              // a floating name
+		{"", false},                                    // empty
+	}
+
+	// assert each value is accepted or rejected as expected
+	for _, c := range cases {
+		err := validateTag(c.tag)
+		if c.ok && err != nil {
+			t.Errorf("validateTag(%q) error=%v, want nil", c.tag, err)
+		}
+		if !c.ok && err == nil {
+			t.Errorf("validateTag(%q)=nil, want an error", c.tag)
+		}
+	}
+}
+
+// TestTokenBearingHost_LimitsTheCredentialToGithub asserts the credential is
+// attached only for GitHub hosts, since the asset url arrives in a response
+// body rather than being built locally.
+func TestTokenBearingHost_LimitsTheCredentialToGithub(t *testing.T) {
+	// each case pairs a host with whether the credential may be sent to it
+	cases := []struct {
+		host string
+		ok   bool
+	}{
+		{"github.com", true},                          // the release host
+		{"api.github.com", true},                      // the release api
+		{"objects.githubusercontent.com", true},       // where asset downloads redirect
+		{"attacker.com", false},                       // an unrelated host
+		{"github.com.attacker.com", false},            // a suffix-extension lookalike
+		{"githubusercontent.com.attacker.com", false}, // the same trick on the asset host
+		{"notgithub.com", false},                      // a prefix-extension lookalike
+		{"", false},                                   // no host
+	}
+
+	// assert each host is allowed or refused as expected
+	for _, c := range cases {
+		if got := tokenBearingHost(c.host); got != c.ok {
+			t.Errorf("tokenBearingHost(%q)=%v, want %v", c.host, got, c.ok)
+		}
 	}
 }

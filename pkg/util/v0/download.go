@@ -3,15 +3,37 @@ package v0
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
+
+// maxArchiveBytes caps how many bytes are read from a release archive, both as
+// it downloads and as it decompresses, so a hostile or corrupt archive cannot
+// fill the disk. The largest threeport binary is under 300 MB.
+const maxArchiveBytes = 1 << 30
+
+// checksumAssetName is the asset goreleaser publishes alongside the release
+// archives, holding one "<sha256>  <archive name>" line per archive.
+const checksumAssetName = "checksums.txt"
+
+// repoSegmentPattern matches one segment of a GitHub "owner/name" path. The
+// leading character must be alphanumeric, which rejects "." and ".." and keeps
+// a crafted repo value from moving the request to another API endpoint.
+var repoSegmentPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// tagPattern matches a release tag: a leading "v", three dot-separated numbers,
+// and an optional prerelease or build segment.
+var tagPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9.-]+)?$`)
 
 // releaseArchSuffix maps a GOARCH value to the architecture token goreleaser
 // embeds in archive names: amd64 to x86_64, 386 to i386, and every other
@@ -58,79 +80,216 @@ type githubReleaseAsset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
-// DownloadReleaseBinary downloads binaryName from the tag release of repo (an
-// "owner/name" path on github.com) and installs it executable into destDir.
-// token may be empty for public repos.
-func DownloadReleaseBinary(repo, tag, binaryName, destDir, token string) error {
-	// resolve the archive asset matching the running OS and architecture
-	assetSuffix := "_" + releaseAssetInfix(runtime.GOOS, runtime.GOARCH) + ".tar.gz"
-	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/tags/%s", repo, tag)
-	req, err := http.NewRequest(http.MethodGet, releaseURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to build release request: %w", err)
+// validateRepo returns an error unless repo is an "owner/name" path whose two
+// segments are both safe to interpolate into a request path.
+func validateRepo(repo string) error {
+	owner, name, found := strings.Cut(repo, "/")
+	if !found || !repoSegmentPattern.MatchString(owner) || !repoSegmentPattern.MatchString(name) {
+		return fmt.Errorf("failed to validate repository %q: expected an owner/name path", repo)
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	if token != "" {
+	return nil
+}
+
+// validateTag returns an error unless tag is a version tag that is safe to
+// interpolate into a request path.
+func validateTag(tag string) error {
+	if !tagPattern.MatchString(tag) {
+		return fmt.Errorf("failed to validate release tag %q: expected a v-prefixed version", tag)
+	}
+	return nil
+}
+
+// tokenBearingHost reports whether host is a GitHub host the credential may be
+// sent to. The asset URL arrives in an API response body rather than being
+// built here, so its host is checked before the header is attached.
+func tokenBearingHost(host string) bool {
+	return host == "github.com" ||
+		host == "api.github.com" ||
+		host == "githubusercontent.com" ||
+		strings.HasSuffix(host, ".githubusercontent.com")
+}
+
+// githubGet issues a GET to rawURL, attaching token as a bearer credential only
+// when the host is a GitHub host. The caller closes the returned body.
+func githubGet(rawURL, token, accept string) (*http.Response, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse url: %w", err)
+	}
+	if parsed.Scheme != "https" {
+		return nil, fmt.Errorf("failed to request %s: expected an https url", parsed.Redacted())
+	}
+
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
+	if accept != "" {
+		req.Header.Set("Accept", accept)
+	}
+	if token != "" && tokenBearingHost(parsed.Hostname()) {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		return nil, fmt.Errorf("failed to fetch %s: %w", parsed.Redacted(), err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("failed to fetch %s: unexpected status %s", parsed.Redacted(), resp.Status)
+	}
+
+	return resp, nil
+}
+
+// DownloadReleaseBinary downloads binaryName from the tag release of repo (an
+// "owner/name" path on github.com) and installs it executable into destDir. The
+// archive is verified against the release's published checksums before anything
+// is extracted, so a release without them fails rather than installing an
+// unverified binary. token may be empty for public repos.
+func DownloadReleaseBinary(repo, tag, binaryName, destDir, token string) error {
+	if err := validateRepo(repo); err != nil {
+		return err
+	}
+	if err := validateTag(tag); err != nil {
+		return err
+	}
+
+	// resolve the archive asset matching the running OS and architecture
+	assetSuffix := "_" + releaseAssetInfix(runtime.GOOS, runtime.GOARCH) + ".tar.gz"
+	releaseURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/releases/tags/%s",
+		url.PathEscape(repo),
+		url.PathEscape(tag),
+	)
+	resp, err := githubGet(releaseURL, token, "application/vnd.github+json")
+	if err != nil {
 		return fmt.Errorf("failed to fetch release metadata: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch release metadata: unexpected status %s", resp.Status)
-	}
 
 	var release githubRelease
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return fmt.Errorf("failed to decode release metadata: %w", err)
 	}
 
-	// select the archive asset by name suffix
-	var downloadURL string
-	for _, asset := range release.Assets {
-		if strings.HasSuffix(asset.Name, assetSuffix) {
-			downloadURL = asset.BrowserDownloadURL
-			break
+	// select the archive by name suffix and the checksums published beside it
+	var archive, checksums *githubReleaseAsset
+	for i := range release.Assets {
+		switch {
+		case strings.HasSuffix(release.Assets[i].Name, assetSuffix):
+			archive = &release.Assets[i]
+		case release.Assets[i].Name == checksumAssetName:
+			checksums = &release.Assets[i]
 		}
 	}
-	if downloadURL == "" {
+	if archive == nil {
 		return fmt.Errorf("failed to find release asset ending in %s for %s %s", assetSuffix, repo, tag)
 	}
+	if checksums == nil {
+		return fmt.Errorf(
+			"failed to find %s for %s %s: refusing to install an unverified binary",
+			checksumAssetName, repo, tag,
+		)
+	}
 
-	// stream the archive and extract the requested binary
-	assetReq, err := http.NewRequest(http.MethodGet, downloadURL, nil)
+	wantDigest, err := releaseAssetDigest(checksums.BrowserDownloadURL, token, archive.Name)
 	if err != nil {
-		return fmt.Errorf("failed to build asset request: %w", err)
-	}
-	if token != "" {
-		assetReq.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	assetResp, err := http.DefaultClient.Do(assetReq)
-	if err != nil {
-		return fmt.Errorf("failed to download release asset: %w", err)
-	}
-	defer assetResp.Body.Close()
-
-	if assetResp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download release asset: unexpected status %s", assetResp.Status)
-	}
-
-	if err := extractBinary(assetResp.Body, binaryName, destDir); err != nil {
 		return err
 	}
 
-	return nil
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
+
+	// stage the archive on disk so its digest can be checked before extraction
+	archivePath, gotDigest, err := downloadToTemp(archive.BrowserDownloadURL, token, destDir)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(archivePath)
+
+	if gotDigest != wantDigest {
+		return fmt.Errorf(
+			"failed to verify %s: checksum %s does not match the published %s",
+			archive.Name, gotDigest, wantDigest,
+		)
+	}
+
+	staged, err := os.Open(archivePath)
+	if err != nil {
+		return fmt.Errorf("failed to open staged archive: %w", err)
+	}
+	defer staged.Close()
+
+	return extractBinary(staged, binaryName, destDir)
+}
+
+// releaseAssetDigest downloads the checksum list at checksumsURL and returns the
+// SHA-256 recorded for assetName.
+func releaseAssetDigest(checksumsURL, token, assetName string) (string, error) {
+	resp, err := githubGet(checksumsURL, token, "")
+	if err != nil {
+		return "", fmt.Errorf("failed to download %s: %w", checksumAssetName, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxArchiveBytes))
+	if err != nil {
+		return "", fmt.Errorf("failed to read %s: %w", checksumAssetName, err)
+	}
+
+	return parseChecksums(string(body), assetName)
+}
+
+// parseChecksums returns the SHA-256 recorded for assetName in a goreleaser
+// checksum list, whose lines pair a hex digest with the asset it covers.
+func parseChecksums(body, assetName string) (string, error) {
+	for _, line := range strings.Split(body, "\n") {
+		digest, name, found := strings.Cut(strings.TrimSpace(line), " ")
+		if !found {
+			continue
+		}
+		if strings.TrimSpace(name) == assetName {
+			return strings.ToLower(strings.TrimSpace(digest)), nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to find %s in %s", assetName, checksumAssetName)
+}
+
+// downloadToTemp streams the asset at assetURL into a temporary file in destDir
+// and returns that path alongside the SHA-256 of what was written. The caller
+// removes the file.
+func downloadToTemp(assetURL, token, destDir string) (string, string, error) {
+	resp, err := githubGet(assetURL, token, "")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to download release asset: %w", err)
+	}
+	defer resp.Body.Close()
+
+	tmp, err := os.CreateTemp(destDir, ".threeport-download-*")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	defer tmp.Close()
+
+	digest := sha256.New()
+	if _, err := io.Copy(io.MultiWriter(tmp, digest), io.LimitReader(resp.Body, maxArchiveBytes)); err != nil {
+		os.Remove(tmp.Name())
+		return "", "", fmt.Errorf("failed to write release asset: %w", err)
+	}
+
+	return tmp.Name(), hex.EncodeToString(digest.Sum(nil)), nil
 }
 
 // extractBinary reads a gzipped tar from r and writes binaryName (matched by
-// base name) into destDir, executable.
+// base name) into destDir, executable. The binary is staged under a temporary
+// name and renamed into place, so an interrupted read leaves no partial
+// executable behind.
 func extractBinary(r io.Reader, binaryName, destDir string) error {
-	gzReader, err := gzip.NewReader(r)
+	gzReader, err := gzip.NewReader(io.LimitReader(r, maxArchiveBytes))
 	if err != nil {
 		return fmt.Errorf("failed to open gzip reader: %w", err)
 	}
@@ -155,18 +314,28 @@ func extractBinary(r io.Reader, binaryName, destDir string) error {
 			return fmt.Errorf("failed to create destination directory: %w", err)
 		}
 
-		destPath := filepath.Join(destDir, binaryName)
-		out, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
+		out, err := os.CreateTemp(destDir, "."+binaryName+"-*")
 		if err != nil {
 			return fmt.Errorf("failed to create destination file: %w", err)
 		}
+		stagedPath := out.Name()
 
-		if _, err := io.Copy(out, tarReader); err != nil {
+		if _, err := io.Copy(out, io.LimitReader(tarReader, maxArchiveBytes)); err != nil {
 			out.Close()
+			os.Remove(stagedPath)
 			return fmt.Errorf("failed to write binary: %w", err)
 		}
 		if err := out.Close(); err != nil {
+			os.Remove(stagedPath)
 			return fmt.Errorf("failed to close binary: %w", err)
+		}
+		if err := os.Chmod(stagedPath, 0o755); err != nil {
+			os.Remove(stagedPath)
+			return fmt.Errorf("failed to set binary mode: %w", err)
+		}
+		if err := os.Rename(stagedPath, filepath.Join(destDir, binaryName)); err != nil {
+			os.Remove(stagedPath)
+			return fmt.Errorf("failed to install binary: %w", err)
 		}
 
 		return nil

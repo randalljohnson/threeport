@@ -389,7 +389,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// TIME
 			if !apiserver_lib.ValidHLCToken(pageParams.QueryId) {
 				return apiserver_lib.ResponseStatus400(c, pageParams,
-					errors.New("invalid queryid: not a valid HLC token; restart pagination with no queryid to obtain a fresh snapshot"),
+					errors.New("invalid queryid: not a valid HLC token, restart pagination with no queryid to obtain a fresh snapshot"),
 					objectType)
 			}
 

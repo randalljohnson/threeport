@@ -179,6 +179,8 @@ func TestDispatchRejectsInvalidHLCToken(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a valid HLC token")
+	assert.ErrorIs(t, err, apiserver_lib.ErrInvalidPaginationQueryId,
+		"the generated handlers match on this to answer 400 rather than 500")
 }
 
 // TestViewLookupRejectsInjectedQueryId verifies a caller-supplied queryid that
@@ -202,6 +204,8 @@ func TestViewLookupRejectsInjectedQueryId(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not a server-issued pagination query id")
+		assert.ErrorIs(t, err, apiserver_lib.ErrInvalidPaginationQueryId,
+			"the generated handlers match on this to answer 400 rather than 500")
 	})
 
 	t.Run("at the lookup itself", func(t *testing.T) {
@@ -211,6 +215,8 @@ func TestViewLookupRejectsInjectedQueryId(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not a server-issued pagination query id")
+		assert.ErrorIs(t, err, apiserver_lib.ErrInvalidPaginationQueryId,
+			"the generated handlers match on this to answer 400 rather than 500")
 		assert.Empty(t, viewName, "no view name is returned for a rejected queryid")
 	})
 }

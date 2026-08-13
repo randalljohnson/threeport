@@ -100,7 +100,7 @@ func (h Handler) CreateMaterializedView(queryTable string) (string, string, erro
 // matched as a bound parameter, keeping it out of the SQL text.
 func (h Handler) GetMaterializedViewName(queryId string) (string, error) {
 	if !apiserver_lib.ValidPaginationQueryId(queryId) {
-		return "", fmt.Errorf("handler error: invalid queryid: not a server-issued pagination query id")
+		return "", fmt.Errorf("%w: not a server-issued pagination query id", apiserver_lib.ErrInvalidPaginationQueryId)
 	}
 
 	// find the materialized view name by query ID
@@ -194,7 +194,7 @@ func (h Handler) resolveHLCSnapshot(queryId string) (string, error) {
 	}
 
 	if !apiserver_lib.ValidHLCToken(queryId) {
-		return "", fmt.Errorf("handler error: invalid queryid: not a valid HLC token")
+		return "", fmt.Errorf("%w: not a valid HLC token", apiserver_lib.ErrInvalidPaginationQueryId)
 	}
 
 	return queryId, nil

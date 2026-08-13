@@ -9,7 +9,7 @@ const (
 	PersistTag      TagKey = "persist"
 	ValidateTag     TagKey = "validate"
 	QueryTag        TagKey = "query"
-	JsonTag         TagKey = "json"
+	JSONTag         TagKey = "json"
 )
 
 // JSONOmitempty is the json-tag substring every `validate:"optional"`

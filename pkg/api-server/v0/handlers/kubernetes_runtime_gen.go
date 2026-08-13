@@ -336,8 +336,8 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -440,8 +440,8 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -469,7 +469,8 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 
 // @Summary deletes a kubernetes runtime definition.
 // @Description Delete a kubernetes runtime definition by ID from the database.
-// @Description Cascade: children of this kubernetes runtime definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesRuntimeDefinition
 // @Accept json
@@ -913,8 +914,8 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1017,8 +1018,8 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1046,7 +1047,8 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a kubernetes runtime instance.
 // @Description Delete a kubernetes runtime instance by ID from the database.
-// @Description Cascade: children of this kubernetes runtime instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesRuntimeInstance
 // @Accept json

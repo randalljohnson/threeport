@@ -177,7 +177,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"observability stack instance create deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -237,7 +237,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"observability stack instance update deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -297,7 +297,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"observability stack instance delete deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -366,7 +366,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 				)
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"observability stack instance deletion already in progress, requeueing",
 							"cause", err.Error(),
 						)

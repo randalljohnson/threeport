@@ -177,7 +177,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret instance create deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -237,7 +237,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret instance update deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -297,7 +297,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret instance delete deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -366,7 +366,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 				)
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret instance deletion already in progress, requeueing",
 							"cause", err.Error(),
 						)

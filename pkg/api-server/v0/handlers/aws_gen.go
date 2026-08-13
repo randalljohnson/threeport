@@ -419,7 +419,8 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error 
 
 // @Summary deletes a aws eks kubernetes runtime definition.
 // @Description Delete a aws eks kubernetes runtime definition by ID from the database.
-// @Description Cascade: children of this aws eks kubernetes runtime definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this aws eks kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a aws eks kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Non-reconciled type: this endpoint returns after the aws eks kubernetes runtime definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-awsEksKubernetesRuntimeDefinition
 // @Accept json
@@ -810,8 +811,8 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingAwsEksKubernetesRuntimeInstance.Reconciled != nil && !*existingAwsEksKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingAwsEksKubernetesRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingAwsEksKubernetesRuntimeInstance.Reconciled != nil && !*existingAwsEksKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingAwsEksKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingAwsEksKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -914,8 +915,8 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingAwsEksKubernetesRuntimeInstance.Reconciled != nil && !*existingAwsEksKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingAwsEksKubernetesRuntimeInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingAwsEksKubernetesRuntimeInstance.Reconciled != nil && !*existingAwsEksKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingAwsEksKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingAwsEksKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -943,7 +944,8 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a aws eks kubernetes runtime instance.
 // @Description Delete a aws eks kubernetes runtime instance by ID from the database.
-// @Description Cascade: children of this aws eks kubernetes runtime instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this aws eks kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a aws eks kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Reconciled type: this endpoint returns after the deletion marker is written; the aws eks kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-awsEksKubernetesRuntimeInstance
 // @Accept json
@@ -1457,7 +1459,8 @@ func (h Handler) ReplaceAwsProvider(c echo.Context) error {
 
 // @Summary deletes a aws provider.
 // @Description Delete a aws provider by ID from the database.
-// @Description Cascade: children of this aws provider attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this aws provider with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a aws provider also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Non-reconciled type: this endpoint returns after the aws provider row and any cascading children have been removed synchronously.
 // @ID delete-v0-awsProvider
 // @Accept json

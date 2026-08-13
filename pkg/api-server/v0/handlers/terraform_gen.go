@@ -336,8 +336,8 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingTerraformDefinition.Reconciled != nil && !*existingTerraformDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingTerraformDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingTerraformDefinition.Reconciled != nil && !*existingTerraformDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformDefinition.Reconciliation) {
 		notifPayload, err := existingTerraformDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -440,8 +440,8 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingTerraformDefinition.Reconciled != nil && !*existingTerraformDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingTerraformDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingTerraformDefinition.Reconciled != nil && !*existingTerraformDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformDefinition.Reconciliation) {
 		notifPayload, err := existingTerraformDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -469,7 +469,8 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 
 // @Summary deletes a terraform definition.
 // @Description Delete a terraform definition by ID from the database.
-// @Description Cascade: children of this terraform definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this terraform definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a terraform definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Reconciled type: this endpoint returns after the deletion marker is written; the terraform definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-terraformDefinition
 // @Accept json
@@ -913,8 +914,8 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingTerraformInstance.Reconciled != nil && !*existingTerraformInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingTerraformInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingTerraformInstance.Reconciled != nil && !*existingTerraformInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformInstance.Reconciliation) {
 		notifPayload, err := existingTerraformInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1017,8 +1018,8 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingTerraformInstance.Reconciled != nil && !*existingTerraformInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingTerraformInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingTerraformInstance.Reconciled != nil && !*existingTerraformInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformInstance.Reconciliation) {
 		notifPayload, err := existingTerraformInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1046,7 +1047,8 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 
 // @Summary deletes a terraform instance.
 // @Description Delete a terraform instance by ID from the database.
-// @Description Cascade: children of this terraform instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this terraform instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a terraform instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Reconciled type: this endpoint returns after the deletion marker is written; the terraform instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-terraformInstance
 // @Accept json

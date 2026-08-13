@@ -206,8 +206,8 @@ func main() {
 
 		e.Logger.Infof("Threeport REST API: %s", version.GetVersion())
 		configureHealthCheckEndpoint()
-		if server.ListenAndServeTLS("", "") != http.ErrServerClosed {
-			e.Logger.Fatal(err)
+		if serveErr := server.ListenAndServeTLS("", ""); serveErr != http.ErrServerClosed {
+			e.Logger.Fatal(serveErr)
 		}
 	} else {
 		// configure http server
@@ -218,8 +218,8 @@ func main() {
 
 		e.Logger.Infof("Threeport REST API: %s", version.GetVersion())
 		configureHealthCheckEndpoint()
-		if server.ListenAndServe() != http.ErrServerClosed {
-			e.Logger.Fatal(err)
+		if serveErr := server.ListenAndServe(); serveErr != http.ErrServerClosed {
+			e.Logger.Fatal(serveErr)
 		}
 	}
 }

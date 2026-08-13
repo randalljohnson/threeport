@@ -213,7 +213,7 @@ func checkPayloadObject(apiVer string, payloadObject map[string]interface{}, obj
 			!util.StringSliceContains(*optionalAssociationsFields, k, false) &&
 			!util.StringSliceContains(*requiredFields, k, false) {
 			// now we need to check the same for the alias of the k
-			kAlias := getFieldNameByJsonTag(k, "json", objectStruct)
+			kAlias := getFieldNameByJSONTag(k, "json", objectStruct)
 			if len(kAlias) > 0 {
 				if !util.StringSliceContains(*optionalFields, kAlias, false) &&
 					!util.StringSliceContains(*optionalAssociationsFields, kAlias, false) &&
@@ -266,7 +266,7 @@ func nullValuedRequiredFields(
 			continue
 		}
 		// payload key may be a json tag alias; resolve to the Go field name
-		alias := getFieldNameByJsonTag(k, "json", objectStruct)
+		alias := getFieldNameByJSONTag(k, "json", objectStruct)
 		if alias != "" && util.StringSliceContains(requiredFields, alias, false) {
 			nulled = append(nulled, alias)
 		}
@@ -274,8 +274,8 @@ func nullValuedRequiredFields(
 	return nulled
 }
 
-// getFieldNameByJsonTag returns the field name of the struct by the given tag and key.
-func getFieldNameByJsonTag(tag, key string, s interface{}) (fieldname string) {
+// getFieldNameByJSONTag returns the field name of the struct by the given tag and key.
+func getFieldNameByJSONTag(tag, key string, s interface{}) (fieldname string) {
 	rt := reflect.TypeOf(s)
 	if rt.Kind() != reflect.Struct {
 		panic("bad type")

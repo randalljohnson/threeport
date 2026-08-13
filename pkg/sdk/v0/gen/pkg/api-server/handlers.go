@@ -203,14 +203,16 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						).Op(",").Op("*").Id("notifPayload")),
 					))
 
-					// update notifications: publish only when the incoming update
-					// actually changed a reconciliation-relevant field, so idempotent
-					// patches do not retrigger the controller in a tight loop
-					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and reconciliation state changed")
+					// update notifications: publish unless the write was a reconciler
+					// refreshing an acknowledgement timestamp and nothing else, which is
+					// the loop this gate exists to break. An edit to the object's spec
+					// leaves reconciliation state untouched and still has to publish, or
+					// a retry after a failed reconcile never reaches the controller
+					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and the update is notifiable")
 					notifyControllersUpdateHandler.Line()
 					notifyControllersUpdateHandler.If(Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("!=").Nil().Op("&&").Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("&&").Qual(
 						"github.com/threeport/threeport/pkg/api/v0",
-						"ReconciliationStateChanged",
+						"ReconciliationUpdateNotifiable",
 					).Call(
 						Id("prevReconciliation"),
 						Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation"),
@@ -2082,12 +2084,22 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					"@Description Delete a %s by ID from the database.",
 					strcase.ToDelimited(apiObject.TypeName, ' '),
 				))
-				// cascade semantics: children tagged relationship:owns and
-				// relationship:describes are removed with the parent; children
-				// pointing back via relationship:requires surface as a 409 with
-				// the blockers listed in the response body.
+				// blocking semantics: an incoming reference tagged
+				// relationship:requires always blocks the delete;
+				// relationship:owns and relationship:marries block it as well
+				// unless the caller is a control plane component;
+				// relationship:describes never blocks. A blocked delete returns
+				// 409 with the blockers listed in the response body.
 				f.Comment(fmt.Sprintf(
-					"@Description Cascade: children of this %s attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.",
+					"@Description Blocking: attached object references pointing at this %s with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.",
+					strcase.ToDelimited(apiObject.TypeName, ' '),
+				))
+				// cascade semantics: the delete removes the attached object
+				// reference rows this object holds as the attacher, since they
+				// orphan once the row is gone. The objects those rows point at
+				// are left alone.
+				f.Comment(fmt.Sprintf(
+					"@Description Cascade: deleting a %s also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.",
 					strcase.ToDelimited(apiObject.TypeName, ' '),
 				))
 				// reconciled vs non-reconciled semantics: reconciled types

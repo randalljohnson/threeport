@@ -337,8 +337,8 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
 		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -441,8 +441,8 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
 		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -470,7 +470,8 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 
 // @Summary deletes a control plane definition.
 // @Description Delete a control plane definition by ID from the database.
-// @Description Cascade: children of this control plane definition attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this control plane definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a control plane definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Reconciled type: this endpoint returns after the deletion marker is written; the control plane definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-controlPlaneDefinition
 // @Accept json
@@ -914,8 +915,8 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
 		notifPayload, err := existingControlPlaneInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1018,8 +1019,8 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and reconciliation state changed
-	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
 		notifPayload, err := existingControlPlaneInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1047,7 +1048,8 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 
 // @Summary deletes a control plane instance.
 // @Description Delete a control plane instance by ID from the database.
-// @Description Cascade: children of this control plane instance attached via relationship:owns or relationship:describes are deleted with it. Attached object references with relationship:requires block the delete and return 409 with the list of blocking references.
+// @Description Blocking: attached object references pointing at this control plane instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a control plane instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
 // @Description Reconciled type: this endpoint returns after the deletion marker is written; the control plane instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-controlPlaneInstance
 // @Accept json

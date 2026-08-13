@@ -1130,7 +1130,7 @@ func (g *Generator) ValidateTags() error {
 				if validateValue == string(lib.ValidateRequired) ||
 					validateValue == string(lib.ValidateOptional) ||
 					validateValue == string(lib.ValidateOptionalAssociation) {
-					j, ok := tagMap[string(lib.JsonTag)]
+					j, ok := tagMap[string(lib.JSONTag)]
 					if !ok || !strings.Contains(j, lib.JSONOmitempty) {
 						problems = append(problems, fmt.Sprintf(
 							"%s.%s: %s:%q field requires json:%q",
@@ -1222,6 +1222,23 @@ func ParseRelationshipTagValue(rel string) (kind string, modifiers map[string]st
 // remaining names are appended in alphabetical order so generation still
 // produces deterministic output.
 func (g *Generator) SortDatabaseInitNamesByDependency(names []string) []string {
+	// collapse repeats before anything else. The emit loop below runs until it
+	// has emitted as many names as it was given, and it emits each name once, so
+	// a repeated entry leaves the loop one short, drops into the cycle fallback
+	// with nothing remaining, and returns a list missing a table. The caller
+	// writes this result straight into the generated AutoMigrate call, so that
+	// table would simply never be created.
+	seen := make(map[string]bool, len(names))
+	unique := make([]string, 0, len(names))
+	for _, name := range names {
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		unique = append(unique, name)
+	}
+	names = unique
+
 	// build the set of names being migrated so cross-module references
 	// (types migrated elsewhere) do not introduce edges into this list
 	inList := make(map[string]bool, len(names))

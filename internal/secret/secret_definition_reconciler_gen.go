@@ -145,7 +145,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret definition create deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -205,7 +205,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret definition update deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -265,7 +265,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret definition delete deferred pending in-flight deletion, requeueing",
 							"cause", operationErr.Error(),
 						)
@@ -334,7 +334,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				)
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
+						log.Info(
 							"secret definition deletion already in progress, requeueing",
 							"cause", err.Error(),
 						)

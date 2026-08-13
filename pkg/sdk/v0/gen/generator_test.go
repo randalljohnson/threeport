@@ -472,31 +472,48 @@ func sortFixture(dependencies map[string][]string) *Generator {
 // the core ordering guarantee: a type whose foreign key references another
 // type in the list is emitted after the type it references.
 //
-//	type RouterMachineInstance struct {
-//	    RouterMachineSetInstanceID *uint `relationship:"requires"`
-//	}
+// The fixture supplies the dependency graph directly, as a map from each type
+// to the types it references. Deriving that graph from model source is a
+// separate step this test does not reach.
 //
-// Expected: RouterMachineSetInstance precedes RouterMachineInstance even
-// though it sorts later alphabetically.
+// Expected: Parent precedes Child even though it sorts later alphabetically.
 func TestSortDatabaseInitNamesByDependency_ReferencedBeforeReferencing(t *testing.T) {
-	// the referencing type carries a relationship-tagged foreign key whose
-	// field name derives the referenced type by stripping the ID suffix
+	// Child holds the foreign key, so it depends on Parent
 	g := sortFixture(map[string][]string{
-		"RouterMachineInstance": {"RouterMachineSetInstance"},
+		"Child": {"Parent"},
 	})
 
 	// sort the list passed in declaration order, referencing type first
 	sorted := g.SortDatabaseInitNamesByDependency([]string{
-		"RouterMachineInstance",
-		"RouterMachineSetInstance",
+		"Child",
+		"Parent",
 	})
 
 	// the referenced table must land ahead of the table that references it
-	setIdx := indexOf(sorted, "RouterMachineSetInstance")
-	instIdx := indexOf(sorted, "RouterMachineInstance")
-	require.NotEqual(t, -1, setIdx)
-	require.NotEqual(t, -1, instIdx)
-	assert.Less(t, setIdx, instIdx, "referenced table must precede referencing table")
+	parentIdx := indexOf(sorted, "Parent")
+	childIdx := indexOf(sorted, "Child")
+	require.NotEqual(t, -1, parentIdx)
+	require.NotEqual(t, -1, childIdx)
+	assert.Less(t, parentIdx, childIdx, "referenced table must precede referencing table")
+}
+
+// TestSortDatabaseInitNamesByDependency_DropsDuplicateNames covers a repeated
+// entry in the input: it is emitted once and no other name is lost.
+//
+// Before the input was deduplicated, the emit loop ran until it had emitted as
+// many names as it was handed. A repeat left it one short, the cycle fallback
+// found nothing remaining, and the result came back missing a table that the
+// generated AutoMigrate call would then never create.
+func TestSortDatabaseInitNamesByDependency_DropsDuplicateNames(t *testing.T) {
+	// B is listed twice and A depends on it
+	g := sortFixture(map[string][]string{
+		"A": {"B"},
+	})
+
+	sorted := g.SortDatabaseInitNamesByDependency([]string{"A", "B", "B"})
+
+	// both distinct tables survive, in dependency order, with no repeat
+	assert.Equal(t, []string{"B", "A"}, sorted)
 }
 
 // TestSortDatabaseInitNamesByDependency_TransitiveChain covers a multi-hop
@@ -520,9 +537,8 @@ func TestSortDatabaseInitNamesByDependency_TransitiveChain(t *testing.T) {
 // foreign key that points at a type not in the migration list: the edge is
 // dropped so external references do not perturb the ordering.
 //
-//	type Local struct {
-//	    ExternalThingID *uint `relationship:"requires"`
-//	}
+// The fixture supplies the dependency graph directly, so Local depends on
+// ExternalThing and ExternalThing never appears in the list being sorted.
 //
 // Expected: with only Local and Other in the list, alphabetical order holds.
 func TestSortDatabaseInitNamesByDependency_IgnoresExternalReference(t *testing.T) {

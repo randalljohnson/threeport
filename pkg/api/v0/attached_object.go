@@ -69,14 +69,16 @@ type AttachedObjectReference struct {
 	// type's foreign keys:
 	//   - "describes": informational; does not block delete or update of the base.
 	//   - "requires": blocks any caller from deleting the base while this
-	//     reference exists.
-	//   - "owns": blocks both delete and update of the base for any caller
-	//     except the controller registered for the attached object's type,
-	//     identified by its mTLS peer common name.
+	//     reference exists, control plane callers included.
+	//   - "owns": blocks both delete and update of the base, except for a
+	//     caller whose mTLS certificate carries the control plane
+	//     organizational unit. That exemption covers every control plane
+	//     component, not only the controller registered for the attached
+	//     object's type.
 	//     An owned base has at most one owner (enforced by the partial
 	//     index idx_aor_owns_base above); an owner may own many bases.
 	//   - "marries": enforces 1-to-1 cardinality between base and attacher
 	//     via the partial indexes above; blocks both delete and update of
-	//     the base for any caller except the partner's controller.
+	//     the base under the same control plane exemption as "owns".
 	Relationship *Relationship `json:",omitempty" validate:"optional" gorm:"default:'describes'"`
 }

@@ -72,7 +72,6 @@ func TestPaginatedReadCarriesFilterAndSoftDelete(t *testing.T) {
 		records := &[]api_v0.KubernetesWorkloadDefinition{}
 
 		_, _, err := h.DispatchGetPaginatedRecords(
-			apiserver_lib.PaginationModeAsOfSystemTime,
 			h.listQuery(c, &api_v0.KubernetesWorkloadDefinition{
 				Definition: api_v0.Definition{Name: util.Ptr(name)},
 			}),
@@ -125,7 +124,6 @@ func TestPaginatedReadHonorsIncludeDeleted(t *testing.T) {
 	records := &[]api_v0.KubernetesWorkloadDefinition{}
 
 	_, _, err := h.DispatchGetPaginatedRecords(
-		apiserver_lib.PaginationModeAsOfSystemTime,
 		h.listQuery(c, &api_v0.KubernetesWorkloadDefinition{}),
 		records,
 		"v0_kubernetes_workload_definitions",
@@ -147,7 +145,6 @@ func TestDispatchLeavesCallerQueryReusable(t *testing.T) {
 	query := h.listQuery(c, &api_v0.KubernetesWorkloadDefinition{})
 
 	_, _, err := h.DispatchGetPaginatedRecords(
-		apiserver_lib.PaginationModeAsOfSystemTime,
 		query,
 		&[]api_v0.KubernetesWorkloadDefinition{},
 		"v0_kubernetes_workload_definitions",
@@ -173,7 +170,6 @@ func TestDispatchRejectsInvalidHLCToken(t *testing.T) {
 	c := newListContext("/v0/kubernetes-workload-definitions")
 
 	_, _, err := h.DispatchGetPaginatedRecords(
-		apiserver_lib.PaginationModeAsOfSystemTime,
 		h.listQuery(c, &api_v0.KubernetesWorkloadDefinition{}),
 		&[]api_v0.KubernetesWorkloadDefinition{},
 		"v0_kubernetes_workload_definitions",
@@ -188,11 +184,10 @@ func TestDispatchRejectsInvalidHLCToken(t *testing.T) {
 // without passing ValidPaginationMode is refused rather than silently paging
 // through one of the two real strategies.
 func TestDispatchRejectsUnknownMode(t *testing.T) {
-	h, _ := newDryRunHandler(t, apiserver_lib.PaginationModeAsOfSystemTime)
+	h, _ := newDryRunHandler(t, apiserver_lib.PaginationMode("snapshot"))
 	c := newListContext("/v0/kubernetes-workload-definitions")
 
 	_, _, err := h.DispatchGetPaginatedRecords(
-		apiserver_lib.PaginationMode("snapshot"),
 		h.listQuery(c, &api_v0.KubernetesWorkloadDefinition{}),
 		&[]api_v0.KubernetesWorkloadDefinition{},
 		"v0_kubernetes_workload_definitions",

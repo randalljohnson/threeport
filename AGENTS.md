@@ -338,7 +338,32 @@ Default to these local checks before committing, in order:
 
 Run check 4 after every commit touching `pkg/api/v0/*.go` or `sdk-config.yaml`. If any `_gen.go` files show changes, the commit is out of sync; regenerate before pushing.
 
-**Do not default to `go test ./...`.** Every test in this repo is integration or e2e and assumes a live control plane, so local runs fail for infrastructure reasons rather than code correctness. Run them only against a real environment (`mage test:integration`, `mage test:e2eLocal`, etc.).
+**Do not default to `go test ./...`.** It sweeps in the suites under `test/`, which assume a live control plane and fail for infrastructure reasons rather than code correctness. Run those against a real environment, with `mage test:integration` or `mage test:e2eLocal`.
+
+**`mage test:unit` needs nothing running, so a change is expected to carry unit tests.** It covers the packages under `pkg/`, `internal/`, and `cmd/`, and a green run proves nothing about a live control plane, which is the point: it is the check that belongs in the edit-compile loop.
+
+## Testing database code without a database
+
+Query construction is testable offline. Open a GORM handle in dry-run mode against the postgres dialector and register a callback that captures the built statement, then assert on the SQL rather than on rows:
+
+```go
+db, err := gorm.Open(
+    postgres.New(postgres.Config{DSN: "postgres://u:p@127.0.0.1:26257/threeport_api?sslmode=disable"}),
+    &gorm.Config{DryRun: true, DisableAutomaticPing: true},
+)
+var captured string
+db.Callback().Query().After("gorm:query").Register(
+    "test:capture_sql",
+    func(tx *gorm.DB) { captured = tx.Statement.SQL.String() },
+)
+```
+
+The dialector does not dial on open, so no server is needed. This is how to prove a query carries the predicates it should: that a bound filter reaches the WHERE clause, that soft-delete scoping is applied, that `?includedeleted=true` removes it, that a cursor is a bound parameter rather than interpolated text.
+
+Two limits decide when to reach for an integration test instead:
+
+- **Dry run builds statements but never executes them.** Anything reading a result back, including `Scan` into a scalar, returns `dry run mode unsupported`. A code path whose behavior depends on how many rows came back cannot be covered this way.
+- **`gorm.io/driver/sqlite` is a dependency, and it is not a substitute for CockroachDB.** Swapping it in fails on every CockroachDB-only construct the codebase uses: `AS OF SYSTEM TIME`, `CREATE MATERIALIZED VIEW`, `information_schema` lookups, and `cluster_logical_timestamp()`. Those belong in `test/integration/`.
 
 **Do not use `go build ./cmd/<controller>/`.** It leaves untracked binaries in the repo root (e.g. `database-migrator`), and `main_gen.go` is not the actual deployment artifact anyway. `tptdev build` produces the image that gets deployed and is fast on subsequent runs thanks to the Go build cache. If you run `go build` for any reason, delete the binary immediately; they are not gitignored.
 

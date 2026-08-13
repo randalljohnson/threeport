@@ -258,11 +258,11 @@ func TestPerInstanceStateDirIsolation(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			if !assert.NoError(t, os.MkdirAll(filepath.Dir(paths[i]), 0o755)) {
+			if !assert.NoError(t, os.MkdirAll(filepath.Dir(paths[i]), 0755)) {
 				return
 			}
 			content := fmt.Sprintf("state-for-inst-%d", i)
-			assert.NoError(t, os.WriteFile(paths[i], []byte(content), 0o644))
+			assert.NoError(t, os.WriteFile(paths[i], []byte(content), 0644))
 		}(i)
 	}
 	wg.Wait()

@@ -40,7 +40,7 @@ func checkpointState(project, name, marker string) string {
 	)
 }
 
-// TestNewPulumiWorkspace_WithStateDirRoot pins the constructor seam: the
+// TestNewPulumiWorkspace_WithStateDirRoot covers the constructor: the
 // runtime instance name and project name are set from the arguments, the
 // state dir root option makes the state dir resolve to <root>/<name>, and
 // the state file path lands under the injected root at
@@ -293,7 +293,7 @@ func TestStateDirRoot_HonoredByEveryMethod(t *testing.T) {
 	assert.True(t, w.HasStateDir(), "the state dir is visible once created")
 
 	marker := filepath.Join(stateDir, "marker")
-	require.NoError(t, os.WriteFile(marker, []byte("state"), 0o644))
+	require.NoError(t, os.WriteFile(marker, []byte("state"), 0644))
 
 	require.NoError(t, w.DeleteStackState())
 	assert.NoDirExists(t, stateDir, "deletion removes the dir under the injected root")

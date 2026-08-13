@@ -96,11 +96,18 @@ func (h Handler) CreateMaterializedView(queryTable string) (string, string, erro
 }
 
 // GetMaterializedViewName finds the name of the materialized view created for a given pagination query ID.
+// The query ID comes from the client, so it is checked against the shape the server issues and then
+// matched as a bound parameter, keeping it out of the SQL text.
 func (h Handler) GetMaterializedViewName(queryId string) (string, error) {
+	if !apiserver_lib.ValidPaginationQueryId(queryId) {
+		return "", fmt.Errorf("%w: not a server-issued pagination query id", apiserver_lib.ErrInvalidPaginationQueryId)
+	}
+
 	// find the materialized view name by query ID
-	viewQuery := fmt.Sprintf("SELECT table_name FROM information_schema.tables WHERE table_type = 'VIEW' AND table_name LIKE 'paginated_%%_%s'", queryId)
+	viewQuery := "SELECT table_name FROM information_schema.tables WHERE table_type = 'VIEW' AND table_name LIKE ?"
+	viewPattern := fmt.Sprintf("%s_%%_%s", apiserver_lib.PaginationViewPrefix, queryId)
 	var viewName string
-	if result := h.DB.Raw(viewQuery).Scan(&viewName); result.Error != nil {
+	if result := h.DB.Raw(viewQuery, viewPattern).Scan(&viewName); result.Error != nil {
 		return "", fmt.Errorf("handler error: error finding materialized view: %w", result.Error)
 	}
 
@@ -176,11 +183,18 @@ func (h Handler) resolveHLCSnapshot(queryId string) (string, error) {
 		if result := h.DB.Raw("SELECT cluster_logical_timestamp()").Scan(&hlc); result.Error != nil {
 			return "", fmt.Errorf("handler error: error capturing HLC snapshot: %w", result.Error)
 		}
+		// a scan that matched no row leaves the destination empty and
+		// reports no error, and an empty token would reach the clause as
+		// AS OF SYSTEM TIME '' and be echoed to the client as a queryid
+		// that fails validation on every continuation
+		if !apiserver_lib.ValidHLCToken(hlc) {
+			return "", fmt.Errorf("handler error: error capturing HLC snapshot: got %q", hlc)
+		}
 		return hlc, nil
 	}
 
 	if !apiserver_lib.ValidHLCToken(queryId) {
-		return "", fmt.Errorf("handler error: invalid queryid: not a valid HLC token")
+		return "", fmt.Errorf("%w: not a valid HLC token", apiserver_lib.ErrInvalidPaginationQueryId)
 	}
 
 	return queryId, nil
@@ -261,8 +275,8 @@ func (h Handler) DispatchGetPaginatedRecords(
 	pageParams *apiserver_lib.PageRequestParams,
 ) (string, int64, error) {
 	// take a session so every chained call below clones the statement
-	// instead of mutating the caller's db, which keeps the caller free to
-	// reuse it and lets materialized-view mode build two statements from it
+	// instead of mutating the caller's db, which leaves the caller free to
+	// reuse it once the page has been fetched
 	query = query.Session(&gorm.Session{})
 
 	switch h.PaginationMode {

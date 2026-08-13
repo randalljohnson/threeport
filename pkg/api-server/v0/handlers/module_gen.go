@@ -158,6 +158,9 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 			queryTable := filter.TableName()
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleApi{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -179,6 +182,9 @@ func (h Handler) GetModuleApis(c echo.Context) error {
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleApi{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -587,6 +593,9 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 			queryTable := filter.TableName()
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleApiRoute{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -608,6 +617,9 @@ func (h Handler) GetModuleApiRoutes(c echo.Context) error {
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleApiRoute{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -1032,6 +1044,9 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 			queryTable := filter.TableName()
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleController{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -1053,6 +1068,9 @@ func (h Handler) GetModuleControllers(c echo.Context) error {
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleController{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -1461,6 +1479,9 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 			queryTable := filter.TableName()
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -1482,6 +1503,9 @@ func (h Handler) GetModuleObjects(c echo.Context) error {
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.ModuleObject{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}

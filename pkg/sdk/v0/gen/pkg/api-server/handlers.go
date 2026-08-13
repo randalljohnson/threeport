@@ -1123,23 +1123,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 										Id("queryTable"),
 										Id("pageParams"),
 									),
-									If(Id("err").Op("!=").Nil()).BlockFunc(func(h *Group) {
-										if gen.Module {
-											h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
-												Lit("handler error: error fetching paginated records"),
-												Qual("go.uber.org/zap", "Error").Call(Id("err")),
-											)
-										} else {
-											h.Id("h").Dot("Logger").Dot("Error").Call(
-												Lit("handler error: error fetching paginated records"),
-												Qual("go.uber.org/zap", "Error").Call(Id("err")),
-											)
-										}
-										h.Return(Qual(
-											"github.com/threeport/threeport/pkg/api-server/lib/v0",
-											"ResponseStatus500",
-										).Call(Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType")))
-									}),
+									If(Id("err").Op("!=").Nil()).BlockFunc(paginationErrorResponse(gen)),
 									Id("pagination").Dot("QueryId").Op("=").Id("queryId"),
 									Id("returnedCount").Op("=").Id("count"),
 									Line(),
@@ -1195,23 +1179,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Id("queryTable"),
 								Id("pageParams"),
 							),
-							If(Id("err").Op("!=").Nil()).BlockFunc(func(h *Group) {
-								if gen.Module {
-									h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
-										Lit("handler error: error fetching paginated records"),
-										Qual("go.uber.org/zap", "Error").Call(Id("err")),
-									)
-								} else {
-									h.Id("h").Dot("Logger").Dot("Error").Call(
-										Lit("handler error: error fetching paginated records"),
-										Qual("go.uber.org/zap", "Error").Call(Id("err")),
-									)
-								}
-								h.Return(Qual(
-									"github.com/threeport/threeport/pkg/api-server/lib/v0",
-									"ResponseStatus500",
-								).Call(Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType")))
-							}),
+							If(Id("err").Op("!=").Nil()).BlockFunc(paginationErrorResponse(gen)),
 							Id("pagination").Dot("QueryId").Op("=").Id("queryId"),
 							Id("returnedCount").Op("=").Id("count"),
 							Line(),
@@ -2232,6 +2200,46 @@ const (
 	blockedDeleteCheckSole blockedDeleteCheckRole = iota
 	blockedDeleteCheckBackstop
 )
+
+// paginationErrorResponse returns the body of the error branch a paginated
+// list handler runs when the dispatcher fails. A queryid the client can
+// correct answers 400 without a log line, since it reports a bad request
+// rather than a fault: either the id names no snapshot the server issued, or
+// the snapshot it named has expired and the client has to start over with no
+// queryid. Everything else is a server fault, so it is logged and answers 500.
+func paginationErrorResponse(gen *gen.Generator) func(*Group) {
+	const apiServerLib = "github.com/threeport/threeport/pkg/api-server/lib/v0"
+
+	return func(h *Group) {
+		h.If(
+			Qual("errors", "Is").Call(
+				Id("err"),
+				Qual(apiServerLib, "ErrInvalidPaginationQueryId"),
+			).Op("||").Qual("errors", "Is").Call(
+				Id("err"),
+				Qual(apiServerLib, "ErrPaginationSessionExpired"),
+			),
+		).Block(
+			Return(Qual(apiServerLib, "ResponseStatus400").Call(
+				Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType"),
+			)),
+		)
+		if gen.Module {
+			h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
+				Lit("handler error: error fetching paginated records"),
+				Qual("go.uber.org/zap", "Error").Call(Id("err")),
+			)
+		} else {
+			h.Id("h").Dot("Logger").Dot("Error").Call(
+				Lit("handler error: error fetching paginated records"),
+				Qual("go.uber.org/zap", "Error").Call(Id("err")),
+			)
+		}
+		h.Return(Qual(apiServerLib, "ResponseStatus500").Call(
+			Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType"),
+		))
+	}
+}
 
 // emitBlockedDeleteCheck appends the delete-blocked branch that turns a
 // typed signal from the BeforeDelete hook into a 409 listing blockers.

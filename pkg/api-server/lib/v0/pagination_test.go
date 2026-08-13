@@ -50,6 +50,44 @@ func TestValidHLCToken(t *testing.T) {
 	}
 }
 
+// TestValidPaginationQueryId verifies only a queryid of the shape the server
+// issues is accepted. The value names a materialized view in a LIKE pattern, so
+// anything carrying a quote, a wildcard, or SQL has to be rejected.
+func TestValidPaginationQueryId(t *testing.T) {
+	tests := []struct {
+		name    string
+		queryId string
+		valid   bool
+	}{
+		{"issued id", "a1b2c3d4e5f6g7h8", true},
+		{"all digits", "1234567890123456", true},
+		{"all letters", "abcdefghijklmnop", true},
+
+		{"empty", "", false},
+		{"too short", "a1b2c3d4e5f6g7h", false},
+		{"too long", "a1b2c3d4e5f6g7h8i", false},
+		{"uppercase", "A1B2C3D4E5F6G7H8", false},
+		{"hyphen", "a1b2c3d4-e5f6g7h", false},
+		{"leading space", " 1b2c3d4e5f6g7h8", false},
+
+		// the reason the guard exists: the value reaches a LIKE pattern, so
+		// each of these has to fail closed
+		{"quote escape", "a1b2c3d4e5f6g7h8'", false},
+		{"quote then always true", "' OR '1'='1", false},
+		{"comment suffix", "a1b2c3d4e5f6g7h8' -- ", false},
+		{"statement terminator", "a1b2c3d4e5f6g7h8'; DROP TABLE v0_events; --", false},
+		{"union select", "' UNION SELECT table_name FROM information_schema.tables --", false},
+		{"bare wildcard", "%", false},
+		{"trailing newline", "a1b2c3d4e5f6g7h8\n", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.valid, ValidPaginationQueryId(test.queryId))
+		})
+	}
+}
+
 // TestTranslatePaginationSessionError verifies a CockroachDB garbage-collection
 // error is rewritten into the restart hint and every other error is handed back
 // untouched, with the original still reachable through errors.Is.

@@ -23,10 +23,14 @@ const paginationTestPrefix = "pagination-filter-test"
 // that ran afterwards did not, so a caller filtering by name got every object
 // back as soon as a second page was needed.
 //
-// It creates more matching and non-matching objects than the page limit, then
-// lists with a limit small enough to force pagination and asserts every object
-// returned matches. A unit test cannot reach this: the page query runs AS OF
-// SYSTEM TIME against a snapshot, which is CockroachDB-only syntax.
+// The filter has to match more rows than the page limit, or the handler's
+// count decides no pagination is needed and the plain filtered read answers
+// instead, which passes with or without the fix. So the matching group shares
+// one profile and the filter is that profile, giving five matches against a
+// limit of two. A unit test cannot reach this: the page query runs AS OF SYSTEM
+// TIME against a snapshot, which is CockroachDB-only syntax, and this is the
+// only test that executes that query with bind parameters against a real
+// CockroachDB.
 func TestPaginatedListAppliesFilter(t *testing.T) {
 	cli.InitConfig(nil, "")
 
@@ -38,9 +42,20 @@ func TestPaginatedListAppliesFilter(t *testing.T) {
 	require.Nil(t, err, "should not get an error looking up Threeport API endpoint")
 	apiEndpoint := controlPlaneConfig.APIServer
 
-	// arrange: enough objects on both sides of the filter that a small page
-	// limit forces at least one continuation request
+	// arrange: a profile the matching group shares, so the filter selects
+	// more rows than the page limit and the handler has to paginate
 	const perGroup = 5
+	const pageLimit = 2
+
+	profile, err := client.CreateProfile(apiClient, apiEndpoint, &v0.Profile{
+		Name: util.Ptr(fmt.Sprintf("%s-profile", paginationTestPrefix)),
+	})
+	require.Nil(t, err, "should have no error creating profile")
+	defer retryDelete(t, fmt.Sprintf("profile %d", *profile.ID), func() error {
+		_, err := client.DeleteProfile(apiClient, apiEndpoint, *profile.ID)
+		return err
+	})
+
 	matchName := fmt.Sprintf("%s-match", paginationTestPrefix)
 	otherName := fmt.Sprintf("%s-other", paginationTestPrefix)
 
@@ -54,6 +69,9 @@ func TestPaginatedListAppliesFilter(t *testing.T) {
 		}
 	}()
 
+	// the matching rows carry the profile, the others carry none, and the two
+	// groups interleave by id so a page query that dropped the filter would
+	// pick up a non-matching row rather than sorting past them
 	for i := range perGroup {
 		for _, name := range []string{matchName, otherName} {
 			definition := v0.KubernetesWorkloadDefinition{
@@ -62,29 +80,31 @@ func TestPaginatedListAppliesFilter(t *testing.T) {
 				},
 				YAMLDocument: util.Ptr(paginationTestManifest),
 			}
+			if name == matchName {
+				definition.ProfileID = profile.ID
+			}
 			result, err := client.CreateKubernetesWorkloadDefinition(apiClient, apiEndpoint, &definition)
 			require.Nil(t, err, "should have no error creating kubernetes workload definition")
 			created = append(created, *result.ID)
 		}
 	}
 
-	// action: filter by an exact name with a page limit below the number of
-	// objects that exist, so the query has to paginate to finish
-	target := fmt.Sprintf("%s-0", matchName)
+	// action: filter by the shared profile with a page limit below the number
+	// of rows that match, so the handler dispatches to a pagination strategy
 	results, err := client.GetKubernetesWorkloadDefinitionsByQueryString(
 		apiClient,
 		apiEndpoint,
-		fmt.Sprintf("name=%s&limit=2", target),
+		fmt.Sprintf("profileid=%d&limit=%d", *profile.ID, pageLimit),
 	)
 	require.Nil(t, err, "should have no error listing kubernetes workload definitions")
 
-	// assert: every object returned matches the filter. Before the fix the
-	// page query dropped the filter and returned the whole table
+	// assert: every object on the page matches the filter. Before the fix the
+	// page query dropped the filter and paged over the whole table
 	require.NotNil(t, results)
-	assert.Len(t, *results, 1, "exactly one definition carries this name")
+	assert.Len(t, *results, pageLimit, "the filtered set outgrows the limit, so one page comes back full")
 	for _, definition := range *results {
-		require.NotNil(t, definition.Name)
-		assert.Equal(t, target, *definition.Name, "a paginated page must not return rows the filter excludes")
+		require.NotNil(t, definition.ProfileID, "a paginated page must not return rows the filter excludes")
+		assert.Equal(t, *profile.ID, *definition.ProfileID, "a paginated page must not return rows the filter excludes")
 	}
 }
 

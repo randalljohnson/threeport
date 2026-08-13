@@ -217,9 +217,12 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	)
 	f.Line()
 
-	// statements that collapse duplicate version rows and then bar new ones
+	// statements that collapse duplicate version rows and then bar new ones.
+	// goose reads applied state ordered by id descending, so the highest id per
+	// version is the row it believes; keeping the lowest would discard the state
+	// goose acts on and silently rewind what the ledger reports as applied
 	dedupeVersionRows := fmt.Sprintf(
-		"DELETE FROM %[1]s WHERE id NOT IN (SELECT min(id) FROM %[1]s GROUP BY version_id)",
+		"DELETE FROM %[1]s WHERE id NOT IN (SELECT max(id) FROM %[1]s GROUP BY version_id)",
 		gooseVersionTableName,
 	)
 	uniqueVersionIndex := fmt.Sprintf(

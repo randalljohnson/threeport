@@ -159,7 +159,8 @@ func main() {
 
 	// handlers
 	// v0
-	h_v0 := handlers_v0.New(db, nc, *js, &logger, apiserver_lib.PaginationMode(paginationMode))
+	h_v0 := handlers_v0.New(db, nc, *js, &logger)
+	h_v0.PaginationMode = apiserver_lib.PaginationMode(paginationMode)
 
 	// routes
 	routes_v0.SwaggerRoutes(e)

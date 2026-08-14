@@ -1130,12 +1130,12 @@ func (g *Generator) ValidateTags() error {
 				if validateValue == string(lib.ValidateRequired) ||
 					validateValue == string(lib.ValidateOptional) ||
 					validateValue == string(lib.ValidateOptionalAssociation) {
-					j, ok := tagMap[string(lib.JSONTag)]
-					if !ok || !strings.Contains(j, lib.JSONOmitempty) {
+					j, ok := tagMap[string(lib.JsonTag)]
+					if !ok || !strings.Contains(j, lib.JsonOmitempty) {
 						problems = append(problems, fmt.Sprintf(
 							"%s.%s: %s:%q field requires json:%q",
 							objectName, fieldName,
-							lib.ValidateTag, validateValue, ","+lib.JSONOmitempty,
+							lib.ValidateTag, validateValue, ","+lib.JsonOmitempty,
 						))
 					}
 				}

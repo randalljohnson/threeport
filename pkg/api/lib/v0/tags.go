@@ -9,13 +9,13 @@ const (
 	PersistTag      TagKey = "persist"
 	ValidateTag     TagKey = "validate"
 	QueryTag        TagKey = "query"
-	JSONTag         TagKey = "json"
+	JsonTag         TagKey = "json"
 )
 
-// JSONOmitempty is the json-tag substring every `validate:"optional"`
+// JsonOmitempty is the json-tag substring every `validate:"optional"`
 // field must carry so absent values are dropped on serialize rather
 // than emitting JSON null / zero values.
-const JSONOmitempty = "omitempty"
+const JsonOmitempty = "omitempty"
 
 // RelationshipTypeKey is the modifier name in a relationship tag value
 // (e.g. `relationship:"requires;type:KubernetesRuntimeInstance"`).

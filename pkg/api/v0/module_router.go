@@ -16,23 +16,28 @@ import (
 	"gorm.io/gorm"
 )
 
-// ModuleRouter contains the route paths that are mapped to their handler
-// functions.
+// ModuleRouter maps module route paths to their handler functions and holds the
+// settings the module proxy uses to reach module API servers.
 type ModuleRouter struct {
 	routes sync.Map
+
+	// proxyScheme and proxyTransport record how the module proxy reaches a
+	// module API server: over https with the control plane client certificate
+	// when auth is enabled, over plain http otherwise.  A module can register
+	// a route after the API server has started, and the afterCreate hook on
+	// ModuleApiRoute builds that route's proxy from these fields, so the
+	// runtime path gets what the startup path configured.  proxyMu guards them
+	// because that hook runs while other goroutines serve requests.
+	proxyMu        sync.RWMutex
+	proxyScheme    string
+	proxyTransport http.RoundTripper
 }
 
 var ModRouter = ModuleRouter{
-	routes: sync.Map{},
+	routes:         sync.Map{},
+	proxyScheme:    "http",
+	proxyTransport: http.DefaultTransport,
 }
-
-// moduleRouteScheme and moduleRouteTransport carry the scheme and transport the
-// module proxy uses. They are set when module routes are initialized so the
-// runtime afterCreate hook reaches module API servers the same way the startup
-// path does: over https with the control plane client certificate when auth is
-// enabled, plain http otherwise.
-var moduleRouteScheme = "http"
-var moduleRouteTransport http.RoundTripper = http.DefaultTransport
 
 // InitModuleRouter initializes an module router.  It first queries the
 // database for any existing module APIs and their routes.  It then adds
@@ -65,8 +70,9 @@ func InitModuleRouter(
 	if authEnabled {
 		scheme = "https"
 	}
-	moduleRouteScheme = scheme
-	moduleRouteTransport = transport
+	// record the scheme and transport on the router so a module that registers
+	// a route after startup builds its proxy the same way the routes below do
+	ModRouter.SetProxyConfig(scheme, transport)
 
 	for _, modApi := range moduleApis {
 		for _, apiRoute := range modApi.ModuleApiRoutes {
@@ -126,6 +132,28 @@ func moduleProxyTransport(authEnabled bool) (http.RoundTripper, error) {
 			RootCAs:      caCertPool,
 		},
 	}, nil
+}
+
+// SetProxyConfig sets the scheme and transport the module proxy uses to reach
+// module API servers.  InitModuleRouter calls it once at startup so a route
+// registered later reaches its module the same way the routes present at
+// startup do.
+func (e *ModuleRouter) SetProxyConfig(scheme string, transport http.RoundTripper) {
+	e.proxyMu.Lock()
+	defer e.proxyMu.Unlock()
+
+	e.proxyScheme = scheme
+	e.proxyTransport = transport
+}
+
+// ProxyConfig returns the scheme and transport the module proxy uses to reach
+// module API servers.  It returns both together so a caller building a proxy
+// cannot pair an https scheme with a plain http transport.
+func (e *ModuleRouter) ProxyConfig() (string, http.RoundTripper) {
+	e.proxyMu.RLock()
+	defer e.proxyMu.RUnlock()
+
+	return e.proxyScheme, e.proxyTransport
 }
 
 // AddRoute adds a new route to the dynamic route map

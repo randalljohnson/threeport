@@ -300,7 +300,7 @@ func GenRestApiMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		g.Id("e").Dot("Use").Call(Qual(
 			"github.com/threeport/threeport/pkg/api-server/lib/v0",
 			"CaptureCaller",
-		))
+		).Call(Id("authEnabled")))
 		g.Line()
 		g.Id("logger").Op(",").Id("err").Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/log/v0",

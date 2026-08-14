@@ -79,8 +79,8 @@ func (h Handler) AddSecretDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&secretDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&secretDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -328,8 +328,8 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 	prevReconciliation := existingSecretDefinition.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingSecretDefinition).Updates(&updatedSecretDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingSecretDefinition).Updates(&updatedSecretDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -423,8 +423,8 @@ func (h Handler) ReplaceSecretDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedSecretDefinition.ID = existingSecretDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -529,8 +529,8 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&secretDefinition).Updates(&scheduledSecretDefinition)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&secretDefinition).Updates(&scheduledSecretDefinition)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -557,8 +557,8 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&secretDefinition)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&secretDefinition)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -657,8 +657,8 @@ func (h Handler) AddSecretInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&secretInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&secretInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -906,8 +906,8 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 	prevReconciliation := existingSecretInstance.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingSecretInstance).Updates(&updatedSecretInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingSecretInstance).Updates(&updatedSecretInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1001,8 +1001,8 @@ func (h Handler) ReplaceSecretInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedSecretInstance.ID = existingSecretInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedSecretInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1101,8 +1101,8 @@ func (h Handler) DeleteSecretInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&secretInstance).Updates(&scheduledSecretInstance)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&secretInstance).Updates(&scheduledSecretInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1129,8 +1129,8 @@ func (h Handler) DeleteSecretInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&secretInstance)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&secretInstance)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check

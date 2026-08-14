@@ -79,8 +79,8 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&domainNameDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&domainNameDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -310,8 +310,8 @@ func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingDomainNameDefinition).Updates(&updatedDomainNameDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingDomainNameDefinition).Updates(&updatedDomainNameDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -387,8 +387,8 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedDomainNameDefinition.ID = existingDomainNameDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -456,8 +456,8 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&domainNameDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&domainNameDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
@@ -554,8 +554,8 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&domainNameInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&domainNameInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -803,8 +803,8 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 	prevReconciliation := existingDomainNameInstance.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingDomainNameInstance).Updates(&updatedDomainNameInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingDomainNameInstance).Updates(&updatedDomainNameInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -898,8 +898,8 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedDomainNameInstance.ID = existingDomainNameInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedDomainNameInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -998,8 +998,8 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&domainNameInstance).Updates(&scheduledDomainNameInstance)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&domainNameInstance).Updates(&scheduledDomainNameInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1026,8 +1026,8 @@ func (h Handler) DeleteDomainNameInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&domainNameInstance)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&domainNameInstance)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -1126,8 +1126,8 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&gatewayDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&gatewayDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1375,8 +1375,8 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 	prevReconciliation := existingGatewayDefinition.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingGatewayDefinition).Updates(&updatedGatewayDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingGatewayDefinition).Updates(&updatedGatewayDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1470,8 +1470,8 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayDefinition.ID = existingGatewayDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1576,8 +1576,8 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&gatewayDefinition).Updates(&scheduledGatewayDefinition)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&gatewayDefinition).Updates(&scheduledGatewayDefinition)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1604,8 +1604,8 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&gatewayDefinition)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&gatewayDefinition)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -1688,8 +1688,8 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&gatewayHttpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&gatewayHttpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1919,8 +1919,8 @@ func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingGatewayHttpPort).Updates(&updatedGatewayHttpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingGatewayHttpPort).Updates(&updatedGatewayHttpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1996,8 +1996,8 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayHttpPort.ID = existingGatewayHttpPort.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayHttpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayHttpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -2059,8 +2059,8 @@ func (h Handler) DeleteGatewayHttpPort(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&gatewayHttpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&gatewayHttpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
@@ -2157,8 +2157,8 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&gatewayInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&gatewayInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -2406,8 +2406,8 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 	prevReconciliation := existingGatewayInstance.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingGatewayInstance).Updates(&updatedGatewayInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingGatewayInstance).Updates(&updatedGatewayInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -2501,8 +2501,8 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayInstance.ID = existingGatewayInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -2601,8 +2601,8 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&gatewayInstance).Updates(&scheduledGatewayInstance)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&gatewayInstance).Updates(&scheduledGatewayInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -2629,8 +2629,8 @@ func (h Handler) DeleteGatewayInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&gatewayInstance)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&gatewayInstance)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -2713,8 +2713,8 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&gatewayTcpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&gatewayTcpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -2944,8 +2944,8 @@ func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingGatewayTcpPort).Updates(&updatedGatewayTcpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingGatewayTcpPort).Updates(&updatedGatewayTcpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -3021,8 +3021,8 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 
 	// persist provided data
 	updatedGatewayTcpPort.ID = existingGatewayTcpPort.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayTcpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGatewayTcpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -3084,8 +3084,8 @@ func (h Handler) DeleteGatewayTcpPort(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&gatewayTcpPort)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&gatewayTcpPort)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types

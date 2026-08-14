@@ -79,8 +79,8 @@ func (h Handler) AddOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&ociOkeKubernetesRuntimeDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&ociOkeKubernetesRuntimeDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -310,8 +310,8 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingOciOkeKubernetesRuntimeDefinition).Updates(&updatedOciOkeKubernetesRuntimeDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingOciOkeKubernetesRuntimeDefinition).Updates(&updatedOciOkeKubernetesRuntimeDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -387,8 +387,8 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeDefinition(c echo.Context) error 
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeDefinition.ID = existingOciOkeKubernetesRuntimeDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -456,8 +456,8 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&ociOkeKubernetesRuntimeDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&ociOkeKubernetesRuntimeDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
@@ -554,8 +554,8 @@ func (h Handler) AddOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&ociOkeKubernetesRuntimeInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&ociOkeKubernetesRuntimeInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -803,8 +803,8 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	prevReconciliation := existingOciOkeKubernetesRuntimeInstance.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingOciOkeKubernetesRuntimeInstance).Updates(&updatedOciOkeKubernetesRuntimeInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingOciOkeKubernetesRuntimeInstance).Updates(&updatedOciOkeKubernetesRuntimeInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -898,8 +898,8 @@ func (h Handler) ReplaceOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedOciOkeKubernetesRuntimeInstance.ID = existingOciOkeKubernetesRuntimeInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciOkeKubernetesRuntimeInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -998,8 +998,8 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&ociOkeKubernetesRuntimeInstance).Updates(&scheduledOciOkeKubernetesRuntimeInstance)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&ociOkeKubernetesRuntimeInstance).Updates(&scheduledOciOkeKubernetesRuntimeInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1026,8 +1026,8 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&ociOkeKubernetesRuntimeInstance)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&ociOkeKubernetesRuntimeInstance)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -1126,8 +1126,8 @@ func (h Handler) AddOciProvider(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&ociProvider)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&ociProvider)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1357,8 +1357,8 @@ func (h Handler) UpdateOciProvider(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingOciProvider).Updates(&updatedOciProvider)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingOciProvider).Updates(&updatedOciProvider)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1434,8 +1434,8 @@ func (h Handler) ReplaceOciProvider(c echo.Context) error {
 
 	// persist provided data
 	updatedOciProvider.ID = existingOciProvider.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciProvider)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedOciProvider)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1497,8 +1497,8 @@ func (h Handler) DeleteOciProvider(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&ociProvider)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&ociProvider)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types

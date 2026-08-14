@@ -170,19 +170,6 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of helm workload definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"helm workload definition create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							helmWorkloadDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created helm workload definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -230,19 +217,6 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of helm workload definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"helm workload definition update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							helmWorkloadDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated helm workload definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -292,7 +266,7 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"helm workload definition delete deferred pending in-flight deletion, requeueing",
+							"helm workload definition delete conflicted, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -361,7 +335,7 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"helm workload definition deletion already in progress, requeueing",
+							"helm workload definition delete request conflicted, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

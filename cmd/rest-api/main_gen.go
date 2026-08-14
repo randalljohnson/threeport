@@ -71,7 +71,7 @@ func main() {
 
 	// capture the request's mTLS peer identity so GORM hooks can read it via
 	// apiserver_lib.Caller(tx.Statement.Context)
-	e.Use(apiserver_lib.CaptureCaller)
+	e.Use(apiserver_lib.CaptureCaller(authEnabled))
 
 	logger, err := log.NewLogger(verbose)
 	if err != nil {

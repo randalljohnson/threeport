@@ -170,19 +170,6 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of terraform definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"terraform definition create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							terraformDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created terraform definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -230,19 +217,6 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of terraform definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"terraform definition update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							terraformDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated terraform definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -292,7 +266,7 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"terraform definition delete deferred pending in-flight deletion, requeueing",
+							"terraform definition delete conflicted, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -361,7 +335,7 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"terraform definition deletion already in progress, requeueing",
+							"terraform definition delete request conflicted, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

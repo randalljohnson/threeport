@@ -170,19 +170,6 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gateway instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"gateway instance create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							gatewayInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created gateway instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -230,19 +217,6 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gateway instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"gateway instance update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							gatewayInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated gateway instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -292,7 +266,7 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gateway instance delete deferred pending in-flight deletion, requeueing",
+							"gateway instance delete conflicted, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -361,7 +335,7 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gateway instance deletion already in progress, requeueing",
+							"gateway instance delete request conflicted, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

@@ -79,8 +79,8 @@ func (h Handler) AddTerraformDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&terraformDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&terraformDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -328,8 +328,8 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 	prevReconciliation := existingTerraformDefinition.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingTerraformDefinition).Updates(&updatedTerraformDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingTerraformDefinition).Updates(&updatedTerraformDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -423,8 +423,8 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformDefinition.ID = existingTerraformDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -529,8 +529,8 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&terraformDefinition).Updates(&scheduledTerraformDefinition)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&terraformDefinition).Updates(&scheduledTerraformDefinition)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -557,8 +557,8 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&terraformDefinition)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&terraformDefinition)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -657,8 +657,8 @@ func (h Handler) AddTerraformInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&terraformInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&terraformInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -906,8 +906,8 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 	prevReconciliation := existingTerraformInstance.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingTerraformInstance).Updates(&updatedTerraformInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingTerraformInstance).Updates(&updatedTerraformInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1001,8 +1001,8 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedTerraformInstance.ID = existingTerraformInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedTerraformInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1101,8 +1101,8 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&terraformInstance).Updates(&scheduledTerraformInstance)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&terraformInstance).Updates(&scheduledTerraformInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1129,8 +1129,8 @@ func (h Handler) DeleteTerraformInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&terraformInstance)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&terraformInstance)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check

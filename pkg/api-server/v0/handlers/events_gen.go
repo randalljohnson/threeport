@@ -59,8 +59,8 @@ func (h Handler) AddEvent(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&event)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&event)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -290,8 +290,8 @@ func (h Handler) UpdateEvent(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingEvent).Updates(&updatedEvent)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingEvent).Updates(&updatedEvent)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -367,8 +367,8 @@ func (h Handler) ReplaceEvent(c echo.Context) error {
 
 	// persist provided data
 	updatedEvent.ID = existingEvent.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedEvent)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedEvent)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -430,8 +430,8 @@ func (h Handler) DeleteEvent(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&event)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&event)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types

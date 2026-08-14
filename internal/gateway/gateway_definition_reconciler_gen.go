@@ -170,19 +170,6 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"gateway definition create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							gatewayDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created gateway definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -230,19 +217,6 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"gateway definition update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							gatewayDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated gateway definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -292,7 +266,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gateway definition delete deferred pending in-flight deletion, requeueing",
+							"gateway definition delete conflicted, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -361,7 +335,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gateway definition deletion already in progress, requeueing",
+							"gateway definition delete request conflicted, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

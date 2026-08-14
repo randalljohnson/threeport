@@ -170,19 +170,6 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gcp gke kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"gcp gke kubernetes runtime instance create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							gcpGkeKubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created gcp gke kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -230,19 +217,6 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gcp gke kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"gcp gke kubernetes runtime instance update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							gcpGkeKubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated gcp gke kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -292,7 +266,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gcp gke kubernetes runtime instance delete deferred pending in-flight deletion, requeueing",
+							"gcp gke kubernetes runtime instance delete conflicted, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -361,7 +335,7 @@ func GcpGkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gcp gke kubernetes runtime instance deletion already in progress, requeueing",
+							"gcp gke kubernetes runtime instance delete request conflicted, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

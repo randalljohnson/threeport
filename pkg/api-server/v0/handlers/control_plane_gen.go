@@ -80,8 +80,8 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&controlPlaneDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&controlPlaneDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -329,8 +329,8 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 	prevReconciliation := existingControlPlaneDefinition.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingControlPlaneDefinition).Updates(&updatedControlPlaneDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingControlPlaneDefinition).Updates(&updatedControlPlaneDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -424,8 +424,8 @@ func (h Handler) ReplaceControlPlaneDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedControlPlaneDefinition.ID = existingControlPlaneDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -530,8 +530,8 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&controlPlaneDefinition).Updates(&scheduledControlPlaneDefinition)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&controlPlaneDefinition).Updates(&scheduledControlPlaneDefinition)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -558,8 +558,8 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&controlPlaneDefinition)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&controlPlaneDefinition)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -658,8 +658,8 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&controlPlaneInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&controlPlaneInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -907,8 +907,8 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 	prevReconciliation := existingControlPlaneInstance.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingControlPlaneInstance).Updates(&updatedControlPlaneInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingControlPlaneInstance).Updates(&updatedControlPlaneInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1002,8 +1002,8 @@ func (h Handler) ReplaceControlPlaneInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedControlPlaneInstance.ID = existingControlPlaneInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedControlPlaneInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1102,8 +1102,8 @@ func (h Handler) DeleteControlPlaneInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&controlPlaneInstance).Updates(&scheduledControlPlaneInstance)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&controlPlaneInstance).Updates(&scheduledControlPlaneInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1130,8 +1130,8 @@ func (h Handler) DeleteControlPlaneInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&controlPlaneInstance)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&controlPlaneInstance)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check

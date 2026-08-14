@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -115,23 +116,35 @@ func migrateDb(
 		returnErr("could not create gorm db object", err)
 	}
 
-	// enforce one row per version before migrating so a concurrent run
-	// cannot record the same version a second time
-	if err := ensureUniqueGooseVersionId(gormdb); err != nil {
-		returnErr("failed to enforce unique goose version id", err)
+	// hold a lock for the whole run so a rolling update of the API server,
+	// which starts a second migrator before the first one finishes, cannot
+	// apply and record the same migration twice
+	sessionLocker, err := database.NewCockroachSessionLocker("threeport_migration_lock")
+	if err != nil {
+		returnErr("failed to build migration session locker", err)
 	}
 
-	// run migrations
+	// record applied migrations in a table of this API's own so anything
+	// else migrating the same database keeps a separate ledger. Nothing is
+	// read from a filesystem because every migration registers itself with
+	// goose at startup.
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		db,
+		nil,
+		goose.WithTableName("threeport_goose_db_version"),
+		goose.WithSessionLocker(sessionLocker),
+		goose.WithVerbose(true),
+	)
+	if err != nil {
+		returnErr("failed to build goose migration provider", err)
+	}
+
+	// run migrations, which read the gorm DB back out of the context under
+	// this key
 	ctx := context.WithValue(context.TODO(), "gormdb", gormdb)
-	goose.SetTableName("threeport_goose_db_version")
-	if err := goose.RunContext(ctx, command, db, ".", arguments...); err != nil {
+	if err := runGooseCommand(ctx, provider, command, arguments); err != nil {
 		returnErr(fmt.Sprintf("goose %s command failed", command), err)
-	}
-
-	// install the index on a database where goose created the version
-	// table during this run
-	if err := ensureUniqueGooseVersionId(gormdb); err != nil {
-		returnErr("failed to enforce unique goose version id", err)
 	}
 
 	logger.Info("database schema successfully migrated")
@@ -139,23 +152,93 @@ func migrateDb(
 	return nil
 }
 
-// ensureUniqueGooseVersionId removes duplicate version rows and adds a unique
-// index over the version id column of the table tracking applied migrations.
-func ensureUniqueGooseVersionId(gormdb *gorm.DB) error {
-	// skip a database where the version table has yet to be created
-	if !gormdb.Migrator().HasTable("threeport_goose_db_version") {
-		return nil
+// runGooseCommand runs one database-migrator command against the migration
+// provider.
+func runGooseCommand(
+	ctx context.Context,
+	provider *goose.Provider,
+	command string,
+	arguments []string,
+) error {
+	switch command {
+	case "up":
+		_, err := provider.Up(ctx)
+		return err
+	case "up-by-one":
+		_, err := provider.UpByOne(ctx)
+		return err
+	case "up-to":
+		version, err := migrationVersion(command, arguments)
+		if err != nil {
+			return err
+		}
+		_, err = provider.UpTo(ctx, version)
+		return err
+	case "down":
+		_, err := provider.Down(ctx)
+		return err
+	case "down-to":
+		version, err := migrationVersion(command, arguments)
+		if err != nil {
+			return err
+		}
+		_, err = provider.DownTo(ctx, version)
+		return err
+	case "redo":
+		// the provider offers no redo of its own, so roll the newest
+		// migration back and apply it again, taking the migration lock
+		// separately for each half
+		if _, err := provider.Down(ctx); err != nil {
+			return err
+		}
+		_, err := provider.UpByOne(ctx)
+		return err
+	case "status":
+		return printMigrationStatus(ctx, provider)
 	}
 
-	// collapse duplicate rows left by concurrent migrator runs, keeping the
-	// earliest row recorded for each version
-	if err := gormdb.Exec("DELETE FROM threeport_goose_db_version WHERE id NOT IN (SELECT max(id) FROM threeport_goose_db_version GROUP BY version_id)").Error; err != nil {
-		return fmt.Errorf("failed to remove duplicate version rows: %w", err)
+	return fmt.Errorf("%s is not a goose command", command)
+}
+
+// migrationVersion reads the migration version a command takes as its only
+// argument.
+func migrationVersion(command string, arguments []string) (int64, error) {
+	if len(arguments) == 0 {
+		return 0, fmt.Errorf("%s requires a migration version argument", command)
 	}
 
-	// reject any subsequent duplicate at the database level
-	if err := gormdb.Exec("CREATE UNIQUE INDEX IF NOT EXISTS threeport_goose_db_version_version_id_key ON threeport_goose_db_version (version_id)").Error; err != nil {
-		return fmt.Errorf("failed to create unique index on version id: %w", err)
+	version, err := strconv.ParseInt(arguments[0], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("migration version must be a number, got %s: %w", arguments[0], err)
+	}
+
+	return version, nil
+}
+
+// printMigrationStatus prints when each known migration was applied, or that
+// it is still pending.
+func printMigrationStatus(ctx context.Context, provider *goose.Provider) error {
+	migrationStatus, err := provider.Status(ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("    Applied At                  Migration")
+	fmt.Println("    =======================================")
+	for _, status := range migrationStatus {
+		appliedAt := "Pending"
+		if status.State == goose.StateApplied {
+			appliedAt = status.AppliedAt.Format(time.ANSIC)
+		}
+
+		// a migration registered from Go carries no file path, so name it by
+		// the version that identifies it instead
+		source := strconv.FormatInt(status.Source.Version, 10)
+		if status.Source.Path != "" {
+			source = filepath.Base(status.Source.Path)
+		}
+
+		fmt.Printf("    %-24s -- %s\n", appliedAt, source)
 	}
 
 	return nil

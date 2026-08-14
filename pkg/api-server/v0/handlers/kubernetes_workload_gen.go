@@ -79,8 +79,8 @@ func (h Handler) AddKubernetesWorkloadDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&kubernetesWorkloadDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&kubernetesWorkloadDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -328,8 +328,8 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 	prevReconciliation := existingKubernetesWorkloadDefinition.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingKubernetesWorkloadDefinition).Updates(&updatedKubernetesWorkloadDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingKubernetesWorkloadDefinition).Updates(&updatedKubernetesWorkloadDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -423,8 +423,8 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 
 	// persist provided data
 	updatedKubernetesWorkloadDefinition.ID = existingKubernetesWorkloadDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -529,8 +529,8 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&kubernetesWorkloadDefinition).Updates(&scheduledKubernetesWorkloadDefinition)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&kubernetesWorkloadDefinition).Updates(&scheduledKubernetesWorkloadDefinition)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -557,8 +557,8 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&kubernetesWorkloadDefinition)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&kubernetesWorkloadDefinition)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -657,8 +657,8 @@ func (h Handler) AddKubernetesWorkloadInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&kubernetesWorkloadInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&kubernetesWorkloadInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -906,8 +906,8 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 	prevReconciliation := existingKubernetesWorkloadInstance.Reconciliation
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingKubernetesWorkloadInstance).Updates(&updatedKubernetesWorkloadInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingKubernetesWorkloadInstance).Updates(&updatedKubernetesWorkloadInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1001,8 +1001,8 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 
 	// persist provided data
 	updatedKubernetesWorkloadInstance.ID = existingKubernetesWorkloadInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1101,8 +1101,8 @@ func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-			return h.RequestDB(c).Model(&kubernetesWorkloadInstance).Updates(&scheduledKubernetesWorkloadInstance)
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&kubernetesWorkloadInstance).Updates(&scheduledKubernetesWorkloadInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1129,8 +1129,8 @@ func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-				return h.RequestDB(c).Delete(&kubernetesWorkloadInstance)
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&kubernetesWorkloadInstance)
 			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
@@ -1213,8 +1213,8 @@ func (h Handler) AddKubernetesWorkloadResourceDefinition(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&kubernetesWorkloadResourceDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&kubernetesWorkloadResourceDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1444,8 +1444,8 @@ func (h Handler) UpdateKubernetesWorkloadResourceDefinition(c echo.Context) erro
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingKubernetesWorkloadResourceDefinition).Updates(&updatedKubernetesWorkloadResourceDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingKubernetesWorkloadResourceDefinition).Updates(&updatedKubernetesWorkloadResourceDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1521,8 +1521,8 @@ func (h Handler) ReplaceKubernetesWorkloadResourceDefinition(c echo.Context) err
 
 	// persist provided data
 	updatedKubernetesWorkloadResourceDefinition.ID = existingKubernetesWorkloadResourceDefinition.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1584,8 +1584,8 @@ func (h Handler) DeleteKubernetesWorkloadResourceDefinition(c echo.Context) erro
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&kubernetesWorkloadResourceDefinition)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&kubernetesWorkloadResourceDefinition)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
@@ -1666,8 +1666,8 @@ func (h Handler) AddKubernetesWorkloadResourceInstance(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&kubernetesWorkloadResourceInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&kubernetesWorkloadResourceInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1897,8 +1897,8 @@ func (h Handler) UpdateKubernetesWorkloadResourceInstance(c echo.Context) error 
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingKubernetesWorkloadResourceInstance).Updates(&updatedKubernetesWorkloadResourceInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingKubernetesWorkloadResourceInstance).Updates(&updatedKubernetesWorkloadResourceInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1974,8 +1974,8 @@ func (h Handler) ReplaceKubernetesWorkloadResourceInstance(c echo.Context) error
 
 	// persist provided data
 	updatedKubernetesWorkloadResourceInstance.ID = existingKubernetesWorkloadResourceInstance.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -2037,8 +2037,8 @@ func (h Handler) DeleteKubernetesWorkloadResourceInstance(c echo.Context) error 
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&kubernetesWorkloadResourceInstance)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&kubernetesWorkloadResourceInstance)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types

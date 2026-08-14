@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"strings"
@@ -33,19 +34,31 @@ const (
 	serializationRetryMaxDelay = 500 * time.Millisecond
 )
 
-// RetryOnSerializationFailure runs a database write and re-runs it from the
-// start when the write fails with a serialization conflict, up to a bounded
-// number of attempts. It returns the result of the last attempt so callers
-// inspect result.Error as usual. Non-retryable errors are returned on the
-// first attempt without delay.
-func RetryOnSerializationFailure(write func() *gorm.DB) *gorm.DB {
+// RetryWrite runs a database write and re-runs it from the start when the write
+// fails with a serialization conflict, the SQLSTATE 40001 class CockroachDB
+// reports when it aborts a transaction, up to a bounded number of attempts. It
+// returns the result of the last attempt so callers inspect result.Error as
+// usual. Non-retryable errors are returned on the first attempt without delay.
+// Retrying stops as soon as ctx is done, so a caller that hung up mid-request
+// does not hold a goroutine and a database connection through the backoff.
+func RetryWrite(ctx context.Context, write func() *gorm.DB) *gorm.DB {
 	var result *gorm.DB
 	for attempt := 0; attempt < serializationRetryMax; attempt++ {
 		result = write()
 		if result.Error == nil || !isSerializationFailure(result.Error) {
 			return result
 		}
-		time.Sleep(serializationRetryBackoff(attempt))
+
+		// wait out the backoff, but give up on the whole retry budget the
+		// moment the request is cancelled. Stop the timer on that path so the
+		// runtime reclaims it now rather than at its deadline.
+		timer := time.NewTimer(serializationRetryBackoff(attempt))
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return result
+		case <-timer.C:
+		}
 	}
 
 	return result

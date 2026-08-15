@@ -580,7 +580,7 @@ func TestDeployInfra_TransientLockError_DoesNotSetCreationFailed(t *testing.T) {
 // TestDeployInfra_PermanentError_SetsCreationFailed asserts that a permanent
 // deploy error still flips CreationFailed=true so the reconciler retries
 // promptly instead of waiting for the acknowledgement to go stale. This
-// covers the classifier's negative case and pins the pre-existing behavior.
+// covers the classifier's negative case and the pre-existing behavior.
 func TestDeployInfra_PermanentError_SetsCreationFailed(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()

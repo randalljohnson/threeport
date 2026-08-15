@@ -16539,23 +16539,23 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16563,11 +16563,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -16579,7 +16579,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -16736,23 +16736,23 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16760,11 +16760,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -16780,7 +16780,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -16825,15 +16825,15 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "CustomComponentInfo": {
@@ -16844,11 +16844,11 @@
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16856,7 +16856,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "Genesis": {
@@ -16864,7 +16864,7 @@
                     "type": "boolean"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "IsSelf": {
@@ -16891,7 +16891,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -16914,23 +16914,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16938,7 +16938,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "Domain": {
@@ -16953,7 +16953,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -16965,7 +16965,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -16988,23 +16988,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17012,7 +17012,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "DomainNameDefinitionID": {
@@ -17020,7 +17020,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17036,7 +17036,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -17103,23 +17103,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17127,7 +17127,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "DomainNameDefinitionID": {
@@ -17149,7 +17149,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadDefinitionID": {
@@ -17165,7 +17165,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "ServiceName": {
@@ -17228,23 +17228,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17252,7 +17252,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GatewayDefinitionID": {
@@ -17260,7 +17260,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17276,7 +17276,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -17355,23 +17355,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17379,7 +17379,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "ExternalIP": {
@@ -17399,7 +17399,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -17411,7 +17411,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -17510,23 +17510,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17534,7 +17534,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GcpGkeKubernetesRuntimeDefinitionID": {
@@ -17546,7 +17546,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17558,7 +17558,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -17642,23 +17642,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17666,7 +17666,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadInstances": {
@@ -17677,7 +17677,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17689,7 +17689,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Repo": {
@@ -17725,23 +17725,23 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17749,7 +17749,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadDefinitionID": {
@@ -17757,7 +17757,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17769,7 +17769,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "ReleaseNamespace": {
@@ -17824,23 +17824,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17848,7 +17848,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HighAvailability": {
@@ -17864,7 +17864,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstances": {
@@ -17895,7 +17895,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -17944,15 +17944,15 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DefaultRuntime": {
@@ -17960,11 +17960,11 @@
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17972,7 +17972,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "DnsControllerInstanceID": {
@@ -17984,7 +17984,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeDefinitionID": {
@@ -18007,7 +18007,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "SecretsControllerInstanceID": {
@@ -18036,23 +18036,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18060,11 +18060,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadInstances": {
@@ -18090,7 +18090,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18112,23 +18112,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18136,11 +18136,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18163,7 +18163,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18320,23 +18320,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18344,11 +18344,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "LoggingInstances": {
@@ -18391,7 +18391,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18409,23 +18409,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18433,11 +18433,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18469,7 +18469,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18485,23 +18485,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18509,7 +18509,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "ImageID": {
@@ -18525,7 +18525,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "MachineProfile": {
@@ -18556,7 +18556,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18576,23 +18576,23 @@
                     "type": "boolean"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18600,7 +18600,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HostKey": {
@@ -18619,7 +18619,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Location": {
@@ -18654,7 +18654,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -18763,23 +18763,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18787,7 +18787,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "Env": {
@@ -18798,7 +18798,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -18814,7 +18814,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18848,23 +18848,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18872,11 +18872,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -18907,7 +18907,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18925,23 +18925,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18949,11 +18949,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -18977,7 +18977,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19122,23 +19122,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19146,7 +19146,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmChartVersion": {
@@ -19162,7 +19162,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -19181,7 +19181,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19199,23 +19199,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19223,7 +19223,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
@@ -19235,7 +19235,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19251,7 +19251,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19267,23 +19267,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19291,7 +19291,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmChartVersion": {
@@ -19303,7 +19303,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -19358,7 +19358,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19376,23 +19376,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19400,7 +19400,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
@@ -19408,7 +19408,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -19456,7 +19456,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19521,23 +19521,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19545,11 +19545,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19569,7 +19569,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -19737,15 +19737,15 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "Data": {
@@ -19756,11 +19756,11 @@
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19768,11 +19768,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -19784,7 +19784,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "SecretInstances": {
@@ -19809,23 +19809,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19833,7 +19833,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadInstanceID": {
@@ -19841,7 +19841,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19857,7 +19857,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "SecretDefinitionID": {
@@ -19902,23 +19902,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19926,11 +19926,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -19942,7 +19942,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TerraformInstances": {
@@ -19971,23 +19971,23 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19995,11 +19995,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20011,7 +20011,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "StateDocument": {

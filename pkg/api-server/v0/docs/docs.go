@@ -16546,23 +16546,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16570,11 +16570,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -16586,7 +16586,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -16743,23 +16743,23 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16767,11 +16767,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -16787,7 +16787,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -16832,15 +16832,15 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "CustomComponentInfo": {
@@ -16851,11 +16851,11 @@ const docTemplate = `{
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16863,7 +16863,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "Genesis": {
@@ -16871,7 +16871,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "IsSelf": {
@@ -16898,7 +16898,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -16921,23 +16921,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -16945,7 +16945,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "Domain": {
@@ -16960,7 +16960,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -16972,7 +16972,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -16995,23 +16995,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17019,7 +17019,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "DomainNameDefinitionID": {
@@ -17027,7 +17027,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17043,7 +17043,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -17110,23 +17110,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17134,7 +17134,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "DomainNameDefinitionID": {
@@ -17156,7 +17156,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadDefinitionID": {
@@ -17172,7 +17172,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "ServiceName": {
@@ -17235,23 +17235,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17259,7 +17259,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GatewayDefinitionID": {
@@ -17267,7 +17267,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17283,7 +17283,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -17362,23 +17362,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17386,7 +17386,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "ExternalIP": {
@@ -17406,7 +17406,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -17418,7 +17418,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -17517,23 +17517,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17541,7 +17541,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GcpGkeKubernetesRuntimeDefinitionID": {
@@ -17553,7 +17553,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17565,7 +17565,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -17649,23 +17649,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17673,7 +17673,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadInstances": {
@@ -17684,7 +17684,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17696,7 +17696,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Repo": {
@@ -17732,23 +17732,23 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17756,7 +17756,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadDefinitionID": {
@@ -17764,7 +17764,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17776,7 +17776,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "ReleaseNamespace": {
@@ -17831,23 +17831,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17855,7 +17855,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HighAvailability": {
@@ -17871,7 +17871,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstances": {
@@ -17902,7 +17902,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -17951,15 +17951,15 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DefaultRuntime": {
@@ -17967,11 +17967,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17979,7 +17979,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "DnsControllerInstanceID": {
@@ -17991,7 +17991,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeDefinitionID": {
@@ -18014,7 +18014,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "SecretsControllerInstanceID": {
@@ -18043,23 +18043,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18067,11 +18067,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadInstances": {
@@ -18097,7 +18097,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18119,23 +18119,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18143,11 +18143,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18170,7 +18170,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18327,23 +18327,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18351,11 +18351,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "LoggingInstances": {
@@ -18398,7 +18398,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18416,23 +18416,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18440,11 +18440,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18476,7 +18476,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18492,23 +18492,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18516,7 +18516,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "ImageID": {
@@ -18532,7 +18532,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "MachineProfile": {
@@ -18563,7 +18563,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18583,23 +18583,23 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18607,7 +18607,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HostKey": {
@@ -18626,7 +18626,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Location": {
@@ -18661,7 +18661,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -18770,23 +18770,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18794,7 +18794,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "Env": {
@@ -18805,7 +18805,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -18821,7 +18821,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18855,23 +18855,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18879,11 +18879,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -18914,7 +18914,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18932,23 +18932,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18956,11 +18956,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -18984,7 +18984,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19129,23 +19129,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19153,7 +19153,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmChartVersion": {
@@ -19169,7 +19169,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -19188,7 +19188,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19206,23 +19206,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19230,7 +19230,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
@@ -19242,7 +19242,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19258,7 +19258,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19274,23 +19274,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19298,7 +19298,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmChartVersion": {
@@ -19310,7 +19310,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -19365,7 +19365,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19383,23 +19383,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19407,7 +19407,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
@@ -19415,7 +19415,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -19463,7 +19463,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19528,23 +19528,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19552,11 +19552,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19576,7 +19576,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -19744,15 +19744,15 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "Data": {
@@ -19763,11 +19763,11 @@ const docTemplate = `{
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19775,11 +19775,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -19791,7 +19791,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "SecretInstances": {
@@ -19816,23 +19816,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19840,7 +19840,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadInstanceID": {
@@ -19848,7 +19848,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19864,7 +19864,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "SecretDefinitionID": {
@@ -19909,23 +19909,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19933,11 +19933,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -19949,7 +19949,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "TerraformInstances": {
@@ -19978,23 +19978,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.",
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20002,11 +20002,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20018,7 +20018,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
                 "StateDocument": {

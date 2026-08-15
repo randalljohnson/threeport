@@ -176,19 +176,6 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"observability dashboard definition create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							observabilityDashboardDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created observability dashboard definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -236,19 +223,6 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"observability dashboard definition update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							observabilityDashboardDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated observability dashboard definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -298,7 +272,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"observability dashboard definition delete deferred pending in-flight deletion, requeueing",
+							"conflict reconciling deleted observability dashboard definition object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -367,7 +341,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"observability dashboard definition deletion already in progress, requeueing",
+							"conflict deleting observability dashboard definition, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

@@ -176,19 +176,6 @@ func TerraformInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of terraform instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"terraform instance create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							terraformInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created terraform instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -236,19 +223,6 @@ func TerraformInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of terraform instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"terraform instance update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							terraformInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated terraform instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -298,7 +272,7 @@ func TerraformInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"terraform instance delete deferred pending in-flight deletion, requeueing",
+							"conflict reconciling deleted terraform instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -367,7 +341,7 @@ func TerraformInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"terraform instance deletion already in progress, requeueing",
+							"conflict deleting terraform instance, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

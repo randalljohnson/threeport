@@ -176,19 +176,6 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of oci oke kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"oci oke kubernetes runtime instance create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							ociOkeKubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created oci oke kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -236,19 +223,6 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of oci oke kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"oci oke kubernetes runtime instance update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							ociOkeKubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated oci oke kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -298,7 +272,7 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"oci oke kubernetes runtime instance delete deferred pending in-flight deletion, requeueing",
+							"conflict reconciling deleted oci oke kubernetes runtime instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -367,7 +341,7 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"oci oke kubernetes runtime instance deletion already in progress, requeueing",
+							"conflict deleting oci oke kubernetes runtime instance, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

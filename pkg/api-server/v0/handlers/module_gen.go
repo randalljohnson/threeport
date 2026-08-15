@@ -75,8 +75,8 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&moduleApi)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&moduleApi)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -299,8 +299,8 @@ func (h Handler) UpdateModuleApi(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingModuleApi).Updates(&updatedModuleApi)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingModuleApi).Updates(&updatedModuleApi)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -376,8 +376,8 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleApi.ID = existingModuleApi.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApi)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApi)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -439,8 +439,8 @@ func (h Handler) DeleteModuleApi(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&moduleApi)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&moduleApi)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
@@ -521,8 +521,8 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&moduleApiRoute)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&moduleApiRoute)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -745,8 +745,8 @@ func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingModuleApiRoute).Updates(&updatedModuleApiRoute)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingModuleApiRoute).Updates(&updatedModuleApiRoute)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -822,8 +822,8 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleApiRoute.ID = existingModuleApiRoute.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApiRoute)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleApiRoute)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -885,8 +885,8 @@ func (h Handler) DeleteModuleApiRoute(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&moduleApiRoute)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&moduleApiRoute)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
@@ -983,8 +983,8 @@ func (h Handler) AddModuleController(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&moduleController)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&moduleController)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1207,8 +1207,8 @@ func (h Handler) UpdateModuleController(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingModuleController).Updates(&updatedModuleController)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingModuleController).Updates(&updatedModuleController)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1284,8 +1284,8 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleController.ID = existingModuleController.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleController)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleController)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1347,8 +1347,8 @@ func (h Handler) DeleteModuleController(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&moduleController)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&moduleController)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
@@ -1429,8 +1429,8 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 	}
 
 	// persist to DB
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Create(&moduleObject)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&moduleObject)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1653,8 +1653,8 @@ func (h Handler) UpdateModuleObject(c echo.Context) error {
 	}
 
 	// update object in database
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Model(&existingModuleObject).Updates(&updatedModuleObject)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingModuleObject).Updates(&updatedModuleObject)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1730,8 +1730,8 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 
 	// persist provided data
 	updatedModuleObject.ID = existingModuleObject.ID
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleObject)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedModuleObject)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
@@ -1793,8 +1793,8 @@ func (h Handler) DeleteModuleObject(c echo.Context) error {
 	}
 
 	// delete object
-	if result := apiserver_lib.RetryOnSerializationFailure(func() *gorm.DB {
-		return h.RequestDB(c).Delete(&moduleObject)
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&moduleObject)
 	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types

@@ -37,8 +37,9 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("could not run gorm AutoMigrate: %w", err)
 	}
 
-	// row-level time-to-live is a CockroachDB feature, so leave the schema as
-	// built on dialects that do not implement it
+	// everything below is CockroachDB-only. CockroachDB is reached through gorm's
+	// postgres driver, so that driver name is what the schema built above gets
+	// row-level time-to-live on; every other dialect keeps the schema as-is.
 	if gormDb.Dialector.Name() != "postgres" {
 		return nil
 	}

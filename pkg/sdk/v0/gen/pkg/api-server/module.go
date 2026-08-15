@@ -561,26 +561,14 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	)
 	f.Line()
 
-	// emit prior module-name aliases so a rename can be self-healed instead of
-	// orphaning the old module_api row
-	priorNameValues := make([]Code, 0, len(sdkConfig.PriorModuleNames))
-	for _, prior := range sdkConfig.PriorModuleNames {
-		priorNameValues = append(priorNameValues, Lit(prior))
-	}
-	f.Var().Id("priorModuleNames").Op("=").Index().String().Values(priorNameValues...)
-	f.Line()
-
-	// resolveModuleApi looks up the module API by its current name, then by any
-	// declared prior name so a rename lands in place. Emitted as a helper so the
-	// registration entrypoint stays flat.
-	f.Comment("resolveModuleApi looks up the module API by its current name; when not")
-	f.Comment("found, it falls back to any prior name declared in the SDK config and")
-	f.Comment("renames the existing record in place so its controller and object rows")
-	f.Comment("are not orphaned.")
+	// emit the module API lookup as a helper so the registration entrypoint
+	// stays flat
+	f.Comment("resolveModuleApi looks up the module API by name. It returns the record")
+	f.Comment("when one is registered under that name, and otherwise reports that a fresh")
+	f.Comment("record must be created.")
 	f.Func().Id("resolveModuleApi").Params(
 		Id("tpApiClient").Op("*").Qual("net/http", "Client"),
 		Id("tpApiAddr").String(),
-		Id("moduleApiEndpoint").String(),
 	).Params(
 		Op("*").Qual("github.com/threeport/threeport/pkg/api/v0", "ModuleApi"),
 		Bool(),
@@ -596,7 +584,7 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		If(Id("err").Op("==").Nil()).Block(
 			Qual("log", "Printf").Call(
-				Lit("register-module: found module api under current name %q"),
+				Lit("register-module: found existing module api %q"),
 				Id("moduleName"),
 			),
 			Return(Id("existingModApi"), False(), Nil()),
@@ -611,82 +599,17 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			)),
 		),
 		Line(),
-		For(List(Id("_"), Id("priorName")).Op(":=").Range().Id("priorModuleNames")).Block(
-			Qual("log", "Printf").Call(
-				Lit("register-module: looking up module api by prior name %q"),
-				Id("priorName"),
-			),
-			List(Id("priorApi"), Id("priorErr")).Op(":=").Qual(
-				"github.com/threeport/threeport/pkg/client/v0",
-				"GetModuleApiByName",
-			).Call(
-				Id("tpApiClient"),
-				Id("tpApiAddr"),
-				Id("priorName"),
-			),
-			If(Id("priorErr").Op("!=").Nil()).Block(
-				If(Qual("errors", "Is").Call(
-					Id("priorErr"),
-					Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrObjectNotFound"),
-				)).Block(
-					Continue(),
-				),
-				Return(Nil(), False(), Qual("fmt", "Errorf").Call(
-					Lit("failed to look up module api by prior name %q: %w"),
-					Id("priorName"),
-					Id("priorErr"),
-				)),
-			),
-			Qual("log", "Printf").Call(
-				Lit("register-module: found module api under prior name %q; renaming to %q"),
-				Id("priorName"),
-				Id("moduleName"),
-			),
-			Id("priorApi").Dot("Name").Op("=").Qual(
-				"github.com/threeport/threeport/pkg/util/v0",
-				"Ptr",
-			).Call(Id("moduleName")),
-			Id("priorApi").Dot("Endpoint").Op("=").Qual(
-				"github.com/threeport/threeport/pkg/util/v0",
-				"Ptr",
-			).Call(Id("moduleApiEndpoint")),
-			Id("priorApi").Dot("ApiNamespace").Op("=").Qual(
-				"github.com/threeport/threeport/pkg/util/v0",
-				"Ptr",
-			).Call(Qual(
-				fmt.Sprintf("%s/pkg/api/v0", gen.ModulePath),
-				"ApiNamespace",
-			)),
-			List(Id("renamed"), Id("upErr")).Op(":=").Qual(
-				"github.com/threeport/threeport/pkg/client/v0",
-				"UpdateModuleApi",
-			).Call(
-				Id("tpApiClient"),
-				Id("tpApiAddr"),
-				Id("priorApi"),
-			),
-			If(Id("upErr").Op("!=").Nil()).Block(
-				Return(Nil(), False(), Qual("fmt", "Errorf").Call(
-					Lit("failed to rename module api from %q to %q: %w"),
-					Id("priorName"),
-					Id("moduleName"),
-					Id("upErr"),
-				)),
-			),
-			Return(Id("renamed"), False(), Nil()),
-		),
-		Line(),
 		Return(Nil(), True(), Nil()),
 	)
 	f.Line()
 
-	// upsertModuleController creates the module controller under the current
-	// module API and self-heals a rename orphan when the controller name is
-	// already taken by a row bound to a different module API.
+	// emit the controller create-then-rebind helper, which lets a module that
+	// was partially installed before finish registering instead of failing on
+	// the leftover controller row
 	f.Comment("upsertModuleController creates the module controller. When the create")
 	f.Comment("hits a name conflict, it looks up the existing row by name alone and, if")
 	f.Comment("that row points at a different module_api_id, updates it to the current")
-	f.Comment("one so a renamed module reclaims its controller instead of colliding.")
+	f.Comment("one so the module claims the controller instead of colliding with it.")
 	f.Func().Id("upsertModuleController").Params(
 		Id("tpApiClient").Op("*").Qual("net/http", "Client"),
 		Id("tpApiAddr").String(),
@@ -715,7 +638,7 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 		Qual("log", "Printf").Call(
-			Lit("register-module: controller %q create hit conflict; checking for rename orphan"),
+			Lit("register-module: controller %q create hit conflict; checking which module api owns it"),
 			Op("*").Id("controller").Dot("Name"),
 		),
 		List(Id("existing"), Id("lookupErr")).Op(":=").Qual(
@@ -789,12 +712,11 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Line().Id("moduleNamespace").String(),
 		Line(),
 	).Error().BlockFunc(func(g *Group) {
-		g.Comment("resolve the module API by current name, falling back to any prior")
-		g.Comment("names so a rename is healed in place rather than orphaning the row")
+		g.Comment("look up the module API so a re-registration reuses the existing")
+		g.Comment("record along with the controller and object rows that reference it")
 		g.List(Id("existingModApi"), Id("createFresh"), Id("err")).Op(":=").Id("resolveModuleApi").Call(
 			Id("tpApiClient"),
 			Id("tpApiAddr"),
-			Id("moduleApiEndpoint"),
 		)
 		g.If(Id("err").Op("!=").Nil()).Block(
 			Return(Id("err")),
@@ -802,7 +724,7 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		g.If(Id("createFresh")).Block(
 			Comment("register the module in the Threeport API with the ModuleApi object"),
 			Qual("log", "Printf").Call(
-				Lit("register-module: no existing module api under current or prior names; creating %q"),
+				Lit("register-module: no existing module api; creating %q"),
 				Id("moduleName"),
 			),
 			Id("moduleApi").Op(":=").Qual(

@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -72,13 +73,13 @@ func TestIsSerializationFailureClassifies(t *testing.T) {
 	}
 }
 
-// TestRetryOnSerializationFailureReRunsThenSucceeds covers the happy retry
-// path: a write that fails once with a serialization conflict is re-run and
-// the eventual success is returned.
-func TestRetryOnSerializationFailureReRunsThenSucceeds(t *testing.T) {
+// TestRetryWriteReRunsThenSucceeds covers the happy retry path: a write that
+// fails once with a serialization conflict is re-run and the eventual success
+// is returned.
+func TestRetryWriteReRunsThenSucceeds(t *testing.T) {
 	// fail the first attempt with a serialization conflict, then succeed
 	calls := 0
-	result := RetryOnSerializationFailure(func() *gorm.DB {
+	result := RetryWrite(context.Background(), func() *gorm.DB {
 		calls++
 		if calls == 1 {
 			return &gorm.DB{Error: &pgconn.PgError{Code: "40001"}}
@@ -91,13 +92,13 @@ func TestRetryOnSerializationFailureReRunsThenSucceeds(t *testing.T) {
 	assert.NoError(t, result.Error)
 }
 
-// TestRetryOnSerializationFailureSkipsNonRetryable covers the fast path: a
-// non-retryable error is returned on the first attempt without re-running.
-func TestRetryOnSerializationFailureSkipsNonRetryable(t *testing.T) {
+// TestRetryWriteSkipsNonRetryable covers the fast path: a non-retryable error
+// is returned on the first attempt without re-running.
+func TestRetryWriteSkipsNonRetryable(t *testing.T) {
 	// fail with an error that is not a serialization conflict
 	nonRetryable := errors.New("duplicate key value violates unique constraint")
 	calls := 0
-	result := RetryOnSerializationFailure(func() *gorm.DB {
+	result := RetryWrite(context.Background(), func() *gorm.DB {
 		calls++
 		return &gorm.DB{Error: nonRetryable}
 	})
@@ -107,18 +108,38 @@ func TestRetryOnSerializationFailureSkipsNonRetryable(t *testing.T) {
 	assert.ErrorIs(t, result.Error, nonRetryable)
 }
 
-// TestRetryOnSerializationFailureExhaustsBudget covers budget exhaustion: a
-// write that keeps failing with a serialization conflict is retried up to the
-// bound and the last error is returned.
-func TestRetryOnSerializationFailureExhaustsBudget(t *testing.T) {
+// TestRetryWriteExhaustsBudget covers budget exhaustion: a write that keeps
+// failing with a serialization conflict is retried up to the bound and the last
+// error is returned.
+func TestRetryWriteExhaustsBudget(t *testing.T) {
 	// always fail with a serialization conflict
 	calls := 0
-	result := RetryOnSerializationFailure(func() *gorm.DB {
+	result := RetryWrite(context.Background(), func() *gorm.DB {
 		calls++
 		return &gorm.DB{Error: &pgconn.PgError{Code: "40001"}}
 	})
 
 	// the write ran the maximum number of attempts and still reports the error
 	assert.Equal(t, serializationRetryMax, calls)
+	assert.True(t, isSerializationFailure(result.Error))
+}
+
+// TestRetryWriteStopsOnCancelledContext covers the abandoned request: once the
+// caller disconnects, the retry loop gives up its remaining budget instead of
+// sleeping out the backoff, and still hands back the last failure.
+func TestRetryWriteStopsOnCancelledContext(t *testing.T) {
+	// cancel the request while the first attempt is in flight, so the loop
+	// reaches the backoff with a context that is already done
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	calls := 0
+	result := RetryWrite(ctx, func() *gorm.DB {
+		calls++
+		cancel()
+		return &gorm.DB{Error: &pgconn.PgError{Code: "40001"}}
+	})
+
+	// the write ran once, well short of the budget, and the conflict is returned
+	assert.Equal(t, 1, calls)
 	assert.True(t, isSerializationFailure(result.Error))
 }

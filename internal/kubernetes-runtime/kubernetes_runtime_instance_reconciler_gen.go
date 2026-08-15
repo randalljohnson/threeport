@@ -176,19 +176,6 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"kubernetes runtime instance create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							kubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -236,19 +223,6 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"kubernetes runtime instance update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							kubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -298,7 +272,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"kubernetes runtime instance delete deferred pending in-flight deletion, requeueing",
+							"conflict reconciling deleted kubernetes runtime instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -367,7 +341,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"kubernetes runtime instance deletion already in progress, requeueing",
+							"conflict deleting kubernetes runtime instance, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

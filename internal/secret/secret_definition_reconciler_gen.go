@@ -144,19 +144,6 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of secret definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"secret definition create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							secretDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created secret definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -204,19 +191,6 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of secret definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"secret definition update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							secretDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated secret definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -266,7 +240,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"secret definition delete deferred pending in-flight deletion, requeueing",
+							"conflict reconciling deleted secret definition object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -335,7 +309,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"secret definition deletion already in progress, requeueing",
+							"conflict deleting secret definition, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

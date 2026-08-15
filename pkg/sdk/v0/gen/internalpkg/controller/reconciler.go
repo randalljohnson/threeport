@@ -585,45 +585,47 @@ func operationCase(
 				))),
 			)
 		})
-		h.If(Id("operationErr").Op("!=").Nil()).Block(
-			// treat 409 conflict as a soft requeue: a child object is still being
-			// deleted and the reconciler should wait rather than loop on errors.
-			// The client maps every 409 to this error, so a permanent conflict such
-			// as a duplicate name lands here too and requeues until the stream stops
-			// redelivering. That is why the line below logs at Info: a conflict that
-			// repeats has to be visible in the default log stream to be diagnosable
-			If(Qual("errors", "Is").Call(
-				Id("operationErr"),
-				Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
-			)).Block(
-				Id("log").Dot("Info").Call(
-					Line().Lit(fmt.Sprintf(
-						"%s %s deferred pending in-flight deletion, requeueing",
-						strcase.ToDelimited(obj.Name, ' '),
-						op,
-					)),
-					Line().Lit("cause"), Id("operationErr").Dot("Error").Call(),
-					Line(),
-				),
-				Id("r").Dot("UnlockAndRequeue").Call(
-					Line().Id(varObjectName),
-					Line().Lit(int64(30)),
-					Line().Id("lockReleased"),
-					Line().Id("msg"),
-					Line(),
-				),
-				Continue(),
-			),
-			Id("errorMsg").Op(":=").Lit(fmt.Sprintf(
+		h.If(Id("operationErr").Op("!=").Nil()).BlockFunc(func(k *Group) {
+			// The API answers 409 on a delete it cannot carry out yet, either
+			// because the object is already being deleted or because something
+			// still attached to it has to go first. Both clear on their own, so
+			// wait at a flat 30 seconds and log at Info instead of recording a
+			// failure. Create and update skip this branch and take the error path
+			// below: a 409 there is almost always a name that is already taken,
+			// which is permanent and earns the Warning event and the backoff.
+			if op == "delete" {
+				k.If(Qual("errors", "Is").Call(
+					Id("operationErr"),
+					Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
+				)).Block(
+					Id("log").Dot("Info").Call(
+						Line().Lit(fmt.Sprintf(
+							"conflict reconciling deleted %s object, requeueing",
+							strcase.ToDelimited(obj.Name, ' '),
+						)),
+						Line().Lit("cause"), Id("operationErr").Dot("Error").Call(),
+						Line(),
+					),
+					Id("r").Dot("UnlockAndRequeue").Call(
+						Line().Id(varObjectName),
+						Line().Lit(int64(30)),
+						Line().Id("lockReleased"),
+						Line().Id("msg"),
+						Line(),
+					),
+					Continue(),
+				)
+			}
+			k.Id("errorMsg").Op(":=").Lit(fmt.Sprintf(
 				"failed to reconcile %s %s object",
 				lowerOpPast,
 				strcase.ToDelimited(obj.Name, ' '),
-			)),
-			Id("log").Dot("Error").Call(
+			))
+			k.Id("log").Dot("Error").Call(
 				Id("operationErr"),
 				Id("errorMsg"),
-			),
-			Id("r").Dot("EventsRecorder").Dot("HandleEventOverride").Call(
+			)
+			k.Id("r").Dot("EventsRecorder").Dot("HandleEventOverride").Call(
 				Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
 					Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
 						Qual(
@@ -641,16 +643,16 @@ func operationCase(
 				Line().Id("operationErr"),
 				Line().Op("&").Id("log"),
 				Line(),
-			),
-			Id("r").Dot("UnlockAndRequeue").Call(
+			)
+			k.Id("r").Dot("UnlockAndRequeue").Call(
 				Line().Id(varObjectName),
 				Line().Id("requeueDelay"),
 				Line().Id("lockReleased"),
 				Line().Id("msg"),
 				Line(),
-			),
-			Continue(),
-		)
+			)
+			k.Continue()
+		})
 		h.If(Id("customRequeueDelay").Op("!=").Lit(0)).Block(
 			Id("log").Dot("V").Call(Lit(1)).Dot("Info").Call(
 				Lit(fmt.Sprintf(
@@ -736,15 +738,16 @@ func operationCase(
 				Line(),
 			)
 			h.If(Id("err").Op("!=").Nil()).Block(
-				// treat 409 conflict as a soft requeue: another reconciliation loop
-				// is already draining this object; wait rather than loop on errors
+				// The API answers 409 when it will not drop the row yet, which
+				// clears on its own. Wait at a flat 30 seconds and log at Info
+				// rather than fail the reconciliation.
 				If(Qual("errors", "Is").Call(
 					Id("err"),
 					Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
 				)).Block(
 					Id("log").Dot("Info").Call(
 						Line().Lit(fmt.Sprintf(
-							"%s deletion already in progress, requeueing",
+							"conflict deleting %s, requeueing",
 							strcase.ToDelimited(obj.Name, ' '),
 						)),
 						Line().Lit("cause"), Id("err").Dot("Error").Call(),

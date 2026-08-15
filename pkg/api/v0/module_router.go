@@ -23,12 +23,15 @@ type ModuleRouter struct {
 
 	// proxyScheme and proxyTransport record how the module proxy reaches a
 	// module API server: over https with the control plane client certificate
-	// when auth is enabled, over plain http otherwise.  A module can register
-	// a route after the API server has started, and the afterCreate hook on
-	// ModuleApiRoute builds that route's proxy from these fields, so the
-	// runtime path gets what the startup path configured.  proxyMu guards them
-	// because that hook runs while other goroutines serve requests.
-	proxyMu        sync.RWMutex
+	// when auth is enabled, over plain http otherwise.  A module can register a
+	// route after the API server has started, and the afterCreate hook on
+	// ModuleApiRoute builds that route's proxy from these fields, so the runtime
+	// path gets what the startup path configured.
+	//
+	// Only SetProxyConfig writes them, and only InitModuleRouter calls it, before
+	// the server accepts a request.  Every read therefore happens after the
+	// write, on a goroutine the server started later.  A second writer would
+	// break that and need a lock.
 	proxyScheme    string
 	proxyTransport http.RoundTripper
 }
@@ -139,9 +142,6 @@ func moduleProxyTransport(authEnabled bool) (http.RoundTripper, error) {
 // registered later reaches its module the same way the routes present at
 // startup do.
 func (e *ModuleRouter) SetProxyConfig(scheme string, transport http.RoundTripper) {
-	e.proxyMu.Lock()
-	defer e.proxyMu.Unlock()
-
 	e.proxyScheme = scheme
 	e.proxyTransport = transport
 }
@@ -150,9 +150,6 @@ func (e *ModuleRouter) SetProxyConfig(scheme string, transport http.RoundTripper
 // module API servers.  It returns both together so a caller building a proxy
 // cannot pair an https scheme with a plain http transport.
 func (e *ModuleRouter) ProxyConfig() (string, http.RoundTripper) {
-	e.proxyMu.RLock()
-	defer e.proxyMu.RUnlock()
-
 	return e.proxyScheme, e.proxyTransport
 }
 

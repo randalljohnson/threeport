@@ -22,10 +22,26 @@ import (
 // lifecycle state machine. Production uses the defaults; tests
 // override via setLifecycleConfig.
 type LifecycleConfig struct {
+	// StaleAckThreshold is how long an acknowledgement may go unrefreshed
+	// before another control plane replica may take the operation over.
 	StaleAckThreshold time.Duration
-	RefreshInterval   time.Duration
+
+	// RefreshInterval is how often a running operation refreshes its
+	// acknowledgement so other replicas can see it is still alive.
+	RefreshInterval time.Duration
+
+	// SemaphoreCapacity is how many infrastructure operations this process
+	// runs at once. Requests past the cap are requeued rather than held in
+	// memory.
 	SemaphoreCapacity int
-	PersistRetries    int
+
+	// PersistRetries is how many times a failure is written back to the API
+	// before the operation gives up and leaves recovery to stale ack
+	// detection.
+	PersistRetries int
+
+	// PersistRetryDelay is how long to wait between attempts to write a
+	// failure back to the API.
 	PersistRetryDelay time.Duration
 }
 
@@ -46,10 +62,11 @@ var defaultLifecycleConfig = LifecycleConfig{
 	PersistRetryDelay: 10 * time.Second,
 }
 
-// lifecycleMu guards lifecycleConfig and infraSemaphore. Production sets
-// them once at init and only reads, so the read lock is uncontended;
-// tests swap them via setLifecycleConfig, and the lock keeps that swap
-// from racing the background goroutines that read the values.
+// lifecycleMu guards lifecycleConfig, infraSemaphore, and lifecycleClock.
+// Production sets them once at init and only reads, so the read lock is
+// uncontended; tests swap them via setLifecycleConfig and setLifecycleClock,
+// and the lock keeps that swap from racing the background goroutines that
+// read the values.
 var lifecycleMu sync.RWMutex
 
 // lifecycleConfig is the active configuration read by the lifecycle
@@ -167,10 +184,38 @@ func currentSemaphore() chan struct{} {
 	return infraSemaphore
 }
 
+// withDefaults returns the config with any unset field filled from the
+// production defaults. A zero value is never a usable setting: a zero
+// refresh interval spins the ack-refresh loop against the API as fast as
+// the CPU allows, a zero capacity builds an unbuffered channel that
+// requeues every instance forever, and a zero retry count skips the
+// persist call the caller asked for.
+func (c LifecycleConfig) withDefaults() LifecycleConfig {
+	if c.StaleAckThreshold <= 0 {
+		c.StaleAckThreshold = defaultLifecycleConfig.StaleAckThreshold
+	}
+	if c.RefreshInterval <= 0 {
+		c.RefreshInterval = defaultLifecycleConfig.RefreshInterval
+	}
+	if c.SemaphoreCapacity <= 0 {
+		c.SemaphoreCapacity = defaultLifecycleConfig.SemaphoreCapacity
+	}
+	if c.PersistRetries <= 0 {
+		c.PersistRetries = defaultLifecycleConfig.PersistRetries
+	}
+	if c.PersistRetryDelay <= 0 {
+		c.PersistRetryDelay = defaultLifecycleConfig.PersistRetryDelay
+	}
+	return c
+}
+
 // setLifecycleConfig swaps the lifecycle tunables and re-creates the
-// semaphore channel at the new capacity. Returns a restore func for
-// t.Cleanup. Only for tests.
+// semaphore channel at the new capacity. Unset fields fall back to the
+// production defaults. Returns a restore func for t.Cleanup. Only for
+// tests.
 func setLifecycleConfig(c LifecycleConfig) (restore func()) {
+	c = c.withDefaults()
+
 	lifecycleMu.Lock()
 	oldConfig := lifecycleConfig
 	oldSemaphore := infraSemaphore
@@ -192,19 +237,30 @@ type Clock interface{ Now() time.Time }
 // realClock implements Clock using the system wall clock.
 type realClock struct{}
 
+// Now returns the current system wall-clock time.
 func (realClock) Now() time.Time { return time.Now() }
 
 // lifecycleClock is the clock used for stale-ack checks.
 var lifecycleClock Clock = realClock{}
 
-// setLifecycleClock swaps the lifecycle clock. Returns a restore func
-// for t.Cleanup. Only for tests; not concurrency-safe, call before
-// spawning goroutines.
+// currentClock returns the active lifecycle clock.
+func currentClock() Clock {
+	lifecycleMu.RLock()
+	defer lifecycleMu.RUnlock()
+	return lifecycleClock
+}
+
+// setLifecycleClock swaps the lifecycle clock and returns a restore func
+// for t.Cleanup. Only for tests.
 func setLifecycleClock(c Clock) (restore func()) {
+	lifecycleMu.Lock()
 	oldClock := lifecycleClock
 	lifecycleClock = c
+	lifecycleMu.Unlock()
 	return func() {
+		lifecycleMu.Lock()
 		lifecycleClock = oldClock
+		lifecycleMu.Unlock()
 	}
 }
 
@@ -639,7 +695,7 @@ type infraConfig struct {
 // checkStaleAck returns true if the given acknowledgement timestamp has gone
 // stale, indicating the operation was interrupted (e.g. pod restart).
 func checkStaleAck(ackTimestamp time.Time) bool {
-	duration := lifecycleClock.Now().UTC().Sub(ackTimestamp)
+	duration := currentClock().Now().UTC().Sub(ackTimestamp)
 	return duration > currentConfig().StaleAckThreshold
 }
 
@@ -1067,23 +1123,42 @@ func refreshAck(
 // failed. If the call fails, it is retried on the configured delay up to the
 // configured retry count. After exhausting retries, the goroutine returns and
 // stale ack detection will recover the operation.
+//
+// The caller runs inside a launch goroutine that holds a semaphore slot for
+// this whole window, so every sleep here is capacity the pool cannot hand to
+// another instance.
 func persistFailure(
 	persist func() error,
 	log *logr.Logger,
 ) {
 	cfg := currentConfig()
 	maxRetries := cfg.PersistRetries
+
+	var lastErr error
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		if err := persist(); err != nil {
-			log.Error(err, "failed to persist operation failure, retrying after delay",
-				"attempt", attempt+1, "maxRetries", maxRetries)
-			time.Sleep(cfg.PersistRetryDelay)
-			continue
+		lastErr = persist()
+		if lastErr == nil {
+			return
 		}
-		return
+
+		// sleeping after the final attempt buys nothing and holds the slot
+		// for one more delay
+		if attempt == maxRetries-1 {
+			break
+		}
+
+		log.Error(lastErr, "failed to persist operation failure, retrying",
+			"attempt", attempt+1, "maxRetries", maxRetries,
+			"retryDelay", cfg.PersistRetryDelay)
+		time.Sleep(cfg.PersistRetryDelay)
+	}
+
+	exhausted := fmt.Errorf("exhausted %d retries", maxRetries)
+	if lastErr != nil {
+		exhausted = fmt.Errorf("exhausted %d retries: %w", maxRetries, lastErr)
 	}
 	log.Error(
-		fmt.Errorf("exhausted %d retries", maxRetries),
+		exhausted,
 		"failed to persist operation failure, stale ack detection will recover",
 	)
 }

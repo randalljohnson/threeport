@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // maxArchiveBytes caps how many bytes are read from a release archive, both as
@@ -25,6 +26,17 @@ const maxArchiveBytes = 1 << 30
 // checksumAssetName is the asset goreleaser publishes alongside the release
 // archives, holding one "<sha256>  <archive name>" line per archive.
 const checksumAssetName = "checksums.txt"
+
+// releaseMetadataTimeout bounds a request for the small assets: the release JSON
+// and the checksum list. Both are a few kilobytes, so a request still running
+// after this has stalled rather than merely being slow.
+const releaseMetadataTimeout = 30 * time.Second
+
+// releaseDownloadTimeout bounds the archive transfer, which is the one request
+// whose size justifies waiting. The largest published binary is under 300 MB, so
+// this leaves room for a slow link while still failing a stalled transfer rather
+// than hanging the caller forever.
+const releaseDownloadTimeout = 10 * time.Minute
 
 // repoSegmentPattern matches one segment of a GitHub "owner/name" path. The
 // leading character must be alphanumeric, which rejects "." and ".." and keeps
@@ -110,8 +122,10 @@ func tokenBearingHost(host string) bool {
 }
 
 // githubGet issues a GET to rawURL, attaching token as a bearer credential only
-// when the host is a GitHub host. The caller closes the returned body.
-func githubGet(rawURL, token, accept string) (*http.Response, error) {
+// when the host is a GitHub host, and bounding the whole exchange by timeout.
+// The caller closes the returned body. A client with a zero Transport shares the
+// default one, so a per-call client still reuses the connection pool.
+func githubGet(rawURL, token, accept string, timeout time.Duration) (*http.Response, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url: %w", err)
@@ -131,7 +145,7 @@ func githubGet(rawURL, token, accept string) (*http.Response, error) {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := (&http.Client{Timeout: timeout}).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch %s: %w", parsed.Redacted(), err)
 	}
@@ -163,7 +177,7 @@ func DownloadReleaseBinary(repo, tag, binaryName, destDir, token string) error {
 		url.PathEscape(repo),
 		url.PathEscape(tag),
 	)
-	resp, err := githubGet(releaseURL, token, "application/vnd.github+json")
+	resp, err := githubGet(releaseURL, token, "application/vnd.github+json", releaseMetadataTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to fetch release metadata: %w", err)
 	}
@@ -229,7 +243,7 @@ func DownloadReleaseBinary(repo, tag, binaryName, destDir, token string) error {
 // releaseAssetDigest downloads the checksum list at checksumsURL and returns the
 // SHA-256 recorded for assetName.
 func releaseAssetDigest(checksumsURL, token, assetName string) (string, error) {
-	resp, err := githubGet(checksumsURL, token, "")
+	resp, err := githubGet(checksumsURL, token, "", releaseMetadataTimeout)
 	if err != nil {
 		return "", fmt.Errorf("failed to download %s: %w", checksumAssetName, err)
 	}
@@ -263,7 +277,7 @@ func parseChecksums(body, assetName string) (string, error) {
 // and returns that path alongside the SHA-256 of what was written. The caller
 // removes the file.
 func downloadToTemp(assetURL, token, destDir string) (string, string, error) {
-	resp, err := githubGet(assetURL, token, "")
+	resp, err := githubGet(assetURL, token, "", releaseDownloadTimeout)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to download release asset: %w", err)
 	}

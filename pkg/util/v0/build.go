@@ -35,6 +35,9 @@ const memBytesPerWorker = 1024 * 1024 * 1024 * 5
 // digits, so a suffix holding a dot or a hyphen came from a longer tag.
 var archToken = regexp.MustCompile(`^[a-z0-9]+$`)
 
+// registryListTimeout bounds a repository tag listing against a registry.
+const registryListTimeout = 60 * time.Second
+
 // BuildParallelism derives a build worker count from the runner's available
 // memory, budgeting roughly one worker per 5 GiB and clamping the result to
 // the range [1, NumCPU]. Available memory is the smaller of /proc/meminfo
@@ -675,7 +678,12 @@ func DiscoverArches(imageRef, baseTag string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image repository %q: %w", imageRef, err)
 	}
-	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(context.Background()))
+	// the response is a list of tag names, so a call still running after the
+	// timeout has stalled rather than merely being slow, and a manifest stitch
+	// that hangs holds up every other component's stitch behind it
+	ctx, cancel := context.WithTimeout(context.Background(), registryListTimeout)
+	defer cancel()
+	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tags for %q: %w", imageRef, err)
 	}

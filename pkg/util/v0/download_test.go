@@ -4,10 +4,13 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // gzippedTar builds an in-memory gzipped tar containing one regular-file entry
@@ -266,5 +269,25 @@ func TestTokenBearingHost_LimitsTheCredentialToGithub(t *testing.T) {
 		if got := tokenBearingHost(c.host); got != c.ok {
 			t.Errorf("tokenBearingHost(%q)=%v, want %v", c.host, got, c.ok)
 		}
+	}
+}
+
+// TestGithubGet_BoundsTheRequestByTimeout asserts the timeout reaches the client
+// rather than the request running against the package default client, which has
+// none. An unbounded release download hangs the caller indefinitely against a
+// host that accepts the connection and never answers.
+func TestGithubGet_BoundsTheRequestByTimeout(t *testing.T) {
+	// an already-expired deadline, which the client enforces before it dials, so
+	// the assertion depends on no host being reachable from wherever this runs
+	_, err := githubGet(
+		"https://api.github.com/repos/example/example/releases/tags/v1.0.0",
+		"", "", time.Nanosecond,
+	)
+	if err == nil {
+		t.Fatal("githubGet returned no error, want the deadline to have been exceeded")
+	}
+	// assert the failure is the timeout and not some other transport error
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("githubGet error = %v, want context.DeadlineExceeded", err)
 	}
 }

@@ -583,7 +583,7 @@ func operationCase(
 				)).Block(
 					Id("log").Dot("Info").Call(
 						Line().Lit(fmt.Sprintf(
-							"%s delete conflicted, requeueing",
+							"conflict reconciling deleted %s object, requeueing",
 							strcase.ToDelimited(obj.Name, ' '),
 						)),
 						Line().Lit("cause"), Id("operationErr").Dot("Error").Call(),
@@ -730,7 +730,7 @@ func operationCase(
 				)).Block(
 					Id("log").Dot("Info").Call(
 						Line().Lit(fmt.Sprintf(
-							"%s delete request conflicted, requeueing",
+							"conflict deleting %s, requeueing",
 							strcase.ToDelimited(obj.Name, ' '),
 						)),
 						Line().Lit("cause"), Id("err").Dot("Error").Call(),

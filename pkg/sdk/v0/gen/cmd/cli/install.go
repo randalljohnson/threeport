@@ -161,7 +161,7 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			If(Id("controlPlaneImageTag").Op("==").Lit("")).Block(
 				List(Id("tag"), Err()).Op(":=").Qual(
 					"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
-				).Call(Qual(
+				).Call(Lit("."), Qual(
 					fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion",
 				).Call()),
 				If(Err().Op("!=").Nil()).Block(

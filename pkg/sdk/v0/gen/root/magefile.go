@@ -233,6 +233,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		emitPrebuildBlock(g, allComponents)
 
 		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+			Id("workingDir"),
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
 		)
@@ -269,6 +270,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Comment("`docker buildx imagetools create`.")
 	f.Func().Params(Id("Package")).Id("Manifest").Params(Id("imageName").String()).Error().Block(
 		List(Id("imageRepo"), Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+			Lit("."),
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
 		),
@@ -308,6 +310,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Comment("package:allManifests`).")
 	f.Func().Params(Id("Package")).Id("AllManifests").Params().Error().BlockFunc(func(g *Group) {
 		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+			Lit("."),
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
 		)
@@ -1078,6 +1081,7 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packa
 		Line(),
 
 		List(Id("imageRepo"), Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+			Id("workingDir"),
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call(),
 		),
@@ -1231,7 +1235,7 @@ func emitCiEnvFunc(f *File, modulePath string) {
 
 		List(Id("moduleTag"), Err()).Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
-		).Call(Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call()),
+		).Call(Lit("."), Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call()),
 		If(Err().Op("!=").Nil()).Block(
 			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve module image tag: %w"), Err())),
 		),

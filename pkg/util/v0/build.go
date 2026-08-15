@@ -658,8 +658,7 @@ func resolveLabelArg(args map[string]string, key string, fallback func() string)
 // trimmed stdout, or "" if git fails. Used to derive label values for
 // local builds where the caller hasn't set GIT_REVISION/GIT_TAG.
 func gitOutput(workingDir string, args ...string) string {
-	cmd := exec.Command("git", append([]string{"-C", workingDir}, args...)...)
-	out, err := cmd.Output()
+	out, err := gitCommand(workingDir, args...).Output()
 	if err != nil {
 		return ""
 	}

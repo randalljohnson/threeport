@@ -204,7 +204,7 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Comment("apply and record the same migration twice"),
 		List(Id("sessionLocker"), Id("err")).Op(":=").Qual(
 			threeportDbPath,
-			"NewCockroachSessionLocker",
+			"NewMigrationLocker",
 		).Call(Lit(migrationLockTableName)),
 		If(Id("err").Op("!=").Nil()).Block(
 			Id("returnErr").Call(Lit("failed to build migration session locker"), Id("err")),

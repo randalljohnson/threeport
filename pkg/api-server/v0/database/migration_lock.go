@@ -40,17 +40,19 @@ const (
 // parameter, so reject any name that could carry SQL of its own.
 var lockTableNamePattern = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 
-// CockroachSessionLocker lets one database migrator run at a time against
-// CockroachDB. It holds the lock by writing to a single row inside an open
-// transaction, because the only session locker goose ships calls
-// pg_try_advisory_lock and CockroachDB implements no advisory locks.
+// MigrationLocker lets one database migrator run at a time. It holds the lock
+// by writing to a single row inside an open transaction, using only statements
+// any PostgreSQL-compatible database understands, because the one session locker
+// goose ships calls pg_try_advisory_lock and CockroachDB implements no advisory
+// locks.
 //
-// The write matters. Taking the row with SELECT ... FOR UPDATE would work most
-// of the time, but CockroachDB holds a lock read that way only in memory on the
-// range leaseholder, so a lease transfer or a range split during a long
-// migration can drop it and let a second migrator through. An UPDATE leaves a
-// replicated write intent that survives both, and a second migrator's UPDATE
-// blocks on that intent until this transaction ends.
+// Writing the row is what makes it a lock; reading it would not. Taking the row
+// with SELECT ... FOR UPDATE works most of the time, but CockroachDB holds a
+// lock read that way only in memory on the range leaseholder, so a lease
+// transfer or a range split during a long migration can drop it and let a second
+// migrator through. An UPDATE leaves a replicated write intent that survives
+// both, and a second migrator's UPDATE blocks on that intent until this
+// transaction ends.
 //
 // Two constraints on the connection this locker is given:
 //
@@ -66,18 +68,18 @@ var lockTableNamePattern = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 //     transaction opened here.
 //
 // One instance holds one transaction, so give every migration provider its own.
-type CockroachSessionLocker struct {
+type MigrationLocker struct {
 	tableName string
 	wait      time.Duration
 	tx        *sql.Tx
 }
 
-var _ lock.SessionLocker = (*CockroachSessionLocker)(nil)
+var _ lock.SessionLocker = (*MigrationLocker)(nil)
 
-// NewCockroachSessionLocker returns a session locker that contends for a row in
+// NewMigrationLocker returns a session locker that contends for a row in
 // the named table. Threeport and every module migrate the same database, so each
 // one names its own lock table and their migrator runs stay independent.
-func NewCockroachSessionLocker(tableName string) (*CockroachSessionLocker, error) {
+func NewMigrationLocker(tableName string) (*MigrationLocker, error) {
 	if !lockTableNamePattern.MatchString(tableName) {
 		return nil, fmt.Errorf(
 			"lock table name %s is not a bare lowercase SQL identifier",
@@ -85,7 +87,7 @@ func NewCockroachSessionLocker(tableName string) (*CockroachSessionLocker, error
 		)
 	}
 
-	return &CockroachSessionLocker{
+	return &MigrationLocker{
 		tableName: tableName,
 		wait:      migrationLockWait,
 	}, nil
@@ -95,7 +97,7 @@ func NewCockroachSessionLocker(tableName string) (*CockroachSessionLocker, error
 // whichever migrator holds it to finish. The transaction it opens stays open
 // after this call returns, because holding that transaction is what holds the
 // lock.
-func (l *CockroachSessionLocker) SessionLock(ctx context.Context, conn *sql.Conn) error {
+func (l *MigrationLocker) SessionLock(ctx context.Context, conn *sql.Conn) error {
 	if l.tx != nil {
 		return errors.New("migration lock is already held")
 	}
@@ -138,7 +140,7 @@ func (l *CockroachSessionLocker) SessionLock(ctx context.Context, conn *sql.Conn
 
 // SessionUnlock releases the migration lock by ending the transaction that holds
 // it.
-func (l *CockroachSessionLocker) SessionUnlock(ctx context.Context, conn *sql.Conn) error {
+func (l *MigrationLocker) SessionUnlock(ctx context.Context, conn *sql.Conn) error {
 	if l.tx == nil {
 		return errors.New("migration lock is not held")
 	}
@@ -156,7 +158,7 @@ func (l *CockroachSessionLocker) SessionUnlock(ctx context.Context, conn *sql.Co
 // ensureLockRow creates the lock table and the row every migrator contends for.
 // It runs outside the locking transaction because the row has to exist before
 // anything can lock it.
-func (l *CockroachSessionLocker) ensureLockRow(ctx context.Context, conn *sql.Conn) error {
+func (l *MigrationLocker) ensureLockRow(ctx context.Context, conn *sql.Conn) error {
 	createTable := fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s (id INT PRIMARY KEY, locked_at TIMESTAMPTZ)",
 		l.tableName,

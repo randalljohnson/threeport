@@ -136,27 +136,46 @@ func TestResolveImageTagSuffixesShaInCheckout(t *testing.T) {
 	}
 }
 
-// TestResolveImageTagDecoratesSingleArch covers ResolveImageTag decorating the
-// resolved tag with -<arch> when ARCH names a single arch.
-func TestResolveImageTagDecoratesSingleArch(t *testing.T) {
+// TestResolveImageTagIgnoresArch covers ResolveImageTag leaving the canonical
+// tag undecorated whatever ARCH holds. tptctl up and the module install command
+// resolve the tag they pull through here, so an ARCH exported in the caller's
+// shell must not point an install at a single-arch image.
+func TestResolveImageTagIgnoresArch(t *testing.T) {
+	// an explicit override plus a single-arch ARCH that a build would decorate with
+	t.Setenv("IMAGE_TAG", "v9.9.9")
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("ARCH", "arm64")
+	// the canonical tag passes through undecorated
+	got, err := ResolveImageTag("v0.1.0-dev")
+	if err != nil {
+		t.Fatalf("ResolveImageTag returned error: %v", err)
+	}
+	if got != "v9.9.9" {
+		t.Errorf("ResolveImageTag = %q, want the undecorated v9.9.9", got)
+	}
+}
+
+// TestBuildImageTagDecoratesSingleArch covers buildImageTag decorating the
+// canonical tag with -<arch> when ARCH names a single arch.
+func TestBuildImageTagDecoratesSingleArch(t *testing.T) {
 	// an explicit override plus a single-arch ARCH
 	t.Setenv("IMAGE_TAG", "v9.9.9")
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("ARCH", "arm64")
 	// the arch decorates the resolved tag
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := buildImageTag("v0.1.0-dev")
 	if err != nil {
-		t.Fatalf("ResolveImageTag returned error: %v", err)
+		t.Fatalf("buildImageTag returned error: %v", err)
 	}
 	if got != "v9.9.9-arm64" {
-		t.Errorf("ResolveImageTag = %q, want v9.9.9-arm64", got)
+		t.Errorf("buildImageTag = %q, want v9.9.9-arm64", got)
 	}
 }
 
-// TestResolveImageTagSingleArchDecoratesFallbackVersion covers the -<arch>
+// TestBuildImageTagSingleArchDecoratesFallbackVersion covers the -<arch>
 // decoration landing on the bare version default when the resolver falls back
 // outside CI and outside a git checkout.
-func TestResolveImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
+func TestBuildImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
 	// not in CI, single-arch ARCH set, and run from outside any git checkout so
 	// the resolver falls back to the bare version default before decorating
 	t.Setenv("IMAGE_TAG", "")
@@ -164,29 +183,29 @@ func TestResolveImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
 	t.Setenv("ARCH", "amd64")
 	isolateFromGit(t)
 	// the arch decorates the bare fallback version
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := buildImageTag("v0.1.0-dev")
 	if err != nil {
-		t.Fatalf("ResolveImageTag returned error: %v", err)
+		t.Fatalf("buildImageTag returned error: %v", err)
 	}
 	if got != "v0.1.0-dev-amd64" {
-		t.Errorf("ResolveImageTag = %q, want v0.1.0-dev-amd64", got)
+		t.Errorf("buildImageTag = %q, want v0.1.0-dev-amd64", got)
 	}
 }
 
-// TestResolveImageTagCommaListArchIsBare covers a comma-list ARCH leaving the
+// TestBuildImageTagCommaListArchIsBare covers a comma-list ARCH leaving the
 // resolved tag undecorated, the bare-tag path the manifest job consumes.
-func TestResolveImageTagCommaListArchIsBare(t *testing.T) {
+func TestBuildImageTagCommaListArchIsBare(t *testing.T) {
 	// an override with a comma-list ARCH, as the manifest stitch sets
 	t.Setenv("IMAGE_TAG", "v9.9.9")
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("ARCH", "amd64,arm64")
 	// the bare tag passes through undecorated
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := buildImageTag("v0.1.0-dev")
 	if err != nil {
-		t.Fatalf("ResolveImageTag returned error: %v", err)
+		t.Fatalf("buildImageTag returned error: %v", err)
 	}
 	if got != "v9.9.9" {
-		t.Errorf("ResolveImageTag = %q, want v9.9.9", got)
+		t.Errorf("buildImageTag = %q, want v9.9.9", got)
 	}
 }
 

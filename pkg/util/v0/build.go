@@ -602,13 +602,17 @@ func buildxBuildArgs(
 	// caller extras emitted in sorted order so command output stays
 	// stable across runs
 	args = append(args, "--build-arg", fmt.Sprintf("BINARY=%s", binary))
-	if extraBuildArgs == nil {
-		extraBuildArgs = map[string]string{}
+	// copy the caller's extras before filling in the label defaults, so the
+	// resolved labels do not land in a map the caller still holds and reuses for
+	// a later component's build
+	buildArgs := make(map[string]string, len(extraBuildArgs)+3)
+	for k, v := range extraBuildArgs {
+		buildArgs[k] = v
 	}
-	resolveLabelArg(extraBuildArgs, "GIT_REVISION", func() string {
+	resolveLabelArg(buildArgs, "GIT_REVISION", func() string {
 		return gitOutput(threeportPath, "rev-parse", "HEAD")
 	})
-	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
+	resolveLabelArg(buildArgs, "GIT_TAG", func() string {
 		// self-derived builds leave GIT_TAG unset; fall back to the tag the
 		// image is published under so the OCI version label is never blank.
 		if imageTag != "" {
@@ -616,16 +620,16 @@ func buildxBuildArgs(
 		}
 		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
 	})
-	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {
+	resolveLabelArg(buildArgs, "BUILD_CREATED", func() string {
 		return time.Now().UTC().Format(time.RFC3339)
 	})
-	keys := make([]string, 0, len(extraBuildArgs))
-	for k := range extraBuildArgs {
+	keys := make([]string, 0, len(buildArgs))
+	for k := range buildArgs {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, extraBuildArgs[k]))
+		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
 	}
 
 	// plain progress keeps lines independent so concurrent builds

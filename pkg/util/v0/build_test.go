@@ -277,6 +277,22 @@ func TestBuildxArgs_EnvRevisionUsedWhenCallerSilent(t *testing.T) {
 	}
 }
 
+// TestBuildxArgs_LeavesTheCallerMapAlone asserts the resolved label defaults do
+// not land in the caller's map. A caller that reuses one map across components
+// would otherwise carry the first component's GIT_TAG and BUILD_CREATED into
+// every later build, since a caller-supplied value wins over the fallback.
+func TestBuildxArgs_LeavesTheCallerMapAlone(t *testing.T) {
+	t.Setenv("GIT_REVISION", "env-value")
+	tp, df, tgt, plats, bin, bd, _, repo, name, _, push := buildxArgsFixture()
+	// a caller map holding one extra and none of the labels
+	ex := map[string]string{"TERRAFORM_VERSION": "1.9.0"}
+	buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, repo, name, "v0.7.0", push)
+	// assert the map still holds only what the caller put in it
+	if len(ex) != 1 || ex["TERRAFORM_VERSION"] != "1.9.0" {
+		t.Errorf("caller map = %v, want only TERRAFORM_VERSION=1.9.0", ex)
+	}
+}
+
 func TestBuildxArgs_ImageRefAndShortName(t *testing.T) {
 	tp, df, tgt, plats, bin, bd, ex, _, _, _, push := buildxArgsFixture()
 	args, image, shortName := buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", push)

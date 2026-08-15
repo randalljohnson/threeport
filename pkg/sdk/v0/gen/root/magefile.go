@@ -748,10 +748,14 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 
 // emitTestUnitFunc writes a no-arg `func (Test) Unit() error` that runs the
 // unit tests across the threeport packages via util.RunCommandStreamOutput.
-// -p is sized at runtime from util.BuildParallelism(), because the cgo-enabled
-// go-sqlite3 build pulls per-package memory above the default GOMAXPROCS
-// concurrency on small CI runners, so honoring the same memory-aware worker
-// count the build targets use keeps `go test` from OOM-killing the pod.
+// -race is always on, because the packages under test start goroutines the
+// tests then assert against, and a data race there is invisible without the
+// detector. -p is sized at runtime from util.BuildParallelism(), because the
+// cgo-enabled go-sqlite3 build pulls per-package memory above the default
+// GOMAXPROCS concurrency on small CI runners, so honoring the same
+// memory-aware worker count the build targets use keeps `go test` from
+// OOM-killing the pod. That sizing matters more with the detector on, which
+// multiplies each test binary's memory several times over.
 func emitTestUnitFunc(f *File) {
 	f.Comment("Unit runs the unit tests across the threeport packages.")
 	f.Func().Params(Id("Test")).Id("Unit").Params().Error().Block(
@@ -759,6 +763,7 @@ func emitTestUnitFunc(f *File) {
 		Id("args").Op(":=").Index().String().Values(
 			Line().Lit("test"),
 			Line().Lit("-count=1"),
+			Line().Lit("-race"),
 			Line().Qual("fmt", "Sprintf").Call(
 				Lit("-p=%d"),
 				Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call(),

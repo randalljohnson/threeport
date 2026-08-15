@@ -68,7 +68,7 @@ func TestNewPulumiWorkspace_WithStateDirRoot(t *testing.T) {
 	assert.True(t, info.IsDir())
 }
 
-// TestNewPulumiWorkspace_DefaultRoot pins the fallback branch of state dir
+// TestNewPulumiWorkspace_DefaultRoot asserts the fallback branch of state dir
 // resolution: without the state dir root option, the state dir resolves
 // under the home-dir runtime state path. The home dir is redirected to a
 // temp dir so the side-effecting mkdir never touches the real home dir;
@@ -121,7 +121,7 @@ func TestGetStateFilePath_EmptyName(t *testing.T) {
 	assert.Empty(t, entries)
 }
 
-// TestSetStackState_CheckpointRoundTrip pins the checkpoint-format branch
+// TestSetStackState_CheckpointRoundTrip asserts the checkpoint-format branch
 // of state restoration: JSON with a top-level "checkpoint" key, and no
 // top-level "deployment" key, bypasses the backend import and is written
 // directly to the state file, landing on disk byte-identical and reading
@@ -189,7 +189,7 @@ func TestSetStackState_AtomicTempThenRename(t *testing.T) {
 	require.NoError(t, os.Remove(path+".tmp"))
 }
 
-// TestSetStackState_ExportFormatRequiresBackend pins the export-format
+// TestSetStackState_ExportFormatRequiresBackend asserts the export-format
 // branch of state restoration: JSON with a top-level "deployment" key is
 // routed through the backend stack import, which converts it to checkpoint
 // format on disk, and a subsequent state export returns deployment-format
@@ -223,7 +223,7 @@ func TestSetStackState_ExportFormatRequiresBackend(t *testing.T) {
 	assert.NotNil(t, deployment.Deployment)
 }
 
-// TestPulumiWorkspace_ZeroValueStillWorks pins zero-value compatibility
+// TestPulumiWorkspace_ZeroValueStillWorks asserts zero-value compatibility
 // for the embedder pattern: a workspace built as a plain struct literal
 // with only the name fields set, no constructor and no options, still
 // resolves the state file path through the home-dir fallback. The home dir
@@ -300,7 +300,7 @@ func TestStateDirRoot_HonoredByEveryMethod(t *testing.T) {
 	assert.False(t, w.HasStateDir(), "the state dir is gone after deletion")
 }
 
-// TestDeleteStackState_MissingDirIsNotAnError pins the tolerant delete: a
+// TestDeleteStackState_MissingDirIsNotAnError asserts the tolerant delete: a
 // second delete, or a delete of an instance whose infrastructure never
 // reached the state-writing stage, is a no-op rather than a failure.
 func TestDeleteStackState_MissingDirIsNotAnError(t *testing.T) {

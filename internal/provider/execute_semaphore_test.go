@@ -101,7 +101,7 @@ func (o *orderRecordingInfra) DeployInfra() error {
 	return o.fakeRefreshableInfra.DeployInfra()
 }
 
-// TestSemaphoreBackpressure_Requeue30 pins the non-blocking semaphore
+// TestSemaphoreBackpressure_Requeue30 asserts the non-blocking semaphore
 // acquire: with capacity 2 and blocking deploys, the first two creates
 // get slots and requeue at 120, the next three get (30, nil) without
 // launching a goroutine, and slots freed by completed deploys can be
@@ -163,7 +163,7 @@ func TestSemaphoreBackpressure_Requeue30(t *testing.T) {
 	require.Equal(t, int64(120), requeue)
 }
 
-// TestSemaphoreReleaseOnPanic pins the create launch goroutine's recover
+// TestSemaphoreReleaseOnPanic asserts the create launch goroutine's recover
 // path: a panicking deploy is recovered, the failure is persisted via
 // SetCreationFailed, and the semaphore slot is released so a subsequent
 // create can acquire it.
@@ -194,7 +194,7 @@ func TestSemaphoreReleaseOnPanic(t *testing.T) {
 	require.Equal(t, int64(120), requeue)
 }
 
-// TestSemaphoreReleaseOnPanic_Delete pins the delete launch goroutine's
+// TestSemaphoreReleaseOnPanic_Delete asserts the delete launch goroutine's
 // recover path: a panicking destroy is recovered without persisting any
 // failure (the delete path has no PersistFailure callback, it only logs),
 // and the semaphore slot is released for a subsequent delete.
@@ -213,7 +213,7 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(300), requeue)
 
-	// the test process surviving the panic plus a clean drain pins the
+	// the test process surviving the panic plus a clean drain confirms the
 	// recover; the delete path persists nothing on panic
 	waitForSemaphoreDrain(t)
 	require.Equal(t, 1, fi.destroyCallCount())
@@ -230,7 +230,7 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	require.Equal(t, int64(300), requeue)
 }
 
-// TestExecuteInfraCreate_RestoreThenRefreshThenDeploy pins the create
+// TestExecuteInfraCreate_RestoreThenRefreshThenDeploy asserts the create
 // goroutine's sequencing when existing state is present on a refreshable
 // provider: state is restored first, then refreshed against cloud
 // reality, then deployed.
@@ -265,7 +265,7 @@ func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraCreate_NonStreamable_NoWatcher pins that a provider
+// TestExecuteInfraCreate_NonStreamable_NoWatcher asserts that a provider
 // without streaming support runs the create to success with no state
 // watcher: SaveState is the watcher's only writer on the success path,
 // so its count staying at zero proves no watcher streamed state.
@@ -295,7 +295,7 @@ func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 	require.Equal(t, 0, fl.callCount("SaveState"))
 }
 
-// TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure pins
+// TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure asserts
 // the deploy failure branch: partial state is captured via GetStackState
 // and saved for retry restoration, then the failure is persisted via
 // SetCreationFailed, and the success callbacks never run.
@@ -327,7 +327,7 @@ func TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure(t *testi
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraCreate_VerifyStateFails_PersistsFailure pins the state
+// TestExecuteInfraCreate_VerifyStateFails_PersistsFailure asserts the state
 // verification gate: a successful deploy whose captured state contains no
 // resources fails verification, persists the failure, and never invokes
 // the success callback.
@@ -356,7 +356,7 @@ func TestExecuteInfraCreate_VerifyStateFails_PersistsFailure(t *testing.T) {
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore pins the
+// TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore asserts the
 // delete goroutine's corrupt-state guard: invalid existing state JSON
 // skips the restore entirely but the destroy still proceeds and the
 // success callbacks run.
@@ -386,7 +386,7 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 	require.Equal(t, 1, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestExecuteInfraDelete_DestroyError_CapturesRemainingState pins the
+// TestExecuteInfraDelete_DestroyError_CapturesRemainingState asserts the
 // destroy failure branch: remaining state is captured via GetStackState
 // and saved so retries know which resources remain, and the success
 // callbacks never run.

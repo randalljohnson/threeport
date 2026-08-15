@@ -51,29 +51,59 @@ const (
 // parseThreeportReplace scans go.mod lines for a replace directive whose left
 // side is the threeport module path, returning the replacement repository as an
 // "owner/name" path and its version for a versioned replace, or signaling a
-// local-path replace so the caller can decline to download a release.
+// local-path replace so the caller can decline to download a release. It handles
+// both the single-line `replace <old> => <new>` form and an entry inside a
+// `replace ( ... )` block, which is what go mod edit writes once a go.mod
+// carries more than one replace.
 func parseThreeportReplace(gomod string) (repo, version string, kind threeportReplaceKind) {
+	inBlock := false
 	for _, line := range strings.Split(gomod, "\n") {
 		fields := strings.Fields(stripComment(line))
-		// a replace reads: replace <old> => <new> [<version>]
-		if len(fields) < 4 || fields[0] != "replace" || fields[2] != "=>" {
+		if len(fields) == 0 {
 			continue
 		}
-		if fields[1] != threeportModulePath {
+		// track entry into and out of a grouped replace block
+		if !inBlock && fields[0] == "replace" && len(fields) == 2 && fields[1] == "(" {
+			inBlock = true
 			continue
 		}
-		newPath := fields[3]
-		// a local path replacement carries no module version to download from
-		if isLocalPath(newPath) {
-			return "", "", replaceLocal
+		if inBlock {
+			if fields[0] == ")" {
+				inBlock = false
+				continue
+			}
+		} else {
+			// outside a block the directive body follows the keyword
+			if fields[0] != "replace" {
+				continue
+			}
+			fields = fields[1:]
 		}
-		// a versioned replace reads: replace <old> => <new> <version>
-		if len(fields) < 5 {
-			continue
+		if repo, version, kind = parseReplaceBody(fields); kind != replaceNone {
+			return repo, version, kind
 		}
-		return shortModulePath(newPath), fields[4], replaceVersioned
 	}
 	return "", "", replaceNone
+}
+
+// parseReplaceBody reads the body of one replace directive, `<old> => <new>
+// [<version>]`, with any leading keyword already stripped. It reports
+// replaceNone unless the left side is the threeport module path, so the caller
+// keeps scanning the remaining lines.
+func parseReplaceBody(fields []string) (repo, version string, kind threeportReplaceKind) {
+	if len(fields) < 3 || fields[1] != "=>" || fields[0] != threeportModulePath {
+		return "", "", replaceNone
+	}
+	newPath := fields[2]
+	// a local path replacement carries no module version to download from
+	if isLocalPath(newPath) {
+		return "", "", replaceLocal
+	}
+	// a versioned replace reads: <old> => <new> <version>
+	if len(fields) < 4 {
+		return "", "", replaceNone
+	}
+	return shortModulePath(newPath), fields[3], replaceVersioned
 }
 
 // parseThreeportRequire scans go.mod lines for a require directive on the

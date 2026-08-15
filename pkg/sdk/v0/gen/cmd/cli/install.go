@@ -156,22 +156,34 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			),
 			Line(),
 
-			Comment("default the tag to the sha-suffixed dev tag the image build"),
-			Comment("resolves so install picks up images built by mage without"),
-			Comment("requiring --tag; matches the fork's build and reinstall default."),
+			Comment("default the tag from where the images are being pulled. Against"),
+			Comment("the local registry outside CI, match the sha-suffixed tag the local"),
+			Comment("image build produced so install picks up what mage just built."),
+			Comment("Anywhere else this binary is a release pulling published images, and"),
+			Comment("whatever repository its working directory happens to sit in names no"),
+			Comment("commit that was ever pushed, so its own version is the tag."),
 			If(Id("controlPlaneImageTag").Op("==").Lit("")).Block(
-				List(Id("tag"), Err()).Op(":=").Qual(
-					"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
-				).Call(Qual(
-					fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion",
-				).Call()),
-				If(Err().Op("!=").Nil()).Block(
-					Qual("github.com/threeport/threeport/pkg/cli/v0", "Error").Call(
-						Lit("failed to resolve default image tag; specify one with --tag/-t"), Id("err"),
+				If(
+					Id("controlPlaneImageRepo").Op("==").Qual(installerPkg, "DevImageNamespace").
+						Op("&&").Qual("os", "Getenv").Call(Lit("GITHUB_ACTIONS")).Op("==").Lit(""),
+				).Block(
+					List(Id("tag"), Err()).Op(":=").Qual(
+						"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
+					).Call(Lit("."), Qual(
+						fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion",
+					).Call()),
+					If(Err().Op("!=").Nil()).Block(
+						Qual("github.com/threeport/threeport/pkg/cli/v0", "Error").Call(
+							Lit("failed to resolve default image tag; specify one with --tag/-t"), Id("err"),
+						),
+						Qual("os", "Exit").Call(Lit(1)),
 					),
-					Qual("os", "Exit").Call(Lit(1)),
+					Id("controlPlaneImageTag").Op("=").Id("tag"),
+				).Else().Block(
+					Id("controlPlaneImageTag").Op("=").Qual(
+						fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion",
+					).Call(),
 				),
-				Id("controlPlaneImageTag").Op("=").Id("tag"),
 			),
 			Line(),
 
@@ -247,7 +259,7 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				Lit("control-plane-image-tag"),
 				Lit("t"),
 				Lit(""),
-				Lit("Image tag for threeport control plane images. Defaults to the sha-suffixed dev tag resolved from the current commit."),
+				Lit("Image tag for threeport control plane images. Defaults to this binary's version, or to the sha-suffixed dev tag of the current commit when pulling from the local registry."),
 			),
 			Line(),
 		),

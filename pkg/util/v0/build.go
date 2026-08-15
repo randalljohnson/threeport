@@ -35,6 +35,9 @@ const memBytesPerWorker = 1024 * 1024 * 1024 * 5
 // digits, so a suffix holding a dot or a hyphen came from a longer tag.
 var archToken = regexp.MustCompile(`^[a-z0-9]+$`)
 
+// registryListTimeout bounds a repository tag listing against a registry.
+const registryListTimeout = 60 * time.Second
+
 // BuildParallelism derives a build worker count from the runner's available
 // memory, budgeting roughly one worker per 5 GiB and clamping the result to
 // the range [1, NumCPU]. Available memory is the smaller of /proc/meminfo
@@ -599,13 +602,17 @@ func buildxBuildArgs(
 	// caller extras emitted in sorted order so command output stays
 	// stable across runs
 	args = append(args, "--build-arg", fmt.Sprintf("BINARY=%s", binary))
-	if extraBuildArgs == nil {
-		extraBuildArgs = map[string]string{}
+	// copy the caller's extras before filling in the label defaults, so the
+	// resolved labels do not land in a map the caller still holds and reuses for
+	// a later component's build
+	buildArgs := make(map[string]string, len(extraBuildArgs)+3)
+	for k, v := range extraBuildArgs {
+		buildArgs[k] = v
 	}
-	resolveLabelArg(extraBuildArgs, "GIT_REVISION", func() string {
+	resolveLabelArg(buildArgs, "GIT_REVISION", func() string {
 		return gitOutput(threeportPath, "rev-parse", "HEAD")
 	})
-	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
+	resolveLabelArg(buildArgs, "GIT_TAG", func() string {
 		// self-derived builds leave GIT_TAG unset; fall back to the tag the
 		// image is published under so the OCI version label is never blank.
 		if imageTag != "" {
@@ -613,16 +620,16 @@ func buildxBuildArgs(
 		}
 		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
 	})
-	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {
+	resolveLabelArg(buildArgs, "BUILD_CREATED", func() string {
 		return time.Now().UTC().Format(time.RFC3339)
 	})
-	keys := make([]string, 0, len(extraBuildArgs))
-	for k := range extraBuildArgs {
+	keys := make([]string, 0, len(buildArgs))
+	for k := range buildArgs {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, extraBuildArgs[k]))
+		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
 	}
 
 	// plain progress keeps lines independent so concurrent builds
@@ -658,8 +665,7 @@ func resolveLabelArg(args map[string]string, key string, fallback func() string)
 // trimmed stdout, or "" if git fails. Used to derive label values for
 // local builds where the caller hasn't set GIT_REVISION/GIT_TAG.
 func gitOutput(workingDir string, args ...string) string {
-	cmd := exec.Command("git", append([]string{"-C", workingDir}, args...)...)
-	out, err := cmd.Output()
+	out, err := gitCommand(workingDir, args...).Output()
 	if err != nil {
 		return ""
 	}
@@ -676,7 +682,12 @@ func DiscoverArches(imageRef, baseTag string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image repository %q: %w", imageRef, err)
 	}
-	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(context.Background()))
+	// the response is a list of tag names, so a call still running after the
+	// timeout has stalled rather than merely being slow, and a manifest stitch
+	// that hangs holds up every other component's stitch behind it
+	ctx, cancel := context.WithTimeout(context.Background(), registryListTimeout)
+	defer cancel()
+	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tags for %q: %w", imageRef, err)
 	}

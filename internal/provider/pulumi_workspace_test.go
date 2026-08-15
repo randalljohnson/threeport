@@ -300,7 +300,7 @@ func TestStateDirRoot_HonoredByEveryMethod(t *testing.T) {
 	assert.False(t, w.HasStateDir(), "the state dir is gone after deletion")
 }
 
-// TestDeleteStackState_MissingDirIsNotAnError pins the tolerant delete: a
+// TestDeleteStackState_MissingDirIsNotAnError asserts the tolerant delete: a
 // second delete, or a delete of an instance whose infrastructure never
 // reached the state-writing stage, is a no-op rather than a failure.
 func TestDeleteStackState_MissingDirIsNotAnError(t *testing.T) {

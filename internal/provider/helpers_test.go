@@ -305,7 +305,7 @@ func TestPersistFailure_Exhaustion(t *testing.T) {
 	assert.Equal(t, 3, calls)
 }
 
-// TestDefaultLifecycleConfig_ProductionValues pins the tunables the control
+// TestDefaultLifecycleConfig_ProductionValues asserts the tunables the control
 // plane actually runs on. Changing any of them changes provisioning timing
 // or capacity in production, so the change has to be deliberate enough to
 // update this test alongside it.

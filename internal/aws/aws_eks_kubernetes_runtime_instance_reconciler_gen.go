@@ -266,7 +266,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"aws eks kubernetes runtime instance delete conflicted, requeueing",
+							"conflict reconciling deleted aws eks kubernetes runtime instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -335,7 +335,7 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"aws eks kubernetes runtime instance delete request conflicted, requeueing",
+							"conflict deleting aws eks kubernetes runtime instance, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

@@ -266,7 +266,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gateway definition delete conflicted, requeueing",
+							"conflict reconciling deleted gateway definition object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -335,7 +335,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"gateway definition delete request conflicted, requeueing",
+							"conflict deleting gateway definition, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

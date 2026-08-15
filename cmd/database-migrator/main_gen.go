@@ -119,7 +119,7 @@ func migrateDb(
 	// hold a lock for the whole run so a rolling update of the API server,
 	// which starts a second migrator before the first one finishes, cannot
 	// apply and record the same migration twice
-	sessionLocker, err := database.NewCockroachSessionLocker("threeport_migration_lock")
+	sessionLocker, err := database.NewMigrationLocker("threeport_migration_lock")
 	if err != nil {
 		returnErr("failed to build migration session locker", err)
 	}

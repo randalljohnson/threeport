@@ -266,7 +266,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"observability dashboard instance delete conflicted, requeueing",
+							"conflict reconciling deleted observability dashboard instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -335,7 +335,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"observability dashboard instance delete request conflicted, requeueing",
+							"conflict deleting observability dashboard instance, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

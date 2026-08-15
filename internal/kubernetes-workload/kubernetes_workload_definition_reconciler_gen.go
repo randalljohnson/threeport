@@ -266,7 +266,7 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"kubernetes workload definition delete conflicted, requeueing",
+							"conflict reconciling deleted kubernetes workload definition object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -335,7 +335,7 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"kubernetes workload definition delete request conflicted, requeueing",
+							"conflict deleting kubernetes workload definition, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

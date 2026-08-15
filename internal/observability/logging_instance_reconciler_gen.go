@@ -266,7 +266,7 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
 						log.Info(
-							"logging instance delete conflicted, requeueing",
+							"conflict reconciling deleted logging instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
 						r.UnlockAndRequeue(
@@ -335,7 +335,7 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 				if err != nil {
 					if errors.Is(err, tpclient_lib.ErrConflict) {
 						log.Info(
-							"logging instance delete request conflicted, requeueing",
+							"conflict deleting logging instance, requeueing",
 							"cause", err.Error(),
 						)
 						r.UnlockAndRequeue(

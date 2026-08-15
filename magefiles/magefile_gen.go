@@ -42,6 +42,7 @@ func (Test) Unit() error {
 	args := []string{
 		"test",
 		"-count=1",
+		"-race",
 		fmt.Sprintf("-p=%d", util.BuildParallelism()),
 		"./pkg/...",
 		"./internal/...",

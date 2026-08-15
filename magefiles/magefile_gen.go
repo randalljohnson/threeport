@@ -1725,6 +1725,14 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 		dockerfileTarget = t
 	}
 
+	// tag the loaded image the way an install resolves its tag, so a
+	// later tptctl up with no --tag references the image just loaded
+	// rather than the bare version, which names no image in the cluster.
+	imageTag, err := util.ResolveImageTag(workingDir, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image tag: %w", err)
+	}
+
 	if err := util.BuildImage(
 		workingDir,
 		"Dockerfile",
@@ -1735,7 +1743,7 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 		nil,
 		installer.DevImageNamespace,
 		imageName,
-		version.GetVersion(),
+		imageTag,
 		false,
 		true,
 		kindClusterName,

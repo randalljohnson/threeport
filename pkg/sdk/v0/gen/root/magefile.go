@@ -466,6 +466,19 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		}
 		g.Line()
 
+		g.Comment("tag the loaded image the way an install resolves its tag, so a")
+		g.Comment("later tptctl up with no --tag references the image just loaded")
+		g.Comment("rather than the bare version, which names no image in the cluster.")
+		g.List(Id("imageTag"), Id("err")).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
+		).Call(Id("workingDir"), Qual(
+			fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion",
+		).Call())
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image tag: %w"), Id("err"))),
+		)
+		g.Line()
+
 		g.If(Err().Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"BuildImage",
@@ -482,10 +495,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				"DevImageNamespace",
 			),
 			Line().Id("imageName"),
-			Line().Qual(
-				fmt.Sprintf("%s/internal/version", gen.ModulePath),
-				"GetVersion",
-			).Call(),
+			Line().Id("imageTag"),
 			Line().False(),
 			Line().True(),
 			Line().Id("kindClusterName"),

@@ -5,8 +5,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	version "github.com/threeport/threeport/internal/version"
+	cli "github.com/threeport/threeport/pkg/cli/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -263,6 +265,218 @@ func (Dev) GenerateDocs() error {
 	}
 
 	fmt.Printf("API swagger docs generated successfully in %s\n", docsDestination)
+
+	return nil
+}
+
+// moduleTestPath is where a Threeport module gets generated for testing.  It
+// is two directories deep so the generated go.mod can reach the repository
+// root with a relative replace directive.
+const moduleTestPath = "test/module"
+
+// moduleTestGoPath is the module path for the generated go.mod.  The SDK reads
+// this path to decide whether to generate module code, so it only has to
+// differ from this project's own path.
+const moduleTestGoPath = "github.com/threeport/threeport-module-test"
+
+// moduleTestBinary is the generated module's command-line binary.  The SDK
+// names it after ModuleName in the SDK config.
+const moduleTestBinary = "test"
+
+// moduleTestInputs are the files tracked under moduleTestPath.  A run deletes
+// everything else first, which forces the SDK to re-emit the scaffolding it
+// otherwise writes only once.
+var moduleTestInputs = []string{"sdk-config.yaml", "README.md"}
+
+// ModuleGen generates a Threeport module and compiles it.
+//
+// The SDK emits different code for a module than for this repository, and
+// nothing else here compiles that code.  It calls this repository's exported
+// API by name, so a changed signature breaks it.  Without this target the
+// break surfaces later, in a module repository, far from the change.
+func (Test) ModuleGen() error {
+	if err := generateModuleTest(); err != nil {
+		return err
+	}
+
+	// magefiles is vetted rather than built because mage supplies its main
+	// function at run time, so building that package fails here too
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"go", "build", "./cmd/...", "./pkg/...", "./internal/...",
+	); err != nil {
+		return fmt.Errorf("failed to build the generated module: %w", err)
+	}
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"go", "vet", "./magefiles/...",
+	); err != nil {
+		return fmt.Errorf("failed to vet the generated module magefiles: %w", err)
+	}
+
+	// a failed run returns above without this, leaving the generated source
+	// to read
+	if err := resetModuleTestDir(); err != nil {
+		return err
+	}
+
+	fmt.Println("module generated and compiled successfully")
+
+	return nil
+}
+
+// ModuleInstall generates a Threeport module, builds its images and installs
+// it into the control plane named by the local Threeport config.  It covers
+// what compiling cannot: the migrations apply, the module registers with the
+// control plane, and its routes answer through the control plane's proxy.
+//
+// It needs a running control plane and a registry the cluster can pull from,
+// so it belongs to the integration tests rather than the unit tests.
+func (Test) ModuleInstall() error {
+	if err := generateModuleTest(); err != nil {
+		return err
+	}
+
+	// the install deploys images by tag, so push them first
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"mage", "build:allImagesDev",
+	); err != nil {
+		return fmt.Errorf("failed to build the module images: %w", err)
+	}
+
+	// a module reaches a control plane as a tptctl plugin, so put the binary
+	// where tptctl looks for one rather than running it in place.  Installing
+	// it covers the plugin discovery and dispatch this repository owns
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"mage", "install:plugin",
+	); err != nil {
+		return fmt.Errorf("failed to install the module plugin: %w", err)
+	}
+
+	install := Install{}
+	if err := install.Tptctl(); err != nil {
+		return fmt.Errorf("failed to install tptctl: %w", err)
+	}
+
+	// --debug re-pulls the tag on every rollout, so a rebuilt image at the
+	// same tag is the one that runs.  The image namespace defaults to the one
+	// in the SDK config, which for this module is the local registry
+	if err := util.RunCommandStreamOutput(
+		filepath.Join(installDir(), "tptctl"),
+		moduleTestBinary, "install", "--debug",
+	); err != nil {
+		return fmt.Errorf("failed to install the module: %w", err)
+	}
+
+	if err := removeModuleTestPlugin(); err != nil {
+		return err
+	}
+	if err := resetModuleTestDir(); err != nil {
+		return err
+	}
+
+	fmt.Println("module generated, installed and registered successfully")
+
+	return nil
+}
+
+// removeModuleTestPlugin deletes the test module's plugin from the tptctl
+// plugin directory.  A plugin left behind shows up under every later tptctl
+// invocation on the machine, which a test has no business doing.
+func removeModuleTestPlugin() error {
+	pluginDir := os.Getenv("THREEPORT_PLUGIN_DIR")
+	if pluginDir == "" {
+		dir, err := cli.DefaultPluginDir()
+		if err != nil {
+			return fmt.Errorf("failed to determine tptctl plugin directory: %w", err)
+		}
+		pluginDir = dir
+	}
+
+	pluginPath := filepath.Join(pluginDir, moduleTestBinary)
+	if err := os.Remove(pluginPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove the module test plugin %s: %w", pluginPath, err)
+	}
+
+	return nil
+}
+
+// generateModuleTest generates a module under moduleTestPath from the tracked
+// SDK config.  It does not compile the result, so callers choose what to do
+// with it.
+func generateModuleTest() error {
+	// rebuild threeport-sdk from this checkout first.  It installs to one
+	// global path, so the binary on PATH may have come from another worktree
+	// and would generate code this repository never asked for.
+	install := Install{}
+	if err := install.Sdk(); err != nil {
+		return fmt.Errorf("failed to install threeport-sdk: %w", err)
+	}
+
+	if err := resetModuleTestDir(); err != nil {
+		return err
+	}
+
+	// the module path selects the SDK's module code path; the replace
+	// directive points the generated code at this checkout
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"go", "mod", "init", moduleTestGoPath,
+	); err != nil {
+		return fmt.Errorf("failed to initialize the module test go.mod: %w", err)
+	}
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"go", "mod", "edit",
+		"-require=github.com/threeport/threeport@v0.0.0",
+		"-replace=github.com/threeport/threeport=../..",
+	); err != nil {
+		return fmt.Errorf("failed to point the module test at this checkout: %w", err)
+	}
+
+	// scaffold the API object source, then generate the boilerplate from it
+	sdkBinary := filepath.Join(installDir(), "threeport-sdk")
+	for _, subcommand := range []string{"create", "gen"} {
+		if err := util.RunCommandStreamOutputInDir(
+			moduleTestPath,
+			sdkBinary,
+			subcommand,
+			"-c",
+			"sdk-config.yaml",
+		); err != nil {
+			return fmt.Errorf("failed to run threeport-sdk %s for the module test: %w", subcommand, err)
+		}
+	}
+
+	// the generated imports are only known now, so resolve them here
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"go", "mod", "tidy",
+	); err != nil {
+		return fmt.Errorf("failed to resolve the module test dependencies: %w", err)
+	}
+
+	return nil
+}
+
+// resetModuleTestDir removes everything the last run generated, leaving the
+// tracked inputs in place.
+func resetModuleTestDir() error {
+	entries, err := os.ReadDir(moduleTestPath)
+	if err != nil {
+		return fmt.Errorf("failed to read module test directory %s: %w", moduleTestPath, err)
+	}
+
+	for _, entry := range entries {
+		if slices.Contains(moduleTestInputs, entry.Name()) {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(moduleTestPath, entry.Name())); err != nil {
+			return fmt.Errorf("failed to remove generated path %s: %w", entry.Name(), err)
+		}
+	}
 
 	return nil
 }

@@ -7,3 +7,8 @@ __debug_bin*
 .claude/
 .venv/
 hack/
+
+# mage test:moduleGen generates a module here and deletes it again
+test/module/*
+!test/module/sdk-config.yaml
+!test/module/README.md

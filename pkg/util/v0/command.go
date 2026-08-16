@@ -8,7 +8,15 @@ import (
 
 // RunCommandStreamOutput runs a command and streams the output back to the user.
 func RunCommandStreamOutput(command string, args ...string) error {
+	return RunCommandStreamOutputInDir("", command, args...)
+}
+
+// RunCommandStreamOutputInDir runs a command from the given directory and
+// streams the output back to the user.  An empty directory runs the command
+// from the caller's working directory.
+func RunCommandStreamOutputInDir(dir string, command string, args ...string) error {
 	cmd := exec.Command(command, args...)
+	cmd.Dir = dir
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

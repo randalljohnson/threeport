@@ -283,6 +283,11 @@ const moduleTestGoPath = "github.com/threeport/threeport-module-test"
 // names it after ModuleName in the SDK config.
 const moduleTestBinary = "test"
 
+// moduleTestImageTag is the tag the module test's images are pushed and pulled
+// under.  A build and an install derive a tag differently, so pinning one value
+// keeps the install on the images the build just pushed.
+const moduleTestImageTag = "module-test"
+
 // moduleTestInputs are the files tracked under moduleTestPath.  A run deletes
 // everything else first, which forces the SDK to re-emit the scaffolding it
 // otherwise writes only once.
@@ -337,10 +342,20 @@ func (Test) ModuleInstall() error {
 		return err
 	}
 
+	// the build derives its tag from the checkout while the install defaults
+	// to the module's version, so the two disagree unless both are pinned
+	imageRepo := util.ResolveImageRepo(installer.DevImageNamespace)
+	if err := os.Setenv("IMAGE_REPO", imageRepo); err != nil {
+		return fmt.Errorf("failed to set the module image repository: %w", err)
+	}
+	if err := os.Setenv("IMAGE_TAG", moduleTestImageTag); err != nil {
+		return fmt.Errorf("failed to set the module image tag: %w", err)
+	}
+
 	// the install deploys images by tag, so push them first
 	if err := util.RunCommandStreamOutputInDir(
 		moduleTestPath,
-		"mage", "build:allImagesDev",
+		"mage", "build:allImages",
 	); err != nil {
 		return fmt.Errorf("failed to build the module images: %w", err)
 	}
@@ -361,11 +376,12 @@ func (Test) ModuleInstall() error {
 	}
 
 	// --debug re-pulls the tag on every rollout, so a rebuilt image at the
-	// same tag is the one that runs.  The image namespace defaults to the one
-	// in the SDK config, which for this module is the local registry
+	// same tag is the one that runs
 	if err := util.RunCommandStreamOutput(
 		filepath.Join(installDir(), "tptctl"),
 		moduleTestBinary, "install", "--debug",
+		"-r", imageRepo,
+		"-t", moduleTestImageTag,
 	); err != nil {
 		return fmt.Errorf("failed to install the module: %w", err)
 	}

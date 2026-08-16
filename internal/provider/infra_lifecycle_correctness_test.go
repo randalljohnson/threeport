@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2/google"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // GKE credential threading must be per call, never a process-global.
@@ -155,7 +157,7 @@ func TestGKETokenSource_ConcurrentCredentialsDoNotBleed(t *testing.T) {
 // the re-check fetch and short-circuits, so OnCreateConfirmed and
 // ConfirmCreation each fire exactly once across both passes.
 func TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce(t *testing.T) {
-	acked := timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	acked := util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 
 	// first reconcile: acked, complete, not yet confirmed on either fetch.
 	// second reconcile: the confirmation written by the first pass is now
@@ -170,7 +172,7 @@ func TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce(t *testing.T) {
 		// pass 2, pre-confirm re-check: confirmation now visible, skip work
 		&ReconciliationSnapshot{
 			CreationAcknowledged: acked,
-			CreationConfirmed:    timePtr(time.Date(2026, 1, 1, 0, 5, 0, 0, time.UTC)),
+			CreationConfirmed:    util.Ptr(time.Date(2026, 1, 1, 0, 5, 0, 0, time.UTC)),
 		},
 	)
 	fl.setCreateComplete(true)
@@ -211,7 +213,7 @@ func TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck(t *testing.T) {
 		&ReconciliationSnapshot{},
 		// pre-acknowledge re-check: a delete landed in the race window
 		&ReconciliationSnapshot{
-			DeletionScheduled: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+			DeletionScheduled: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 		},
 	)
 	fi := newFakeInfra()
@@ -238,7 +240,7 @@ func TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck(t *testing.T) {
 	t.Cleanup(restoreCfg)
 
 	dl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+		DeletionScheduled: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	})
 	dl.setInfra(dfi)
 

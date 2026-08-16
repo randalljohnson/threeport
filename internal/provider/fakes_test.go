@@ -28,15 +28,56 @@ var (
 var errFakeInfra = errors.New("fakeInfra: injected failure")
 
 // baselineGoroutines holds the goroutine count captured before any test
-// runs. Tests that spawn background goroutines can poll against this
-// baseline to verify cleanup.
+// runs, which is what the post-suite leak check compares against.
 var baselineGoroutines int
 
-// TestMain snapshots the baseline goroutine count, then runs the test
-// binary. It deliberately does nothing else: no global skips, no setup.
+// goroutineDrainTimeout bounds the post-suite wait for background
+// goroutines to exit. The lifecycle spawns refresh-ack and state-stream
+// goroutines that stop on a channel close, so they exit promptly; the
+// window only covers scheduling.
+const goroutineDrainTimeout = 10 * time.Second
+
+// TestMain snapshots the goroutine count, runs the suite, then fails the
+// run when background goroutines outlive it. A leak here means a lifecycle
+// operation returned without stopping something it started, which is the
+// failure the semaphore and ack-refresh work is meant to rule out.
 func TestMain(m *testing.M) {
 	baselineGoroutines = runtime.NumGoroutine()
-	os.Exit(m.Run())
+
+	code := m.Run()
+
+	// only report leaks on an otherwise green run: a failed test may have
+	// returned early and left its own goroutines behind, and that error is
+	// the one worth reading
+	if code == 0 {
+		if leaked := goroutinesOverBaseline(goroutineDrainTimeout); leaked > 0 {
+			fmt.Fprintf(
+				os.Stderr,
+				"goroutine leak: %d above the pre-suite baseline of %d\n",
+				leaked, baselineGoroutines,
+			)
+			code = 1
+		}
+	}
+
+	os.Exit(code)
+}
+
+// goroutinesOverBaseline polls until the goroutine count falls back to the
+// pre-suite baseline and returns 0, or returns how many remain above it
+// once the timeout expires.
+func goroutinesOverBaseline(timeout time.Duration) int {
+	deadline := time.Now().Add(timeout)
+	for {
+		over := runtime.NumGoroutine() - baselineGoroutines
+		if over <= 0 {
+			return 0
+		}
+		if time.Now().After(deadline) {
+			return over
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 // newTestLogger returns a pointer to a discard logger matching the
@@ -44,12 +85,6 @@ func TestMain(m *testing.M) {
 func newTestLogger() *logr.Logger {
 	l := logr.Discard()
 	return &l
-}
-
-// timePtr returns a pointer to the given time, for building
-// reconciliation snapshots inline.
-func timePtr(t time.Time) *time.Time {
-	return &t
 }
 
 // jsonPtr returns a pointer to the given string as a JSON value, for

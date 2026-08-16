@@ -304,3 +304,102 @@ func TestPersistFailure_Exhaustion(t *testing.T) {
 
 	assert.Equal(t, 3, calls)
 }
+
+// TestDefaultLifecycleConfig_ProductionValues asserts the tunables the control
+// plane actually runs on. Changing any of them changes provisioning timing
+// or capacity in production, so the change has to be deliberate enough to
+// update this test alongside it.
+func TestDefaultLifecycleConfig_ProductionValues(t *testing.T) {
+	assert.Equal(t, 240*time.Second, defaultLifecycleConfig.StaleAckThreshold)
+	assert.Equal(t, 60*time.Second, defaultLifecycleConfig.RefreshInterval)
+	assert.Equal(t, 20, defaultLifecycleConfig.SemaphoreCapacity)
+	assert.Equal(t, 30, defaultLifecycleConfig.PersistRetries)
+	assert.Equal(t, 10*time.Second, defaultLifecycleConfig.PersistRetryDelay)
+}
+
+// TestInfraSemaphore_CapacityMatchesActiveConfig proves the pool that gates
+// concurrent operations and the tunable that documents it are one value. Two
+// independent literals would let a capacity change land in the config and
+// never reach the pool. The comparison is against the active config rather
+// than the defaults, because an environment override changes both together
+// and asserting on the defaults would fail whenever one is set.
+func TestInfraSemaphore_CapacityMatchesActiveConfig(t *testing.T) {
+	assert.Equal(t, currentConfig().SemaphoreCapacity, cap(currentSemaphore()))
+}
+
+// TestCheckStaleAck_RealClock exercises the clock the control plane runs on.
+// Every other stale ack test injects a fake, so without this the default
+// clock is never called by the suite.
+func TestCheckStaleAck_RealClock(t *testing.T) {
+	restoreClock := setLifecycleClock(realClock{})
+	t.Cleanup(restoreClock)
+
+	cfg := testLifecycleConfig()
+	restoreConfig := setLifecycleConfig(cfg)
+	t.Cleanup(restoreConfig)
+
+	assert.False(
+		t,
+		checkStaleAck(time.Now().UTC()),
+		"an ack taken just now is not stale",
+	)
+	assert.True(
+		t,
+		checkStaleAck(time.Now().UTC().Add(-cfg.StaleAckThreshold-time.Second)),
+		"an ack older than the threshold is stale",
+	)
+}
+
+// TestCheckStaleAck_AdvancingClock walks one acknowledgement across the
+// threshold to prove the check reads the clock on every call rather than
+// caching the first read.
+func TestCheckStaleAck_AdvancingClock(t *testing.T) {
+	clk := newFakeClock(time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
+	restoreClock := setLifecycleClock(clk)
+	t.Cleanup(restoreClock)
+
+	cfg := testLifecycleConfig()
+	restoreConfig := setLifecycleConfig(cfg)
+	t.Cleanup(restoreConfig)
+
+	ack := clk.Now()
+	assert.False(t, checkStaleAck(ack), "a fresh ack is not stale")
+
+	clk.Advance(cfg.StaleAckThreshold)
+	assert.False(t, checkStaleAck(ack), "an ack aged exactly to the threshold is not stale")
+
+	clk.Advance(time.Second)
+	assert.True(t, checkStaleAck(ack), "an ack aged past the threshold is stale")
+}
+
+// TestSetLifecycleConfig_ZeroFieldsFallBackToDefaults covers the guard on
+// the config seam. A zero value is not a setting: a zero refresh interval
+// spins the ack-refresh loop against the API, a zero capacity requeues
+// every instance forever, and a zero retry count skips the persist call
+// the caller asked for.
+func TestSetLifecycleConfig_ZeroFieldsFallBackToDefaults(t *testing.T) {
+	restore := setLifecycleConfig(LifecycleConfig{})
+	t.Cleanup(restore)
+
+	assert.Equal(t, defaultLifecycleConfig, currentConfig())
+	assert.Equal(t, defaultLifecycleConfig.SemaphoreCapacity, cap(currentSemaphore()))
+}
+
+// TestSetLifecycleConfig_SetFieldsSurvive covers the other half of the
+// guard: a field the caller set is left alone, and only the unset ones
+// take a default.
+func TestSetLifecycleConfig_SetFieldsSurvive(t *testing.T) {
+	restore := setLifecycleConfig(LifecycleConfig{
+		StaleAckThreshold: time.Second,
+		SemaphoreCapacity: 2,
+	})
+	t.Cleanup(restore)
+
+	got := currentConfig()
+	assert.Equal(t, time.Second, got.StaleAckThreshold)
+	assert.Equal(t, 2, got.SemaphoreCapacity)
+	assert.Equal(t, 2, cap(currentSemaphore()))
+	assert.Equal(t, defaultLifecycleConfig.RefreshInterval, got.RefreshInterval)
+	assert.Equal(t, defaultLifecycleConfig.PersistRetries, got.PersistRetries)
+	assert.Equal(t, defaultLifecycleConfig.PersistRetryDelay, got.PersistRetryDelay)
+}

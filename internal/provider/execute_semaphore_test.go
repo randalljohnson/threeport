@@ -721,6 +721,7 @@ func TestExecuteInfraCreate_RestoreError_PersistsFailureWithoutDeploying(t *test
 	require.Equal(t, 0, fi.deployCallCount(), "a failed restore must not deploy")
 	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
 	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
+	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
 // TestExecuteInfraCreate_RefreshError_PersistsFailureWithoutDeploying

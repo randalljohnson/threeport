@@ -157,15 +157,15 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Line(),
 
 			Comment("default the tag from where the images are being pulled. Against"),
-			Comment("the local registry outside CI, match the sha-suffixed tag the local"),
-			Comment("image build produced so install picks up what mage just built."),
-			Comment("Anywhere else this binary is a release pulling published images, and"),
-			Comment("whatever repository its working directory happens to sit in names no"),
-			Comment("commit that was ever pushed, so its own version is the tag."),
+			Comment("the local registry, resolve it the way an image build resolves it,"),
+			Comment("so the install picks up what mage just built whether or not the"),
+			Comment("run is in CI. Anywhere else this binary is a release pulling"),
+			Comment("published images, and whatever repository its working directory"),
+			Comment("happens to sit in names no commit that was ever pushed, so its"),
+			Comment("own version is the tag."),
 			If(Id("controlPlaneImageTag").Op("==").Lit("")).Block(
 				If(
-					Id("controlPlaneImageRepo").Op("==").Qual(installerPkg, "DevImageNamespace").
-						Op("&&").Qual("os", "Getenv").Call(Lit("GITHUB_ACTIONS")).Op("==").Lit(""),
+					Id("controlPlaneImageRepo").Op("==").Qual(installerPkg, "DevImageNamespace"),
 				).Block(
 					List(Id("tag"), Err()).Op(":=").Qual(
 						"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",

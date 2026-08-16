@@ -813,17 +813,18 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Lit(objGroup.ControllerName),
 						),
 					}),
-					List(Id("createdController"), Id("err")).Op(":=").Qual(
-						"github.com/threeport/threeport/pkg/client/v0",
-						"CreateModuleController",
-					).Call(
+					Comment("the lookup above is scoped to this module api, so a row"),
+					Comment("under a different one is invisible here and only shows up"),
+					Comment("as a name conflict on the create"),
+					List(Id("createdController"), Id("err")).Op(":=").Id("upsertModuleController").Call(
 						Id("tpApiClient"),
 						Id("tpApiAddr"),
 						Op("&").Id("controller"),
+						Id("existingModApi").Dot("ID"),
 					),
 					If(Id("err").Op("!=").Nil()).Block(
 						Return(Qual("fmt", "Errorf").Call(
-							Lit(fmt.Sprintf("failed to create module controller %s in Threeport API: %%w", objGroup.ControllerName)),
+							Lit(fmt.Sprintf("failed to register module controller %s in Threeport API: %%w", objGroup.ControllerName)),
 							Id("err"),
 						)),
 					),

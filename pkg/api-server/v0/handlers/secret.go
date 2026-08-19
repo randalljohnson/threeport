@@ -96,6 +96,20 @@ func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFu
 		// persist to DB
 		if result := h.DB.Create(&secretDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error persisting secret definition to DB", zap.Error(result.Error))
+			// check whether a unique index rejected the write
+			constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+			if conflict {
+				h.Logger.Info(
+					"write rejected by unique index",
+					zap.String("constraint", constraint),
+				)
+				return apiserver_lib.ResponseStatus409(
+					c,
+					nil,
+					errors.New(apiserver_lib.ErrMsgUniqueViolation),
+					objectType,
+				)
+			}
 			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
 

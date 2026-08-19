@@ -57,6 +57,20 @@ func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 	})
 	if err != nil {
 		h.Logger.Error("handler error: error creating kubernetes workload resource definitions", zap.Error(err))
+		// check whether a unique index rejected one of the writes
+		constraint, conflict := apiserver_lib.UniqueViolation(err)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
@@ -72,4 +86,3 @@ func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 
 	return apiserver_lib.ResponseStatus201(c, *response)
 }
-

@@ -291,3 +291,19 @@ func TestGithubGet_BoundsTheRequestByTimeout(t *testing.T) {
 		t.Errorf("githubGet error = %v, want context.DeadlineExceeded", err)
 	}
 }
+
+// TestReleaseMetadataURL_KeepsTheOwnerAndNameSeparate covers the escaping the
+// release lookup rests on. A repository is an owner/name pair spanning two
+// path segments, and escaping it as one turns the slash into %2F, which
+// addresses no repository and answers 404 on every download.
+func TestReleaseMetadataURL_KeepsTheOwnerAndNameSeparate(t *testing.T) {
+	got := releaseMetadataURL("randalljohnson/threeport", "v0.7.0-dev.23")
+
+	want := "https://api.github.com/repos/randalljohnson/threeport/releases/tags/v0.7.0-dev.23"
+	if got != want {
+		t.Errorf("releaseMetadataURL = %q, want %q", got, want)
+	}
+	if strings.Contains(got, "%2F") {
+		t.Errorf("releaseMetadataURL = %q, escaped the owner and name into one segment", got)
+	}
+}

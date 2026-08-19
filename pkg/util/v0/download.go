@@ -102,6 +102,24 @@ func validateRepo(repo string) error {
 	return nil
 }
 
+// releaseMetadataURL builds the GitHub API address of one release, named by
+// the owner/name repository pair and the release tag.
+//
+// The repository spans two path segments, so each half escapes on its own.
+// Escaping the pair as a single segment turns its slash into %2F, which
+// addresses a repository that does not exist and answers 404. Callers validate
+// both halves and the tag against the segment alphabet before reaching here.
+func releaseMetadataURL(repo, tag string) string {
+	owner, name, _ := strings.Cut(repo, "/")
+
+	return fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/releases/tags/%s",
+		url.PathEscape(owner),
+		url.PathEscape(name),
+		url.PathEscape(tag),
+	)
+}
+
 // validateTag returns an error unless tag is a version tag that is safe to
 // interpolate into a request path.
 func validateTag(tag string) error {
@@ -172,11 +190,7 @@ func DownloadReleaseBinary(repo, tag, binaryName, destDir, token string) error {
 
 	// resolve the archive asset matching the running OS and architecture
 	assetSuffix := "_" + releaseAssetInfix(runtime.GOOS, runtime.GOARCH) + ".tar.gz"
-	releaseURL := fmt.Sprintf(
-		"https://api.github.com/repos/%s/releases/tags/%s",
-		url.PathEscape(repo),
-		url.PathEscape(tag),
-	)
+	releaseURL := releaseMetadataURL(repo, tag)
 	resp, err := githubGet(releaseURL, token, "application/vnd.github+json", releaseMetadataTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to fetch release metadata: %w", err)

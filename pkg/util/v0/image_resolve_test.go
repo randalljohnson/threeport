@@ -279,3 +279,54 @@ func TestJoinImageTagJoinsVersionAndSha(t *testing.T) {
 		t.Errorf("joinImageTag = %q, want v0.1.0-dev.abc1234", got)
 	}
 }
+
+// TestImageWithoutTag covers the reference shapes a control plane deployment
+// carries. The ported-registry case is the one that decides the function: a
+// naive cut at the first colon leaves the registry host alone and points every
+// deployment at an image that does not exist.
+func TestImageWithoutTag(t *testing.T) {
+	tests := []struct {
+		name  string
+		image string
+		want  string
+	}{
+		{
+			name:  "ported registry with a tag",
+			image: "localhost:5001/threeport-rest-api:v0.7.0-dev.23",
+			want:  "localhost:5001/threeport-rest-api",
+		},
+		{
+			name:  "ported registry with no tag",
+			image: "localhost:5001/threeport-rest-api",
+			want:  "localhost:5001/threeport-rest-api",
+		},
+		{
+			name:  "hosted registry with a tag",
+			image: "ghcr.io/randalljohnson/threeport-rest-api:v0.7.0-dev.23",
+			want:  "ghcr.io/randalljohnson/threeport-rest-api",
+		},
+		{
+			name:  "bare name with a tag",
+			image: "threeport-rest-api:v0.7.0-dev.23",
+			want:  "threeport-rest-api",
+		},
+		{
+			name:  "bare name with no tag",
+			image: "threeport-rest-api",
+			want:  "threeport-rest-api",
+		},
+		{
+			name:  "digest reference is left alone",
+			image: "ghcr.io/randalljohnson/threeport-rest-api@sha256:abc123",
+			want:  "ghcr.io/randalljohnson/threeport-rest-api@sha256:abc123",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ImageWithoutTag(test.image); got != test.want {
+				t.Errorf("ImageWithoutTag(%q) = %q, want %q", test.image, got, test.want)
+			}
+		})
+	}
+}

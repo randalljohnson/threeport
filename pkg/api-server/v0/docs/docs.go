@@ -1010,7 +1010,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AttachedObjectReference"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AttachedObjectReference"
                         }
                     }
                 ],
@@ -1023,6 +1023,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1101,7 +1107,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AttachedObjectReference"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AttachedObjectReference"
                         }
                     }
                 ],
@@ -1124,6 +1130,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1133,7 +1145,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a attached object reference by ID from the database.",
+                "description": "Delete a attached object reference by ID from the database.\nBlocking: attached object references pointing at this attached object reference with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a attached object reference also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the attached object reference row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1202,7 +1214,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AttachedObjectReference"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AttachedObjectReference"
                         }
                     }
                 ],
@@ -1221,6 +1233,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1291,7 +1309,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -1304,6 +1322,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1382,7 +1406,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -1405,6 +1429,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1414,7 +1444,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a aws eks kubernetes runtime definition by ID from the database.",
+                "description": "Delete a aws eks kubernetes runtime definition by ID from the database.\nBlocking: attached object references pointing at this aws eks kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a aws eks kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the aws eks kubernetes runtime definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1483,7 +1513,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -1502,6 +1532,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1572,7 +1608,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -1585,6 +1621,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1663,7 +1705,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -1686,6 +1728,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1695,7 +1743,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a aws eks kubernetes runtime instance by ID from the database.",
+                "description": "Delete a aws eks kubernetes runtime instance by ID from the database.\nBlocking: attached object references pointing at this aws eks kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a aws eks kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the aws eks kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1764,7 +1812,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -1783,6 +1831,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1853,7 +1907,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsProvider"
                         }
                     }
                 ],
@@ -1866,6 +1920,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1944,7 +2004,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsProvider"
                         }
                     }
                 ],
@@ -1967,6 +2027,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1976,7 +2042,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a aws provider by ID from the database.",
+                "description": "Delete a aws provider by ID from the database.\nBlocking: attached object references pointing at this aws provider with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a aws provider also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the aws provider row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2045,7 +2111,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.AwsProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.AwsProvider"
                         }
                     }
                 ],
@@ -2064,6 +2130,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2134,7 +2206,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ControlPlaneDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ControlPlaneDefinition"
                         }
                     }
                 ],
@@ -2147,6 +2219,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2225,7 +2303,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ControlPlaneDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ControlPlaneDefinition"
                         }
                     }
                 ],
@@ -2248,6 +2326,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2257,7 +2341,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a control plane definition by ID from the database.",
+                "description": "Delete a control plane definition by ID from the database.\nBlocking: attached object references pointing at this control plane definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a control plane definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the control plane definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2326,7 +2410,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ControlPlaneDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ControlPlaneDefinition"
                         }
                     }
                 ],
@@ -2345,6 +2429,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2415,7 +2505,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ControlPlaneInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ControlPlaneInstance"
                         }
                     }
                 ],
@@ -2428,6 +2518,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2506,7 +2602,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ControlPlaneInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ControlPlaneInstance"
                         }
                     }
                 ],
@@ -2529,6 +2625,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2538,7 +2640,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a control plane instance by ID from the database.",
+                "description": "Delete a control plane instance by ID from the database.\nBlocking: attached object references pointing at this control plane instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a control plane instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the control plane instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2607,7 +2709,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ControlPlaneInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ControlPlaneInstance"
                         }
                     }
                 ],
@@ -2626,6 +2728,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2696,7 +2804,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.DomainNameDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.DomainNameDefinition"
                         }
                     }
                 ],
@@ -2709,6 +2817,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2787,7 +2901,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.DomainNameDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.DomainNameDefinition"
                         }
                     }
                 ],
@@ -2810,6 +2924,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2819,7 +2939,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a domain name definition by ID from the database.",
+                "description": "Delete a domain name definition by ID from the database.\nBlocking: attached object references pointing at this domain name definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a domain name definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the domain name definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2888,7 +3008,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.DomainNameDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.DomainNameDefinition"
                         }
                     }
                 ],
@@ -2907,6 +3027,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2977,7 +3103,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.DomainNameInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.DomainNameInstance"
                         }
                     }
                 ],
@@ -2990,6 +3116,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3068,7 +3200,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.DomainNameInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.DomainNameInstance"
                         }
                     }
                 ],
@@ -3091,6 +3223,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3100,7 +3238,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a domain name instance by ID from the database.",
+                "description": "Delete a domain name instance by ID from the database.\nBlocking: attached object references pointing at this domain name instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a domain name instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the domain name instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3169,7 +3307,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.DomainNameInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.DomainNameInstance"
                         }
                     }
                 ],
@@ -3188,6 +3326,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3258,7 +3402,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Event"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Event"
                         }
                     }
                 ],
@@ -3271,6 +3415,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3414,7 +3564,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Event"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Event"
                         }
                     }
                 ],
@@ -3437,6 +3587,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3446,7 +3602,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a event by ID from the database.",
+                "description": "Delete a event by ID from the database.\nBlocking: attached object references pointing at this event with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a event also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the event row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3515,7 +3671,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Event"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Event"
                         }
                     }
                 ],
@@ -3534,6 +3690,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3604,7 +3766,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayDefinition"
                         }
                     }
                 ],
@@ -3617,6 +3779,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3695,7 +3863,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayDefinition"
                         }
                     }
                 ],
@@ -3718,6 +3886,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3727,7 +3901,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a gateway definition by ID from the database.",
+                "description": "Delete a gateway definition by ID from the database.\nBlocking: attached object references pointing at this gateway definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a gateway definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the gateway definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3796,7 +3970,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayDefinition"
                         }
                     }
                 ],
@@ -3815,6 +3989,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3885,7 +4065,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayHttpPort"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayHttpPort"
                         }
                     }
                 ],
@@ -3898,6 +4078,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3976,7 +4162,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayHttpPort"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayHttpPort"
                         }
                     }
                 ],
@@ -3999,6 +4185,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4008,7 +4200,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a gateway http port by ID from the database.",
+                "description": "Delete a gateway http port by ID from the database.\nBlocking: attached object references pointing at this gateway http port with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a gateway http port also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the gateway http port row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4077,7 +4269,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayHttpPort"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayHttpPort"
                         }
                     }
                 ],
@@ -4096,6 +4288,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4166,7 +4364,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayInstance"
                         }
                     }
                 ],
@@ -4179,6 +4377,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4257,7 +4461,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayInstance"
                         }
                     }
                 ],
@@ -4280,6 +4484,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4289,7 +4499,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a gateway instance by ID from the database.",
+                "description": "Delete a gateway instance by ID from the database.\nBlocking: attached object references pointing at this gateway instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a gateway instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the gateway instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4358,7 +4568,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayInstance"
                         }
                     }
                 ],
@@ -4377,6 +4587,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4447,7 +4663,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayTcpPort"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayTcpPort"
                         }
                     }
                 ],
@@ -4460,6 +4676,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4538,7 +4760,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayTcpPort"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayTcpPort"
                         }
                     }
                 ],
@@ -4561,6 +4783,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4570,7 +4798,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a gateway tcp port by ID from the database.",
+                "description": "Delete a gateway tcp port by ID from the database.\nBlocking: attached object references pointing at this gateway tcp port with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a gateway tcp port also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the gateway tcp port row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4639,7 +4867,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GatewayTcpPort"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GatewayTcpPort"
                         }
                     }
                 ],
@@ -4658,6 +4886,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4728,7 +4962,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -4741,6 +4975,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4819,7 +5059,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -4842,6 +5082,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4851,7 +5097,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a gcp gke kubernetes runtime definition by ID from the database.",
+                "description": "Delete a gcp gke kubernetes runtime definition by ID from the database.\nBlocking: attached object references pointing at this gcp gke kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a gcp gke kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the gcp gke kubernetes runtime definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4920,7 +5166,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -4939,6 +5185,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5009,7 +5261,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -5022,6 +5274,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5100,7 +5358,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -5123,6 +5381,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5132,7 +5396,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a gcp gke kubernetes runtime instance by ID from the database.",
+                "description": "Delete a gcp gke kubernetes runtime instance by ID from the database.\nBlocking: attached object references pointing at this gcp gke kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a gcp gke kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the gcp gke kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5201,7 +5465,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -5220,6 +5484,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5290,7 +5560,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpProvider"
                         }
                     }
                 ],
@@ -5303,6 +5573,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5381,7 +5657,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpProvider"
                         }
                     }
                 ],
@@ -5404,6 +5680,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5413,7 +5695,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a gcp provider by ID from the database.",
+                "description": "Delete a gcp provider by ID from the database.\nBlocking: attached object references pointing at this gcp provider with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a gcp provider also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the gcp provider row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5482,7 +5764,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.GcpProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.GcpProvider"
                         }
                     }
                 ],
@@ -5501,6 +5783,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5571,7 +5859,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.HelmWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.HelmWorkloadDefinition"
                         }
                     }
                 ],
@@ -5584,6 +5872,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5662,7 +5956,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.HelmWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.HelmWorkloadDefinition"
                         }
                     }
                 ],
@@ -5685,6 +5979,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5694,7 +5994,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a helm workload definition by ID from the database.",
+                "description": "Delete a helm workload definition by ID from the database.\nBlocking: attached object references pointing at this helm workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a helm workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the helm workload definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5763,7 +6063,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.HelmWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.HelmWorkloadDefinition"
                         }
                     }
                 ],
@@ -5782,6 +6082,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5852,7 +6158,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.HelmWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.HelmWorkloadInstance"
                         }
                     }
                 ],
@@ -5865,6 +6171,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5943,7 +6255,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.HelmWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.HelmWorkloadInstance"
                         }
                     }
                 ],
@@ -5966,6 +6278,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5975,7 +6293,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a helm workload instance by ID from the database.",
+                "description": "Delete a helm workload instance by ID from the database.\nBlocking: attached object references pointing at this helm workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a helm workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the helm workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6044,7 +6362,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.HelmWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.HelmWorkloadInstance"
                         }
                     }
                 ],
@@ -6063,6 +6381,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6133,7 +6457,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -6146,6 +6470,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6224,7 +6554,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -6247,6 +6577,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6256,7 +6592,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a kubernetes runtime definition by ID from the database.",
+                "description": "Delete a kubernetes runtime definition by ID from the database.\nBlocking: attached object references pointing at this kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6325,7 +6661,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -6344,6 +6680,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6414,7 +6756,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -6427,6 +6769,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6505,7 +6853,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -6528,6 +6876,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6537,7 +6891,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a kubernetes runtime instance by ID from the database.",
+                "description": "Delete a kubernetes runtime instance by ID from the database.\nBlocking: attached object references pointing at this kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6606,7 +6960,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -6625,6 +6979,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6695,7 +7055,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadDefinition"
                         }
                     }
                 ],
@@ -6708,6 +7068,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6786,7 +7152,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadDefinition"
                         }
                     }
                 ],
@@ -6809,6 +7175,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6818,7 +7190,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a kubernetes workload definition by ID from the database.",
+                "description": "Delete a kubernetes workload definition by ID from the database.\nBlocking: attached object references pointing at this kubernetes workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a kubernetes workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6887,7 +7259,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadDefinition"
                         }
                     }
                 ],
@@ -6906,6 +7278,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6976,7 +7354,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadInstance"
                         }
                     }
                 ],
@@ -6989,6 +7367,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7067,7 +7451,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadInstance"
                         }
                     }
                 ],
@@ -7090,6 +7474,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7099,7 +7489,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a kubernetes workload instance by ID from the database.",
+                "description": "Delete a kubernetes workload instance by ID from the database.\nBlocking: attached object references pointing at this kubernetes workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a kubernetes workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7168,7 +7558,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadInstance"
                         }
                     }
                 ],
@@ -7187,6 +7577,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7304,7 +7700,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceDefinition"
                         }
                     }
                 ],
@@ -7317,6 +7713,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7395,7 +7797,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceDefinition"
                         }
                     }
                 ],
@@ -7418,6 +7820,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7427,7 +7835,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a kubernetes workload resource definition by ID from the database.",
+                "description": "Delete a kubernetes workload resource definition by ID from the database.\nBlocking: attached object references pointing at this kubernetes workload resource definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a kubernetes workload resource definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the kubernetes workload resource definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7496,7 +7904,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceDefinition"
                         }
                     }
                 ],
@@ -7515,6 +7923,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7585,7 +7999,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceInstance"
                         }
                     }
                 ],
@@ -7598,6 +8012,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7676,7 +8096,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceInstance"
                         }
                     }
                 ],
@@ -7699,6 +8119,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7708,7 +8134,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a kubernetes workload resource instance by ID from the database.",
+                "description": "Delete a kubernetes workload resource instance by ID from the database.\nBlocking: attached object references pointing at this kubernetes workload resource instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a kubernetes workload resource instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the kubernetes workload resource instance row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7777,7 +8203,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceInstance"
                         }
                     }
                 ],
@@ -7796,6 +8222,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7866,7 +8298,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogBackend"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogBackend"
                         }
                     }
                 ],
@@ -7879,6 +8311,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7957,7 +8395,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogBackend"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogBackend"
                         }
                     }
                 ],
@@ -7980,6 +8418,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7989,7 +8433,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a log backend by ID from the database.",
+                "description": "Delete a log backend by ID from the database.\nBlocking: attached object references pointing at this log backend with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a log backend also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the log backend row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8058,7 +8502,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogBackend"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogBackend"
                         }
                     }
                 ],
@@ -8077,6 +8521,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8147,7 +8597,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogStorageDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogStorageDefinition"
                         }
                     }
                 ],
@@ -8160,6 +8610,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8238,7 +8694,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogStorageDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogStorageDefinition"
                         }
                     }
                 ],
@@ -8261,6 +8717,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -8270,7 +8732,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a log storage definition by ID from the database.",
+                "description": "Delete a log storage definition by ID from the database.\nBlocking: attached object references pointing at this log storage definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a log storage definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the log storage definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8339,7 +8801,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogStorageDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogStorageDefinition"
                         }
                     }
                 ],
@@ -8358,6 +8820,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8428,7 +8896,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogStorageInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogStorageInstance"
                         }
                     }
                 ],
@@ -8441,6 +8909,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8519,7 +8993,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogStorageInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogStorageInstance"
                         }
                     }
                 ],
@@ -8542,6 +9016,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -8551,7 +9031,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a log storage instance by ID from the database.",
+                "description": "Delete a log storage instance by ID from the database.\nBlocking: attached object references pointing at this log storage instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a log storage instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the log storage instance row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8620,7 +9100,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LogStorageInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LogStorageInstance"
                         }
                     }
                 ],
@@ -8639,6 +9119,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8709,7 +9195,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LoggingDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LoggingDefinition"
                         }
                     }
                 ],
@@ -8722,6 +9208,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8800,7 +9292,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LoggingDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LoggingDefinition"
                         }
                     }
                 ],
@@ -8823,6 +9315,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -8832,7 +9330,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a logging definition by ID from the database.",
+                "description": "Delete a logging definition by ID from the database.\nBlocking: attached object references pointing at this logging definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a logging definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the logging definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8901,7 +9399,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LoggingDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LoggingDefinition"
                         }
                     }
                 ],
@@ -8920,6 +9418,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8990,7 +9494,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LoggingInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LoggingInstance"
                         }
                     }
                 ],
@@ -9003,6 +9507,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9081,7 +9591,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LoggingInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LoggingInstance"
                         }
                     }
                 ],
@@ -9104,6 +9614,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -9113,7 +9629,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a logging instance by ID from the database.",
+                "description": "Delete a logging instance by ID from the database.\nBlocking: attached object references pointing at this logging instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a logging instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the logging instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9182,7 +9698,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.LoggingInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.LoggingInstance"
                         }
                     }
                 ],
@@ -9201,6 +9717,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9271,7 +9793,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineRuntimeDefinition"
                         }
                     }
                 ],
@@ -9284,6 +9806,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9362,7 +9890,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineRuntimeDefinition"
                         }
                     }
                 ],
@@ -9385,6 +9913,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -9394,7 +9928,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a machine runtime definition by ID from the database.",
+                "description": "Delete a machine runtime definition by ID from the database.\nBlocking: attached object references pointing at this machine runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a machine runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the machine runtime definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9463,7 +9997,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineRuntimeDefinition"
                         }
                     }
                 ],
@@ -9482,6 +10016,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9552,7 +10092,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineRuntimeInstance"
                         }
                     }
                 ],
@@ -9565,6 +10105,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9643,7 +10189,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineRuntimeInstance"
                         }
                     }
                 ],
@@ -9666,6 +10212,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -9675,7 +10227,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a machine runtime instance by ID from the database.",
+                "description": "Delete a machine runtime instance by ID from the database.\nBlocking: attached object references pointing at this machine runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a machine runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the machine runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9744,7 +10296,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineRuntimeInstance"
                         }
                     }
                 ],
@@ -9763,6 +10315,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9833,7 +10391,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineWorkloadDefinition"
                         }
                     }
                 ],
@@ -9846,6 +10404,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9924,7 +10488,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineWorkloadDefinition"
                         }
                     }
                 ],
@@ -9947,6 +10511,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -9956,7 +10526,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a machine workload definition by ID from the database.",
+                "description": "Delete a machine workload definition by ID from the database.\nBlocking: attached object references pointing at this machine workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a machine workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the machine workload definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10025,7 +10595,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineWorkloadDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineWorkloadDefinition"
                         }
                     }
                 ],
@@ -10044,6 +10614,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10114,7 +10690,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineWorkloadInstance"
                         }
                     }
                 ],
@@ -10127,6 +10703,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10205,7 +10787,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineWorkloadInstance"
                         }
                     }
                 ],
@@ -10228,6 +10810,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -10237,7 +10825,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a machine workload instance by ID from the database.",
+                "description": "Delete a machine workload instance by ID from the database.\nBlocking: attached object references pointing at this machine workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a machine workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the machine workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10306,7 +10894,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MachineWorkloadInstance"
                         }
                     }
                 ],
@@ -10325,6 +10913,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10395,7 +10989,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MetricsDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MetricsDefinition"
                         }
                     }
                 ],
@@ -10408,6 +11002,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10486,7 +11086,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MetricsDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MetricsDefinition"
                         }
                     }
                 ],
@@ -10509,6 +11109,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -10518,7 +11124,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a metrics definition by ID from the database.",
+                "description": "Delete a metrics definition by ID from the database.\nBlocking: attached object references pointing at this metrics definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a metrics definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the metrics definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10587,7 +11193,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MetricsDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MetricsDefinition"
                         }
                     }
                 ],
@@ -10606,6 +11212,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10676,7 +11288,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MetricsInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MetricsInstance"
                         }
                     }
                 ],
@@ -10689,6 +11301,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10767,7 +11385,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MetricsInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MetricsInstance"
                         }
                     }
                 ],
@@ -10790,6 +11408,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -10799,7 +11423,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a metrics instance by ID from the database.",
+                "description": "Delete a metrics instance by ID from the database.\nBlocking: attached object references pointing at this metrics instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a metrics instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the metrics instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10868,7 +11492,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.MetricsInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.MetricsInstance"
                         }
                     }
                 ],
@@ -10887,6 +11511,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10918,7 +11548,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleApiRoute"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleApiRoute"
                         }
                     }
                 ],
@@ -11001,7 +11631,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleApiRoute"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleApiRoute"
                         }
                     }
                 ],
@@ -11014,6 +11644,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11092,7 +11728,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleApiRoute"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleApiRoute"
                         }
                     }
                 ],
@@ -11115,6 +11751,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -11124,7 +11766,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a module api route by ID from the database.",
+                "description": "Delete a module api route by ID from the database.\nBlocking: attached object references pointing at this module api route with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a module api route also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the module api route row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11193,7 +11835,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleApiRoute"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleApiRoute"
                         }
                     }
                 ],
@@ -11212,6 +11854,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11282,7 +11930,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleApi"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleApi"
                         }
                     }
                 ],
@@ -11295,6 +11943,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11373,7 +12027,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleApi"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleApi"
                         }
                     }
                 ],
@@ -11396,6 +12050,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -11405,7 +12065,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a module api by ID from the database.",
+                "description": "Delete a module api by ID from the database.\nBlocking: attached object references pointing at this module api with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a module api also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the module api row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11474,7 +12134,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleApi"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleApi"
                         }
                     }
                 ],
@@ -11493,6 +12153,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11563,7 +12229,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleController"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleController"
                         }
                     }
                 ],
@@ -11576,6 +12242,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11654,7 +12326,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleController"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleController"
                         }
                     }
                 ],
@@ -11677,6 +12349,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -11686,7 +12364,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a module controller by ID from the database.",
+                "description": "Delete a module controller by ID from the database.\nBlocking: attached object references pointing at this module controller with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a module controller also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the module controller row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11755,7 +12433,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleController"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleController"
                         }
                     }
                 ],
@@ -11774,6 +12452,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11844,7 +12528,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleObject"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleObject"
                         }
                     }
                 ],
@@ -11857,6 +12541,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12018,7 +12708,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleObject"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleObject"
                         }
                     }
                 ],
@@ -12041,6 +12731,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -12050,7 +12746,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a module object by ID from the database.",
+                "description": "Delete a module object by ID from the database.\nBlocking: attached object references pointing at this module object with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a module object also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the module object row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -12119,7 +12815,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ModuleObject"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ModuleObject"
                         }
                     }
                 ],
@@ -12138,6 +12834,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12208,7 +12910,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityDashboardDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardDefinition"
                         }
                     }
                 ],
@@ -12221,6 +12923,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12299,7 +13007,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityDashboardDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardDefinition"
                         }
                     }
                 ],
@@ -12322,6 +13030,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -12331,7 +13045,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a observability dashboard definition by ID from the database.",
+                "description": "Delete a observability dashboard definition by ID from the database.\nBlocking: attached object references pointing at this observability dashboard definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a observability dashboard definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the observability dashboard definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -12400,7 +13114,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityDashboardDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardDefinition"
                         }
                     }
                 ],
@@ -12419,6 +13133,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12489,7 +13209,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityDashboardInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardInstance"
                         }
                     }
                 ],
@@ -12502,6 +13222,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12580,7 +13306,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityDashboardInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardInstance"
                         }
                     }
                 ],
@@ -12603,6 +13329,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -12612,7 +13344,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a observability dashboard instance by ID from the database.",
+                "description": "Delete a observability dashboard instance by ID from the database.\nBlocking: attached object references pointing at this observability dashboard instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a observability dashboard instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the observability dashboard instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -12681,7 +13413,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityDashboardInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardInstance"
                         }
                     }
                 ],
@@ -12700,6 +13432,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12770,7 +13508,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityStackDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityStackDefinition"
                         }
                     }
                 ],
@@ -12783,6 +13521,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12861,7 +13605,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityStackDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityStackDefinition"
                         }
                     }
                 ],
@@ -12884,6 +13628,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -12893,7 +13643,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a observability stack definition by ID from the database.",
+                "description": "Delete a observability stack definition by ID from the database.\nBlocking: attached object references pointing at this observability stack definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a observability stack definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the observability stack definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -12962,7 +13712,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityStackDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityStackDefinition"
                         }
                     }
                 ],
@@ -12981,6 +13731,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13051,7 +13807,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityStackInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityStackInstance"
                         }
                     }
                 ],
@@ -13064,6 +13820,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13142,7 +13904,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityStackInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityStackInstance"
                         }
                     }
                 ],
@@ -13165,6 +13927,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13174,7 +13942,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a observability stack instance by ID from the database.",
+                "description": "Delete a observability stack instance by ID from the database.\nBlocking: attached object references pointing at this observability stack instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a observability stack instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the observability stack instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -13243,7 +14011,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.ObservabilityStackInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.ObservabilityStackInstance"
                         }
                     }
                 ],
@@ -13262,6 +14030,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13332,7 +14106,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -13345,6 +14119,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13423,7 +14203,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -13446,6 +14226,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13455,7 +14241,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a oci oke kubernetes runtime definition by ID from the database.",
+                "description": "Delete a oci oke kubernetes runtime definition by ID from the database.\nBlocking: attached object references pointing at this oci oke kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a oci oke kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the oci oke kubernetes runtime definition row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -13524,7 +14310,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeDefinition"
                         }
                     }
                 ],
@@ -13543,6 +14329,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13613,7 +14405,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -13626,6 +14418,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13704,7 +14502,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -13727,6 +14525,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13736,7 +14540,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a oci oke kubernetes runtime instance by ID from the database.",
+                "description": "Delete a oci oke kubernetes runtime instance by ID from the database.\nBlocking: attached object references pointing at this oci oke kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a oci oke kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the oci oke kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -13805,7 +14609,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeInstance"
                         }
                     }
                 ],
@@ -13824,6 +14628,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13894,7 +14704,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciProvider"
                         }
                     }
                 ],
@@ -13907,6 +14717,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13985,7 +14801,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciProvider"
                         }
                     }
                 ],
@@ -14008,6 +14824,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -14017,7 +14839,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a oci provider by ID from the database.",
+                "description": "Delete a oci provider by ID from the database.\nBlocking: attached object references pointing at this oci provider with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a oci provider also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the oci provider row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -14086,7 +14908,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.OciProvider"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.OciProvider"
                         }
                     }
                 ],
@@ -14105,6 +14927,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14175,7 +15003,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Profile"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Profile"
                         }
                     }
                 ],
@@ -14188,6 +15016,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14266,7 +15100,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Profile"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Profile"
                         }
                     }
                 ],
@@ -14289,6 +15123,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -14298,7 +15138,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a profile by ID from the database.",
+                "description": "Delete a profile by ID from the database.\nBlocking: attached object references pointing at this profile with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a profile also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the profile row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -14367,7 +15207,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Profile"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Profile"
                         }
                     }
                 ],
@@ -14386,6 +15226,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14456,7 +15302,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.SecretDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.SecretDefinition"
                         }
                     }
                 ],
@@ -14469,6 +15315,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14547,7 +15399,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.SecretDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.SecretDefinition"
                         }
                     }
                 ],
@@ -14570,6 +15422,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -14579,7 +15437,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a secret definition by ID from the database.",
+                "description": "Delete a secret definition by ID from the database.\nBlocking: attached object references pointing at this secret definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a secret definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the secret definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -14648,7 +15506,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.SecretDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.SecretDefinition"
                         }
                     }
                 ],
@@ -14667,6 +15525,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14737,7 +15601,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.SecretInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.SecretInstance"
                         }
                     }
                 ],
@@ -14750,6 +15614,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14828,7 +15698,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.SecretInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.SecretInstance"
                         }
                     }
                 ],
@@ -14851,6 +15721,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -14860,7 +15736,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a secret instance by ID from the database.",
+                "description": "Delete a secret instance by ID from the database.\nBlocking: attached object references pointing at this secret instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a secret instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the secret instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -14929,7 +15805,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.SecretInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.SecretInstance"
                         }
                     }
                 ],
@@ -14948,6 +15824,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15018,7 +15900,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.TerraformDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.TerraformDefinition"
                         }
                     }
                 ],
@@ -15031,6 +15913,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15109,7 +15997,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.TerraformDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.TerraformDefinition"
                         }
                     }
                 ],
@@ -15132,6 +16020,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15141,7 +16035,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a terraform definition by ID from the database.",
+                "description": "Delete a terraform definition by ID from the database.\nBlocking: attached object references pointing at this terraform definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a terraform definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the terraform definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -15210,7 +16104,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.TerraformDefinition"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.TerraformDefinition"
                         }
                     }
                 ],
@@ -15229,6 +16123,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15299,7 +16199,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.TerraformInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.TerraformInstance"
                         }
                     }
                 ],
@@ -15312,6 +16212,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15390,7 +16296,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.TerraformInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.TerraformInstance"
                         }
                     }
                 ],
@@ -15413,6 +16319,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15422,7 +16334,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a terraform instance by ID from the database.",
+                "description": "Delete a terraform instance by ID from the database.\nBlocking: attached object references pointing at this terraform instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a terraform instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nReconciled type: this endpoint returns after the deletion marker is written; the terraform instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -15491,7 +16403,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.TerraformInstance"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.TerraformInstance"
                         }
                     }
                 ],
@@ -15510,6 +16422,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15580,7 +16498,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Tier"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Tier"
                         }
                     }
                 ],
@@ -15593,6 +16511,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15671,7 +16595,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Tier"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Tier"
                         }
                     }
                 ],
@@ -15694,6 +16618,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15703,7 +16633,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a tier by ID from the database.",
+                "description": "Delete a tier by ID from the database.\nBlocking: attached object references pointing at this tier with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.\nCascade: deleting a tier also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.\nNon-reconciled type: this endpoint returns after the tier row and any cascading children have been removed synchronously.",
                 "consumes": [
                     "application/json"
                 ],
@@ -15772,7 +16702,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v0.Tier"
+                            "$ref": "#/definitions/github_com_threeport_threeport_pkg_api_v0.Tier"
                         }
                     }
                 ],
@@ -15795,6 +16725,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v0.Response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15806,8 +16742,3063 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "datatypes.JSON": {
-            "type": "object"
+        "github_com_threeport_threeport_pkg_api_v0.AttachedObjectReference": {
+            "type": "object",
+            "required": [
+                "attachedObjectID",
+                "attachedObjectType",
+                "objectID",
+                "objectType"
+            ],
+            "properties": {
+                "attachedObjectID": {
+                    "description": "AttachedObjectID is the database ID of the attaching object.",
+                    "type": "integer"
+                },
+                "attachedObjectType": {
+                    "description": "AttachedObjectType is the kind of the object doing the attaching;\nthe side that can determine the base object's lifecycle. Stored\nas a fully qualified type name in the form\n\"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
+                    "type": "string"
+                },
+                "objectID": {
+                    "description": "ObjectID is the database ID of the base object.",
+                    "type": "integer"
+                },
+                "objectType": {
+                    "description": "ObjectType is the kind of the base object being attached to. Read\n\"this attached object attaches to that object\": the no-prefix\nObject* fields name the \"that\" (anchor) side. The naming is\ndirectional because the attached object is the side that can\ndetermine the base object's lifecycle, depending on the type of\nrelationship (see below). Stored as a fully qualified type name\nin the form \"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
+                    "type": "string"
+                },
+                "relationship": {
+                    "description": "Relationship classifies this reference and drives lifecycle behavior\nvia gorm hooks and generated code that reveals information about a\ntype's foreign keys:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists, control plane callers included.\n  - \"owns\": blocks both delete and update of the base, except for a\n    caller whose mTLS certificate carries the control plane\n    organizational unit. That exemption covers every control plane\n    component, not only the controller registered for the attached\n    object's type.\n    An owned base has at most one owner (enforced by the partial\n    index idx_attached_object_reference_owns_base above); an owner may own many bases.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base under the same control plane exemption as \"owns\".",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v0.Relationship"
+                        }
+                    ]
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeDefinition": {
+            "type": "object",
+            "required": [
+                "defaultNodeGroupInitialSize",
+                "defaultNodeGroupInstanceType",
+                "defaultNodeGroupMaximumSize",
+                "defaultNodeGroupMinimumSize",
+                "kubernetesRuntimeDefinitionID",
+                "name",
+                "zoneCount"
+            ],
+            "properties": {
+                "awsEksKubernetesRuntimeInstances": {
+                    "description": "The AWS EKS kubernetes runtime instances derived from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
+                    }
+                },
+                "defaultNodeGroupInitialSize": {
+                    "description": "The number of nodes in the default initial node group.",
+                    "type": "integer"
+                },
+                "defaultNodeGroupInstanceType": {
+                    "description": "The AWS instance type for the default initial node group.",
+                    "type": "string"
+                },
+                "defaultNodeGroupMaximumSize": {
+                    "description": "The maximum number of nodes the default initial node group should have.",
+                    "type": "integer"
+                },
+                "defaultNodeGroupMinimumSize": {
+                    "description": "The minimum number of nodes the default initial node group should have.",
+                    "type": "integer"
+                },
+                "kubernetesRuntimeDefinitionID": {
+                    "description": "The kubernetes runtime definition for an EKS cluster in AWS.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "zoneCount": {
+                    "description": "The number of zones the cluster should span for availability.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.AwsEksKubernetesRuntimeInstance": {
+            "type": "object",
+            "required": [
+                "awsEksKubernetesRuntimeDefinitionID",
+                "awsProviderID",
+                "kubernetesRuntimeInstanceID",
+                "name"
+            ],
+            "properties": {
+                "awsEksKubernetesRuntimeDefinitionID": {
+                    "description": "The definition that configures this instance.",
+                    "type": "integer"
+                },
+                "awsProviderID": {
+                    "description": "The AWS provider in which the EKS cluster is provisioned.",
+                    "type": "integer"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime instance associated with the AWS EKS cluster.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "region": {
+                    "description": "The AWS region in which the cluster is provisioned.",
+                    "type": "string"
+                },
+                "resourceInventory": {
+                    "description": "An inventory of all AWS resources for the EKS cluster.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.AwsProvider": {
+            "type": "object",
+            "required": [
+                "accountID",
+                "defaultRegion",
+                "name"
+            ],
+            "properties": {
+                "accessKeyID": {
+                    "description": "The access key ID credentials for the AWS account.",
+                    "type": "string"
+                },
+                "accountID": {
+                    "description": "The account ID for the AWS account.",
+                    "type": "string"
+                },
+                "awsEksKubernetesRuntimeInstances": {
+                    "description": "The cluster instances deployed with this AWS provider.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
+                    }
+                },
+                "defaultProvider": {
+                    "description": "If true is the AWS provider used if none specified in a definition.",
+                    "type": "boolean"
+                },
+                "defaultRegion": {
+                    "description": "The region to use for AWS managed services if not specified.",
+                    "type": "string"
+                },
+                "externalId": {
+                    "description": "The ExternalId to use when assuming a RoleArn for the AWS account. This is\nautomatically generated by the API server if RoleArn is set.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The unique name of an AWS provider.",
+                    "type": "string"
+                },
+                "roleArn": {
+                    "description": "The RoleArn to assume for the AWS account.",
+                    "type": "string"
+                },
+                "secretAccessKey": {
+                    "description": "The secret key credentials for the AWS account.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ControlPlaneDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "authEnabled": {
+                    "description": "Used to indicate whether the control plane is deployed with auth settings",
+                    "type": "boolean"
+                },
+                "controlPlaneInstances": {
+                    "description": "The associated control plane instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ControlPlaneInstance"
+                    }
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "onboardParent": {
+                    "description": "When instances of this control plane are deployed, Object representing control plane and its parent are\nonboarded as part of deployment, using this we can disable that process and simply spin a new instance with\na clean DB.",
+                    "type": "boolean"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ControlPlaneInstance": {
+            "type": "object",
+            "required": [
+                "controlPlaneDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "namespace"
+            ],
+            "properties": {
+                "apiServerEndpoint": {
+                    "description": "Information for connecting to the rest api for the control plane",
+                    "type": "string"
+                },
+                "cacert": {
+                    "description": "The CA Cert that is associated with the control plane",
+                    "type": "string"
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ControlPlaneInstance"
+                    }
+                },
+                "clientCert": {
+                    "description": "The client cert that is associated with the control plane",
+                    "type": "string"
+                },
+                "clientKey": {
+                    "description": "The client Key that is associated with the control plane",
+                    "type": "string"
+                },
+                "controlPlaneDefinitionID": {
+                    "description": "The definition used to configure the control plane instance.",
+                    "type": "integer"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "customComponentInfo": {
+                    "description": "Passed in information for the different components of the control plane i.e. controller etc\nWhen not provided, the default values will be used. If provided, they will override the default values.\nDespite being a reference to another database entry, we dont validate association.\nThis allows a user to provide CustomComponentInfo at instance creation time so the reconciler has the info it needs",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ControlPlaneComponent"
+                    }
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "genesis": {
+                    "description": "Indicates whether this is was the first control plane that was spun up in a control plane group",
+                    "type": "boolean"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "isSelf": {
+                    "description": "When true, indicates the control plane instance represents the control plane in which it's stored",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "the kubernetes runtime instance the control plane is running on",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "The namespace to deploy the control plane in",
+                    "type": "string"
+                },
+                "parent": {
+                    "$ref": "#/definitions/v0.ControlPlaneInstance"
+                },
+                "parentControlPlaneInstanceID": {
+                    "description": "These are pointers to the parent and children of the current control plane\nThis is useful to map out the topology between control planes being managed by one another",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.DomainNameDefinition": {
+            "type": "object",
+            "required": [
+                "adminEmail",
+                "domain",
+                "name",
+                "zone"
+            ],
+            "properties": {
+                "adminEmail": {
+                    "description": "The email address of the domain administrator.",
+                    "type": "string"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "domain": {
+                    "description": "The base domain upon which the subdomain will be added to give a workload\na unique domain name.",
+                    "type": "string"
+                },
+                "domainNameInstances": {
+                    "description": "The associated domain name instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.DomainNameInstance"
+                    }
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "zone": {
+                    "description": "The name of the zone in which the domain is managed.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.DomainNameInstance": {
+            "type": "object",
+            "required": [
+                "domainNameDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "kubernetesWorkloadInstanceID",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "domainNameDefinitionID": {
+                    "description": "The definition used to define the instance.",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The cluster where the kubernetes workload that is using the domain name is running.",
+                    "type": "integer"
+                },
+                "kubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance this domain name belongs to.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.Event": {
+            "type": "object",
+            "required": [
+                "count",
+                "eventTime",
+                "lastObservedTime",
+                "reason",
+                "reportingController",
+                "type"
+            ],
+            "properties": {
+                "count": {
+                    "description": "The number of times this event has occurred.",
+                    "type": "integer"
+                },
+                "eventTime": {
+                    "description": "Time when this Event was first observed.",
+                    "type": "string"
+                },
+                "lastObservedTime": {
+                    "description": "The time at which the most recent occurrence of this event was recorded.",
+                    "type": "string"
+                },
+                "note": {
+                    "description": "A human-readable description of the status of this operation.",
+                    "type": "string"
+                },
+                "objectID": {
+                    "type": "integer"
+                },
+                "objectName": {
+                    "type": "string"
+                },
+                "objectType": {
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "A short, machine understandable string that gives the reason for the event being generated.",
+                    "type": "string"
+                },
+                "reportingController": {
+                    "description": "Name of the controller that emitted this Event.",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type of this event (Normal, Warning), new types could be added in the future.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.GatewayDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "domainNameDefinitionID": {
+                    "description": "The domain name to serve requests for.",
+                    "type": "integer"
+                },
+                "gatewayInstances": {
+                    "description": "The associated gateway instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.GatewayInstance"
+                    }
+                },
+                "httpPorts": {
+                    "description": "HttpPorts is a list of HTTP ports to expose to the outside network.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.GatewayHttpPort"
+                    }
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesWorkloadDefinitionID": {
+                    "description": "The kubernetes workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "serviceName": {
+                    "description": "The kubernetes service to route requests to.",
+                    "type": "string"
+                },
+                "subDomain": {
+                    "description": "An optional subdomain to add to the domain name.",
+                    "type": "string"
+                },
+                "tcpPorts": {
+                    "description": "TcpPorts is a list of TCP ports to expose to the outside network.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.GatewayTcpPort"
+                    }
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.GatewayHttpPort": {
+            "type": "object",
+            "required": [
+                "gatewayDefinitionID",
+                "port"
+            ],
+            "properties": {
+                "gatewayDefinitionID": {
+                    "description": "GatewayDefinitionID is the definition used to configure the gateway http port.",
+                    "type": "integer"
+                },
+                "httpsredirect": {
+                    "description": "Redirect all requests to HTTP port to HTTPS.",
+                    "type": "boolean"
+                },
+                "path": {
+                    "description": "The request path to serve requests for.",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "The HTTP port to expose.",
+                    "type": "integer"
+                },
+                "tlsenabled": {
+                    "description": "Indicates if TLS is enabled.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.GatewayInstance": {
+            "type": "object",
+            "required": [
+                "gatewayDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "kubernetesWorkloadInstanceID",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "gatewayDefinitionID": {
+                    "description": "GatewayDefinitionID is the definition used to configure the gateway instance.",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime where the ingress layer is installed.",
+                    "type": "integer"
+                },
+                "kubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance this gateway belongs to.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.GatewayTcpPort": {
+            "type": "object",
+            "required": [
+                "gatewayDefinitionID",
+                "port"
+            ],
+            "properties": {
+                "gatewayDefinitionID": {
+                    "description": "GatewayDefinitionID is the definition used to configure the gateway tcp port.",
+                    "type": "integer"
+                },
+                "port": {
+                    "description": "The TCP port to expose.",
+                    "type": "integer"
+                },
+                "tlsenabled": {
+                    "description": "Indicates if TLS is enabled.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeDefinition": {
+            "type": "object",
+            "required": [
+                "defaultNodeGroupInitialSize",
+                "defaultNodeGroupInstanceType",
+                "defaultNodeGroupMaximumSize",
+                "defaultNodeGroupMinimumSize",
+                "kubernetesRuntimeDefinitionID",
+                "name",
+                "zoneCount"
+            ],
+            "properties": {
+                "defaultNodeGroupInitialSize": {
+                    "description": "The number of nodes in the default initial node group.",
+                    "type": "integer"
+                },
+                "defaultNodeGroupInstanceType": {
+                    "description": "The GCP instance type for the default initial node group.",
+                    "type": "string"
+                },
+                "defaultNodeGroupMaximumSize": {
+                    "description": "The maximum number of nodes the default initial node group should have.",
+                    "type": "integer"
+                },
+                "defaultNodeGroupMinimumSize": {
+                    "description": "The minimum number of nodes the default initial node group should have.",
+                    "type": "integer"
+                },
+                "gcpGkeKubernetesRuntimeInstances": {
+                    "description": "The GCP GKE kubernetes runtime instances derived from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeInstance"
+                    }
+                },
+                "kubernetesRuntimeDefinitionID": {
+                    "description": "The kubernetes runtime definition for a GKE cluster in GCP.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "zoneCount": {
+                    "description": "The number of zones the cluster should span for availability.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.GcpGkeKubernetesRuntimeInstance": {
+            "type": "object",
+            "required": [
+                "gcpGkeKubernetesRuntimeDefinitionID",
+                "gcpProviderID",
+                "kubernetesRuntimeInstanceID",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "gcpGkeKubernetesRuntimeDefinitionID": {
+                    "description": "The definition that configures this instance.",
+                    "type": "integer"
+                },
+                "gcpProviderID": {
+                    "description": "The GCP provider in which the GKE cluster is provisioned.",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime instance associated with the GKE cluster.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "region": {
+                    "description": "The GCP region in which the cluster is provisioned.",
+                    "type": "string"
+                },
+                "resourceInventory": {
+                    "description": "An inventory of all GCP resources for the GKE cluster.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.GcpProvider": {
+            "type": "object",
+            "required": [
+                "defaultRegion",
+                "name",
+                "projectID"
+            ],
+            "properties": {
+                "defaultProvider": {
+                    "description": "If true, is the GCP provider used when none specified for an instance.",
+                    "type": "boolean"
+                },
+                "defaultRegion": {
+                    "description": "The region to use for GCP managed services if not specified.",
+                    "type": "string"
+                },
+                "gcpGkeKubernetesRuntimeInstances": {
+                    "description": "The cluster instances deployed with this GCP provider.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeInstance"
+                    }
+                },
+                "name": {
+                    "description": "The unique name of a GCP provider.",
+                    "type": "string"
+                },
+                "projectID": {
+                    "description": "The GCP project ID for the Google Cloud account.",
+                    "type": "string"
+                },
+                "serviceAccountCredentials": {
+                    "description": "The service account key JSON for authenticating to GCP from outside GCP.\nThis is the contents of a service account key file exported from GCP Console.\nUsed when the gcp-controller runs outside GCP (e.g., in AWS or on-prem).",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.HelmWorkloadDefinition": {
+            "type": "object",
+            "required": [
+                "chart",
+                "name",
+                "repo"
+            ],
+            "properties": {
+                "additionalResources": {
+                    "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "chart": {
+                    "description": "The name of the helm chart to use from the helm repo, e.g. wordpress",
+                    "type": "string"
+                },
+                "chartVersion": {
+                    "description": "The version of the helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "helmWorkloadInstances": {
+                    "description": "The associated helm workload instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.HelmWorkloadInstance"
+                    }
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "repo": {
+                    "description": "The helm repo URL to pull the helm workload's chart from\ne.g. oci://registry-1.docker.io/bitnamicharts\ne.g. https://grafana.github.io/helm-charts",
+                    "type": "string"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "valuesDocument": {
+                    "description": "The helm values that override the defaults from the helm chart.  These\nwill be inherited by each helm workload instance derived from this\ndefinition.  The helm values defined here can be further overridden by\nvalues defined on the helm workload instance.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.HelmWorkloadInstance": {
+            "type": "object",
+            "required": [
+                "helmWorkloadDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "name"
+            ],
+            "properties": {
+                "additionalResources": {
+                    "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "helmWorkloadDefinitionID": {
+                    "description": "The definition used to configure the kubernetes workload instance.",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime to which the helm workload is deployed.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "releaseNamespace": {
+                    "description": "Namespace to deploy the helm chart to.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                },
+                "valuesDocument": {
+                    "description": "Filepath to the helm values YAML file that provides runtime parameters to\nthe helm chart.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeDefinition": {
+            "type": "object",
+            "required": [
+                "infraProvider",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "highAvailability": {
+                    "description": "If true, will be deployed in a highly available configuration across\nmultiple zones within a region and with multiple replicas of Kubernetes\ncontrol plane components.",
+                    "type": "boolean"
+                },
+                "infraProvider": {
+                    "description": "The infrastructure provider running the compute infrastructure for the\ncluster.",
+                    "type": "string"
+                },
+                "infraProviderAccountName": {
+                    "description": "The infra provider account name.  Determines which account the infra is\ndeployed on.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstances": {
+                    "description": "The associated kubernetes runtime instances that are deployed from this\ndefinition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesRuntimeInstance"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "nodeMaximum": {
+                    "description": "Sets the maximum number of nodes for the default node group.",
+                    "type": "integer"
+                },
+                "nodeProfile": {
+                    "description": "Sets the CPU:memory ration of the machine type for the default node\ngroup.",
+                    "type": "string"
+                },
+                "nodeSize": {
+                    "description": "Sets the compute capacity of the machine type for the default node group.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.KubernetesRuntimeInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeDefinitionID",
+                "location",
+                "name"
+            ],
+            "properties": {
+                "apiendpoint": {
+                    "description": "The network endpoint at which to reach the kube-api.",
+                    "type": "string"
+                },
+                "cacertificate": {
+                    "description": "The CA certificate used to generate the cert and key if\nself-signed.",
+                    "type": "string"
+                },
+                "certificate": {
+                    "description": "The client certificate to use for auth to the kube-api.",
+                    "type": "string"
+                },
+                "certificateKey": {
+                    "description": "The client certificate key to use for auth to the kube-api.",
+                    "type": "string"
+                },
+                "connectionToken": {
+                    "description": "Used to authenticate with a OIDC provider that implements auth for a\nKubernetes cluster.  It is an alternative to client cert authenticaion.",
+                    "type": "string"
+                },
+                "connectionTokenExpiration": {
+                    "description": "ConnectionTokenExpiration is the time when a ConnectionToken will expire.\nUsed to ensure a token will not expire before it can be used.",
+                    "type": "string"
+                },
+                "controlPlaneInstances": {
+                    "description": "The associated control plane instances running on this kubernetes runtime instance.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ControlPlaneInstance"
+                    }
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "defaultRuntime": {
+                    "description": "If true, this Kubernetes cluster will be used for all workloads if not\notherwise assigned.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "dnsControllerInstanceID": {
+                    "description": "The KubernetesWorkloadInstanceID of the dns support service",
+                    "type": "integer"
+                },
+                "gatewayControllerInstanceID": {
+                    "description": "The KubernetesWorkloadInstanceID of the gateway support service",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeDefinitionID": {
+                    "description": "The kubernetes runtime definition for this instance.",
+                    "type": "integer"
+                },
+                "kubernetesWorkloadInstances": {
+                    "description": "The associated kubernetes workload instances running on this kubernetes runtime.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                    }
+                },
+                "location": {
+                    "description": "The geographical location for the runtime cluster.  This is an\nabstraction for the cloud provider regions that is mapped into the\nregions used by providers.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "secretsControllerInstanceID": {
+                    "description": "The KubernetesWorkloadInstanceID of the secrets support service",
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                },
+                "threeportAgentImage": {
+                    "description": "An alternate threeport image to use when deploying threeport agent to\nmanaged Kubernetes runtime clusters.  If not supplied, the official image\nwith the correct version will be used.",
+                    "type": "string"
+                },
+                "threeportControlPlaneHost": {
+                    "description": "If true, the Kubernetes cluster is hosting a threeport control plane and\nany controllers that connect to the kube API will use internal cluster\nDNS rather than the external APIEndpoint.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadDefinition": {
+            "type": "object",
+            "required": [
+                "name",
+                "yamldocument"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesWorkloadInstances": {
+                    "description": "The associated kubernetes workload instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
+                    }
+                },
+                "kubernetesWorkloadResourceDefinitions": {
+                    "description": "The associated kubernetes workload resource definitions that are derived.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "yamldocument": {
+                    "description": "The yaml manifests that define the workload configuration.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeInstanceID",
+                "kubernetesWorkloadDefinitionID",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime to which the workload is deployed.",
+                    "type": "integer"
+                },
+                "kubernetesWorkloadDefinitionID": {
+                    "description": "The definition used to configure the kubernetes workload instance.",
+                    "type": "integer"
+                },
+                "kubernetesWorkloadResourceInstances": {
+                    "description": "The associated kubernetes workload resource instances that are derived.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The latest status of a kubernetes workload instance.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceDefinition": {
+            "type": "object",
+            "required": [
+                "jsondefinition",
+                "kubernetesWorkloadDefinitionID"
+            ],
+            "properties": {
+                "jsondefinition": {
+                    "description": "The individual manifest in JSON format.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "kubernetesWorkloadDefinitionID": {
+                    "description": "The kubernetes workload definition this resource belongs to.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.KubernetesWorkloadResourceInstance": {
+            "type": "object",
+            "required": [
+                "jsondefinition",
+                "kubernetesWorkloadInstanceID"
+            ],
+            "properties": {
+                "jsondefinition": {
+                    "description": "The individual manifest in JSON format.  This field is a superset of\nKubernetesWorkloadResourceDefinition.JSONDefinition in that it has\nnamespace management and other configuration — such as resource\nallocation management — added.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "kubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance this resource belongs to.",
+                    "type": "integer"
+                },
+                "lastOperation": {
+                    "description": "The most recent operation performed on a Kubernetes resource in the\nkubernetes runtime.",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Indicates if object is considered to be reconciled by kubernetes\nkubernetes workload controller.",
+                    "type": "boolean"
+                },
+                "runtimeDefinition": {
+                    "description": "The JSON definition of a Kubernetes resource as stored in etcd in the\nkubernetes runtime.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "scheduledForDeletion": {
+                    "description": "Whether another controller has scheduled this resource for deletion",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.LogBackend": {
+            "type": "object",
+            "required": [
+                "destination",
+                "name"
+            ],
+            "properties": {
+                "destination": {
+                    "description": "The network address to connect to for storing log messages.",
+                    "type": "string"
+                },
+                "logStorageDefinitions": {
+                    "description": "The storage definitions using the log backend for log storage.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.LogStorageDefinition"
+                    }
+                },
+                "name": {
+                    "description": "The unique name of a logging back end.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.LogStorageDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "logBackends": {
+                    "description": "The backend storage mechanisms for retaining logs.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.LogBackend"
+                    }
+                },
+                "logStorageInstances": {
+                    "description": "The associated log storage instances that are derived from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.LogStorageInstance"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.LogStorageInstance": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "clusterID": {
+                    "description": "The cluster from which log messages are being aggregated to send to a log\nback end.",
+                    "type": "integer"
+                },
+                "logStorageDefinitionID": {
+                    "description": "The definition used to define the instance.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.LoggingDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "loggingInstances": {
+                    "description": "The associated logging instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.LoggingInstance"
+                    }
+                },
+                "lokiHelmChartVersion": {
+                    "description": "The version of the loki helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "lokiHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying loki chart.",
+                    "type": "string"
+                },
+                "lokiHelmWorkloadDefinitionID": {
+                    "description": "The loki Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "promtailHelmChartVersion": {
+                    "description": "The version of the promtail helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "promtailHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying promtail chart.",
+                    "type": "string"
+                },
+                "promtailHelmWorkloadDefinitionID": {
+                    "description": "The promtail Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.LoggingInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeInstanceID",
+                "loggingDefinitionID",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime where the logging is installed.",
+                    "type": "integer"
+                },
+                "loggingDefinitionID": {
+                    "description": "The logging definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "lokiHelmValuesDocument": {
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying loki chart.",
+                    "type": "string"
+                },
+                "lokiHelmWorkloadInstanceID": {
+                    "description": "The loki helm workload instance that belongs to this resource.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "promtailHelmValuesDocument": {
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying promtail chart.",
+                    "type": "string"
+                },
+                "promtailHelmWorkloadInstanceID": {
+                    "description": "The promtail helm workload instance that belongs to this resource.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.MachineRuntimeDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "machineRuntimeInstances": {
+                    "description": "The associated machine runtime instances that are deployed from this\ndefinition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.MachineRuntimeInstance"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.MachineRuntimeInstance": {
+            "type": "object",
+            "required": [
+                "hostname",
+                "name",
+                "sshuser"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "hostKey": {
+                    "description": "The remote machine's SSH public host key, used to verify identity on\nconnection. If not provided, captured on first connection.",
+                    "type": "string"
+                },
+                "hostname": {
+                    "description": "The hostname or IP address used to reach the machine.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "machineRuntimeDefinitionID": {
+                    "description": "The machine runtime definition for this instance.  Optional because\nimported machines may not have an associated definition.",
+                    "type": "integer"
+                },
+                "machineWorkloadInstances": {
+                    "description": "The associated machine workload instances running on this machine runtime.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "The SSH port on the machine.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "sshkey": {
+                    "description": "The SSH private key for authenticating to the machine.",
+                    "type": "string"
+                },
+                "sshpassword": {
+                    "description": "The SSH password for authenticating to the machine.",
+                    "type": "string"
+                },
+                "sshuser": {
+                    "description": "The SSH username for authenticating to the machine.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.MachineWorkloadDefinition": {
+            "type": "object",
+            "required": [
+                "createScript",
+                "deleteScript",
+                "name"
+            ],
+            "properties": {
+                "createScript": {
+                    "description": "The shell script to run when a machine workload instance is created.",
+                    "type": "string"
+                },
+                "deleteScript": {
+                    "description": "The shell script to run when a machine workload instance is deleted.",
+                    "type": "string"
+                },
+                "env": {
+                    "description": "The environment variables to set for the workload as KEY=VALUE entries.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "machineWorkloadInstances": {
+                    "description": "The associated machine workload instances that are deployed from this\ndefinition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.MachineWorkloadInstance"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "shell": {
+                    "description": "The shell to use for script execution.",
+                    "type": "string"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "timeout": {
+                    "description": "The timeout in seconds for script execution.",
+                    "type": "integer"
+                },
+                "updateScript": {
+                    "description": "The shell script to run when a machine workload instance is updated.",
+                    "type": "string"
+                },
+                "workingDir": {
+                    "description": "The working directory for script execution.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.MachineWorkloadInstance": {
+            "type": "object",
+            "required": [
+                "machineRuntimeInstanceID",
+                "machineWorkloadDefinitionID",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "env": {
+                    "description": "The environment variables set for the workload as KEY=VALUE entries.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "machineRuntimeInstanceID": {
+                    "description": "The machine runtime on which the workload is deployed.",
+                    "type": "integer"
+                },
+                "machineWorkloadDefinitionID": {
+                    "description": "The definition used to configure the machine workload instance.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The latest status of the workload instance as observed by the reconciler\nwhen the most recent script execution completed.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.MetricsDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubePrometheusStackHelmChartVersion": {
+                    "description": "The version of the kube-prometheus-stack helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "kubePrometheusStackHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "type": "string"
+                },
+                "kubePrometheusStackHelmWorkloadDefinitionID": {
+                    "description": "The kube-prometheus-stack Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "metricsInstances": {
+                    "description": "The associated metrics instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.MetricsInstance"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.MetricsInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeInstanceID",
+                "metricsDefinitionID",
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubePrometheusStackHelmValuesDocument": {
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "type": "string"
+                },
+                "kubePrometheusStackHelmWorkloadInstanceID": {
+                    "description": "The kube-prometheus-stack helm workload instance that belongs to this resource.",
+                    "type": "integer"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime where the metrics is installed.",
+                    "type": "integer"
+                },
+                "metricsDefinitionID": {
+                    "description": "The metrics definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ModuleApi": {
+            "type": "object",
+            "required": [
+                "endpoint",
+                "name"
+            ],
+            "properties": {
+                "apiNamespace": {
+                    "description": "The reverse-DNS namespace identifying this module API (e.g. \"example.com\").",
+                    "type": "string"
+                },
+                "core": {
+                    "description": "If true, represents the core Threeport API.",
+                    "type": "boolean"
+                },
+                "endpoint": {
+                    "description": "The module API server's endpoint to proxy requests to for module\nobjects.",
+                    "type": "string"
+                },
+                "moduleApiRoutes": {
+                    "description": "The routes as URL paths to proxy requests to the API server's endpoint.\nAll supported routes for an module API should be added so that it is\nproxied.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ModuleApiRoute"
+                    }
+                },
+                "moduleControllers": {
+                    "description": "The controllers that are serviced by this module API.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ModuleController"
+                    }
+                },
+                "moduleObjects": {
+                    "description": "The API objects that are handled by this module API.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ModuleObject"
+                    }
+                },
+                "name": {
+                    "description": "An arbitrary name for the module API.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ModuleApiRoute": {
+            "type": "object",
+            "required": [
+                "moduleApiID",
+                "path"
+            ],
+            "properties": {
+                "moduleApiID": {
+                    "description": "The module API this route belongs to.",
+                    "type": "integer"
+                },
+                "moduleObjects": {
+                    "description": "The module object this route serves.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ModuleObject"
+                    }
+                },
+                "path": {
+                    "description": "The URL path supported by the module API.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ModuleController": {
+            "type": "object",
+            "required": [
+                "deploymentName",
+                "moduleApiID",
+                "name"
+            ],
+            "properties": {
+                "deploymentName": {
+                    "description": "The K8s deployment name for the controller.  This allows actions to be executed against the\nthe controller workload.  Examples:\n* disable a controller altogether when the API objects it manages are not in use.\n* allow the Threeport agent to watch and scale-to-zero the controller.",
+                    "type": "string"
+                },
+                "moduleApiID": {
+                    "description": "The module API this controller is connected to.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "The name of the controller.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ModuleObject": {
+            "type": "object",
+            "required": [
+                "moduleApiID",
+                "name",
+                "version"
+            ],
+            "properties": {
+                "description": {
+                    "description": "A description of the API object.",
+                    "type": "string"
+                },
+                "moduleApiID": {
+                    "description": "The module API this controller is connected to.",
+                    "type": "integer"
+                },
+                "moduleApiRoutes": {
+                    "description": "The routes that service this module object.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ModuleApiRoute"
+                    }
+                },
+                "moduleControllerID": {
+                    "description": "The controller that reconciles state for this API object, if applicable.  Note: some API objects\ndo not require reconciliation by a controller - this field will be null in those cases.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "The name of the API object.",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "The version of the API object, expressed as ` + "`" + `v0` + "`" + `, ` + "`" + `v1` + "`" + `, ` + "`" + `v2` + "`" + `, etc.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "grafanaHelmChartVersion": {
+                    "description": "The version of the grafana helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "grafanaHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
+                    "type": "string"
+                },
+                "grafanaHelmWorkloadDefinitionID": {
+                    "description": "The Grafana Helm workload definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "observabilityDashboardInstances": {
+                    "description": "The associated observability dashboard instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ObservabilityDashboardInstance"
+                    }
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ObservabilityDashboardInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "observabilityDashboardDefinitionID"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "grafanaHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
+                    "type": "string"
+                },
+                "grafanaHelmWorkloadInstanceID": {
+                    "description": "The Grafana Helm workload instance that belongs to this resource.",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime where the observability dashboard is installed.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "observabilityDashboardDefinitionID": {
+                    "description": "The observability dashboard definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ObservabilityStackDefinition": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "grafanaHelmChartVersion": {
+                    "description": "The version of the grafana helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "grafanaHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubePrometheusStackHelmChartVersion": {
+                    "description": "The version of the kube-prometheus-stack helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "kubePrometheusStackHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "type": "string"
+                },
+                "loggingDefinitionID": {
+                    "description": "Logging\nThe logging definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "lokiHelmChartVersion": {
+                    "description": "The version of the loki helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "lokiHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying loki chart.",
+                    "type": "string"
+                },
+                "metricsDefinitionID": {
+                    "description": "Metrics\nThe metrics definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "observabilityDashboardDefinitionID": {
+                    "description": "Dashboard\nThe observability dashboard definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "observabilityStackInstances": {
+                    "description": "The associated observability stack instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.ObservabilityStackInstance"
+                    }
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "promtailHelmChartVersion": {
+                    "description": "The version of the promtail helm chart to use from the helm repo, e.g. 1.2.3",
+                    "type": "string"
+                },
+                "promtailHelmValuesDocument": {
+                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying promtail chart.",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.ObservabilityStackInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "observabilityStackDefinitionID"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "grafanaHelmValuesDocument": {
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying grafana chart.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubePrometheusStackHelmValuesDocument": {
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
+                    "type": "string"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime where the observability stack is installed.",
+                    "type": "integer"
+                },
+                "loggingEnabled": {
+                    "description": "If true, logging will be enabled for the observability stack.",
+                    "type": "boolean"
+                },
+                "loggingInstanceID": {
+                    "description": "Logging\nThe logging instance that belongs to this resource.",
+                    "type": "integer"
+                },
+                "lokiHelmValuesDocument": {
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying loki chart.",
+                    "type": "string"
+                },
+                "metricsEnabled": {
+                    "description": "If true, metrics will be enabled for the observability stack.",
+                    "type": "boolean"
+                },
+                "metricsInstanceID": {
+                    "description": "Metrics\nThe metrics instance that belongs to this resource.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "observabilityDashboardInstanceID": {
+                    "description": "Dashboard\nThe observability dashboard instance that belongs to this resource.",
+                    "type": "integer"
+                },
+                "observabilityStackDefinitionID": {
+                    "description": "The observability stack definition that belongs to this resource.",
+                    "type": "integer"
+                },
+                "promtailHelmValuesDocument": {
+                    "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying promtail chart.",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeDefinition": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeDefinitionID",
+                "name",
+                "workerNodeInitialCount",
+                "workerNodeShape"
+            ],
+            "properties": {
+                "kubernetesRuntimeDefinitionID": {
+                    "description": "The kubernetes runtime definition for an OKE cluster in OCI.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "ociOkeKubernetesRuntimeInstances": {
+                    "description": "The OCI OKE kubernetes runtime instances derived from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeInstance"
+                    }
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "workerNodeInitialCount": {
+                    "description": "The number of nodes in the worker node pool.",
+                    "type": "integer"
+                },
+                "workerNodeShape": {
+                    "description": "The OCI shape for the worker nodes.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.OciOkeKubernetesRuntimeInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "ociOkeKubernetesRuntimeDefinitionID",
+                "ociProviderID"
+            ],
+            "properties": {
+                "clusterOCID": {
+                    "description": "The OCID for the OKE cluster. Populated by the controller after cluster creation.",
+                    "type": "string"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime instance associated with the OCI OKE cluster.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "ociOkeKubernetesRuntimeDefinitionID": {
+                    "description": "The definition that configures this instance.",
+                    "type": "integer"
+                },
+                "ociProviderID": {
+                    "description": "The OCI provider used to provision this instance.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "region": {
+                    "description": "The OCI Region in which the cluster is provisioned. This field is\nstored in the instance (as well as definition) since a change to the\ndefinition will not move a cluster.",
+                    "type": "string"
+                },
+                "resourceInventory": {
+                    "description": "An inventory of all OCI resources for the OKE cluster.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.OciProvider": {
+            "type": "object",
+            "required": [
+                "compartmentOCID",
+                "defaultRegion",
+                "keyFingerprint",
+                "name",
+                "privateKey",
+                "tenancyOCID",
+                "userOCID"
+            ],
+            "properties": {
+                "compartmentOCID": {
+                    "description": "The compartment OCID for the OCI provider.",
+                    "type": "string"
+                },
+                "defaultProvider": {
+                    "description": "If true is the OCI provider used if none specified in an instance.",
+                    "type": "boolean"
+                },
+                "defaultRegion": {
+                    "description": "The region to use for OCI managed services if not specified.",
+                    "type": "string"
+                },
+                "keyFingerprint": {
+                    "description": "The fingerprint of the API key for the OCI provider.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The unique name of an OCI provider.",
+                    "type": "string"
+                },
+                "ociOkeKubernetesRuntimeInstances": {
+                    "description": "The cluster instances deployed with this OCI provider.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeInstance"
+                    }
+                },
+                "privateKey": {
+                    "description": "The private key for the OCI provider.",
+                    "type": "string"
+                },
+                "tenancyOCID": {
+                    "description": "The tenancy OCID for the OCI provider account.",
+                    "type": "string"
+                },
+                "userOCID": {
+                    "description": "The user OCID credentials for the OCI provider.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.Profile": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "description": "The unique name of a profile",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.SecretDefinition": {
+            "type": "object",
+            "required": [
+                "data",
+                "name"
+            ],
+            "properties": {
+                "awsProviderID": {
+                    "description": "The AWS account ID, if the provider is AWS.",
+                    "type": "integer"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "data": {
+                    "description": "The secret value to be stored in the provider.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "secretInstances": {
+                    "description": "The associated secret instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.SecretInstance"
+                    }
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.SecretInstance": {
+            "type": "object",
+            "required": [
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "secretDefinitionID"
+            ],
+            "properties": {
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "helmWorkloadInstanceID": {
+                    "description": "The helm workload instance that the secret is associated with.",
+                    "type": "integer"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime to which the secret is deployed.",
+                    "type": "integer"
+                },
+                "kubernetesWorkloadInstanceID": {
+                    "description": "The kubernetes workload instance that the secret is associated with.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "secretDefinitionID": {
+                    "description": "The SecretDefinition that the secret instance is derived from.",
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.TerraformDefinition": {
+            "type": "object",
+            "required": [
+                "configDir",
+                "name"
+            ],
+            "properties": {
+                "configDir": {
+                    "description": "Path to the directory containing terraform configs with '.tf' file\nextension.",
+                    "type": "string"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "profileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "terraformInstances": {
+                    "description": "The associated terraform instances that are deployed from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.TerraformInstance"
+                    }
+                },
+                "tierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.TerraformInstance": {
+            "type": "object",
+            "required": [
+                "awsProviderID",
+                "name",
+                "terraformDefinitionID"
+            ],
+            "properties": {
+                "awsProviderID": {
+                    "description": "The AWS provider in which the resources will be provisioned.",
+                    "type": "integer"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
+                    "type": "string"
+                },
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
+                    "type": "string"
+                },
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
+                    "type": "boolean"
+                },
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
+                    "type": "string"
+                },
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "type": "string"
+                },
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "type": "string"
+                },
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "outputs": {
+                    "description": "The outputs defined in the terraform config that are collected from\nTerraform.  The terraform outputs are stored in JSON format but is a\nstring typt to support encryption.",
+                    "type": "string"
+                },
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "stateDocument": {
+                    "description": "The terraform state json object that stores the inventory of\ninfrastructure being managed by terraform.  The terraform state is stored\nin JSON format but is a string type to support encryption.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                },
+                "terraformDefinitionID": {
+                    "description": "The definition used to configure the terraform resources.",
+                    "type": "integer"
+                },
+                "varsDocument": {
+                    "description": "The .tfvars document that contains runtime parameters for an instance of\nsome terraform resources.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_threeport_threeport_pkg_api_v0.Tier": {
+            "type": "object",
+            "required": [
+                "criticality",
+                "name"
+            ],
+            "properties": {
+                "criticality": {
+                    "description": "The relative rank of criticality between tiers.  The higher the number,\nthe greater the criticality.  For example, a development tier could have\na criticality value of 10 while production could be 100.  Access control\ncan then use this criticality value to determine user access.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "The unique name of a tier.",
+                    "type": "string"
+                }
+            }
         },
         "v0.ApiObjectVersions": {
             "type": "object",
@@ -15829,92 +19820,76 @@ const docTemplate = `{
                 }
             }
         },
-        "v0.AttachedObjectReference": {
-            "type": "object",
-            "required": [
-                "AttachedObjectID",
-                "AttachedObjectType",
-                "ObjectID",
-                "ObjectType"
-            ],
-            "properties": {
-                "AttachedObjectID": {
-                    "description": "AttachedObjectID is the database ID of the attaching object.",
-                    "type": "integer"
-                },
-                "AttachedObjectType": {
-                    "description": "AttachedObjectType is the kind of the object doing the attaching;\nthe side that can determine the base object's lifecycle. Stored\nas a fully qualified type name in the form\n\"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
-                    "type": "string"
-                },
-                "ObjectID": {
-                    "description": "ObjectID is the database ID of the base object.",
-                    "type": "integer"
-                },
-                "ObjectType": {
-                    "description": "ObjectType is the kind of the base object being attached to. Read\n\"this attached object attaches to that object\": the no-prefix\nObject* fields name the \"that\" (anchor) side. The naming is\ndirectional because the attached object is the side that can\ndetermine the base object's lifecycle, depending on the type of\nrelationship (see below). Stored as a fully qualified type name\nin the form \"\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e\".",
-                    "type": "string"
-                },
-                "Relationship": {
-                    "description": "Relationship classifies this reference and drives lifecycle behavior\nvia gorm hooks and generated code that reveals information about a\ntype's foreign keys:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.\n    An owned base has at most one owner (enforced by the partial\n    index idx_aor_owns_base above); an owner may own many bases.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base for any caller except the partner's controller.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/v0.Relationship"
-                        }
-                    ]
-                }
-            }
-        },
-        "v0.AwsEksKubernetesRuntimeDefinition": {
-            "type": "object"
-        },
         "v0.AwsEksKubernetesRuntimeInstance": {
-            "type": "object"
-        },
-        "v0.AwsProvider": {
             "type": "object",
             "required": [
-                "AccountID",
-                "DefaultRegion",
-                "Name"
+                "awsEksKubernetesRuntimeDefinitionID",
+                "awsProviderID",
+                "kubernetesRuntimeInstanceID",
+                "name"
             ],
             "properties": {
-                "AccessKeyID": {
-                    "description": "The access key ID credentials for the AWS account.",
+                "awsEksKubernetesRuntimeDefinitionID": {
+                    "description": "The definition that configures this instance.",
+                    "type": "integer"
+                },
+                "awsProviderID": {
+                    "description": "The AWS provider in which the EKS cluster is provisioned.",
+                    "type": "integer"
+                },
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "AccountID": {
-                    "description": "The account ID for the AWS account.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "AwsEksKubernetesRuntimeInstances": {
-                    "description": "The cluster instances deployed with this AWS provider.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
-                    }
-                },
-                "DefaultProvider": {
-                    "description": "If true is the AWS provider used if none specified in a definition.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DefaultRegion": {
-                    "description": "The region to use for AWS managed services if not specified.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "ExternalId": {
-                    "description": "The ExternalId to use when assuming a RoleArn for the AWS account. This is\nautomatically generated by the API server if RoleArn is set.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "Name": {
-                    "description": "The unique name of an AWS provider.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "RoleArn": {
-                    "description": "The RoleArn to assume for the AWS account.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "type": "boolean"
+                },
+                "kubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime instance associated with the AWS EKS cluster.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "SecretAccessKey": {
-                    "description": "The secret key credentials for the AWS account.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
+                    "type": "boolean"
+                },
+                "region": {
+                    "description": "The AWS region in which the cluster is provisioned.",
+                    "type": "string"
+                },
+                "resourceInventory": {
+                    "description": "An inventory of all AWS resources for the EKS cluster.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
                 }
             }
@@ -15922,320 +19897,176 @@ const docTemplate = `{
         "v0.ControlPlaneComponent": {
             "type": "object",
             "required": [
-                "ControlPlaneInstanceID",
-                "Name"
+                "controlPlaneInstanceID",
+                "name"
             ],
             "properties": {
-                "AdditionalEnvRef": {
+                "additionalEnvRef": {
                     "description": "The additional env reference to be added to the environment variables of the component.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "AdditionalVolumeMounts": {
+                "additionalVolumeMounts": {
                     "description": "The additional volume mounts to be added to the deployment spec of the component.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "AdditionalVolumes": {
+                "additionalVolumes": {
                     "description": "The additional volumes to be added to the deployment spec of the component.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "BinaryName": {
+                "binaryName": {
                     "description": "The binary name of the component.",
                     "type": "string"
                 },
-                "ControlPlaneInstanceID": {
+                "controlPlaneInstanceID": {
                     "description": "The control plane instance ID that this component belongs to.",
                     "type": "integer"
                 },
-                "Enabled": {
+                "enabled": {
                     "description": "Indicate whether the component is enabled to be deployed. Currently only respected by controllers.",
                     "type": "boolean"
                 },
-                "ImageName": {
+                "imageName": {
                     "description": "The image name of the control plane component.  If the complete image\nreference is 'ghcr.io/threeport/threeport-rest-api:v0.6.1', the ImageName\ncomponent would be 'threeport-rest-api'.",
                     "type": "string"
                 },
-                "ImageNamespace": {
+                "imageNamespace": {
                     "description": "The image registry and namespace of the control planecomponent.  If the complete image\nreference is 'ghcr.io/threeport/threeport-rest-api:v0.6.1', the ImageNamespace\ncomponent would be 'ghcr.io/threeport'.",
                     "type": "string"
                 },
-                "ImagePullSecretName": {
+                "imagePullSecretName": {
                     "description": "The name of the secret with credentials to pull a private container image.",
                     "type": "string"
                 },
-                "ImageTag": {
+                "imageTag": {
                     "description": "The image tag of the control plane component.  If the complete image\nreference is 'ghcr.io/threeport/threeport-rest-api:v0.6.1', the ImageTag\ncomponent would be 'v0.6.1'.",
                     "type": "string"
                 },
-                "Name": {
+                "name": {
                     "description": "The name of the component.",
                     "type": "string"
                 },
-                "ServiceAccountName": {
+                "serviceAccountName": {
                     "description": "The service account name to use when deploying.",
                     "type": "string"
                 },
-                "ServiceResourceName": {
+                "serviceResourceName": {
                     "description": "The service resource name to use when deploying.",
                     "type": "string"
-                }
-            }
-        },
-        "v0.ControlPlaneDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "AuthEnabled": {
-                    "description": "Used to indicate whether the control plane is deployed with auth settings",
-                    "type": "boolean"
-                },
-                "ControlPlaneInstances": {
-                    "description": "The associated control plane instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.ControlPlaneInstance"
-                    }
-                },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "OnboardParent": {
-                    "description": "When instances of this control plane are deployed, Object representing control plane and its parent are\nonboarded as part of deployment, using this we can disable that process and simply spin a new instance with\na clean DB.",
-                    "type": "boolean"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
                 }
             }
         },
         "v0.ControlPlaneInstance": {
             "type": "object",
             "required": [
-                "ControlPlaneDefinitionID",
-                "KubernetesRuntimeInstanceID",
-                "Name",
-                "Namespace"
+                "controlPlaneDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "namespace"
             ],
             "properties": {
-                "ApiServerEndpoint": {
+                "apiServerEndpoint": {
                     "description": "Information for connecting to the rest api for the control plane",
                     "type": "string"
                 },
-                "CACert": {
+                "cacert": {
                     "description": "The CA Cert that is associated with the control plane",
                     "type": "string"
                 },
-                "Children": {
+                "children": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.ControlPlaneInstance"
                     }
                 },
-                "ClientCert": {
+                "clientCert": {
                     "description": "The client cert that is associated with the control plane",
                     "type": "string"
                 },
-                "ClientKey": {
+                "clientKey": {
                     "description": "The client Key that is associated with the control plane",
                     "type": "string"
                 },
-                "ControlPlaneDefinitionID": {
+                "controlPlaneDefinitionID": {
                     "description": "The definition used to configure the control plane instance.",
                     "type": "integer"
                 },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "CustomComponentInfo": {
+                "customComponentInfo": {
                     "description": "Passed in information for the different components of the control plane i.e. controller etc\nWhen not provided, the default values will be used. If provided, they will override the default values.\nDespite being a reference to another database entry, we dont validate association.\nThis allows a user to provide CustomComponentInfo at instance creation time so the reconciler has the info it needs",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.ControlPlaneComponent"
                     }
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "Genesis": {
+                "genesis": {
                     "description": "Indicates whether this is was the first control plane that was spun up in a control plane group",
                     "type": "boolean"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "IsSelf": {
+                "isSelf": {
                     "description": "When true, indicates the control plane instance represents the control plane in which it's stored",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "the kubernetes runtime instance the control plane is running on",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Namespace": {
+                "namespace": {
                     "description": "The namespace to deploy the control plane in",
                     "type": "string"
                 },
-                "Parent": {
+                "parent": {
                     "$ref": "#/definitions/v0.ControlPlaneInstance"
                 },
-                "ParentControlPlaneInstanceID": {
+                "parentControlPlaneInstanceID": {
                     "description": "These are pointers to the parent and children of the current control plane\nThis is useful to map out the topology between control planes being managed by one another",
                     "type": "integer"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.DomainNameDefinition": {
-            "type": "object",
-            "required": [
-                "AdminEmail",
-                "Domain",
-                "Name",
-                "Zone"
-            ],
-            "properties": {
-                "AdminEmail": {
-                    "description": "The email address of the domain administrator.",
-                    "type": "string"
-                },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "Domain": {
-                    "description": "The base domain upon which the subdomain will be added to give a workload\na unique domain name.",
-                    "type": "string"
-                },
-                "DomainNameInstances": {
-                    "description": "The associated domain name instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.DomainNameInstance"
-                    }
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "Zone": {
-                    "description": "The name of the zone in which the domain is managed.",
                     "type": "string"
                 }
             }
@@ -16243,230 +20074,90 @@ const docTemplate = `{
         "v0.DomainNameInstance": {
             "type": "object",
             "required": [
-                "DomainNameDefinitionID",
-                "KubernetesRuntimeInstanceID",
-                "KubernetesWorkloadInstanceID",
-                "Name"
+                "domainNameDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "kubernetesWorkloadInstanceID",
+                "name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "DomainNameDefinitionID": {
+                "domainNameDefinitionID": {
                     "description": "The definition used to define the instance.",
                     "type": "integer"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The cluster where the kubernetes workload that is using the domain name is running.",
                     "type": "integer"
                 },
-                "KubernetesWorkloadInstanceID": {
+                "kubernetesWorkloadInstanceID": {
                     "description": "The kubernetes workload instance this domain name belongs to.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                }
-            }
-        },
-        "v0.Event": {
-            "type": "object",
-            "required": [
-                "Count",
-                "EventTime",
-                "LastObservedTime",
-                "Reason",
-                "ReportingController",
-                "Type"
-            ],
-            "properties": {
-                "Count": {
-                    "description": "The number of times this event has occurred.",
-                    "type": "integer"
-                },
-                "EventTime": {
-                    "description": "Time when this Event was first observed.",
-                    "type": "string"
-                },
-                "LastObservedTime": {
-                    "description": "The time at which the most recent occurrence of this event was recorded.",
-                    "type": "string"
-                },
-                "Note": {
-                    "description": "A human-readable description of the status of this operation.",
-                    "type": "string"
-                },
-                "ObjectID": {
-                    "type": "integer"
-                },
-                "ObjectName": {
-                    "type": "string"
-                },
-                "ObjectType": {
-                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
-                    "type": "string"
-                },
-                "Reason": {
-                    "description": "A short, machine understandable string that gives the reason for the event being generated.",
-                    "type": "string"
-                },
-                "ReportingController": {
-                    "description": "Name of the controller that emitted this Event.",
-                    "type": "string"
-                },
-                "Type": {
-                    "description": "Type of this event (Normal, Warning), new types could be added in the future.",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.GatewayDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "DomainNameDefinitionID": {
-                    "description": "The domain name to serve requests for.",
-                    "type": "integer"
-                },
-                "GatewayInstances": {
-                    "description": "The associated gateway instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.GatewayInstance"
-                    }
-                },
-                "HttpPorts": {
-                    "description": "HttpPorts is a list of HTTP ports to expose to the outside network.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.GatewayHttpPort"
-                    }
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "KubernetesWorkloadDefinitionID": {
-                    "description": "The kubernetes workload definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "ServiceName": {
-                    "description": "The kubernetes service to route requests to.",
-                    "type": "string"
-                },
-                "SubDomain": {
-                    "description": "An optional subdomain to add to the domain name.",
-                    "type": "string"
-                },
-                "TcpPorts": {
-                    "description": "TcpPorts is a list of TCP ports to expose to the outside network.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.GatewayTcpPort"
-                    }
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
                 }
             }
         },
         "v0.GatewayHttpPort": {
             "type": "object",
             "required": [
-                "GatewayDefinitionID",
-                "Port"
+                "gatewayDefinitionID",
+                "port"
             ],
             "properties": {
-                "GatewayDefinitionID": {
+                "gatewayDefinitionID": {
                     "description": "GatewayDefinitionID is the definition used to configure the gateway http port.",
                     "type": "integer"
                 },
-                "HTTPSRedirect": {
+                "httpsredirect": {
                     "description": "Redirect all requests to HTTP port to HTTPS.",
                     "type": "boolean"
                 },
-                "Path": {
+                "path": {
                     "description": "The request path to serve requests for.",
                     "type": "string"
                 },
-                "Port": {
+                "port": {
                     "description": "The HTTP port to expose.",
                     "type": "integer"
                 },
-                "TLSEnabled": {
+                "tlsenabled": {
                     "description": "Indicates if TLS is enabled.",
                     "type": "boolean"
                 }
@@ -16475,61 +20166,61 @@ const docTemplate = `{
         "v0.GatewayInstance": {
             "type": "object",
             "required": [
-                "GatewayDefinitionID",
-                "KubernetesRuntimeInstanceID",
-                "KubernetesWorkloadInstanceID",
-                "Name"
+                "gatewayDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "kubernetesWorkloadInstanceID",
+                "name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "GatewayDefinitionID": {
+                "gatewayDefinitionID": {
                     "description": "GatewayDefinitionID is the definition used to configure the gateway instance.",
                     "type": "integer"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime where the ingress layer is installed.",
                     "type": "integer"
                 },
-                "KubernetesWorkloadInstanceID": {
+                "kubernetesWorkloadInstanceID": {
                     "description": "The kubernetes workload instance this gateway belongs to.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
                 }
@@ -16538,273 +20229,94 @@ const docTemplate = `{
         "v0.GatewayTcpPort": {
             "type": "object",
             "required": [
-                "GatewayDefinitionID",
-                "Port"
+                "gatewayDefinitionID",
+                "port"
             ],
             "properties": {
-                "GatewayDefinitionID": {
+                "gatewayDefinitionID": {
                     "description": "GatewayDefinitionID is the definition used to configure the gateway tcp port.",
                     "type": "integer"
                 },
-                "Port": {
+                "port": {
                     "description": "The TCP port to expose.",
                     "type": "integer"
                 },
-                "TLSEnabled": {
+                "tlsenabled": {
                     "description": "Indicates if TLS is enabled.",
                     "type": "boolean"
-                }
-            }
-        },
-        "v0.GcpGkeKubernetesRuntimeDefinition": {
-            "type": "object",
-            "required": [
-                "DefaultNodeGroupInitialSize",
-                "DefaultNodeGroupInstanceType",
-                "DefaultNodeGroupMaximumSize",
-                "DefaultNodeGroupMinimumSize",
-                "KubernetesRuntimeDefinitionID",
-                "Name",
-                "ZoneCount"
-            ],
-            "properties": {
-                "DefaultNodeGroupInitialSize": {
-                    "description": "The number of nodes in the default initial node group.",
-                    "type": "integer"
-                },
-                "DefaultNodeGroupInstanceType": {
-                    "description": "The GCP instance type for the default initial node group.",
-                    "type": "string"
-                },
-                "DefaultNodeGroupMaximumSize": {
-                    "description": "The maximum number of nodes the default initial node group should have.",
-                    "type": "integer"
-                },
-                "DefaultNodeGroupMinimumSize": {
-                    "description": "The minimum number of nodes the default initial node group should have.",
-                    "type": "integer"
-                },
-                "GcpGkeKubernetesRuntimeInstances": {
-                    "description": "The GCP GKE kubernetes runtime instances derived from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeInstance"
-                    }
-                },
-                "KubernetesRuntimeDefinitionID": {
-                    "description": "The kubernetes runtime definition for a GKE cluster in GCP.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "ZoneCount": {
-                    "description": "The number of zones the cluster should span for availability.",
-                    "type": "integer"
                 }
             }
         },
         "v0.GcpGkeKubernetesRuntimeInstance": {
             "type": "object",
             "required": [
-                "GcpGkeKubernetesRuntimeDefinitionID",
-                "GcpProviderID",
-                "KubernetesRuntimeInstanceID",
-                "Name"
+                "gcpGkeKubernetesRuntimeDefinitionID",
+                "gcpProviderID",
+                "kubernetesRuntimeInstanceID",
+                "name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "GcpGkeKubernetesRuntimeDefinitionID": {
+                "gcpGkeKubernetesRuntimeDefinitionID": {
                     "description": "The definition that configures this instance.",
                     "type": "integer"
                 },
-                "GcpProviderID": {
+                "gcpProviderID": {
                     "description": "The GCP provider in which the GKE cluster is provisioned.",
                     "type": "integer"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime instance associated with the GKE cluster.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Region": {
+                "region": {
                     "description": "The GCP region in which the cluster is provisioned.",
                     "type": "string"
                 },
-                "ResourceInventory": {
+                "resourceInventory": {
                     "description": "An inventory of all GCP resources for the GKE cluster.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.GcpProvider": {
-            "type": "object",
-            "required": [
-                "DefaultRegion",
-                "Name",
-                "ProjectID"
-            ],
-            "properties": {
-                "DefaultProvider": {
-                    "description": "If true, is the GCP provider used when none specified for an instance.",
-                    "type": "boolean"
-                },
-                "DefaultRegion": {
-                    "description": "The region to use for GCP managed services if not specified.",
-                    "type": "string"
-                },
-                "GcpGkeKubernetesRuntimeInstances": {
-                    "description": "The cluster instances deployed with this GCP provider.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.GcpGkeKubernetesRuntimeInstance"
-                    }
-                },
-                "Name": {
-                    "description": "The unique name of a GCP provider.",
-                    "type": "string"
-                },
-                "ProjectID": {
-                    "description": "The GCP project ID for the Google Cloud account.",
-                    "type": "string"
-                },
-                "ServiceAccountCredentials": {
-                    "description": "The service account key JSON for authenticating to GCP from outside GCP.\nThis is the contents of a service account key file exported from GCP Console.\nUsed when the gcp-controller runs outside GCP (e.g., in AWS or on-prem).",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.HelmWorkloadDefinition": {
-            "type": "object",
-            "required": [
-                "Chart",
-                "Name",
-                "Repo"
-            ],
-            "properties": {
-                "AdditionalResources": {
-                    "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/datatypes.JSON"
-                    }
-                },
-                "Chart": {
-                    "description": "The name of the helm chart to use from the helm repo, e.g. wordpress",
-                    "type": "string"
-                },
-                "ChartVersion": {
-                    "description": "The version of the helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "HelmWorkloadInstances": {
-                    "description": "The associated helm workload instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.HelmWorkloadInstance"
-                    }
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "Repo": {
-                    "description": "The helm repo URL to pull the helm workload's chart from\ne.g. oci://registry-1.docker.io/bitnamicharts\ne.g. https://grafana.github.io/helm-charts",
-                    "type": "string"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "ValuesDocument": {
-                    "description": "The helm values that override the defaults from the helm chart.  These\nwill be inherited by each helm workload instance derived from this\ndefinition.  The helm values defined here can be further overridden by\nvalues defined on the helm workload instance.",
                     "type": "string"
                 }
             }
@@ -16812,411 +20324,259 @@ const docTemplate = `{
         "v0.HelmWorkloadInstance": {
             "type": "object",
             "required": [
-                "HelmWorkloadDefinitionID",
-                "KubernetesRuntimeInstanceID",
-                "Name"
+                "helmWorkloadDefinitionID",
+                "kubernetesRuntimeInstanceID",
+                "name"
             ],
             "properties": {
-                "AdditionalResources": {
+                "additionalResources": {
                     "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/datatypes.JSON"
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
                     }
                 },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "HelmWorkloadDefinitionID": {
+                "helmWorkloadDefinitionID": {
                     "description": "The definition used to configure the kubernetes workload instance.",
                     "type": "integer"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime to which the helm workload is deployed.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "ReleaseNamespace": {
+                "releaseNamespace": {
                     "description": "Namespace to deploy the helm chart to.",
                     "type": "string"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
                 },
-                "ValuesDocument": {
+                "valuesDocument": {
                     "description": "Filepath to the helm values YAML file that provides runtime parameters to\nthe helm chart.",
                     "type": "string"
-                }
-            }
-        },
-        "v0.KubernetesRuntimeDefinition": {
-            "type": "object",
-            "required": [
-                "InfraProvider",
-                "Name"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "HighAvailability": {
-                    "description": "If true, will be deployed in a highly available configuration across\nmultiple zones within a region and with multiple replicas of Kubernetes\ncontrol plane components.",
-                    "type": "boolean"
-                },
-                "InfraProvider": {
-                    "description": "The infrastructure provider running the compute infrastructure for the\ncluster.",
-                    "type": "string"
-                },
-                "InfraProviderAccountName": {
-                    "description": "The infra provider account name.  Determines which account the infra is\ndeployed on.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "KubernetesRuntimeInstances": {
-                    "description": "The associated kubernetes runtime instances that are deployed from this\ndefinition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.KubernetesRuntimeInstance"
-                    }
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "NodeMaximum": {
-                    "description": "Sets the maximum number of nodes for the default node group.",
-                    "type": "integer"
-                },
-                "NodeProfile": {
-                    "description": "Sets the CPU:memory ration of the machine type for the default node\ngroup.",
-                    "type": "string"
-                },
-                "NodeSize": {
-                    "description": "Sets the compute capacity of the machine type for the default node group.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
                 }
             }
         },
         "v0.KubernetesRuntimeInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeDefinitionID",
-                "Location",
-                "Name"
+                "kubernetesRuntimeDefinitionID",
+                "location",
+                "name"
             ],
             "properties": {
-                "APIEndpoint": {
+                "apiendpoint": {
                     "description": "The network endpoint at which to reach the kube-api.",
                     "type": "string"
                 },
-                "CACertificate": {
+                "cacertificate": {
                     "description": "The CA certificate used to generate the cert and key if\nself-signed.",
                     "type": "string"
                 },
-                "Certificate": {
+                "certificate": {
                     "description": "The client certificate to use for auth to the kube-api.",
                     "type": "string"
                 },
-                "CertificateKey": {
+                "certificateKey": {
                     "description": "The client certificate key to use for auth to the kube-api.",
                     "type": "string"
                 },
-                "ConnectionToken": {
+                "connectionToken": {
                     "description": "Used to authenticate with a OIDC provider that implements auth for a\nKubernetes cluster.  It is an alternative to client cert authenticaion.",
                     "type": "string"
                 },
-                "ConnectionTokenExpiration": {
+                "connectionTokenExpiration": {
                     "description": "ConnectionTokenExpiration is the time when a ConnectionToken will expire.\nUsed to ensure a token will not expire before it can be used.",
                     "type": "string"
                 },
-                "ControlPlaneInstances": {
+                "controlPlaneInstances": {
                     "description": "The associated control plane instances running on this kubernetes runtime instance.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.ControlPlaneInstance"
                     }
                 },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DefaultRuntime": {
+                "defaultRuntime": {
                     "description": "If true, this Kubernetes cluster will be used for all workloads if not\notherwise assigned.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "DnsControllerInstanceID": {
+                "dnsControllerInstanceID": {
                     "description": "The KubernetesWorkloadInstanceID of the dns support service",
                     "type": "integer"
                 },
-                "GatewayControllerInstanceID": {
+                "gatewayControllerInstanceID": {
                     "description": "The KubernetesWorkloadInstanceID of the gateway support service",
                     "type": "integer"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeDefinitionID": {
+                "kubernetesRuntimeDefinitionID": {
                     "description": "The kubernetes runtime definition for this instance.",
                     "type": "integer"
                 },
-                "KubernetesWorkloadInstances": {
+                "kubernetesWorkloadInstances": {
                     "description": "The associated kubernetes workload instances running on this kubernetes runtime.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
                     }
                 },
-                "Location": {
+                "location": {
                     "description": "The geographical location for the runtime cluster.  This is an\nabstraction for the cloud provider regions that is mapped into the\nregions used by providers.",
                     "type": "string"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "SecretsControllerInstanceID": {
+                "secretsControllerInstanceID": {
                     "description": "The KubernetesWorkloadInstanceID of the secrets support service",
                     "type": "integer"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
                 },
-                "ThreeportAgentImage": {
+                "threeportAgentImage": {
                     "description": "An alternate threeport image to use when deploying threeport agent to\nmanaged Kubernetes runtime clusters.  If not supplied, the official image\nwith the correct version will be used.",
                     "type": "string"
                 },
-                "ThreeportControlPlaneHost": {
+                "threeportControlPlaneHost": {
                     "description": "If true, the Kubernetes cluster is hosting a threeport control plane and\nany controllers that connect to the kube API will use internal cluster\nDNS rather than the external APIEndpoint.",
                     "type": "boolean"
-                }
-            }
-        },
-        "v0.KubernetesWorkloadDefinition": {
-            "type": "object",
-            "required": [
-                "Name",
-                "YAMLDocument"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "KubernetesWorkloadInstances": {
-                    "description": "The associated kubernetes workload instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.KubernetesWorkloadInstance"
-                    }
-                },
-                "KubernetesWorkloadResourceDefinitions": {
-                    "description": "The associated kubernetes workload resource definitions that are derived.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.KubernetesWorkloadResourceDefinition"
-                    }
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "YAMLDocument": {
-                    "description": "The yaml manifests that define the workload configuration.",
-                    "type": "string"
                 }
             }
         },
         "v0.KubernetesWorkloadInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeInstanceID",
-                "KubernetesWorkloadDefinitionID",
-                "Name"
+                "kubernetesRuntimeInstanceID",
+                "kubernetesWorkloadDefinitionID",
+                "name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime to which the workload is deployed.",
                     "type": "integer"
                 },
-                "KubernetesWorkloadDefinitionID": {
+                "kubernetesWorkloadDefinitionID": {
                     "description": "The definition used to configure the kubernetes workload instance.",
                     "type": "integer"
                 },
-                "KubernetesWorkloadResourceInstances": {
+                "kubernetesWorkloadResourceInstances": {
                     "description": "The associated kubernetes workload resource instances that are derived.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.KubernetesWorkloadResourceInstance"
                     }
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The latest status of a kubernetes workload instance.",
                     "type": "string"
                 }
@@ -17225,19 +20585,18 @@ const docTemplate = `{
         "v0.KubernetesWorkloadResourceDefinition": {
             "type": "object",
             "required": [
-                "JSONDefinition",
-                "KubernetesWorkloadDefinitionID"
+                "jsondefinition",
+                "kubernetesWorkloadDefinitionID"
             ],
             "properties": {
-                "JSONDefinition": {
+                "jsondefinition": {
                     "description": "The individual manifest in JSON format.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "KubernetesWorkloadDefinitionID": {
+                "kubernetesWorkloadDefinitionID": {
                     "description": "The kubernetes workload definition this resource belongs to.",
                     "type": "integer"
                 }
@@ -17246,39 +20605,37 @@ const docTemplate = `{
         "v0.KubernetesWorkloadResourceInstance": {
             "type": "object",
             "required": [
-                "JSONDefinition",
-                "KubernetesWorkloadInstanceID"
+                "jsondefinition",
+                "kubernetesWorkloadInstanceID"
             ],
             "properties": {
-                "JSONDefinition": {
+                "jsondefinition": {
                     "description": "The individual manifest in JSON format.  This field is a superset of\nKubernetesWorkloadResourceDefinition.JSONDefinition in that it has\nnamespace management and other configuration — such as resource\nallocation management — added.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "KubernetesWorkloadInstanceID": {
+                "kubernetesWorkloadInstanceID": {
                     "description": "The kubernetes workload instance this resource belongs to.",
                     "type": "integer"
                 },
-                "LastOperation": {
+                "lastOperation": {
                     "description": "The most recent operation performed on a Kubernetes resource in the\nkubernetes runtime.",
                     "type": "string"
                 },
-                "Reconciled": {
+                "reconciled": {
                     "description": "Indicates if object is considered to be reconciled by kubernetes\nkubernetes workload controller.",
                     "type": "boolean"
                 },
-                "RuntimeDefinition": {
+                "runtimeDefinition": {
                     "description": "The JSON definition of a Kubernetes resource as stored in etcd in the\nkubernetes runtime.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "ScheduledForDeletion": {
+                "scheduledForDeletion": {
                     "description": "Whether another controller has scheduled this resource for deletion",
                     "type": "string"
                 }
@@ -17287,22 +20644,22 @@ const docTemplate = `{
         "v0.LogBackend": {
             "type": "object",
             "required": [
-                "Destination",
-                "Name"
+                "destination",
+                "name"
             ],
             "properties": {
-                "Destination": {
+                "destination": {
                     "description": "The network address to connect to for storing log messages.",
                     "type": "string"
                 },
-                "LogStorageDefinitions": {
+                "logStorageDefinitions": {
                     "description": "The storage definitions using the log backend for log storage.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.LogStorageDefinition"
                     }
                 },
-                "Name": {
+                "name": {
                     "description": "The unique name of a logging back end.",
                     "type": "string"
                 }
@@ -17311,32 +20668,32 @@ const docTemplate = `{
         "v0.LogStorageDefinition": {
             "type": "object",
             "required": [
-                "Name"
+                "name"
             ],
             "properties": {
-                "LogBackends": {
+                "logBackends": {
                     "description": "The backend storage mechanisms for retaining logs.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.LogBackend"
                     }
                 },
-                "LogStorageInstances": {
+                "logStorageInstances": {
                     "description": "The associated log storage instances that are derived from this definition.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.LogStorageInstance"
                     }
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
-                "ProfileID": {
+                "profileID": {
                     "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
                     "type": "integer"
                 },
-                "TierID": {
+                "tierID": {
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
                     "type": "integer"
                 }
@@ -17345,352 +20702,182 @@ const docTemplate = `{
         "v0.LogStorageInstance": {
             "type": "object",
             "required": [
-                "Name"
+                "name"
             ],
             "properties": {
-                "ClusterID": {
+                "clusterID": {
                     "description": "The cluster from which log messages are being aggregated to send to a log\nback end.",
                     "type": "integer"
                 },
-                "LogStorageDefinitionID": {
+                "logStorageDefinitionID": {
                     "description": "The definition used to define the instance.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                }
-            }
-        },
-        "v0.LoggingDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "LoggingInstances": {
-                    "description": "The associated logging instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.LoggingInstance"
-                    }
-                },
-                "LokiHelmChartVersion": {
-                    "description": "The version of the loki helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "LokiHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying loki chart.",
-                    "type": "string"
-                },
-                "LokiHelmWorkloadDefinitionID": {
-                    "description": "The loki Helm workload definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "PromtailHelmChartVersion": {
-                    "description": "The version of the promtail helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "PromtailHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying promtail chart.",
-                    "type": "string"
-                },
-                "PromtailHelmWorkloadDefinitionID": {
-                    "description": "The promtail Helm workload definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
                 }
             }
         },
         "v0.LoggingInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeInstanceID",
-                "LoggingDefinitionID",
-                "Name"
+                "kubernetesRuntimeInstanceID",
+                "loggingDefinitionID",
+                "name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime where the logging is installed.",
                     "type": "integer"
                 },
-                "LoggingDefinitionID": {
+                "loggingDefinitionID": {
                     "description": "The logging definition that belongs to this resource.",
                     "type": "integer"
                 },
-                "LokiHelmValuesDocument": {
+                "lokiHelmValuesDocument": {
                     "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying loki chart.",
                     "type": "string"
                 },
-                "LokiHelmWorkloadInstanceID": {
+                "lokiHelmWorkloadInstanceID": {
                     "description": "The loki helm workload instance that belongs to this resource.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "PromtailHelmValuesDocument": {
+                "promtailHelmValuesDocument": {
                     "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
-                "PromtailHelmWorkloadInstanceID": {
+                "promtailHelmWorkloadInstanceID": {
                     "description": "The promtail helm workload instance that belongs to this resource.",
                     "type": "integer"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                }
-            }
-        },
-        "v0.MachineRuntimeDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "MachineRuntimeInstances": {
-                    "description": "The associated machine runtime instances that are deployed from this\ndefinition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.MachineRuntimeInstance"
-                    }
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
                 }
             }
         },
         "v0.MachineRuntimeInstance": {
             "type": "object",
             "required": [
-                "Hostname",
-                "Name",
-                "SSHUser"
+                "hostname",
+                "name",
+                "sshuser"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "HostKey": {
+                "hostKey": {
                     "description": "The remote machine's SSH public host key, used to verify identity on\nconnection. If not provided, captured on first connection.",
                     "type": "string"
                 },
-                "Hostname": {
+                "hostname": {
                     "description": "The hostname or IP address used to reach the machine.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "MachineRuntimeDefinitionID": {
+                "machineRuntimeDefinitionID": {
                     "description": "The machine runtime definition for this instance.  Optional because\nimported machines may not have an associated definition.",
                     "type": "integer"
                 },
-                "MachineWorkloadInstances": {
+                "machineWorkloadInstances": {
                     "description": "The associated machine workload instances running on this machine runtime.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.MachineWorkloadInstance"
                     }
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Port": {
+                "port": {
                     "description": "The SSH port on the machine.",
                     "type": "integer"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "SSHKey": {
+                "sshkey": {
                     "description": "The SSH private key for authenticating to the machine.",
                     "type": "string"
                 },
-                "SSHPassword": {
+                "sshpassword": {
                     "description": "The SSH password for authenticating to the machine.",
                     "type": "string"
                 },
-                "SSHUser": {
+                "sshuser": {
                     "description": "The SSH username for authenticating to the machine.",
                     "type": "string"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.MachineWorkloadDefinition": {
-            "type": "object",
-            "required": [
-                "CreateScript",
-                "DeleteScript",
-                "Name"
-            ],
-            "properties": {
-                "CreateScript": {
-                    "description": "The shell script to run when a machine workload instance is created.",
-                    "type": "string"
-                },
-                "DeleteScript": {
-                    "description": "The shell script to run when a machine workload instance is deleted.",
-                    "type": "string"
-                },
-                "Env": {
-                    "description": "The environment variables to set for the workload as KEY=VALUE entries.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "MachineWorkloadInstances": {
-                    "description": "The associated machine workload instances that are deployed from this\ndefinition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.MachineWorkloadInstance"
-                    }
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Shell": {
-                    "description": "The shell to use for script execution.",
-                    "type": "string"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "Timeout": {
-                    "description": "The timeout in seconds for script execution.",
-                    "type": "integer"
-                },
-                "UpdateScript": {
-                    "description": "The shell script to run when a machine workload instance is updated.",
-                    "type": "string"
-                },
-                "WorkingDir": {
-                    "description": "The working directory for script execution.",
                     "type": "string"
                 }
             }
@@ -17698,63 +20885,63 @@ const docTemplate = `{
         "v0.MachineWorkloadInstance": {
             "type": "object",
             "required": [
-                "MachineRuntimeInstanceID",
-                "MachineWorkloadDefinitionID",
-                "Name"
+                "machineRuntimeInstanceID",
+                "machineWorkloadDefinitionID",
+                "name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "Env": {
+                "env": {
                     "description": "The environment variables set for the workload as KEY=VALUE entries.",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "MachineRuntimeInstanceID": {
+                "machineRuntimeInstanceID": {
                     "description": "The machine runtime on which the workload is deployed.",
                     "type": "integer"
                 },
-                "MachineWorkloadDefinitionID": {
+                "machineWorkloadDefinitionID": {
                     "description": "The definition used to configure the machine workload instance.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The latest status of the workload instance as observed by the reconciler\nwhen the most recent script execution completed.",
                     "type": "string"
                 }
@@ -17763,12 +20950,12 @@ const docTemplate = `{
         "v0.Meta": {
             "type": "object",
             "properties": {
-                "ObjectCount": {
+                "objectCount": {
                     "description": "The number of objects returned in the response.",
                     "type": "integer",
                     "example": 1
                 },
-                "Pagination": {
+                "pagination": {
                     "description": "Pagination contains the pagination information for a paginated response.",
                     "allOf": [
                         {
@@ -17778,185 +20965,68 @@ const docTemplate = `{
                 }
             }
         },
-        "v0.MetricsDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "KubePrometheusStackHelmChartVersion": {
-                    "description": "The version of the kube-prometheus-stack helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "KubePrometheusStackHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
-                    "type": "string"
-                },
-                "KubePrometheusStackHelmWorkloadDefinitionID": {
-                    "description": "The kube-prometheus-stack Helm workload definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "MetricsInstances": {
-                    "description": "The associated metrics instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.MetricsInstance"
-                    }
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                }
-            }
-        },
         "v0.MetricsInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeInstanceID",
-                "MetricsDefinitionID",
-                "Name"
+                "kubernetesRuntimeInstanceID",
+                "metricsDefinitionID",
+                "name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubePrometheusStackHelmValuesDocument": {
+                "kubePrometheusStackHelmValuesDocument": {
                     "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
                     "type": "string"
                 },
-                "KubePrometheusStackHelmWorkloadInstanceID": {
+                "kubePrometheusStackHelmWorkloadInstanceID": {
                     "description": "The kube-prometheus-stack helm workload instance that belongs to this resource.",
                     "type": "integer"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime where the metrics is installed.",
                     "type": "integer"
                 },
-                "MetricsDefinitionID": {
+                "metricsDefinitionID": {
                     "description": "The metrics definition that belongs to this resource.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.ModuleApi": {
-            "type": "object",
-            "required": [
-                "Endpoint",
-                "Name"
-            ],
-            "properties": {
-                "ApiNamespace": {
-                    "description": "The reverse-DNS namespace identifying this module API (e.g. \"example.com\").",
-                    "type": "string"
-                },
-                "Core": {
-                    "description": "If true, represents the core Threeport API.",
-                    "type": "boolean"
-                },
-                "Endpoint": {
-                    "description": "The module API server's endpoint to proxy requests to for module\nobjects.",
-                    "type": "string"
-                },
-                "ModuleApiRoutes": {
-                    "description": "The routes as URL paths to proxy requests to the API server's endpoint.\nAll supported routes for an module API should be added so that it is\nproxied.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.ModuleApiRoute"
-                    }
-                },
-                "ModuleControllers": {
-                    "description": "The controllers that are serviced by this module API.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.ModuleController"
-                    }
-                },
-                "ModuleObjects": {
-                    "description": "The API objects that are handled by this module API.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.ModuleObject"
-                    }
-                },
-                "Name": {
-                    "description": "An arbitrary name for the module API.",
                     "type": "string"
                 }
             }
@@ -17964,22 +21034,22 @@ const docTemplate = `{
         "v0.ModuleApiRoute": {
             "type": "object",
             "required": [
-                "ModuleApiID",
-                "Path"
+                "moduleApiID",
+                "path"
             ],
             "properties": {
-                "ModuleApiID": {
+                "moduleApiID": {
                     "description": "The module API this route belongs to.",
                     "type": "integer"
                 },
-                "ModuleObjects": {
+                "moduleObjects": {
                     "description": "The module object this route serves.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.ModuleObject"
                     }
                 },
-                "Path": {
+                "path": {
                     "description": "The URL path supported by the module API.",
                     "type": "string"
                 }
@@ -17988,20 +21058,20 @@ const docTemplate = `{
         "v0.ModuleController": {
             "type": "object",
             "required": [
-                "DeploymentName",
-                "ModuleApiID",
-                "Name"
+                "deploymentName",
+                "moduleApiID",
+                "name"
             ],
             "properties": {
-                "DeploymentName": {
+                "deploymentName": {
                     "description": "The K8s deployment name for the controller.  This allows actions to be executed against the\nthe controller workload.  Examples:\n* disable a controller altogether when the API objects it manages are not in use.\n* allow the Threeport agent to watch and scale-to-zero the controller.",
                     "type": "string"
                 },
-                "ModuleApiID": {
+                "moduleApiID": {
                     "description": "The module API this controller is connected to.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "The name of the controller.",
                     "type": "string"
                 }
@@ -18010,412 +21080,196 @@ const docTemplate = `{
         "v0.ModuleObject": {
             "type": "object",
             "required": [
-                "ModuleApiID",
-                "Name",
-                "Version"
+                "moduleApiID",
+                "name",
+                "version"
             ],
             "properties": {
-                "Description": {
+                "description": {
                     "description": "A description of the API object.",
                     "type": "string"
                 },
-                "ModuleApiID": {
+                "moduleApiID": {
                     "description": "The module API this controller is connected to.",
                     "type": "integer"
                 },
-                "ModuleApiRoutes": {
+                "moduleApiRoutes": {
                     "description": "The routes that service this module object.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.ModuleApiRoute"
                     }
                 },
-                "ModuleControllerID": {
+                "moduleControllerID": {
                     "description": "The controller that reconciles state for this API object, if applicable.  Note: some API objects\ndo not require reconciliation by a controller - this field will be null in those cases.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "The name of the API object.",
                     "type": "string"
                 },
-                "Version": {
+                "version": {
                     "description": "The version of the API object, expressed as ` + "`" + `v0` + "`" + `, ` + "`" + `v1` + "`" + `, ` + "`" + `v2` + "`" + `, etc.",
                     "type": "string"
-                }
-            }
-        },
-        "v0.ObservabilityDashboardDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "GrafanaHelmChartVersion": {
-                    "description": "The version of the grafana helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "GrafanaHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
-                    "type": "string"
-                },
-                "GrafanaHelmWorkloadDefinitionID": {
-                    "description": "The Grafana Helm workload definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ObservabilityDashboardInstances": {
-                    "description": "The associated observability dashboard instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.ObservabilityDashboardInstance"
-                    }
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
                 }
             }
         },
         "v0.ObservabilityDashboardInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeInstanceID",
-                "Name",
-                "ObservabilityDashboardDefinitionID"
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "observabilityDashboardDefinitionID"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "GrafanaHelmValuesDocument": {
+                "grafanaHelmValuesDocument": {
                     "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
-                "GrafanaHelmWorkloadInstanceID": {
+                "grafanaHelmWorkloadInstanceID": {
                     "description": "The Grafana Helm workload instance that belongs to this resource.",
                     "type": "integer"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime where the observability dashboard is installed.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "ObservabilityDashboardDefinitionID": {
+                "observabilityDashboardDefinitionID": {
                     "description": "The observability dashboard definition that belongs to this resource.",
                     "type": "integer"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
-                }
-            }
-        },
-        "v0.ObservabilityStackDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "GrafanaHelmChartVersion": {
-                    "description": "The version of the grafana helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "GrafanaHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying grafana chart.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "KubePrometheusStackHelmChartVersion": {
-                    "description": "The version of the kube-prometheus-stack helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "KubePrometheusStackHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
-                    "type": "string"
-                },
-                "LoggingDefinitionID": {
-                    "description": "Logging\nThe logging definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "LokiHelmChartVersion": {
-                    "description": "The version of the loki helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "LokiHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying loki chart.",
-                    "type": "string"
-                },
-                "MetricsDefinitionID": {
-                    "description": "Metrics\nThe metrics definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ObservabilityDashboardDefinitionID": {
-                    "description": "Dashboard\nThe observability dashboard definition that belongs to this resource.",
-                    "type": "integer"
-                },
-                "ObservabilityStackInstances": {
-                    "description": "The associated observability stack instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.ObservabilityStackInstance"
-                    }
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "PromtailHelmChartVersion": {
-                    "description": "The version of the promtail helm chart to use from the helm repo, e.g. 1.2.3",
-                    "type": "string"
-                },
-                "PromtailHelmValuesDocument": {
-                    "description": "Optional Helm workload definition values that can be provided to configure the\nunderlying promtail chart.",
-                    "type": "string"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
                 }
             }
         },
         "v0.ObservabilityStackInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeInstanceID",
-                "Name",
-                "ObservabilityStackDefinitionID"
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "observabilityStackDefinitionID"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "GrafanaHelmValuesDocument": {
+                "grafanaHelmValuesDocument": {
                     "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying grafana chart.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubePrometheusStackHelmValuesDocument": {
+                "kubePrometheusStackHelmValuesDocument": {
                     "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying kube-prometheus-stack chart.",
                     "type": "string"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime where the observability stack is installed.",
                     "type": "integer"
                 },
-                "LoggingEnabled": {
+                "loggingEnabled": {
                     "description": "If true, logging will be enabled for the observability stack.",
                     "type": "boolean"
                 },
-                "LoggingInstanceID": {
+                "loggingInstanceID": {
                     "description": "Logging\nThe logging instance that belongs to this resource.",
                     "type": "integer"
                 },
-                "LokiHelmValuesDocument": {
+                "lokiHelmValuesDocument": {
                     "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying loki chart.",
                     "type": "string"
                 },
-                "MetricsEnabled": {
+                "metricsEnabled": {
                     "description": "If true, metrics will be enabled for the observability stack.",
                     "type": "boolean"
                 },
-                "MetricsInstanceID": {
+                "metricsInstanceID": {
                     "description": "Metrics\nThe metrics instance that belongs to this resource.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "ObservabilityDashboardInstanceID": {
+                "observabilityDashboardInstanceID": {
                     "description": "Dashboard\nThe observability dashboard instance that belongs to this resource.",
                     "type": "integer"
                 },
-                "ObservabilityStackDefinitionID": {
+                "observabilityStackDefinitionID": {
                     "description": "The observability stack definition that belongs to this resource.",
                     "type": "integer"
                 },
-                "PromtailHelmValuesDocument": {
+                "promtailHelmValuesDocument": {
                     "description": "Optional Helm workload instance values that can be provided to configure the\nunderlying promtail chart.",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.OciOkeKubernetesRuntimeDefinition": {
-            "type": "object",
-            "required": [
-                "KubernetesRuntimeDefinitionID",
-                "Name",
-                "WorkerNodeInitialCount",
-                "WorkerNodeShape"
-            ],
-            "properties": {
-                "KubernetesRuntimeDefinitionID": {
-                    "description": "The kubernetes runtime definition for an OKE cluster in OCI.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "OciOkeKubernetesRuntimeInstances": {
-                    "description": "The OCI OKE kubernetes runtime instances derived from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeInstance"
-                    }
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "WorkerNodeInitialCount": {
-                    "description": "The number of nodes in the worker node pool.",
-                    "type": "integer"
-                },
-                "WorkerNodeShape": {
-                    "description": "The OCI shape for the worker nodes.",
                     "type": "string"
                 }
             }
@@ -18423,131 +21277,77 @@ const docTemplate = `{
         "v0.OciOkeKubernetesRuntimeInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeInstanceID",
-                "Name",
-                "OciOkeKubernetesRuntimeDefinitionID",
-                "OciProviderID"
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "ociOkeKubernetesRuntimeDefinitionID",
+                "ociProviderID"
             ],
             "properties": {
-                "ClusterOCID": {
+                "clusterOCID": {
                     "description": "The OCID for the OKE cluster. Populated by the controller after cluster creation.",
                     "type": "string"
                 },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime instance associated with the OCI OKE cluster.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "OciOkeKubernetesRuntimeDefinitionID": {
+                "ociOkeKubernetesRuntimeDefinitionID": {
                     "description": "The definition that configures this instance.",
                     "type": "integer"
                 },
-                "OciProviderID": {
+                "ociProviderID": {
                     "description": "The OCI provider used to provision this instance.",
                     "type": "integer"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "Region": {
+                "region": {
                     "description": "The OCI Region in which the cluster is provisioned. This field is\nstored in the instance (as well as definition) since a change to the\ndefinition will not move a cluster.",
                     "type": "string"
                 },
-                "ResourceInventory": {
+                "resourceInventory": {
                     "description": "An inventory of all OCI resources for the OKE cluster.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
-                },
-                "Status": {
-                    "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.OciProvider": {
-            "type": "object",
-            "required": [
-                "CompartmentOCID",
-                "DefaultRegion",
-                "KeyFingerprint",
-                "Name",
-                "PrivateKey",
-                "TenancyOCID",
-                "UserOCID"
-            ],
-            "properties": {
-                "CompartmentOCID": {
-                    "description": "The compartment OCID for the OCI provider.",
-                    "type": "string"
-                },
-                "DefaultProvider": {
-                    "description": "If true is the OCI provider used if none specified in an instance.",
-                    "type": "boolean"
-                },
-                "DefaultRegion": {
-                    "description": "The region to use for OCI managed services if not specified.",
-                    "type": "string"
-                },
-                "KeyFingerprint": {
-                    "description": "The fingerprint of the API key for the OCI provider.",
-                    "type": "string"
-                },
-                "Name": {
-                    "description": "The unique name of an OCI provider.",
-                    "type": "string"
-                },
-                "OciOkeKubernetesRuntimeInstances": {
-                    "description": "The cluster instances deployed with this OCI provider.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v0.OciOkeKubernetesRuntimeInstance"
+                        "type": "integer"
                     }
                 },
-                "PrivateKey": {
-                    "description": "The private key for the OCI provider.",
-                    "type": "string"
-                },
-                "TenancyOCID": {
-                    "description": "The tenancy OCID for the OCI provider account.",
-                    "type": "string"
-                },
-                "UserOCID": {
-                    "description": "The user OCID credentials for the OCI provider.",
+                "status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
                 }
             }
@@ -18555,37 +21355,25 @@ const docTemplate = `{
         "v0.Pagination": {
             "type": "object",
             "properties": {
-                "HasMore": {
+                "hasMore": {
                     "description": "HasMore is a boolean indicating if there are more objects to fetch after the current page.",
                     "type": "boolean",
                     "example": true
                 },
-                "Limit": {
+                "limit": {
                     "description": "Limit is the maximum number of objects returned.  This is either set in the client's\nrequest or set to a default value by the server.  In any case, this field informs the\nclient of the maximum number of objects they can expect to receive.",
                     "type": "integer",
                     "example": 1
                 },
-                "NextCursor": {
+                "nextCursor": {
                     "description": "NextCursor is the ID of the last object in the previous page of results.",
                     "type": "integer",
                     "example": 1234567890
                 },
-                "QueryId": {
+                "queryId": {
                     "description": "QueryId is the ID of the query that produced the paginated objects.  This must be\nreferenced by the client to fetch subsequent pages of results.",
                     "type": "string",
                     "example": "1234567890-1234567890-1234567890"
-                }
-            }
-        },
-        "v0.Profile": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "Name": {
-                    "description": "The unique name of a profile",
-                    "type": "string"
                 }
             }
         },
@@ -18607,12 +21395,12 @@ const docTemplate = `{
         "v0.Response": {
             "type": "object",
             "properties": {
-                "Data": {
+                "data": {
                     "description": "Data contains array of returned Object elements.",
                     "type": "array",
                     "items": {}
                 },
-                "Meta": {
+                "meta": {
                     "description": "Meta contains PageRequestParams (current page and size of current page) and TotalCount (number of returned Object elements)",
                     "allOf": [
                         {
@@ -18620,7 +21408,7 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "Status": {
+                "status": {
                     "description": "Status represents an error that occurred while handling a request.",
                     "allOf": [
                         {
@@ -18628,7 +21416,7 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "Type": {
+                "type": {
                     "description": "Type contains ObjectType of returned Data elements.",
                     "type": "string",
                     "example": "KubernetesWorkloadInstance"
@@ -18638,70 +21426,69 @@ const docTemplate = `{
         "v0.SecretDefinition": {
             "type": "object",
             "required": [
-                "Data",
-                "Name"
+                "data",
+                "name"
             ],
             "properties": {
-                "AwsProviderID": {
+                "awsProviderID": {
                     "description": "The AWS account ID, if the provider is AWS.",
                     "type": "integer"
                 },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "Data": {
+                "data": {
                     "description": "The secret value to be stored in the provider.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
-                "ProfileID": {
+                "profileID": {
                     "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
                     "type": "integer"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "SecretInstances": {
+                "secretInstances": {
                     "description": "The associated secret instances that are deployed from this definition.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.SecretInstance"
                     }
                 },
-                "TierID": {
+                "tierID": {
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
                     "type": "integer"
                 }
@@ -18710,64 +21497,64 @@ const docTemplate = `{
         "v0.SecretInstance": {
             "type": "object",
             "required": [
-                "KubernetesRuntimeInstanceID",
-                "Name",
-                "SecretDefinitionID"
+                "kubernetesRuntimeInstanceID",
+                "name",
+                "secretDefinitionID"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "HelmWorkloadInstanceID": {
+                "helmWorkloadInstanceID": {
                     "description": "The helm workload instance that the secret is associated with.",
                     "type": "integer"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "KubernetesRuntimeInstanceID": {
+                "kubernetesRuntimeInstanceID": {
                     "description": "The kubernetes runtime to which the secret is deployed.",
                     "type": "integer"
                 },
-                "KubernetesWorkloadInstanceID": {
+                "kubernetesWorkloadInstanceID": {
                     "description": "The kubernetes workload instance that the secret is associated with.",
                     "type": "integer"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "SecretDefinitionID": {
+                "secretDefinitionID": {
                     "description": "The SecretDefinition that the secret instance is derived from.",
                     "type": "integer"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
                 }
@@ -18793,153 +21580,72 @@ const docTemplate = `{
                 }
             }
         },
-        "v0.TerraformDefinition": {
-            "type": "object",
-            "required": [
-                "ConfigDir",
-                "Name"
-            ],
-            "properties": {
-                "ConfigDir": {
-                    "description": "Path to the directory containing terraform configs with '.tf' file\nextension.",
-                    "type": "string"
-                },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "TerraformInstances": {
-                    "description": "The associated terraform instances that are deployed from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.TerraformInstance"
-                    }
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                }
-            }
-        },
         "v0.TerraformInstance": {
             "type": "object",
             "required": [
-                "AwsProviderID",
-                "Name",
-                "TerraformDefinitionID"
+                "awsProviderID",
+                "name",
+                "terraformDefinitionID"
             ],
             "properties": {
-                "AwsProviderID": {
+                "awsProviderID": {
                     "description": "The AWS provider in which the resources will be provisioned.",
                     "type": "integer"
                 },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "creationAcknowledged": {
+                    "description": "Re-stamped on every creation pass.",
                     "type": "string"
                 },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "creationConfirmed": {
+                    "description": "Set once when creation finishes.",
                     "type": "string"
                 },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
+                "creationFailed": {
+                    "description": "Set to true when creation fails.",
                     "type": "boolean"
                 },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                "deletionAcknowledged": {
+                    "description": "Re-stamped on every deletion pass.",
                     "type": "string"
                 },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                "deletionConfirmed": {
+                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
                     "type": "string"
                 },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                "deletionScheduled": {
+                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
                     "type": "string"
                 },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                "interruptReconciliation": {
+                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
                     "type": "boolean"
                 },
-                "Name": {
+                "name": {
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "Outputs": {
+                "outputs": {
                     "description": "The outputs defined in the terraform config that are collected from\nTerraform.  The terraform outputs are stored in JSON format but is a\nstring typt to support encryption.",
                     "type": "string"
                 },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                "reconciled": {
+                    "description": "Whether the controller considers the object reconciled.",
                     "type": "boolean"
                 },
-                "StateDocument": {
+                "stateDocument": {
                     "description": "The terraform state json object that stores the inventory of\ninfrastructure being managed by terraform.  The terraform state is stored\nin JSON format but is a string type to support encryption.",
                     "type": "string"
                 },
-                "Status": {
+                "status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
                     "type": "string"
                 },
-                "TerraformDefinitionID": {
+                "terraformDefinitionID": {
                     "description": "The definition used to configure the terraform resources.",
                     "type": "integer"
                 },
-                "VarsDocument": {
+                "varsDocument": {
                     "description": "The .tfvars document that contains runtime parameters for an instance of\nsome terraform resources.",
-                    "type": "string"
-                }
-            }
-        },
-        "v0.Tier": {
-            "type": "object",
-            "required": [
-                "Criticality",
-                "Name"
-            ],
-            "properties": {
-                "Criticality": {
-                    "description": "The relative rank of criticality between tiers.  The higher the number,\nthe greater the criticality.  For example, a development tier could have\na criticality value of 10 while production could be 100.  Access control\ncan then use this criticality value to determine user access.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "The unique name of a tier.",
                     "type": "string"
                 }
             }

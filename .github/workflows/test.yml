@@ -60,6 +60,40 @@ jobs:
     - name: Generate and build the module fixture
       run: mage test:moduleGen
 
+  # Runs the tests that need a real CockroachDB. The suite starts the container
+  # itself, so this needs docker and not a control plane, which is why it is its
+  # own job rather than a step in the integration tests.
+  cockroach-tests:
+    name: CockroachDB Tests
+    runs-on: ubuntu-24.04
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6.0.3
+
+    - name: Set up Go
+      uses: actions/setup-go@v6.4.0
+      with:
+        go-version: '1.26'
+        cache: false
+
+    - name: Cache Go build + module cache
+      uses: actions/cache@v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-${{ runner.os }}-
+
+    - name: Install mage
+      run: go install github.com/magefile/mage@v1.17.2
+
+    - name: CockroachDB tests
+      run: mage test:cockroach
+
   integration-tests:
     name: Integration Tests
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}

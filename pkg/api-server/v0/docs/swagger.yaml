@@ -4088,6 +4088,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -4193,6 +4197,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -4234,6 +4242,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -4293,6 +4305,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -4401,6 +4417,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -4443,6 +4463,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -4502,6 +4526,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -4609,6 +4637,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -4651,6 +4683,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -4707,6 +4743,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -4814,6 +4854,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -4855,6 +4899,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -4910,6 +4958,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5017,6 +5069,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -5058,6 +5114,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5114,6 +5174,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5221,6 +5285,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -5262,6 +5330,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5318,6 +5390,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5425,6 +5501,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -5466,6 +5546,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5522,6 +5606,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5629,6 +5717,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -5670,6 +5762,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5725,6 +5821,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5893,6 +5993,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -5934,6 +6038,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -5989,6 +6097,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6096,6 +6208,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -6137,6 +6253,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6192,6 +6312,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6299,6 +6423,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -6340,6 +6468,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6395,6 +6527,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6502,6 +6638,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -6543,6 +6683,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6598,6 +6742,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6705,6 +6853,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -6746,6 +6898,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6803,6 +6959,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -6910,6 +7070,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -6951,6 +7115,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7007,6 +7175,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7114,6 +7286,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -7155,6 +7331,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7214,6 +7394,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7322,6 +7506,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -7364,6 +7552,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7423,6 +7615,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7530,6 +7726,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -7572,6 +7772,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7628,6 +7832,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7735,6 +7943,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -7776,6 +7988,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7831,6 +8047,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -7938,6 +8158,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -7979,6 +8203,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8035,6 +8263,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8142,6 +8374,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -8183,6 +8419,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8239,6 +8479,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8346,6 +8590,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -8387,6 +8635,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8443,6 +8695,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8550,6 +8806,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -8591,6 +8851,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8647,6 +8911,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8754,6 +9022,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -8795,6 +9067,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8851,6 +9127,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -8958,6 +9238,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -8999,6 +9283,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9090,6 +9378,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9198,6 +9490,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -9240,6 +9536,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9299,6 +9599,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9407,6 +9711,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -9449,6 +9757,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9505,6 +9817,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9612,6 +9928,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -9653,6 +9973,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9708,6 +10032,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9815,6 +10143,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -9856,6 +10188,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -9912,6 +10248,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10019,6 +10359,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -10060,6 +10404,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10115,6 +10463,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10222,6 +10574,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -10263,6 +10619,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10318,6 +10678,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10425,6 +10789,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -10466,6 +10834,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10521,6 +10893,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10628,6 +11004,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -10669,6 +11049,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10725,6 +11109,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10832,6 +11220,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -10873,6 +11265,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -10929,6 +11325,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11036,6 +11436,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -11077,6 +11481,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11133,6 +11541,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11240,6 +11652,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -11281,6 +11697,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11337,6 +11757,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11444,6 +11868,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -11485,6 +11913,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11540,6 +11972,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11647,6 +12083,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -11688,6 +12128,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11776,6 +12220,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11883,6 +12331,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -11924,6 +12376,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -11979,6 +12435,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12086,6 +12546,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -12127,6 +12591,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12182,6 +12650,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12289,6 +12761,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -12330,6 +12806,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12385,6 +12865,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12549,6 +13033,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -12590,6 +13078,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12647,6 +13139,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12754,6 +13250,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -12795,6 +13295,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12851,6 +13355,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -12958,6 +13466,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -12999,6 +13511,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13055,6 +13571,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13162,6 +13682,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -13203,6 +13727,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13259,6 +13787,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13366,6 +13898,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -13407,6 +13943,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13466,6 +14006,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13574,6 +14118,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -13616,6 +14164,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13675,6 +14227,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13782,6 +14338,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -13824,6 +14384,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13880,6 +14444,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -13987,6 +14555,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -14028,6 +14600,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14083,6 +14659,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14190,6 +14770,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -14231,6 +14815,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14286,6 +14874,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14393,6 +14985,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -14434,6 +15030,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14489,6 +15089,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14596,6 +15200,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -14637,6 +15245,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14692,6 +15304,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14799,6 +15415,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -14840,6 +15460,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -14895,6 +15519,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -15002,6 +15630,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -15043,6 +15675,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -15098,6 +15734,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":
@@ -15205,6 +15845,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v0.Response'
         "500":
           description: Internal Server Error
           schema:
@@ -15246,6 +15890,10 @@ paths:
             $ref: '#/definitions/v0.Response'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/v0.Response'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/v0.Response'
         "500":

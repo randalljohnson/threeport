@@ -35,6 +35,7 @@ func (h Handler) GetLogBackendVersions(c echo.Context) error {
 // @Param logBackend body api_v0.LogBackend true "LogBackend object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends [POST]
 func (h Handler) AddLogBackend(c echo.Context) error {
@@ -84,6 +85,20 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -278,6 +293,7 @@ func (h Handler) GetLogBackend(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends/{id} [PATCH]
 func (h Handler) UpdateLogBackend(c echo.Context) error {
@@ -317,6 +333,20 @@ func (h Handler) UpdateLogBackend(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -348,6 +378,7 @@ func (h Handler) UpdateLogBackend(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends/{id} [PUT]
 func (h Handler) ReplaceLogBackend(c echo.Context) error {
@@ -392,6 +423,20 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -504,6 +549,7 @@ func (h Handler) GetLogStorageDefinitionVersions(c echo.Context) error {
 // @Param logStorageDefinition body api_v0.LogStorageDefinition true "LogStorageDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions [POST]
 func (h Handler) AddLogStorageDefinition(c echo.Context) error {
@@ -553,6 +599,20 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -747,6 +807,7 @@ func (h Handler) GetLogStorageDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions/{id} [PATCH]
 func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
@@ -786,6 +847,20 @@ func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -817,6 +892,7 @@ func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions/{id} [PUT]
 func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
@@ -861,6 +937,20 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -979,6 +1069,7 @@ func (h Handler) GetLogStorageInstanceVersions(c echo.Context) error {
 // @Param logStorageInstance body api_v0.LogStorageInstance true "LogStorageInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances [POST]
 func (h Handler) AddLogStorageInstance(c echo.Context) error {
@@ -1028,6 +1119,20 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1222,6 +1327,7 @@ func (h Handler) GetLogStorageInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances/{id} [PATCH]
 func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
@@ -1261,6 +1367,20 @@ func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -1292,6 +1412,7 @@ func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances/{id} [PUT]
 func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
@@ -1336,6 +1457,20 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)

@@ -35,6 +35,7 @@ func (h Handler) GetModuleApiVersions(c echo.Context) error {
 // @Param moduleApi body api_v0.ModuleApi true "ModuleApi object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-apis [POST]
 func (h Handler) AddModuleApi(c echo.Context) error {
@@ -84,6 +85,20 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -278,6 +293,7 @@ func (h Handler) GetModuleApi(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-apis/{id} [PATCH]
 func (h Handler) UpdateModuleApi(c echo.Context) error {
@@ -317,6 +333,20 @@ func (h Handler) UpdateModuleApi(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -348,6 +378,7 @@ func (h Handler) UpdateModuleApi(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-apis/{id} [PUT]
 func (h Handler) ReplaceModuleApi(c echo.Context) error {
@@ -392,6 +423,20 @@ func (h Handler) ReplaceModuleApi(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -504,6 +549,7 @@ func (h Handler) GetModuleApiRouteVersions(c echo.Context) error {
 // @Param moduleApiRoute body api_v0.ModuleApiRoute true "ModuleApiRoute object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-api-routes [POST]
 func (h Handler) AddModuleApiRoute(c echo.Context) error {
@@ -537,6 +583,20 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -731,6 +791,7 @@ func (h Handler) GetModuleApiRoute(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-api-routes/{id} [PATCH]
 func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
@@ -770,6 +831,20 @@ func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -801,6 +876,7 @@ func (h Handler) UpdateModuleApiRoute(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-api-routes/{id} [PUT]
 func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
@@ -845,6 +921,20 @@ func (h Handler) ReplaceModuleApiRoute(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -957,6 +1047,7 @@ func (h Handler) GetModuleControllerVersions(c echo.Context) error {
 // @Param moduleController body api_v0.ModuleController true "ModuleController object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-controllers [POST]
 func (h Handler) AddModuleController(c echo.Context) error {
@@ -1006,6 +1097,20 @@ func (h Handler) AddModuleController(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1200,6 +1305,7 @@ func (h Handler) GetModuleController(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-controllers/{id} [PATCH]
 func (h Handler) UpdateModuleController(c echo.Context) error {
@@ -1239,6 +1345,20 @@ func (h Handler) UpdateModuleController(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -1270,6 +1390,7 @@ func (h Handler) UpdateModuleController(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-controllers/{id} [PUT]
 func (h Handler) ReplaceModuleController(c echo.Context) error {
@@ -1314,6 +1435,20 @@ func (h Handler) ReplaceModuleController(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1426,6 +1561,7 @@ func (h Handler) GetModuleObjectVersions(c echo.Context) error {
 // @Param moduleObject body api_v0.ModuleObject true "ModuleObject object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects [POST]
 func (h Handler) AddModuleObject(c echo.Context) error {
@@ -1459,6 +1595,20 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1653,6 +1803,7 @@ func (h Handler) GetModuleObject(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects/{id} [PATCH]
 func (h Handler) UpdateModuleObject(c echo.Context) error {
@@ -1692,6 +1843,20 @@ func (h Handler) UpdateModuleObject(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -1723,6 +1888,7 @@ func (h Handler) UpdateModuleObject(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects/{id} [PUT]
 func (h Handler) ReplaceModuleObject(c echo.Context) error {
@@ -1767,6 +1933,20 @@ func (h Handler) ReplaceModuleObject(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)

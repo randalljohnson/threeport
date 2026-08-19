@@ -39,6 +39,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinitionVersions(c echo.Context) er
 // @Param awsEksKubernetesRuntimeDefinition body api_v0.AwsEksKubernetesRuntimeDefinition true "AwsEksKubernetesRuntimeDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-eks-kubernetes-runtime-definitions [POST]
 func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
@@ -88,6 +89,20 @@ func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -282,6 +297,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-eks-kubernetes-runtime-definitions/{id} [PATCH]
 func (h Handler) UpdateAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
@@ -321,6 +337,20 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -352,6 +382,7 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-eks-kubernetes-runtime-definitions/{id} [PUT]
 func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
@@ -396,6 +427,20 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error 
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -514,6 +559,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstanceVersions(c echo.Context) erro
 // @Param awsEksKubernetesRuntimeInstance body api_v0.AwsEksKubernetesRuntimeInstance true "AwsEksKubernetesRuntimeInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-eks-kubernetes-runtime-instances [POST]
 func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
@@ -563,6 +609,20 @@ func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -771,6 +831,7 @@ func (h Handler) GetAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-eks-kubernetes-runtime-instances/{id} [PATCH]
 func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
@@ -812,6 +873,20 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -859,6 +934,7 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-eks-kubernetes-runtime-instances/{id} [PUT]
 func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
@@ -907,6 +983,20 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1086,6 +1176,7 @@ func (h Handler) GetAwsProviderVersions(c echo.Context) error {
 // @Param awsProvider body api_v0.AwsProvider true "AwsProvider object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-providers [POST]
 func (h Handler) AddAwsProvider(c echo.Context) error {
@@ -1135,6 +1226,20 @@ func (h Handler) AddAwsProvider(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1329,6 +1434,7 @@ func (h Handler) GetAwsProvider(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-providers/{id} [PATCH]
 func (h Handler) UpdateAwsProvider(c echo.Context) error {
@@ -1368,6 +1474,20 @@ func (h Handler) UpdateAwsProvider(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -1399,6 +1519,7 @@ func (h Handler) UpdateAwsProvider(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/aws-providers/{id} [PUT]
 func (h Handler) ReplaceAwsProvider(c echo.Context) error {
@@ -1443,6 +1564,20 @@ func (h Handler) ReplaceAwsProvider(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)

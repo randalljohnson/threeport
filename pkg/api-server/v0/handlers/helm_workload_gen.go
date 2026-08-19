@@ -39,6 +39,7 @@ func (h Handler) GetHelmWorkloadDefinitionVersions(c echo.Context) error {
 // @Param helmWorkloadDefinition body api_v0.HelmWorkloadDefinition true "HelmWorkloadDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions [POST]
 func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
@@ -88,6 +89,20 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -296,6 +311,7 @@ func (h Handler) GetHelmWorkloadDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions/{id} [PATCH]
 func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
@@ -337,6 +353,20 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -384,6 +414,7 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions/{id} [PUT]
 func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
@@ -432,6 +463,20 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -617,6 +662,7 @@ func (h Handler) GetHelmWorkloadInstanceVersions(c echo.Context) error {
 // @Param helmWorkloadInstance body api_v0.HelmWorkloadInstance true "HelmWorkloadInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances [POST]
 func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
@@ -666,6 +712,20 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -874,6 +934,7 @@ func (h Handler) GetHelmWorkloadInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances/{id} [PATCH]
 func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
@@ -915,6 +976,20 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -962,6 +1037,7 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances/{id} [PUT]
 func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
@@ -1010,6 +1086,20 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)

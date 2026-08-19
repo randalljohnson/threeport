@@ -39,6 +39,7 @@ func (h Handler) GetDomainNameDefinitionVersions(c echo.Context) error {
 // @Param domainNameDefinition body api_v0.DomainNameDefinition true "DomainNameDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-definitions [POST]
 func (h Handler) AddDomainNameDefinition(c echo.Context) error {
@@ -88,6 +89,20 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -282,6 +297,7 @@ func (h Handler) GetDomainNameDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-definitions/{id} [PATCH]
 func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
@@ -321,6 +337,20 @@ func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -352,6 +382,7 @@ func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-definitions/{id} [PUT]
 func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
@@ -396,6 +427,20 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -514,6 +559,7 @@ func (h Handler) GetDomainNameInstanceVersions(c echo.Context) error {
 // @Param domainNameInstance body api_v0.DomainNameInstance true "DomainNameInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-instances [POST]
 func (h Handler) AddDomainNameInstance(c echo.Context) error {
@@ -563,6 +609,20 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -771,6 +831,7 @@ func (h Handler) GetDomainNameInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-instances/{id} [PATCH]
 func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
@@ -812,6 +873,20 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -859,6 +934,7 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-instances/{id} [PUT]
 func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
@@ -907,6 +983,20 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1086,6 +1176,7 @@ func (h Handler) GetGatewayDefinitionVersions(c echo.Context) error {
 // @Param gatewayDefinition body api_v0.GatewayDefinition true "GatewayDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-definitions [POST]
 func (h Handler) AddGatewayDefinition(c echo.Context) error {
@@ -1135,6 +1226,20 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1343,6 +1448,7 @@ func (h Handler) GetGatewayDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-definitions/{id} [PATCH]
 func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
@@ -1384,6 +1490,20 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1431,6 +1551,7 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-definitions/{id} [PUT]
 func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
@@ -1479,6 +1600,20 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1664,6 +1799,7 @@ func (h Handler) GetGatewayHttpPortVersions(c echo.Context) error {
 // @Param gatewayHttpPort body api_v0.GatewayHttpPort true "GatewayHttpPort object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-http-ports [POST]
 func (h Handler) AddGatewayHttpPort(c echo.Context) error {
@@ -1697,6 +1833,20 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -1891,6 +2041,7 @@ func (h Handler) GetGatewayHttpPort(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-http-ports/{id} [PATCH]
 func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
@@ -1930,6 +2081,20 @@ func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -1961,6 +2126,7 @@ func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-http-ports/{id} [PUT]
 func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
@@ -2005,6 +2171,20 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -2117,6 +2297,7 @@ func (h Handler) GetGatewayInstanceVersions(c echo.Context) error {
 // @Param gatewayInstance body api_v0.GatewayInstance true "GatewayInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-instances [POST]
 func (h Handler) AddGatewayInstance(c echo.Context) error {
@@ -2166,6 +2347,20 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -2374,6 +2569,7 @@ func (h Handler) GetGatewayInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-instances/{id} [PATCH]
 func (h Handler) UpdateGatewayInstance(c echo.Context) error {
@@ -2415,6 +2611,20 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -2462,6 +2672,7 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-instances/{id} [PUT]
 func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
@@ -2510,6 +2721,20 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -2689,6 +2914,7 @@ func (h Handler) GetGatewayTcpPortVersions(c echo.Context) error {
 // @Param gatewayTcpPort body api_v0.GatewayTcpPort true "GatewayTcpPort object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-tcp-ports [POST]
 func (h Handler) AddGatewayTcpPort(c echo.Context) error {
@@ -2722,6 +2948,20 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
@@ -2916,6 +3156,7 @@ func (h Handler) GetGatewayTcpPort(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-tcp-ports/{id} [PATCH]
 func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
@@ -2955,6 +3196,20 @@ func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
+			)
+		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
@@ -2986,6 +3241,7 @@ func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-tcp-ports/{id} [PUT]
 func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
@@ -3030,6 +3286,20 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
 				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
+		}
+		// check whether a unique index rejected the write
+		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
+		if conflict {
+			h.Logger.Info(
+				"write rejected by unique index",
+				zap.String("constraint", constraint),
+			)
+			return apiserver_lib.ResponseStatus409(
+				c,
+				nil,
+				errors.New(apiserver_lib.ErrMsgUniqueViolation),
+				objectType,
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)

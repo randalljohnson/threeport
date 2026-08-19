@@ -1,140 +1,197 @@
 package handlers
 
 import (
-	"fmt"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	echo "github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	api "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// setupEventJoinTestDB returns an in-memory sqlite db with Event and
-// AttachedObjectReference tables migrated. Used to exercise the
-// polymorphic JOIN shape the events handler relies on.
-func setupEventJoinTestDB(t *testing.T) *gorm.DB {
+// newEventsHandler returns a handler backed by an in-memory sqlite
+// database holding the event table and the module registry the subject
+// filter resolves a bare kind against.
+func newEventsHandler(t *testing.T) Handler {
 	t.Helper()
+
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&api.Event{}, &api.AttachedObjectReference{}))
-	return db
+	require.NoError(t, db.AutoMigrate(
+		&api.Event{},
+		&api.ModuleApi{},
+		&api.ModuleObject{},
+		&api.ModuleApiRoute{},
+		&api.AttachedObjectReference{},
+	))
+
+	return Handler{DB: db, Logger: zap.NewNop()}
 }
 
-// TestEventsJoin_ExcludesSoftDeletedAOR verifies the JOIN shape used
-// by GetEventsJoinAttachedObjectReferences applies
-// apiserver_lib.LiveRowsFilter to keep soft-deleted AOR rows out of
-// the result. Without the explicit filter, the raw .Joins() form
-// would surface stale AORs that don't represent the current state.
-func TestEventsJoin_ExcludesSoftDeletedAOR(t *testing.T) {
-	db := setupEventJoinTestDB(t)
-	fullyQualifiedEventType := (&api.Event{}).GetFullyQualifiedType()
+// getEvents drives the events handler the way the router does: the
+// strict query binder registered on the echo instance, and the context
+// wrapped so the handler's type assertion to CustomContext succeeds.
+// The returned events come out of the response body, so a test reads
+// what a client would receive.
+func getEvents(t *testing.T, h Handler, query string) (int, []api.Event) {
+	t.Helper()
 
-	// create two events, each with its own AOR linking back to a synthetic
-	// KubernetesWorkloadInstance subject. Going through Create fires the Event
-	// afterCreate hook which inserts the matching AOR.
+	e := echo.New()
+	e.Binder = apiserver_lib.NewQueryBinder()
+	req := httptest.NewRequest(http.MethodGet, api.PathEventsJoinAttachedObjectReferences+query, nil)
+	rec := httptest.NewRecorder()
+	c := &apiserver_lib.CustomContext{Context: e.NewContext(req, rec)}
+
+	require.NoError(t, h.GetEventsJoinAttachedObjectReferences(c))
+
+	if rec.Code != http.StatusOK {
+		return rec.Code, nil
+	}
+
+	var body struct {
+		Data []api.Event
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+
+	return rec.Code, body.Data
+}
+
+// seedEvent writes one event row with the given subject. Hooks are
+// skipped so the insert stays plain SQL the sqlite driver accepts; the
+// read path these tests cover runs no hooks of its own.
+func seedEvent(t *testing.T, db *gorm.DB, reason, objectType string, objectID uint) *api.Event {
+	t.Helper()
+
 	now := time.Now()
-	e1 := &api.Event{
-		Reason:              util.Ptr("R1"),
-		Note:                util.Ptr("n1"),
+	e := &api.Event{
+		Reason:              util.Ptr(reason),
+		Note:                util.Ptr("n"),
 		Type:                util.Ptr("Normal"),
 		Count:               util.Ptr(uint(1)),
 		EventTime:           &now,
 		LastObservedTime:    &now,
 		ReportingController: util.Ptr("test"),
-		ObjectType:          util.Ptr("threeport.io/v0.KubernetesWorkloadInstance"),
-		ObjectID:            util.Ptr(uint(1)),
+		ObjectType:          util.Ptr(objectType),
+		ObjectID:            util.Ptr(objectID),
 	}
-	e2 := &api.Event{
-		Reason:              util.Ptr("R2"),
-		Note:                util.Ptr("n2"),
-		Type:                util.Ptr("Normal"),
-		Count:               util.Ptr(uint(1)),
-		EventTime:           &now,
-		LastObservedTime:    &now,
-		ReportingController: util.Ptr("test"),
-		ObjectType:          util.Ptr("threeport.io/v0.KubernetesWorkloadInstance"),
-		ObjectID:            util.Ptr(uint(2)),
-	}
-	require.NoError(t, db.Create(e1).Error)
-	require.NoError(t, db.Create(e2).Error)
+	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(e).Error)
 
-	// confirm baseline: the JOIN returns both events when nothing is
-	// soft-deleted.
-	runJoin := func() []api.Event {
-		var rows []api.Event
-		require.NoError(t, JoinEventsToAttachedObjectReferences(
-			db.Model(&api.Event{}),
-			fullyQualifiedEventType,
-		).Find(&rows).Error)
-		return rows
-	}
-	require.Len(t, runJoin(), 2, "baseline: both events visible with their live AORs")
-
-	// soft-delete e1's AOR directly. e1's event row stays live, but its
-	// AOR should drop out of the JOIN.
-	require.NoError(t, db.
-		Where("attached_object_type = ? AND attached_object_id = ?", fullyQualifiedEventType, *e1.ID).
-		Delete(&api.AttachedObjectReference{}).Error)
-
-	rows := runJoin()
-	require.Len(t, rows, 1, "soft-deleted AOR must be excluded from the JOIN")
-	assert.Equal(t, *e2.ID, *rows[0].ID, "remaining event is e2 (whose AOR is still live)")
+	return e
 }
 
-// TestEventsJoin_CrossTypeFilterSurfacesAllMatches pins the intended
-// (Cartesian-product) behavior of applyObjectIdFilter. When a bare
-// kind resolves to multiple FQTs (e.g. "Widget" registered in both
-// core and a module, each with a record named "foo"), every matching
-// (type, id) pair surfaces - the caller asked about "Widget/foo"
-// without disambiguating the namespace, so all "Widget/foo"s come
-// back. Callers narrow via objectnamespace / objectversion up front,
-// not at this filter layer.
-func TestEventsJoin_CrossTypeFilterSurfacesAllMatches(t *testing.T) {
-	db := setupEventJoinTestDB(t)
-	fullyQualifiedEventType := (&api.Event{}).GetFullyQualifiedType()
-	now := time.Now()
+// registerModuleObject records a module and one object it owns, which
+// is what GetObjectTypes reads to turn a bare kind into the fully
+// qualified types the subject filter uses. No route is registered, so
+// name resolution finds no module endpoint and leaves ObjectName unset.
+func registerModuleObject(t *testing.T, db *gorm.DB, apiNamespace, kind, version string) {
+	t.Helper()
 
-	// build a small fixture: three events about widgets, spanning two
-	// FQTs and including an id that exists under both. The filter
-	// should surface every event whose subject is in the resolved
-	// (type, id) cross-product.
-	subjects := []struct {
-		objectType string
-		objectID   uint
-	}{
-		{"threeport.io/v0.Widget", 42},
-		{"example.com/v0.Widget", 99},
-		{"threeport.io/v0.Widget", 99}, // same id under a different type - intentionally included
+	session := db.Session(&gorm.Session{SkipHooks: true})
+	moduleApi := &api.ModuleApi{
+		Name:         util.Ptr(apiNamespace),
+		ApiNamespace: util.Ptr(apiNamespace),
+		Core:         util.Ptr(false),
+		Endpoint:     util.Ptr("module-api." + apiNamespace),
 	}
-	for i, s := range subjects {
-		require.NoError(t, db.Create(&api.Event{
-			Reason: util.Ptr(fmt.Sprintf("R%d", i)),
-			Note:   util.Ptr("n"), Type: util.Ptr("Normal"),
-			Count: util.Ptr(uint(1)), EventTime: &now, LastObservedTime: &now,
-			ReportingController: util.Ptr("test"),
-			ObjectType:          util.Ptr(s.objectType),
-			ObjectID:            util.Ptr(s.objectID),
-		}).Error)
+	require.NoError(t, session.Create(moduleApi).Error)
+	require.NoError(t, session.Create(&api.ModuleObject{
+		Name:        util.Ptr(kind),
+		Version:     util.Ptr(version),
+		ModuleApiID: moduleApi.ID,
+	}).Error)
+}
+
+// eventIDs pulls the ids out of a response page so an assertion can name
+// the rows it expects rather than only their number.
+func eventIDs(events []api.Event) []uint {
+	ids := make([]uint, 0, len(events))
+	for _, e := range events {
+		ids = append(ids, *e.ID)
 	}
 
-	// Caller resolution yielded types from both Widget registrations
-	// and ids from each (name lookup hit "foo" under each FQT).
-	types := []string{"threeport.io/v0.Widget", "example.com/v0.Widget"}
-	ids := []uint{42, 99}
+	return ids
+}
 
-	var rows []api.Event
-	require.NoError(t, JoinEventsToAttachedObjectReferences(
-		db.Model(&api.Event{}),
-		fullyQualifiedEventType,
-	).
-		Where("v0_attached_object_references.object_type IN ?", types).
-		Where("v0_attached_object_references.object_id IN ?", ids).
-		Find(&rows).Error)
+// TestGetEvents_ObjectIdAloneFiltersAcrossSubjectTypes covers an
+// objectid supplied without a type. The subject sits on the event row,
+// so an id narrows the listing on its own and every type carrying that
+// id is in the result.
+func TestGetEvents_ObjectIdAloneFiltersAcrossSubjectTypes(t *testing.T) {
+	h := newEventsHandler(t)
 
-	assert.Len(t, rows, 3, "Cartesian filter surfaces every event whose subject is one of the resolved (type, id) pairs")
+	widget7 := seedEvent(t, h.DB, "R0", "example.com/v0.Widget", 7)
+	gadget7 := seedEvent(t, h.DB, "R1", "other.io/v0.Gadget", 7)
+	seedEvent(t, h.DB, "R2", "example.com/v0.Widget", 8)
+
+	code, events := getEvents(t, h, "?objectid=7")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.ElementsMatch(t, []uint{*widget7.ID, *gadget7.ID}, eventIDs(events),
+		"an id filters on its own across every subject type")
+}
+
+// TestGetEvents_ObjectNameWithoutTypeReturns400 covers the one shape the
+// handler refuses. A name is unique only within a type, so the handler
+// has no way to resolve it to an id and answers client error rather than
+// returning an unfiltered listing.
+func TestGetEvents_ObjectNameWithoutTypeReturns400(t *testing.T) {
+	h := newEventsHandler(t)
+	seedEvent(t, h.DB, "R0", "example.com/v0.Widget", 7)
+
+	code, _ := getEvents(t, h, "?objectname=my-widget")
+
+	assert.Equal(t, http.StatusBadRequest, code)
+}
+
+// TestGetEvents_ObjectTypeNameNarrowsToResolvedTypes covers a bare kind
+// alongside an id. The kind resolves through the module registry to the
+// fully qualified types that carry it, and the listing holds only events
+// whose object_type is one of them, so an unrelated type sharing the id
+// stays out.
+func TestGetEvents_ObjectTypeNameNarrowsToResolvedTypes(t *testing.T) {
+	h := newEventsHandler(t)
+	registerModuleObject(t, h.DB, "example.com", "Widget", "v0")
+
+	resolved := seedEvent(t, h.DB, "R0", "example.com/v0.Widget", 7)
+	seedEvent(t, h.DB, "R1", "other.io/v0.Widget", 7)
+	seedEvent(t, h.DB, "R2", "example.com/v0.Widget", 8)
+
+	code, events := getEvents(t, h, "?objecttypename=Widget&objectid=7")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, []uint{*resolved.ID}, eventIDs(events),
+		"only the resolved fully qualified type matches")
+}
+
+// TestGetEvents_ExcludesSoftDeletedEvent covers deleted_at scoping on
+// the listing. A soft-deleted event keeps its subject, so the filter
+// still matches it and only the scoping keeps it out.
+func TestGetEvents_ExcludesSoftDeletedEvent(t *testing.T) {
+	h := newEventsHandler(t)
+
+	deleted := seedEvent(t, h.DB, "R0", "example.com/v0.Widget", 7)
+	live := seedEvent(t, h.DB, "R1", "example.com/v0.Widget", 7)
+
+	code, events := getEvents(t, h, "?objectid=7")
+	require.Equal(t, http.StatusOK, code)
+	require.Len(t, events, 2, "both events are visible before the delete")
+
+	require.NoError(t, h.DB.Session(&gorm.Session{SkipHooks: true}).
+		Delete(&api.Event{}, *deleted.ID).Error)
+
+	code, events = getEvents(t, h, "?objectid=7")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, []uint{*live.ID}, eventIDs(events),
+		"a soft-deleted event stays out of the listing")
 }

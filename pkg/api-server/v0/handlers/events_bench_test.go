@@ -64,13 +64,12 @@ func setupEventsPerfHarness(tb testing.TB) (
 	}))
 
 	// in-memory sqlite mirrors the schema tables the enrich path reads:
-	// events + AORs for the join, module_apis + module_api_routes +
+	// events for the subject columns, module_apis + module_api_routes +
 	// module_objects + the m2m junction for the type->endpoint lookup.
 	d, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(tb, err)
 	require.NoError(tb, d.AutoMigrate(
 		&api.Event{},
-		&api.AttachedObjectReference{},
 		&api.ModuleApi{},
 		&api.ModuleApiRoute{},
 		&api.ModuleObject{},
@@ -109,10 +108,8 @@ func setupEventsPerfHarness(tb testing.TB) (
 		route.ID, obj.ID,
 	).Error)
 
-	// seed events + AORs directly (SkipHooks bypasses the AfterCreate
-	// path so the harness doesn't depend on core-type registration for
-	// Widget).
-	fullyQualifiedEventType := (&api.Event{}).GetFullyQualifiedType()
+	// seed events whose subject is a module-owned Widget. SkipHooks
+	// keeps the insert to plain SQL the sqlite driver accepts.
 	now := time.Now()
 	seeds := make([]api.Event, perfEventCount)
 	for i := 0; i < perfEventCount; i++ {
@@ -125,29 +122,23 @@ func setupEventsPerfHarness(tb testing.TB) (
 			EventTime:           &now,
 			LastObservedTime:    &now,
 			ReportingController: util.Ptr("test"),
+			ObjectType:          util.Ptr("example.com/v0.Widget"),
+			ObjectID:            util.Ptr(widgetID),
 		}
 		require.NoError(tb, d.Session(&gorm.Session{SkipHooks: true}).Create(e).Error)
-		aor := &api.AttachedObjectReference{
-			ObjectType:         util.Ptr("example.com/v0.Widget"),
-			ObjectID:           util.Ptr(widgetID),
-			AttachedObjectType: util.Ptr(fullyQualifiedEventType),
-			AttachedObjectID:   e.ID,
-		}
-		require.NoError(tb, d.Session(&gorm.Session{SkipHooks: true}).Create(aor).Error)
 		seeds[i] = *e
 	}
 
 	logger := zap.NewNop()
 
-	// each enrich call gets a shallow copy of the seed slice with the
-	// projection-only fields reset so a prior iteration's populated
-	// ObjectName can't short-circuit the module lookup on the next.
+	// each enrich call gets a shallow copy of the seed slice with
+	// ObjectName cleared so a prior iteration's resolved name can't
+	// short-circuit the module lookup on the next. The subject columns
+	// stay set, because enrichment reads them off the row.
 	enrich = func() error {
 		fresh := make([]api.Event, len(seeds))
 		copy(fresh, seeds)
 		for i := range fresh {
-			fresh[i].ObjectType = nil
-			fresh[i].ObjectID = nil
 			fresh[i].ObjectName = nil
 		}
 		return enrichEventsWithObjectInfo(context.Background(), d, fresh, logger)

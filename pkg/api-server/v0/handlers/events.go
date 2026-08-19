@@ -21,12 +21,12 @@ import (
 
 // objectNamespacePattern matches DNS-like api namespaces such as
 // "sxalable.io" or "threeport.io". Anchored so the value can be safely
-// interpolated into a LIKE clause on v0_attached_object_references.object_type.
+// interpolated into a LIKE clause on v0_events.object_type.
 var objectNamespacePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.-]*$`)
 
 // objectVersionPattern matches api version tokens such as "v0" or
 // "v1alpha1". Anchored so the value can be safely interpolated into a
-// LIKE clause on v0_attached_object_references.object_type.
+// LIKE clause on v0_events.object_type.
 var objectVersionPattern = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 
 // reasonPattern matches event Reason values, which are Go-identifier
@@ -42,25 +42,6 @@ var reasonPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 // CREATE MATERIALIZED VIEW / DROP MATERIALIZED VIEW round trip.
 const materializedViewThresholdFloor = 5000
 
-// eventJoinAttachedObjectReferenceClause is the inner join from
-// v0_events to v0_attached_object_references on the polymorphic
-// columns the reference table uses to point at events. The `?`
-// placeholder stands in for the event's fully qualified type. Used
-// directly by gorm .Joins() chains; raw-SQL paths substitute the
-// literal in via strings.Replace.
-const eventJoinAttachedObjectReferenceClause = `INNER JOIN v0_attached_object_references
-	ON v0_attached_object_references.attached_object_type = ?
-	AND v0_attached_object_references.attached_object_id = v0_events.id`
-
-// JoinEventsToAttachedObjectReferences chains the join above plus the
-// soft-delete predicate on the reference rows, so live events and live
-// references come back together.
-func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventType string) *gorm.DB {
-	return query.
-		Joins(eventJoinAttachedObjectReferenceClause, fullyQualifiedEventType).
-		Where(apiserver_lib.LiveRowsFilter("v0_attached_object_references"))
-}
-
 // boundEventFilterClause renders the event columns a client bound onto the
 // filter struct as a raw SQL fragment plus its bind values, for the paginated
 // branches that build their query as a string rather than through gorm. Each
@@ -70,6 +51,10 @@ func JoinEventsToAttachedObjectReferences(query *gorm.DB, fullyQualifiedEventTyp
 // params directly and builds its own predicate for them. The time columns are
 // left out because the query binder rejects time values, so they never arrive
 // on a list request.
+//
+// The subject columns object_type and object_id are included because a client
+// can bind either one straight onto the list request, alongside the
+// objecttypename / objectid query params the handler resolves itself.
 func boundEventFilterClause(filter *v0.Event) (string, []interface{}) {
 	var fragments []string
 	var values []interface{}
@@ -94,12 +79,24 @@ func boundEventFilterClause(filter *v0.Event) (string, []interface{}) {
 	if filter.ReportingController != nil {
 		add("reporting_controller", *filter.ReportingController)
 	}
+	if filter.ObjectType != nil {
+		add("object_type", *filter.ObjectType)
+	}
+	if filter.ObjectID != nil {
+		add("object_id", *filter.ObjectID)
+	}
 
 	return strings.Join(fragments, ""), values
 }
 
-// @Summary gets all events joined with attached object references.
-// @Description Get all events joined with attached object references from the Threeport database.
+// GetEventsJoinAttachedObjectReferences lists events, filtered by the
+// subject columns object_type and object_id on the event row. The exported
+// name and the route path both name the attached object reference table and
+// keep that spelling for compatibility, because clients call
+// /v0/events-join-attached-object-references today.
+//
+// @Summary gets all events, filtered by subject.
+// @Description Get events from the Threeport database, narrowed by the object_type and object_id columns each event row carries.
 // @ID get-v0-events-join-attached-object-references
 // @Accept json
 // @Produce json
@@ -117,11 +114,6 @@ func boundEventFilterClause(filter *v0.Event) (string, []interface{}) {
 func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	objectType := v0.ObjectTypeEvent
 
-	// fully qualified type of Event - written to AOR.AttachedObjectType when an event
-	// is recorded, and used here as the join key between v0_events
-	// and v0_attached_object_references
-	fullyQualifiedEventType := (&v0.Event{}).GetFullyQualifiedType()
-
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
@@ -137,10 +129,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 	// collect object IDs to filter on. The accepted shapes are:
 	//   - nothing supplied                  -> return every event
+	//   - objectid                          -> filter by id alone
 	//   - objecttypename + objectid         -> filter by id under type
 	//   - objecttypename + objectname       -> resolve name to id(s) under type
-	// Any other combination is rejected: type is always required when
-	// filtering, and id+name together is ambiguous.
+	// A name is unique only within a type, so objectname without
+	// objecttypename is rejected, and id together with name is ambiguous.
 	targetTypeName := c.QueryParam("objecttypename")
 	targetVersion := c.QueryParam("objectversion")
 	targetNamespace := c.QueryParam("objectnamespace")
@@ -150,7 +143,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	targetReasonPrefix := c.QueryParam("reasonprefix")
 
 	// validate the narrow-filter tokens that get interpolated into the
-	// AOR object_type LIKE clause below. The regexes reject anything
+	// object_type LIKE clause below. The regexes reject anything
 	// outside the DNS-like namespace / alphanumeric-version shape so
 	// caller-supplied text cannot inject SQL.
 	if targetNamespace != "" && !objectNamespacePattern.MatchString(targetNamespace) {
@@ -189,7 +182,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	// resolveQualifiedTypes turns the targetTypeName into the set of
 	// fully qualified types that match it, optionally narrowed by namespace/version.
 	// shared by the type+id and type+name branches below so both
-	// constrain the AOR subject filter to the right type set.
+	// constrain the subject filter to the right type set.
 	resolveQualifiedTypes := func() ([]string, error) {
 		types, err := apiserver_lib.GetObjectTypes(h.DB, targetTypeName)
 		if err != nil {
@@ -199,7 +192,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	}
 
 	// buildNamespaceVersionPattern returns the LIKE pattern that narrows
-	// AOR.object_type to the caller-supplied namespace and version.
+	// object_type to the caller-supplied namespace and version.
 	// Types are stored as "<namespace>/<version>.<TypeName>", so patterns
 	// anchor on the slash and dot separators. Returns active=false when
 	// neither filter is set so callers can skip the extra predicate.
@@ -222,15 +215,15 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 	case targetTypeName == "" && targetName == "" && directObjectId == "":
 		// namespace or version supplied without a bare kind, id, or name.
-		// skip type/id resolution and let the AOR object_type LIKE
+		// skip type/id resolution and let the object_type LIKE
 		// predicate below narrow events to the requested api group.
 
-	case targetTypeName == "":
-		// caller supplied a name or id but no type. type is the only
-		// disambiguator for a polymorphic lookup, so this is rejected.
+	case targetTypeName == "" && targetName != "":
+		// caller supplied a name but no type. A name resolves to ids
+		// one type at a time, so the type is required here.
 		return apiserver_lib.ResponseStatus400(
 			c, pageParams,
-			errors.New("objecttypename is required when filtering by objectid or objectname"),
+			errors.New("objecttypename is required when filtering by objectname"),
 			objectType,
 		)
 
@@ -243,10 +236,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		)
 
 	case directObjectId != "":
-		// type + id. The type still has to resolve so the subject
-		// filter can pin object_type; without it, an unrelated type
-		// that happens to share the id leaks in. Multi-type bare
-		// kinds surface every (resolved type, id) pair - narrow with
+		// object_id is a column on the event row, so an id filters the
+		// row set on its own. A type alongside it resolves as well, so
+		// the filter also pins object_type and an unrelated type that
+		// happens to share the id stays out. Multi-type bare kinds
+		// surface every (resolved type, id) pair - narrow with
 		// objectnamespace / objectversion.
 		parsed, err := strconv.ParseUint(directObjectId, 10, 64)
 		if err != nil {
@@ -255,16 +249,18 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 		ids = []uint{uint(parsed)}
 
-		types, lookupErr := resolveQualifiedTypes()
-		if lookupErr != nil {
-			h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
-			return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
+		if targetTypeName != "" {
+			types, lookupErr := resolveQualifiedTypes()
+			if lookupErr != nil {
+				h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
+				return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
+			}
+			if len(types) == 0 {
+				return apiserver_lib.ResponseStatus404(c, pageParams,
+					fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
+			}
+			fullyQualifiedTypes = types
 		}
-		if len(types) == 0 {
-			return apiserver_lib.ResponseStatus404(c, pageParams,
-				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
-		}
-		fullyQualifiedTypes = types
 
 	case targetName != "":
 		// type + name - look up every fully qualified type that matches the type name,
@@ -327,48 +323,44 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 	}
 
-	// buildRawJoinAndWhere renders the join and the WHERE that every
-	// raw-SQL pagination branch below shares. The first page and its
-	// continuations have to select from the same row set, so they build
-	// these from one place rather than each assembling its own copy.
+	// buildRawWhere renders the WHERE that every raw-SQL pagination
+	// branch below shares. The first page and its continuations have to
+	// select from the same row set, so they build it from one place
+	// rather than each assembling its own copy.
 	//
-	// The base WHERE excludes soft-deleted events and reference rows,
-	// because raw SQL does not pick up gorm's deleted_at scoping. Every
-	// value interpolated here is either a fully qualified type this
-	// handler resolved or a regex-validated pattern; values a client
-	// supplies travel separately as bind parameters.
-	buildRawJoinAndWhere := func() (string, string) {
-		joinClause := strings.Replace(
-			eventJoinAttachedObjectReferenceClause,
-			"?",
-			fmt.Sprintf("'%s'", fullyQualifiedEventType),
-			1,
-		)
-
-		whereClause := " WHERE " + apiserver_lib.LiveRowsFilter("v0_events", "v0_attached_object_references")
-		if len(ids) > 0 {
-			// constrain both object_type and object_id; id alone would
-			// let unrelated types with the same id leak in
+	// The base WHERE excludes soft-deleted events, because raw SQL does
+	// not pick up gorm's deleted_at scoping. Every value interpolated
+	// here is either a fully qualified type this handler resolved or a
+	// regex-validated pattern; values a client supplies travel
+	// separately as bind parameters.
+	buildRawWhere := func() string {
+		whereClause := " WHERE " + apiserver_lib.LiveRowsFilter("v0_events")
+		if len(fullyQualifiedTypes) > 0 {
 			typeStrs := make([]string, len(fullyQualifiedTypes))
 			for i, t := range fullyQualifiedTypes {
 				typeStrs[i] = fmt.Sprintf("'%s'", t)
 			}
+			whereClause += fmt.Sprintf(
+				" AND v0_events.object_type IN (%s)",
+				strings.Join(typeStrs, ", "),
+			)
+		}
+		if len(ids) > 0 {
 			idStrs := make([]string, len(ids))
 			for i, id := range ids {
-				idStrs[i] = fmt.Sprintf("'%d'", id)
+				idStrs[i] = fmt.Sprintf("%d", id)
 			}
 			whereClause += fmt.Sprintf(
-				" AND v0_attached_object_references.object_type IN (%s) AND v0_attached_object_references.object_id IN (%s)",
-				strings.Join(typeStrs, ", "),
+				" AND v0_events.object_id IN (%s)",
 				strings.Join(idStrs, ", "),
 			)
 		}
 		if pattern, active := buildNamespaceVersionPattern(); active {
-			// narrow the reference object_type by qualified-type prefix
-			// so a namespace-only or version-only filter still
-			// constrains the row set
+			// narrow object_type by qualified-type prefix so a
+			// namespace-only or version-only filter still constrains
+			// the row set
 			whereClause += fmt.Sprintf(
-				" AND v0_attached_object_references.object_type LIKE '%s'",
+				" AND v0_events.object_type LIKE '%s'",
 				pattern,
 			)
 		}
@@ -376,25 +368,28 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			whereClause += " AND " + reasonFrag
 		}
 
-		return joinClause, whereClause
+		return whereClause
 	}
 
-	// apply the subject filter when ids or a namespace/version filter
-	// were supplied. The id half is the Cartesian product
+	// apply the subject filter when ids, a resolved type set, or a
+	// namespace/version filter were supplied. A type set and ids
+	// together form the Cartesian product
 	// (object_type IN types AND object_id IN ids) - intentional, so a
 	// multi-type bare kind surfaces every (resolved type, id) pair
-	// instead of forcing namespace disambiguation up front. The
-	// namespace/version half narrows AOR.object_type via a LIKE prefix
-	// so an --api-group / --object-version call without a bare kind
-	// still constrains the row set.
+	// instead of forcing namespace disambiguation up front. An id
+	// supplied without a type constrains object_id alone. The
+	// namespace/version half narrows object_type via a LIKE prefix so an
+	// --api-group / --object-version call without a bare kind still
+	// constrains the row set.
 	applyObjectIdFilter := func(query *gorm.DB) *gorm.DB {
+		if len(fullyQualifiedTypes) > 0 {
+			query = query.Where("v0_events.object_type IN ?", fullyQualifiedTypes)
+		}
 		if len(ids) > 0 {
-			query = query.
-				Where("v0_attached_object_references.object_type IN ?", fullyQualifiedTypes).
-				Where("v0_attached_object_references.object_id IN ?", ids)
+			query = query.Where("v0_events.object_id IN ?", ids)
 		}
 		if pattern, active := buildNamespaceVersionPattern(); active {
-			query = query.Where("v0_attached_object_references.object_type LIKE ?", pattern)
+			query = query.Where("v0_events.object_type LIKE ?", pattern)
 		}
 		if targetReason != "" {
 			query = query.Where("v0_events.reason = ?", targetReason)
@@ -404,6 +399,19 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 		return query
 	}
+
+	// boundClause holds the filter-struct predicates the raw-SQL
+	// pagination branches share, with each caller value traveling
+	// beside it as a bind parameter. Every read of a snapshot applies
+	// it, so each page of one result set is drawn from the same rows.
+	//
+	// These predicates stay out of buildRawWhere, and so out of the
+	// CREATE MATERIALIZED VIEW: a view definition takes no placeholders,
+	// and interpolating caller text into it would put that text in the
+	// SQL. A view read carries them instead, with the table prefix
+	// stripped because the view exposes its columns unqualified.
+	boundClause, boundValues := boundEventFilterClause(&filter)
+	viewBoundClause := strings.ReplaceAll(boundClause, "v0_events.", "")
 
 	switch {
 	case pageParams.QueryId == "":
@@ -425,13 +433,10 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 		// probe the result set with a LIMIT threshold+1 fetch so the
 		// pagination decision is made from returned row count instead
-		// of a separate Count query duplicating the JOIN. When the row
-		// count fits under the threshold, serve the fetched records
-		// directly and skip the materialized view path.
-		findQuery := JoinEventsToAttachedObjectReferences(
-			h.DB.Order("event_time ASC, id ASC").Limit(int(threshold)+1),
-			fullyQualifiedEventType,
-		)
+		// of a separate Count query. When the row count fits under the
+		// threshold, serve the fetched records directly and skip the
+		// materialized view path.
+		findQuery := h.DB.Order("event_time ASC, id ASC").Limit(int(threshold) + 1)
 		if result := applyObjectIdFilter(findQuery).Where(&filter).Find(records); result.Error != nil {
 			h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
@@ -448,16 +453,16 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			// large result set: pin a snapshot so subsequent cursor
 			// pages see the same rows even under concurrent writes.
 			// the two modes are peers: materialized-view mode
-			// materializes the join into a fresh view; as-of-system-time
-			// mode captures an HLC and re-runs the join at that
-			// timestamp on every page.
+			// materializes the filtered rows into a fresh view;
+			// as-of-system-time mode captures an HLC and re-runs the
+			// query at that timestamp on every page.
 
 			// the probe fetch above already loaded threshold+1 rows;
 			// discard them so the snapshot path below refills from its
 			// own query rather than appending to a partial result
 			*records = (*records)[:0]
 
-			joinClause, whereClause := buildRawJoinAndWhere()
+			whereClause := buildRawWhere()
 
 			switch h.PaginationMode {
 			case apiserver_lib.PaginationModeAsOfSystemTime:
@@ -470,22 +475,17 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				}
 				pagination.QueryId = hlc
 
-				// re-run the join at the captured snapshot for the
+				// re-run the query at the captured snapshot for the
 				// first page. AS OF SYSTEM TIME sits between FROM and
 				// WHERE (CRDB syntax); id ordering matches MV mode.
-				// the columns bound onto the filter struct ride as bind
-				// values, so a page holds the same rows the count did
-				boundClause, boundValues := boundEventFilterClause(&filter)
 				query := fmt.Sprintf(`
 					SELECT v0_events.*
 					FROM v0_events
-					%s
 					AS OF SYSTEM TIME '%s'
 					%s%s
 					ORDER BY v0_events.id ASC
 					LIMIT %d
 				`,
-					joinClause,
 					hlc,
 					whereClause,
 					boundClause,
@@ -498,9 +498,9 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				returnedCount = int64(len(*records))
 
 			default:
-				// materialize the join so subsequent cursor-based page
-				// requests can scan a stable view instead of re-running
-				// the join each time
+				// materialize the filtered rows so subsequent
+				// cursor-based page requests can scan a stable view
+				// instead of re-running the query each time
 				viewName, queryId := GenerateMaterializedViewName()
 
 				// build and execute the CREATE MATERIALIZED VIEW.
@@ -512,11 +512,9 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 					SELECT v0_events.*
 					FROM v0_events
 					%s
-					%s
 					ORDER BY v0_events.event_time ASC, v0_events.id ASC
 				`,
 					viewName,
-					joinClause,
 					whereClause,
 				)
 				if result := h.DB.Exec(createView); result.Error != nil {
@@ -535,9 +533,17 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				// expose the queryId so the client can request subsequent pages
 				pagination.QueryId = queryId
 
-				// fetch the first page off the new materialized view
-				query := fmt.Sprintf("SELECT * FROM %s ORDER BY ID ASC LIMIT %d", viewName, pageParams.Limit)
-				if result := h.DB.Raw(query).Find(records); result.Error != nil {
+				// fetch the first page off the new materialized view.
+				// The view definition carries the subject filters this
+				// handler resolved; the filter-struct predicates apply
+				// on the read, as bind values.
+				query := fmt.Sprintf(
+					"SELECT * FROM %s WHERE TRUE%s ORDER BY ID ASC LIMIT %d",
+					viewName,
+					viewBoundClause,
+					pageParams.Limit,
+				)
+				if result := h.DB.Raw(query, boundValues...).Find(records); result.Error != nil {
 					h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 					return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 				}
@@ -587,22 +593,17 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 			// rebuild what the first page used so the tail of the
 			// result set is scanned over the same row set
-			joinClause, whereClause := buildRawJoinAndWhere()
+			whereClause := buildRawWhere()
 			whereClause += fmt.Sprintf(" AND v0_events.id > %d", pageParams.Cursor)
 
-			// mirror the first page's bound-column filter so the
-			// continuation reads the same subset of the snapshot
-			boundClause, boundValues := boundEventFilterClause(&filter)
 			recordsQuery := fmt.Sprintf(`
 				SELECT v0_events.*
 				FROM v0_events
-				%s
 				AS OF SYSTEM TIME '%s'
 				%s%s
 				ORDER BY v0_events.id ASC
 				LIMIT %d
 			`,
-				joinClause,
 				pageParams.QueryId,
 				whereClause,
 				boundClause,
@@ -649,16 +650,14 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 
 			// fetch the next page from the view starting just past the
 			// previous cursor. the ID index built at create-time keeps
-			// this O(limit) rather than O(view size). The view definition
-			// carries the subject filters; the columns bound onto the
-			// filter struct apply here, as bind values, because a view
-			// definition cannot take placeholders.
-			boundClause, boundValues := boundEventFilterClause(&filter)
+			// this O(limit) rather than O(view size). The filter-struct
+			// predicates apply on this read the same way they apply on
+			// the first-page read.
 			recordsQuery := fmt.Sprintf(
 				"SELECT * FROM %s WHERE ID > %d%s ORDER BY ID ASC LIMIT %d",
 				viewName,
 				pageParams.Cursor,
-				strings.ReplaceAll(boundClause, "v0_events.", ""),
+				viewBoundClause,
 				pageParams.Limit,
 			)
 			if result := h.DB.Raw(recordsQuery, boundValues...).Find(records); result.Error != nil {
@@ -694,9 +693,9 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 	}
 
-	// enrich records with attached object reference fields and resolved
-	// object names; failures are logged so events still come back when
-	// resolution can't fully complete.
+	// resolve each event's object name from its subject columns;
+	// failures are logged so events still come back when resolution
+	// can't fully complete.
 	if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger); err != nil {
 		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
 	}
@@ -724,74 +723,13 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	})
 }
 
-// enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName
-// on each event from the joined attached object reference and a per-type
-// batched name lookup.
+// enrichEventsWithObjectInfo populates ObjectName on each event, resolving
+// it from the ObjectType and ObjectID columns the event row carries through
+// a per-type batched name lookup.
 func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Event, log *zap.Logger) error {
 	// no events to enrich - nothing to do
 	if len(events) == 0 {
 		return nil
-	}
-
-	// collect distinct event ids to look up their AOR rows via the
-	// (attached_object_type, attached_object_id) composite index
-	eventIDs := make([]uint, 0, len(events))
-	seen := map[uint]struct{}{}
-	for _, e := range events {
-		// skip events without an ID (shouldn't happen for persisted rows
-		// but avoids a nil deref if it does)
-		if e.ID == nil {
-			continue
-		}
-		// dedupe: an event id may appear more than once in events when
-		// pagination retries land overlapping pages
-		if _, ok := seen[*e.ID]; ok {
-			continue
-		}
-		seen[*e.ID] = struct{}{}
-		eventIDs = append(eventIDs, *e.ID)
-	}
-
-	// nothing left after the ID dedupe pass; bail before issuing the AOR query
-	if len(eventIDs) == 0 {
-		return nil
-	}
-
-	// load every AOR row where this event is the attached side. The
-	// (attached_object_type, attached_object_id) composite uniquely
-	// identifies one AOR per event id.
-	fullyQualifiedEventType := (&v0.Event{}).GetFullyQualifiedType()
-	var aors []v0.AttachedObjectReference
-	if err := db.
-		Where("attached_object_type = ? AND attached_object_id IN ?", fullyQualifiedEventType, eventIDs).
-		Find(&aors).Error; err != nil {
-		return fmt.Errorf("failed to load attached object references: %w", err)
-	}
-
-	// build an event-id -> AOR map so the per-event projection step
-	// below is O(1) per lookup
-	aorByEventID := make(map[uint]v0.AttachedObjectReference, len(aors))
-	for _, a := range aors {
-		if a.AttachedObjectID != nil {
-			aorByEventID[*a.AttachedObjectID] = a
-		}
-	}
-
-	// project AOR.ObjectType and AOR.ObjectID onto each event row
-	// (these are gorm:"-" projection-only fields on the Event struct)
-	for i := range events {
-		e := &events[i]
-		if e.ID == nil {
-			continue
-		}
-		a, ok := aorByEventID[*e.ID]
-		if !ok {
-			// event has no matching AOR; leave the projection fields nil
-			// and let the response render id-only when shown
-			continue
-		}
-		e.ObjectType = a.ObjectType
-		e.ObjectID = a.ObjectID
 	}
 
 	// group object ids by their qualified type so the name lookup can
@@ -812,7 +750,8 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 	// remaining misses to core sql or module http; failures are logged
 	// so events still come back (rendered id-only) when name resolution
 	// fails for some types. Cache hits skip the resolver round trip
-	// entirely so a hot repeat page pays only for the AOR load above.
+	// entirely, so a page whose names are all cached issues no query at
+	// all.
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
 		resolved := make(map[uint]string, len(idSet))

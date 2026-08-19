@@ -65,7 +65,7 @@ func CustomRoutes(h *handlers.Handler) *[]CustomRoute {
 			},
 		},
 
-		// Joins attached object references for events.
+		// Lists events, filtered by subject.
 		{
 			Path:    v0.PathEventsJoinAttachedObjectReferences,
 			Method:  "GET",
@@ -73,10 +73,6 @@ func CustomRoutes(h *handlers.Handler) *[]CustomRoute {
 			ApiObjects: &[]ApiObject{
 				{
 					Name:    v0.ObjectTypeEvent,
-					Version: "v0",
-				},
-				{
-					Name:    v0.ObjectTypeAttachedObjectReference,
 					Version: "v0",
 				},
 			},

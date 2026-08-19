@@ -10,6 +10,7 @@
 package cockroach
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -85,6 +86,12 @@ func TestMain(m *testing.M) {
 // explicit one whose hostname is not loopback, and a loopback listener is
 // unreachable from the published port, so naming the address at all is what
 // breaks it.
+//
+// The container id is read from stdout alone. A host that does not already
+// hold the image pulls it as part of the same command and writes the pull
+// progress to stderr, so a merged read returns that progress with the id
+// appended and every later command is handed something that is not a
+// container id.
 func startCockroach() (string, string, error) {
 	run := exec.Command(
 		"docker", "run", "--detach",
@@ -92,15 +99,17 @@ func startCockroach() (string, string, error) {
 		fmt.Sprintf("cockroachdb/cockroach:%s", installer.DatabaseImageTag),
 		"start-single-node", "--insecure",
 	)
-	out, err := run.CombinedOutput()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to run the container: %w: %s", err, out)
+	var stdout, stderr bytes.Buffer
+	run.Stdout = &stdout
+	run.Stderr = &stderr
+	if err := run.Run(); err != nil {
+		return "", "", fmt.Errorf("failed to run the container: %w: %s", err, stderr.String())
 	}
-	container := strings.TrimSpace(string(out))
+	container := strings.TrimSpace(stdout.String())
 
 	// the published port is chosen at start, so read it back rather than
 	// assuming one
-	out, err = exec.Command("docker", "port", container, "26257/tcp").CombinedOutput()
+	out, err := exec.Command("docker", "port", container, "26257/tcp").CombinedOutput()
 	if err != nil {
 		return container, "", fmt.Errorf("failed to read the published port: %w: %s", err, out)
 	}

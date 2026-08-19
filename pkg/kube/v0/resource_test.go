@@ -114,6 +114,26 @@ func TestIsTransientKubeError(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "etcd request timeout",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: request timed out")),
+			want: true,
+		},
+		{
+			name: "etcd leader changed",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: leader changed")),
+			want: true,
+		},
+		{
+			name: "etcd no leader",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: no leader")),
+			want: true,
+		},
+		{
+			name: "etcd too many requests",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: too many requests")),
+			want: true,
+		},
+		{
 			name: "internal error with an unrelated cause",
 			err:  kubeerr.NewInternalError(errors.New("something else went wrong")),
 			want: false,
@@ -209,6 +229,63 @@ func TestCreateResourceGivesUpOnPersistentTransientError(t *testing.T) {
 			"CreateResource against an apiserver that never recovers: got %d attempts, want %d",
 			client.resourceClient.attempts, createRetryAttempts,
 		)
+	}
+}
+
+// TestCreateResourceRetriesEtcdStorageStall covers the condition that took
+// the integration lane down: etcd answers a write it cannot commit in time
+// with "etcdserver: request timed out", which kube-apiserver passes through
+// as a generic internal error. Nothing in the error's reason marks it
+// retriable, so only the message keeps the install alive.
+func TestCreateResourceRetriesEtcdStorageStall(t *testing.T) {
+	shrinkCreateRetryDelay(t)
+
+	client := &stubDynamicClient{
+		resourceClient: &stubResourceClient{
+			results: []stubCreateResult{
+				{err: kubeerr.NewInternalError(errors.New("etcdserver: request timed out"))},
+				{object: testDeployment()},
+			},
+		},
+	}
+
+	result, err := CreateResource(testDeployment(), client, testDeploymentMapper())
+	if err != nil {
+		t.Fatalf("CreateResource through an etcd stall: got err %v, want nil", err)
+	}
+	if result == nil {
+		t.Fatal("CreateResource through an etcd stall: got nil object, want the created resource")
+	}
+	if client.resourceClient.attempts != 2 {
+		t.Fatalf("CreateResource through an etcd stall: got %d attempts, want 2", client.resourceClient.attempts)
+	}
+}
+
+// TestCreateOrUpdateResourceRetriesEtcdStorageStall covers the same stall on
+// the create-or-update path, which reinstalls and child control plane
+// installs take. It had no retry at all, so a stall there aborted the
+// install on the first attempt.
+func TestCreateOrUpdateResourceRetriesEtcdStorageStall(t *testing.T) {
+	shrinkCreateRetryDelay(t)
+
+	client := &stubDynamicClient{
+		resourceClient: &stubResourceClient{
+			results: []stubCreateResult{
+				{err: kubeerr.NewInternalError(errors.New("etcdserver: request timed out"))},
+				{object: testDeployment()},
+			},
+		},
+	}
+
+	result, err := CreateOrUpdateResource(testDeployment(), client, testDeploymentMapper())
+	if err != nil {
+		t.Fatalf("CreateOrUpdateResource through an etcd stall: got err %v, want nil", err)
+	}
+	if result == nil {
+		t.Fatal("CreateOrUpdateResource through an etcd stall: got nil object, want the created resource")
+	}
+	if client.resourceClient.attempts != 2 {
+		t.Fatalf("CreateOrUpdateResource through an etcd stall: got %d attempts, want 2", client.resourceClient.attempts)
 	}
 }
 

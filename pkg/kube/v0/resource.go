@@ -22,25 +22,49 @@ import (
 )
 
 // createRetryAttempts is the number of times a transient kube-apiserver
-// error (server-side timeouts, quota-evaluator timeouts) is retried before
-// the caller sees the failure. Enough tries to ride out a short apiserver
-// backpressure spike during control plane bring-up, but not so many that a
-// genuine misconfiguration hides for minutes.
-const createRetryAttempts = 5
+// error (server-side timeouts, quota-evaluator timeouts, storage stalls) is
+// retried before the caller sees the failure. The budget has to outlast the
+// stall it absorbs: etcd gives a write several seconds before answering
+// "request timed out", so a window shorter than that reports failure while
+// the cause is still clearing. Seven attempts over the delays below spans
+// roughly 24 seconds, long enough for a storage stall to pass and short
+// enough that a genuine misconfiguration does not hide for minutes.
+const createRetryAttempts = 7
 
 // createRetryBaseDelay backs off exponentially between retries starting
-// from this base (250ms, 500ms, 1s, 2s) so the apiserver has a chance to
-// catch up on quota evaluation before the next attempt. It is a variable
-// rather than a constant so tests can shrink the wait.
-var createRetryBaseDelay = 250 * time.Millisecond
+// from this base (500ms, 1s, 2s, 4s, 8s) so the apiserver has a chance to
+// catch up before the next attempt. It is a variable rather than a constant
+// so tests can shrink the wait.
+var createRetryBaseDelay = 500 * time.Millisecond
+
+// createRetryMaxDelay caps the exponential backoff so the last attempts stay
+// a fixed interval apart instead of doubling past the useful range.
+const createRetryMaxDelay = 8 * time.Second
+
+// transientStorageMessages are the kube-apiserver 500 bodies that name a
+// condition which clears on its own. kube-apiserver passes a storage error it
+// does not recognize straight through, so these arrive as a generic internal
+// error whose reason says nothing; the message is the only thing that
+// distinguishes them from a deterministic 500.
+//
+// Every entry describes a write that either has not been committed or cannot
+// be confirmed, which makes it safe to send again: a create that did commit
+// before timing out answers AlreadyExists on the next attempt, and no caller
+// in this repository uses generateName, so a resend cannot produce a
+// duplicate under a different name.
+var transientStorageMessages = []string{
+	"resource quota evaluation timed out",
+	"etcdserver: request timed out",
+	"etcdserver: leader changed",
+	"etcdserver: no leader",
+	"etcdserver: too many requests",
+}
 
 // isTransientKubeError reports whether a Kubernetes API error is worth
 // retrying. Covers server-side timeouts, temporary service unavailable
-// responses, and the "Internal error occurred: resource quota evaluation
-// timed out" surface kube-apiserver emits when its quota evaluator is
-// backpressured during a burst of resource creates. Every other error
-// (AlreadyExists, NotFound, Forbidden, Invalid) is deterministic and
-// should not be retried.
+// responses, and the internal-error surfaces listed in
+// transientStorageMessages. Every other error (AlreadyExists, NotFound,
+// Forbidden, Invalid) is deterministic and should not be retried.
 func isTransientKubeError(err error) bool {
 	if err == nil {
 		return false
@@ -48,8 +72,13 @@ func isTransientKubeError(err error) bool {
 	if kubeerr.IsServerTimeout(err) || kubeerr.IsTimeout(err) || kubeerr.IsServiceUnavailable(err) || kubeerr.IsTooManyRequests(err) {
 		return true
 	}
-	if kubeerr.IsInternalError(err) && strings.Contains(err.Error(), "resource quota evaluation timed out") {
-		return true
+	if !kubeerr.IsInternalError(err) {
+		return false
+	}
+	for _, msg := range transientStorageMessages {
+		if strings.Contains(err.Error(), msg) {
+			return true
+		}
 	}
 	return false
 }
@@ -112,31 +141,52 @@ func CreateResource(
 	}
 
 	// create the kube resource, retrying transient apiserver errors
-	// (quota-evaluator timeout, server-side timeouts) so a busy control
-	// plane during genesis bring-up does not abort the whole install.
+	// (quota-evaluator timeout, server-side timeouts, storage stalls) so a
+	// busy control plane during genesis bring-up does not abort the whole
+	// install.
 	var result *unstructured.Unstructured
-	delay := createRetryBaseDelay
-	for attempt := 0; attempt < createRetryAttempts; attempt++ {
-		result, err = kubeClient.
+	err = retryTransient(func() error {
+		var createErr error
+		result, createErr = kubeClient.
 			Resource(mapping.Resource).
 			Namespace(kubeObject.GetNamespace()).
 			Create(context.Background(), kubeObject, kubemetav1.CreateOptions{})
-		if err == nil {
-			return result, nil
+		if kubeerr.IsAlreadyExists(createErr) {
+			result = kubeObject
+			return nil
 		}
-		if kubeerr.IsAlreadyExists(err) {
-			return kubeObject, nil
+		return createErr
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes resource:%w", err)
+	}
+	return result, nil
+}
+
+// retryTransient runs op until it succeeds, until it fails with an error no
+// amount of waiting fixes, or until the attempt budget is spent, backing off
+// exponentially between tries. The budget-exhausted error names the attempt
+// count so a failure that outlasted the window reads differently from one
+// the predicate never recognized as retriable.
+func retryTransient(op func() error) error {
+	var err error
+	delay := createRetryBaseDelay
+	for attempt := 0; attempt < createRetryAttempts; attempt++ {
+		err = op()
+		if err == nil {
+			return nil
 		}
 		if !isTransientKubeError(err) {
-			return nil, fmt.Errorf("failed to create kubernetes resource:%w", err)
+			return err
 		}
 		if attempt < createRetryAttempts-1 {
 			time.Sleep(delay)
-			delay *= 2
+			if delay *= 2; delay > createRetryMaxDelay {
+				delay = createRetryMaxDelay
+			}
 		}
 	}
-	return nil, fmt.Errorf("failed to create kubernetes resource after %d attempts:%w", createRetryAttempts, err)
-
+	return fmt.Errorf("gave up after %d attempts: %w", createRetryAttempts, err)
 }
 
 // CreateOrUpdateResource takes an unstructured object, dynamic client interface and rest
@@ -153,11 +203,19 @@ func CreateOrUpdateResource(
 		return nil, fmt.Errorf("failed to get REST mapping for kubernetes resource: %w", err)
 	}
 
-	// create the kube resource
-	result, err := kubeClient.
-		Resource(mapping.Resource).
-		Namespace(kubeObject.GetNamespace()).
-		Create(context.TODO(), kubeObject, kubemetav1.CreateOptions{})
+	// create the kube resource, retrying the same transient conditions
+	// CreateResource rides out. This path carries reinstalls and child
+	// control plane installs, which run against a control plane already
+	// under load, so it meets those stalls more often rather than less.
+	var result *unstructured.Unstructured
+	err = retryTransient(func() error {
+		var createErr error
+		result, createErr = kubeClient.
+			Resource(mapping.Resource).
+			Namespace(kubeObject.GetNamespace()).
+			Create(context.TODO(), kubeObject, kubemetav1.CreateOptions{})
+		return createErr
+	})
 	if err != nil {
 
 		// if the resource already exists, update it

@@ -79,6 +79,30 @@ func TestPartialUniqueIndexReleasesOnSoftDelete(t *testing.T) {
 		"the base is married again once the first marriage is soft deleted")
 }
 
+// TestRecreatingASoftDeletedReferenceIsAccepted covers the case a client hits
+// most often: an object is deleted and the same one is created again. Every
+// unique index on the table carries the deleted_at predicate, so the pair the
+// deleted row held is free the moment it is deleted rather than when the
+// database eventually hard-deletes the row.
+func TestRecreatingASoftDeletedReferenceIsAccepted(t *testing.T) {
+	reference := newReference("Workload", 50, "Gateway", 50, api_v0.RelationshipDescribes)
+	require.NoError(t, testDb.Create(&reference).Error, "the first reference is accepted")
+	require.NoError(t, testDb.Delete(&reference).Error, "the reference is soft deleted")
+
+	// the soft-deleted row is still in the table, so an index without the
+	// predicate would still be holding the pair
+	var remaining int64
+	require.NoError(t,
+		testDb.Unscoped().Model(&api_v0.AttachedObjectReference{}).
+			Where("id = ?", *reference.ID).Count(&remaining).Error,
+	)
+	require.Equal(t, int64(1), remaining, "the soft-deleted row is still in the table")
+
+	recreated := newReference("Workload", 50, "Gateway", 50, api_v0.RelationshipDescribes)
+	assert.NoError(t, testDb.Create(&recreated).Error,
+		"the same pair is accepted again once the first reference is soft deleted")
+}
+
 // fullTableUnique is a model whose unique index carries no predicate. It is
 // declared here rather than borrowed from the api types because the property
 // under test is what the missing predicate costs, and every api type is free to

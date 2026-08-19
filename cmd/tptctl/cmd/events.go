@@ -353,7 +353,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsObjectId,
-		"id", "", "Filter events by object ID, the numeric ID the object carries in the API (read one with tptctl get <object-type> -o json). Mutually exclusive with --for and --name; combinable with --object-kind and --api-group.",
+		"id", "", "Filter events by object ID, the numeric ID the object carries in the API. Read one off the ObjectID field of tptctl get events -o json, which is where tptctl surfaces it. Mutually exclusive with --for and --name; combinable with --object-kind and --api-group.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsReason,

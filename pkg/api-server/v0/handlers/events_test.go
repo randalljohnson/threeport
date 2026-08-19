@@ -33,7 +33,16 @@ func newEventsHandler(t *testing.T) Handler {
 		&api.ModuleObject{},
 		&api.ModuleApiRoute{},
 		&api.AttachedObjectReference{},
+		&api.Profile{},
+		&api.Tier{},
 	))
+
+	// the resolved-name cache is process-wide, so empty it per test:
+	// two tests holding different names behind the same (type, id) have
+	// to each see their own.
+	moduleNameCache.mu.Lock()
+	moduleNameCache.entries = map[nameCacheKey]nameCacheEntry{}
+	moduleNameCache.mu.Unlock()
 
 	return Handler{DB: db, Logger: zap.NewNop()}
 }
@@ -194,4 +203,130 @@ func TestGetEvents_ExcludesSoftDeletedEvent(t *testing.T) {
 	require.Equal(t, http.StatusOK, code)
 	assert.Equal(t, []uint{*live.ID}, eventIDs(events),
 		"a soft-deleted event stays out of the listing")
+}
+
+// seedProfile writes a Profile row at the given id, one of the two core
+// types these tests use as an event subject whose name resolves through
+// core SQL.
+func seedProfile(t *testing.T, db *gorm.DB, id uint, name string) {
+	t.Helper()
+
+	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(&api.Profile{
+		Common: api.Common{ID: util.Ptr(id)},
+		Name:   util.Ptr(name),
+	}).Error)
+}
+
+// seedTier writes a Tier row at the given id, the second core subject
+// type these tests use, so a name prefix can be shown reaching across
+// types.
+func seedTier(t *testing.T, db *gorm.DB, id uint, name string) {
+	t.Helper()
+
+	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(&api.Tier{
+		Common:      api.Common{ID: util.Ptr(id)},
+		Name:        util.Ptr(name),
+		Criticality: util.Ptr(1),
+	}).Error)
+}
+
+// TestGetEvents_ObjectNamePrefixMatchesAcrossSubjectTypes covers the
+// case the prefix exists for: a fleet object and the children whose
+// names extend the fleet name sit under different types, and one query
+// returns every event about them. The Tier sharing an id with the
+// matching Profile stays out, so the match is per (type, id) pair
+// rather than by id alone.
+func TestGetEvents_ObjectNamePrefixMatchesAcrossSubjectTypes(t *testing.T) {
+	h := newEventsHandler(t)
+
+	seedProfile(t, h.DB, 1, "myfleet2")
+	seedProfile(t, h.DB, 3, "otherfleet")
+	seedTier(t, h.DB, 1, "unrelated")
+	seedTier(t, h.DB, 2, "myfleet2-fleet2-host2")
+
+	fleet := seedEvent(t, h.DB, "R0", "threeport.io/v0.Profile", 1)
+	child := seedEvent(t, h.DB, "R1", "threeport.io/v0.Tier", 2)
+	seedEvent(t, h.DB, "R2", "threeport.io/v0.Tier", 1)
+	seedEvent(t, h.DB, "R3", "threeport.io/v0.Profile", 3)
+
+	code, events := getEvents(t, h, "?objectnameprefix=myfleet2")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.ElementsMatch(t, []uint{*fleet.ID, *child.ID}, eventIDs(events),
+		"a name prefix reaches every subject type whose name starts with it")
+}
+
+// TestGetEvents_ObjectNamePrefixNarrowsToObjectTypeName covers a prefix
+// alongside a bare kind. The kind resolves through the core registry,
+// and only subjects of that kind are matched, so the same prefix
+// answers with one type's events.
+func TestGetEvents_ObjectNamePrefixNarrowsToObjectTypeName(t *testing.T) {
+	h := newEventsHandler(t)
+	withCoreObjectVersions(t, "Tier", "v0")
+
+	seedProfile(t, h.DB, 1, "myfleet2")
+	seedTier(t, h.DB, 2, "myfleet2-fleet2-host2")
+
+	seedEvent(t, h.DB, "R0", "threeport.io/v0.Profile", 1)
+	child := seedEvent(t, h.DB, "R1", "threeport.io/v0.Tier", 2)
+
+	code, events := getEvents(t, h, "?objecttypename=Tier&objectnameprefix=myfleet2")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, []uint{*child.ID}, eventIDs(events),
+		"the kind narrows the prefix to one subject type")
+}
+
+// TestGetEvents_ObjectNamePrefixMatchingNothingReturns404 covers a
+// prefix no subject name starts with. Nothing resolves, so the handler
+// answers not found rather than returning every event.
+func TestGetEvents_ObjectNamePrefixMatchingNothingReturns404(t *testing.T) {
+	h := newEventsHandler(t)
+
+	seedProfile(t, h.DB, 1, "myfleet2")
+	seedEvent(t, h.DB, "R0", "threeport.io/v0.Profile", 1)
+
+	code, _ := getEvents(t, h, "?objectnameprefix=nosuchfleet")
+
+	assert.Equal(t, http.StatusNotFound, code)
+}
+
+// TestGetEvents_ObjectNamePrefixRejections covers the shapes the handler
+// refuses: a prefix paired with either of the other two subject
+// selectors, and a prefix carrying a character a name cannot hold.
+func TestGetEvents_ObjectNamePrefixRejections(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+	}{
+		{"with objectname", "?objecttypename=Tier&objectname=myfleet2&objectnameprefix=myfleet2"},
+		{"with objectid", "?objectid=1&objectnameprefix=myfleet2"},
+		{"embedded star", "?objectnameprefix=my*fleet2"},
+		{"leading hyphen", "?objectnameprefix=-myfleet2"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			h := newEventsHandler(t)
+			seedProfile(t, h.DB, 1, "myfleet2")
+			seedEvent(t, h.DB, "R0", "threeport.io/v0.Profile", 1)
+
+			code, _ := getEvents(t, h, test.query)
+
+			assert.Equal(t, http.StatusBadRequest, code)
+		})
+	}
+}
+
+// withCoreObjectVersions registers one core kind in the in-memory
+// version registry for the length of a test, which is what turns a bare
+// kind on the query into a fully qualified core type.
+func withCoreObjectVersions(t *testing.T, kind, version string) {
+	t.Helper()
+
+	previous := apiserver_lib.ObjectVersions
+	apiserver_lib.ObjectVersions = map[string]apiserver_lib.ApiObjectVersions{
+		kind: {API: kind, Versions: []string{version}},
+	}
+	t.Cleanup(func() { apiserver_lib.ObjectVersions = previous })
 }

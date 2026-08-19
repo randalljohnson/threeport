@@ -12,10 +12,17 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// eventDedupIndex is the unique index closing the dedup key over an
-// event's subject and its content. Declared on the Event fields; named
-// here because ON CONFLICT takes the constraint by name.
-const eventDedupIndex = "idx_events_dedup"
+// eventDedupColumns are the columns of the unique index idx_events_dedup,
+// declared on the Event fields above. ON CONFLICT names them in this order
+// to pick that index as its arbiter.
+var eventDedupColumns = []clause.Column{
+	{Name: "reason"},
+	{Name: "note"},
+	{Name: "type"},
+	{Name: "reporting_controller"},
+	{Name: "object_type"},
+	{Name: "object_id"},
+}
 
 // beforeCreate runs before the Event is created. It validates that the
 // caller supplied both subject fields (ObjectType + ObjectID) and that
@@ -28,8 +35,10 @@ const eventDedupIndex = "idx_events_dedup"
 // the call site so it covers a client posting to the events endpoint
 // directly.
 //
-// The conflict target names the index instead of listing its columns,
-// because CockroachDB rejects an inline expression in ON CONFLICT.
+// The conflict target lists the index columns and repeats the index
+// predicate. CockroachDB refuses a partial unique index as an arbiter
+// through ON CONSTRAINT, answering SQLSTATE 42809, and accepts it only in
+// the ON CONFLICT (columns) WHERE predicate form.
 func (e *Event) beforeCreate(tx *gorm.DB) error {
 	if e.ObjectType == nil || e.ObjectID == nil {
 		return util.NewBadRequestError(
@@ -47,7 +56,8 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 	// sighting, so the row keeps event_time as when the failure first
 	// appeared. tptctl renders the pair as a "first..last" age span.
 	tx.Statement.AddClause(clause.OnConflict{
-		OnConstraint: eventDedupIndex,
+		Columns:     eventDedupColumns,
+		TargetWhere: clause.Where{Exprs: []clause.Expression{gorm.Expr("deleted_at IS NULL")}},
 		DoUpdates: clause.Assignments(map[string]interface{}{
 			"count":              gorm.Expr("v0_events.count + 1"),
 			"last_observed_time": gorm.Expr("excluded.last_observed_time"),
@@ -65,12 +75,15 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
+//
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
 // Import:
-//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (e *Event) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }

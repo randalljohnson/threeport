@@ -647,6 +647,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				))
 				f.Comment("@Success 201 {object} v0.Response \"Created\"")
 				f.Comment("@Failure 400 {object} v0.Response \"Bad Request\"")
+				f.Comment("@Failure 409 {object} v0.Response \"Conflict\"")
 				f.Comment("@Failure 500 {object} v0.Response \"Internal Server Error\"")
 				if gen.Module {
 					f.Comment(fmt.Sprintf(
@@ -835,6 +836,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Id("objectType").Op(",").Line(),
 							)),
 						)
+						emitUniqueViolationCheck(h, gen.Module)
 						h.Return(Qual(
 							"github.com/threeport/threeport/pkg/api-server/lib/v0",
 							"ResponseStatus500",
@@ -1388,6 +1390,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				f.Comment("@Success 200 {object} v0.Response \"OK\"")
 				f.Comment("@Failure 400 {object} v0.Response \"Bad Request\"")
 				f.Comment("@Failure 404 {object} v0.Response \"Not Found\"")
+				f.Comment("@Failure 409 {object} v0.Response \"Conflict\"")
 				f.Comment("@Failure 500 {object} v0.Response \"Internal Server Error\"")
 				if gen.Module {
 					f.Comment(fmt.Sprintf(
@@ -1614,6 +1617,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									Id("objectType").Op(",").Line(),
 								)),
 							)
+							emitUniqueViolationCheck(h, gen.Module)
 							h.Return(Qual(
 								"github.com/threeport/threeport/pkg/api-server/lib/v0",
 								"ResponseStatus500",
@@ -1691,6 +1695,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				f.Comment("@Success 200 {object} v0.Response \"OK\"")
 				f.Comment("@Failure 400 {object} v0.Response \"Bad Request\"")
 				f.Comment("@Failure 404 {object} v0.Response \"Not Found\"")
+				f.Comment("@Failure 409 {object} v0.Response \"Conflict\"")
 				f.Comment("@Failure 500 {object} v0.Response \"Internal Server Error\"")
 				if gen.Module {
 					f.Comment(fmt.Sprintf(
@@ -1952,6 +1957,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									Id("objectType").Op(",").Line(),
 								)),
 							)
+							emitUniqueViolationCheck(h, gen.Module)
 							h.Return(Qual(
 								"github.com/threeport/threeport/pkg/api-server/lib/v0",
 								"ResponseStatus500",
@@ -2349,6 +2355,48 @@ func emitBlockedByChildrenCheck(s *Statement, objVar, instancesField string, mod
 				Id("blockingChildren"),
 			),
 			Line(),
+		)),
+	)
+}
+
+// emitUniqueViolationCheck appends the branch that answers 409 when a unique
+// index rejected the write. It runs after the check for an explicitly chosen
+// status code, so a hook that picked one still wins, and before the fallback
+// that treats an unrecognised failure as a server fault.
+//
+// The index that rejected the write is logged and left out of the response.
+// Index names are chosen per object and get renamed, so a client that read one
+// would be reading something the server never promised to keep. The conflict
+// itself is logged at info: the request asks for state that already exists,
+// which is the client's to resolve and not a fault of the server.
+func emitUniqueViolationCheck(h *Group, module bool) {
+	logger := Id("h").Dot("Logger")
+	if module {
+		logger = Id("h").Dot("Handler").Dot("Logger")
+	}
+
+	h.Comment("check whether a unique index rejected the write")
+	h.List(Id("constraint"), Id("conflict")).Op(":=").Qual(
+		"github.com/threeport/threeport/pkg/api-server/lib/v0",
+		"UniqueViolation",
+	).Call(Id("result").Dot("Error"))
+	h.If(Id("conflict")).Block(
+		logger.Dot("Info").Call(
+			Line().Lit("write rejected by unique index"),
+			Line().Qual("go.uber.org/zap", "String").Call(Lit("constraint"), Id("constraint")),
+			Line(),
+		),
+		Return(Qual(
+			"github.com/threeport/threeport/pkg/api-server/lib/v0",
+			"ResponseStatus409",
+		).Call(
+			Line().Id("c"),
+			Line().Nil(),
+			Line().Qual("errors", "New").Call(Qual(
+				"github.com/threeport/threeport/pkg/api-server/lib/v0",
+				"ErrMsgUniqueViolation",
+			)),
+			Line().Id("objectType").Op(",").Line(),
 		)),
 	)
 }

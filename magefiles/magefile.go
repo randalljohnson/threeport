@@ -288,10 +288,11 @@ const moduleTestBinary = "test"
 // otherwise writes only once.
 var moduleTestInputs = []string{"sdk-config.yaml", "README.md"}
 
-// ModuleGen generates a Threeport module and compiles it.
+// ModuleGen generates a Threeport module and type-checks it, test files
+// included.
 //
 // The SDK emits different code for a module than for this repository, and
-// nothing else here compiles that code.  It calls this repository's exported
+// nothing else here type-checks that code.  It calls this repository's exported
 // API by name, so a changed signature breaks it.  Without this target the
 // break surfaces later, in a module repository, far from the change.
 func (Test) ModuleGen() error {
@@ -299,19 +300,15 @@ func (Test) ModuleGen() error {
 		return err
 	}
 
-	// magefiles is vetted rather than built because mage supplies its main
-	// function at run time, so building that package fails here too
+	// go vet type-checks the generated test files, which call this
+	// repository's exported API and so break on a changed signature, and it
+	// accepts the magefiles package, whose main function mage supplies at run
+	// time
 	if err := util.RunCommandStreamOutputInDir(
 		moduleTestPath,
-		"go", "build", "./cmd/...", "./pkg/...", "./internal/...",
+		"go", "vet", "./...",
 	); err != nil {
-		return fmt.Errorf("failed to build the generated module: %w", err)
-	}
-	if err := util.RunCommandStreamOutputInDir(
-		moduleTestPath,
-		"go", "vet", "./magefiles/...",
-	); err != nil {
-		return fmt.Errorf("failed to vet the generated module magefiles: %w", err)
+		return fmt.Errorf("failed to type-check the generated module: %w", err)
 	}
 
 	// a failed run returns above without this, leaving the generated source
@@ -320,7 +317,7 @@ func (Test) ModuleGen() error {
 		return err
 	}
 
-	fmt.Println("module generated and compiled successfully")
+	fmt.Println("module generated and type-checked successfully")
 
 	return nil
 }

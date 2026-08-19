@@ -11,17 +11,29 @@ import (
 	"gorm.io/gorm"
 )
 
+// CockroachDB reports a serialization conflict when overlapping transactions
+// cannot be placed in a valid one-at-a-time ordering, and in a handful of
+// adjacent situations such as clock uncertainty between nodes. Rather than
+// record an answer no serial execution could produce, it aborts one of the
+// transactions, rolls it back whole, and returns SQLSTATE 40001, which asks the
+// client to run the whole transaction again.
+//
+// That class reaches a client here because CockroachDB runs at the SERIALIZABLE
+// isolation level by default, which hands the conflict back rather than
+// absorbing it. PostgreSQL defaults to the weaker READ COMMITTED, where
+// contending writes block and re-evaluate instead of aborting, so with that
+// default in mind SQLSTATE 40001 is easy to treat as a case that never happens.
+// On CockroachDB it happens during routine contention.
 const (
-	// serializationFailureCode is the SQLSTATE returned by CockroachDB and
-	// PostgreSQL when a transaction is aborted due to a serialization
-	// conflict. Such failures are safe to retry from the start.
+	// serializationFailureCode is the SQLSTATE both CockroachDB and PostgreSQL
+	// return on a serialization conflict.
 	serializationFailureCode = "40001"
 
 	// serializationRetryMax bounds how many times a write is re-run after a
-	// serialization conflict before the error is surfaced to the caller. Sized
-	// for the observed workload: bursts of concurrent PATCHes on the same row
-	// exhaust a 5-attempt budget for a small fraction of writers, so the cap
-	// sits high enough to absorb that burst without stranding the caller.
+	// serialization conflict before the error is surfaced to the caller. A
+	// burst of concurrent updates to one row outlasts a budget of a few
+	// attempts, so the cap sits high enough to absorb a burst and low enough
+	// to bound how long a write that keeps conflicting holds its connection.
 	serializationRetryMax = 12
 
 	// serializationRetryBaseDelay seeds the exponential backoff. Doubling and
@@ -35,18 +47,30 @@ const (
 )
 
 // RetryWrite runs a database write and re-runs it from the start when the write
-// fails with a serialization conflict, the SQLSTATE 40001 class CockroachDB
-// reports when it aborts a transaction, up to a bounded number of attempts. It
+// fails with a serialization conflict, up to a bounded number of attempts. It
 // returns the result of the last attempt so callers inspect result.Error as
 // usual. Non-retryable errors are returned on the first attempt without delay.
 // Retrying stops as soon as ctx is done, so a caller that hung up mid-request
 // does not hold a goroutine and a database connection through the backoff.
+//
+// write carries out one transaction and nothing else. A conflict rolls that
+// transaction back whole, so the re-run starts against a database no part of
+// the failed attempt reached, and it usually succeeds once the conflicting
+// writer commits. A closure that writes twice, or that also changes state
+// outside the database, re-applies whatever already landed and must not be
+// passed here.
 func RetryWrite(ctx context.Context, write func() *gorm.DB) *gorm.DB {
 	var result *gorm.DB
 	for attempt := 0; attempt < serializationRetryMax; attempt++ {
 		result = write()
 		if result.Error == nil || !isSerializationFailure(result.Error) {
 			return result
+		}
+
+		// the budget is spent, so hand the conflict back now rather than
+		// waiting out a backoff no further attempt follows
+		if attempt == serializationRetryMax-1 {
+			break
 		}
 
 		// wait out the backoff, but give up on the whole retry budget the

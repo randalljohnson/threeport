@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -109,19 +110,27 @@ func TestRetryWriteSkipsNonRetryable(t *testing.T) {
 }
 
 // TestRetryWriteExhaustsBudget covers budget exhaustion: a write that keeps
-// failing with a serialization conflict is retried up to the bound and the last
-// error is returned.
+// failing with a serialization conflict is retried up to the bound, the last
+// error is returned, and the return comes as soon as the final attempt fails
+// rather than after one more backoff.
 func TestRetryWriteExhaustsBudget(t *testing.T) {
-	// always fail with a serialization conflict
+	// always fail with a serialization conflict, noting when the newest
+	// attempt ran
 	calls := 0
+	var lastAttempt time.Time
 	result := RetryWrite(context.Background(), func() *gorm.DB {
 		calls++
+		lastAttempt = time.Now()
 		return &gorm.DB{Error: &pgconn.PgError{Code: "40001"}}
 	})
 
 	// the write ran the maximum number of attempts and still reports the error
 	assert.Equal(t, serializationRetryMax, calls)
 	assert.True(t, isSerializationFailure(result.Error))
+
+	// the wait after the final attempt is far below the shortest backoff the
+	// loop takes between attempts
+	assert.Less(t, time.Since(lastAttempt), serializationRetryMaxDelay/5)
 }
 
 // TestRetryWriteStopsOnCancelledContext covers the abandoned request: once the

@@ -14,6 +14,12 @@ import (
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
 )
 
+// migrationTestPackage is the import path of the hand-written package that
+// holds the schema assertion the generated test calls.  It lives in this
+// project, so a module's generated test imports it from here rather than from
+// the module's own path.
+const migrationTestPackage = "github.com/threeport/threeport/pkg/migrationtest/v0"
+
 // GenDbMigratorMain generates source code for the DB migrator main package.
 func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f := NewFile("main")
@@ -538,9 +544,7 @@ func GenDbMigratorSchemaDriftTest(gen *gen.Generator, sdkConfig *sdk.SdkConfig) 
 	f := NewFile("main")
 	f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
-	f.ImportAlias("github.com/pressly/goose/v3", "goose")
-	f.ImportAlias("gorm.io/driver/sqlite", "sqlite")
-	f.ImportAlias("gorm.io/gorm", "gorm")
+	f.ImportAlias(migrationTestPackage, "migrationtest")
 
 	gooseVersionTableName := "threeport_goose_db_version"
 	if gen.Module {
@@ -567,145 +571,14 @@ func GenDbMigratorSchemaDriftTest(gen *gen.Generator, sdkConfig *sdk.SdkConfig) 
 	)
 	f.Line()
 
-	f.Comment("migratedSchema applies every registered migration to a fresh in-memory")
-	f.Comment("database and returns a handle on the resulting schema.")
-	f.Func().Id("migratedSchema").Params(
-		Id("t").Op("*").Qual("testing", "T"),
-	).Params(Op("*").Qual("gorm.io/gorm", "DB")).Block(
-		Id("t").Dot("Helper").Call(),
-		Line(),
-
-		List(Id("gormDb"), Id("err")).Op(":=").Qual("gorm.io/gorm", "Open").Call(
-			Qual("gorm.io/driver/sqlite", "Open").Call(Lit(":memory:")),
-			Op("&").Qual("gorm.io/gorm", "Config").Values(),
-		),
-		If(Id("err").Op("!=").Nil()).Block(
-			Id("t").Dot("Fatalf").Call(Lit("open sqlite: %v"), Id("err")),
-		),
-		Line(),
-
-		Comment("share one connection pool so the migrations and the assertions see"),
-		Comment("the same in-memory database"),
-		List(Id("sqlDb"), Id("err")).Op(":=").Id("gormDb").Dot("DB").Call(),
-		If(Id("err").Op("!=").Nil()).Block(
-			Id("t").Dot("Fatalf").Call(Lit("resolve sql db: %v"), Id("err")),
-		),
-		Line(),
-
-		If(Id("err").Op(":=").Qual("github.com/pressly/goose/v3", "SetDialect").Call(
-			Lit("sqlite3"),
-		), Id("err").Op("!=").Nil()).Block(
-			Id("t").Dot("Fatalf").Call(Lit("set goose dialect: %v"), Id("err")),
-		),
-		Qual("github.com/pressly/goose/v3", "SetTableName").Call(Lit(gooseVersionTableName)),
-		Line(),
-
-		Comment("the migrations read the gorm db from the context under the same key"),
-		Comment("the deployed migrator sets"),
-		Id("ctx").Op(":=").Qual("context", "WithValue").Call(
-			Qual("context", "Background").Call(), Lit("gormdb"), Id("gormDb"),
-		),
-		If(Id("err").Op(":=").Qual("github.com/pressly/goose/v3", "UpContext").Call(
-			Id("ctx"), Id("sqlDb"), Lit("."),
-		), Id("err").Op("!=").Nil()).Block(
-			Id("t").Dot("Fatalf").Call(Lit("apply migrations: %v"), Id("err")),
-		),
-		Line(),
-
-		Return(Id("gormDb")),
-	)
-	f.Line()
-
 	f.Comment("TestMigrationsCoverEveryPersistedModel asserts the schema the migration")
 	f.Comment("chain builds matches the columns every persisted model declares, reporting")
 	f.Comment("both fields left without a column and columns left without a field.")
 	f.Func().Id("TestMigrationsCoverEveryPersistedModel").Params(
 		Id("t").Op("*").Qual("testing", "T"),
 	).Block(
-		Comment("build the schema a deployed database would have after an upgrade"),
-		Id("gormDb").Op(":=").Id("migratedSchema").Call(Id("t")),
-		Line(),
-
-		For(List(Id("_"), Id("model")).Op(":=").Range().Id("persistedModels").Call()).Block(
-			Comment("resolve the columns the model's fields declare, which accounts"),
-			Comment("for embedded structs, column overrides and excluded fields"),
-			Id("stmt").Op(":=").Op("&").Qual("gorm.io/gorm", "Statement").Values(Dict{
-				Id("DB"): Id("gormDb"),
-			}),
-			If(Id("err").Op(":=").Id("stmt").Dot("Parse").Call(
-				Id("model"),
-			), Id("err").Op("!=").Nil()).Block(
-				Id("t").Dot("Fatalf").Call(Lit("parse %T: %v"), Id("model"), Id("err")),
-			),
-			Id("declared").Op(":=").Make(
-				Map(String()).Bool(), Len(Id("stmt").Dot("Schema").Dot("DBNames")),
-			),
-			For(List(Id("_"), Id("name")).Op(":=").Range().Id("stmt").Dot("Schema").Dot("DBNames")).Block(
-				Id("declared").Index(Id("name")).Op("=").True(),
-			),
-			Line(),
-
-			Comment("a model no migration creates reads as total drift"),
-			If(Op("!").Id("gormDb").Dot("Migrator").Call().Dot("HasTable").Call(
-				Id("model"),
-			)).Block(
-				Id("t").Dot("Errorf").Call(
-					Lit("no migration creates table %s for %T"),
-					Id("stmt").Dot("Schema").Dot("Table"),
-					Id("model"),
-				),
-				Continue(),
-			),
-			Line(),
-
-			Comment("read the columns the migration chain actually created"),
-			List(Id("columnTypes"), Id("err")).Op(":=").Id("gormDb").Dot("Migrator").Call().Dot(
-				"ColumnTypes",
-			).Call(Id("model")),
-			If(Id("err").Op("!=").Nil()).Block(
-				Id("t").Dot("Fatalf").Call(Lit("read columns for %T: %v"), Id("model"), Id("err")),
-			),
-			Id("created").Op(":=").Make(Map(String()).Bool(), Len(Id("columnTypes"))),
-			For(List(Id("_"), Id("columnType")).Op(":=").Range().Id("columnTypes")).Block(
-				Id("created").Index(Id("columnType").Dot("Name").Call()).Op("=").True(),
-			),
-			Line(),
-
-			Comment("a declared field with no column means a migration was never written"),
-			Var().Id("missingColumns").Index().String(),
-			For(Id("name").Op(":=").Range().Id("declared")).Block(
-				If(Op("!").Id("created").Index(Id("name"))).Block(
-					Id("missingColumns").Op("=").Append(Id("missingColumns"), Id("name")),
-				),
-			),
-			Line(),
-
-			Comment("a column with no declared field means a migration never dropped it"),
-			Var().Id("missingFields").Index().String(),
-			For(Id("name").Op(":=").Range().Id("created")).Block(
-				If(Op("!").Id("declared").Index(Id("name"))).Block(
-					Id("missingFields").Op("=").Append(Id("missingFields"), Id("name")),
-				),
-			),
-			Line(),
-
-			Comment("report both directions so one run shows the whole drift"),
-			Qual("sort", "Strings").Call(Id("missingColumns")),
-			Qual("sort", "Strings").Call(Id("missingFields")),
-			If(Len(Id("missingColumns")).Op(">").Lit(0)).Block(
-				Id("t").Dot("Errorf").Call(
-					Lit("%s has fields with no column: %v"),
-					Id("stmt").Dot("Schema").Dot("Table"),
-					Id("missingColumns"),
-				),
-			),
-			If(Len(Id("missingFields")).Op(">").Lit(0)).Block(
-				Id("t").Dot("Errorf").Call(
-					Lit("%s has columns with no field: %v"),
-					Id("stmt").Dot("Schema").Dot("Table"),
-					Id("missingFields"),
-				),
-			),
+		Qual(migrationTestPackage, "AssertMigrationsCoverModels").Call(
+			Id("t"), Lit(gooseVersionTableName), Id("persistedModels").Call(),
 		),
 	)
 

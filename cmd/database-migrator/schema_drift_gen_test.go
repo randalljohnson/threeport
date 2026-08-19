@@ -3,12 +3,8 @@
 package main
 
 import (
-	"context"
-	goose "github.com/pressly/goose/v3"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
-	sqlite "gorm.io/driver/sqlite"
-	gorm "gorm.io/gorm"
-	"sort"
+	migrationtest "github.com/threeport/threeport/pkg/migrationtest/v0"
 	"testing"
 )
 
@@ -73,97 +69,9 @@ func persistedModels() []interface{} {
 	}
 }
 
-// migratedSchema applies every registered migration to a fresh in-memory
-// database and returns a handle on the resulting schema.
-func migratedSchema(t *testing.T) *gorm.DB {
-	t.Helper()
-
-	gormDb, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-
-	// share one connection pool so the migrations and the assertions see
-	// the same in-memory database
-	sqlDb, err := gormDb.DB()
-	if err != nil {
-		t.Fatalf("resolve sql db: %v", err)
-	}
-
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		t.Fatalf("set goose dialect: %v", err)
-	}
-	goose.SetTableName("threeport_goose_db_version")
-
-	// the migrations read the gorm db from the context under the same key
-	// the deployed migrator sets
-	ctx := context.WithValue(context.Background(), "gormdb", gormDb)
-	if err := goose.UpContext(ctx, sqlDb, "."); err != nil {
-		t.Fatalf("apply migrations: %v", err)
-	}
-
-	return gormDb
-}
-
 // TestMigrationsCoverEveryPersistedModel asserts the schema the migration
 // chain builds matches the columns every persisted model declares, reporting
 // both fields left without a column and columns left without a field.
 func TestMigrationsCoverEveryPersistedModel(t *testing.T) {
-	// build the schema a deployed database would have after an upgrade
-	gormDb := migratedSchema(t)
-
-	for _, model := range persistedModels() {
-		// resolve the columns the model's fields declare, which accounts
-		// for embedded structs, column overrides and excluded fields
-		stmt := &gorm.Statement{DB: gormDb}
-		if err := stmt.Parse(model); err != nil {
-			t.Fatalf("parse %T: %v", model, err)
-		}
-		declared := make(map[string]bool, len(stmt.Schema.DBNames))
-		for _, name := range stmt.Schema.DBNames {
-			declared[name] = true
-		}
-
-		// a model no migration creates reads as total drift
-		if !gormDb.Migrator().HasTable(model) {
-			t.Errorf("no migration creates table %s for %T", stmt.Schema.Table, model)
-			continue
-		}
-
-		// read the columns the migration chain actually created
-		columnTypes, err := gormDb.Migrator().ColumnTypes(model)
-		if err != nil {
-			t.Fatalf("read columns for %T: %v", model, err)
-		}
-		created := make(map[string]bool, len(columnTypes))
-		for _, columnType := range columnTypes {
-			created[columnType.Name()] = true
-		}
-
-		// a declared field with no column means a migration was never written
-		var missingColumns []string
-		for name := range declared {
-			if !created[name] {
-				missingColumns = append(missingColumns, name)
-			}
-		}
-
-		// a column with no declared field means a migration never dropped it
-		var missingFields []string
-		for name := range created {
-			if !declared[name] {
-				missingFields = append(missingFields, name)
-			}
-		}
-
-		// report both directions so one run shows the whole drift
-		sort.Strings(missingColumns)
-		sort.Strings(missingFields)
-		if len(missingColumns) > 0 {
-			t.Errorf("%s has fields with no column: %v", stmt.Schema.Table, missingColumns)
-		}
-		if len(missingFields) > 0 {
-			t.Errorf("%s has columns with no field: %v", stmt.Schema.Table, missingFields)
-		}
-	}
+	migrationtest.AssertMigrationsCoverModels(t, "threeport_goose_db_version", persistedModels())
 }

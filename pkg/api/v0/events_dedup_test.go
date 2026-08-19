@@ -54,8 +54,10 @@ func TestEventCreateUpsertsOnDedupKey(t *testing.T) {
 	stmt := db.Create(dedupTestEvent()).Statement
 	sql := stmt.SQL.String()
 
-	assert.Contains(t, sql, "ON CONFLICT ON CONSTRAINT idx_events_dedup",
-		"create must target the dedup index by name; CockroachDB rejects an inline expression target:\n%s", sql)
+	assert.Contains(t, sql, `ON CONFLICT ("reason","note","type","reporting_controller","object_type","object_id")`,
+		"the conflict target must list the index columns:\n%s", sql)
+	assert.Contains(t, sql, "WHERE deleted_at IS NULL DO UPDATE",
+		"the conflict target must repeat the index predicate; CockroachDB refuses a partial unique index as an arbiter through ON CONSTRAINT:\n%s", sql)
 	assert.Contains(t, strings.ToLower(sql), "count\"=v0_events.count + 1",
 		"a repeat must increment the running count:\n%s", sql)
 	assert.Contains(t, sql, "excluded.last_observed_time",

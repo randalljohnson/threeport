@@ -96,6 +96,10 @@ var GetEventsCmd = &cobra.Command{
   # filter by object name alone
   tptctl get events --name my-app
 
+  # filter by object name prefix (trailing * wildcard), covering a fleet
+  # and every derived child whose name extends the fleet name
+  tptctl get events --name 'myfleet2*'
+
   # combine narrow filters (kind + name, group + kind, etc.)
   tptctl get events --object-kind helm-workload-instance --name my-app
 
@@ -111,6 +115,9 @@ var GetEventsCmd = &cobra.Command{
   # filter to a subject by --for shape
   tptctl get events --for router-machine-set/demo1-router-set
 
+  # name prefix inside a --for shape
+  tptctl get events --for 'router-instance/myfleet2*'
+
   # only events within the last 5 minutes
   tptctl get events --since=5m
 
@@ -124,13 +131,13 @@ var GetEventsCmd = &cobra.Command{
   tptctl get events -r`,
 	Long: `Get events from the system.
 
-Use --for [<namespace>/][<version>.]<kind>/<name> to filter events to a specific object. <namespace> and <version> are optional; <kind> and <name> are required. The kind is the kebab-case form of the API type name; the name is the object's Name field. Both core and module types are supported.
+Use --for [<namespace>/][<version>.]<kind>/<name> to filter events to a specific object. <namespace> and <version> are optional; <kind> and <name> are required. The kind is the kebab-case form of the API type name; the name is the object's Name field. The name takes the same trailing-star prefix --name does. Both core and module types are supported.
 
 Use --object-kind <kebab-kind> to filter events to a specific kind across every object of that kind. Mutually exclusive with --for; combinable with --api-group and --name.
 
 Use --api-group <namespace> to filter events by API group / namespace alone (e.g. threeport.io). Mutually exclusive with --for; combinable with --object-kind and --name.
 
-Use --name <name> to filter events by object name alone. Mutually exclusive with --for; combinable with --object-kind and --api-group.
+Use --name <name> to filter events by object name alone. Supports exact match (--name=my-app) or prefix match with a trailing star (--name='myfleet2*'). A prefix matches every object whose name starts with the token, across every object kind unless --object-kind or --api-group narrows it, so a fleet and the derived children named after it answer one query. Mutually exclusive with --for; combinable with --object-kind and --api-group.
 
 Use --reason <reason> to filter events by Reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with a trailing star (--reason='Create*'). Case-sensitive CamelCase. Applied server-side.
 
@@ -306,7 +313,7 @@ func init() {
 
 	GetEventsCmd.Flags().StringVar(
 		&eventsFor,
-		"for", "", "Filter events by object, in the form [<namespace>/][<version>.]<kind>/<name>. Kind is the kebab-case form of the API type name (e.g. machine-runtime-instance, router-definition). Mutually exclusive with --object-kind.",
+		"for", "", "Filter events by object, in the form [<namespace>/][<version>.]<kind>/<name>. Kind is the kebab-case form of the API type name (e.g. machine-runtime-instance, router-definition). The name accepts a trailing * for a prefix match. Mutually exclusive with --object-kind.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsObjectKind,
@@ -322,7 +329,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsName,
-		"name", "", "Filter events by object name alone. Mutually exclusive with --for; combinable with --object-kind and --api-group.",
+		"name", "", "Filter events by object name alone. Supports exact match (--name=my-app) or prefix match with trailing * (--name='myfleet2*'). Mutually exclusive with --for; combinable with --object-kind and --api-group.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsReason,
@@ -390,6 +397,11 @@ func init() {
 // trailing star and maps to ?reasonprefix=X. Combines freely with the
 // other flags.
 //
+// --name, and the name segment of --for, accept the same two shapes.
+// An exact name maps to ?objectname=X; a trailing-star name strips the
+// star and maps to ?objectnameprefix=X, which matches every object
+// whose name starts with the token.
+//
 // Empty flags return an empty string so the caller queries every event.
 func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, reasonFlag string) (string, error) {
 	// no filter requested - return empty so the caller queries every event
@@ -416,7 +428,9 @@ func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, rea
 			q.Set("objectnamespace", apiGroupFlag)
 		}
 		if nameFlag != "" {
-			q.Set("objectname", nameFlag)
+			if err := setObjectNameQueryParam(q, "--name", nameFlag, nameFlag); err != nil {
+				return "", err
+			}
 		}
 		return q.Encode(), nil
 	}
@@ -436,7 +450,9 @@ func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, rea
 	if name == "" {
 		return "", fmt.Errorf("invalid --for value %q: empty name", forFlag)
 	}
-	q.Set("objectname", name)
+	if err := setObjectNameQueryParam(q, "--for", forFlag, name); err != nil {
+		return "", err
+	}
 
 	// second-to-last is the kind, optionally prefixed by "<version>."
 	// e.g. "kubernetes-workload-instance" or "v0.kubernetes-workload-instance"
@@ -469,6 +485,34 @@ func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, rea
 	}
 
 	return q.Encode(), nil
+}
+
+// setObjectNameQueryParam maps an object name onto the events query. An
+// exact value like "myfleet2" sets objectname=X for a server-side
+// equality match; a trailing-star value like "myfleet2*" strips the star
+// and sets objectnameprefix=X, which matches every object whose name
+// starts with the token, so a fleet and the children named after it
+// come back together. A bare "*" or an embedded star is rejected.
+//
+// flag and flagValue name the source flag in the error message, since
+// --for carries its name as the last segment of a larger value.
+func setObjectNameQueryParam(q url.Values, flag, flagValue, name string) error {
+	if strings.HasSuffix(name, "*") {
+		prefix := strings.TrimSuffix(name, "*")
+		if prefix == "" {
+			return fmt.Errorf("invalid %s value %q: prefix is empty", flag, flagValue)
+		}
+		if strings.Contains(prefix, "*") {
+			return fmt.Errorf("invalid %s value %q: star wildcard is only allowed as trailing character", flag, flagValue)
+		}
+		q.Set("objectnameprefix", prefix)
+		return nil
+	}
+	if strings.Contains(name, "*") {
+		return fmt.Errorf("invalid %s value %q: star wildcard is only allowed as trailing character", flag, flagValue)
+	}
+	q.Set("objectname", name)
+	return nil
 }
 
 // setReasonQueryParam maps the --reason flag onto the events query. An

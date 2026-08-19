@@ -35,6 +35,19 @@ var objectVersionPattern = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 // predicates on v0_events.reason.
 var reasonPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
+// objectNamePattern matches object Name values, which are DNS-like
+// tokens such as "myfleet2-fleet2-host2". Anchored so an objectnameprefix
+// is held to the shape of a name fragment before it reaches the name
+// resolvers.
+var objectNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
+
+// qualifiedTypePattern matches a fully qualified object type in
+// "<namespace>/<version>.<TypeName>" form. The subject-type scan behind
+// objectnameprefix reads object_type off the event row, so every value
+// it returns is held to this shape before any of them is interpolated
+// into SQL text.
+var qualifiedTypePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.-]*/[a-zA-Z0-9]+\.[a-zA-Z0-9]+$`)
+
 // materializedViewThresholdFloor is the minimum total-count above which
 // the event listing spins up a materialized view for cursor pagination.
 // Below the floor (or below limit*10 when the caller asks for larger
@@ -105,6 +118,7 @@ func boundEventFilterClause(filter *v0.Event) (string, []interface{}) {
 // @Param objectversion query string false "narrow objecttypename match to one version (e.g. 'v0')"
 // @Param objectnamespace query string false "narrow objecttypename match to one api namespace (e.g. 'threeport.io')"
 // @Param objectname query string false "filter events by object name (with objecttypename)"
+// @Param objectnameprefix query string false "filter events by object name prefix; matches every subject whose name starts with this token, across every subject type unless objecttypename narrows it"
 // @Param reason query string false "filter events by exact Reason match (case-sensitive CamelCase, e.g. 'SuccessfulCreate')"
 // @Param reasonprefix query string false "filter events by Reason prefix (case-sensitive CamelCase, matches Reason values starting with this token)"
 // @Success 200 {object} v0.Response "OK"
@@ -138,6 +152,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	targetVersion := c.QueryParam("objectversion")
 	targetNamespace := c.QueryParam("objectnamespace")
 	targetName := c.QueryParam("objectname")
+	targetNamePrefix := c.QueryParam("objectnameprefix")
 	directObjectId := c.QueryParam("objectid")
 	targetReason := c.QueryParam("reason")
 	targetReasonPrefix := c.QueryParam("reasonprefix")
@@ -175,6 +190,24 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			fmt.Errorf("invalid reasonprefix %q: expected CamelCase token", targetReasonPrefix),
 			objectType)
 	}
+	// objectname and objectnameprefix each resolve the subject by name,
+	// and an id names the subject directly, so a request carries at most
+	// one of the three.
+	if targetName != "" && targetNamePrefix != "" {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			errors.New("provide either objectname or objectnameprefix, not both"),
+			objectType)
+	}
+	if directObjectId != "" && targetNamePrefix != "" {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			errors.New("provide either objectid or objectnameprefix, not both"),
+			objectType)
+	}
+	if targetNamePrefix != "" && !objectNamePattern.MatchString(targetNamePrefix) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid objectnameprefix %q: expected DNS-like name token", targetNamePrefix),
+			objectType)
+	}
 
 	var ids []uint
 	var fullyQualifiedTypes []string
@@ -209,7 +242,60 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 	}
 
+	// nameMatchedSubjects pairs a fully qualified type with the ids under
+	// it whose object name starts with objectnameprefix. Pairing each
+	// type with its own ids keeps an unrelated type that happens to
+	// share an id out of the listing.
+	var nameMatchedSubjects []eventSubjectGroup
+
+	if targetNamePrefix != "" {
+		// the candidate types are the ones objecttypename resolves to
+		// when it is supplied, and otherwise every subject type the
+		// event table carries, narrowed by namespace and version. A
+		// prefix spans types by design: a fleet, the instances derived
+		// from it, and their workloads share a name prefix and answer
+		// one query.
+		var candidateTypes []string
+		switch targetTypeName {
+		case "":
+			presentTypes, lookupErr := eventSubjectTypes(h.DB)
+			if lookupErr != nil {
+				h.Logger.Error("handler error: error reading event subject types", zap.Error(lookupErr))
+				return apiserver_lib.ResponseStatus500(c, pageParams, lookupErr, objectType)
+			}
+			candidateTypes = apiserver_lib.FilterQualifiedTypes(presentTypes, targetNamespace, targetVersion)
+		default:
+			resolvedTypes, lookupErr := resolveQualifiedTypes()
+			if lookupErr != nil {
+				h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
+				return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
+			}
+			if len(resolvedTypes) == 0 {
+				return apiserver_lib.ResponseStatus404(c, pageParams,
+					fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
+			}
+			candidateTypes = resolvedTypes
+		}
+
+		matched, lookupErr := resolveSubjectsByNamePrefix(
+			c.Request().Context(), h.DB, candidateTypes, targetNamePrefix, h.Logger,
+		)
+		if lookupErr != nil {
+			h.Logger.Error("handler error: error resolving object name prefix", zap.Error(lookupErr))
+			return apiserver_lib.ResponseStatus500(c, pageParams, lookupErr, objectType)
+		}
+		if len(matched) == 0 {
+			return apiserver_lib.ResponseStatus404(c, pageParams,
+				fmt.Errorf("no object found with name prefix %q", targetNamePrefix), objectType)
+		}
+		nameMatchedSubjects = matched
+	}
+
 	switch {
+	case targetNamePrefix != "":
+		// the subject set came out of the name prefix above, and each
+		// matched type carries its own ids
+
 	case targetTypeName == "" && targetName == "" && directObjectId == "" && targetNamespace == "" && targetVersion == "":
 		// no filter supplied; fall through to the unfiltered query
 
@@ -355,6 +441,25 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				strings.Join(idStrs, ", "),
 			)
 		}
+		if len(nameMatchedSubjects) > 0 {
+			// one OR group per matched type, each holding only the ids
+			// resolved under that type. Both halves are handler-side
+			// values: the type passed qualifiedTypePattern and the ids
+			// are integers.
+			groups := make([]string, 0, len(nameMatchedSubjects))
+			for _, group := range nameMatchedSubjects {
+				idStrs := make([]string, len(group.IDs))
+				for i, id := range group.IDs {
+					idStrs[i] = fmt.Sprintf("%d", id)
+				}
+				groups = append(groups, fmt.Sprintf(
+					"(v0_events.object_type = '%s' AND v0_events.object_id IN (%s))",
+					group.QualifiedType,
+					strings.Join(idStrs, ", "),
+				))
+			}
+			whereClause += " AND (" + strings.Join(groups, " OR ") + ")"
+		}
 		if pattern, active := buildNamespaceVersionPattern(); active {
 			// narrow object_type by qualified-type prefix so a
 			// namespace-only or version-only filter still constrains
@@ -387,6 +492,17 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		}
 		if len(ids) > 0 {
 			query = query.Where("v0_events.object_id IN ?", ids)
+		}
+		if len(nameMatchedSubjects) > 0 {
+			// one OR group per matched type, so the ids resolved under
+			// one type match only that type's rows
+			clauses := make([]string, 0, len(nameMatchedSubjects))
+			values := make([]interface{}, 0, len(nameMatchedSubjects)*2)
+			for _, group := range nameMatchedSubjects {
+				clauses = append(clauses, "(v0_events.object_type = ? AND v0_events.object_id IN ?)")
+				values = append(values, group.QualifiedType, group.IDs)
+			}
+			query = query.Where(strings.Join(clauses, " OR "), values...)
 		}
 		if pattern, active := buildNamespaceVersionPattern(); active {
 			query = query.Where("v0_events.object_type LIKE ?", pattern)
@@ -746,38 +862,25 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		idsByType[*e.ObjectType][*e.ObjectID] = struct{}{}
 	}
 
-	// consult the in-process name cache first, then dispatch the
-	// remaining misses to core sql or module http; failures are logged
-	// so events still come back (rendered id-only) when name resolution
-	// fails for some types. Cache hits skip the resolver round trip
-	// entirely, so a page whose names are all cached issues no query at
-	// all.
+	// resolve one batch per type through the cache-backed lookup;
+	// failures are logged so events still come back (rendered id-only)
+	// when name resolution fails for some types.
 	namesByType := make(map[string]map[uint]string, len(idsByType))
 	for typ, idSet := range idsByType {
-		resolved := make(map[uint]string, len(idSet))
-		misses := make([]uint, 0, len(idSet))
+		ids := make([]uint, 0, len(idSet))
 		for id := range idSet {
-			if cached, ok := moduleNameCache.Get(typ, id); ok {
-				resolved[id] = cached
-				continue
-			}
-			misses = append(misses, id)
+			ids = append(ids, id)
 		}
-		if len(misses) > 0 {
-			fetched, err := GetObjectNames(ctx, db, typ, misses, true)
-			if err != nil {
-				log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
-				// keep any cache-hit names for this type so partial
-				// resolution still degrades better than id-only
-				if len(resolved) > 0 {
-					namesByType[typ] = resolved
-				}
-				continue
+
+		resolved, err := resolveNamesWithCache(ctx, db, typ, ids)
+		if err != nil {
+			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
+			// keep any cache-hit names for this type so partial
+			// resolution still degrades better than id-only
+			if len(resolved) > 0 {
+				namesByType[typ] = resolved
 			}
-			for id, name := range fetched {
-				resolved[id] = name
-				moduleNameCache.Put(typ, id, name)
-			}
+			continue
 		}
 		namesByType[typ] = resolved
 	}
@@ -799,4 +902,126 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 	}
 
 	return nil
+}
+
+// resolveNamesWithCache returns id->name for one object type, serving
+// what the process-wide cache holds and dispatching the rest to core
+// SQL or the owning module. Cache hits skip the resolver round trip, so
+// a batch whose names are all cached issues no query at all. A resolver
+// error returns the cache hits alongside it, so the caller keeps the
+// names that did resolve.
+func resolveNamesWithCache(ctx context.Context, db *gorm.DB, objectType string, ids []uint) (map[uint]string, error) {
+	resolved := make(map[uint]string, len(ids))
+	misses := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if cached, ok := moduleNameCache.Get(objectType, id); ok {
+			resolved[id] = cached
+			continue
+		}
+		misses = append(misses, id)
+	}
+
+	if len(misses) == 0 {
+		return resolved, nil
+	}
+
+	fetched, err := GetObjectNames(ctx, db, objectType, misses, true)
+	if err != nil {
+		return resolved, err
+	}
+	for id, name := range fetched {
+		resolved[id] = name
+		moduleNameCache.Put(objectType, id, name)
+	}
+
+	return resolved, nil
+}
+
+// eventSubjectGroup pairs a fully qualified object type with the subject
+// ids under it that a filter selected.
+type eventSubjectGroup struct {
+	QualifiedType string
+	IDs           []uint
+}
+
+// eventSubjectTypes returns every distinct object_type the live event
+// rows carry, in name order. An objectnameprefix that arrives without
+// objecttypename resolves against this set, so one query reaches a
+// fleet object and the children whose names extend its name.
+//
+// Values come off the event row, so each one is held to
+// qualifiedTypePattern before it is returned.
+func eventSubjectTypes(db *gorm.DB) ([]string, error) {
+	var rawTypes []string
+	if err := db.Model(&v0.Event{}).
+		Distinct().
+		Order("object_type ASC").
+		Pluck("object_type", &rawTypes).Error; err != nil {
+		return nil, fmt.Errorf("failed to read event subject types: %w", err)
+	}
+
+	types := make([]string, 0, len(rawTypes))
+	for _, rawType := range rawTypes {
+		if qualifiedTypePattern.MatchString(rawType) {
+			types = append(types, rawType)
+		}
+	}
+
+	return types, nil
+}
+
+// resolveSubjectsByNamePrefix returns, per candidate type, the subject
+// ids under it whose object name starts with prefix.
+//
+// An event row holds object_type and object_id, and the name comes from
+// each type's resolver, so the match runs over the ids the event table
+// already carries: one distinct-id read per type, then the same batched
+// name lookup the read path uses, compared in Go. A type whose names
+// cannot be resolved contributes no ids and the failure is logged, so an
+// unreachable module narrows the answer rather than failing the request.
+func resolveSubjectsByNamePrefix(
+	ctx context.Context,
+	db *gorm.DB,
+	candidateTypes []string,
+	prefix string,
+	log *zap.Logger,
+) ([]eventSubjectGroup, error) {
+	groups := make([]eventSubjectGroup, 0, len(candidateTypes))
+
+	for _, qualifiedType := range candidateTypes {
+		var ids []uint
+		if err := db.Model(&v0.Event{}).
+			Where("object_type = ?", qualifiedType).
+			Distinct().
+			Order("object_id ASC").
+			Pluck("object_id", &ids).Error; err != nil {
+			return nil, fmt.Errorf("failed to read subject ids for %s: %w", qualifiedType, err)
+		}
+		if len(ids) == 0 {
+			continue
+		}
+
+		names, err := resolveNamesWithCache(ctx, db, qualifiedType, ids)
+		if err != nil {
+			log.Error(
+				"failed to resolve object names for name prefix filter",
+				zap.String("objectType", qualifiedType),
+				zap.Error(err),
+			)
+		}
+
+		matched := make([]uint, 0, len(ids))
+		for _, id := range ids {
+			if strings.HasPrefix(names[id], prefix) {
+				matched = append(matched, id)
+			}
+		}
+		if len(matched) == 0 {
+			continue
+		}
+
+		groups = append(groups, eventSubjectGroup{QualifiedType: qualifiedType, IDs: matched})
+	}
+
+	return groups, nil
 }

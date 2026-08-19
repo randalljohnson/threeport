@@ -163,6 +163,43 @@ func TestGeneratedHandlerAnswers409OnUniqueViolation(t *testing.T) {
 		"the response does not name the index that refused the write")
 }
 
+// nullableSlot is a model whose unique index guards a nullable column under
+// the same deleted_at predicate the schema's partial indexes carry. It is
+// declared here rather than borrowed from the api types because the property
+// under test is what an unset column does to the index, and every api type is
+// free to make its guarded column required.
+type nullableSlot struct {
+	gorm.Model
+	Slot *string `gorm:"uniqueIndex:idx_nullable_slot,where:deleted_at IS NULL"`
+}
+
+// TestUniqueIndexTreatsEveryNullAsDistinct covers the half of a unique index on
+// an optional column that decides whether the column can stay optional: a row
+// leaving the column unset takes no slot, so any number of rows may leave it
+// unset while the same index still refuses two rows carrying one value. Without
+// it a guarded optional column becomes required in practice, because the second
+// row omitting it is refused.
+func TestUniqueIndexTreatsEveryNullAsDistinct(t *testing.T) {
+	require.NoError(t, testDb.AutoMigrate(&nullableSlot{}), "the table is built")
+
+	// three rows leaving the guarded column unset are all accepted
+	for range 3 {
+		assert.NoError(t, testDb.Create(&nullableSlot{}).Error,
+			"a row leaving the guarded column unset takes no slot in the index")
+	}
+
+	// and the same index still guards the rows that do carry a value
+	slot := "one-per-slot"
+	require.NoError(t, testDb.Create(&nullableSlot{Slot: &slot}).Error,
+		"the first row carrying a value is accepted")
+
+	err := testDb.Create(&nullableSlot{Slot: &slot}).Error
+	require.Error(t, err, "a second row carrying the same value is refused")
+
+	_, conflict := apiserver_lib.UniqueViolation(err)
+	assert.True(t, conflict, "the refusal is a unique violation")
+}
+
 // newReference returns an attached object reference with the four indexed
 // columns set, which is everything the indexes under test read.
 func newReference(

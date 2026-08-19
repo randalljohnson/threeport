@@ -50,30 +50,29 @@ type EventRecorder struct {
 	ReportingController string
 }
 
-// RecordEvent posts a new event row for the given object. Every emit
-// stores a raw Count=1 row; dedup and aggregation happen at read time
-// in the events endpoint handler, so concurrent recorders do not race
-// on a shared bump path. fullyQualifiedObjectType must be the form
-// returned by GetFullyQualifiedType.
+// RecordEvent posts an event about the given object. The api server
+// dedups on insert against the unique index over the event's subject
+// and content, so an emit repeating an event already on file bumps that
+// row's Count instead of adding a row. fullyQualifiedObjectType must be
+// the form returned by GetFullyQualifiedType.
 func (r *EventRecorder) RecordEvent(
 	event *api.Event,
 	objectId uint,
 	fullyQualifiedObjectType string,
 ) error {
 	// stamp reporter, timestamps, and count on the in-memory event.
-	// count is always 1 at insert time; the meaningful aggregate lives
-	// at read time.
+	// count is 1 on the wire; the api server's conflict handling
+	// increments the stored count when the row is already on file.
 	now := time.Now()
 	event.ReportingController = &r.ReportingController
 	event.EventTime = util.Ptr(now)
 	event.LastObservedTime = util.Ptr(now)
 	event.Count = util.Ptr(uint(1))
 
-	// carry the subject info on the in-memory Event so the API
-	// server's beforeCreate validates and afterCreate writes the
-	// matching AttachedObjectReference in the same transaction.
-	// gorm:"-" keeps these fields off the row; the AOR is the on-disk
-	// source of truth for the subject linkage.
+	// carry the subject on the in-memory Event. ObjectType and ObjectID
+	// are columns on the event row and part of the dedup index, so the
+	// api server's beforeCreate validates both and the insert conflicts
+	// against any row sharing this subject and content.
 	event.ObjectType = util.Ptr(fullyQualifiedObjectType)
 	event.ObjectID = util.Ptr(objectId)
 

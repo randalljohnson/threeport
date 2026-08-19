@@ -12,8 +12,8 @@ import (
 )
 
 // TestBoundEventFilterClauseEmpty verifies an unfiltered list request adds no
-// predicate at all, so the paginated query keeps the shape it had before a
-// filter was ever bound.
+// predicate at all, so the paginated query carries only the WHERE the handler
+// builds for itself.
 func TestBoundEventFilterClauseEmpty(t *testing.T) {
 	clause, values := boundEventFilterClause(&v0.Event{})
 
@@ -22,9 +22,9 @@ func TestBoundEventFilterClauseEmpty(t *testing.T) {
 }
 
 // TestBoundEventFilterClauseColumns verifies each bindable event column
-// becomes a placeholder predicate carrying its value out of band. Before this,
-// the paginated branches dropped these filters entirely and returned rows the
-// client had asked to exclude.
+// becomes a placeholder predicate carrying its value out of band. A paginated
+// branch builds its query as a string, so a filter the client bound reaches
+// the query only through this fragment.
 func TestBoundEventFilterClauseColumns(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -41,6 +41,13 @@ func TestBoundEventFilterClauseColumns(t *testing.T) {
 			"reporting_controller",
 			"kubernetes-workload-controller",
 		},
+		{
+			"object type",
+			v0.Event{ObjectType: util.Ptr("threeport.io/v0.KubernetesWorkloadInstance")},
+			"object_type",
+			"threeport.io/v0.KubernetesWorkloadInstance",
+		},
+		{"object id", v0.Event{ObjectID: util.Ptr(uint(42))}, "object_id", uint(42)},
 	}
 
 	for _, test := range tests {

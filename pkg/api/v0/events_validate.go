@@ -6,16 +6,30 @@ import (
 	"fmt"
 
 	gorm "gorm.io/gorm"
+	clause "gorm.io/gorm/clause"
 
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// beforeCreate runs before the Event is created. Validates that the
+// eventDedupIndex is the unique index closing the dedup key over an
+// event's subject and its content. Declared on the Event fields; named
+// here because ON CONFLICT takes the constraint by name.
+const eventDedupIndex = "idx_events_dedup"
+
+// beforeCreate runs before the Event is created. It validates that the
 // caller supplied both subject fields (ObjectType + ObjectID) and that
-// ObjectType is in the fully-qualified form. afterCreate consumes
-// these to insert the matching AttachedObjectReference, so missing or
-// malformed values must fail before the Event row is written.
+// ObjectType is in the fully-qualified form, then adds an ON CONFLICT
+// clause so a repeated event updates the row already on file.
+//
+// A controller that keeps failing re-emits the same event on every
+// requeue, at most once every 30 seconds, which reaches roughly 2,900
+// rows a day for one stuck object. The clause goes here rather than at
+// the call site so it covers a client posting to the events endpoint
+// directly.
+//
+// The conflict target names the index instead of listing its columns,
+// because CockroachDB rejects an inline expression in ON CONFLICT.
 func (e *Event) beforeCreate(tx *gorm.DB) error {
 	if e.ObjectType == nil || e.ObjectID == nil {
 		return util.NewBadRequestError(
@@ -28,6 +42,19 @@ func (e *Event) beforeCreate(tx *gorm.DB) error {
 			*e.ObjectType,
 		))
 	}
+
+	// count carries the running total and last_observed_time the newest
+	// sighting, so the row keeps event_time as when the failure first
+	// appeared. tptctl renders the pair as a "first..last" age span.
+	tx.Statement.AddClause(clause.OnConflict{
+		OnConstraint: eventDedupIndex,
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"count":              gorm.Expr("v0_events.count + 1"),
+			"last_observed_time": gorm.Expr("excluded.last_observed_time"),
+			"updated_at":         gorm.Expr("excluded.updated_at"),
+		}),
+	})
+
 	return nil
 }
 
@@ -53,17 +80,9 @@ func (e *Event) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// afterCreate inserts the AttachedObjectReference linking this event
-// (attached side) to its subject (base side), using ObjectType and
-// ObjectID validated in beforeCreate.
+// afterCreate runs after the Event is created.
 func (e *Event) afterCreate(tx *gorm.DB) error {
-	return tx.Create(&AttachedObjectReference{
-		ObjectType:         e.ObjectType,
-		ObjectID:           e.ObjectID,
-		AttachedObjectType: util.Ptr(e.GetFullyQualifiedType()),
-		AttachedObjectID:   e.ID,
-		Relationship:       util.Ptr(RelationshipDescribes),
-	}).Error
+	return nil
 }
 
 // afterUpdate runs after the Event is updated.

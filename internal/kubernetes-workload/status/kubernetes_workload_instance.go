@@ -59,10 +59,9 @@ func GetKubernetesWorkloadInstanceStatus(
 ) *WorkloadInstanceStatusDetail {
 	var workloadInstanceStatusDetail WorkloadInstanceStatusDetail
 
-	// retrieve events for the kubernetes workload instance via the AOR join,
-	// filtering on the subject (object type + id). Events are stored in
-	// the Event table; the per-instance linkage lives on the
-	// AttachedObjectReference.
+	// retrieve the events whose subject is this kubernetes workload
+	// instance. The subject is the object_type and object_id pair each
+	// event row carries, so the query filters on those two columns.
 	var subjectType string
 	switch workloadInstanceType {
 	case agent.KubernetesWorkloadInstanceType:

@@ -11,8 +11,10 @@ import (
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 )
 
-// GetEventsJoinAttachedObjectReferenceByQueryString retrieves events joined to
-// attached object reference by object ID. When max > 0 the caller receives at
+// GetEventsJoinAttachedObjectReferenceByQueryString retrieves events filtered
+// by the subject columns each event row carries, object type and object ID.
+// The function name and the endpoint path keep their spelling because clients
+// call /v0/events-join-attached-object-references. When max > 0 the caller receives at
 // most max events: the server-side page limit is capped to max so the API stops
 // producing rows once the cap is reached, and the pagination loop exits as soon
 // as the accumulated count meets or exceeds max. Pass max = 0 to fetch every

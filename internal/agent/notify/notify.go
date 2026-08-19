@@ -222,8 +222,9 @@ func sendThreeportUpdates(
 	}
 	for _, evt := range *pendingEvents {
 		// skip events that did not match any of the recognized subject
-		// types in the caller's switch; ObjectType/ObjectID are required
-		// to attach the AttachedObjectReference on create.
+		// types in the caller's switch. ObjectType and ObjectID identify
+		// the event's subject and the api server requires both on
+		// create.
 		if evt.ObjectType == nil || evt.ObjectID == nil {
 			continue
 		}

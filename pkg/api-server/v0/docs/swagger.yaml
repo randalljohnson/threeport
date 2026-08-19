@@ -55,7 +55,7 @@ definitions:
               component, not only the controller registered for the attached
               object's type.
               An owned base has at most one owner (enforced by the partial
-              index idx_aor_owns_base above); an owner may own many bases.
+              index idx_attached_object_reference_owns_base above); an owner may own many bases.
             - "marries": enforces 1-to-1 cardinality between base and attacher
               via the partial indexes above; blocks both delete and update of
               the base under the same control plane exemption as "owns".

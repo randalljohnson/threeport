@@ -605,18 +605,16 @@ definitions:
         type: string
       ObjectType:
         description: |-
-          Fields carrying the event's subject - the object the event is
-          about. They flow in both directions:
-            - On create: the caller sets ObjectType (fully qualified type form) + ObjectID
-              in the request body. Event.BeforeCreate validates them;
-              Event.AfterCreate inserts the matching AttachedObjectReference
-              in the same transaction. ObjectName is ignored on write.
-            - On read: GetEventsJoinAttachedObjectReferenceByQueryString
-              projects the joined AOR's base object back into these
-              fields, then resolves ObjectName via the type's name resolver.
+          The event's subject: the object the event is about.
 
-          gorm:"-" keeps them off the Event row in the schema - the AOR
-          is the source of truth on disk for the subject linkage.
+          ObjectType and ObjectID are columns on the event row. Together with
+          Reason, Note, Type, and ReportingController they form the unique
+          index idx_events_dedup, so a repeated event updates Count on the
+          existing row instead of inserting another one. An index cannot span
+          tables, which is why the subject sits on this row.
+
+          ObjectName has no column. Read paths resolve it from ObjectID
+          through the type's name resolver.
 
           For an event describing a script failure on a
           MachineRuntimeInstance named "some-host" (id 42), these hold:
@@ -642,6 +640,8 @@ definitions:
     - Count
     - EventTime
     - LastObservedTime
+    - ObjectID
+    - ObjectType
     - Reason
     - ReportingController
     - Type
@@ -5727,8 +5727,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all events joined with attached object references from the
-        Threeport database.
+      description: Get events from the Threeport database, narrowed by the object_type
+        and object_id columns each event row carries.
       operationId: get-v0-events-join-attached-object-references
       parameters:
       - description: filter events by object ID
@@ -5751,6 +5751,12 @@ paths:
       - description: filter events by object name (with objecttypename)
         in: query
         name: objectname
+        type: string
+      - description: filter events by object name prefix; matches every subject whose
+          name starts with this token, across every subject type unless objecttypename
+          narrows it
+        in: query
+        name: objectnameprefix
         type: string
       - description: filter events by exact Reason match (case-sensitive CamelCase,
           e.g. 'SuccessfulCreate')
@@ -5777,7 +5783,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/v0.Response'
-      summary: gets all events joined with attached object references.
+      summary: gets all events, filtered by subject.
   /v0/events/{id}:
     delete:
       consumes:

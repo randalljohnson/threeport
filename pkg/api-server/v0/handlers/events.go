@@ -114,10 +114,10 @@ func boundEventFilterClause(filter *v0.Event) (string, []interface{}) {
 // @Accept json
 // @Produce json
 // @Param objectid query string false "filter events by object ID"
-// @Param objecttypename query string false "filter events by object type name (with objectname); CamelCase Go TypeName like 'KubernetesWorkloadInstance'"
+// @Param objecttypename query string false "filter events by object type name; CamelCase Go TypeName like 'KubernetesWorkloadInstance'. Filters on its own, and narrows objectid, objectname, or objectnameprefix to one kind"
 // @Param objectversion query string false "narrow objecttypename match to one version (e.g. 'v0')"
 // @Param objectnamespace query string false "narrow objecttypename match to one api namespace (e.g. 'threeport.io')"
-// @Param objectname query string false "filter events by object name (with objecttypename)"
+// @Param objectname query string false "filter events by exact object name; matches every subject type carrying that name unless objecttypename narrows it"
 // @Param objectnameprefix query string false "filter events by object name prefix; matches every subject whose name starts with this token, across every subject type unless objecttypename narrows it"
 // @Param reason query string false "filter events by exact Reason match (case-sensitive CamelCase, e.g. 'SuccessfulCreate')"
 // @Param reasonprefix query string false "filter events by Reason prefix (case-sensitive CamelCase, matches Reason values starting with this token)"
@@ -141,13 +141,18 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
-	// collect object IDs to filter on. The accepted shapes are:
-	//   - nothing supplied                  -> return every event
-	//   - objectid                          -> filter by id alone
-	//   - objecttypename + objectid         -> filter by id under type
-	//   - objecttypename + objectname       -> resolve name to id(s) under type
-	// A name is unique only within a type, so objectname without
-	// objecttypename is rejected, and id together with name is ambiguous.
+	// collect the subject filter. Each of objecttypename, objectid,
+	// objectname, and objectnameprefix narrows the listing on its own,
+	// and objecttypename combines with any one of the other three:
+	//   - nothing supplied         -> return every event
+	//   - objecttypename           -> every event whose subject is that kind
+	//   - objectid                 -> filter by id across every subject type
+	//   - objectname               -> resolve the name across every subject type
+	//   - objectnameprefix         -> resolve the prefix across every subject type
+	//   - objecttypename + one     -> any of the three above, narrowed to that kind
+	// objectid, objectname, and objectnameprefix are mutually exclusive:
+	// an id names the subject directly and each name form resolves it, so
+	// a request carrying two of them has no single answer.
 	targetTypeName := c.QueryParam("objecttypename")
 	targetVersion := c.QueryParam("objectversion")
 	targetNamespace := c.QueryParam("objectnamespace")
@@ -203,6 +208,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			errors.New("provide either objectid or objectnameprefix, not both"),
 			objectType)
 	}
+	if directObjectId != "" && targetName != "" {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			errors.New("provide either objectid or objectname, not both"),
+			objectType)
+	}
 	if targetNamePrefix != "" && !objectNamePattern.MatchString(targetNamePrefix) {
 		return apiserver_lib.ResponseStatus400(c, pageParams,
 			fmt.Errorf("invalid objectnameprefix %q: expected DNS-like name token", targetNamePrefix),
@@ -243,38 +253,64 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	}
 
 	// nameMatchedSubjects pairs a fully qualified type with the ids under
-	// it whose object name starts with objectnameprefix. Pairing each
-	// type with its own ids keeps an unrelated type that happens to
-	// share an id out of the listing.
+	// it that a name filter selected. Pairing each type with its own ids
+	// keeps an unrelated type that happens to share an id out of the
+	// listing.
 	var nameMatchedSubjects []eventSubjectGroup
 
-	if targetNamePrefix != "" {
-		// the candidate types are the ones objecttypename resolves to
-		// when it is supplied, and otherwise every subject type the
-		// event table carries, narrowed by namespace and version. A
-		// prefix spans types by design: a fleet, the instances derived
-		// from it, and their workloads share a name prefix and answer
-		// one query.
-		var candidateTypes []string
-		switch targetTypeName {
-		case "":
-			presentTypes, lookupErr := eventSubjectTypes(h.DB)
-			if lookupErr != nil {
-				h.Logger.Error("handler error: error reading event subject types", zap.Error(lookupErr))
-				return apiserver_lib.ResponseStatus500(c, pageParams, lookupErr, objectType)
+	// candidateSubjectTypes returns the fully qualified types a filter
+	// resolves against: the ones objecttypename names when it is
+	// supplied, and otherwise every subject type the live event rows
+	// carry. Both sets are narrowed by objectnamespace and
+	// objectversion. The returned status is the response code to answer
+	// with when the error is non-nil.
+	candidateSubjectTypes := func() ([]string, int, error) {
+		if targetTypeName == "" {
+			presentTypes, err := eventSubjectTypes(h.DB)
+			if err != nil {
+				return nil, http.StatusInternalServerError, err
 			}
-			candidateTypes = apiserver_lib.FilterQualifiedTypes(presentTypes, targetNamespace, targetVersion)
+
+			return apiserver_lib.FilterQualifiedTypes(presentTypes, targetNamespace, targetVersion), 0, nil
+		}
+
+		resolvedTypes, err := resolveQualifiedTypes()
+		if err != nil {
+			return nil, http.StatusBadRequest, err
+		}
+		if len(resolvedTypes) == 0 {
+			return nil, http.StatusNotFound,
+				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName)
+		}
+
+		return resolvedTypes, 0, nil
+	}
+
+	// respondTypeLookup answers a candidateSubjectTypes failure, logging
+	// the statuses that report a server-side fault rather than a bad
+	// request.
+	respondTypeLookup := func(status int, err error) error {
+		switch status {
+		case http.StatusInternalServerError:
+			h.Logger.Error("handler error: error reading event subject types", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		case http.StatusNotFound:
+			return apiserver_lib.ResponseStatus404(c, pageParams, err, objectType)
 		default:
-			resolvedTypes, lookupErr := resolveQualifiedTypes()
-			if lookupErr != nil {
-				h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
-				return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
-			}
-			if len(resolvedTypes) == 0 {
-				return apiserver_lib.ResponseStatus404(c, pageParams,
-					fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
-			}
-			candidateTypes = resolvedTypes
+			h.Logger.Error("handler error: error looking up object types", zap.Error(err))
+			return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		}
+	}
+
+	switch {
+	case targetNamePrefix != "":
+		// a prefix spans types by design: a fleet, the instances
+		// derived from it, and their workloads share a name prefix and
+		// answer one query. objecttypename narrows the candidate set to
+		// one kind when it is supplied.
+		candidateTypes, status, lookupErr := candidateSubjectTypes()
+		if lookupErr != nil {
+			return respondTypeLookup(status, lookupErr)
 		}
 
 		matched, lookupErr := resolveSubjectsByNamePrefix(
@@ -289,37 +325,29 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				fmt.Errorf("no object found with name prefix %q", targetNamePrefix), objectType)
 		}
 		nameMatchedSubjects = matched
-	}
 
-	switch {
-	case targetNamePrefix != "":
-		// the subject set came out of the name prefix above, and each
-		// matched type carries its own ids
+	case targetName != "":
+		// a name is unique only within a type, so it resolves one type
+		// at a time and each candidate type keeps the ids it yielded.
+		// Without objecttypename the candidates are every subject type
+		// the event rows carry, which is what lets a caller holding
+		// only the name find its events.
+		candidateTypes, status, lookupErr := candidateSubjectTypes()
+		if lookupErr != nil {
+			return respondTypeLookup(status, lookupErr)
+		}
 
-	case targetTypeName == "" && targetName == "" && directObjectId == "" && targetNamespace == "" && targetVersion == "":
-		// no filter supplied; fall through to the unfiltered query
+		matched := resolveSubjectsByName(h.DB, candidateTypes, targetName, h.Logger)
+		if len(matched) == 0 {
+			if targetTypeName != "" {
+				return apiserver_lib.ResponseStatus404(c, pageParams,
+					fmt.Errorf("no object found with name %q for kind %q", targetName, targetTypeName), objectType)
+			}
 
-	case targetTypeName == "" && targetName == "" && directObjectId == "":
-		// namespace or version supplied without a bare kind, id, or name.
-		// skip type/id resolution and let the object_type LIKE
-		// predicate below narrow events to the requested api group.
-
-	case targetTypeName == "" && targetName != "":
-		// caller supplied a name but no type. A name resolves to ids
-		// one type at a time, so the type is required here.
-		return apiserver_lib.ResponseStatus400(
-			c, pageParams,
-			errors.New("objecttypename is required when filtering by objectname"),
-			objectType,
-		)
-
-	case directObjectId != "" && targetName != "":
-		// type + id + name is ambiguous - which filter wins?
-		return apiserver_lib.ResponseStatus400(
-			c, pageParams,
-			errors.New("provide either objectid or objectname, not both"),
-			objectType,
-		)
+			return apiserver_lib.ResponseStatus404(c, pageParams,
+				fmt.Errorf("no object found with name %q", targetName), objectType)
+		}
+		nameMatchedSubjects = matched
 
 	case directObjectId != "":
 		// object_id is a column on the event row, so an id filters the
@@ -336,54 +364,28 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		ids = []uint{uint(parsed)}
 
 		if targetTypeName != "" {
-			types, lookupErr := resolveQualifiedTypes()
+			types, status, lookupErr := candidateSubjectTypes()
 			if lookupErr != nil {
-				h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
-				return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
-			}
-			if len(types) == 0 {
-				return apiserver_lib.ResponseStatus404(c, pageParams,
-					fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
+				return respondTypeLookup(status, lookupErr)
 			}
 			fullyQualifiedTypes = types
 		}
 
-	case targetName != "":
-		// type + name - look up every fully qualified type that matches the type name,
-		// then look up the named object under each
-		types, lookupErr := resolveQualifiedTypes()
+	case targetTypeName != "":
+		// a bare kind on its own narrows the listing to every event
+		// whose subject is one of the types it resolves to. Nothing
+		// selects a subject within the kind, so every id under it is in
+		// the answer.
+		types, status, lookupErr := candidateSubjectTypes()
 		if lookupErr != nil {
-			h.Logger.Error("handler error: error looking up object types", zap.Error(lookupErr))
-			return apiserver_lib.ResponseStatus400(c, pageParams, lookupErr, objectType)
-		}
-		if len(types) == 0 {
-			return apiserver_lib.ResponseStatus404(c, pageParams,
-				fmt.Errorf("kind %q is not registered (or no version/namespace match)", targetTypeName), objectType)
+			return respondTypeLookup(status, lookupErr)
 		}
 		fullyQualifiedTypes = types
 
-		// look up the named object across every matched fully qualified type; each
-		// fully qualified type may yield zero or more ids - name uniqueness is not
-		// enforced at the database level.
-		for _, fqt := range fullyQualifiedTypes {
-			moreIds, lookupErr := GetObjectIDsByName(h.DB, fqt, targetName)
-			if lookupErr == nil {
-				ids = append(ids, moreIds...)
-			}
-		}
-		if len(ids) == 0 {
-			return apiserver_lib.ResponseStatus404(c, pageParams,
-				fmt.Errorf("no object found with name %q for kind %q", targetName, targetTypeName), objectType)
-		}
-
 	default:
-		// caller supplied type alone (no id, no name) - we don't
-		// support type-only filtering, so report the supported shapes
-		return apiserver_lib.ResponseStatus400(
-			c, pageParams,
-			errors.New("must provide either objecttypename + objectid, or objecttypename + objectname"),
-			objectType,
-		)
+		// nothing selects a subject. A namespace or version supplied on
+		// its own still narrows the row set through the object_type
+		// LIKE predicate below; with neither, the listing is unfiltered.
 	}
 
 	// pagination state is built up across the branches below and read
@@ -968,6 +970,45 @@ func eventSubjectTypes(db *gorm.DB) ([]string, error) {
 	}
 
 	return types, nil
+}
+
+// resolveSubjectsByName returns, per candidate type, the ids of the
+// objects under it carrying name. A name is unique only within a type,
+// so the lookup runs once per candidate type and each type keeps its own
+// ids, which holds an unrelated type that happens to share an id out of
+// the listing.
+//
+// A type whose lookup fails contributes no ids and the failure is
+// logged, so an unreachable or deregistered owner narrows the answer
+// rather than failing the request.
+func resolveSubjectsByName(
+	db *gorm.DB,
+	candidateTypes []string,
+	name string,
+	log *zap.Logger,
+) []eventSubjectGroup {
+	groups := make([]eventSubjectGroup, 0, len(candidateTypes))
+
+	for _, qualifiedType := range candidateTypes {
+		ids, err := GetObjectIDsByName(db, qualifiedType, name)
+		if err != nil {
+			log.Error(
+				"failed to resolve object name for name filter",
+				zap.String("objectType", qualifiedType),
+				zap.String("objectName", name),
+				zap.Error(err),
+			)
+
+			continue
+		}
+		if len(ids) == 0 {
+			continue
+		}
+
+		groups = append(groups, eventSubjectGroup{QualifiedType: qualifiedType, IDs: ids})
+	}
+
+	return groups
 }
 
 // resolveSubjectsByNamePrefix returns, per candidate type, the subject

@@ -149,15 +149,15 @@ func TestGetEvents_ObjectIdAloneFiltersAcrossSubjectTypes(t *testing.T) {
 		"an id filters on its own across every subject type")
 }
 
-// TestGetEvents_ObjectNameWithoutTypeReturns400 covers the one shape the
-// handler refuses. A name is unique only within a type, so the handler
-// has no way to resolve it to an id and answers client error rather than
-// returning an unfiltered listing.
-func TestGetEvents_ObjectNameWithoutTypeReturns400(t *testing.T) {
+// TestGetEvents_ObjectIdWithObjectNameReturns400 covers the pairing the
+// handler refuses. An id names the subject directly and a name resolves
+// it, so the two together select two different row sets and the request
+// has no single answer.
+func TestGetEvents_ObjectIdWithObjectNameReturns400(t *testing.T) {
 	h := newEventsHandler(t)
 	seedEvent(t, h.DB, "R0", "example.com/v0.Widget", 7)
 
-	code, _ := getEvents(t, h, "?objectname=my-widget")
+	code, _ := getEvents(t, h, "?objectid=7&objectname=my-widget")
 
 	assert.Equal(t, http.StatusBadRequest, code)
 }
@@ -329,4 +329,94 @@ func withCoreObjectVersions(t *testing.T, kind, version string) {
 		kind: {API: kind, Versions: []string{version}},
 	}
 	t.Cleanup(func() { apiserver_lib.ObjectVersions = previous })
+}
+
+// TestGetEvents_ObjectNameAloneMatchesAcrossSubjectTypes covers a name
+// supplied with no kind, which is what a caller holding only the name
+// from an error message or a console can send. The name resolves against
+// every subject type the event rows carry, and each type keeps the ids
+// it resolved, so a second type sharing an id with the match stays out.
+func TestGetEvents_ObjectNameAloneMatchesAcrossSubjectTypes(t *testing.T) {
+	h := newEventsHandler(t)
+
+	seedProfile(t, h.DB, 1, "host-023421")
+	seedTier(t, h.DB, 2, "host-023421")
+	seedTier(t, h.DB, 1, "unrelated")
+
+	profile := seedEvent(t, h.DB, "R0", "threeport.io/v0.Profile", 1)
+	tier := seedEvent(t, h.DB, "R1", "threeport.io/v0.Tier", 2)
+	seedEvent(t, h.DB, "R2", "threeport.io/v0.Tier", 1)
+
+	code, events := getEvents(t, h, "?objectname=host-023421")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.ElementsMatch(t, []uint{*profile.ID, *tier.ID}, eventIDs(events),
+		"a name reaches every subject type carrying it, paired with that type's ids")
+}
+
+// TestGetEvents_ObjectNameNarrowsToObjectTypeName covers a name
+// alongside a bare kind. The kind resolves through the core registry and
+// only subjects of that kind are matched, so the same name answers with
+// one type's events.
+func TestGetEvents_ObjectNameNarrowsToObjectTypeName(t *testing.T) {
+	h := newEventsHandler(t)
+	withCoreObjectVersions(t, "Tier", "v0")
+
+	seedProfile(t, h.DB, 1, "host-023421")
+	seedTier(t, h.DB, 2, "host-023421")
+
+	seedEvent(t, h.DB, "R0", "threeport.io/v0.Profile", 1)
+	tier := seedEvent(t, h.DB, "R1", "threeport.io/v0.Tier", 2)
+
+	code, events := getEvents(t, h, "?objecttypename=Tier&objectname=host-023421")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, []uint{*tier.ID}, eventIDs(events),
+		"the kind narrows the name to one subject type")
+}
+
+// TestGetEvents_ObjectNameMatchingNothingReturns404 covers a name no
+// subject carries. Nothing resolves, so the handler answers not found
+// rather than returning every event.
+func TestGetEvents_ObjectNameMatchingNothingReturns404(t *testing.T) {
+	h := newEventsHandler(t)
+
+	seedProfile(t, h.DB, 1, "host-023421")
+	seedEvent(t, h.DB, "R0", "threeport.io/v0.Profile", 1)
+
+	code, _ := getEvents(t, h, "?objectname=nosuchhost")
+
+	assert.Equal(t, http.StatusNotFound, code)
+}
+
+// TestGetEvents_ObjectTypeNameAloneFiltersByKind covers a bare kind with
+// no id and no name. Every event whose subject is one of the types the
+// kind resolves to is in the answer, and a same-named type in another
+// api namespace stays out.
+func TestGetEvents_ObjectTypeNameAloneFiltersByKind(t *testing.T) {
+	h := newEventsHandler(t)
+	registerModuleObject(t, h.DB, "example.com", "Widget", "v0")
+
+	first := seedEvent(t, h.DB, "R0", "example.com/v0.Widget", 7)
+	second := seedEvent(t, h.DB, "R1", "example.com/v0.Widget", 8)
+	seedEvent(t, h.DB, "R2", "other.io/v0.Widget", 7)
+	seedEvent(t, h.DB, "R3", "example.com/v0.Gadget", 7)
+
+	code, events := getEvents(t, h, "?objecttypename=Widget")
+
+	require.Equal(t, http.StatusOK, code)
+	assert.ElementsMatch(t, []uint{*first.ID, *second.ID}, eventIDs(events),
+		"a bare kind filters on its own, across every id under it")
+}
+
+// TestGetEvents_ObjectTypeNameAloneUnregisteredReturns404 covers a bare
+// kind no registry carries. The kind resolves to no type, so the handler
+// answers not found rather than returning every event.
+func TestGetEvents_ObjectTypeNameAloneUnregisteredReturns404(t *testing.T) {
+	h := newEventsHandler(t)
+	seedEvent(t, h.DB, "R0", "example.com/v0.Widget", 7)
+
+	code, _ := getEvents(t, h, "?objecttypename=NoSuchKind")
+
+	assert.Equal(t, http.StatusNotFound, code)
 }

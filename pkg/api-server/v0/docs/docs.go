@@ -3490,7 +3490,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object type name (with objectname); CamelCase Go TypeName like 'KubernetesWorkloadInstance'",
+                        "description": "filter events by object type name; CamelCase Go TypeName like 'KubernetesWorkloadInstance'. Filters on its own, and narrows objectid, objectname, or objectnameprefix to one kind",
                         "name": "objecttypename",
                         "in": "query"
                     },
@@ -3508,7 +3508,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object name (with objecttypename)",
+                        "description": "filter events by exact object name; matches every subject type carrying that name unless objecttypename narrows it",
                         "name": "objectname",
                         "in": "query"
                     },

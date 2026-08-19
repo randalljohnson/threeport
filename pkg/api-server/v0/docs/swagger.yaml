@@ -5844,8 +5844,9 @@ paths:
         in: query
         name: objectid
         type: string
-      - description: filter events by object type name (with objectname); CamelCase
-          Go TypeName like 'KubernetesWorkloadInstance'
+      - description: filter events by object type name; CamelCase Go TypeName like
+          'KubernetesWorkloadInstance'. Filters on its own, and narrows objectid,
+          objectname, or objectnameprefix to one kind
         in: query
         name: objecttypename
         type: string
@@ -5857,7 +5858,8 @@ paths:
         in: query
         name: objectnamespace
         type: string
-      - description: filter events by object name (with objecttypename)
+      - description: filter events by exact object name; matches every subject type
+          carrying that name unless objecttypename narrows it
         in: query
         name: objectname
         type: string

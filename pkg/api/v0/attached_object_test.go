@@ -36,7 +36,7 @@ func newAOR(baseType string, baseID uint, attacherType string, attacherID uint, 
 	}
 }
 
-// TestAOR_OwnsSingleOwnerConstraint exercises idx_aor_owns_base: an
+// TestAOR_OwnsSingleOwnerConstraint exercises idx_attached_object_reference_owns_base: an
 // owned base appears in at most one owns row. The attacher side is
 // intentionally unconstrained (an owner can own many bases), so the
 // table covers both the rejection and the legal cases.
@@ -97,8 +97,8 @@ func TestAOR_OwnsSingleOwnerConstraint(t *testing.T) {
 	}
 }
 
-// TestAOR_MarriesOneToOne exercises idx_aor_marries_base and
-// idx_aor_marries_attached. Both sides of the marries relationship
+// TestAOR_MarriesOneToOne exercises idx_attached_object_reference_marries_base and
+// idx_attached_object_reference_marries_attached. Both sides of the marries relationship
 // are constrained to appear in at most one marries row, enforcing
 // 1-to-1 cardinality.
 func TestAOR_MarriesOneToOne(t *testing.T) {
@@ -123,13 +123,13 @@ func TestAOR_MarriesOneToOne(t *testing.T) {
 			insert: nil,
 		},
 		{
-			name:    "second partner on same base is rejected (idx_aor_marries_base)",
+			name:    "second partner on same base is rejected (idx_attached_object_reference_marries_base)",
 			seed:    newAOR(baseType, baseIDA, partnerType, partnerIDA, RelationshipMarries),
 			insert:  newAOR(baseType, baseIDA, partnerType, partnerIDB, RelationshipMarries),
 			wantErr: true,
 		},
 		{
-			name:    "same partner married to a different base is rejected (idx_aor_marries_attached)",
+			name:    "same partner married to a different base is rejected (idx_attached_object_reference_marries_attached)",
 			seed:    newAOR(baseType, baseIDA, partnerType, partnerIDA, RelationshipMarries),
 			insert:  newAOR(baseType, baseIDB, partnerType, partnerIDA, RelationshipMarries),
 			wantErr: true,
@@ -263,7 +263,7 @@ func TestAttachedObjectReference_beforeUpdate_AllowsSameRelationshipPut(t *testi
 }
 
 // TestAOR_OwnsConstraintAfterSoftDelete verifies the deleted_at IS
-// NULL clause in idx_aor_owns_base lets a soft-deleted owns row drop
+// NULL clause in idx_attached_object_reference_owns_base lets a soft-deleted owns row drop
 // out of the unique slot so the base can be re-owned after the
 // original owner is torn down. Without the clause, the soft-deleted
 // row would continue to occupy the slot until cockroach TTL eventually
@@ -301,7 +301,7 @@ func TestAOR_MarriesConstraintAfterSoftDelete(t *testing.T) {
 				return newAOR("threeport.io/v0.KubernetesWorkloadInstance", 1, "threeport.io/v0.GatewayInstance", 10, RelationshipMarries),
 					newAOR("threeport.io/v0.KubernetesWorkloadInstance", 1, "threeport.io/v0.GatewayInstance", 11, RelationshipMarries)
 			},
-			reason: "idx_aor_marries_base must let soft-deleted rows out of the slot",
+			reason: "idx_attached_object_reference_marries_base must let soft-deleted rows out of the slot",
 		},
 		{
 			name: "attacher side - same partner, different base",
@@ -309,7 +309,7 @@ func TestAOR_MarriesConstraintAfterSoftDelete(t *testing.T) {
 				return newAOR("threeport.io/v0.KubernetesWorkloadInstance", 1, "threeport.io/v0.GatewayInstance", 10, RelationshipMarries),
 					newAOR("threeport.io/v0.KubernetesWorkloadInstance", 2, "threeport.io/v0.GatewayInstance", 10, RelationshipMarries)
 			},
-			reason: "idx_aor_marries_attached must let soft-deleted rows out of the slot",
+			reason: "idx_attached_object_reference_marries_attached must let soft-deleted rows out of the slot",
 		},
 	}
 	for _, tc := range cases {

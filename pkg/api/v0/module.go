@@ -11,13 +11,13 @@ type ModuleApi struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// An arbitrary name for the module API.
-	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity,where:deleted_at IS NULL"`
 
 	// If true, represents the core Threeport API.
 	Core *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// The reverse-DNS namespace identifying this module API (e.g. "example.com").
-	ApiNamespace *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_module_api_identity"`
+	ApiNamespace *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_module_api_identity,where:deleted_at IS NULL"`
 
 	// The module API server's endpoint to proxy requests to for module
 	// objects.

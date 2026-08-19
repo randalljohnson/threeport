@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 var (
 	eventsFor        string
 	eventsObjectKind string
+	eventsObjectId   string
 	eventsApiGroup   string
 	eventsName       string
 	eventsReason     string
@@ -95,6 +97,12 @@ var GetEventsCmd = &cobra.Command{
 
   # filter by object name alone
   tptctl get events --name my-app
+
+  # filter by object ID alone, across every kind carrying that ID
+  tptctl get events --id 7
+
+  # narrow an ID to one kind
+  tptctl get events --object-kind kubernetes-workload-instance --id 7
 
   # filter by object name prefix (trailing * wildcard), covering a fleet
   # and every derived child whose name extends the fleet name
@@ -174,11 +182,23 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 			case eventsName != "":
 				cli.Error("", fmt.Errorf("--for and --name are mutually exclusive"))
 				os.Exit(1)
+			case eventsObjectId != "":
+				cli.Error("", fmt.Errorf("--for and --id are mutually exclusive"))
+				os.Exit(1)
 			}
 		}
 
+		// an id names the subject directly and a name resolves it, so the
+		// two select different rows and the request has no single answer
+		if eventsObjectId != "" && eventsName != "" {
+			cli.Error("", fmt.Errorf("--id and --name are mutually exclusive"))
+			os.Exit(1)
+		}
+
 		// build query string from the requested filter
-		queryString, err := buildEventsQueryString(eventsFor, eventsObjectKind, eventsApiGroup, eventsName, eventsReason)
+		queryString, err := buildEventsQueryString(
+			eventsFor, eventsObjectKind, eventsApiGroup, eventsName, eventsObjectId, eventsReason,
+		)
 		if err != nil {
 			cli.Error("failed to build events query", err)
 			os.Exit(1)
@@ -332,6 +352,10 @@ func init() {
 		"name", "", "Filter events by object name alone. Supports exact match (--name=my-app) or prefix match with trailing * (--name='myfleet2*'). Mutually exclusive with --for; combinable with --object-kind and --api-group.",
 	)
 	GetEventsCmd.Flags().StringVar(
+		&eventsObjectId,
+		"id", "", "Filter events by object ID, the numeric ID the object carries in the API (read one with tptctl get <object-type> -o json). Mutually exclusive with --for and --name; combinable with --object-kind and --api-group.",
+	)
+	GetEventsCmd.Flags().StringVar(
 		&eventsReason,
 		"reason", "", "Filter events by reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with trailing * (--reason='Create*').",
 	)
@@ -388,9 +412,10 @@ func init() {
 // The kind segment carries the optional version inline as
 // "<version>.<kind>", mirroring the fully qualified type form.
 //
-// --object-kind, --api-group, and --name each set exactly one query key.
+// --object-kind, --api-group, --name, and --id each set exactly one query key.
 // They combine freely so a caller can narrow by any subset (kind + name,
-// group + kind, group + name, or all three).
+// group + kind, group + id, or all three), except that --id and --name select
+// the subject two different ways and are rejected together.
 //
 // --reason accepts an exact match ("SuccessfulCreate") or a trailing-star
 // prefix ("Create*"). Exact match maps to ?reason=X; prefix strips the
@@ -403,9 +428,10 @@ func init() {
 // whose name starts with the token.
 //
 // Empty flags return an empty string so the caller queries every event.
-func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, reasonFlag string) (string, error) {
+func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, objectIdFlag, reasonFlag string) (string, error) {
 	// no filter requested - return empty so the caller queries every event
-	if forFlag == "" && objectKindFlag == "" && apiGroupFlag == "" && nameFlag == "" && reasonFlag == "" {
+	if forFlag == "" && objectKindFlag == "" && apiGroupFlag == "" &&
+		nameFlag == "" && objectIdFlag == "" && reasonFlag == "" {
 		return "", nil
 	}
 
@@ -431,6 +457,12 @@ func buildEventsQueryString(forFlag, objectKindFlag, apiGroupFlag, nameFlag, rea
 			if err := setObjectNameQueryParam(q, "--name", nameFlag, nameFlag); err != nil {
 				return "", err
 			}
+		}
+		if objectIdFlag != "" {
+			if _, err := strconv.ParseUint(objectIdFlag, 10, 64); err != nil {
+				return "", fmt.Errorf("invalid --id value %q: expected a positive whole number", objectIdFlag)
+			}
+			q.Set("objectid", objectIdFlag)
 		}
 		return q.Encode(), nil
 	}

@@ -18623,7 +18623,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Hostname": {
-                    "description": "The hostname or IP address used to reach the machine. Optional at\ncreate so the abstract instance can exist before the machine is\nprovisioned; populated once the machine is reachable.",
+                    "description": "The hostname or IP address used to reach the machine. Optional at\ncreate so the abstract instance can exist before the machine is\nprovisioned; populated once the machine is reachable.\n\nidx_machine_runtime_instance_hostname is a partial unique index that\nallows at most one live instance per hostname, so a single machine\ncannot be represented by two records that each drive their own\nreconciliation against it. The deleted_at predicate keeps\nsoft-deleted rows out of the unique slot, so the hostname of a\ndeleted instance is available to a new one right away. CockroachDB\ntreats every NULL as distinct in a unique index, so any number of\ninstances may hold no hostname while they wait on provisioning.",
                     "type": "string"
                 },
                 "IngressRules": {

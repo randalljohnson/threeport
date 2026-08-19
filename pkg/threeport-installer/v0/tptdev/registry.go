@@ -26,9 +26,9 @@ const (
 	registryPort  = "5001"
 )
 
-// CreateLocalRegistry starts a Docker container to serve as a local container
-// registry.  If a local registry already exists with the <registryName> name,
-// it will return without error
+// CreateLocalRegistry runs a Docker container to serve as a local container
+// registry.  It creates the container when no container carries the
+// <registryName> name, and starts an existing one that has stopped.
 func CreateLocalRegistry() error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -37,9 +37,14 @@ func CreateLocalRegistry() error {
 	}
 	defer cli.Close()
 
-	_, err = cli.ContainerInspect(ctx, registryName)
+	existing, err := cli.ContainerInspect(ctx, registryName)
 	if err == nil {
-		// registry already exists
+		if registryNeedsStart(existing.State.Status) {
+			if err := cli.ContainerStart(ctx, existing.ID, container.StartOptions{}); err != nil {
+				return fmt.Errorf("failed to start the existing registry container: %w", err)
+			}
+		}
+
 		return nil
 	}
 
@@ -86,6 +91,20 @@ func CreateLocalRegistry() error {
 	}
 
 	return nil
+}
+
+// registryNeedsStart reports whether a container in the given Docker state is
+// one a start call brings back up.  Created and exited are the two states a
+// stopped container rests in.  Running, paused, restarting, removing, and dead
+// each need something other than a start, so a container in one of them is left
+// as it is.
+func registryNeedsStart(status string) bool {
+	switch status {
+	case container.StateCreated, container.StateExited:
+		return true
+	default:
+		return false
+	}
 }
 
 // ConnectLocalRegistry connects a local Docker container registry to a kind cluster.

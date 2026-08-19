@@ -1,4 +1,4 @@
-// Package database exercises the database behavior the rest of the suites
+// Package cockroach exercises the database behavior the rest of the suites
 // cannot reach. The handler tests run on sqlite and the api tests run gorm in
 // dry-run mode, so anything that depends on how CockroachDB itself answers is
 // unreachable from either: dry run builds a statement but never reads a result
@@ -7,7 +7,7 @@
 // The suite needs docker and does not need a control plane, which is why it
 // lives outside test/integration. `mage test:unit` runs only ./pkg, ./internal,
 // ./cmd, and ./magefiles, so nothing here runs during a unit pass.
-package database
+package cockroach
 
 import (
 	"fmt"

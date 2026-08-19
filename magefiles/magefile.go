@@ -14,7 +14,7 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// Database runs the tests that need a real CockroachDB, which it starts in a
+// Cockroach runs the tests that need a real CockroachDB, which it starts in a
 // container itself.
 //
 // The unit tests run on sqlite and the api tests run gorm in dry-run mode, so
@@ -24,16 +24,16 @@ import (
 // which is why this sits outside both test:unit and test:integration.
 //
 // The suite skips itself when docker is missing.
-func (Test) Database() error {
+func (Test) Cockroach() error {
 	cmd := "go"
 	args := []string{
 		"test",
 		"-v",
 		"-count=1",
-		"./test/database",
+		"./test/cockroach",
 	}
 	if err := util.RunCommandStreamOutput(cmd, args...); err != nil {
-		return fmt.Errorf("failed to run database tests: %w", err)
+		return fmt.Errorf("failed to run cockroach tests: %w", err)
 	}
 
 	return nil

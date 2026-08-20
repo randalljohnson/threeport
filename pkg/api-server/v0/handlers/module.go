@@ -24,23 +24,24 @@ import (
 // @Router /v0/module-api-route-with-module-object-reference [POST]
 func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) error {
 	objectType := api_v0.ObjectTypeModuleApiRoute
+	fullyQualifiedType := new(api_v0.ModuleApiRoute).GetFullyQualifiedType()
 	var moduleApiRoute api_v0.ModuleApiRoute
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, moduleApiRoute); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&moduleApiRoute); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, moduleApiRoute, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist to DB
@@ -50,34 +51,34 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
 		// check whether a unique index rejected the write
-		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		conflictErr := apiserver_lib.UniqueViolation(
+			result.Error,
+			new(api_v0.ModuleApiRoute),
+		)
+		if conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		moduleApiRoute,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -94,19 +95,19 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects-with-module-api-routes [GET]
 func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
-	objectType := api_v0.ObjectTypeModuleObject
+	fullyQualifiedType := new(api_v0.ModuleObject).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.ModuleObject
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -122,7 +123,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 		var totalCount int64
 		if result := h.DB.Model(&api_v0.ModuleObject{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -133,23 +134,23 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.DB.Order("ID asc").Where(&filter).Preload("ModuleApiRoutes").Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 
 		case true:
 			// if we have to paginate, create the materialized view and use it to fetch the first page of records
-			viewName, queryId, err := h.CreateMaterializedView(objectType)
+			viewName, queryId, err := h.CreateMaterializedView(filter.TableName())
 			if err != nil {
 				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = queryId
 
 			query := fmt.Sprintf("SELECT * FROM %s ORDER BY ID ASC LIMIT %d", viewName, pageParams.Limit)
 			if result := h.DB.Raw(query).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 
 			// load associations for the records retrieved from materialized view
@@ -164,7 +165,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 					recordsWithPreload := &[]api_v0.ModuleObject{}
 					if result := h.DB.Where("id IN ?", ids).Preload("ModuleApiRoutes").Find(recordsWithPreload); result.Error != nil {
 						h.Logger.Error("handler error: error preloading associations", zap.Error(result.Error))
-						return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+						return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 					}
 					records = recordsWithPreload
 				}
@@ -180,14 +181,14 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// use query ID to find the materialized view name
 		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
 			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		pagination.QueryId = pageParams.QueryId
@@ -196,7 +197,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// load associations for the records retrieved from materialized view
@@ -211,7 +212,7 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 				recordsWithPreload := &[]api_v0.ModuleObject{}
 				if result := h.DB.Where("id IN ?", ids).Preload("ModuleApiRoutes").Find(recordsWithPreload); result.Error != nil {
 					h.Logger.Error("handler error: error preloading associations", zap.Error(result.Error))
-					return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+					return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 				}
 				records = recordsWithPreload
 			}
@@ -235,11 +236,11 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 			ObjectCount: returnedCount,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -256,25 +257,25 @@ func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects-with-module-api-routes/{id} [GET]
 func (h Handler) GetModuleObjectWithModuleApiRoutes(c echo.Context) error {
-	objectType := api_v0.ObjectTypeModuleObject
+	fullyQualifiedType := new(api_v0.ModuleObject).GetFullyQualifiedType()
 	moduleObjectID := c.Param("id")
 	var moduleObject api_v0.ModuleObject
 	if result := h.DB.Preload("ModuleApiRoutes").First(&moduleObject, moduleObjectID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		moduleObject,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)

@@ -65,11 +65,11 @@ func (Ci) Teardown() error {
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=threeport-" | xargs -r docker rm -f`)
 
-	// reap kind networks, anonymous volumes, and stopped-container metadata,
-	// which is what the auto-restart failure latches onto: a network and a
-	// mount point outlive the container that owned them
+	// reap kind networks and stopped-container metadata, which is what the
+	// auto-restart failure latches onto: a network and a mount point outlive
+	// the container that owned them. Volumes are pruned further down, after
+	// every container that could still be holding one is gone.
 	teardownStep("docker", "network", "prune", "-f")
-	teardownStep("docker", "volume", "prune", "-f")
 	teardownStep("docker", "container", "prune", "-f")
 
 	// remove any leftover tptctl config, since a failed run leaves tptctl
@@ -84,6 +84,11 @@ func (Ci) Teardown() error {
 	if err := (Dev{}).LocalRegistryDown(); err != nil {
 		fmt.Printf("ci:teardown: remove local registry: %v\n", err)
 	}
+
+	// prune volumes last. A prune skips any volume a container still holds, so
+	// running it before the containers above are gone leaves each run's
+	// registry storage on the node, and the next run adds its own.
+	teardownStep("docker", "volume", "prune", "-f")
 
 	return nil
 }

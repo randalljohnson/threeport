@@ -21410,9 +21410,9 @@
                     ]
                 },
                 "type": {
-                    "description": "Type contains ObjectType of returned Data elements.",
+                    "description": "Type names the kind of the returned Data elements, qualified as\n\u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e so a client reads the object's\nidentity off the body rather than deriving it from the request URL.",
                     "type": "string",
-                    "example": "KubernetesWorkloadInstance"
+                    "example": "threeport.io/v0.KubernetesWorkloadInstance"
                 }
             }
         },

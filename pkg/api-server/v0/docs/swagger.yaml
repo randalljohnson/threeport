@@ -4241,8 +4241,11 @@ definitions:
         - $ref: '#/definitions/v0.Status'
         description: Status represents an error that occurred while handling a request.
       type:
-        description: Type contains ObjectType of returned Data elements.
-        example: KubernetesWorkloadInstance
+        description: |-
+          Type names the kind of the returned Data elements, qualified as
+          <api-namespace>/<version>.<TypeName> so a client reads the object's
+          identity off the body rather than deriving it from the request URL.
+        example: threeport.io/v0.KubernetesWorkloadInstance
         type: string
     type: object
   v0.SecretDefinition:

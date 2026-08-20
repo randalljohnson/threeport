@@ -65,6 +65,14 @@ func (Ci) Teardown() error {
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=threeport-" | xargs -r docker rm -f`)
 
+	// remove the buildkit builder this run created. The setup action names its
+	// builder after a fresh uuid on every run, so the cache in its state volume
+	// is written once and never read again, and the volume outlives the job
+	// because a running container's volume is not prunable. Leaving them costs
+	// several gigabytes per run and buys no cache hit.
+	teardownStep("sh", "-c",
+		`docker ps -aq --filter "name=buildx_buildkit_" | xargs -r docker rm -f`)
+
 	// reap kind networks and stopped-container metadata, which is what the
 	// auto-restart failure latches onto: a network and a mount point outlive
 	// the container that owned them. Volumes are pruned further down, after

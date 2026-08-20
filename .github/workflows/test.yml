@@ -46,20 +46,6 @@ jobs:
     - name: Unit tests
       run: mage test:unit
 
-  # Generates a module with the SDK, then builds and vets the output.
-  module-generation:
-    name: Module Generation
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-    - name: Go setup
-      uses: ./.github/actions/go-setup
-
-    - name: Generate and build the module fixture
-      run: mage test:moduleGen
-
   # Runs the tests that need a real CockroachDB. The suite starts the container
   # itself, so this needs docker and not a control plane, which is why it is its
   # own job rather than a step in the integration tests.

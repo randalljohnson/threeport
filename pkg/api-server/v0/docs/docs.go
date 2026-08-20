@@ -3508,13 +3508,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by exact object name; matches every subject type carrying that name unless objecttypename narrows it",
+                        "description": "filter events by exact object name; matches every subject type carrying that name, deleted subjects included, unless objecttypename narrows it",
                         "name": "objectname",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object name prefix; matches every subject whose name starts with this token, across every subject type unless objecttypename narrows it",
+                        "description": "filter events by object name prefix; matches every subject whose name starts with this token, deleted subjects included, across every subject type unless objecttypename narrows it",
                         "name": "objectnameprefix",
                         "in": "query"
                     },

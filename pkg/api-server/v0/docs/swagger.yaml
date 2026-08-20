@@ -5859,13 +5859,14 @@ paths:
         name: objectnamespace
         type: string
       - description: filter events by exact object name; matches every subject type
-          carrying that name unless objecttypename narrows it
+          carrying that name, deleted subjects included, unless objecttypename narrows
+          it
         in: query
         name: objectname
         type: string
       - description: filter events by object name prefix; matches every subject whose
-          name starts with this token, across every subject type unless objecttypename
-          narrows it
+          name starts with this token, deleted subjects included, across every subject
+          type unless objecttypename narrows it
         in: query
         name: objectnameprefix
         type: string

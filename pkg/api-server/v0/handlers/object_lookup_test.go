@@ -156,7 +156,36 @@ func TestGetIDsFromModuleByName_HappyPath(t *testing.T) {
 	ids, err := getIDsFromModuleByName(endpoint, "/example.com/v0/widgets", "example.com/v0.widget", "widget-seven")
 	require.NoError(t, err)
 	assert.Equal(t, []uint{7, 9}, ids, "every matching row's id is collected")
-	assert.Equal(t, "/example.com/v0/widgets?name=widget-seven", gotURL)
+	assert.Equal(
+		t,
+		"/example.com/v0/widgets?name=widget-seven&includedeleted=true",
+		gotURL,
+		"the name lookup asks the module for soft-deleted rows too",
+	)
+}
+
+// TestGetIDsFromModuleByName_ResolvesDeletedSubject keeps a module
+// subject resolvable by name after it is deleted. A module that honors
+// includedeleted returns the deleted row, and its events stay reachable
+// through the name filter rather than disappearing the moment the
+// subject is deleted.
+func TestGetIDsFromModuleByName_ResolvesDeletedSubject(t *testing.T) {
+	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		// a module honoring includedeleted returns the deleted row only
+		// when the caller asks for deleted rows
+		if r.URL.Query().Get("includedeleted") != "true" {
+			writeJSONResponse(t, w, []apiserver_lib.Object{})
+			return
+		}
+		writeJSONResponse(t, w, []apiserver_lib.Object{
+			map[string]interface{}{"ID": float64(4), "Name": "widget-gone"},
+		})
+	})
+	defer restore()
+
+	ids, err := getIDsFromModuleByName(endpoint, "/example.com/v0/widgets", "example.com/v0.widget", "widget-gone")
+	require.NoError(t, err)
+	assert.Equal(t, []uint{4}, ids, "a deleted subject still resolves by name")
 }
 
 // TestGetIDsFromModuleByName_Empty handles the empty-result case as a
@@ -221,4 +250,24 @@ func TestParseRowID(t *testing.T) {
 			assert.Equal(t, tc.wantID, id)
 		})
 	}
+}
+
+// TestGetObjectIDsByNameIncludesDeleted keeps a core subject resolvable
+// by name after it is deleted. gorm scopes every read to deleted_at IS
+// NULL by default, which would answer a name filter with fewer events
+// than the same subject's id filter returns, so the resolver lifts that
+// predicate.
+func TestGetObjectIDsByNameIncludesDeleted(t *testing.T) {
+	h, sql := newDryRunHandler(t, apiserver_lib.PaginationModeAsOfSystemTime)
+
+	_, err := GetObjectIDsByName(
+		h.DB,
+		"threeport.io/v0.KubernetesWorkloadInstance",
+		"host-023421",
+	)
+	require.NoError(t, err)
+
+	assert.Contains(t, *sql, "v0_kubernetes_workload_instances", "the core resolver handled the type")
+	assert.Contains(t, *sql, "name = ", "the name reaches the WHERE clause")
+	assert.NotContains(t, *sql, "deleted_at", "a deleted subject still resolves by name")
 }

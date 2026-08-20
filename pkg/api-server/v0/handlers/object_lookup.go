@@ -135,9 +135,16 @@ func GetObjectNames(ctx context.Context, db *gorm.DB, objectType string, ids []u
 // resolver or no objects match. Name uniqueness is not enforced at
 // the database level, so a single name can legitimately resolve to
 // multiple ids.
+//
+// Soft-deleted objects are included. An object's event history outlives
+// the object, so a name that resolves to a deleted row still names the
+// subject those events belong to, and dropping it would answer a name
+// filter with fewer events than the same subject's id filter returns.
 func GetObjectIDsByName(db *gorm.DB, objectType, name string) ([]uint, error) {
-	// try the core SQL resolver first; return early if the type is core
-	ids, err := apiserver_lib.GetCoreObjectIDsByName(db, objectType, name)
+	// try the core SQL resolver first; return early if the type is core.
+	// Unscoped lifts gorm's deleted_at predicate so a deleted subject
+	// still resolves.
+	ids, err := apiserver_lib.GetCoreObjectIDsByName(db.Unscoped(), objectType, name)
 	if err == nil {
 		return ids, nil
 	}
@@ -398,12 +405,20 @@ func getNamesFromModulePerID(ctx context.Context, endpoint, path string, ids []u
 
 // getIDsFromModuleByName issues a name-filtered GET to the module API
 // and returns every matching row's ID. An empty result is returned as
-// an empty slice with no error.
+// an empty slice with no error. Soft-deleted rows are requested for the
+// same reason the core resolver lifts its deleted_at predicate: a
+// subject's event history outlives the subject.
 func getIDsFromModuleByName(endpoint, path, objectType, name string) ([]uint, error) {
 	// build the name-filtered list URL. e.g.
-	// "threeport-widget-api-server.threeport-control-plane.svc.cluster.local/example-com/v0/widgets?name=my-widget"
+	// "threeport-widget-api-server.threeport-control-plane.svc.cluster.local/example-com/v0/widgets?name=my-widget&includedeleted=true"
 	// (GetResponse below prepends the http(s):// scheme based on TLS config)
-	url := fmt.Sprintf("%s%s?name=%s", endpoint, path, name)
+	url := fmt.Sprintf(
+		"%s%s?name=%s&%s=true",
+		endpoint,
+		path,
+		name,
+		apiserver_lib.QueryParamIncludeDeleted,
+	)
 
 	// dispatch via the shared module HTTP client
 	resp, err := client_lib.GetResponse(

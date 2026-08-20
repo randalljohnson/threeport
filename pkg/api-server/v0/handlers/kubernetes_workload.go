@@ -24,12 +24,13 @@ import (
 // @Router /v0/kubernetes-workload-resource-definition-sets [post]
 func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error {
 	objectType := v0.ObjectTypeKubernetesWorkloadResourceDefinition
+	fullyQualifiedType := new(v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
 	var k8sWorkloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, v0.KubernetesWorkloadResourceDefinition{}); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&k8sWorkloadResourceDefinitions); err != nil {
@@ -40,7 +41,7 @@ func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, k8sWorkloadResourceDefinitions, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// create all kubernetes workload resource definitions or none at all
@@ -58,30 +59,30 @@ func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 	if err != nil {
 		h.Logger.Error("handler error: error creating kubernetes workload resource definitions", zap.Error(err))
 		// check whether a unique index rejected one of the writes
-		constraint, conflict := apiserver_lib.UniqueViolation(err)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		conflictErr := apiserver_lib.UniqueViolation(
+			err,
+			new(v0.KubernetesWorkloadResourceDefinition),
+		)
+		if conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		createdWRDs,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)

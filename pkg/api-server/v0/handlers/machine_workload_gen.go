@@ -45,23 +45,24 @@ func (h Handler) GetMachineWorkloadDefinitionVersions(c echo.Context) error {
 // @Router /v0/machine-workload-definitions [POST]
 func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
+	fullyQualifiedType := new(api_v0.MachineWorkloadDefinition).GetFullyQualifiedType()
 	var machineWorkloadDefinition api_v0.MachineWorkloadDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, machineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&machineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, machineWorkloadDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// check for duplicate names
@@ -73,11 +74,11 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 			nameUsed = false
 		} else {
 			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 		}
 	}
 	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
 	}
 
 	// persist to DB
@@ -89,34 +90,33 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
 		// check whether a unique index rejected the write
-		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		if conflictErr := apiserver_lib.UniqueViolation(
+			result.Error,
+			new(api_v0.MachineWorkloadDefinition),
+		); conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineWorkloadDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -133,19 +133,19 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-definitions [GET]
 func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
+	fullyQualifiedType := new(api_v0.MachineWorkloadDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -161,7 +161,7 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.MachineWorkloadDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -172,7 +172,7 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
@@ -181,10 +181,10 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = queryId
 			returnedCount = count
@@ -198,17 +198,17 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 		pagination.QueryId = queryId
 		returnedCount = count
@@ -231,11 +231,11 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -252,26 +252,26 @@ func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-definitions/{id} [GET]
 func (h Handler) GetMachineWorkloadDefinition(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
+	fullyQualifiedType := new(api_v0.MachineWorkloadDefinition).GetFullyQualifiedType()
 	machineWorkloadDefinitionID := c.Param("id")
 	var machineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if result := h.RequestDB(c).
 		First(&machineWorkloadDefinition, machineWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineWorkloadDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -296,27 +296,28 @@ func (h Handler) GetMachineWorkloadDefinition(c echo.Context) error {
 // @Router /v0/machine-workload-definitions/{id} [PATCH]
 func (h Handler) UpdateMachineWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
+	fullyQualifiedType := new(api_v0.MachineWorkloadDefinition).GetFullyQualifiedType()
 	machineWorkloadDefinitionID := c.Param("id")
 	var existingMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if result := h.RequestDB(c).First(&existingMachineWorkloadDefinition, machineWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&updatedMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
 	// update object in database
@@ -328,34 +329,33 @@ func (h Handler) UpdateMachineWorkloadDefinition(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
 		// check whether a unique index rejected the write
-		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		if conflictErr := apiserver_lib.UniqueViolation(
+			result.Error,
+			new(api_v0.MachineWorkloadDefinition),
+		); conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMachineWorkloadDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -381,33 +381,34 @@ func (h Handler) UpdateMachineWorkloadDefinition(c echo.Context) error {
 // @Router /v0/machine-workload-definitions/{id} [PUT]
 func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
+	fullyQualifiedType := new(api_v0.MachineWorkloadDefinition).GetFullyQualifiedType()
 	machineWorkloadDefinitionID := c.Param("id")
 	var existingMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if result := h.RequestDB(c).First(&existingMachineWorkloadDefinition, machineWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if err := c.Bind(&updatedMachineWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedMachineWorkloadDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist provided data
@@ -420,43 +421,42 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
 		// check whether a unique index rejected the write
-		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		if conflictErr := apiserver_lib.UniqueViolation(
+			result.Error,
+			new(api_v0.MachineWorkloadDefinition),
+		); conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingMachineWorkloadDefinition, machineWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMachineWorkloadDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -477,15 +477,15 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-definitions/{id} [DELETE]
 func (h Handler) DeleteMachineWorkloadDefinition(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
+	fullyQualifiedType := new(api_v0.MachineWorkloadDefinition).GetFullyQualifiedType()
 	machineWorkloadDefinitionID := c.Param("id")
 	var machineWorkloadDefinition api_v0.MachineWorkloadDefinition
 	if result := h.RequestDB(c).Preload("MachineWorkloadInstances").First(&machineWorkloadDefinition, machineWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check to make sure no dependent instances exist for this definition
@@ -519,20 +519,20 @@ func (h Handler) DeleteMachineWorkloadDefinition(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineWorkloadDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -565,23 +565,24 @@ func (h Handler) GetMachineWorkloadInstanceVersions(c echo.Context) error {
 // @Router /v0/machine-workload-instances [POST]
 func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadInstance
+	fullyQualifiedType := new(api_v0.MachineWorkloadInstance).GetFullyQualifiedType()
 	var machineWorkloadInstance api_v0.MachineWorkloadInstance
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, machineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&machineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, machineWorkloadInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// check for duplicate names
@@ -593,11 +594,11 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 			nameUsed = false
 		} else {
 			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 		}
 	}
 	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
 	}
 
 	// persist to DB
@@ -609,24 +610,23 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
 		// check whether a unique index rejected the write
-		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		if conflictErr := apiserver_lib.UniqueViolation(
+			result.Error,
+			new(api_v0.MachineWorkloadInstance),
+		); conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// notify controller if reconciliation is required
@@ -638,7 +638,7 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.MachineWorkloadInstanceCreateSubject, *notifPayload)
 	}
@@ -646,11 +646,11 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineWorkloadInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -667,19 +667,19 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-instances [GET]
 func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadInstance
+	fullyQualifiedType := new(api_v0.MachineWorkloadInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.MachineWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -695,7 +695,7 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.MachineWorkloadInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -706,7 +706,7 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
@@ -715,10 +715,10 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
 				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = queryId
 			returnedCount = count
@@ -732,17 +732,17 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
 		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
 			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 		pagination.QueryId = queryId
 		returnedCount = count
@@ -765,11 +765,11 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -786,26 +786,26 @@ func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-instances/{id} [GET]
 func (h Handler) GetMachineWorkloadInstance(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadInstance
+	fullyQualifiedType := new(api_v0.MachineWorkloadInstance).GetFullyQualifiedType()
 	machineWorkloadInstanceID := c.Param("id")
 	var machineWorkloadInstance api_v0.MachineWorkloadInstance
 	if result := h.RequestDB(c).
 		First(&machineWorkloadInstance, machineWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineWorkloadInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -830,27 +830,28 @@ func (h Handler) GetMachineWorkloadInstance(c echo.Context) error {
 // @Router /v0/machine-workload-instances/{id} [PATCH]
 func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadInstance
+	fullyQualifiedType := new(api_v0.MachineWorkloadInstance).GetFullyQualifiedType()
 	machineWorkloadInstanceID := c.Param("id")
 	var existingMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if result := h.RequestDB(c).First(&existingMachineWorkloadInstance, machineWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if err := c.Bind(&updatedMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
 	// snapshot reconciliation state before update so the notify block
@@ -866,24 +867,23 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
 		// check whether a unique index rejected the write
-		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		if conflictErr := apiserver_lib.UniqueViolation(
+			result.Error,
+			new(api_v0.MachineWorkloadInstance),
+		); conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -895,7 +895,7 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.MachineWorkloadInstanceUpdateSubject, *notifPayload)
 	}
@@ -903,11 +903,11 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMachineWorkloadInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -933,33 +933,34 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 // @Router /v0/machine-workload-instances/{id} [PUT]
 func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeMachineWorkloadInstance
+	fullyQualifiedType := new(api_v0.MachineWorkloadInstance).GetFullyQualifiedType()
 	machineWorkloadInstanceID := c.Param("id")
 	var existingMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if result := h.RequestDB(c).First(&existingMachineWorkloadInstance, machineWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedMachineWorkloadInstance api_v0.MachineWorkloadInstance
 	if err := c.Bind(&updatedMachineWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedMachineWorkloadInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// snapshot reconciliation state before replace so the notify block
@@ -976,33 +977,32 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
 		// check whether a unique index rejected the write
-		constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-		if conflict {
-			h.Logger.Info(
-				"write rejected by unique index",
-				zap.String("constraint", constraint),
-			)
+		if conflictErr := apiserver_lib.UniqueViolation(
+			result.Error,
+			new(api_v0.MachineWorkloadInstance),
+		); conflictErr != nil {
+			conflictErr.Log(h.Logger)
 			return apiserver_lib.ResponseStatus409(
 				c,
 				nil,
-				errors.New(apiserver_lib.ErrMsgUniqueViolation),
-				objectType,
+				errors.New(conflictErr.Message()),
+				fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingMachineWorkloadInstance, machineWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -1014,7 +1014,7 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.MachineWorkloadInstanceUpdateSubject, *notifPayload)
 	}
@@ -1022,11 +1022,11 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMachineWorkloadInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1047,15 +1047,15 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-instances/{id} [DELETE]
 func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadInstance
+	fullyQualifiedType := new(api_v0.MachineWorkloadInstance).GetFullyQualifiedType()
 	machineWorkloadInstanceID := c.Param("id")
 	var machineWorkloadInstance api_v0.MachineWorkloadInstance
 	if result := h.RequestDB(c).First(&machineWorkloadInstance, machineWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -1068,7 +1068,7 @@ func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -1086,7 +1086,7 @@ func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
 			return db.Model(&machineWorkloadInstance).Updates(&scheduledMachineWorkloadInstance)
 		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 		}
 		// notify controller
 		notifPayload, err := machineWorkloadInstance.NotificationPayload(
@@ -1096,7 +1096,7 @@ func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.MachineWorkloadInstanceDeleteSubject, *notifPayload)
 	} else {
@@ -1106,7 +1106,7 @@ func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
 				"object with ID %d already being deleted",
 				*machineWorkloadInstance.ID,
-			)), objectType)
+			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
@@ -1127,10 +1127,10 @@ func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 			}
 		}
 	}
@@ -1138,11 +1138,11 @@ func (h Handler) DeleteMachineWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineWorkloadInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)

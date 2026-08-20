@@ -54,12 +54,13 @@ func (h *Handler) DeleteSecretDefinitionMiddleware() []echo.MiddlewareFunc {
 func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		objectType := v0.ObjectTypeSecretDefinition
+		fullyQualifiedType := new(v0.SecretDefinition).GetFullyQualifiedType()
 		var secretDefinition v0.SecretDefinition
 
 		// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 		if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, secretDefinition); err != nil {
 			h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-			return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+			return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 		}
 
 		if err := c.Bind(&secretDefinition); err != nil {
@@ -70,7 +71,7 @@ func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFu
 		// check for missing required fields
 		if id, err := apiserver_lib.ValidateBoundData(c, secretDefinition, objectType); err != nil {
 			h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-			return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+			return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 		}
 
 		// check for duplicate names
@@ -82,11 +83,11 @@ func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFu
 				nameUsed = false
 			} else {
 				h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 			}
 		}
 		if nameUsed {
-			return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+			return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
 		}
 
 		// create copy of Data field in memory, as it will be
@@ -97,20 +98,20 @@ func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFu
 		if result := h.DB.Create(&secretDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error persisting secret definition to DB", zap.Error(result.Error))
 			// check whether a unique index rejected the write
-			constraint, conflict := apiserver_lib.UniqueViolation(result.Error)
-			if conflict {
-				h.Logger.Info(
-					"write rejected by unique index",
-					zap.String("constraint", constraint),
-				)
+			conflictErr := apiserver_lib.UniqueViolation(
+				result.Error,
+				new(v0.SecretDefinition),
+			)
+			if conflictErr != nil {
+				conflictErr.Log(h.Logger)
 				return apiserver_lib.ResponseStatus409(
 					c,
 					nil,
-					errors.New(apiserver_lib.ErrMsgUniqueViolation),
-					objectType,
+					errors.New(conflictErr.Message()),
+					fullyQualifiedType,
 				)
 			}
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 		}
 
 		// encrypt sensitive values
@@ -148,7 +149,7 @@ func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFu
 			)
 			if err != nil {
 				h.Logger.Error("handler error: error creating notification payload", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 			}
 			h.JS.Publish(notif.SecretDefinitionCreateSubject, *notifPayload)
 		}
@@ -156,11 +157,11 @@ func (h Handler) CustomAddSecretDefinition(next echo.HandlerFunc) echo.HandlerFu
 		response, err := apiserver_lib.CreateResponse(
 			apiserver_lib.SingleObjectMeta(),
 			secretDefinition,
-			objectType,
+			fullyQualifiedType,
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating response", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 
 		return apiserver_lib.ResponseStatus201(c, *response)

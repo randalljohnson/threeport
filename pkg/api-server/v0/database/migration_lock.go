@@ -38,8 +38,9 @@ var lockTableNamePattern = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 
 // MigrationLocker lets one database migrator run at a time. It holds the lock by
 // writing a single row inside an open transaction, using only statements any
-// PostgreSQL-compatible database understands, because CockroachDB implements no
-// advisory locks and the session locker goose ships calls for one.
+// PostgreSQL-compatible database understands, because the session locker goose
+// ships calls a session-scoped advisory lock builtin and CockroachDB does not
+// implement one.
 //
 // Writing the row is what makes it a lock; reading it would not. CockroachDB
 // holds a row taken with SELECT ... FOR UPDATE only in memory on the range
@@ -50,12 +51,13 @@ var lockTableNamePattern = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 //
 // Two constraints on the connection this locker is given:
 //
-//   - Its pool must allow more than one connection, since a non-transactional Go
-//     migration would otherwise need the connection the lock sits on.
-//   - Migrations must not run on this connection. The ones registered today reach
-//     the database through a handle carried on the context, so they never touch
-//     it; a transactional or SQL migration would run inside the transaction
-//     opened here.
+//   - Its pool must allow more than one connection. The lock claims one for the
+//     whole run, so a pool capped at one leaves none for the migrations and goose
+//     refuses to start.
+//   - Migrations must run on some other connection. Every migration registered
+//     today reaches the database through a handle passed on the context, so it
+//     does. One that goose runs itself would run inside the lock's transaction,
+//     and its writes would land only when the lock releases.
 //
 // One instance holds one transaction, so give every migration provider its own.
 type MigrationLocker struct {

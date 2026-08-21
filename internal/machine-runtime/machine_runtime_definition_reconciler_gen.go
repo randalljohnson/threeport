@@ -182,7 +182,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonCreateFailed),
-							Type:   util.Ptr(event.TypeWarning),
+							Type:   util.Ptr(event.TypeNormal),
 						},
 						machineRuntimeDefinition.GetId(),
 						machineRuntimeDefinition.GetFullyQualifiedType(),
@@ -229,7 +229,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonUpdateFailed),
-							Type:   util.Ptr(event.TypeWarning),
+							Type:   util.Ptr(event.TypeNormal),
 						},
 						machineRuntimeDefinition.GetId(),
 						machineRuntimeDefinition.GetFullyQualifiedType(),
@@ -289,7 +289,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonDeleteFailed),
-							Type:   util.Ptr(event.TypeWarning),
+							Type:   util.Ptr(event.TypeNormal),
 						},
 						machineRuntimeDefinition.GetId(),
 						machineRuntimeDefinition.GetFullyQualifiedType(),

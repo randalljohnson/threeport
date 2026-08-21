@@ -264,6 +264,19 @@ func KubernetesRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes runtime definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted kubernetes runtime definition object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesRuntimeDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted kubernetes runtime definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -320,6 +333,19 @@ func KubernetesRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					kubernetesRuntimeDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting kubernetes runtime definition, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesRuntimeDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete kubernetes runtime definition")
 					r.UnlockAndRequeue(kubernetesRuntimeDefinition, requeueDelay, lockReleased, msg)
 					continue

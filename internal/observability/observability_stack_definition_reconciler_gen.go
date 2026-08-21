@@ -264,6 +264,19 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability stack definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted observability stack definition object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityStackDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted observability stack definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -320,6 +333,19 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					observabilityStackDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting observability stack definition, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityStackDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete observability stack definition")
 					r.UnlockAndRequeue(observabilityStackDefinition, requeueDelay, lockReleased, msg)
 					continue

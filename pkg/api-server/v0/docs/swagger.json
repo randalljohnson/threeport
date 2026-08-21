@@ -17517,23 +17517,23 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17541,11 +17541,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17557,7 +17557,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -17714,23 +17714,23 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17738,11 +17738,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17758,7 +17758,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -17803,15 +17803,15 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "CustomComponentInfo": {
@@ -17822,11 +17822,11 @@
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17834,7 +17834,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "Genesis": {
@@ -17842,7 +17842,7 @@
                     "type": "boolean"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "IsSelf": {
@@ -17869,7 +17869,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -17892,23 +17892,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17916,7 +17916,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "Domain": {
@@ -17931,7 +17931,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17943,7 +17943,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -17966,23 +17966,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -17990,7 +17990,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "DomainNameDefinitionID": {
@@ -17998,7 +17998,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18014,7 +18014,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18083,23 +18083,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18107,7 +18107,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "DomainNameDefinitionID": {
@@ -18129,7 +18129,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadDefinitionID": {
@@ -18145,7 +18145,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "ServiceName": {
@@ -18208,23 +18208,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18232,7 +18232,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "GatewayDefinitionID": {
@@ -18240,7 +18240,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18256,7 +18256,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -18335,23 +18335,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18359,7 +18359,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "ExternalIP": {
@@ -18379,7 +18379,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -18391,7 +18391,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -18490,23 +18490,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18514,7 +18514,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "GcpGkeKubernetesRuntimeDefinitionID": {
@@ -18526,7 +18526,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18538,7 +18538,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -18622,23 +18622,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18646,7 +18646,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadInstances": {
@@ -18657,7 +18657,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -18669,7 +18669,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Repo": {
@@ -18705,23 +18705,23 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18729,7 +18729,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadDefinitionID": {
@@ -18737,7 +18737,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18749,7 +18749,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "ReleaseNamespace": {
@@ -18804,23 +18804,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18828,7 +18828,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "HighAvailability": {
@@ -18844,7 +18844,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstances": {
@@ -18875,7 +18875,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -18924,15 +18924,15 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DefaultRuntime": {
@@ -18940,11 +18940,11 @@
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -18952,7 +18952,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "DnsControllerInstanceID": {
@@ -18964,7 +18964,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeDefinitionID": {
@@ -18987,7 +18987,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "SecretsControllerInstanceID": {
@@ -19016,23 +19016,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19040,11 +19040,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadInstances": {
@@ -19070,7 +19070,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19092,23 +19092,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19116,11 +19116,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19143,7 +19143,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19300,23 +19300,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19324,11 +19324,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "LoggingInstances": {
@@ -19371,7 +19371,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19389,23 +19389,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19413,11 +19413,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19449,7 +19449,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19465,23 +19465,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19489,7 +19489,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "ImageID": {
@@ -19505,7 +19505,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "MachineProfile": {
@@ -19536,7 +19536,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19556,23 +19556,23 @@
                     "type": "boolean"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19580,7 +19580,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "HostKey": {
@@ -19599,7 +19599,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Location": {
@@ -19634,7 +19634,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -19743,23 +19743,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19767,7 +19767,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "Env": {
@@ -19778,7 +19778,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -19794,7 +19794,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -19828,23 +19828,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19852,11 +19852,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -19887,7 +19887,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -19905,23 +19905,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -19929,11 +19929,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -19957,7 +19957,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -20102,23 +20102,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20126,7 +20126,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmChartVersion": {
@@ -20142,7 +20142,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20161,7 +20161,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -20179,23 +20179,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20203,7 +20203,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
@@ -20215,7 +20215,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20231,7 +20231,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -20247,23 +20247,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20271,7 +20271,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmChartVersion": {
@@ -20283,7 +20283,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -20338,7 +20338,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TierID": {
@@ -20356,23 +20356,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20380,7 +20380,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "GrafanaHelmValuesDocument": {
@@ -20388,7 +20388,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -20436,7 +20436,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Status": {
@@ -20501,23 +20501,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20525,11 +20525,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20549,7 +20549,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "Region": {
@@ -20717,15 +20717,15 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "Data": {
@@ -20736,11 +20736,11 @@
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20748,11 +20748,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20764,7 +20764,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "SecretInstances": {
@@ -20789,23 +20789,23 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20813,7 +20813,7 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "HelmWorkloadInstanceID": {
@@ -20821,7 +20821,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20837,7 +20837,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "SecretDefinitionID": {
@@ -20882,23 +20882,23 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20906,11 +20906,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20922,7 +20922,7 @@
                     "type": "integer"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "TerraformInstances": {
@@ -20951,23 +20951,23 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Re-stamped on every creation pass.",
+                    "description": "CreationAcknowledged is the time the controller last picked up creation of\nthis object, and it is re-stamped on every creation pass.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Set once when creation finishes.",
+                    "description": "CreationConfirmed is the time the controller finished creating\nthe resources this object describes.",
                     "type": "string"
                 },
                 "CreationFailed": {
-                    "description": "Set to true when creation fails.",
+                    "description": "CreationFailed indicates that creation did not succeed.",
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Re-stamped on every deletion pass.",
+                    "description": "DeletionAcknowledged is the time the controller last picked up deletion of\nthis object, and it is re-stamped on every deletion pass.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
-                    "description": "Set once when deletion cleanup finishes, which clears the object for\nremoval.",
+                    "description": "DeletionConfirmed is the time the controller finished cleaning up,\nwhich clears the object for removal from the database.",
                     "type": "string"
                 },
                 "DeletionFailed": {
@@ -20975,11 +20975,11 @@
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
-                    "description": "Set when a delete is requested, so reconcilers clean up before the object\nleaves the database.",
+                    "description": "DeletionScheduled is the time a delete was requested, which lets reconcilers\nclean up before the object leaves the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "Halts further reconciliation, for cases where continuing would be\ndestructive, such as provisioning more infrastructure over an unresolved\nfailure.",
+                    "description": "InterruptReconciliation halts further reconciliation, for cases where\ncontinuing would be destructive, such as provisioning more\ninfrastructure over an unresolved failure.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20991,7 +20991,7 @@
                     "type": "string"
                 },
                 "Reconciled": {
-                    "description": "Whether the controller considers the object reconciled.",
+                    "description": "Reconciled indicates that the controller has brought the system\ninto the state this object describes.",
                     "type": "boolean"
                 },
                 "StateDocument": {

@@ -123,35 +123,41 @@ definitions:
         description: The AWS provider in which the EKS cluster is provisioned.
         type: integer
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime instance associated with the AWS EKS cluster.
@@ -160,7 +166,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Region:
         description: The AWS region in which the cluster is provisioned.
@@ -297,35 +305,41 @@ definitions:
           $ref: '#/definitions/v0.ControlPlaneInstance'
         type: array
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Name:
         description: An arbitrary name for the definition.
@@ -342,7 +356,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -374,13 +390,17 @@ definitions:
         description: The definition used to configure the control plane instance.
         type: integer
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       CustomComponentInfo:
         description: |-
@@ -392,20 +412,22 @@ definitions:
           $ref: '#/definitions/v0.ControlPlaneComponent'
         type: array
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       Genesis:
         description: Indicates whether this is was the first control plane that was
@@ -413,9 +435,9 @@ definitions:
         type: boolean
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       IsSelf:
         description: When true, indicates the control plane instance represents the
@@ -439,7 +461,9 @@ definitions:
           This is useful to map out the topology between control planes being managed by one another
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -458,29 +482,35 @@ definitions:
         description: The email address of the domain administrator.
         type: string
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       Domain:
         description: |-
@@ -495,9 +525,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Name:
         description: An arbitrary name for the definition.
@@ -508,7 +538,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -527,38 +559,44 @@ definitions:
   v0.DomainNameInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       DomainNameDefinitionID:
         description: The definition used to define the instance.
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The cluster where the kubernetes workload that is using the domain
@@ -571,7 +609,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -649,29 +689,35 @@ definitions:
   v0.GatewayDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       DomainNameDefinitionID:
         description: The domain name to serve requests for.
@@ -689,9 +735,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesWorkloadDefinitionID:
         description: The kubernetes workload definition that belongs to this resource.
@@ -705,7 +751,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       ServiceName:
         description: The kubernetes service to route requests to.
@@ -751,29 +799,35 @@ definitions:
   v0.GatewayInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       GatewayDefinitionID:
         description: GatewayDefinitionID is the definition used to configure the gateway
@@ -781,9 +835,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime where the ingress layer is installed.
@@ -795,7 +849,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -861,29 +917,35 @@ definitions:
   v0.GcpGceMachineRuntimeInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       ExternalIP:
         description: The external IP surfaced after provisioning.
@@ -899,9 +961,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       MachineRuntimeInstanceID:
         description: The machine runtime instance associated with the GCE machine.
@@ -910,7 +972,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Region:
         description: The GCP region in which the VM is provisioned.
@@ -992,29 +1056,35 @@ definitions:
   v0.GcpGkeKubernetesRuntimeInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       GcpGkeKubernetesRuntimeDefinitionID:
         description: The definition that configures this instance.
@@ -1024,9 +1094,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime instance associated with the GKE cluster.
@@ -1035,7 +1105,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Region:
         description: The GCP region in which the cluster is provisioned.
@@ -1106,29 +1178,35 @@ definitions:
           1.2.3
         type: string
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       HelmWorkloadInstances:
         description: The associated helm workload instances that are deployed from
@@ -1138,9 +1216,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Name:
         description: An arbitrary name for the definition.
@@ -1151,7 +1229,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Repo:
         description: |-
@@ -1188,38 +1268,44 @@ definitions:
           type: array
         type: array
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       HelmWorkloadDefinitionID:
         description: The definition used to configure the kubernetes workload instance.
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime to which the helm workload is deployed.
@@ -1228,7 +1314,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       ReleaseNamespace:
         description: Namespace to deploy the helm chart to.
@@ -1281,29 +1369,35 @@ definitions:
   v0.KubernetesRuntimeDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       HighAvailability:
         description: |-
@@ -1323,9 +1417,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstances:
         description: |-
@@ -1355,7 +1449,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -1399,13 +1495,17 @@ definitions:
           $ref: '#/definitions/v0.ControlPlaneInstance'
         type: array
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DefaultRuntime:
         description: |-
@@ -1413,20 +1513,22 @@ definitions:
           otherwise assigned.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       DnsControllerInstanceID:
         description: The KubernetesWorkloadInstanceID of the dns support service
@@ -1436,9 +1538,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeDefinitionID:
         description: The kubernetes runtime definition for this instance.
@@ -1459,7 +1561,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       SecretsControllerInstanceID:
         description: The KubernetesWorkloadInstanceID of the secrets support service
@@ -1489,35 +1593,41 @@ definitions:
   v0.KubernetesWorkloadDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesWorkloadInstances:
         description: The associated kubernetes workload instances that are deployed
@@ -1540,7 +1650,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -1557,35 +1669,41 @@ definitions:
   v0.KubernetesWorkloadInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime to which the workload is deployed.
@@ -1603,7 +1721,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: The latest status of a kubernetes workload instance.
@@ -1735,35 +1855,41 @@ definitions:
   v0.LoggingDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       LoggingInstances:
         description: The associated logging instances that are deployed from this
@@ -1804,7 +1930,9 @@ definitions:
         description: The promtail Helm workload definition that belongs to this resource.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -1817,35 +1945,41 @@ definitions:
   v0.LoggingInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime where the logging is installed.
@@ -1873,7 +2007,9 @@ definitions:
         description: The promtail helm workload instance that belongs to this resource.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -1888,29 +2024,35 @@ definitions:
   v0.MachineRuntimeDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       ImageID:
         description: The provider image identifier used to boot the machine.
@@ -1927,9 +2069,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       MachineProfile:
         description: |-
@@ -1962,7 +2104,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -1981,29 +2125,35 @@ definitions:
           the assigned address into Hostname after provisioning when true.
         type: boolean
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       HostKey:
         description: |-
@@ -2036,9 +2186,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Location:
         description: |-
@@ -2073,7 +2223,9 @@ definitions:
         description: The SSH port on the machine.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Region:
         description: The provider region in which the machine is provisioned.
@@ -2171,29 +2323,35 @@ definitions:
   v0.MachineWorkloadInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       Env:
         description: The environment variables set for the workload as KEY=VALUE entries.
@@ -2202,9 +2360,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       MachineRuntimeInstanceID:
         description: The machine runtime on which the workload is deployed.
@@ -2216,7 +2374,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -2243,35 +2403,41 @@ definitions:
   v0.MetricsDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubePrometheusStackHelmChartVersion:
         description: The version of the kube-prometheus-stack helm chart to use from
@@ -2301,7 +2467,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -2314,35 +2482,41 @@ definitions:
   v0.MetricsInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubePrometheusStackHelmValuesDocument:
         description: |-
@@ -2363,7 +2537,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -2483,29 +2659,35 @@ definitions:
   v0.ObservabilityDashboardDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       GrafanaHelmChartVersion:
         description: The version of the grafana helm chart to use from the helm repo,
@@ -2521,9 +2703,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Name:
         description: An arbitrary name for the definition.
@@ -2540,7 +2722,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -2553,29 +2737,35 @@ definitions:
   v0.ObservabilityDashboardInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       GrafanaHelmValuesDocument:
         description: |-
@@ -2587,9 +2777,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime where the observability dashboard is installed.
@@ -2601,7 +2791,9 @@ definitions:
         description: The observability dashboard definition that belongs to this resource.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -2616,29 +2808,35 @@ definitions:
   v0.ObservabilityStackDefinition:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       GrafanaHelmChartVersion:
         description: The version of the grafana helm chart to use from the helm repo,
@@ -2651,9 +2849,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubePrometheusStackHelmChartVersion:
         description: The version of the kube-prometheus-stack helm chart to use from
@@ -2712,7 +2910,9 @@ definitions:
           underlying promtail chart.
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TierID:
         description: |-
@@ -2725,29 +2925,35 @@ definitions:
   v0.ObservabilityStackInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       GrafanaHelmValuesDocument:
         description: |-
@@ -2756,9 +2962,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubePrometheusStackHelmValuesDocument:
         description: |-
@@ -2806,7 +3012,9 @@ definitions:
           underlying promtail chart.
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Status:
         description: |-
@@ -2860,35 +3068,41 @@ definitions:
           cluster creation.
         type: string
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime instance associated with the OCI OKE cluster.
@@ -2903,7 +3117,9 @@ definitions:
         description: The OCI provider used to provision this instance.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       Region:
         description: |-
@@ -3042,13 +3258,17 @@ definitions:
         description: The AWS account ID, if the provider is AWS.
         type: integer
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       Data:
         description: The secret value to be stored in the provider.
@@ -3056,26 +3276,28 @@ definitions:
           type: integer
         type: array
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Name:
         description: An arbitrary name for the definition.
@@ -3086,7 +3308,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       SecretInstances:
         description: The associated secret instances that are deployed from this definition.
@@ -3105,38 +3329,44 @@ definitions:
   v0.SecretInstance:
     properties:
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       HelmWorkloadInstanceID:
         description: The helm workload instance that the secret is associated with.
         type: integer
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       KubernetesRuntimeInstanceID:
         description: The kubernetes runtime to which the secret is deployed.
@@ -3149,7 +3379,9 @@ definitions:
         description: An arbitrary name the instance
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       SecretDefinitionID:
         description: The SecretDefinition that the secret instance is derived from.
@@ -3188,35 +3420,41 @@ definitions:
           extension.
         type: string
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Name:
         description: An arbitrary name for the definition.
@@ -3227,7 +3465,9 @@ definitions:
           standard configuration for a definition object.
         type: integer
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       TerraformInstances:
         description: The associated terraform instances that are deployed from this
@@ -3250,35 +3490,41 @@ definitions:
         description: The AWS provider in which the resources will be provisioned.
         type: integer
       CreationAcknowledged:
-        description: Re-stamped on every creation pass.
+        description: |-
+          CreationAcknowledged is the time the controller last picked up creation of
+          this object, and it is re-stamped on every creation pass.
         type: string
       CreationConfirmed:
-        description: Set once when creation finishes.
+        description: |-
+          CreationConfirmed is the time the controller finished creating
+          the resources this object describes.
         type: string
       CreationFailed:
-        description: Set to true when creation fails.
+        description: CreationFailed indicates that creation did not succeed.
         type: boolean
       DeletionAcknowledged:
-        description: Re-stamped on every deletion pass.
+        description: |-
+          DeletionAcknowledged is the time the controller last picked up deletion of
+          this object, and it is re-stamped on every deletion pass.
         type: string
       DeletionConfirmed:
         description: |-
-          Set once when deletion cleanup finishes, which clears the object for
-          removal.
+          DeletionConfirmed is the time the controller finished cleaning up,
+          which clears the object for removal from the database.
         type: string
       DeletionFailed:
         description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
-          Set when a delete is requested, so reconcilers clean up before the object
-          leaves the database.
+          DeletionScheduled is the time a delete was requested, which lets reconcilers
+          clean up before the object leaves the database.
         type: string
       InterruptReconciliation:
         description: |-
-          Halts further reconciliation, for cases where continuing would be
-          destructive, such as provisioning more infrastructure over an unresolved
-          failure.
+          InterruptReconciliation halts further reconciliation, for cases where
+          continuing would be destructive, such as provisioning more
+          infrastructure over an unresolved failure.
         type: boolean
       Name:
         description: An arbitrary name the instance
@@ -3290,7 +3536,9 @@ definitions:
           string typt to support encryption.
         type: string
       Reconciled:
-        description: Whether the controller considers the object reconciled.
+        description: |-
+          Reconciled indicates that the controller has brought the system
+          into the state this object describes.
         type: boolean
       StateDocument:
         description: |-

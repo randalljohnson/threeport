@@ -14,40 +14,40 @@ type Common struct {
 	DeletedAt *gorm.DeletedAt `json:",omitempty" gorm:"index"`
 }
 
-// Reconciliation records how far a controller has gotten with an object. Every
-// field is a one-shot marker or a flag except the two acknowledgement
-// timestamps, which a reconciler re-stamps on every pass to prove it is alive.
+// Reconciliation includes the fields for reconciled objects.  These are
+// leveraged by controllers to persist information related to the reconciliation
+// of system state for objects.
 type Reconciliation struct {
-	// Reconciled indicates that the controller has brought the system
-	// into the state this object describes.
+	// Indicates if object is considered to be reconciled by the object's controller.
 	Reconciled *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
-	// CreationAcknowledged is the time the controller last picked up creation of
-	// this object, and it is re-stamped on every creation pass.
+	// Used by controllers to acknowledge deletion and indicate that deletion
+	// reconciliation has begun so that subsequent reconciliation attempts can
+	// act accordingly.
 	CreationAcknowledged *time.Time `json:",omitempty" validate:"optional"`
 
-	// CreationConfirmed is the time the controller finished creating
-	// the resources this object describes.
+	// Used by controllers to confirm deletion of an object.
 	CreationConfirmed *time.Time `json:",omitempty" validate:"optional"`
 
-	// CreationFailed indicates that creation did not succeed.
+	// Gets set to true if creation process fails.
 	CreationFailed *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
-	// DeletionScheduled is the time a delete was requested, which lets reconcilers
-	// clean up before the object leaves the database.
+	// Used to inform reconcilers that an object is being deleted so they may
+	// complete delete reconciliation before actually deleting the object from the database.
 	DeletionScheduled *time.Time `json:",omitempty" validate:"optional"`
 
-	// DeletionAcknowledged is the time the controller last picked up deletion of
-	// this object, and it is re-stamped on every deletion pass.
+	// Used by controllers to acknowledge deletion and indicate that deletion
+	// reconciliation has begun so that subsequent reconciliation attempts can
+	// act accordingly.
 	DeletionAcknowledged *time.Time `json:",omitempty" validate:"optional"`
 
-	// DeletionConfirmed is the time the controller finished cleaning up,
-	// which clears the object for removal from the database.
+	// Used by controllers to confirm deletion of an object.
 	DeletionConfirmed *time.Time `json:",omitempty" validate:"optional"`
 
-	// InterruptReconciliation halts further reconciliation, for cases where
-	// continuing would be destructive, such as provisioning more
-	// infrastructure over an unresolved failure.
+	// InterruptReconciliation is used by the controller to indicated that future
+	// reconcilation should be interrupted.  Useful in cases where there is a
+	// situation where future reconciliation could be descructive such as
+	// spinning up more infrastructure when there is a unresolved problem.
 	InterruptReconciliation *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 }
 

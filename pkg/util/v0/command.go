@@ -16,9 +16,10 @@ func RunCommandStreamOutput(command string, args ...string) error {
 // from the caller's working directory.
 //
 // Setting the directory per command, rather than changing the process working
-// directory, is what a mage target needs: mage runs every target it was asked
-// for in one process, so a change of working directory would leak into the
-// targets that follow.
+// directory, is what lets a single caller alternate between the repository root
+// and a subdirectory.  The module test targets do exactly that: they build
+// binaries at paths relative to the root, then run the generated module's own
+// commands from the directory it was generated into.
 func RunCommandStreamOutputInDir(dir string, command string, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir

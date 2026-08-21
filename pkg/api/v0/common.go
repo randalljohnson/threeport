@@ -45,7 +45,7 @@ type Reconciliation struct {
 	// which clears the object for removal from the database.
 	DeletionConfirmed *time.Time `json:",omitempty" validate:"optional"`
 
-	// Gets set to true if deletion process fails.
+	// DeletionFailed indicates that deletion did not succeed.
 	DeletionFailed *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// InterruptReconciliation halts further reconciliation, for cases where

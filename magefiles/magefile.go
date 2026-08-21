@@ -340,8 +340,8 @@ var moduleTestInputs = []string{"sdk-config.yaml", "README.md"}
 // included.
 //
 // The SDK emits different code for a module than for this repository, and
-// nothing else here type-checks that code.  It calls this repository's exported
-// API by name, so a changed signature breaks it.
+// nothing else here type-checks that code.  The generated module calls this
+// repository's exported API by name, so a changed signature breaks it.
 func (Test) ModuleGen() error {
 	if err := generateModuleTest(); err != nil {
 		return err

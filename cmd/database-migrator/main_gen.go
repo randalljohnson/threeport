@@ -116,14 +116,6 @@ func migrateDb(
 		returnErr("could not create gorm db object", err)
 	}
 
-	// hold a lock for the whole run so a rolling update of the API server,
-	// which starts a second migrator before the first one finishes, cannot
-	// apply and record the same migration twice
-	sessionLocker, err := database.NewMigrationLocker("threeport_migration_lock")
-	if err != nil {
-		returnErr("failed to build migration session locker", err)
-	}
-
 	// record applied migrations in a table of this API's own so anything
 	// else migrating the same database keeps a separate ledger. Nothing is
 	// read from a filesystem because every migration registers itself with
@@ -133,7 +125,6 @@ func migrateDb(
 		db,
 		nil,
 		goose.WithTableName("threeport_goose_db_version"),
-		goose.WithSessionLocker(sessionLocker),
 		goose.WithVerbose(true),
 	)
 	if err != nil {

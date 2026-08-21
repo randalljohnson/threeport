@@ -146,7 +146,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -328,7 +328,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -422,7 +422,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -505,7 +505,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -582,7 +582,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -712,7 +712,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -822,7 +822,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -940,7 +940,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1079,7 +1079,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1201,7 +1201,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1291,7 +1291,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1392,7 +1392,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1523,7 +1523,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1616,7 +1616,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1692,7 +1692,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1878,7 +1878,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1968,7 +1968,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2047,7 +2047,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2148,7 +2148,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2346,7 +2346,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2426,7 +2426,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2505,7 +2505,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2682,7 +2682,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2760,7 +2760,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2831,7 +2831,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2948,7 +2948,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3091,7 +3091,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3286,7 +3286,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3352,7 +3352,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3443,7 +3443,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3513,7 +3513,7 @@ definitions:
           which clears the object for removal from the database.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: DeletionFailed indicates that deletion did not succeed.
         type: boolean
       DeletionScheduled:
         description: |-

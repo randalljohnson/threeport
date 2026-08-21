@@ -17,9 +17,8 @@ func CaptureCaller(authEnabled bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if tlsState := c.Request().TLS; tlsState != nil && len(tlsState.PeerCertificates) > 0 {
-				// mTLS deployment: the client presented a certificate the server
-				// already verified against the control plane CA, so its subject
-				// names the caller.
+				// read the caller from the subject of the client certificate the
+				// server already verified against the control plane CA
 				subject := tlsState.PeerCertificates[0].Subject
 				id := lib.CallerIdentity{CommonName: subject.CommonName}
 				if len(subject.Organization) > 0 {
@@ -35,9 +34,9 @@ func CaptureCaller(authEnabled bool) echo.MiddlewareFunc {
 			}
 
 			if !authEnabled {
-				// trust-the-network deployment: no client certificate exists to
-				// read, so treat every caller as the control plane and let
-				// internal reconcilers keep updating the rows they own.
+				// treat every caller as the control plane when auth is off, since
+				// no client certificate exists to read and internal reconcilers
+				// must keep updating the rows they own
 				c.SetRequest(c.Request().WithContext(
 					lib.WithCaller(c.Request().Context(), lib.CallerIdentity{
 						OrganizationalUnit: auth.OUControlPlane,
@@ -46,9 +45,8 @@ func CaptureCaller(authEnabled bool) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// auth is on and this request carried no client certificate, so it
-			// reached the server over some path other than the mTLS listener.
-			// Leave the identity empty and let the caller be handled as external.
+			// leave the identity empty so a request with no client certificate
+			// on a path other than the mTLS listener is handled as external
 			return next(c)
 		}
 	}

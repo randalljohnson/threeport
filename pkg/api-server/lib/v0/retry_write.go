@@ -67,7 +67,7 @@ func RetryWrite(ctx context.Context, write func() *gorm.DB) *gorm.DB {
 			return result
 		}
 
-		// the budget is spent, so hand the conflict back now rather than
+		// hand the conflict back once the budget is spent, rather than
 		// waiting out a backoff no further attempt follows
 		if attempt == serializationRetryMax-1 {
 			break

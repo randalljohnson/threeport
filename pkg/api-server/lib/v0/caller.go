@@ -9,10 +9,7 @@ import (
 
 // CaptureCaller returns middleware that stashes the caller's identity in the
 // request context, where the database hooks read it to decide whether a caller
-// may change rows another object owns. Pass the API server's auth-enabled flag
-// rather than reading the connection, so a request that arrives without a
-// client certificate on an auth-enabled server stays untrusted instead of
-// inheriting control-plane privileges from a missing certificate.
+// may change rows another object owns.
 func CaptureCaller(authEnabled bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {

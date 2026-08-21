@@ -63,12 +63,14 @@ func RunCommandStreamOutputInDir(dir string, command string, args ...string) err
 		done <- struct{}{}
 	}()
 
+	// drain both scanners first: the wait below closes the pipes they read
+	// from, so a wait that runs first loses whatever output has not been read
+	<-done
+	<-done
+
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("error waiting for command: %w", err)
 	}
-
-	<-done
-	<-done
 
 	return nil
 }

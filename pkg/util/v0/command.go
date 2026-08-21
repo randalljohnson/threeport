@@ -14,6 +14,11 @@ func RunCommandStreamOutput(command string, args ...string) error {
 // RunCommandStreamOutputInDir runs a command from the given directory and
 // streams the output back to the user.  An empty directory runs the command
 // from the caller's working directory.
+//
+// Setting the directory per command, rather than changing the process working
+// directory, is what a mage target needs: mage runs every target it was asked
+// for in one process, so a change of working directory would leak into the
+// targets that follow.
 func RunCommandStreamOutputInDir(dir string, command string, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir

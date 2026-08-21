@@ -182,7 +182,7 @@ func MetricsInstanceReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonCreateFailed),
-							Type:   util.Ptr(event.TypeNormal),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						metricsInstance.GetId(),
 						metricsInstance.GetFullyQualifiedType(),
@@ -229,7 +229,7 @@ func MetricsInstanceReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonUpdateFailed),
-							Type:   util.Ptr(event.TypeNormal),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						metricsInstance.GetId(),
 						metricsInstance.GetFullyQualifiedType(),
@@ -289,7 +289,7 @@ func MetricsInstanceReconciler(r *controller.Reconciler) {
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
 							Reason: util.Ptr(event.ReasonDeleteFailed),
-							Type:   util.Ptr(event.TypeNormal),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						metricsInstance.GetId(),
 						metricsInstance.GetFullyQualifiedType(),

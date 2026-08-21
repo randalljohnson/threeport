@@ -17544,7 +17544,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17741,7 +17741,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17837,7 +17837,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17919,7 +17919,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17993,7 +17993,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18110,7 +18110,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18235,7 +18235,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18362,7 +18362,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18517,7 +18517,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18649,7 +18649,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18732,7 +18732,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18831,7 +18831,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18955,7 +18955,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19043,7 +19043,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19119,7 +19119,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19327,7 +19327,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19416,7 +19416,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19492,7 +19492,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19583,7 +19583,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19770,7 +19770,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19855,7 +19855,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19932,7 +19932,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20129,7 +20129,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20206,7 +20206,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20274,7 +20274,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20383,7 +20383,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20528,7 +20528,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20751,7 +20751,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20816,7 +20816,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20909,7 +20909,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20978,7 +20978,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "DeletionFailed indicates that deletion did not succeed.",
+                    "description": "Gets set to true if deletion process fails.",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {

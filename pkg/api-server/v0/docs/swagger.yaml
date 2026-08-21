@@ -144,7 +144,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -324,7 +324,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -416,7 +416,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -497,7 +497,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -572,7 +572,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -700,7 +700,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -808,7 +808,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -924,7 +924,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1061,7 +1061,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1181,7 +1181,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1269,7 +1269,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1368,7 +1368,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1497,7 +1497,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1588,7 +1588,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1662,7 +1662,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1846,7 +1846,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1934,7 +1934,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2011,7 +2011,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2110,7 +2110,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2306,7 +2306,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2384,7 +2384,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2461,7 +2461,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2636,7 +2636,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2712,7 +2712,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2781,7 +2781,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2896,7 +2896,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3037,7 +3037,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3230,7 +3230,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3294,7 +3294,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3383,7 +3383,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3451,7 +3451,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: DeletionFailed indicates that deletion did not succeed.
+        description: Gets set to true if deletion process fails.
         type: boolean
       DeletionScheduled:
         description: |-

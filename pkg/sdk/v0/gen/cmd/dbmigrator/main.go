@@ -38,14 +38,6 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// per API for the same reason the version table is: threeport and its modules
 	// migrate one database, and a module migrator has no reason to wait on
 	// threeport's
-	migrationLockTableName := "threeport_migration_lock"
-	if gen.Module {
-		migrationLockTableName = fmt.Sprintf(
-			"threeport_%s_migration_lock",
-			strcase.ToSnake(sdkConfig.ModuleName),
-		)
-	}
-
 	f.ImportAlias("github.com/pressly/goose/v3", "goose")
 	f.ImportAlias("github.com/pressly/goose/v3/database", "goosedb")
 	f.ImportAlias("github.com/threeport/threeport/pkg/cli/v0", "cli")
@@ -205,18 +197,6 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
-		Comment("hold a lock for the whole run so a rolling update of the API server,"),
-		Comment("which starts a second migrator before the first one finishes, cannot"),
-		Comment("apply and record the same migration twice"),
-		List(Id("sessionLocker"), Id("err")).Op(":=").Qual(
-			threeportDbPath,
-			"NewMigrationLocker",
-		).Call(Lit(migrationLockTableName)),
-		If(Id("err").Op("!=").Nil()).Block(
-			Id("returnErr").Call(Lit("failed to build migration session locker"), Id("err")),
-		),
-		Line(),
-
 		Comment("record applied migrations in a table of this API's own so anything"),
 		Comment("else migrating the same database keeps a separate ledger. Nothing is"),
 		Comment("read from a filesystem because every migration registers itself with"),
@@ -230,9 +210,6 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Line().Nil(),
 			Line().Qual("github.com/pressly/goose/v3", "WithTableName").Call(
 				Lit(gooseVersionTableName),
-			),
-			Line().Qual("github.com/pressly/goose/v3", "WithSessionLocker").Call(
-				Id("sessionLocker"),
 			),
 			Line().Qual("github.com/pressly/goose/v3", "WithVerbose").Call(True()),
 			Line(),

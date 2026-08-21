@@ -198,7 +198,7 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.V(1).Info("create requeued for future reconciliation")
+					log.Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						controlPlaneDefinition,
 						customRequeueDelay,
@@ -245,7 +245,7 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.V(1).Info("update requeued for future reconciliation")
+					log.Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						controlPlaneDefinition,
 						customRequeueDelay,
@@ -270,19 +270,6 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of control plane definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict reconciling deleted control plane definition object, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							controlPlaneDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile deleted control plane definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -305,7 +292,7 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.V(1).Info("delete requeued for future reconciliation")
+					log.Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						controlPlaneDefinition,
 						customRequeueDelay,
@@ -339,19 +326,6 @@ func ControlPlaneDefinitionReconciler(r *controller.Reconciler) {
 					controlPlaneDefinition.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict deleting control plane definition, requeueing",
-							"cause", err.Error(),
-						)
-						r.UnlockAndRequeue(
-							controlPlaneDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					log.Error(err, "failed to delete control plane definition")
 					r.UnlockAndRequeue(controlPlaneDefinition, requeueDelay, lockReleased, msg)
 					continue

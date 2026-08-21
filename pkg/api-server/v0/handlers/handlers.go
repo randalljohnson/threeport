@@ -45,15 +45,11 @@ func (h Handler) RequestDB(c echo.Context) *gorm.DB {
 		Scopes(apiserver_lib.QueryScopes(c)...)
 }
 
-// Write runs a database write and re-runs it when CockroachDB aborts the
+// Write runs a database write and re-runs it when the database aborts the
 // transaction with a serialization conflict, returning the result of the final
-// attempt so callers inspect result.Error as usual.
-//
-// It hands write a handle from RequestDB rather than taking one, and reads the
-// retry's context off c. A write site therefore cannot end up unscoped, or
-// retrying on behalf of a caller who already disconnected. The handle is built
-// fresh on every attempt, because a gorm statement carries state from the
-// attempt that failed.
+// attempt so a caller inspects its error the same way. Every attempt gets a
+// request-scoped handle built from scratch, since a handle carries state from
+// the attempt that failed, and retries stop once the client disconnects.
 func (h Handler) Write(c echo.Context, write func(db *gorm.DB) *gorm.DB) *gorm.DB {
 	return apiserver_lib.RetryWrite(
 		c.Request().Context(),

@@ -1,13 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	version "github.com/threeport/threeport/internal/version"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
@@ -154,6 +154,10 @@ func (Install) Sdk() error {
 // Integration runs integration tests against an existing Threeport control
 // plane.
 func (Test) Integration() error {
+	if err := unmetPrerequisites("integration test", controlPlaneConfigProblems()); err != nil {
+		return err
+	}
+
 	cmd := "go"
 	args := []string{
 		"test",
@@ -370,42 +374,51 @@ func (Test) ModuleGen() error {
 	return nil
 }
 
-// checkModuleInstallPrerequisites reports every prerequisite the module install
-// is missing, rather than failing partway through a build.  It confirms the
-// local Threeport config names a control plane with an API endpoint, and that
-// mage is on PATH, since the module's own build and install targets run through
-// it.  It does not prove the cluster can pull from the registry; the install
-// itself is the first thing to exercise that.
-func checkModuleInstallPrerequisites() error {
-	var problems []string
-
+// controlPlaneConfigProblems reports what stops the local Threeport config from
+// naming a control plane to work against.  Every target that needs one shares
+// this, and adds whatever else it requires.
+func controlPlaneConfigProblems() []error {
 	threeportConfig, controlPlaneName, err := cli.GetThreeportConfig("")
 	switch {
 	case err != nil:
-		problems = append(problems, fmt.Sprintf("no usable Threeport config: %v", err))
+		return []error{fmt.Errorf("no usable Threeport config: %w", err)}
 	case controlPlaneName == "":
-		problems = append(problems, "the Threeport config names no current control plane")
-	default:
-		if _, err := threeportConfig.GetThreeportAPIEndpoint(controlPlaneName); err != nil {
-			problems = append(problems, fmt.Sprintf(
-				"control plane %s has no API endpoint in the Threeport config: %v",
-				controlPlaneName, err,
-			))
-		}
+		return []error{errors.New("the Threeport config names no current control plane")}
 	}
 
-	if _, err := exec.LookPath("mage"); err != nil {
-		problems = append(problems, "mage is not on PATH")
-	}
-
-	if len(problems) > 0 {
-		return fmt.Errorf(
-			"module install prerequisites are not met:\n  - %s",
-			strings.Join(problems, "\n  - "),
-		)
+	if _, err := threeportConfig.GetThreeportAPIEndpoint(controlPlaneName); err != nil {
+		return []error{fmt.Errorf(
+			"control plane %s has no API endpoint in the Threeport config: %w",
+			controlPlaneName, err,
+		)}
 	}
 
 	return nil
+}
+
+// unmetPrerequisites reports every problem at once under a heading naming the
+// target, so a run says what to fix before it starts rather than failing partway
+// through.  It returns nil when there is nothing to report.
+func unmetPrerequisites(target string, problems []error) error {
+	if len(problems) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf("%s prerequisites are not met:\n%w", target, errors.Join(problems...))
+}
+
+// checkModuleInstallPrerequisites reports what the module install needs and does
+// not have.  It does not prove the cluster can pull from the registry; the
+// install itself is the first thing to exercise that.
+func checkModuleInstallPrerequisites() error {
+	problems := controlPlaneConfigProblems()
+
+	// the module's own build and install targets run through mage
+	if _, err := exec.LookPath("mage"); err != nil {
+		problems = append(problems, errors.New("mage is not on PATH"))
+	}
+
+	return unmetPrerequisites("module install", problems)
 }
 
 // ModuleInstall generates a Threeport module, builds its images and installs

@@ -270,6 +270,19 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gcp gce machine runtime instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted gcp gce machine runtime instance object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							gcpGceMachineRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted gcp gce machine runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					gcpGceMachineRuntimeInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting gcp gce machine runtime instance, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							gcpGceMachineRuntimeInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete gcp gce machine runtime instance")
 					r.UnlockAndRequeue(gcpGceMachineRuntimeInstance, requeueDelay, lockReleased, msg)
 					continue

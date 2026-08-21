@@ -270,6 +270,19 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of machine runtime definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted machine runtime definition object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							machineRuntimeDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted machine runtime definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					machineRuntimeDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting machine runtime definition, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							machineRuntimeDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete machine runtime definition")
 					r.UnlockAndRequeue(machineRuntimeDefinition, requeueDelay, lockReleased, msg)
 					continue

@@ -588,7 +588,7 @@ func operationCase(
 					),
 					Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("errorMsg")),
 					Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
-						Qual("github.com/threeport/threeport/pkg/event/v0", "TypeWarning"),
+						Qual("github.com/threeport/threeport/pkg/event/v0", "TypeNormal"),
 					),
 				}),
 				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),

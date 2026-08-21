@@ -453,12 +453,18 @@ func removeModuleTestPlugin() error {
 // SDK config.  It does not compile the result, so callers choose what to do
 // with it.
 func generateModuleTest() error {
-	// rebuild threeport-sdk from this checkout first.  It installs to one
-	// global path, so the binary on PATH may have come from another worktree
-	// and would generate code this repository never asked for.
-	install := Install{}
-	if err := install.Sdk(); err != nil {
-		return fmt.Errorf("failed to install threeport-sdk: %w", err)
+	// build threeport-sdk from this checkout and run that binary.  An
+	// installed one is shared by every worktree on the machine, so it may
+	// generate code this repository never asked for, and overwriting it would
+	// change what every other checkout generates
+	build := Build{}
+	if err := build.Sdk(); err != nil {
+		return fmt.Errorf("failed to build threeport-sdk: %w", err)
+	}
+
+	sdkBinary, err := filepath.Abs(filepath.Join("bin", "threeport-sdk"))
+	if err != nil {
+		return fmt.Errorf("failed to resolve the threeport-sdk binary path: %w", err)
 	}
 
 	if err := resetModuleTestDir(); err != nil {
@@ -483,7 +489,6 @@ func generateModuleTest() error {
 	}
 
 	// scaffold the API object source, then generate the boilerplate from it
-	sdkBinary := filepath.Join(installDir(), "threeport-sdk")
 	for _, subcommand := range []string{"create", "gen"} {
 		if err := util.RunCommandStreamOutputInDir(
 			moduleTestPath,

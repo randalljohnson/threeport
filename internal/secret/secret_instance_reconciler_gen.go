@@ -264,19 +264,6 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of secret instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict reconciling deleted secret instance object, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							secretInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile deleted secret instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -333,19 +320,6 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 					secretInstance.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict deleting secret instance, requeueing",
-							"cause", err.Error(),
-						)
-						r.UnlockAndRequeue(
-							secretInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					log.Error(err, "failed to delete secret instance")
 					r.UnlockAndRequeue(secretInstance, requeueDelay, lockReleased, msg)
 					continue

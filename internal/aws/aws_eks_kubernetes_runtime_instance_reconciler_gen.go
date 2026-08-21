@@ -264,19 +264,6 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of aws eks kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict reconciling deleted aws eks kubernetes runtime instance object, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							awsEksKubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile deleted aws eks kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -333,19 +320,6 @@ func AwsEksKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					awsEksKubernetesRuntimeInstance.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict deleting aws eks kubernetes runtime instance, requeueing",
-							"cause", err.Error(),
-						)
-						r.UnlockAndRequeue(
-							awsEksKubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					log.Error(err, "failed to delete aws eks kubernetes runtime instance")
 					r.UnlockAndRequeue(awsEksKubernetesRuntimeInstance, requeueDelay, lockReleased, msg)
 					continue

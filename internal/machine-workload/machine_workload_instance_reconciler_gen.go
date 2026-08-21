@@ -264,19 +264,6 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of machine workload instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict reconciling deleted machine workload instance object, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							machineWorkloadInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile deleted machine workload instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -333,19 +320,6 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 					machineWorkloadInstance.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict deleting machine workload instance, requeueing",
-							"cause", err.Error(),
-						)
-						r.UnlockAndRequeue(
-							machineWorkloadInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					log.Error(err, "failed to delete machine workload instance")
 					r.UnlockAndRequeue(machineWorkloadInstance, requeueDelay, lockReleased, msg)
 					continue

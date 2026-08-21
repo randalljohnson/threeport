@@ -264,19 +264,6 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict reconciling deleted kubernetes runtime instance object, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							kubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile deleted kubernetes runtime instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -333,19 +320,6 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					kubernetesRuntimeInstance.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.Info(
-							"conflict deleting kubernetes runtime instance, requeueing",
-							"cause", err.Error(),
-						)
-						r.UnlockAndRequeue(
-							kubernetesRuntimeInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					log.Error(err, "failed to delete kubernetes runtime instance")
 					r.UnlockAndRequeue(kubernetesRuntimeInstance, requeueDelay, lockReleased, msg)
 					continue

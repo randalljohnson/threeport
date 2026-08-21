@@ -270,6 +270,19 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gateway instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted gateway instance object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							gatewayInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted gateway instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					gatewayInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting gateway instance, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							gatewayInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete gateway instance")
 					r.UnlockAndRequeue(gatewayInstance, requeueDelay, lockReleased, msg)
 					continue

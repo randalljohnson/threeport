@@ -270,6 +270,19 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of kubernetes workload definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted kubernetes workload definition object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted kubernetes workload definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					kubernetesWorkloadDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting kubernetes workload definition, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							kubernetesWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete kubernetes workload definition")
 					r.UnlockAndRequeue(kubernetesWorkloadDefinition, requeueDelay, lockReleased, msg)
 					continue

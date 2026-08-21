@@ -270,6 +270,19 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted observability dashboard instance object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityDashboardInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted observability dashboard instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					observabilityDashboardInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting observability dashboard instance, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityDashboardInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete observability dashboard instance")
 					r.UnlockAndRequeue(observabilityDashboardInstance, requeueDelay, lockReleased, msg)
 					continue

@@ -270,6 +270,19 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of logging definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted logging definition object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							loggingDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted logging definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					loggingDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting logging definition, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							loggingDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete logging definition")
 					r.UnlockAndRequeue(loggingDefinition, requeueDelay, lockReleased, msg)
 					continue

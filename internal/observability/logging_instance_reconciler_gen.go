@@ -270,6 +270,19 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of logging instance encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted logging instance object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							loggingInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted logging instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 					loggingInstance.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting logging instance, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							loggingInstance,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete logging instance")
 					r.UnlockAndRequeue(loggingInstance, requeueDelay, lockReleased, msg)
 					continue

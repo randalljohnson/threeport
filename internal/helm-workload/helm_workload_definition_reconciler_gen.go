@@ -270,6 +270,19 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of helm workload definition encountered for creation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict reconciling deleted helm workload definition object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							helmWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted helm workload definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -326,6 +339,19 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					helmWorkloadDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.Info(
+							"conflict deleting helm workload definition, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							helmWorkloadDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete helm workload definition")
 					r.UnlockAndRequeue(helmWorkloadDefinition, requeueDelay, lockReleased, msg)
 					continue

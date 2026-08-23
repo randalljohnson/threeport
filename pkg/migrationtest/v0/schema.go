@@ -30,8 +30,8 @@ import (
 // keeps that setting and the chosen dialect in process-wide state, so this
 // must not run in parallel with anything else that migrates.
 //
-// A migration chain carrying grammar the in-memory engine cannot parse needs
-// the variant that takes a live database instead.
+// The in-memory engine parses plain schema and rejects any grammar an engine
+// adds of its own, so a chain carrying such a statement cannot run here.
 func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models []interface{}) {
 	t.Helper()
 
@@ -43,10 +43,14 @@ func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models [
 	assertCoverage(t, gormDb, models, gormColumns)
 }
 
-// AssertMigrationsCoverModelsOn is the same check against a database the
-// caller supplies, for a migration chain whose statements only the deployed
-// engine understands.  The database must be empty, so a migration built every
-// table the check reads rather than the caller.
+// AssertMigrationsCoverModelsOn applies every migration registered in the
+// calling process to a database the caller supplies, then checks the resulting
+// schema against the columns each model it is handed declares.  It reports both
+// fields left without a column and columns left without a field.
+//
+// A live database runs a chain whose statements only the deployed engine
+// understands.  That database must be empty, so a migration built every table
+// the check reads rather than the caller.
 //
 // The comparison skips columns the engine hides.  A hidden column belongs to
 // the engine rather than to the schema a model declares: a table with no

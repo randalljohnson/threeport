@@ -34,20 +34,10 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	}
 
-	// set table name for the row every migrator of this API contends for, named
-	// per API for the same reason the version table is: threeport and its modules
-	// migrate one database, and a module migrator has no reason to wait on
-	// threeport's
 	f.ImportAlias("github.com/pressly/goose/v3", "goose")
-	f.ImportAlias("github.com/pressly/goose/v3/database", "goosedb")
 	f.ImportAlias("github.com/threeport/threeport/pkg/cli/v0", "cli")
 	f.ImportAlias("github.com/threeport/threeport/pkg/log/v0", "log")
 	f.Anon("github.com/lib/pq")
-
-	// the session locker is hand-written in the threeport API server database
-	// package, so a module migrator reaches across to threeport for it rather
-	// than to its own generated database package
-	threeportDbPath := "github.com/threeport/threeport/pkg/api-server/v0/database"
 
 	var installerPath string
 	var apiServerDbPath string
@@ -58,14 +48,11 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			installerPath,
 			"installer",
 		)
-		f.ImportAlias(apiServerDbPath, "database")
-		f.ImportAlias(threeportDbPath, "threeportdb")
 		f.Anon(fmt.Sprintf("%s/cmd/database-migrator/migrations", gen.ModulePath))
 	} else {
 		installerPath = "github.com/threeport/threeport/pkg/threeport-installer/v0"
-		apiServerDbPath = threeportDbPath
+		apiServerDbPath = "github.com/threeport/threeport/pkg/api-server/v0/database"
 		f.ImportAlias(installerPath, "installer")
-		f.ImportAlias(apiServerDbPath, "database")
 		f.Anon("github.com/threeport/threeport/cmd/database-migrator/migrations")
 	}
 
@@ -197,35 +184,13 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		),
 		Line(),
 
-		Comment("record applied migrations in a table of this API's own so anything"),
-		Comment("else migrating the same database keeps a separate ledger. Nothing is"),
-		Comment("read from a filesystem because every migration registers itself with"),
-		Comment("goose at startup."),
-		List(Id("provider"), Id("err")).Op(":=").Qual(
-			"github.com/pressly/goose/v3",
-			"NewProvider",
-		).Call(
-			Line().Qual("github.com/pressly/goose/v3", "DialectPostgres"),
-			Line().Id("db"),
-			Line().Nil(),
-			Line().Qual("github.com/pressly/goose/v3", "WithTableName").Call(
-				Lit(gooseVersionTableName),
-			),
-			Line().Qual("github.com/pressly/goose/v3", "WithVerbose").Call(True()),
-			Line(),
-		),
-		If(Id("err").Op("!=").Nil()).Block(
-			Id("returnErr").Call(Lit("failed to build goose migration provider"), Id("err")),
-		),
-		Line(),
-
-		Comment("run migrations, which read the gorm DB back out of the context under"),
-		Comment("this key"),
+		Comment("run migrations"),
 		Id("ctx").Op(":=").Qual("context", "WithValue").Call(
 			Qual("context", "TODO").Call(), Lit("gormdb"), Id("gormdb"),
 		),
-		If(Id("err").Op(":=").Id("runGooseCommand").Call(
-			Id("ctx"), Id("provider"), Id("command"), Id("arguments"),
+		Qual("github.com/pressly/goose/v3", "SetTableName").Call(Lit(gooseVersionTableName)),
+		If(Id("err").Op(":=").Qual("github.com/pressly/goose/v3", "RunContext").Call(
+			Id("ctx"), Id("command"), Id("db"), Lit("."), Id("arguments").Op("..."),
 		), Id("err").Op("!=").Nil()).Block(
 			Id("returnErr").Call(
 				Qual("fmt", "Sprintf").Call(Lit("goose %s command failed"), Id("command")), Id("err"),
@@ -234,153 +199,6 @@ func GenDbMigratorMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Line(),
 
 		Id("logger").Dot("Info").Call(Lit("database schema successfully migrated")),
-		Line(),
-
-		Return(Nil()),
-	)
-	f.Line()
-
-	f.Comment("runGooseCommand runs one database-migrator command against the migration")
-	f.Comment("provider.")
-	f.Func().Id("runGooseCommand").Params(
-		Line().Id("ctx").Qual("context", "Context"),
-		Line().Id("provider").Op("*").Qual("github.com/pressly/goose/v3", "Provider"),
-		Line().Id("command").String(),
-		Line().Id("arguments").Index().String(),
-		Line(),
-	).Params(Error()).Block(
-		Switch(Id("command")).Block(
-			Case(Lit("up")).Block(
-				List(Id("_"), Id("err")).Op(":=").Id("provider").Dot("Up").Call(Id("ctx")),
-				Return(Id("err")),
-			),
-			Case(Lit("up-by-one")).Block(
-				List(Id("_"), Id("err")).Op(":=").Id("provider").Dot("UpByOne").Call(Id("ctx")),
-				Return(Id("err")),
-			),
-			Case(Lit("up-to")).Block(
-				List(Id("version"), Id("err")).Op(":=").Id("migrationVersion").Call(
-					Id("command"), Id("arguments"),
-				),
-				If(Id("err").Op("!=").Nil()).Block(
-					Return(Id("err")),
-				),
-				List(Id("_"), Id("err")).Op("=").Id("provider").Dot("UpTo").Call(
-					Id("ctx"), Id("version"),
-				),
-				Return(Id("err")),
-			),
-			Case(Lit("down")).Block(
-				List(Id("_"), Id("err")).Op(":=").Id("provider").Dot("Down").Call(Id("ctx")),
-				Return(Id("err")),
-			),
-			Case(Lit("down-to")).Block(
-				List(Id("version"), Id("err")).Op(":=").Id("migrationVersion").Call(
-					Id("command"), Id("arguments"),
-				),
-				If(Id("err").Op("!=").Nil()).Block(
-					Return(Id("err")),
-				),
-				List(Id("_"), Id("err")).Op("=").Id("provider").Dot("DownTo").Call(
-					Id("ctx"), Id("version"),
-				),
-				Return(Id("err")),
-			),
-			Case(Lit("redo")).Block(
-				Comment("the provider offers no redo of its own, so roll the newest"),
-				Comment("migration back and apply it again, taking the migration lock"),
-				Comment("separately for each half"),
-				If(
-					List(Id("_"), Id("err")).Op(":=").Id("provider").Dot("Down").Call(Id("ctx")),
-					Id("err").Op("!=").Nil(),
-				).Block(
-					Return(Id("err")),
-				),
-				List(Id("_"), Id("err")).Op(":=").Id("provider").Dot("UpByOne").Call(Id("ctx")),
-				Return(Id("err")),
-			),
-			Case(Lit("status")).Block(
-				Return(Id("printMigrationStatus").Call(Id("ctx"), Id("provider"))),
-			),
-		),
-		Line(),
-
-		Return(Qual("fmt", "Errorf").Call(
-			Lit("%s is not a goose command"), Id("command"),
-		)),
-	)
-	f.Line()
-
-	f.Comment("migrationVersion reads the migration version a command takes as its only")
-	f.Comment("argument.")
-	f.Func().Id("migrationVersion").Params(
-		Id("command").String(),
-		Id("arguments").Index().String(),
-	).Params(Int64(), Error()).Block(
-		If(Len(Id("arguments")).Op("==").Lit(0)).Block(
-			Return(Lit(0), Qual("fmt", "Errorf").Call(
-				Lit("%s requires a migration version argument"), Id("command"),
-			)),
-		),
-		Line(),
-
-		List(Id("version"), Id("err")).Op(":=").Qual("strconv", "ParseInt").Call(
-			Id("arguments").Index(Lit(0)), Lit(10), Lit(64),
-		),
-		If(Id("err").Op("!=").Nil()).Block(
-			Return(Lit(0), Qual("fmt", "Errorf").Call(
-				Lit("migration version must be a number, got %s: %w"),
-				Id("arguments").Index(Lit(0)),
-				Id("err"),
-			)),
-		),
-		Line(),
-
-		Return(Id("version"), Nil()),
-	)
-	f.Line()
-
-	f.Comment("printMigrationStatus prints when each known migration was applied, or that")
-	f.Comment("it is still pending.")
-	f.Func().Id("printMigrationStatus").Params(
-		Id("ctx").Qual("context", "Context"),
-		Id("provider").Op("*").Qual("github.com/pressly/goose/v3", "Provider"),
-	).Params(Error()).Block(
-		List(Id("migrationStatus"), Id("err")).Op(":=").Id("provider").Dot("Status").Call(Id("ctx")),
-		If(Id("err").Op("!=").Nil()).Block(
-			Return(Id("err")),
-		),
-		Line(),
-
-		Qual("fmt", "Println").Call(Lit("    Applied At                  Migration")),
-		Qual("fmt", "Println").Call(Lit("    =======================================")),
-		For(List(Id("_"), Id("status")).Op(":=").Range().Id("migrationStatus")).Block(
-			Id("appliedAt").Op(":=").Lit("Pending"),
-			If(Id("status").Dot("State").Op("==").Qual(
-				"github.com/pressly/goose/v3", "StateApplied",
-			)).Block(
-				Id("appliedAt").Op("=").Id("status").Dot("AppliedAt").Dot("Format").Call(
-					Qual("time", "ANSIC"),
-				),
-			),
-			Line(),
-
-			Comment("a migration registered from Go carries no file path, so name it by"),
-			Comment("the version that identifies it instead"),
-			Id("source").Op(":=").Qual("strconv", "FormatInt").Call(
-				Id("status").Dot("Source").Dot("Version"), Lit(10),
-			),
-			If(Id("status").Dot("Source").Dot("Path").Op("!=").Lit("")).Block(
-				Id("source").Op("=").Qual("path/filepath", "Base").Call(
-					Id("status").Dot("Source").Dot("Path"),
-				),
-			),
-			Line(),
-
-			Qual("fmt", "Printf").Call(
-				Lit("    %-24s -- %s\n"), Id("appliedAt"), Id("source"),
-			),
-		),
 		Line(),
 
 		Return(Nil()),

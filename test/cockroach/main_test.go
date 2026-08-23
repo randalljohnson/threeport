@@ -173,12 +173,12 @@ func openSchema(port string) (*gorm.DB, error) {
 }
 
 // freshDatabase creates an empty database in the container and returns a handle
-// on it, for a test that has to build its own schema.
+// on it.
 //
-// The package-level handle is no substitute: its schema is already built, so a
-// test asserting what a migration chain creates would read tables it did not
-// create. A separate database also keeps those tables out of the one every
-// other test in this package shares.
+// A test that asserts what a migration chain creates has to start from a
+// database nothing else has written to, or it reads tables the chain never
+// built and passes on them. Building that schema in its own database also keeps
+// the tables out of the one the rest of the suite shares.
 func freshDatabase(t *testing.T, name string) *gorm.DB {
 	t.Helper()
 

@@ -45,9 +45,9 @@ func TestUniqueViolationCarriesTheSqlstateAndConstraint(t *testing.T) {
 	assert.NotEmpty(t, pgErr.ConstraintName, "the rejection names the index that refused the write")
 
 	// the classifier reads the same error the handler receives
-	constraint, conflict := apiserver_lib.UniqueViolation(err)
-	assert.True(t, conflict, "the classifier reports a conflict")
-	assert.NotEmpty(t, constraint, "the classifier recovers the index name for the log")
+	conflict := apiserver_lib.UniqueViolation(err, new(api_v0.AttachedObjectReference))
+	require.NotNil(t, conflict, "the classifier reports a conflict")
+	assert.NotEmpty(t, conflict.Constraint, "the classifier recovers the index name for the log")
 }
 
 // TestPartialUniqueIndexReleasesOnSoftDelete covers the property every partial
@@ -135,8 +135,8 @@ func TestFullTableUniqueIndexHoldsAfterSoftDelete(t *testing.T) {
 	err := testDb.Create(&recreated).Error
 	require.Error(t, err, "the slot is still held after the soft delete")
 
-	_, conflict := apiserver_lib.UniqueViolation(err)
-	assert.True(t, conflict,
+	conflict := apiserver_lib.UniqueViolation(err, new(fullTableUnique))
+	assert.NotNil(t, conflict,
 		"the refusal is a unique violation, so a client is answered 409 it cannot clear")
 }
 
@@ -196,8 +196,8 @@ func TestUniqueIndexTreatsEveryNullAsDistinct(t *testing.T) {
 	err := testDb.Create(&nullableSlot{Slot: &slot}).Error
 	require.Error(t, err, "a second row carrying the same value is refused")
 
-	_, conflict := apiserver_lib.UniqueViolation(err)
-	assert.True(t, conflict, "the refusal is a unique violation")
+	conflict := apiserver_lib.UniqueViolation(err, new(nullableSlot))
+	assert.NotNil(t, conflict, "the refusal is a unique violation")
 }
 
 // newReference returns an attached object reference with the four indexed

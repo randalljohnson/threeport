@@ -35,13 +35,6 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("could not run gorm AutoMigrate: %w", err)
 	}
 
-	// everything below is CockroachDB-only. CockroachDB is reached through gorm's
-	// postgres driver, so that driver name is what the schema built above gets
-	// row-level time-to-live on; every other dialect keeps the schema as-is.
-	if gormDb.Dialector.Name() != "postgres" {
-		return nil
-	}
-
 	// uniform row-level time-to-live on events
 	if err := gormDb.Exec(fmt.Sprintf(
 		"ALTER TABLE v0_events SET (ttl_expire_after = '%s', ttl_job_cron = '@hourly')",

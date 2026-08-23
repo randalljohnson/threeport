@@ -15,7 +15,7 @@ import (
 
 // AssertMigrationsCoverModels applies every migration registered in the
 // calling process to a fresh in-memory database, then checks the resulting
-// schema against the columns each of the given models declares.  It reports
+// schema against the columns each model it is handed declares.  It reports
 // both fields left without a column and columns left without a field, so one
 // run shows the whole drift.
 //
@@ -29,11 +29,73 @@ import (
 // has applied, and it matches the name the deployed migrator sets.  The tool
 // keeps that setting and the chosen dialect in process-wide state, so this
 // must not run in parallel with anything else that migrates.
+//
+// A migration chain carrying grammar the in-memory engine cannot parse needs
+// the variant that takes a live database instead.
 func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models []interface{}) {
 	t.Helper()
 
-	// build the schema a deployed database would have after an upgrade
-	gormDb := migratedSchema(t, versionTableName)
+	gormDb, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	applyMigrations(t, gormDb, "sqlite3", versionTableName)
+	assertCoverage(t, gormDb, models, gormColumns)
+}
+
+// AssertMigrationsCoverModelsOn is the same check against a database the
+// caller supplies, for a migration chain whose statements only the deployed
+// engine understands.  The database must be empty, so a migration built every
+// table the check reads rather than the caller.
+//
+// The comparison skips columns the engine hides.  A hidden column belongs to
+// the engine rather than to the schema a model declares: a table with no
+// primary key gets one, and so does a table carrying a row-level
+// time-to-live.
+func AssertMigrationsCoverModelsOn(
+	t *testing.T,
+	gormDb *gorm.DB,
+	versionTableName string,
+	models []interface{},
+) {
+	t.Helper()
+
+	applyMigrations(t, gormDb, "postgres", versionTableName)
+	assertCoverage(t, gormDb, models, visibleColumns)
+}
+
+// applyMigrations runs every migration registered in the calling process.
+func applyMigrations(t *testing.T, gormDb *gorm.DB, dialect, versionTableName string) {
+	t.Helper()
+
+	// share one connection pool so the migrations and the assertions see
+	// the same database
+	sqlDb, err := gormDb.DB()
+	if err != nil {
+		t.Fatalf("resolve sql db: %v", err)
+	}
+
+	if err := goose.SetDialect(dialect); err != nil {
+		t.Fatalf("set goose dialect: %v", err)
+	}
+	goose.SetTableName(versionTableName)
+
+	// the migrations read the gorm db from the context under the same key
+	// the deployed migrator sets
+	ctx := context.WithValue(context.Background(), "gormdb", gormDb)
+	if err := goose.UpContext(ctx, sqlDb, "."); err != nil {
+		t.Fatalf("apply migrations: %v", err)
+	}
+}
+
+// assertCoverage compares each model's declared columns against the created ones.
+func assertCoverage(
+	t *testing.T,
+	gormDb *gorm.DB,
+	models []interface{},
+	columnsOf func(*testing.T, *gorm.DB, interface{}, string) map[string]bool,
+) {
+	t.Helper()
 
 	for _, model := range models {
 		// resolve the columns the model's fields declare, which accounts
@@ -53,15 +115,7 @@ func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models [
 			continue
 		}
 
-		// read the columns the migration chain actually created
-		columnTypes, err := gormDb.Migrator().ColumnTypes(model)
-		if err != nil {
-			t.Fatalf("read columns for %T: %v", model, err)
-		}
-		created := make(map[string]bool, len(columnTypes))
-		for _, columnType := range columnTypes {
-			created[columnType.Name()] = true
-		}
+		created := columnsOf(t, gormDb, model, stmt.Schema.Table)
 
 		// a declared field with no column means a migration was never written
 		var missingColumns []string
@@ -91,36 +145,43 @@ func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models [
 	}
 }
 
-// migratedSchema applies every migration registered in the calling process to
-// a fresh in-memory database and returns a handle on the resulting schema.
-// versionTableName is where the migration tool records which migrations it has
-// applied.
-func migratedSchema(t *testing.T, versionTableName string) *gorm.DB {
+// gormColumns reads a table's columns through the driver's own migrator.
+func gormColumns(t *testing.T, gormDb *gorm.DB, model interface{}, _ string) map[string]bool {
 	t.Helper()
 
-	gormDb, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	columnTypes, err := gormDb.Migrator().ColumnTypes(model)
 	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
+		t.Fatalf("read columns for %T: %v", model, err)
+	}
+	created := make(map[string]bool, len(columnTypes))
+	for _, columnType := range columnTypes {
+		created[columnType.Name()] = true
 	}
 
-	// share one connection pool so the migrations and the assertions see
-	// the same in-memory database
-	sqlDb, err := gormDb.DB()
+	return created
+}
+
+// visibleColumns reads a table's columns, skipping the ones the engine hides.
+//
+// The driver's own migrator reads the same catalog without filtering, and the
+// column type it returns carries no way to ask, so this queries the catalog
+// directly.
+func visibleColumns(t *testing.T, gormDb *gorm.DB, _ interface{}, table string) map[string]bool {
+	t.Helper()
+
+	var names []string
+	err := gormDb.Raw(`
+		SELECT column_name
+		FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = ? AND is_hidden = 'NO'
+	`, table).Scan(&names).Error
 	if err != nil {
-		t.Fatalf("resolve sql db: %v", err)
+		t.Fatalf("read columns for %s: %v", table, err)
+	}
+	created := make(map[string]bool, len(names))
+	for _, name := range names {
+		created[name] = true
 	}
 
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		t.Fatalf("set goose dialect: %v", err)
-	}
-	goose.SetTableName(versionTableName)
-
-	// the migrations read the gorm db from the context under the same key
-	// the deployed migrator sets
-	ctx := context.WithValue(context.Background(), "gormdb", gormDb)
-	if err := goose.UpContext(ctx, sqlDb, "."); err != nil {
-		t.Fatalf("apply migrations: %v", err)
-	}
-
-	return gormDb
+	return created
 }

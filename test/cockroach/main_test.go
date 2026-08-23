@@ -40,6 +40,10 @@ const startTimeout = 60 * time.Second
 // isolates itself by writing values no other test writes.
 var testDb *gorm.DB
 
+// testPort is the host port the container publishes, so a test that needs its
+// own database can open a second connection to the same server.
+var testPort string
+
 // TestMain starts one CockroachDB container for the package, builds the schema
 // in it, and removes it afterwards. It skips the whole package rather than
 // failing when docker is missing, so the suite stays runnable on a machine set
@@ -61,6 +65,7 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
+	testPort = port
 	testDb, err = openSchema(port)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build the schema: %v\n", err)
@@ -165,6 +170,28 @@ func openSchema(port string) (*gorm.DB, error) {
 	}
 
 	return db, nil
+}
+
+// freshDatabase creates an empty database in the container and returns a handle
+// on it, for a test that has to build its own schema.
+//
+// The package-level handle is no substitute: its schema is already built, so a
+// test asserting what a migration chain creates would read tables it did not
+// create. A separate database also keeps those tables out of the one every
+// other test in this package shares.
+func freshDatabase(t *testing.T, name string) *gorm.DB {
+	t.Helper()
+
+	if err := testDb.Exec(fmt.Sprintf("CREATE DATABASE %s", name)).Error; err != nil {
+		t.Fatalf("create database %s: %v", name, err)
+	}
+
+	db, err := open(testPort, name)
+	if err != nil {
+		t.Fatalf("open database %s: %v", name, err)
+	}
+
+	return db
 }
 
 // open returns a gorm handle on one database in the container. The connection

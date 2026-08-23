@@ -55,10 +55,13 @@ type Reconciliation struct {
 // reconciliation state differ. InterruptReconciliation is not compared; it
 // gates whether a controller acts, not how far it has gotten.
 //
-// Timestamps compare by instant rather than by struct equality, which reads one
-// moment as two once a database round trip drops the monotonic clock reading
-// or changes the location pointer. That difference publishes an update, wakes
-// the reconciler, which re-stamps an acknowledgement and publishes again.
+// Timestamps compare by instant rather than by struct equality, which
+// reads one moment as two once a database round trip drops the monotonic
+// clock reading or changes the location pointer. That difference
+// publishes an update, wakes the reconciler, which re-stamps an
+// acknowledgement and publishes again. The two acknowledgements compare
+// on set versus unset alone, since a reconciler re-stamps them on every
+// pass and only the first stamp changes what a controller does next.
 func ReconciliationStateChanged(a, b Reconciliation) bool {
 	return !boolPtrEqual(a.Reconciled, b.Reconciled) ||
 		!timePtrSet(a.CreationAcknowledged, b.CreationAcknowledged) ||
@@ -85,23 +88,18 @@ func ReconciliationUpdateNotifiable(a, b Reconciliation) bool {
 	return !acknowledgementRefreshed(a, b)
 }
 
-// acknowledgementRefreshed reports whether either acknowledgement timestamp
-// moved while both snapshots keep it set, which is the signature of a
-// reconciler pass rather than an edit from a caller.
+// acknowledgementRefreshed reports whether a set acknowledgement moved.
 func acknowledgementRefreshed(a, b Reconciliation) bool {
 	return timePtrRefreshed(a.CreationAcknowledged, b.CreationAcknowledged) ||
 		timePtrRefreshed(a.DeletionAcknowledged, b.DeletionAcknowledged)
 }
 
-// timePtrRefreshed reports whether both pointers are set and name different
-// instants. Crossing between nil and set is a transition rather than a
-// refresh, and the broader state comparison already reports that.
+// timePtrRefreshed reports whether two set pointers name different instants.
 func timePtrRefreshed(a, b *time.Time) bool {
 	return a != nil && b != nil && !a.Equal(*b)
 }
 
-// boolPtrEqual compares two bool pointers by value. Two nil pointers are
-// equal, and a nil paired with a non-nil pointer is not.
+// boolPtrEqual compares two bool pointers by value, with two nils equal.
 func boolPtrEqual(a, b *bool) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -109,8 +107,7 @@ func boolPtrEqual(a, b *bool) bool {
 	return *a == *b
 }
 
-// timePtrEqual compares two time pointers by instant, so a moment survives a
-// database round trip. Two nil pointers are equal; nil and non-nil are not.
+// timePtrEqual compares two time pointers by instant, with two nils equal.
 func timePtrEqual(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -118,8 +115,7 @@ func timePtrEqual(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
-// timePtrSet compares two time pointers on set versus unset, which fits a
-// timestamp where only the first stamp means anything.
+// timePtrSet compares two time pointers on set versus unset.
 func timePtrSet(a, b *time.Time) bool {
 	return (a == nil) == (b == nil)
 }

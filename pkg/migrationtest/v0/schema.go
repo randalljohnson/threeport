@@ -48,9 +48,9 @@ func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models [
 // schema against the columns each model it is handed declares.  It reports both
 // fields left without a column and columns left without a field.
 //
-// A live database runs a chain whose statements only the deployed engine
-// understands.  That database must be empty, so a migration built every table
-// the check reads rather than the caller.
+// This takes a live database because some migration statements only the
+// deployed engine understands.  That database must be empty, so a migration
+// built every table the check reads rather than the caller.
 //
 // The comparison skips columns the engine hides.  A hidden column belongs to
 // the engine rather than to the schema a model declares: a table with no

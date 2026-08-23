@@ -127,10 +127,12 @@ ApiObjectGroups:
       Versions:
         - v0
       ExcludeRoute: true
+      ExcludeFromDb: true
     - Name: Instance
       Versions:
         - v0
       ExcludeRoute: true
+      ExcludeFromDb: true
 - Name: events
   Objects:
     - Name: Event

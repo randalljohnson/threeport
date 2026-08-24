@@ -172,7 +172,9 @@ func (a *AwsEksKubernetesRuntimeInstanceConfig) Create(
 	defaultRuntime := false
 	kubernetesRuntimeInstance := api_v0.KubernetesRuntimeInstance{
 		Instance: api_v0.Instance{
-			Name: awsEksKubernetesRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: awsEksKubernetesRuntimeInstanceValues.Name,
+			},
 		},
 		Reconciliation: api_v0.Reconciliation{
 			Reconciled: util.Ptr(true),
@@ -192,7 +194,9 @@ func (a *AwsEksKubernetesRuntimeInstanceConfig) Create(
 	// construct AWS EKS kubernetes runtime instance object
 	awsEksKubernetesRuntimeInstance := api_v0.AwsEksKubernetesRuntimeInstance{
 		Instance: api_v0.Instance{
-			Name: awsEksKubernetesRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: awsEksKubernetesRuntimeInstanceValues.Name,
+			},
 		},
 		AwsProviderID:                       awsProvider.ID,
 		Region:                              awsEksKubernetesRuntimeInstanceValues.Region,
@@ -257,7 +261,9 @@ func (a *AwsEksKubernetesRuntimeInstanceConfig) Replace(
 			ID: existingAwsEksKubernetesRuntimeInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: awsEksKubernetesRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: awsEksKubernetesRuntimeInstanceValues.Name,
+			},
 		},
 		AwsProviderID:                       existingAwsEksKubernetesRuntimeInstance.AwsProviderID,
 		Region:                              awsEksKubernetesRuntimeInstanceValues.Region,

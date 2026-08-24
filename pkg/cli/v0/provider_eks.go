@@ -261,7 +261,9 @@ func ConfigureEksKubernetesRuntimeInstance(
 
 	kubernetesRuntimeInstance = &v0.KubernetesRuntimeInstance{
 		Instance: v0.Instance{
-			Name: &kubernetesRuntimeInstName,
+			Named: v0.Named{
+				Name: &kubernetesRuntimeInstName,
+			},
 		},
 		Reconciliation: v0.Reconciliation{
 			Reconciled: &instReconciled,
@@ -324,7 +326,9 @@ func ConfigureControlPlaneWithEksConfig(
 
 	// create default AWS provider
 	awsProvider := v0.AwsProvider{
-		Name:            util.Ptr(provider.DefaultAccountName),
+		Named: v0.Named{
+			Name:            util.Ptr(provider.DefaultAccountName),
+		},
 		AccountID:       callerIdentity.Account,
 		DefaultProvider: util.Ptr(true),
 		DefaultRegion:   &awsConfigResourceManager.Region,
@@ -350,7 +354,9 @@ func ConfigureControlPlaneWithEksConfig(
 	zoneCount := int(kubernetesRuntimeInfraEKS.ZoneCount)
 	awsEksKubernetesRuntimeDef := v0.AwsEksKubernetesRuntimeDefinition{
 		Definition: v0.Definition{
-			Name: &eksRuntimeDefName,
+			Named: v0.Named{
+				Name: &eksRuntimeDefName,
+			},
 		},
 		ZoneCount:                     &zoneCount,
 		DefaultNodeGroupInstanceType:  &kubernetesRuntimeInfraEKS.DefaultNodeGroupInstanceType,
@@ -384,7 +390,9 @@ func ConfigureControlPlaneWithEksConfig(
 	reconciled := true
 	awsEksKubernetesRuntimeInstance := v0.AwsEksKubernetesRuntimeInstance{
 		Instance: v0.Instance{
-			Name: &eksRuntimeInstName,
+			Named: v0.Named{
+				Name: &eksRuntimeInstName,
+			},
 		},
 		Reconciliation: v0.Reconciliation{
 			Reconciled: &reconciled,

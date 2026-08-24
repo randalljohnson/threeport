@@ -140,7 +140,9 @@ func (c *ControlPlaneInstanceConfig) Create(
 	// construct control plane instance object
 	controlPlaneInstance := api_v0.ControlPlaneInstance{
 		Instance: api_v0.Instance{
-			Name: controlPlaneInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: controlPlaneInstanceValues.Name,
+			},
 		},
 		Namespace:                   controlPlaneInstanceValues.Namespace,
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
@@ -206,7 +208,9 @@ func (c *ControlPlaneInstanceConfig) Replace(
 			ID: existingControlPlaneInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: controlPlaneInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: controlPlaneInstanceValues.Name,
+			},
 		},
 		Namespace:                   controlPlaneInstanceValues.Namespace,
 		KubernetesRuntimeInstanceID: existingControlPlaneInstance.KubernetesRuntimeInstanceID,

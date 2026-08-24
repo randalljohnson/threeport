@@ -40,7 +40,7 @@ func TestSecretDefinitionDataNotStoredOnCreate(t *testing.T) {
 	db := setupSecretDefinitionDB(t)
 
 	created := &SecretDefinition{
-		Definition: Definition{Name: util.Ptr("test-secret")},
+		Definition: Definition{Named: Named{Name: util.Ptr("test-secret")}},
 		Data:       &datatypes.JSON{},
 	}
 	*created.Data = datatypes.JSON(`{"password":"hunter2"}`)
@@ -60,7 +60,7 @@ func TestSecretDefinitionDataNotStoredOnCreate(t *testing.T) {
 func TestSecretDefinitionDataNotStoredOnUpdate(t *testing.T) {
 	db := setupSecretDefinitionDB(t)
 
-	created := &SecretDefinition{Definition: Definition{Name: util.Ptr("test-secret")}}
+	created := &SecretDefinition{Definition: Definition{Named: Named{Name: util.Ptr("test-secret")}}}
 	require.NoError(t, db.Create(created).Error)
 
 	var loaded SecretDefinition
@@ -80,13 +80,13 @@ func TestSecretDefinitionDataNotStoredOnUpdate(t *testing.T) {
 func TestSecretDefinitionUpdateKeepsOtherFields(t *testing.T) {
 	db := setupSecretDefinitionDB(t)
 
-	created := &SecretDefinition{Definition: Definition{Name: util.Ptr("test-secret")}}
+	created := &SecretDefinition{Definition: Definition{Named: Named{Name: util.Ptr("test-secret")}}}
 	require.NoError(t, db.Create(created).Error)
 
 	var loaded SecretDefinition
 	require.NoError(t, db.First(&loaded, *created.ID).Error)
 
-	patch := &SecretDefinition{Definition: Definition{Name: util.Ptr("renamed-secret")}}
+	patch := &SecretDefinition{Definition: Definition{Named: Named{Name: util.Ptr("renamed-secret")}}}
 	require.NoError(t, db.Model(&loaded).Updates(patch).Error)
 
 	var stored SecretDefinition

@@ -372,14 +372,14 @@ func TestValidateTags_StableErrorOrdering(t *testing.T) {
 }
 
 // TestValidateTags_RejectsNonStandardEmbed enforces the api-type embed
-// whitelist. Models may only embed Common, Definition, Instance, or
+// whitelist. Models may only embed Common, Definition, Instance, Named, or
 // Reconciliation; anything else surfaces an error so model authors and
 // readers can rely on a flat, one-level embed model.
 // Example:
 //
 //	type Random struct { ... }
 //	type Foo struct {
-//	    Random // not in {Common, Definition, Instance, Reconciliation}
+//	    Random // not in {Common, Definition, Instance, Named, Reconciliation}
 //	}
 //
 // Expected: error citing the disallowed embed.
@@ -397,7 +397,7 @@ func TestValidateTags_RejectsNonStandardEmbed(t *testing.T) {
 	err := g.ValidateTags()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Foo embeds Random")
-	assert.Contains(t, err.Error(), "Common, Definition, Instance, or Reconciliation")
+	assert.Contains(t, err.Error(), "Common, Definition, Instance, Named, or Reconciliation")
 }
 
 // TestHasFieldWithTagValue_Match returns true when any field on the

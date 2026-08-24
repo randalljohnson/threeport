@@ -113,7 +113,9 @@ func ConfigureControlPlaneWithOkeConfig(
 	// CompartmentOCID stores the genesis compartment — workload clusters create
 	// child compartments under it.
 	ociProvider := v0.OciProvider{
-		Name:            util.Ptr(kubernetesRuntimeInfraOKE.GetServiceUserName()),
+		Named: v0.Named{
+			Name:            util.Ptr(kubernetesRuntimeInfraOKE.GetServiceUserName()),
+		},
 		UserOCID:        &kubernetesRuntimeInfraOKE.ServiceUserOCID,
 		TenancyOCID:     &tenancyOCID,
 		CompartmentOCID: &kubernetesRuntimeInfraOKE.CompartmentOCID,
@@ -135,7 +137,9 @@ func ConfigureControlPlaneWithOkeConfig(
 	okeRuntimeDefName := provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName)
 	ociOkeKubernetesRuntimeDef := v0.OciOkeKubernetesRuntimeDefinition{
 		Definition: v0.Definition{
-			Name: &okeRuntimeDefName,
+			Named: v0.Named{
+				Name: &okeRuntimeDefName,
+			},
 		},
 		WorkerNodeShape:               &kubernetesRuntimeInfraOKE.WorkerNodeShape,
 		WorkerNodeInitialCount:        util.Ptr(kubernetesRuntimeInfraOKE.WorkerNodeInitialCount),
@@ -166,7 +170,9 @@ func ConfigureControlPlaneWithOkeConfig(
 	// create oci oke k8s runtime instance
 	ociOkeKubernetesRuntimeInstance := v0.OciOkeKubernetesRuntimeInstance{
 		Instance: v0.Instance{
-			Name: &okeRuntimeInstName,
+			Named: v0.Named{
+				Name: &okeRuntimeInstName,
+			},
 		},
 		Reconciliation: v0.Reconciliation{
 			Reconciled: util.Ptr(true),

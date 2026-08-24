@@ -29,7 +29,9 @@ func v0GatewayDefinitionCreated(
 	// construct kubernetes workload definition object
 	workloadDefinition := v0.KubernetesWorkloadDefinition{
 		Definition: v0.Definition{
-			Name: util.Ptr(fmt.Sprintf("%s-gateway", *gatewayDefinition.Name)),
+			Named: v0.Named{
+				Name: util.Ptr(fmt.Sprintf("%s-gateway", *gatewayDefinition.Name)),
+			},
 		},
 		YAMLDocument: &yamlDocument,
 	}

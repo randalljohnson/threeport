@@ -194,7 +194,9 @@ func (g *GatewayDefinitionConfig) Create(
 	if domainNameUsed {
 		gatewayDefinition = api_v0.GatewayDefinition{
 			Definition: api_v0.Definition{
-				Name: gatewayDefinitionValues.Name,
+				Named: api_v0.Named{
+					Name: gatewayDefinitionValues.Name,
+				},
 			},
 			HttpPorts:              httpPorts,
 			TcpPorts:               tcpPorts,
@@ -205,7 +207,9 @@ func (g *GatewayDefinitionConfig) Create(
 	} else {
 		gatewayDefinition = api_v0.GatewayDefinition{
 			Definition: api_v0.Definition{
-				Name: gatewayDefinitionValues.Name,
+				Named: api_v0.Named{
+					Name: gatewayDefinitionValues.Name,
+				},
 			},
 			HttpPorts:   httpPorts,
 			TcpPorts:    tcpPorts,
@@ -356,7 +360,9 @@ func (g *GatewayDefinitionConfig) Replace(
 				ID: existingGatewayDefinition.ID,
 			},
 			Definition: api_v0.Definition{
-				Name: gatewayDefinitionValues.Name,
+				Named: api_v0.Named{
+					Name: gatewayDefinitionValues.Name,
+				},
 			},
 			HttpPorts:              httpPorts,
 			TcpPorts:               tcpPorts,
@@ -370,7 +376,9 @@ func (g *GatewayDefinitionConfig) Replace(
 				ID: existingGatewayDefinition.ID,
 			},
 			Definition: api_v0.Definition{
-				Name: gatewayDefinitionValues.Name,
+				Named: api_v0.Named{
+					Name: gatewayDefinitionValues.Name,
+				},
 			},
 			HttpPorts:   httpPorts,
 			TcpPorts:    tcpPorts,

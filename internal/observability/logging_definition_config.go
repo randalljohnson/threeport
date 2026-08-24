@@ -51,7 +51,9 @@ func (c *LoggingDefinitionConfig) createLokiHelmWorkloadDefinition() error {
 		c.r.APIServer,
 		&v0.HelmWorkloadDefinition{
 			Definition: v0.Definition{
-				Name: util.Ptr(LokiHelmChartName(*c.loggingDefinition.Name)),
+				Named: v0.Named{
+					Name: util.Ptr(LokiHelmChartName(*c.loggingDefinition.Name)),
+				},
 			},
 			Repo:           util.Ptr(GrafanaHelmRepo),
 			Chart:          util.Ptr("loki"),
@@ -90,7 +92,9 @@ func (c *LoggingDefinitionConfig) createPromtailHelmWorkloadDefinition() error {
 		c.r.APIServer,
 		&v0.HelmWorkloadDefinition{
 			Definition: v0.Definition{
-				Name: util.Ptr(PromtailHelmChartName(*c.loggingDefinition.Name)),
+				Named: v0.Named{
+					Name: util.Ptr(PromtailHelmChartName(*c.loggingDefinition.Name)),
+				},
 			},
 			Repo:           util.Ptr(GrafanaHelmRepo),
 			Chart:          util.Ptr("promtail"),

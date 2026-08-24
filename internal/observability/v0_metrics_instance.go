@@ -51,7 +51,9 @@ func v0MetricsInstanceCreated(
 		r.APIServer,
 		&v0.HelmWorkloadInstance{
 			Instance: v0.Instance{
-				Name: util.Ptr(KubePrometheusStackChartName(*metricsInstance.Name)),
+				Named: v0.Named{
+					Name: util.Ptr(KubePrometheusStackChartName(*metricsInstance.Name)),
+				},
 			},
 			KubernetesRuntimeInstanceID: metricsInstance.KubernetesRuntimeInstanceID,
 			HelmWorkloadDefinitionID:    metricsDefinition.KubePrometheusStackHelmWorkloadDefinitionID,

@@ -122,7 +122,9 @@ func (t *TerraformDefinitionConfig) Create(
 	// construct terraform definition object
 	terraformDefinition := api_v0.TerraformDefinition{
 		Definition: api_v0.Definition{
-			Name: terraformDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: terraformDefinitionValues.Name,
+			},
 		},
 		ConfigDir: &concatConfig,
 	}
@@ -215,7 +217,9 @@ func (t *TerraformDefinitionConfig) Replace(
 			ID: existingTerraformDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Name: terraformDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: terraformDefinitionValues.Name,
+			},
 		},
 		ConfigDir: &concatConfig,
 	}

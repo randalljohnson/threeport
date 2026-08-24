@@ -108,7 +108,9 @@ func (o *OciProviderConfig) Create(
 
 	// construct oci provider object
 	ociProvider := api.OciProvider{
-		Name:            ociProviderValues.Name,
+		Named: api.Named{
+			Name:            ociProviderValues.Name,
+		},
 		UserOCID:        ociProviderValues.UserOCID,
 		CompartmentOCID: ociProviderValues.CompartmentOCID,
 		DefaultProvider: ociProviderValues.DefaultProvider,
@@ -174,7 +176,9 @@ func (o *OciProviderConfig) Replace(
 		Common: api.Common{
 			ID: existingOciProvider.ID,
 		},
-		Name:            ociProviderValues.Name,
+		Named: api.Named{
+			Name:            ociProviderValues.Name,
+		},
 		UserOCID:        ociProviderValues.UserOCID,
 		CompartmentOCID: ociProviderValues.CompartmentOCID,
 		DefaultProvider: ociProviderValues.DefaultProvider,

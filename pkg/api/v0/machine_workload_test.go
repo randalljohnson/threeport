@@ -39,7 +39,7 @@ func setupMachineWorkloadValidateDB(t *testing.T) *gorm.DB {
 func createValidMWD(t *testing.T, db *gorm.DB, env *[]string) MachineWorkloadDefinition {
 	t.Helper()
 	existing := &MachineWorkloadDefinition{
-		Definition:   Definition{Name: util.Ptr("test-mwd")},
+		Definition:   Definition{Named: Named{Name: util.Ptr("test-mwd")}},
 		CreateScript: util.Ptr("echo create"),
 		DeleteScript: util.Ptr("echo delete"),
 		Env:          env,
@@ -106,7 +106,7 @@ func TestMachineWorkloadInstance_beforeUpdate_RejectsInvalidPayloadEnv(t *testin
 
 	def := createValidMWD(t, db, nil)
 	mri := &MachineRuntimeInstance{
-		Instance:    Instance{Name: util.Ptr("test-mri")},
+		Instance:    Instance{Named: Named{Name: util.Ptr("test-mri")}},
 		Hostname:    util.Ptr("host.example"),
 		SSHUser:     util.Ptr("user"),
 		SSHPassword: util.Ptr("password"),
@@ -114,7 +114,7 @@ func TestMachineWorkloadInstance_beforeUpdate_RejectsInvalidPayloadEnv(t *testin
 	require.NoError(t, db.Create(mri).Error)
 
 	existing := &MachineWorkloadInstance{
-		Instance:                    Instance{Name: util.Ptr("test-mwi")},
+		Instance:                    Instance{Named: Named{Name: util.Ptr("test-mwi")}},
 		MachineRuntimeInstanceID:    mri.ID,
 		MachineWorkloadDefinitionID: def.ID,
 		Env:                         &[]string{"VALID_KEY=valid_value"},

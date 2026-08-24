@@ -102,7 +102,9 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Create(
 	infraProvider := api_v0.KubernetesRuntimeInfraProviderOKE
 	kubernetesRuntimeDefinition := api_v0.KubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
+			},
 		},
 		Reconciliation: api_v0.Reconciliation{
 			Reconciled: util.Ptr(true),
@@ -120,7 +122,9 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Create(
 	// construct oci oke kubernetes runtime definition object
 	ociOkeKubernetesRuntimeDefinition := api_v0.OciOkeKubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
+			},
 		},
 		WorkerNodeShape: ociOkeKubernetesRuntimeDefinitionValues.WorkerNodeShape,
 		WorkerNodeInitialCount: func() *int32 {
@@ -194,7 +198,9 @@ func (o *OciOkeKubernetesRuntimeDefinitionConfig) Replace(
 			ID: existingOciOkeKubernetesRuntimeDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: ociOkeKubernetesRuntimeDefinitionValues.Name,
+			},
 		},
 		WorkerNodeShape: ociOkeKubernetesRuntimeDefinitionValues.WorkerNodeShape,
 		WorkerNodeInitialCount: func() *int32 {

@@ -167,7 +167,9 @@ func (a *AwsProviderConfig) Create(
 
 	// construct aws provider object
 	awsProvider := api.AwsProvider{
-		Name:            awsProviderValues.Name,
+		Named: api.Named{
+			Name:            awsProviderValues.Name,
+		},
 		DefaultProvider: awsProviderValues.DefaultProvider,
 		DefaultRegion:   &region,
 		AccountID:       awsProviderValues.AccountID,
@@ -232,7 +234,9 @@ func (a *AwsProviderConfig) Replace(
 		Common: api.Common{
 			ID: existingAwsProvider.ID,
 		},
-		Name:            awsProviderValues.Name,
+		Named: api.Named{
+			Name:            awsProviderValues.Name,
+		},
 		AccountID:       awsProviderValues.AccountID,
 		DefaultProvider: awsProviderValues.DefaultProvider,
 		DefaultRegion:   awsProviderValues.DefaultRegion,

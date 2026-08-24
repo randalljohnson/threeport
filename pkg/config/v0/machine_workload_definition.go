@@ -112,7 +112,9 @@ func (m *MachineWorkloadDefinitionConfig) Create(
 	// construct machine workload definition object
 	machineWorkloadDefinition := api_v0.MachineWorkloadDefinition{
 		Definition: api_v0.Definition{
-			Name: machineWorkloadDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: machineWorkloadDefinitionValues.Name,
+			},
 		},
 		CreateScript: machineWorkloadDefinitionValues.CreateScript,
 		UpdateScript: machineWorkloadDefinitionValues.UpdateScript,
@@ -183,7 +185,9 @@ func (m *MachineWorkloadDefinitionConfig) Replace(
 			ID: existingMachineWorkloadDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Name: machineWorkloadDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: machineWorkloadDefinitionValues.Name,
+			},
 		},
 		CreateScript: machineWorkloadDefinitionValues.CreateScript,
 		UpdateScript: machineWorkloadDefinitionValues.UpdateScript,

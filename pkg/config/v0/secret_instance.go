@@ -158,7 +158,9 @@ func (s *SecretInstanceConfig) Create(
 	// construct secret instance object
 	secretInstance := api_v0.SecretInstance{
 		Instance: api_v0.Instance{
-			Name: secretInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: secretInstanceValues.Name,
+			},
 		},
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
 		SecretDefinitionID:          secretDefinition.ID,
@@ -271,7 +273,9 @@ func (s *SecretInstanceConfig) Replace(
 			ID: existingSecretInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: secretInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: secretInstanceValues.Name,
+			},
 		},
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
 		SecretDefinitionID:          secretDefinition.ID,

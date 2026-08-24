@@ -158,7 +158,9 @@ func (h *HelmWorkloadInstanceConfig) Create(
 	// construct helm workload instance object
 	helmWorkloadInstance := api_v0.HelmWorkloadInstance{
 		Instance: api_v0.Instance{
-			Name: helmWorkloadInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: helmWorkloadInstanceValues.Name,
+			},
 		},
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
 		HelmWorkloadDefinitionID:    helmWorkloadDefinition.ID,
@@ -274,7 +276,9 @@ func (h *HelmWorkloadInstanceConfig) Replace(
 			ID: existingHelmWorkloadInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: helmWorkloadInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: helmWorkloadInstanceValues.Name,
+			},
 		},
 		KubernetesRuntimeInstanceID: kubernetesRuntimeInstance.ID,
 		HelmWorkloadDefinitionID:    helmWorkloadDefinition.ID,

@@ -120,7 +120,9 @@ func (s *SecretDefinitionConfig) Create(
 	// construct secret definition object
 	secretDefinition := api_v0.SecretDefinition{
 		Definition: api_v0.Definition{
-			Name: secretDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: secretDefinitionValues.Name,
+			},
 		},
 		AwsProviderID: awsProvider.ID,
 		Data:          util.Ptr(datatypes.JSON(jsonData)),
@@ -192,7 +194,9 @@ func (s *SecretDefinitionConfig) Replace(
 			ID: existingSecretDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Name: secretDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: secretDefinitionValues.Name,
+			},
 		},
 		AwsProviderID: awsProvider.ID,
 		Data:          util.Ptr(datatypes.JSON(jsonData)),

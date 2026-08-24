@@ -186,7 +186,9 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Create(
 	defaultRuntime := false
 	kubernetesRuntimeInstance := api_v0.KubernetesRuntimeInstance{
 		Instance: api_v0.Instance{
-			Name: ociOkeKubernetesRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: ociOkeKubernetesRuntimeInstanceValues.Name,
+			},
 		},
 		Reconciliation: api_v0.Reconciliation{
 			Reconciled: util.Ptr(true),
@@ -206,7 +208,9 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Create(
 	// construct oci oke kubernetes runtime instance object
 	ociOkeKubernetesRuntimeInstance := api_v0.OciOkeKubernetesRuntimeInstance{
 		Instance: api_v0.Instance{
-			Name: ociOkeKubernetesRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: ociOkeKubernetesRuntimeInstanceValues.Name,
+			},
 		},
 		OciProviderID:                       ociProvider.ID,
 		Region:                              ociOkeKubernetesRuntimeInstanceValues.Region,
@@ -296,7 +300,9 @@ func (o *OciOkeKubernetesRuntimeInstanceConfig) Replace(
 			ID: existingOciOkeKubernetesRuntimeInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: ociOkeKubernetesRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: ociOkeKubernetesRuntimeInstanceValues.Name,
+			},
 		},
 		OciProviderID:                       ociProviderID,
 		Region:                              ociOkeKubernetesRuntimeInstanceValues.Region,

@@ -149,7 +149,9 @@ func (d *DomainNameInstanceConfig) Create(
 	// construct domain name instance object
 	domainNameInstance := api_v0.DomainNameInstance{
 		Instance: api_v0.Instance{
-			Name: util.Ptr(domainNameInstanceValues.getDomainNameInstanceName()),
+			Named: api_v0.Named{
+				Name: util.Ptr(domainNameInstanceValues.getDomainNameInstanceName()),
+			},
 		},
 		KubernetesRuntimeInstanceID:  kubernetesRuntimeInstance.ID,
 		KubernetesWorkloadInstanceID: workloadInstance.ID,
@@ -242,7 +244,9 @@ func (d *DomainNameInstanceConfig) Replace(
 			ID: existingDomainNameInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: util.Ptr(domainNameInstanceValues.getDomainNameInstanceName()),
+			Named: api_v0.Named{
+				Name: util.Ptr(domainNameInstanceValues.getDomainNameInstanceName()),
+			},
 		},
 		KubernetesRuntimeInstanceID:  kubernetesRuntimeInstance.ID,
 		KubernetesWorkloadInstanceID: workloadInstance.ID,

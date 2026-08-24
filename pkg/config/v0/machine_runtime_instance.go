@@ -162,7 +162,9 @@ func (m *MachineRuntimeInstanceConfig) Create(
 	// construct machine runtime instance object
 	machineRuntimeInstance := api_v0.MachineRuntimeInstance{
 		Instance: api_v0.Instance{
-			Name: machineRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: machineRuntimeInstanceValues.Name,
+			},
 		},
 		Hostname:                   machineRuntimeInstanceValues.Hostname,
 		SSHUser:                    machineRuntimeInstanceValues.SSHUser,
@@ -232,7 +234,9 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 			ID: existingMachineRuntimeInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: machineRuntimeInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: machineRuntimeInstanceValues.Name,
+			},
 		},
 		Hostname:    machineRuntimeInstanceValues.Hostname,
 		SSHUser:     machineRuntimeInstanceValues.SSHUser,

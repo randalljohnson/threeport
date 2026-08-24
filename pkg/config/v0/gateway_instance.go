@@ -147,7 +147,9 @@ func (g *GatewayInstanceConfig) Create(
 	// construct gateway instance object
 	gatewayInstance := api_v0.GatewayInstance{
 		Instance: api_v0.Instance{
-			Name: gatewayInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: gatewayInstanceValues.Name,
+			},
 		},
 		GatewayDefinitionID:          gatewayDefinition.ID,
 		KubernetesRuntimeInstanceID:  kubernetesRuntimeInstance.ID,
@@ -236,7 +238,9 @@ func (g *GatewayInstanceConfig) Replace(
 			ID: existingGatewayInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: gatewayInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: gatewayInstanceValues.Name,
+			},
 		},
 		GatewayDefinitionID:          gatewayDefinition.ID,
 		KubernetesRuntimeInstanceID:  kubernetesRuntimeInstance.ID,

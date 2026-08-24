@@ -84,7 +84,9 @@ func (t *TierConfig) Create(
 
 	// construct tier object
 	tier := api_v0.Tier{
-		Name:        tierValues.Name,
+		Named: api_v0.Named{
+			Name:        tierValues.Name,
+		},
 		Criticality: tierValues.Criticality,
 	}
 
@@ -140,7 +142,9 @@ func (t *TierConfig) Replace(
 		Common: api_v0.Common{
 			ID: existingTier.ID,
 		},
-		Name:        tierValues.Name,
+		Named: api_v0.Named{
+			Name:        tierValues.Name,
+		},
 		Criticality: tierValues.Criticality,
 	}
 

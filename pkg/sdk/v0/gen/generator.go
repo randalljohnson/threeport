@@ -213,6 +213,12 @@ type ApiObject struct {
 	Reconciler            bool
 	ReconciledField       bool
 
+	// NamedEmbed is true when the object reaches its name field by embedding
+	// the Named mixin directly, rather than declaring the field itself. A
+	// promoted field cannot be set in a composite literal, so generated code
+	// building one of these has to nest the value inside the mixin.
+	NamedEmbed bool
+
 	// If true, generate tptctl commands for the model.
 	TptctlCommands bool
 
@@ -746,6 +752,16 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 											// applies to threeport's in-package embeds
 											if ident, ok := field.Type.(*ast.Ident); ok {
 												structEmbeds[objectName] = append(structEmbeds[objectName], ident.Name)
+												if ident.Name == namedMixin && mc != nil {
+													mc.NamedEmbed = true
+												}
+											}
+											// a module reaches the mixin through an
+											// import, which makes the embed a selector
+											if sel, ok := field.Type.(*ast.SelectorExpr); ok {
+												if sel.Sel.Name == namedMixin && mc != nil {
+													mc.NamedEmbed = true
+												}
 											}
 											continue
 										}
@@ -1048,16 +1064,21 @@ func (a *ApiObjectGroup) HasFieldWithTagValue(
 // anonymously. Keeping the set small enforces a flat, one-level mental
 // model: model authors only ever embed one of these, and readers can
 // scan an api type top to bottom without chasing arbitrary embed chains.
+// namedMixin is the base type that carries the name field, and the unique
+// index behind it, for every object a client addresses by name.
+const namedMixin = "Named"
+
 var allowedEmbed = map[string]bool{
 	"Common":         true,
 	"Definition":     true,
 	"Instance":       true,
+	"Named":          true,
 	"Reconciliation": true,
 }
 
 // allowedEmbedNames is the human-readable list of allowed embeds for
 // error messages. Kept in sync with allowedEmbed.
-const allowedEmbedNames = "Common, Definition, Instance, or Reconciliation"
+const allowedEmbedNames = "Common, Definition, Instance, Named, or Reconciliation"
 
 // ValidateTags walks every API object's struct tags and returns a non-nil
 // error if any threeport-specific tag has an invalid value. Once the tags
@@ -1301,6 +1322,7 @@ func validateRelationshipTag(object, field, fieldType, rel string, knownTypes ma
 func nameFields() []string {
 	return []string{
 		"Name",
+		"Named",
 		"Definition",
 		"Instance",
 	}

@@ -7,9 +7,7 @@ import (
 // OciProvider is a provider account with the Oracle Cloud Infrastructure service provider.
 type OciProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
-
-	// The unique name of an OCI provider.
-	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
+	Named  `mapstructure:",squash"`
 
 	// The user OCID credentials for the OCI provider.
 	UserOCID *string `json:",omitempty" validate:"required" gorm:"not null"`

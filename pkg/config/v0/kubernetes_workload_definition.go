@@ -100,7 +100,9 @@ func (w *KubernetesWorkloadDefinitionConfig) Create(
 	// construct kubernetes workload definition object
 	k8sWorkloadDefinition := api_v0.KubernetesWorkloadDefinition{
 		Definition: api_v0.Definition{
-			Name: k8sWorkloadDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: k8sWorkloadDefinitionValues.Name,
+			},
 		},
 		YAMLDocument: &stringContent,
 	}
@@ -170,7 +172,9 @@ func (w *KubernetesWorkloadDefinitionConfig) Replace(
 			ID: existingK8sWorkloadDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Name: k8sWorkloadDefinitionValues.Name,
+			Named: api_v0.Named{
+				Name: k8sWorkloadDefinitionValues.Name,
+			},
 		},
 		YAMLDocument: &stringContent,
 	}

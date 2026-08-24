@@ -156,7 +156,9 @@ func (o *ObservabilityStackInstanceConfig) Create(
 	// construct observability stack instance object
 	observabilityStackInstance := &api_v0.ObservabilityStackInstance{
 		Instance: api_v0.Instance{
-			Name: observabilityStackInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: observabilityStackInstanceValues.Name,
+			},
 		},
 		ObservabilityStackDefinitionID: osd.ID,
 		KubernetesRuntimeInstanceID:    kubernetesRuntimeInstance.ID,
@@ -302,7 +304,9 @@ func (o *ObservabilityStackInstanceConfig) Replace(
 			ID: existingObservabilityStackInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Name: observabilityStackInstanceValues.Name,
+			Named: api_v0.Named{
+				Name: observabilityStackInstanceValues.Name,
+			},
 		},
 		ObservabilityStackDefinitionID: osd.ID,
 		KubernetesRuntimeInstanceID:    kubernetesRuntimeInstance.ID,

@@ -109,7 +109,9 @@ func (g *GcpProviderConfig) Create(
 
 	// construct gcp provider object
 	gcpProvider := api_v0.GcpProvider{
-		Name:            gcpProviderValues.Name,
+		Named: api_v0.Named{
+			Name:            gcpProviderValues.Name,
+		},
 		ProjectID:       gcpProviderValues.ProjectID,
 		DefaultProvider: gcpProviderValues.DefaultProvider,
 		DefaultRegion:   gcpProviderValues.DefaultRegion,
@@ -196,7 +198,9 @@ func (g *GcpProviderConfig) Replace(
 		Common: api_v0.Common{
 			ID: existingGcpProvider.ID,
 		},
-		Name:                      gcpProviderValues.Name,
+		Named: api_v0.Named{
+			Name:                      gcpProviderValues.Name,
+		},
 		ProjectID:                 gcpProviderValues.ProjectID,
 		DefaultProvider:           gcpProviderValues.DefaultProvider,
 		DefaultRegion:             gcpProviderValues.DefaultRegion,

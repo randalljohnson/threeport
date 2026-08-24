@@ -67,7 +67,9 @@ func v0KubernetesRuntimeInstanceCreated(
 		}
 		awsEksKubernetesRuntimeInstance := v0.AwsEksKubernetesRuntimeInstance{
 			Instance: v0.Instance{
-				Name: kubernetesRuntimeInstance.Name,
+				Named: v0.Named{
+					Name: kubernetesRuntimeInstance.Name,
+				},
 			},
 			Region:                              &region,
 			KubernetesRuntimeInstanceID:         kubernetesRuntimeInstance.ID,
@@ -124,7 +126,9 @@ func v0KubernetesRuntimeInstanceCreated(
 		}
 		gcpGkeKubernetesRuntimeInstance := v0.GcpGkeKubernetesRuntimeInstance{
 			Instance: v0.Instance{
-				Name: kubernetesRuntimeInstance.Name,
+				Named: v0.Named{
+					Name: kubernetesRuntimeInstance.Name,
+				},
 			},
 			GcpProviderID:                       gcpProvider.ID,
 			Region:                              &region,

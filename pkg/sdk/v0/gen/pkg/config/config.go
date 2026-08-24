@@ -931,7 +931,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											"Definition",
 										).Values(
 											Dict{
-												Line().Id("Name"): Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name").Op(",").Line(),
+												Line().Id("Named"): namedMixinValues(Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name")).Op(",").Line(),
 											},
 										).Op(",").Line(),
 									})
@@ -942,9 +942,13 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											"Instance",
 										).Values(
 											Dict{
-												Line().Id("Name"): Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name").Op(",").Line(),
+												Line().Id("Named"): namedMixinValues(Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name")).Op(",").Line(),
 											},
 										).Op(",").Line(),
+									})
+								case apiObject.NamedEmbed:
+									h.Add(Dict{
+										Line().Id("Named"): namedMixinValues(Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name")).Op(",").Line(),
 									})
 								default:
 									h.Add(Dict{
@@ -1135,7 +1139,7 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											"Definition",
 										).Values(
 											Dict{
-												Line().Id("Name"): Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name").Op(",").Line(),
+												Line().Id("Named"): namedMixinValues(Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name")).Op(",").Line(),
 											},
 										),
 									})
@@ -1154,9 +1158,21 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											"Instance",
 										).Values(
 											Dict{
-												Line().Id("Name"): Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name").Op(",").Line(),
+												Line().Id("Named"): namedMixinValues(Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name")).Op(",").Line(),
 											},
 										),
+									})
+								case apiObject.NamedEmbed:
+									h.Add(Dict{
+										Id("Common"): Qual(
+											"github.com/threeport/threeport/pkg/api/v0",
+											"Common",
+										).Values(
+											Dict{
+												Line().Id("ID"): Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("ID").Op(",").Line(),
+											},
+										),
+										Id("Named"): namedMixinValues(Id(fmt.Sprintf("%sValues", strcase.ToLowerCamel(apiObject.TypeName))).Dot("Name")),
 									})
 								default:
 									h.Add(Dict{
@@ -1417,4 +1433,17 @@ func GenConfig(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	}
 
 	return nil
+}
+
+// namedMixinValues wraps a name expression in the base type that carries the
+// name field. An api object embeds that type rather than declaring the field,
+// and a promoted field cannot be set in a composite literal, so the value has
+// to be set through the embed.
+func namedMixinValues(name *Statement) *Statement {
+	return Qual(
+		"github.com/threeport/threeport/pkg/api/v0",
+		"Named",
+	).Values(Dict{
+		Line().Id("Name"): name.Op(",").Line(),
+	})
 }

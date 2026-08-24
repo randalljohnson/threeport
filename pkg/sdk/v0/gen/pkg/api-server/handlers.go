@@ -67,74 +67,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			))
 
 			for _, apiObject := range objGroup.ApiObjects {
-				// for models that have a name field - either directly in the model or
-				// inherited from Definition or Instance - add a check for duplicate
-				// names in the handler that adds the record to the DB
-				checkDuplicateNames := &Statement{}
-				if apiObject.NameField && !apiObject.AllowDuplicateNames {
-					checkDuplicateNames.Comment("check for duplicate names")
-					checkDuplicateNames.Line()
-					checkDuplicateNames.Var().Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Qual(
-						fmt.Sprintf(
-							"%s/pkg/api/%s",
-							gen.ModulePath,
-							objCollection.Version,
-						),
-						apiObject.TypeName,
-					).Line()
-					checkDuplicateNames.Id("nameUsed").Op(":=").Lit(true).Line()
-					checkDuplicateNames.Id("result").Op(":=").Do(func(s *Statement) {
-						if gen.Module {
-							s.Id("h").Dot("Handler")
-						} else {
-							s.Id("h")
-						}
-					}).Dot("RequestDB").Call(Id("c")).Dot("Where").Call(
-						Lit("name = ?"), Id(strcase.ToLowerCamel(apiObject.TypeName)).Dot("Name"),
-					).Dot("First").Call(
-						Op("&").Id(fmt.Sprintf("existing%s", apiObject.TypeName)),
-					).Line()
-					checkDuplicateNames.If(Id("result").Dot("Error").Op("!=").Nil()).Block(
-						If(Qual("errors", "Is").Call(
-							Id("result").Dot("Error"), Qual("gorm.io/gorm", "ErrRecordNotFound"),
-						)).Block(
-							Id("nameUsed").Op("=").Lit(false),
-						).Else().BlockFunc(func(h *Group) {
-							if gen.Module {
-								h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
-									Lit("handler error: error checking for duplicate names"),
-									Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
-								)
-							} else {
-								h.Id("h").Dot("Logger").Dot("Error").Call(
-									Lit("handler error: error checking for duplicate names"),
-									Qual("go.uber.org/zap", "Error").Call(Id("result").Dot("Error")),
-								)
-							}
-							h.Return(
-								Qual(
-									"github.com/threeport/threeport/pkg/api-server/lib/v0",
-									"ResponseStatus500",
-								).Call(
-									Id("c"), Nil(), Id("result").Dot("Error"), Id("fullyQualifiedType"),
-								),
-							)
-						}),
-					).Line()
-					checkDuplicateNames.If(Id("nameUsed")).Block(
-						Return(
-							Qual(
-								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus409",
-							).Call(
-								Id("c"), Nil(), Qual("errors", "New").Call(
-									Lit("object with provided name already exists"),
-								), Id("fullyQualifiedType"),
-							),
-						),
-					).Line()
-				}
-
 				notifyControllersCreateHandler := &Statement{}
 				notifyControllersUpdateHandler := &Statement{}
 				deleteObjectExecution := &Statement{}
@@ -808,7 +740,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						).Call(Id("err").Dot("Error").Call()).Op(",").Id("fullyQualifiedType")))
 					})
 					g.Line()
-					g.Add(checkDuplicateNames)
 					g.Comment("persist to DB")
 					g.If(Id("result").Op(":=").Add(wrapSerializationRetry(gen.Module, Id("db").Dot("Create").Call(
 						Op("&").Id(strcase.ToLowerCamel(apiObject.TypeName)),

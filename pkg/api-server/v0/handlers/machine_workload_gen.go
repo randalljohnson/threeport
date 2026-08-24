@@ -64,22 +64,6 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingMachineWorkloadDefinition api_v0.MachineWorkloadDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", machineWorkloadDefinition.Name).First(&existingMachineWorkloadDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&machineWorkloadDefinition)
@@ -582,22 +566,6 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 	if id, err := apiserver_lib.ValidateBoundData(c, machineWorkloadInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
-	}
-
-	// check for duplicate names
-	var existingMachineWorkloadInstance api_v0.MachineWorkloadInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", machineWorkloadInstance.Name).First(&existingMachineWorkloadInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
 	}
 
 	// persist to DB

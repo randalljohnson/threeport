@@ -206,7 +206,6 @@ type ApiObject struct {
 	Description string
 
 	TypeName              string
-	AllowDuplicateNames   bool
 	AllowCustomMiddleware bool
 	DbLoadAssociations    bool
 	NameField             bool
@@ -504,7 +503,6 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 			var reconcilerModels []string
 			var tptctlModels []string
 			var tptctlModelsConfigPath []string
-			var allowDuplicateNameModels []string
 			var allowCustomMiddleware []string
 			var dbLoadAssociations []string
 
@@ -564,10 +562,6 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 
 				if obj.AllowCustomMiddleware != nil && *obj.AllowCustomMiddleware {
 					allowCustomMiddleware = append(allowCustomMiddleware, *obj.Name)
-				}
-
-				if obj.AllowDuplicateModelNames != nil && *obj.AllowDuplicateModelNames {
-					allowDuplicateNameModels = append(allowDuplicateNameModels, *obj.Name)
 				}
 
 				if obj.LoadAssociationsFromDb != nil && *obj.LoadAssociationsFromDb {
@@ -847,16 +841,6 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 				for i, mc := range genApiObjectGroup.ApiObjects {
 					if tc == mc.TypeName {
 						genApiObjectGroup.ApiObjects[i].TptctlConfigPath = true
-					}
-				}
-			}
-
-			// for all objects with we allow duplicate names for:
-			// * set AllowDuplicateNames field in model config to true
-			for _, nm := range allowDuplicateNameModels {
-				for i, mc := range genApiObjectGroup.ApiObjects {
-					if nm == mc.TypeName {
-						genApiObjectGroup.ApiObjects[i].AllowDuplicateNames = true
 					}
 				}
 			}

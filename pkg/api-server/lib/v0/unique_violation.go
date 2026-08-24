@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"gorm.io/gorm/schema"
 )
@@ -150,4 +151,23 @@ func resolveConflictFields(model interface{}, columns []string) []string {
 	}
 
 	return fields
+}
+
+// RespondWriteError answers a write the database refused: a conflict when a
+// unique index rejected it, and a server fault for anything else. The model
+// supplies the column-to-field mapping the conflict message names its fields
+// from, so a zero value of the object being written is what to pass.
+func RespondWriteError(
+	c echo.Context,
+	logger *zap.Logger,
+	err error,
+	model interface{},
+	fullyQualifiedType string,
+) error {
+	if conflict := UniqueViolation(err, model); conflict != nil {
+		conflict.Log(logger)
+		return ResponseStatus409(c, nil, errors.New(conflict.Message()), fullyQualifiedType)
+	}
+
+	return ResponseStatus500(c, nil, err, fullyQualifiedType)
 }

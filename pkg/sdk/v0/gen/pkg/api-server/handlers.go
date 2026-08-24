@@ -772,16 +772,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 								Id("fullyQualifiedType").Op(",").Line(),
 							)),
 						)
-						emitUniqueViolationCheck(
+						emitWriteErrorResponse(
 							h,
 							gen.Module,
 							fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version),
 							apiObject.TypeName,
 						)
-						h.Return(Qual(
-							"github.com/threeport/threeport/pkg/api-server/lib/v0",
-							"ResponseStatus500",
-						).Call(Id("c").Op(",").Nil().Op(",").Id("result").Dot("Error").Op(",").Id("fullyQualifiedType")))
 					})
 					g.Line()
 					g.Add(notifyControllersCreateHandler)
@@ -1572,16 +1568,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									Id("fullyQualifiedType").Op(",").Line(),
 								)),
 							)
-							emitUniqueViolationCheck(
+							emitWriteErrorResponse(
 								h,
 								gen.Module,
 								fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version),
 								apiObject.TypeName,
 							)
-							h.Return(Qual(
-								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus500",
-							).Call(Id("c").Op(",").Nil().Op(",").Id("result").Dot("Error").Op(",").Id("fullyQualifiedType")))
 						}),
 					)
 					g.Line()
@@ -1914,16 +1906,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									Id("fullyQualifiedType").Op(",").Line(),
 								)),
 							)
-							emitUniqueViolationCheck(
+							emitWriteErrorResponse(
 								h,
 								gen.Module,
 								fmt.Sprintf("%s/pkg/api/%s", gen.ModulePath, objCollection.Version),
 								apiObject.TypeName,
 							)
-							h.Return(Qual(
-								"github.com/threeport/threeport/pkg/api-server/lib/v0",
-								"ResponseStatus500",
-							).Call(Id("c").Op(",").Nil().Op(",").Id("result").Dot("Error").Op(",").Id("fullyQualifiedType")))
 						}),
 					)
 					g.Line()
@@ -2212,47 +2200,37 @@ func emitBlockedDeleteCheck(h *Group, module bool, role blockedDeleteCheckRole) 
 	)
 }
 
-// emitUniqueViolationCheck appends the branch that answers 409 when a unique
-// index rejected the write. It runs after the check for an explicitly chosen
-// status code, so a hook that picked one still wins, and before the fallback
-// that treats an unrecognised failure as a server fault.
+// emitWriteErrorResponse appends the return that answers a write the database
+// refused. It runs after the check for an explicitly chosen status code, so a
+// hook that picked one still wins, and it decides the remaining two outcomes
+// itself: a conflict when a unique index rejected the write, and a server
+// fault for anything else.
 //
-// The response names the fields the index covers, resolved from the columns
-// the driver reported against the object's own schema. The index name stays in
-// the log: index names are chosen per object and get renamed, so a client that
-// read one would be reading something the server never promised to keep, while
-// a field name is part of the API the client already writes against.
+// The conflict response names the fields the index covers, resolved from the
+// columns the driver reported against the object's own schema. The index name
+// stays in the log: index names are chosen per object and get renamed, so a
+// client that read one would be reading something the server never promised to
+// keep, while a field name is part of the API the client already writes
+// against.
 //
 // A zero value of the object supplies that schema, since resolving a column
 // needs the type and not the values the request carried.
-func emitUniqueViolationCheck(h *Group, module bool, apiTypePath, typeName string) {
+func emitWriteErrorResponse(h *Group, module bool, apiTypePath, typeName string) {
 	logger := Id("h").Dot("Logger")
 	if module {
 		logger = Id("h").Dot("Handler").Dot("Logger")
 	}
 
-	h.Comment("check whether a unique index rejected the write")
-	h.If(
-		Id("conflictErr").Op(":=").Qual(
-			"github.com/threeport/threeport/pkg/api-server/lib/v0",
-			"UniqueViolation",
-		).Call(
-			Line().Id("result").Dot("Error"),
-			Line().Id("new").Call(Qual(apiTypePath, typeName)).Op(",").Line(),
-		),
-		Id("conflictErr").Op("!=").Nil(),
-	).Block(
-		Id("conflictErr").Dot("Log").Call(logger),
-		Return(Qual(
-			"github.com/threeport/threeport/pkg/api-server/lib/v0",
-			"ResponseStatus409",
-		).Call(
-			Line().Id("c"),
-			Line().Nil(),
-			Line().Qual("errors", "New").Call(Id("conflictErr").Dot("Message").Call()),
-			Line().Id("fullyQualifiedType").Op(",").Line(),
-		)),
-	)
+	h.Return(Qual(
+		"github.com/threeport/threeport/pkg/api-server/lib/v0",
+		"RespondWriteError",
+	).Call(
+		Line().Id("c"),
+		Line().Add(logger),
+		Line().Id("result").Dot("Error"),
+		Line().Id("new").Call(Qual(apiTypePath, typeName)),
+		Line().Id("fullyQualifiedType").Op(",").Line(),
+	))
 }
 
 // emitPreCheckBlockingRefs emits a synchronous block check before

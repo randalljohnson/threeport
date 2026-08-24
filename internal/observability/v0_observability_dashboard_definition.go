@@ -62,9 +62,7 @@ func v0ObservabilityDashboardDefinitionCreated(
 		r.APIServer,
 		&v0.HelmWorkloadDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: util.Ptr(GrafanaChartName(*observabilityDashboardDefinition.Name)),
-				},
+				Name: util.Ptr(GrafanaChartName(*observabilityDashboardDefinition.Name)),
 			},
 			Repo:           util.Ptr(GrafanaHelmRepo),
 			Chart:          util.Ptr("grafana"),

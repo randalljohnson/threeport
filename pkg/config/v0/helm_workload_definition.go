@@ -94,9 +94,7 @@ func (h *HelmWorkloadDefinitionConfig) Create(
 	// construct helm workload definition object
 	helmWorkloadDefinition := api_v0.HelmWorkloadDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: helmWorkloadDefinitionValues.Name,
-			},
+			Name: helmWorkloadDefinitionValues.Name,
 		},
 		Repo:  helmWorkloadDefinitionValues.Repo,
 		Chart: helmWorkloadDefinitionValues.Chart,
@@ -171,9 +169,7 @@ func (h *HelmWorkloadDefinitionConfig) Replace(
 			ID: existingHelmWorkloadDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: helmWorkloadDefinitionValues.Name,
-			},
+			Name: helmWorkloadDefinitionValues.Name,
 		},
 		Repo:  helmWorkloadDefinitionValues.Repo,
 		Chart: helmWorkloadDefinitionValues.Chart,

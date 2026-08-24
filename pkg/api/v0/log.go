@@ -3,7 +3,9 @@ package v0
 // LogBackend is where the log messages are stored.
 type LogBackend struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
-	Named  `mapstructure:",squash"`
+
+	// The unique name of a logging back end.
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
 
 	// The network address to connect to for storing log messages.
 	Destination *string `json:",omitempty" validate:"required" gorm:"not null"`

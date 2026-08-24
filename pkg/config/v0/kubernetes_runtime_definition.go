@@ -92,9 +92,7 @@ func (k *KubernetesRuntimeDefinitionConfig) Create(
 	// construct kubernetes runtime definition object
 	kubernetesRuntimeDefinition := api_v0.KubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: kubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: kubernetesRuntimeDefinitionValues.Name,
 		},
 		InfraProvider:            kubernetesRuntimeDefinitionValues.InfraProvider,
 		HighAvailability:         kubernetesRuntimeDefinitionValues.HighAvailability,
@@ -157,9 +155,7 @@ func (k *KubernetesRuntimeDefinitionConfig) Replace(
 			ID: existingKubernetesRuntimeDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: kubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: kubernetesRuntimeDefinitionValues.Name,
 		},
 		InfraProvider:            kubernetesRuntimeDefinitionValues.InfraProvider,
 		HighAvailability:         kubernetesRuntimeDefinitionValues.HighAvailability,

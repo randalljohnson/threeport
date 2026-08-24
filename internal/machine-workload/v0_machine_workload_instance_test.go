@@ -276,14 +276,14 @@ func newFixture(t *testing.T, opts machinetest.SSHOpts) *fixture {
 	mri := machinetest.MRIFromAddr(t, 100, "mri-fixture", addr, "u", "p", key)
 	mwd := &v0.MachineWorkloadDefinition{
 		Common:       v0.Common{ID: util.Ptr(uint(200))},
-		Definition:   v0.Definition{Named: v0.Named{Name: util.Ptr("mwd-fixture")}},
+		Definition:   v0.Definition{Name: util.Ptr("mwd-fixture")},
 		CreateScript: util.Ptr("echo create"),
 		UpdateScript: util.Ptr("echo update"),
 		DeleteScript: util.Ptr("echo delete"),
 	}
 	mwi := &v0.MachineWorkloadInstance{
 		Common:                      v0.Common{ID: util.Ptr(uint(300))},
-		Instance:                    v0.Instance{Named: v0.Named{Name: util.Ptr("mwi-fixture")}},
+		Instance:                    v0.Instance{Name: util.Ptr("mwi-fixture")},
 		MachineRuntimeInstanceID:    util.Ptr(uint(100)),
 		MachineWorkloadDefinitionID: util.Ptr(uint(200)),
 	}

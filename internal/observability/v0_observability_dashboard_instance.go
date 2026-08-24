@@ -51,9 +51,7 @@ func v0ObservabilityDashboardInstanceCreated(
 		r.APIServer,
 		&v0.HelmWorkloadInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: util.Ptr(GrafanaChartName(*observabilityDashboardInstance.Name)),
-				},
+				Name: util.Ptr(GrafanaChartName(*observabilityDashboardInstance.Name)),
 			},
 			KubernetesRuntimeInstanceID: observabilityDashboardInstance.KubernetesRuntimeInstanceID,
 			HelmWorkloadDefinitionID:    observabilityDashboardDefinition.GrafanaHelmWorkloadDefinitionID,

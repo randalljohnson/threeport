@@ -143,15 +143,10 @@ func GenCoreModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) err
 					"github.com/threeport/threeport/pkg/api/v0",
 					"ModuleController",
 				).Values(Dict{
-					Id("Named"): Qual(
-						"github.com/threeport/threeport/pkg/api/v0",
-						"Named",
-					).Values(Dict{
-						Id("Name"): Qual(
-							"github.com/threeport/threeport/pkg/util/v0",
-							"Ptr",
-						).Call(Lit(objGroup.ControllerName)),
-					}),
+					Id("Name"): Qual(
+						"github.com/threeport/threeport/pkg/util/v0",
+						"Ptr",
+					).Call(Lit(objGroup.ControllerName)),
 					Id("DeploymentName"): Qual(
 						"github.com/threeport/threeport/pkg/util/v0",
 						"Ptr",
@@ -162,12 +157,7 @@ func GenCoreModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) err
 				})
 				g.Id("result").Op("=").Id("db").Dot("Where").Call(
 					Qual("github.com/threeport/threeport/pkg/api/v0", "ModuleController").Values(Dict{
-						Id("Named"): Qual(
-							"github.com/threeport/threeport/pkg/api/v0",
-							"Named",
-						).Values(Dict{
-							Id("Name"): Id("controller").Dot("Name"),
-						}),
+						Id("Name"): Id("controller").Dot("Name"),
 					}),
 				).Dot("FirstOrCreate").Call(Op("&").Id("controller"))
 				g.If(Id("result").Dot("Error").Op("!=").Nil()).Block(
@@ -816,17 +806,12 @@ func GenModuleRegistration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Id("moduleNamespace").Op("+").Lit(fmt.Sprintf("/threeport-%s", objGroup.ControllerName)),
 						),
 						Id("ModuleApiID"): Id("existingModApi").Dot("ID"),
-						Id("Named"): Qual(
-							"github.com/threeport/threeport/pkg/api/v0",
-							"Named",
-						).Values(Dict{
-							Id("Name"): Qual(
-								"github.com/threeport/threeport/pkg/util/v0",
-								"Ptr",
-							).Call(
-								Lit(objGroup.ControllerName),
-							),
-						}),
+						Id("Name"): Qual(
+							"github.com/threeport/threeport/pkg/util/v0",
+							"Ptr",
+						).Call(
+							Lit(objGroup.ControllerName),
+						),
 					}),
 					Comment("the lookup above is scoped to this module api, so a row"),
 					Comment("under a different one is invisible here and only shows up"),

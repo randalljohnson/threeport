@@ -9,9 +9,9 @@ import (
 	"os"
 	"strings"
 
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -162,9 +162,7 @@ func (m *MachineRuntimeInstanceConfig) Create(
 	// construct machine runtime instance object
 	machineRuntimeInstance := api_v0.MachineRuntimeInstance{
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: machineRuntimeInstanceValues.Name,
-			},
+			Name: machineRuntimeInstanceValues.Name,
 		},
 		Hostname:                   machineRuntimeInstanceValues.Hostname,
 		SSHUser:                    machineRuntimeInstanceValues.SSHUser,
@@ -234,9 +232,7 @@ func (m *MachineRuntimeInstanceConfig) Replace(
 			ID: existingMachineRuntimeInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: machineRuntimeInstanceValues.Name,
-			},
+			Name: machineRuntimeInstanceValues.Name,
 		},
 		Hostname:    machineRuntimeInstanceValues.Hostname,
 		SSHUser:     machineRuntimeInstanceValues.SSHUser,

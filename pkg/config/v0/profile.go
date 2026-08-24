@@ -82,9 +82,7 @@ func (p *ProfileConfig) Create(
 
 	// construct profile object
 	profile := api_v0.Profile{
-		Named: api_v0.Named{
-			Name: profileValues.Name,
-		},
+		Name: profileValues.Name,
 	}
 
 	// create profile
@@ -138,9 +136,7 @@ func (p *ProfileConfig) Replace(
 		Common: api_v0.Common{
 			ID: existingProfile.ID,
 		},
-		Named: api_v0.Named{
-			Name: profileValues.Name,
-		},
+		Name: profileValues.Name,
 	}
 
 	// replace profile

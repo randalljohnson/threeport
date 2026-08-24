@@ -79,9 +79,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		}
 		workloadDef := v0.KubernetesWorkloadDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: &workloadDefName,
-				},
+				Name: &workloadDefName,
 			},
 			YAMLDocument: &workloadDefYAML,
 		}
@@ -89,9 +87,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// create a duplicate kubernetes workload definition
 		duplicateWorkload := v0.KubernetesWorkloadDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: &workloadDefName,
-				},
+				Name: &workloadDefName,
 			},
 			YAMLDocument: util.Ptr(""),
 		}
@@ -113,9 +109,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// configure domain name definition object
 		domainNameDefinition := &v0.DomainNameDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: util.Ptr("domainNameDefinition"),
-				},
+				Name: util.Ptr("domainNameDefinition"),
 			},
 			Domain:     util.Ptr("test.threeport.io"),
 			Zone:       util.Ptr("testZone"),
@@ -137,9 +131,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// configure gateway definition object
 		gatewayDefinition := &v0.GatewayDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: util.Ptr("gateway-definition"),
-				},
+				Name: util.Ptr("gateway-definition"),
 			},
 			DomainNameDefinitionID: createdDomainNameDefinition.ID,
 			HttpPorts: []*v0.GatewayHttpPort{
@@ -217,9 +209,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			threeportAPIEndpoint,
 			&v0.SecretDefinition{
 				Definition: v0.Definition{
-					Named: v0.Named{
-						Name: util.Ptr("secret-definition"),
-					},
+					Name: util.Ptr("secret-definition"),
 				},
 				Data: util.Ptr(datatypes.JSON(jsonData)),
 			},
@@ -318,9 +308,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		workloadInstName := fmt.Sprintf("%s-0", testWorkload.Name)
 		workloadInst := v0.KubernetesWorkloadInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: &workloadInstName,
-				},
+				Name: &workloadInstName,
 			},
 			KubernetesRuntimeInstanceID:    testKubernetesRuntimeInst.ID,
 			KubernetesWorkloadDefinitionID: createdWorkloadDef.ID,
@@ -340,9 +328,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// create a duplicate kubernetes workload instance
 		duplicateWorkloadInst := v0.KubernetesWorkloadInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: &workloadInstName,
-				},
+				Name: &workloadInstName,
 			},
 			KubernetesRuntimeInstanceID:    testKubernetesRuntimeInst.ID,
 			KubernetesWorkloadDefinitionID: createdWorkloadDef.ID,
@@ -373,9 +359,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// configure domain name instance
 		domainNameInstance := &v0.DomainNameInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: &workloadInstName,
-				},
+				Name: &workloadInstName,
 			},
 			DomainNameDefinitionID:       createdDomainNameDefinition.ID,
 			KubernetesWorkloadInstanceID: createdWorkloadInst.ID,
@@ -397,9 +381,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		// create a gateway instance
 		gatewayInstance := &v0.GatewayInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: util.Ptr("gatewayInstance"),
-				},
+				Name: util.Ptr("gatewayInstance"),
 			},
 			KubernetesRuntimeInstanceID:  testKubernetesRuntimeInst.ID,
 			GatewayDefinitionID:          createdGatewayDef.ID,
@@ -531,9 +513,7 @@ func TestWorkloadIntegration(t *testing.T) {
 		secondWorkloadDefName := fmt.Sprintf("%s-relationship-target", workloadDefName)
 		secondWorkloadDef := v0.KubernetesWorkloadDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: &secondWorkloadDefName,
-				},
+				Name: &secondWorkloadDefName,
 			},
 			YAMLDocument: &workloadDefYAML,
 		}
@@ -595,7 +575,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			apiClient,
 			threeportAPIEndpoint,
 			&v0.KubernetesRuntimeDefinition{
-				Definition:    v0.Definition{Named: v0.Named{Name: util.Ptr(encDefName)}},
+				Definition:    v0.Definition{Name: util.Ptr(encDefName)},
 				InfraProvider: util.Ptr("kind"),
 			},
 		)
@@ -614,7 +594,7 @@ func TestWorkloadIntegration(t *testing.T) {
 			apiClient,
 			threeportAPIEndpoint,
 			&v0.KubernetesRuntimeInstance{
-				Instance:                      v0.Instance{Named: v0.Named{Name: util.Ptr(encInstName)}},
+				Instance:                      v0.Instance{Name: util.Ptr(encInstName)},
 				Reconciliation:                v0.Reconciliation{Reconciled: util.Ptr(true)},
 				Location:                      util.Ptr("Local"),
 				KubernetesRuntimeDefinitionID: encDef.ID,

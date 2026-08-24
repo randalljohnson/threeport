@@ -38,9 +38,7 @@ func setupAwsProviderValidateDB(t *testing.T) *gorm.DB {
 func createAwsProvider(t *testing.T, db *gorm.DB, accessKeyID, secretAccessKey *string) AwsProvider {
 	t.Helper()
 	created := &AwsProvider{
-		Named: Named{
-			Name:            util.Ptr("test-aws-provider"),
-		},
+		Name:            util.Ptr("test-aws-provider"),
 		AccountID:       util.Ptr("555555555555"),
 		DefaultRegion:   util.Ptr("us-east-1"),
 		AccessKeyID:     accessKeyID,

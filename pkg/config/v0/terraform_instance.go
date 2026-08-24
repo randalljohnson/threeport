@@ -163,9 +163,7 @@ func (t *TerraformInstanceConfig) Create(
 	// construct terraform instance object
 	terraformInstance := api.TerraformInstance{
 		Instance: api.Instance{
-			Named: api.Named{
-				Name: terraformInstanceValues.Name,
-			},
+			Name: terraformInstanceValues.Name,
 		},
 		AwsProviderID:         awsProvider.ID,
 		TerraformDefinitionID: terraformDefinition.ID,
@@ -263,9 +261,7 @@ func (t *TerraformInstanceConfig) Replace(
 			ID: existingTerraformInstance.ID,
 		},
 		Instance: api.Instance{
-			Named: api.Named{
-				Name: terraformInstanceValues.Name,
-			},
+			Name: terraformInstanceValues.Name,
 		},
 		AwsProviderID:         awsProvider.ID,
 		TerraformDefinitionID: terraformDefinition.ID,

@@ -29,9 +29,7 @@ func ConfigureControlPlaneWithGkeConfig(
 
 	// create default GCP provider
 	gcpProvider := v0.GcpProvider{
-		Named: v0.Named{
-			Name:            util.Ptr(provider.DefaultAccountName),
-		},
+		Name:            util.Ptr(provider.DefaultAccountName),
 		ProjectID:       &kubernetesRuntimeInfraGKE.ProjectID,
 		DefaultProvider: util.Ptr(true),
 		DefaultRegion:   &kubernetesRuntimeInfraGKE.Region,
@@ -51,9 +49,7 @@ func ConfigureControlPlaneWithGkeConfig(
 	zoneCount := 3
 	gcpGkeKubernetesRuntimeDef := v0.GcpGkeKubernetesRuntimeDefinition{
 		Definition: v0.Definition{
-			Named: v0.Named{
-				Name: &gkeRuntimeDefName,
-			},
+			Name: &gkeRuntimeDefName,
 		},
 		ZoneCount:                     &zoneCount,
 		DefaultNodeGroupInstanceType:  util.Ptr("e2-medium"),
@@ -81,9 +77,7 @@ func ConfigureControlPlaneWithGkeConfig(
 	gkeRuntimeInstName := provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName)
 	gcpGkeKubernetesRuntimeInstance := v0.GcpGkeKubernetesRuntimeInstance{
 		Instance: v0.Instance{
-			Named: v0.Named{
-				Name: &gkeRuntimeInstName,
-			},
+			Name: &gkeRuntimeInstName,
 		},
 		Reconciliation: v0.Reconciliation{
 			Reconciled: util.Ptr(true),

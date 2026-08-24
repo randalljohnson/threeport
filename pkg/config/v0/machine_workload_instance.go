@@ -148,9 +148,7 @@ func (m *MachineWorkloadInstanceConfig) Create(
 	// construct machine workload instance object
 	machineWorkloadInstance := api_v0.MachineWorkloadInstance{
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: machineWorkloadInstanceValues.Name,
-			},
+			Name: machineWorkloadInstanceValues.Name,
 		},
 		MachineWorkloadDefinitionID: machineWorkloadDefinition.ID,
 		MachineRuntimeInstanceID:    machineRuntimeInstance.ID,
@@ -211,9 +209,7 @@ func (m *MachineWorkloadInstanceConfig) Replace(
 			ID: existingMachineWorkloadInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: machineWorkloadInstanceValues.Name,
-			},
+			Name: machineWorkloadInstanceValues.Name,
 		},
 		MachineWorkloadDefinitionID: existingMachineWorkloadInstance.MachineWorkloadDefinitionID,
 		MachineRuntimeInstanceID:    existingMachineWorkloadInstance.MachineRuntimeInstanceID,

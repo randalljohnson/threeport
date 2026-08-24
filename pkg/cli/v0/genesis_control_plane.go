@@ -371,9 +371,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		location := "Local"
 		kubernetesRuntimeInstance = &v0.KubernetesRuntimeInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: &kubernetesRuntimeInstName,
-				},
+				Name: &kubernetesRuntimeInstName,
 			},
 			Reconciliation: v0.Reconciliation{
 				Reconciled: &instReconciled,
@@ -427,9 +425,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}
 		kubernetesRuntimeInstance = &v0.KubernetesRuntimeInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: &kubernetesRuntimeInstName,
-				},
+				Name: &kubernetesRuntimeInstName,
 			},
 			Reconciliation: v0.Reconciliation{
 				Reconciled: &instReconciled,
@@ -453,9 +449,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 		}
 		kubernetesRuntimeInstance = &v0.KubernetesRuntimeInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: &kubernetesRuntimeInstName,
-				},
+				Name: &kubernetesRuntimeInstName,
 			},
 			Reconciliation: v0.Reconciliation{
 				Reconciled: &instReconciled,
@@ -720,9 +714,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	defReconciled := true // this definition for the bootstrap cluster does not require reconcilation
 	kubernetesRuntimeDefinition := v0.KubernetesRuntimeDefinition{
 		Definition: v0.Definition{
-			Named: v0.Named{
-				Name: &kubernetesRuntimeDefName,
-			},
+			Name: &kubernetesRuntimeDefName,
 		},
 		Reconciliation: v0.Reconciliation{
 			Reconciled: &defReconciled,
@@ -841,9 +833,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	// create control plane definitons and instance for the newly create control plane
 	controlPlaneDefinition := v0.ControlPlaneDefinition{
 		Definition: v0.Definition{
-			Named: v0.Named{
-				Name: &cpi.Opts.ControlPlaneName,
-			},
+			Name: &cpi.Opts.ControlPlaneName,
 		},
 		Reconciliation: v0.Reconciliation{
 			Reconciled: &reconciled,
@@ -876,9 +866,7 @@ func CreateGenesisControlPlane(customInstaller *threeport.ControlPlaneInstaller)
 	// construct control plane instance object
 	controlPlaneInstance := v0.ControlPlaneInstance{
 		Instance: v0.Instance{
-			Named: v0.Named{
-				Name: &cpi.Opts.ControlPlaneName,
-			},
+			Name: &cpi.Opts.ControlPlaneName,
 		},
 		Reconciliation: v0.Reconciliation{
 			Reconciled: &reconciled,

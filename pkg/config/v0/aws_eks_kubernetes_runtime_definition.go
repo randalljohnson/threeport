@@ -96,9 +96,7 @@ func (a *AwsEksKubernetesRuntimeDefinitionConfig) Create(
 	infraProvider := api_v0.KubernetesRuntimeInfraProviderEKS
 	kubernetesRuntimeDefinition := api_v0.KubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: awsEksKubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: awsEksKubernetesRuntimeDefinitionValues.Name,
 		},
 		Reconciliation: api_v0.Reconciliation{
 			Reconciled: util.Ptr(true),
@@ -115,9 +113,7 @@ func (a *AwsEksKubernetesRuntimeDefinitionConfig) Create(
 	// construct AWS EKS kubernetes runtime definition object
 	awsEksKubernetesRuntimeDefinition := api_v0.AwsEksKubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: awsEksKubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: awsEksKubernetesRuntimeDefinitionValues.Name,
 		},
 		ZoneCount:                     awsEksKubernetesRuntimeDefinitionValues.ZoneCount,
 		DefaultNodeGroupInstanceType:  awsEksKubernetesRuntimeDefinitionValues.DefaultNodeGroupInstanceType,
@@ -185,9 +181,7 @@ func (a *AwsEksKubernetesRuntimeDefinitionConfig) Replace(
 			ID: existingAwsEksKubernetesRuntimeDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: awsEksKubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: awsEksKubernetesRuntimeDefinitionValues.Name,
 		},
 		ZoneCount:                     awsEksKubernetesRuntimeDefinitionValues.ZoneCount,
 		DefaultNodeGroupInstanceType:  awsEksKubernetesRuntimeDefinitionValues.DefaultNodeGroupInstanceType,

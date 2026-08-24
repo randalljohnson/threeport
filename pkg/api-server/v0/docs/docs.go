@@ -16837,7 +16837,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -16904,7 +16904,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -16964,7 +16964,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of an AWS provider.",
                     "type": "string"
                 },
                 "RoleArn": {
@@ -17093,7 +17093,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "OnboardParent": {
@@ -17197,7 +17197,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Namespace": {
@@ -17274,7 +17274,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17345,7 +17345,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17466,7 +17466,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17577,7 +17577,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17651,7 +17651,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17718,7 +17718,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17766,7 +17766,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a GCP provider.",
                     "type": "string"
                 },
                 "ProjectID": {
@@ -17841,7 +17841,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17921,7 +17921,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17997,7 +17997,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "NodeMaximum": {
@@ -18121,7 +18121,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18196,7 +18196,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18269,7 +18269,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18360,7 +18360,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a logging back end.",
                     "type": "string"
                 }
             }
@@ -18386,7 +18386,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18414,7 +18414,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Status": {
@@ -18477,7 +18477,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18559,7 +18559,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "PromtailHelmValuesDocument": {
@@ -18594,7 +18594,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18663,7 +18663,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Port": {
@@ -18723,7 +18723,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18804,7 +18804,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18889,7 +18889,7 @@ const docTemplate = `{
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18959,7 +18959,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -19059,7 +19059,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The name of the controller.",
                     "type": "string"
                 }
             }
@@ -19148,7 +19148,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ObservabilityDashboardInstances": {
@@ -19221,7 +19221,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "ObservabilityDashboardDefinitionID": {
@@ -19305,7 +19305,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ObservabilityDashboardDefinitionID": {
@@ -19410,7 +19410,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "ObservabilityDashboardInstanceID": {
@@ -19449,7 +19449,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "OciOkeKubernetesRuntimeInstances": {
@@ -19523,7 +19523,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "OciOkeKubernetesRuntimeDefinitionID": {
@@ -19584,7 +19584,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of an OCI provider.",
                     "type": "string"
                 },
                 "OciOkeKubernetesRuntimeInstances": {
@@ -19640,7 +19640,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a profile",
                     "type": "string"
                 }
             }
@@ -19738,7 +19738,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -19811,7 +19811,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -19888,7 +19888,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -19953,7 +19953,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Outputs": {
@@ -19994,7 +19994,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a tier.",
                     "type": "string"
                 }
             }

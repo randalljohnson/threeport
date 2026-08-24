@@ -372,14 +372,14 @@ func TestValidateTags_StableErrorOrdering(t *testing.T) {
 }
 
 // TestValidateTags_RejectsNonStandardEmbed enforces the api-type embed
-// whitelist. Models may only embed Common, Definition, Instance, Named, or
+// whitelist. Models may only embed Common, Definition, Instance, or
 // Reconciliation; anything else surfaces an error so model authors and
 // readers can rely on a flat, one-level embed model.
 // Example:
 //
 //	type Random struct { ... }
 //	type Foo struct {
-//	    Random // not in {Common, Definition, Instance, Named, Reconciliation}
+//	    Random // not in {Common, Definition, Instance, Reconciliation}
 //	}
 //
 // Expected: error citing the disallowed embed.
@@ -397,7 +397,7 @@ func TestValidateTags_RejectsNonStandardEmbed(t *testing.T) {
 	err := g.ValidateTags()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Foo embeds Random")
-	assert.Contains(t, err.Error(), "Common, Definition, Instance, Named, or Reconciliation")
+	assert.Contains(t, err.Error(), "Common, Definition, Instance, or Reconciliation")
 }
 
 // TestHasFieldWithTagValue_Match returns true when any field on the
@@ -451,19 +451,14 @@ func TestHasFieldWithTagValue_NoMatch(t *testing.T) {
 	assert.False(t, group.HasFieldWithTagValue("Foo", "persist", "false"), "tag present with wrong value")
 }
 
-// namedFixture builds a generator whose one object reaches its name field the
-// way an api type does: through the base type that carries both the field and
-// the gorm tag building the index behind it.
+// namedFixture builds a generator whose one object declares a name field the
+// way an api type does, carrying whatever gorm tag the caller is testing.
 func namedFixture(gormTag string) *Generator {
 	g := fixture(
 		map[string]map[string]map[string]string{
-			"Foo": {"Description": tag("json", ",omitempty", "validate", "optional")},
+			"Foo": {"Name": tag("json", ",omitempty", "validate", "required", "gorm", gormTag)},
 		},
-		map[string][]string{"Foo": {"Named"}},
-		nil,
-		map[string]map[string]map[string]string{
-			"Named": {"Name": tag("json", ",omitempty", "validate", "required", "gorm", gormTag)},
-		},
+		nil, nil, nil,
 	)
 	g.ApiObjectGroups[0].ApiObjects[0].NameField = true
 	return g
@@ -474,9 +469,7 @@ func namedFixture(gormTag string) *Generator {
 // deleted.
 // Example:
 //
-//	type Named struct {
-//	    Name *string `gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
-//	}
+//	Name *string `gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
 //
 // Expected: no error.
 func TestValidateTags_AcceptsScopedUniqueNameIndex(t *testing.T) {
@@ -560,19 +553,18 @@ func TestValidateTags_SkipsExemptObject(t *testing.T) {
 	assert.NoError(t, g.ValidateTags())
 }
 
-// TestValidateTags_ResolvesNameThroughTwoEmbedLevels covers the shape the
-// definition and instance objects take: the object embeds a base type, and
-// that base type embeds the one carrying the name field. The check has to
-// follow both hops or it reads every one of those objects as unguarded.
+// TestValidateTags_ResolvesNameThroughAnEmbed covers the shape a definition or
+// instance object takes: the object inherits the name field from a base type
+// rather than declaring it. The check has to follow the embed or it reads
+// every one of those objects as unguarded.
 // Example:
 //
-//	type Named struct { Name *string `gorm:"..."` }
-//	type Definition struct { Named }
+//	type Definition struct { Name *string `gorm:"..."` }
 //	type Foo struct { Definition }
 //
-// Expected: error citing the field, since the tag two levels down builds no
+// Expected: error citing the field, since the tag on the base type builds no
 // scoped index.
-func TestValidateTags_ResolvesNameThroughTwoEmbedLevels(t *testing.T) {
+func TestValidateTags_ResolvesNameThroughAnEmbed(t *testing.T) {
 	g := fixture(
 		map[string]map[string]map[string]string{
 			"Foo": {},
@@ -580,11 +572,9 @@ func TestValidateTags_ResolvesNameThroughTwoEmbedLevels(t *testing.T) {
 		map[string][]string{"Foo": {"Definition"}},
 		nil,
 		map[string]map[string]map[string]string{
-			"Definition": {"ProfileID": tag("json", ",omitempty", "validate", "optional,association")},
-			"Named":      {"Name": tag("json", ",omitempty", "validate", "required", "gorm", "not null")},
+			"Definition": {"Name": tag("json", ",omitempty", "validate", "required", "gorm", "not null")},
 		},
 	)
-	g.EmbedTypeEmbeds = map[string][]string{"Definition": {"Named"}}
 	g.ApiObjectGroups[0].ApiObjects[0].NameField = true
 
 	err := g.ValidateTags()

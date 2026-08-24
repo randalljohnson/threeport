@@ -51,9 +51,7 @@ func v0KubernetesRuntimeDefinitionCreated(
 		defaultNodeGroupMinSize := 0
 		awsEksKubernetesRuntimeDefinition := v0.AwsEksKubernetesRuntimeDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: kubernetesRuntimeDefinition.Name,
-				},
+				Name: kubernetesRuntimeDefinition.Name,
 			},
 			ZoneCount:                     &zoneCount,
 			DefaultNodeGroupInstanceType:  &nodeGroupInstanceType,
@@ -90,9 +88,7 @@ func v0KubernetesRuntimeDefinitionCreated(
 		defaultNodeGroupMinSize := 0
 		gcpGkeKubernetesRuntimeDefinition := v0.GcpGkeKubernetesRuntimeDefinition{
 			Definition: v0.Definition{
-				Named: v0.Named{
-					Name: kubernetesRuntimeDefinition.Name,
-				},
+				Name: kubernetesRuntimeDefinition.Name,
 			},
 			ZoneCount:                     &zoneCount,
 			DefaultNodeGroupInstanceType:  &nodeGroupInstanceType,

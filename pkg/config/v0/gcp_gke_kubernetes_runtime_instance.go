@@ -173,9 +173,7 @@ func (g *GcpGkeKubernetesRuntimeInstanceConfig) Create(
 	defaultRuntime := false
 	kubernetesRuntimeInstance := api_v0.KubernetesRuntimeInstance{
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: gcpGkeKubernetesRuntimeInstanceValues.Name,
-			},
+			Name: gcpGkeKubernetesRuntimeInstanceValues.Name,
 		},
 		Reconciliation: api_v0.Reconciliation{
 			Reconciled: util.Ptr(true),
@@ -195,9 +193,7 @@ func (g *GcpGkeKubernetesRuntimeInstanceConfig) Create(
 	// construct GCP GKE kubernetes runtime instance object
 	gcpGkeKubernetesRuntimeInstance := api_v0.GcpGkeKubernetesRuntimeInstance{
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: gcpGkeKubernetesRuntimeInstanceValues.Name,
-			},
+			Name: gcpGkeKubernetesRuntimeInstanceValues.Name,
 		},
 		GcpProviderID:                       gcpProvider.ID,
 		Region:                              gcpGkeKubernetesRuntimeInstanceValues.Region,
@@ -262,9 +258,7 @@ func (g *GcpGkeKubernetesRuntimeInstanceConfig) Replace(
 			ID: existingGcpGkeKubernetesRuntimeInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: gcpGkeKubernetesRuntimeInstanceValues.Name,
-			},
+			Name: gcpGkeKubernetesRuntimeInstanceValues.Name,
 		},
 		Region:                              gcpGkeKubernetesRuntimeInstanceValues.Region,
 		KubernetesRuntimeInstanceID:         existingGcpGkeKubernetesRuntimeInstance.KubernetesRuntimeInstanceID,

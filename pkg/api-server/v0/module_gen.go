@@ -68,9 +68,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-secret-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("secret-controller")},
+		Name:           util.Ptr("secret-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register secret-controller: %w", result.Error)
 	}
@@ -263,9 +263,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-aws-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("aws-controller")},
+		Name:           util.Ptr("aws-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register aws-controller: %w", result.Error)
 	}
@@ -410,9 +410,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-oci-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("oci-controller")},
+		Name:           util.Ptr("oci-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register oci-controller: %w", result.Error)
 	}
@@ -557,9 +557,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-gcp-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("gcp-controller")},
+		Name:           util.Ptr("gcp-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register gcp-controller: %w", result.Error)
 	}
@@ -704,9 +704,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-control-plane-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("control-plane-controller")},
+		Name:           util.Ptr("control-plane-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register control-plane-controller: %w", result.Error)
 	}
@@ -861,9 +861,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-gateway-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("gateway-controller")},
+		Name:           util.Ptr("gateway-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register gateway-controller: %w", result.Error)
 	}
@@ -1142,9 +1142,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-helm-workload-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("helm-workload-controller")},
+		Name:           util.Ptr("helm-workload-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register helm-workload-controller: %w", result.Error)
 	}
@@ -1246,9 +1246,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-machine-runtime-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("machine-runtime-controller")},
+		Name:           util.Ptr("machine-runtime-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register machine-runtime-controller: %w", result.Error)
 	}
@@ -1349,9 +1349,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-machine-workload-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("machine-workload-controller")},
+		Name:           util.Ptr("machine-workload-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register machine-workload-controller: %w", result.Error)
 	}
@@ -1452,9 +1452,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-kubernetes-runtime-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("kubernetes-runtime-controller")},
+		Name:           util.Ptr("kubernetes-runtime-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register kubernetes-runtime-controller: %w", result.Error)
 	}
@@ -1691,9 +1691,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-observability-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("observability-controller")},
+		Name:           util.Ptr("observability-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register observability-controller: %w", result.Error)
 	}
@@ -2065,9 +2065,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-terraform-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("terraform-controller")},
+		Name:           util.Ptr("terraform-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register terraform-controller: %w", result.Error)
 	}
@@ -2169,9 +2169,9 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	controller = api_v0.ModuleController{
 		DeploymentName: util.Ptr(threeportNamespace + "/threeport-kubernetes-workload-controller"),
 		ModuleApiID:    moduleApi.ID,
-		Named:          api_v0.Named{Name: util.Ptr("kubernetes-workload-controller")},
+		Name:           util.Ptr("kubernetes-workload-controller"),
 	}
-	result = db.Where(api_v0.ModuleController{Named: api_v0.Named{Name: controller.Name}}).FirstOrCreate(&controller)
+	result = db.Where(api_v0.ModuleController{Name: controller.Name}).FirstOrCreate(&controller)
 	if result.Error != nil {
 		return fmt.Errorf("failed to register kubernetes-workload-controller: %w", result.Error)
 	}

@@ -96,9 +96,7 @@ var ConfigAwsCloudAccountCmd = &cobra.Command{
 
 		// create aws account in threeport API to generate an external ID value
 		awsProvider := v0.AwsProvider{
-			Named: v0.Named{
-				Name:            ptr.String(awsProviderName),
-			},
+			Name:            ptr.String(awsProviderName),
 			AccountID:       callerIdentity.Account,
 			DefaultProvider: ptr.Bool(defaultAccount),
 			DefaultRegion:   ptr.String(awsRegion),

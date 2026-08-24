@@ -96,9 +96,7 @@ func (o *ObservabilityStackDefinitionConfig) Create(
 	// construct observability stack definition object
 	observabilityStackDefinition := &api_v0.ObservabilityStackDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: observabilityStackDefinitionValues.Name,
-			},
+			Name: observabilityStackDefinitionValues.Name,
 		},
 	}
 
@@ -207,9 +205,7 @@ func (o *ObservabilityStackDefinitionConfig) Replace(
 			ID: existingObservabilityStackDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: observabilityStackDefinitionValues.Name,
-			},
+			Name: observabilityStackDefinitionValues.Name,
 		},
 	}
 

@@ -239,7 +239,7 @@ func confirmDnsControllerDeployed(
 	// create gateway controller kubernetes workload definition
 	workloadDefName := fmt.Sprintf("%s-%s", "external-dns", *kubernetesRuntimeInstance.Name)
 	externalDnsWorkloadDefinition := v0.KubernetesWorkloadDefinition{
-		Definition:   v0.Definition{Named: v0.Named{Name: &workloadDefName}},
+		Definition:   v0.Definition{Name: &workloadDefName},
 		YAMLDocument: &externalDnsYaml,
 	}
 
@@ -251,7 +251,7 @@ func confirmDnsControllerDeployed(
 
 	// create external dns kubernetes workload instance
 	externalDnsWorkloadInstance := v0.KubernetesWorkloadInstance{
-		Instance:                       v0.Instance{Named: v0.Named{Name: &workloadDefName}},
+		Instance:                       v0.Instance{Name: &workloadDefName},
 		KubernetesRuntimeInstanceID:    domainNameInstance.KubernetesRuntimeInstanceID,
 		KubernetesWorkloadDefinitionID: createdWorkloadDef.ID,
 	}

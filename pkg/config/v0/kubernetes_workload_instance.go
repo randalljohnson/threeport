@@ -200,9 +200,7 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 	// construct kubernetes workload instance object
 	k8sWorkloadInstance := api_v0.KubernetesWorkloadInstance{
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: k8sWorkloadInstanceValues.Name,
-			},
+			Name: k8sWorkloadInstanceValues.Name,
 		},
 		KubernetesRuntimeInstanceID:    kubernetesRuntimeInstance.ID,
 		KubernetesWorkloadDefinitionID: k8sWorkloadDefinition.ID,
@@ -290,9 +288,7 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 			ID: existingK8sWorkloadInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: k8sWorkloadInstanceValues.Name,
-			},
+			Name: k8sWorkloadInstanceValues.Name,
 		},
 		KubernetesRuntimeInstanceID:    kubernetesRuntimeInstance.ID,
 		KubernetesWorkloadDefinitionID: k8sWorkloadDefinition.ID,

@@ -67,9 +67,7 @@ func (c *ObservabilityStackInstanceConfig) createObservabilityDashboardInstance(
 		c.r.APIServer,
 		&v0.ObservabilityDashboardInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: util.Ptr(ObservabilityDashboardName(*c.observabilityStackInstance.Name)),
-				},
+				Name: util.Ptr(ObservabilityDashboardName(*c.observabilityStackInstance.Name)),
 			},
 			KubernetesRuntimeInstanceID:        c.observabilityStackInstance.KubernetesRuntimeInstanceID,
 			ObservabilityDashboardDefinitionID: c.observabilityStackDefinition.ObservabilityDashboardDefinitionID,
@@ -107,9 +105,7 @@ func (c *ObservabilityStackInstanceConfig) createMetricsInstance() error {
 		c.r.APIServer,
 		&v0.MetricsInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: util.Ptr(MetricsName(*c.observabilityStackInstance.Name)),
-				},
+				Name: util.Ptr(MetricsName(*c.observabilityStackInstance.Name)),
 			},
 			KubernetesRuntimeInstanceID:           c.observabilityStackInstance.KubernetesRuntimeInstanceID,
 			MetricsDefinitionID:                   c.observabilityStackDefinition.MetricsDefinitionID,
@@ -147,9 +143,7 @@ func (c *ObservabilityStackInstanceConfig) createLoggingInstance() error {
 		c.r.APIServer,
 		&v0.LoggingInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: util.Ptr(LoggingName(*c.observabilityStackInstance.Name)),
-				},
+				Name: util.Ptr(LoggingName(*c.observabilityStackInstance.Name)),
 			},
 			KubernetesRuntimeInstanceID: c.observabilityStackInstance.KubernetesRuntimeInstanceID,
 			LoggingDefinitionID:         c.observabilityStackDefinition.LoggingDefinitionID,

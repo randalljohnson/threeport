@@ -36,7 +36,7 @@ func setupKubernetesRuntimeValidateDB(t *testing.T) *gorm.DB {
 func createValidKRD(t *testing.T, db *gorm.DB, provider string, ha bool) KubernetesRuntimeDefinition {
 	t.Helper()
 	existing := &KubernetesRuntimeDefinition{
-		Definition:       Definition{Named: Named{Name: util.Ptr("test-krd")}},
+		Definition:       Definition{Name: util.Ptr("test-krd")},
 		InfraProvider:    util.Ptr(provider),
 		HighAvailability: util.Ptr(ha),
 	}
@@ -52,7 +52,7 @@ func createValidKRI(t *testing.T, db *gorm.DB, location string) KubernetesRuntim
 	// KubernetesRuntimeInstance needs a parent definition (FK is NOT NULL).
 	parent := createValidKRD(t, db, "kind", false)
 	existing := &KubernetesRuntimeInstance{
-		Instance:                      Instance{Named: Named{Name: util.Ptr("test-kri")}},
+		Instance:                      Instance{Name: util.Ptr("test-kri")},
 		Location:                      util.Ptr(location),
 		KubernetesRuntimeDefinitionID: parent.ID,
 	}

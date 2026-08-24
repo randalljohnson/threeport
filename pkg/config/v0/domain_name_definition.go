@@ -105,9 +105,7 @@ func (d *DomainNameDefinitionConfig) Create(
 	// construct domain name definition object
 	domainNameDefinition := api_v0.DomainNameDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: domainNameDefinitionValues.Name,
-			},
+			Name: domainNameDefinitionValues.Name,
 		},
 		Domain:     domainNameDefinitionValues.Domain,
 		Zone:       domainNameDefinitionValues.Zone,
@@ -170,9 +168,7 @@ func (d *DomainNameDefinitionConfig) Replace(
 			ID: existingDomainNameDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: domainNameDefinitionValues.Name,
-			},
+			Name: domainNameDefinitionValues.Name,
 		},
 		Domain:     domainNameDefinitionValues.Domain,
 		Zone:       domainNameDefinitionValues.Zone,

@@ -88,9 +88,7 @@ func (m *MachineRuntimeDefinitionConfig) Create(
 	// TODO: add API object fields as needed for MachineRuntimeDefinition
 	machineRuntimeDefinition := api_v0.MachineRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: machineRuntimeDefinitionValues.Name,
-			},
+			Name: machineRuntimeDefinitionValues.Name,
 		},
 	}
 
@@ -149,9 +147,7 @@ func (m *MachineRuntimeDefinitionConfig) Replace(
 			ID: existingMachineRuntimeDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: machineRuntimeDefinitionValues.Name,
-			},
+			Name: machineRuntimeDefinitionValues.Name,
 		},
 	}
 

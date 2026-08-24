@@ -88,9 +88,7 @@ func (c *ControlPlaneDefinitionConfig) Create(
 	// construct control plane definition object
 	controlPlaneDefinition := api_v0.ControlPlaneDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: controlPlaneDefinitionValues.Name,
-			},
+			Name: controlPlaneDefinitionValues.Name,
 		},
 		AuthEnabled:   controlPlaneDefinitionValues.AuthEnabled,
 		OnboardParent: controlPlaneDefinitionValues.OnboardParent,
@@ -151,9 +149,7 @@ func (c *ControlPlaneDefinitionConfig) Replace(
 			ID: existingControlPlaneDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: controlPlaneDefinitionValues.Name,
-			},
+			Name: controlPlaneDefinitionValues.Name,
 		},
 		AuthEnabled:   controlPlaneDefinitionValues.AuthEnabled,
 		OnboardParent: controlPlaneDefinitionValues.OnboardParent,

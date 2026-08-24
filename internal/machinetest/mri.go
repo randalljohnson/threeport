@@ -49,7 +49,7 @@ func MRIFromAddr(
 		Reconciliation: v0.Reconciliation{
 			Reconciled: util.Ptr(true),
 		},
-		Instance: v0.Instance{Named: v0.Named{Name: util.Ptr(name)}},
+		Instance: v0.Instance{Name: util.Ptr(name)},
 		Hostname: util.Ptr(host),
 		Port:     util.Ptr(port),
 		SSHUser:  util.Ptr(user),

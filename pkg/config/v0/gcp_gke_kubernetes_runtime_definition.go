@@ -97,9 +97,7 @@ func (g *GcpGkeKubernetesRuntimeDefinitionConfig) Create(
 	infraProvider := api_v0.KubernetesRuntimeInfraProviderGKE
 	kubernetesRuntimeDefinition := api_v0.KubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: gcpGkeKubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: gcpGkeKubernetesRuntimeDefinitionValues.Name,
 		},
 		Reconciliation: api_v0.Reconciliation{
 			Reconciled: util.Ptr(true),
@@ -116,9 +114,7 @@ func (g *GcpGkeKubernetesRuntimeDefinitionConfig) Create(
 	// construct GCP GKE kubernetes runtime definition object
 	gcpGkeKubernetesRuntimeDefinition := api_v0.GcpGkeKubernetesRuntimeDefinition{
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: gcpGkeKubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: gcpGkeKubernetesRuntimeDefinitionValues.Name,
 		},
 		ZoneCount:                     gcpGkeKubernetesRuntimeDefinitionValues.ZoneCount,
 		DefaultNodeGroupInstanceType:  gcpGkeKubernetesRuntimeDefinitionValues.DefaultNodeGroupInstanceType,
@@ -186,9 +182,7 @@ func (g *GcpGkeKubernetesRuntimeDefinitionConfig) Replace(
 			ID: existingGcpGkeKubernetesRuntimeDefinition.ID,
 		},
 		Definition: api_v0.Definition{
-			Named: api_v0.Named{
-				Name: gcpGkeKubernetesRuntimeDefinitionValues.Name,
-			},
+			Name: gcpGkeKubernetesRuntimeDefinitionValues.Name,
 		},
 		ZoneCount:                     gcpGkeKubernetesRuntimeDefinitionValues.ZoneCount,
 		DefaultNodeGroupInstanceType:  gcpGkeKubernetesRuntimeDefinitionValues.DefaultNodeGroupInstanceType,

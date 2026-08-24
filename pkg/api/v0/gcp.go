@@ -5,7 +5,9 @@ import "gorm.io/datatypes"
 // GcpProvider represents a Google Cloud Platform (GCP) project in an account with the GCP service provider.
 type GcpProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
-	Named  `mapstructure:",squash"`
+
+	// The unique name of a GCP provider.
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
 
 	// The GCP project ID for the Google Cloud account.
 	ProjectID *string `json:",omitempty" validate:"required" gorm:"not null"`

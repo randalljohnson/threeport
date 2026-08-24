@@ -7,7 +7,9 @@ import (
 // AwsProvider represents an account with the Amazon Web Services (AWS) service provider.
 type AwsProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
-	Named  `mapstructure:",squash"`
+
+	// The unique name of an AWS provider.
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
 
 	// The account ID for the AWS account.
 	AccountID *string `json:",omitempty" validate:"required" gorm:"not null"`

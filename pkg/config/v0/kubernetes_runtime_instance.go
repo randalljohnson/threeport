@@ -115,9 +115,7 @@ func (k *KubernetesRuntimeInstanceConfig) Create(
 	// construct kubernetes runtime instance object
 	kubernetesRuntimeInstance := api_v0.KubernetesRuntimeInstance{
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: kubernetesRuntimeInstanceValues.Name,
-			},
+			Name: kubernetesRuntimeInstanceValues.Name,
 		},
 		KubernetesRuntimeDefinitionID: kubernetesRuntimeDefinition.ID,
 		DefaultRuntime:                kubernetesRuntimeInstanceValues.DefaultRuntime,
@@ -194,9 +192,7 @@ func (k *KubernetesRuntimeInstanceConfig) Replace(
 			ID: existingKubernetesRuntimeInstance.ID,
 		},
 		Instance: api_v0.Instance{
-			Named: api_v0.Named{
-				Name: kubernetesRuntimeInstanceValues.Name,
-			},
+			Name: kubernetesRuntimeInstanceValues.Name,
 		},
 		KubernetesRuntimeDefinitionID: kubernetesRuntimeDefinition.ID,
 		DefaultRuntime:                kubernetesRuntimeInstanceValues.DefaultRuntime,

@@ -420,7 +420,7 @@ func (c *SecretInstanceConfig) confirmSecretControllerDeployed() error {
 	// create secret controller kubernetes workload definition
 	workloadDefName := fmt.Sprintf("%s-%s", "external-secrets", *c.kubernetesRuntimeInstance.Name)
 	externalSecretsWorkloadDefinition := v0.KubernetesWorkloadDefinition{
-		Definition:   v0.Definition{Named: v0.Named{Name: &workloadDefName}},
+		Definition:   v0.Definition{Name: &workloadDefName},
 		YAMLDocument: util.Ptr(externalSecretsYaml),
 	}
 
@@ -439,7 +439,7 @@ func (c *SecretInstanceConfig) confirmSecretControllerDeployed() error {
 		c.r.APIClient,
 		c.r.APIServer,
 		&v0.KubernetesWorkloadInstance{
-			Instance:                       v0.Instance{Named: v0.Named{Name: &workloadDefName}},
+			Instance:                       v0.Instance{Name: &workloadDefName},
 			KubernetesWorkloadDefinitionID: createdSecretControllerWorkloadDefinition.ID,
 			KubernetesRuntimeInstanceID:    c.kubernetesRuntimeInstance.ID,
 		},

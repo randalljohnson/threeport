@@ -11,8 +11,8 @@ import (
 	"github.com/go-logr/logr"
 
 	v0 "github.com/threeport/threeport/pkg/api/v0"
-	client "github.com/threeport/threeport/pkg/client/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
+	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	mapping "github.com/threeport/threeport/pkg/mapping/v0"
@@ -67,9 +67,7 @@ func v0KubernetesRuntimeInstanceCreated(
 		}
 		awsEksKubernetesRuntimeInstance := v0.AwsEksKubernetesRuntimeInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: kubernetesRuntimeInstance.Name,
-				},
+				Name: kubernetesRuntimeInstance.Name,
 			},
 			Region:                              &region,
 			KubernetesRuntimeInstanceID:         kubernetesRuntimeInstance.ID,
@@ -126,9 +124,7 @@ func v0KubernetesRuntimeInstanceCreated(
 		}
 		gcpGkeKubernetesRuntimeInstance := v0.GcpGkeKubernetesRuntimeInstance{
 			Instance: v0.Instance{
-				Named: v0.Named{
-					Name: kubernetesRuntimeInstance.Name,
-				},
+				Name: kubernetesRuntimeInstance.Name,
 			},
 			GcpProviderID:                       gcpProvider.ID,
 			Region:                              &region,

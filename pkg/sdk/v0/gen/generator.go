@@ -61,12 +61,6 @@ type Generator struct {
 	// Shape: typeName -> fieldName -> tagKey -> tagValue.
 	EmbedTypes map[string]map[string]map[string]string
 
-	// EmbedTypeEmbeds records what each base type embeds anonymously, so a
-	// field promoted through more than one level of embedding still resolves
-	// to the tags it was declared with.
-	// Shape: typeName -> []embeddedTypeName.
-	EmbedTypeEmbeds map[string][]string
-
 	// RelationshipDependencies maps each API type to the API types its table's
 	// foreign-key columns reference, so the migration sort can order referenced
 	// tables ahead of referencing tables. Built by scanning every model source
@@ -219,12 +213,6 @@ type ApiObject struct {
 	NameField             bool
 	Reconciler            bool
 	ReconciledField       bool
-
-	// NamedEmbed is true when the object reaches its name field by embedding
-	// the Named mixin directly, rather than declaring the field itself. A
-	// promoted field cannot be set in a composite literal, so generated code
-	// building one of these has to nest the value inside the mixin.
-	NamedEmbed bool
 
 	// If true, generate tptctl commands for the model.
 	TptctlCommands bool
@@ -420,7 +408,6 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 	// in non-domain files. Parse them once up front so ValidateTags can
 	// flatten anonymous-embed fields into the per-struct collision check.
 	g.EmbedTypes = map[string]map[string]map[string]string{}
-	g.EmbedTypeEmbeds = map[string][]string{}
 	for _, embedFile := range []string{"common.go", "class.go"} {
 		embedPath := filepath.Join("pkg", "api", "v0", embedFile)
 		embedFset := token.NewFileSet()
@@ -450,13 +437,11 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 				typeName := typeSpec.Name.Name
 				g.EmbedTypes[typeName] = map[string]map[string]string{}
 				for _, field := range structType.Fields.List {
-					// a base type embedding another one carries no tags of its
-					// own for that field; record the embed so a lookup can
-					// follow it down to where the field is declared
+					// anon embeds within an embed type are out of scope;
+					// the only embeds api types are allowed to use are the
+					// flat base types parsed here. The ValidateTags whitelist
+					// check enforces that constraint.
 					if len(field.Names) == 0 {
-						if ident, ok := field.Type.(*ast.Ident); ok {
-							g.EmbedTypeEmbeds[typeName] = append(g.EmbedTypeEmbeds[typeName], ident.Name)
-						}
 						continue
 					}
 					fieldName := field.Names[0].Name
@@ -757,16 +742,6 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 											// applies to threeport's in-package embeds
 											if ident, ok := field.Type.(*ast.Ident); ok {
 												structEmbeds[objectName] = append(structEmbeds[objectName], ident.Name)
-												if ident.Name == namedMixin && mc != nil {
-													mc.NamedEmbed = true
-												}
-											}
-											// a module reaches the mixin through an
-											// import, which makes the embed a selector
-											if sel, ok := field.Type.(*ast.SelectorExpr); ok {
-												if sel.Sel.Name == namedMixin && mc != nil {
-													mc.NamedEmbed = true
-												}
 											}
 											continue
 										}
@@ -1059,21 +1034,16 @@ func (a *ApiObjectGroup) HasFieldWithTagValue(
 // anonymously. Keeping the set small enforces a flat, one-level mental
 // model: model authors only ever embed one of these, and readers can
 // scan an api type top to bottom without chasing arbitrary embed chains.
-// namedMixin is the base type that carries the name field, and the unique
-// index behind it, for every object a client addresses by name.
-const namedMixin = "Named"
-
 var allowedEmbed = map[string]bool{
 	"Common":         true,
 	"Definition":     true,
 	"Instance":       true,
-	"Named":          true,
 	"Reconciliation": true,
 }
 
 // allowedEmbedNames is the human-readable list of allowed embeds for
 // error messages. Kept in sync with allowedEmbed.
-const allowedEmbedNames = "Common, Definition, Instance, Named, or Reconciliation"
+const allowedEmbedNames = "Common, Definition, Instance, or Reconciliation"
 
 // ValidateTags walks every API object's struct tags and returns a non-nil
 // error if any threeport-specific tag has an invalid value. Once the tags
@@ -1235,11 +1205,11 @@ func (g *Generator) ValidateTags() error {
 const nameFieldName = "Name"
 
 // nameIndexTag is the gorm tag that field carries. Both the colon and the
-// comma after uniqueIndex are required and nothing goes between them: naming
-// the index reuses one name across every table the field is embedded in, which
-// a database scoping index names above the table rejects, and dropping the
-// colon leaves a key gorm never reads, so no index is built and nothing says
-// so.
+// comma after uniqueIndex are required and nothing goes between them: an index
+// named here takes that literal name on every table carrying the tag, and a
+// database scoping index names above the table rejects the second one, while
+// dropping the colon leaves a key gorm never reads, so no index is built and
+// nothing says so.
 const nameIndexTag = "not null;uniqueIndex:,where:deleted_at IS NULL"
 
 // indexClassUnique is what gorm's schema parser calls a unique index.
@@ -1264,10 +1234,8 @@ func (g *Generator) resolveNameTag(group ApiObjectGroup, objectName string) (str
 	}
 
 	for _, embed := range group.StructEmbeds[objectName] {
-		for _, candidate := range append([]string{embed}, g.EmbedTypeEmbeds[embed]...) {
-			if tagMap, ok := g.EmbedTypes[candidate][nameFieldName]; ok {
-				return tagMap[string(lib.GormTag)], true
-			}
+		if tagMap, ok := g.EmbedTypes[embed][nameFieldName]; ok {
+			return tagMap[string(lib.GormTag)], true
 		}
 	}
 
@@ -1419,7 +1387,6 @@ func validateRelationshipTag(object, field, fieldType, rel string, knownTypes ma
 func nameFields() []string {
 	return []string{
 		"Name",
-		"Named",
 		"Definition",
 		"Instance",
 	}

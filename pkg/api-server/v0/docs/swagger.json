@@ -16830,7 +16830,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -16897,7 +16897,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -16957,7 +16957,7 @@
                     "type": "string"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of an AWS provider.",
                     "type": "string"
                 },
                 "RoleArn": {
@@ -17086,7 +17086,7 @@
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "OnboardParent": {
@@ -17190,7 +17190,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Namespace": {
@@ -17267,7 +17267,7 @@
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17338,7 +17338,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17459,7 +17459,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17570,7 +17570,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17644,7 +17644,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17711,7 +17711,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17759,7 +17759,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a GCP provider.",
                     "type": "string"
                 },
                 "ProjectID": {
@@ -17834,7 +17834,7 @@
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -17914,7 +17914,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -17990,7 +17990,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "NodeMaximum": {
@@ -18114,7 +18114,7 @@
                     "type": "string"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18189,7 +18189,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18262,7 +18262,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18353,7 +18353,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a logging back end.",
                     "type": "string"
                 }
             }
@@ -18379,7 +18379,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18407,7 +18407,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Status": {
@@ -18470,7 +18470,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18552,7 +18552,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "PromtailHelmValuesDocument": {
@@ -18587,7 +18587,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18656,7 +18656,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Port": {
@@ -18716,7 +18716,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18797,7 +18797,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18882,7 +18882,7 @@
                     }
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -18952,7 +18952,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -19052,7 +19052,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The name of the controller.",
                     "type": "string"
                 }
             }
@@ -19141,7 +19141,7 @@
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ObservabilityDashboardInstances": {
@@ -19214,7 +19214,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "ObservabilityDashboardDefinitionID": {
@@ -19298,7 +19298,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ObservabilityDashboardDefinitionID": {
@@ -19403,7 +19403,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "ObservabilityDashboardInstanceID": {
@@ -19442,7 +19442,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "OciOkeKubernetesRuntimeInstances": {
@@ -19516,7 +19516,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "OciOkeKubernetesRuntimeDefinitionID": {
@@ -19577,7 +19577,7 @@
                     "type": "string"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of an OCI provider.",
                     "type": "string"
                 },
                 "OciOkeKubernetesRuntimeInstances": {
@@ -19633,7 +19633,7 @@
             ],
             "properties": {
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a profile",
                     "type": "string"
                 }
             }
@@ -19731,7 +19731,7 @@
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -19804,7 +19804,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -19881,7 +19881,7 @@
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name for the definition.",
                     "type": "string"
                 },
                 "ProfileID": {
@@ -19946,7 +19946,7 @@
                     "type": "boolean"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "An arbitrary name the instance",
                     "type": "string"
                 },
                 "Outputs": {
@@ -19987,7 +19987,7 @@
                     "type": "integer"
                 },
                 "Name": {
-                    "description": "An arbitrary name for the object, unique among objects of its own kind\nthat have not been deleted.",
+                    "description": "The unique name of a tier.",
                     "type": "string"
                 }
             }

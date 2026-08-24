@@ -54,7 +54,7 @@ type ModuleController struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The name of the controller.
-	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
 
 	// The K8s deployment name for the controller.  This allows actions to be executed against the
 	// the controller workload.  Examples:

@@ -60,22 +60,6 @@ func (h Handler) AddProfile(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingProfile api_v0.Profile
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", profile.Name).First(&existingProfile)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&profile)
@@ -88,20 +72,13 @@ func (h Handler) AddProfile(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.Profile),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -327,20 +304,13 @@ func (h Handler) UpdateProfile(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.Profile),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -419,20 +389,13 @@ func (h Handler) ReplaceProfile(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.Profile),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -567,22 +530,6 @@ func (h Handler) AddTier(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingTier api_v0.Tier
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", tier.Name).First(&existingTier)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&tier)
@@ -595,20 +542,13 @@ func (h Handler) AddTier(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.Tier),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -834,20 +774,13 @@ func (h Handler) UpdateTier(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.Tier),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -926,20 +859,13 @@ func (h Handler) ReplaceTier(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.Tier),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB

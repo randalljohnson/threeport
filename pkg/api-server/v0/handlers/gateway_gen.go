@@ -65,22 +65,6 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingDomainNameDefinition api_v0.DomainNameDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", domainNameDefinition.Name).First(&existingDomainNameDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&domainNameDefinition)
@@ -93,20 +77,13 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.DomainNameDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -332,20 +309,13 @@ func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.DomainNameDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -424,20 +394,13 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.DomainNameDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -585,22 +548,6 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingDomainNameInstance api_v0.DomainNameInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", domainNameInstance.Name).First(&existingDomainNameInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&domainNameInstance)
@@ -613,20 +560,13 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.DomainNameInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -870,20 +810,13 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.DomainNameInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -980,20 +913,13 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.DomainNameInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -1195,22 +1121,6 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingGatewayDefinition api_v0.GatewayDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gatewayDefinition.Name).First(&existingGatewayDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&gatewayDefinition)
@@ -1223,20 +1133,13 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -1480,20 +1383,13 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -1590,20 +1486,13 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -1830,20 +1719,13 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayHttpPort),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -2069,20 +1951,13 @@ func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayHttpPort),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -2161,20 +2036,13 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayHttpPort),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -2309,22 +2177,6 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingGatewayInstance api_v0.GatewayInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gatewayInstance.Name).First(&existingGatewayInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&gatewayInstance)
@@ -2337,20 +2189,13 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -2594,20 +2439,13 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -2704,20 +2542,13 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -2931,20 +2762,13 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayTcpPort),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -3170,20 +2994,13 @@ func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayTcpPort),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -3262,20 +3079,13 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GatewayTcpPort),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB

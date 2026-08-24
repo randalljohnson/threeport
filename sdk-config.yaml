@@ -343,6 +343,5 @@ ApiObjectGroups:
     - Name: ModuleObject
       Versions:
         - v0
-      AllowDuplicateModelNames: true
       Tptctl:
         Enabled: true

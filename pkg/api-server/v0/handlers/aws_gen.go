@@ -65,22 +65,6 @@ func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingAwsEksKubernetesRuntimeDefinition api_v0.AwsEksKubernetesRuntimeDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", awsEksKubernetesRuntimeDefinition.Name).First(&existingAwsEksKubernetesRuntimeDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&awsEksKubernetesRuntimeDefinition)
@@ -93,20 +77,13 @@ func (h Handler) AddAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsEksKubernetesRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -332,20 +309,13 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsEksKubernetesRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -424,20 +394,13 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeDefinition(c echo.Context) error 
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsEksKubernetesRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -585,22 +548,6 @@ func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingAwsEksKubernetesRuntimeInstance api_v0.AwsEksKubernetesRuntimeInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", awsEksKubernetesRuntimeInstance.Name).First(&existingAwsEksKubernetesRuntimeInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&awsEksKubernetesRuntimeInstance)
@@ -613,20 +560,13 @@ func (h Handler) AddAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsEksKubernetesRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -870,20 +810,13 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsEksKubernetesRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -980,20 +913,13 @@ func (h Handler) ReplaceAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsEksKubernetesRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -1195,22 +1121,6 @@ func (h Handler) AddAwsProvider(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingAwsProvider api_v0.AwsProvider
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", awsProvider.Name).First(&existingAwsProvider)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&awsProvider)
@@ -1223,20 +1133,13 @@ func (h Handler) AddAwsProvider(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsProvider),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1462,20 +1365,13 @@ func (h Handler) UpdateAwsProvider(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsProvider),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1554,20 +1450,13 @@ func (h Handler) ReplaceAwsProvider(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.AwsProvider),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB

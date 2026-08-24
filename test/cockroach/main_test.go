@@ -164,6 +164,7 @@ func openSchema(port string) (*gorm.DB, error) {
 	// under test identical to the deployed ones
 	if err := db.AutoMigrate(
 		&api_v0.AttachedObjectReference{},
+		&api_v0.DomainNameDefinition{},
 		&api_v0.ModuleApi{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to build the schema: %w", err)

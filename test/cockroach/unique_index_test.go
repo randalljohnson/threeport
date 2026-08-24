@@ -2,6 +2,7 @@ package cockroach
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -151,10 +152,10 @@ func TestGeneratedHandlerAnswers409OnUniqueViolation(t *testing.T) {
 
 	body := `{"ObjectType":"Workload","ObjectID":40,"AttachedObjectType":"Gateway","AttachedObjectID":40}`
 
-	created, _ := newCreateRequest(body)
+	created, _ := newCreateRequest(api_v0.PathAttachedObjectReferences, body)
 	require.NoError(t, handler.AddAttachedObjectReference(created))
 
-	conflicted, recorder := newCreateRequest(body)
+	conflicted, recorder := newCreateRequest(api_v0.PathAttachedObjectReferences, body)
 	require.NoError(t, handler.AddAttachedObjectReference(conflicted))
 
 	assert.Equal(t, http.StatusConflict, recorder.Code,
@@ -200,6 +201,73 @@ func TestUniqueIndexTreatsEveryNullAsDistinct(t *testing.T) {
 	assert.NotNil(t, conflict, "the refusal is a unique violation")
 }
 
+// TestGeneratedHandlerAnswers409OnDuplicateName drives a generated create
+// handler twice under one name. The handler performs no name lookup of its
+// own, so this is the whole of what refuses the second object: the index
+// rejects the write, the driver reports it, and the handler turns it into a
+// status naming the field that collided.
+func TestGeneratedHandlerAnswers409OnDuplicateName(t *testing.T) {
+	registerValidateTags(api_v0.ObjectTypeDomainNameDefinition, new(api_v0.DomainNameDefinition))
+	handler := handlers.Handler{DB: testDb, Logger: zap.NewNop()}
+	body := newDomainNameDefinitionBody("duplicate-name")
+
+	created, _ := newCreateRequest(api_v0.PathDomainNameDefinitions, body)
+	require.NoError(t, handler.AddDomainNameDefinition(created))
+
+	conflicted, recorder := newCreateRequest(api_v0.PathDomainNameDefinitions, body)
+	require.NoError(t, handler.AddDomainNameDefinition(conflicted))
+
+	// the client is told which field it has to change
+	assert.Equal(t, http.StatusConflict, recorder.Code,
+		"a second object under the same name is refused as a conflict")
+	assert.Contains(t, recorder.Body.String(), "Name",
+		"the response names the field the write collided on")
+	assert.NotContains(t, recorder.Body.String(), "idx_",
+		"the response does not name the index that refused the write")
+}
+
+// TestNameIsAcceptedAgainAfterSoftDelete covers the half of the index a client
+// notices most: the predicate takes a soft-deleted row out of the index, so
+// the name it held is free the moment the object is deleted. An index without
+// the predicate refuses the second create until the database hard-deletes the
+// row, a wait the client can neither see nor shorten.
+func TestNameIsAcceptedAgainAfterSoftDelete(t *testing.T) {
+	registerValidateTags(api_v0.ObjectTypeDomainNameDefinition, new(api_v0.DomainNameDefinition))
+	handler := handlers.Handler{DB: testDb, Logger: zap.NewNop()}
+	const name = "reused-after-delete"
+	body := newDomainNameDefinitionBody(name)
+
+	created, _ := newCreateRequest(api_v0.PathDomainNameDefinitions, body)
+	require.NoError(t, handler.AddDomainNameDefinition(created))
+
+	var definition api_v0.DomainNameDefinition
+	require.NoError(t, testDb.Where("name = ?", name).First(&definition).Error)
+	require.NoError(t, testDb.Delete(&definition).Error, "the object is soft deleted")
+
+	// the row is still in the table, so an index without the predicate would
+	// still be holding the name
+	var remaining int64
+	require.NoError(t,
+		testDb.Unscoped().Model(&api_v0.DomainNameDefinition{}).
+			Where("id = ?", *definition.ID).Count(&remaining).Error,
+	)
+	require.Equal(t, int64(1), remaining, "the soft-deleted row is still in the table")
+
+	recreated, recorder := newCreateRequest(api_v0.PathDomainNameDefinitions, body)
+	require.NoError(t, handler.AddDomainNameDefinition(recreated))
+	assert.Equal(t, http.StatusCreated, recorder.Code,
+		"the name is free again once the object holding it is soft deleted")
+}
+
+// newDomainNameDefinitionBody returns a create payload carrying the name under
+// test and every other field the object requires.
+func newDomainNameDefinitionBody(name string) string {
+	return fmt.Sprintf(
+		`{"Name":%q,"Domain":"example.com","Zone":"public","AdminEmail":"admin@example.com"}`,
+		name,
+	)
+}
+
 // newReference returns an attached object reference with the four indexed
 // columns set, which is everything the indexes under test read.
 func newReference(
@@ -222,9 +290,7 @@ func newReference(
 // query binder and the validator registered on the echo instance, the route
 // pattern set so the payload check can read the api version, and the context
 // wrapped so a handler's assertion to the custom context succeeds.
-func newCreateRequest(body string) (*apiserver_lib.CustomContext, *httptest.ResponseRecorder) {
-	const route = "/v0/attached-object-references"
-
+func newCreateRequest(route, body string) (*apiserver_lib.CustomContext, *httptest.ResponseRecorder) {
 	e := echo.New()
 	e.Binder = apiserver_lib.NewQueryBinder()
 

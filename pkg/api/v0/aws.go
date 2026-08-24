@@ -9,7 +9,7 @@ type AwsProvider struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The unique name of an AWS provider.
-	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
 
 	// The account ID for the AWS account.
 	AccountID *string `json:",omitempty" validate:"required" gorm:"not null"`

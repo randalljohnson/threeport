@@ -65,22 +65,6 @@ func (h Handler) AddTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingTerraformDefinition api_v0.TerraformDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", terraformDefinition.Name).First(&existingTerraformDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&terraformDefinition)
@@ -93,20 +77,13 @@ func (h Handler) AddTerraformDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.TerraformDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -350,20 +327,13 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.TerraformDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -460,20 +430,13 @@ func (h Handler) ReplaceTerraformDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.TerraformDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -688,22 +651,6 @@ func (h Handler) AddTerraformInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingTerraformInstance api_v0.TerraformInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", terraformInstance.Name).First(&existingTerraformInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&terraformInstance)
@@ -716,20 +663,13 @@ func (h Handler) AddTerraformInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.TerraformInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -973,20 +913,13 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.TerraformInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -1083,20 +1016,13 @@ func (h Handler) ReplaceTerraformInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.TerraformInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB

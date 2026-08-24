@@ -65,22 +65,6 @@ func (h Handler) AddGcpGceMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingGcpGceMachineRuntimeDefinition api_v0.GcpGceMachineRuntimeDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGceMachineRuntimeDefinition.Name).First(&existingGcpGceMachineRuntimeDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&gcpGceMachineRuntimeDefinition)
@@ -93,20 +77,13 @@ func (h Handler) AddGcpGceMachineRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGceMachineRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -332,20 +309,13 @@ func (h Handler) UpdateGcpGceMachineRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGceMachineRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -424,20 +394,13 @@ func (h Handler) ReplaceGcpGceMachineRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGceMachineRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -585,22 +548,6 @@ func (h Handler) AddGcpGceMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingGcpGceMachineRuntimeInstance api_v0.GcpGceMachineRuntimeInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGceMachineRuntimeInstance.Name).First(&existingGcpGceMachineRuntimeInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&gcpGceMachineRuntimeInstance)
@@ -613,20 +560,13 @@ func (h Handler) AddGcpGceMachineRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGceMachineRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -870,20 +810,13 @@ func (h Handler) UpdateGcpGceMachineRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGceMachineRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -980,20 +913,13 @@ func (h Handler) ReplaceGcpGceMachineRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGceMachineRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -1195,22 +1121,6 @@ func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGkeKubernetesRuntimeDefinition.Name).First(&existingGcpGkeKubernetesRuntimeDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&gcpGkeKubernetesRuntimeDefinition)
@@ -1223,20 +1133,13 @@ func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGkeKubernetesRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1462,20 +1365,13 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGkeKubernetesRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -1554,20 +1450,13 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeDefinition(c echo.Context) error 
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGkeKubernetesRuntimeDefinition),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -1715,22 +1604,6 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGkeKubernetesRuntimeInstance.Name).First(&existingGcpGkeKubernetesRuntimeInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&gcpGkeKubernetesRuntimeInstance)
@@ -1743,20 +1616,13 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGkeKubernetesRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -2000,20 +1866,13 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGkeKubernetesRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
@@ -2110,20 +1969,13 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpGkeKubernetesRuntimeInstance),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
@@ -2325,22 +2177,6 @@ func (h Handler) AddGcpProvider(c echo.Context) error {
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
-	// check for duplicate names
-	var existingGcpProvider api_v0.GcpProvider
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpProvider.Name).First(&existingGcpProvider)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), fullyQualifiedType)
-	}
-
 	// persist to DB
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Create(&gcpProvider)
@@ -2353,20 +2189,13 @@ func (h Handler) AddGcpProvider(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpProvider),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -2592,20 +2421,13 @@ func (h Handler) UpdateGcpProvider(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpProvider),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -2684,20 +2506,13 @@ func (h Handler) ReplaceGcpProvider(c echo.Context) error {
 				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		// check whether a unique index rejected the write
-		if conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			result.Error,
 			new(api_v0.GcpProvider),
-		); conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB

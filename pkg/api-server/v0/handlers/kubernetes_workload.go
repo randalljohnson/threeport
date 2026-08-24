@@ -58,21 +58,13 @@ func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 	})
 	if err != nil {
 		h.Logger.Error("handler error: error creating kubernetes workload resource definitions", zap.Error(err))
-		// check whether a unique index rejected one of the writes
-		conflictErr := apiserver_lib.UniqueViolation(
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
 			err,
 			new(v0.KubernetesWorkloadResourceDefinition),
+			fullyQualifiedType,
 		)
-		if conflictErr != nil {
-			conflictErr.Log(h.Logger)
-			return apiserver_lib.ResponseStatus409(
-				c,
-				nil,
-				errors.New(conflictErr.Message()),
-				fullyQualifiedType,
-			)
-		}
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

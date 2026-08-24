@@ -66,9 +66,6 @@ jobs:
     - name: Unit tests
       run: go test -count=1 ./pkg/... ./internal/... ./cmd/...
 
-  # Runs the tests that need a real CockroachDB. The suite starts the container
-  # itself, so this needs docker and not a control plane, which is why it is its
-  # own job rather than a step in the integration tests.
   cockroach-tests:
     name: CockroachDB Tests
     runs-on: ubuntu-24.04
@@ -157,7 +154,5 @@ jobs:
     - name: Integration tests
       run: mage test:integration
 
-    # Runs after the integration tests because it installs into the same
-    # control plane, so a failure here is the module install and nothing else.
     - name: Generate, build and install a module
       run: mage test:moduleInstall

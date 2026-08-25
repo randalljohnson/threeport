@@ -11,6 +11,11 @@ import (
 
 	version "github.com/threeport/threeport/internal/version"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
+	sdk "github.com/threeport/threeport/pkg/sdk/v0"
+	sdkgen "github.com/threeport/threeport/pkg/sdk/v0/gen"
+	gencontroller "github.com/threeport/threeport/pkg/sdk/v0/gen/internalpkg/controller"
+	genapi "github.com/threeport/threeport/pkg/sdk/v0/gen/pkg/api"
+	genclient "github.com/threeport/threeport/pkg/sdk/v0/gen/pkg/client"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -290,7 +295,101 @@ func (Dev) GenerateCode() error {
 		return fmt.Errorf("code generation failed with output: '%s': %w", output, err)
 	}
 
+	if err := (Dev{}).GenerateFixture(); err != nil {
+		return fmt.Errorf("reconciler test fixture generation failed: %w", err)
+	}
+
 	fmt.Println("code generated successfully")
+
+	return nil
+}
+
+// Reconciler test fixture identity. The fixture is a miniature threeport
+// module under internal/reconcilertest: the same generators that build a real
+// module's api methods, client, and reconciler run over it, so a change to any
+// of them surfaces as a compile or test failure there.
+const (
+	fixtureRoot       = "internal/reconcilertest"
+	fixtureModulePath = "github.com/threeport/threeport/internal/reconcilertest"
+	fixtureObjectName = "ReconcilerTestInstance"
+	fixtureGroupName  = "reconciler-test-fixture"
+)
+
+// GenerateFixture runs the SDK generators over the reconciler test fixture.
+//
+// The fixture has no sdk-config.yaml and no go.mod of its own, so the
+// generator input is built here rather than parsed. A nested go.mod would make
+// the fixture a separate Go module, and mage test:unit walks ./internal/... in
+// this one, so the tests would stop running.
+func (Dev) GenerateFixture() error {
+	apiObject := &sdkgen.ApiObject{
+		PackageName: "v0",
+		Version:     "v0",
+		TypeName:    fixtureObjectName,
+		Reconciler:  true,
+	}
+
+	generator := &sdkgen.Generator{
+		Module:     true,
+		ModulePath: fixtureModulePath,
+		ApiObjectGroups: []sdkgen.ApiObjectGroup{{
+			ModelFilename:         "reconciler_test_fixture.go",
+			ControllerDomain:      "ReconcilerTest",
+			ControllerName:        "reconciler-test-controller",
+			ControllerShortName:   "fixture",
+			ControllerPackageName: "fixture",
+			ApiObjects:            []*sdkgen.ApiObject{apiObject},
+			ReconciledObjects: []sdkgen.ReconciledObject{
+				{Name: fixtureObjectName, Versions: []string{"v0"}},
+			},
+			StructTags: map[string]map[string]map[string]string{
+				fixtureObjectName: {"Status": {"validate": "optional"}},
+			},
+			FieldTypes: map[string]map[string]string{
+				fixtureObjectName: {"Status": "*string"},
+			},
+			StructEmbeds: map[string][]string{
+				fixtureObjectName: {"Common", "Instance", "Reconciliation"},
+			},
+		}},
+		VersionedApiObjectCollections: []sdkgen.VersionedApiObjectCollection{{
+			Version: "v0",
+			VersionedApiObjectGroups: []sdkgen.VersionedApiObjectGroup{{
+				Name:       fixtureGroupName,
+				ApiObjects: []*sdkgen.ApiObject{apiObject},
+			}},
+		}},
+	}
+
+	sdkConfig := &sdk.SdkConfig{
+		ModuleName:   "ReconcilerTest",
+		ApiNamespace: "reconcilertest.threeport.io",
+	}
+
+	// every generator writes to a path relative to the working directory, so
+	// the chdir puts the emitted tree under the fixture root
+	projectRoot, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to read working directory: %w", err)
+	}
+	if err := os.Chdir(fixtureRoot); err != nil {
+		return fmt.Errorf("failed to change to fixture directory %s: %w", fixtureRoot, err)
+	}
+	defer os.Chdir(projectRoot)
+
+	for _, generate := range []struct {
+		name string
+		run  func(*sdkgen.Generator, *sdk.SdkConfig) error
+	}{
+		{"api object methods", genapi.GenApiObjectMethods},
+		{"client library", genclient.GenClientLib},
+		{"reconciler operations", gencontroller.GenReconcilerOperations},
+		{"reconcilers", gencontroller.GenReconcilers},
+	} {
+		if err := generate.run(generator, sdkConfig); err != nil {
+			return fmt.Errorf("failed to generate fixture %s: %w", generate.name, err)
+		}
+	}
 
 	return nil
 }

@@ -46,7 +46,7 @@ func moduleFixtureSdkConfig() *sdk.SdkConfig {
 // generateModuleRegistration runs the module registration generator with the
 // working directory pointed at a scratch tree, then returns what it wrote.
 // The generator writes to a path relative to the working directory, so the
-// chdir is what keeps the run out of the repository.
+// chdir keeps the run out of the repository.
 func generateModuleRegistration(t *testing.T) string {
 	t.Helper()
 

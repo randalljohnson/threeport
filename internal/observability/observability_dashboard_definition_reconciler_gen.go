@@ -173,7 +173,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for creation")
+					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for create operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created observability dashboard definition object"
@@ -208,6 +208,10 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if observabilityDashboardDefinition.ScheduledForDeletion() != nil {
+					log.Info("observability dashboard definition scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch observabilityDashboardDefinition.GetVersion() {
@@ -220,7 +224,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for creation")
+					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for update operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated observability dashboard definition object"
@@ -267,7 +271,7 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for creation")
+					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

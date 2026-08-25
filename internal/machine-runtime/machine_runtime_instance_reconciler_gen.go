@@ -173,7 +173,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine runtime instance encountered for creation")
+					operationErr = errors.New("unrecognized version of machine runtime instance encountered for create operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created machine runtime instance object"
@@ -208,6 +208,10 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if machineRuntimeInstance.ScheduledForDeletion() != nil {
+					log.Info("machine runtime instance scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch machineRuntimeInstance.GetVersion() {
@@ -220,7 +224,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine runtime instance encountered for creation")
+					operationErr = errors.New("unrecognized version of machine runtime instance encountered for update operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated machine runtime instance object"
@@ -267,7 +271,7 @@ func MachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine runtime instance encountered for creation")
+					operationErr = errors.New("unrecognized version of machine runtime instance encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

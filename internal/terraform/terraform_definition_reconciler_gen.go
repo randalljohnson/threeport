@@ -173,7 +173,7 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of terraform definition encountered for creation")
+					operationErr = errors.New("unrecognized version of terraform definition encountered for create operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created terraform definition object"
@@ -208,6 +208,10 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if terraformDefinition.ScheduledForDeletion() != nil {
+					log.Info("terraform definition scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch terraformDefinition.GetVersion() {
@@ -220,7 +224,7 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of terraform definition encountered for creation")
+					operationErr = errors.New("unrecognized version of terraform definition encountered for update operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated terraform definition object"
@@ -267,7 +271,7 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of terraform definition encountered for creation")
+					operationErr = errors.New("unrecognized version of terraform definition encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

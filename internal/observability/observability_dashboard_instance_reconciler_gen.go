@@ -173,7 +173,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for creation")
+					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for create operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created observability dashboard instance object"
@@ -208,6 +208,10 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if observabilityDashboardInstance.ScheduledForDeletion() != nil {
+					log.Info("observability dashboard instance scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch observabilityDashboardInstance.GetVersion() {
@@ -220,7 +224,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for creation")
+					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for update operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated observability dashboard instance object"
@@ -267,7 +271,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for creation")
+					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

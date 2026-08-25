@@ -173,7 +173,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for creation")
+					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for create operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created kubernetes runtime instance object"
@@ -208,6 +208,10 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if kubernetesRuntimeInstance.ScheduledForDeletion() != nil {
+					log.Info("kubernetes runtime instance scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch kubernetesRuntimeInstance.GetVersion() {
@@ -220,7 +224,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for creation")
+					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for update operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated kubernetes runtime instance object"
@@ -267,7 +271,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for creation")
+					operationErr = errors.New("unrecognized version of kubernetes runtime instance encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

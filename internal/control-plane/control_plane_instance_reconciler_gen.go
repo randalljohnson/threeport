@@ -173,7 +173,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of control plane instance encountered for creation")
+					operationErr = errors.New("unrecognized version of control plane instance encountered for create operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created control plane instance object"
@@ -208,6 +208,10 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if controlPlaneInstance.ScheduledForDeletion() != nil {
+					log.Info("control plane instance scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch controlPlaneInstance.GetVersion() {
@@ -220,7 +224,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of control plane instance encountered for creation")
+					operationErr = errors.New("unrecognized version of control plane instance encountered for update operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated control plane instance object"
@@ -267,7 +271,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of control plane instance encountered for creation")
+					operationErr = errors.New("unrecognized version of control plane instance encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

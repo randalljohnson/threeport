@@ -566,8 +566,9 @@ func operationCase(
 					"errors",
 					"New",
 				).Call(Lit(fmt.Sprintf(
-					"unrecognized version of %s encountered for creation",
+					"unrecognized version of %s encountered for %s operation",
 					strcase.ToDelimited(obj.Name, ' '),
+					op,
 				))),
 			)
 		})

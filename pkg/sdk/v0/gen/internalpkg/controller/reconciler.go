@@ -523,7 +523,10 @@ func operationCase(
 		"github.com/threeport/threeport/pkg/notifications/v0",
 		fmt.Sprintf("NotificationOperation%s", upperOpPast),
 	)).BlockFunc(func(i *Group) {
-		if op == "create" {
+		// an object scheduled for deletion has no reason to take create or
+		// update work. Running it anyway leaves a failing operation in
+		// redelivery, and the delete operation never gets a turn.
+		if op == "create" || op == "update" {
 			h.If(Id(varObjectName).Dot("ScheduledForDeletion").Call().Op("!=").Nil()).Block(
 				Id("log").Dot("Info").Call(
 					Lit(fmt.Sprintf(

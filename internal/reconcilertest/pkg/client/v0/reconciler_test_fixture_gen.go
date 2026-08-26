@@ -309,3 +309,300 @@ func DeleteReconcilerTestInstance(apiClient *http.Client, apiAddr string, id uin
 
 	return &reconcilerTestInstance, nil
 }
+
+// GetReconcilerTestVolatileInstances fetches all reconciler test volatile instances.
+func GetReconcilerTestVolatileInstances(apiClient *http.Client, apiAddr string) (*[]v0.ReconcilerTestVolatileInstance, error) {
+	var reconcilerTestVolatileInstances []v0.ReconcilerTestVolatileInstance
+
+	allPagesReceived := false
+	var allPageData []tpapiserver_lib.Object
+	nextCursor := uint(0)
+	queryId := ""
+	for !allPagesReceived {
+		url := fmt.Sprintf("%s%s", apiAddr, v0.PathReconcilerTestVolatileInstances)
+		if queryId != "" {
+			url = fmt.Sprintf("%s%s?queryid=%s&cursor=%d", apiAddr, v0.PathReconcilerTestVolatileInstances, queryId, nextCursor)
+		}
+
+		response, err := tpclient_lib.GetResponse(
+			apiClient,
+			url,
+			http.MethodGet,
+			new(bytes.Buffer),
+			map[string]string{},
+			http.StatusOK,
+		)
+		if err != nil {
+			return &reconcilerTestVolatileInstances, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+		}
+
+		allPageData = append(allPageData, response.Data...)
+
+		if response.Meta.Pagination.HasMore {
+			nextCursor = response.Meta.Pagination.NextCursor
+			queryId = response.Meta.Pagination.QueryId
+		} else {
+			allPagesReceived = true
+		}
+	}
+
+	jsonData, err := json.Marshal(allPageData)
+	if err != nil {
+		return &reconcilerTestVolatileInstances, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&reconcilerTestVolatileInstances); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &reconcilerTestVolatileInstances, nil
+}
+
+// GetReconcilerTestVolatileInstanceByID fetches a reconciler test volatile instance by ID.
+func GetReconcilerTestVolatileInstanceByID(apiClient *http.Client, apiAddr string, id uint) (*v0.ReconcilerTestVolatileInstance, error) {
+	var reconcilerTestVolatileInstance v0.ReconcilerTestVolatileInstance
+
+	response, err := tpclient_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathReconcilerTestVolatileInstances, id),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &reconcilerTestVolatileInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&reconcilerTestVolatileInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &reconcilerTestVolatileInstance, nil
+}
+
+// GetReconcilerTestVolatileInstancesByQueryString fetches reconciler test volatile instances by provided query string.
+func GetReconcilerTestVolatileInstancesByQueryString(apiClient *http.Client, apiAddr string, queryString string) (*[]v0.ReconcilerTestVolatileInstance, error) {
+	var reconcilerTestVolatileInstances []v0.ReconcilerTestVolatileInstance
+
+	response, err := tpclient_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?%s", apiAddr, v0.PathReconcilerTestVolatileInstances, queryString),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &reconcilerTestVolatileInstances, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &reconcilerTestVolatileInstances, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&reconcilerTestVolatileInstances); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &reconcilerTestVolatileInstances, nil
+}
+
+// GetReconcilerTestVolatileInstanceByName fetches a reconciler test volatile instance by name.
+func GetReconcilerTestVolatileInstanceByName(apiClient *http.Client, apiAddr, name string) (*v0.ReconcilerTestVolatileInstance, error) {
+	var reconcilerTestVolatileInstances []v0.ReconcilerTestVolatileInstance
+
+	response, err := tpclient_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?name=%s", apiAddr, v0.PathReconcilerTestVolatileInstances, name),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &v0.ReconcilerTestVolatileInstance{}, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &v0.ReconcilerTestVolatileInstance{}, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&reconcilerTestVolatileInstances); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	switch {
+	case len(reconcilerTestVolatileInstances) < 1:
+		return &v0.ReconcilerTestVolatileInstance{}, tpclient_lib.ErrObjectNotFound
+	case len(reconcilerTestVolatileInstances) > 1:
+		return &v0.ReconcilerTestVolatileInstance{}, fmt.Errorf("more than one reconciler test volatile instance with name %s returned", name)
+	}
+
+	return &reconcilerTestVolatileInstances[0], nil
+}
+
+// CreateReconcilerTestVolatileInstance creates a new reconciler test volatile instance.
+func CreateReconcilerTestVolatileInstance(apiClient *http.Client, apiAddr string, reconcilerTestVolatileInstance *v0.ReconcilerTestVolatileInstance) (*v0.ReconcilerTestVolatileInstance, error) {
+	tpclient_lib.ReplaceAssociatedObjectsWithNil(reconcilerTestVolatileInstance)
+	jsonReconcilerTestVolatileInstance, err := tputil.MarshalObject(reconcilerTestVolatileInstance)
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := tpclient_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s", apiAddr, v0.PathReconcilerTestVolatileInstances),
+		http.MethodPost,
+		bytes.NewBuffer(jsonReconcilerTestVolatileInstance),
+		map[string]string{},
+		http.StatusCreated,
+	)
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&reconcilerTestVolatileInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return reconcilerTestVolatileInstance, nil
+}
+
+// UpdateReconcilerTestVolatileInstance updates a reconciler test volatile instance with a PATCH request.
+func UpdateReconcilerTestVolatileInstance(apiClient *http.Client, apiAddr string, reconcilerTestVolatileInstance *v0.ReconcilerTestVolatileInstance) (*v0.ReconcilerTestVolatileInstance, error) {
+	tpclient_lib.ReplaceAssociatedObjectsWithNil(reconcilerTestVolatileInstance)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	reconcilerTestVolatileInstanceID := *reconcilerTestVolatileInstance.ID
+	payloadReconcilerTestVolatileInstance := *reconcilerTestVolatileInstance
+	payloadReconcilerTestVolatileInstance.ID = nil
+	payloadReconcilerTestVolatileInstance.CreatedAt = nil
+	payloadReconcilerTestVolatileInstance.UpdatedAt = nil
+
+	jsonReconcilerTestVolatileInstance, err := tputil.MarshalObject(payloadReconcilerTestVolatileInstance)
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := tpclient_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathReconcilerTestVolatileInstances, reconcilerTestVolatileInstanceID),
+		http.MethodPatch,
+		bytes.NewBuffer(jsonReconcilerTestVolatileInstance),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadReconcilerTestVolatileInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadReconcilerTestVolatileInstance.ID = &reconcilerTestVolatileInstanceID
+	return &payloadReconcilerTestVolatileInstance, nil
+}
+
+// ReplaceReconcilerTestVolatileInstance updates a reconciler test volatile instance with a PUT request.
+func ReplaceReconcilerTestVolatileInstance(apiClient *http.Client, apiAddr string, reconcilerTestVolatileInstance *v0.ReconcilerTestVolatileInstance) (*v0.ReconcilerTestVolatileInstance, error) {
+	tpclient_lib.ReplaceAssociatedObjectsWithNil(reconcilerTestVolatileInstance)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	reconcilerTestVolatileInstanceID := *reconcilerTestVolatileInstance.ID
+	payloadReconcilerTestVolatileInstance := *reconcilerTestVolatileInstance
+	payloadReconcilerTestVolatileInstance.ID = nil
+	payloadReconcilerTestVolatileInstance.CreatedAt = nil
+	payloadReconcilerTestVolatileInstance.UpdatedAt = nil
+
+	jsonReconcilerTestVolatileInstance, err := tputil.MarshalObject(payloadReconcilerTestVolatileInstance)
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := tpclient_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathReconcilerTestVolatileInstances, reconcilerTestVolatileInstanceID),
+		http.MethodPut,
+		bytes.NewBuffer(jsonReconcilerTestVolatileInstance),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadReconcilerTestVolatileInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadReconcilerTestVolatileInstance.ID = &reconcilerTestVolatileInstanceID
+	return &payloadReconcilerTestVolatileInstance, nil
+}
+
+// DeleteReconcilerTestVolatileInstance deletes a reconciler test volatile instance by ID.
+func DeleteReconcilerTestVolatileInstance(apiClient *http.Client, apiAddr string, id uint) (*v0.ReconcilerTestVolatileInstance, error) {
+	var reconcilerTestVolatileInstance v0.ReconcilerTestVolatileInstance
+
+	response, err := tpclient_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathReconcilerTestVolatileInstances, id),
+		http.MethodDelete,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &reconcilerTestVolatileInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &reconcilerTestVolatileInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&reconcilerTestVolatileInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &reconcilerTestVolatileInstance, nil
+}

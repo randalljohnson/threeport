@@ -312,6 +312,7 @@ const (
 	fixtureRoot       = "internal/reconcilertest"
 	fixtureModulePath = "github.com/threeport/threeport/internal/reconcilertest"
 	fixtureObjectName = "ReconcilerTestInstance"
+	fixtureVolatile   = "ReconcilerTestVolatileInstance"
 	fixtureGroupName  = "reconciler-test-fixture"
 )
 
@@ -328,6 +329,13 @@ func (Dev) GenerateFixture() error {
 		TypeName:    fixtureObjectName,
 		Reconciler:  true,
 	}
+	volatileObject := &sdkgen.ApiObject{
+		PackageName: "v0",
+		Version:     "v0",
+		TypeName:    fixtureVolatile,
+		Reconciler:  true,
+	}
+	apiObjects := []*sdkgen.ApiObject{apiObject, volatileObject}
 
 	generator := &sdkgen.Generator{
 		Module:     true,
@@ -338,25 +346,29 @@ func (Dev) GenerateFixture() error {
 			ControllerName:        "reconciler-test-controller",
 			ControllerShortName:   "fixture",
 			ControllerPackageName: "fixture",
-			ApiObjects:            []*sdkgen.ApiObject{apiObject},
+			ApiObjects:            apiObjects,
 			ReconciledObjects: []sdkgen.ReconciledObject{
 				{Name: fixtureObjectName, Versions: []string{"v0"}},
+				{Name: fixtureVolatile, Versions: []string{"v0"}},
 			},
 			StructTags: map[string]map[string]map[string]string{
 				fixtureObjectName: {"Status": {"validate": "optional"}},
+				fixtureVolatile:   {"Data": {"validate": "optional", "persist": "false"}},
 			},
 			FieldTypes: map[string]map[string]string{
 				fixtureObjectName: {"Status": "*string"},
+				fixtureVolatile:   {"Data": "*string"},
 			},
 			StructEmbeds: map[string][]string{
 				fixtureObjectName: {"Common", "Instance", "Reconciliation"},
+				fixtureVolatile:   {"Common", "Instance", "Reconciliation"},
 			},
 		}},
 		VersionedApiObjectCollections: []sdkgen.VersionedApiObjectCollection{{
 			Version: "v0",
 			VersionedApiObjectGroups: []sdkgen.VersionedApiObjectGroup{{
 				Name:       fixtureGroupName,
-				ApiObjects: []*sdkgen.ApiObject{apiObject},
+				ApiObjects: apiObjects,
 			}},
 		}},
 	}

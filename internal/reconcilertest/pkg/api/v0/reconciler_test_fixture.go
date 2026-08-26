@@ -23,3 +23,18 @@ type ReconcilerTestInstance struct {
 	// The latest status recorded by the reconciler.
 	Status *string `json:",omitempty" validate:"optional"`
 }
+
+// ReconcilerTestVolatileInstance is a second fixture object carrying a field
+// the API never persists. A persist:"false" field anywhere on an object makes
+// the generator omit the latest-object fetch from that object's reconciler,
+// because the value the caller sent is the only copy and re-reading the record
+// would lose it. This object exists to hold that emission shape under test.
+type ReconcilerTestVolatileInstance struct {
+	tpapi.Common         `swaggerignore:"true" mapstructure:",squash"`
+	tpapi.Instance       `mapstructure:",squash"`
+	tpapi.Reconciliation `mapstructure:",squash"`
+
+	// Data reaches the reconciler through the notification and is never
+	// written to the database.
+	Data *string `json:",omitempty" validate:"optional" persist:"false"`
+}

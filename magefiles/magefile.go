@@ -495,7 +495,7 @@ func unmetPrerequisites(target string, problems []error) error {
 // not have.  It does not prove the cluster can pull from the registry; the
 // install itself is the first thing to exercise that.
 func checkModuleInstallPrerequisites() error {
-	problems := controlPlaneConfigProblems()
+	var problems []error
 
 	// the module's own build and install targets run through mage
 	if _, err := exec.LookPath("mage"); err != nil {

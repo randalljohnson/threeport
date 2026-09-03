@@ -71,7 +71,7 @@ func main() {
 
 	// capture the request's mTLS peer identity so GORM hooks can read it via
 	// apiserver_lib.Caller(tx.Statement.Context)
-	e.Use(apiserver_lib.CaptureCaller(authEnabled))
+	e.Use(apiserver_lib.CaptureCaller)
 
 	logger, err := log.NewLogger(verbose)
 	if err != nil {
@@ -124,7 +124,7 @@ func main() {
 	}
 
 	// add module router middleware
-	if err := api_v0.InitModuleRouter(db, e, authEnabled); err != nil {
+	if err := api_v0.InitModuleRouter(db, e); err != nil {
 		e.Logger.Fatalf("failed to initialize module proxy router: %v", err)
 	}
 
@@ -200,8 +200,8 @@ func main() {
 
 		e.Logger.Infof("Threeport REST API: %s", version.GetVersion())
 		configureHealthCheckEndpoint()
-		if serveErr := server.ListenAndServeTLS("", ""); serveErr != http.ErrServerClosed {
-			e.Logger.Fatal(serveErr)
+		if server.ListenAndServeTLS("", "") != http.ErrServerClosed {
+			e.Logger.Fatal(err)
 		}
 	} else {
 		// configure http server
@@ -212,8 +212,8 @@ func main() {
 
 		e.Logger.Infof("Threeport REST API: %s", version.GetVersion())
 		configureHealthCheckEndpoint()
-		if serveErr := server.ListenAndServe(); serveErr != http.ErrServerClosed {
-			e.Logger.Fatal(serveErr)
+		if server.ListenAndServe() != http.ErrServerClosed {
+			e.Logger.Fatal(err)
 		}
 	}
 }

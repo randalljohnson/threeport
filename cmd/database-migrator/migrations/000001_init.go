@@ -24,15 +24,29 @@ func init() {
 }
 
 // Up000001 creates the initial database schema and sets a row-level
-// time-to-live on event rows.
+// time-to-live on event rows. A table that already exists is left as
+// it is, so a rerun after a partial failure finishes the schema
+// instead of failing on the first table it finds built.
 func Up000001(ctx context.Context, db *sql.DB) error {
 	gormDb, err := getGormDbFromContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err := gormDb.AutoMigrate(dbInterfaces000001()...); err != nil {
-		return fmt.Errorf("could not run gorm AutoMigrate: %w", err)
+	// Create each missing table and leave every existing one alone.
+	// gorm's AutoMigrate reads an existing table back out of the database
+	// catalog and emits corrective DDL from what it finds there, and
+	// CockroachDB populates the PostgreSQL catalog views differently enough
+	// that the comparison invents differences that do not exist. Creating a
+	// missing table never reads the catalog. A later migration adds a column
+	// with an explicit AddColumn call rather than by re-running this one.
+	for _, model := range dbInterfaces000001() {
+		if gormDb.Migrator().HasTable(model) {
+			continue
+		}
+		if err := gormDb.Migrator().CreateTable(model); err != nil {
+			return fmt.Errorf("failed to create table for %T: %w", model, err)
+		}
 	}
 
 	// uniform row-level time-to-live on events

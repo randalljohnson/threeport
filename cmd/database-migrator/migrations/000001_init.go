@@ -12,10 +12,11 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// eventRetention is the time-to-live for event rows. CockroachDB's
-// row-level TTL enforces it: the configured ttl_job_cron runs and
-// performs a hard DELETE on expired rows, leaving no soft-delete
-// tombstone and no gorm DeletedAt.
+// eventRetention is the time-to-live for event rows and the
+// attached object reference rows that link them to their subject.
+// Enforced by CockroachDB's row-level TTL: the configured
+// ttl_job_cron runs and performs a hard DELETE on expired rows -
+// no soft-delete tombstone, no gorm DeletedAt
 const eventRetention = "7 days"
 
 // init registers the migration with goose at startup.
@@ -23,10 +24,12 @@ func init() {
 	goose.AddMigrationNoTxContext(Up000001, Down000001)
 }
 
-// Up000001 creates the initial database schema and sets a row-level
-// time-to-live on event rows. A table that already exists is left as
-// it is, so a rerun after a partial failure finishes the schema
-// instead of failing on the first table it finds built.
+// Up000001 creates the initial database schema and sets row-level
+// time-to-lives for event rows and the attached object reference
+// rows that link events to their subjects. A table that already
+// exists is left as it is, so a rerun after a partial failure
+// finishes the schema instead of failing on the first table it
+// finds built.
 func Up000001(ctx context.Context, db *sql.DB) error {
 	gormDb, err := getGormDbFromContext(ctx)
 	if err != nil {
@@ -55,6 +58,23 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 		eventRetention,
 	)).Error; err != nil {
 		return fmt.Errorf("failed to set time-to-live on v0_events: %w", err)
+	}
+
+	// partial row-level time-to-live on event-linked attached object
+	// reference rows
+	if err := gormDb.Exec(fmt.Sprintf(`
+		ALTER TABLE v0_attached_object_references SET (
+			ttl_expiration_expression = $$
+				CASE
+					WHEN attached_object_type = '%s'
+						THEN created_at + INTERVAL '%s'
+					ELSE NULL
+				END
+			$$,
+			ttl_job_cron = '@hourly'
+		)
+	`, (&v0.Event{}).GetFullyQualifiedType(), eventRetention)).Error; err != nil {
+		return fmt.Errorf("failed to set time-to-live on event-linked attached object references: %w", err)
 	}
 
 	return nil

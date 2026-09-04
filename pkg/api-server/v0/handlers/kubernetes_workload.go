@@ -24,23 +24,24 @@ import (
 // @Router /v0/kubernetes-workload-resource-definition-sets [post]
 func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error {
 	objectType := v0.ObjectTypeKubernetesWorkloadResourceDefinition
+	fullyQualifiedType := new(v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
 	var k8sWorkloadResourceDefinitions []v0.KubernetesWorkloadResourceDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, v0.KubernetesWorkloadResourceDefinition{}); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&k8sWorkloadResourceDefinitions); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, k8sWorkloadResourceDefinitions, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// create all kubernetes workload resource definitions or none at all
@@ -57,19 +58,24 @@ func (h Handler) AddKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 	})
 	if err != nil {
 		h.Logger.Error("handler error: error creating kubernetes workload resource definitions", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			err,
+			new(v0.KubernetesWorkloadResourceDefinition),
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		createdWRDs,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
 }
-

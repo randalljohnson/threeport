@@ -38,6 +38,18 @@ func (h Handler) RequestDB(c echo.Context) *gorm.DB {
 		Scopes(apiserver_lib.QueryScopes(c)...)
 }
 
+// Write runs a database write and re-runs it when the database aborts the
+// transaction with a serialization conflict, returning the result of the final
+// attempt so a caller inspects its error the same way. Every attempt gets a
+// request-scoped handle built from scratch, since a handle carries state from
+// the attempt that failed, and retries stop once the client disconnects.
+func (h Handler) Write(c echo.Context, write func(db *gorm.DB) *gorm.DB) *gorm.DB {
+	return apiserver_lib.RetryWrite(
+		c.Request().Context(),
+		func() *gorm.DB { return write(h.RequestDB(c)) },
+	)
+}
+
 // RespondBlockedDelete writes a 409 with blockers rendered as
 // <api-namespace>/<kebab-kind>/<name>, falling back to id when no name resolves.
 func RespondBlockedDelete(c echo.Context, db *gorm.DB, blocked *api_v0.BlockedDeleteError) error {

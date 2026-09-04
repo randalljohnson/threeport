@@ -11,13 +11,13 @@ type ModuleApi struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// An arbitrary name for the module API.
-	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity,where:deleted_at IS NULL"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:idx_module_api_identity"`
 
 	// If true, represents the core Threeport API.
 	Core *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// The reverse-DNS namespace identifying this module API (e.g. "example.com").
-	ApiNamespace *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_module_api_identity,where:deleted_at IS NULL"`
+	ApiNamespace *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_module_api_identity"`
 
 	// The module API server's endpoint to proxy requests to for module
 	// objects.
@@ -54,7 +54,7 @@ type ModuleController struct {
 	Common `swaggerignore:"true" mapstructure:",squash"`
 
 	// The name of the controller.
-	Name *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
+	Name *string `json:",omitempty" validate:"required" gorm:"not null"`
 
 	// The K8s deployment name for the controller.  This allows actions to be executed against the
 	// the controller workload.  Examples:

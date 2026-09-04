@@ -10,7 +10,6 @@ const (
 	ValidateTag     TagKey = "validate"
 	QueryTag        TagKey = "query"
 	JsonTag         TagKey = "json"
-	GormTag         TagKey = "gorm"
 )
 
 // JsonOmitempty is the json-tag substring every `validate:"optional"`

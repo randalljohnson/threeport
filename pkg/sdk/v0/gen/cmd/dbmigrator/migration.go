@@ -44,29 +44,11 @@ func GenDbMigratorMigration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error 
 		),
 		Line(),
 
-		Comment("Create each missing table and leave every existing one alone."),
-		Comment("gorm's AutoMigrate reads an existing table back out of the database"),
-		Comment("catalog and emits corrective DDL from what it finds there, and"),
-		Comment("CockroachDB populates the PostgreSQL catalog views differently enough"),
-		Comment("that the comparison invents differences that do not exist. Creating a"),
-		Comment("missing table never reads the catalog. A later migration adds a column"),
-		Comment("with an explicit AddColumn call rather than by re-running this one."),
-		For(
-			List(Id("_"), Id("model")).Op(":=").Range().Id(
-				fmt.Sprintf("dbInterfaces%s", migrationVersion),
-			).Call(),
-		).Block(
-			If(Id("gormDb").Dot("Migrator").Call().Dot("HasTable").Call(Id("model"))).Block(
-				Continue(),
-			),
-			If(Err().Op(":=").Id("gormDb").Dot("Migrator").Call().Dot("CreateTable").Call(
-				Id("model"),
-			),
-				Err().Op("!=").Nil()).Block(
-				Return(Qual("fmt", "Errorf").Call(
-					Lit("failed to create table for %T: %w"), Id("model"), Err(),
-				)),
-			),
+		If(Err().Op(":=").Id("gormDb").Dot("AutoMigrate").Call(
+			Id(fmt.Sprintf("dbInterfaces%s", migrationVersion)).Call().Op("..."),
+		),
+			Err().Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("could not run gorm AutoMigrate: %w"), Err())),
 		),
 		Line(),
 
@@ -104,10 +86,7 @@ func GenDbMigratorMigration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error 
 	).Block(
 		Return().Index().Interface().BlockFunc(func(g *Group) {
 			for _, version := range gen.GlobalVersionConfig.Versions {
-				// emit referenced tables before the tables that reference them
-				// so each foreign-key constraint has its target already created
-				sortedNames := gen.SortDatabaseInitNamesByDependency(version.DatabaseInitNames)
-				for _, name := range sortedNames {
+				for _, name := range version.DatabaseInitNames {
 					g.List(
 						Op("&").Qual(
 							fmt.Sprintf(

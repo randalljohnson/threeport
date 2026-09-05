@@ -61,19 +61,13 @@ jobs:
         go-version: '1.26'
         cache: false
 
-    # The key carries the run id so this run writes its own entry. An
-    # Actions cache entry is immutable and actions/cache skips its save
-    # step on an exact key hit, so a key that changes only with go.sum
-    # holds the packages compiled by the run that first wrote it and none
-    # compiled after. The restore-keys prefix pulls the newest existing
-    # entry forward.
     - name: Cache Go build + module cache
       uses: actions/cache@v5.0.5
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: go-${{ runner.os }}-${{ github.run_id }}
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           go-${{ runner.os }}-
 

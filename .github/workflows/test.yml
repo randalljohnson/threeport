@@ -8,6 +8,13 @@
 # a cold rebuild. actions/cache is the only cache layer; buildx layer
 # caching adds no value on top because the binary COPY changes every
 # build.
+#
+# Every cache key carries the run id, so each run writes a new entry. An
+# Actions cache entry is immutable and actions/cache skips its save step
+# on an exact key hit, so a key that changes only with go.sum holds the
+# packages compiled by the run that first wrote it and none compiled
+# after. The restore-keys prefix pulls the newest existing entry forward,
+# and Go's build cache recompiles whatever that entry omits.
 
 name: Test
 
@@ -67,7 +74,7 @@ jobs:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        key: go-${{ runner.os }}-${{ github.run_id }}
         restore-keys: |
           go-${{ runner.os }}-
 

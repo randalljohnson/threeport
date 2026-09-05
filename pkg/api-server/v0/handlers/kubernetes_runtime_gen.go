@@ -39,56 +39,50 @@ func (h Handler) GetKubernetesRuntimeDefinitionVersions(c echo.Context) error {
 // @Param kubernetesRuntimeDefinition body api_v0.KubernetesRuntimeDefinition true "KubernetesRuntimeDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-definitions [POST]
 func (h Handler) AddKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeDefinition).GetFullyQualifiedType()
 	var kubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, kubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&kubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, kubernetesRuntimeDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// check for duplicate names
-	var existingKubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", kubernetesRuntimeDefinition.Name).First(&existingKubernetesRuntimeDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&kubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&kubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.KubernetesRuntimeDefinition),
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -100,7 +94,7 @@ func (h Handler) AddKubernetesRuntimeDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.KubernetesRuntimeDefinitionCreateSubject, *notifPayload)
 	}
@@ -108,11 +102,11 @@ func (h Handler) AddKubernetesRuntimeDefinition(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -129,19 +123,19 @@ func (h Handler) AddKubernetesRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-definitions [GET]
 func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.KubernetesRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -157,7 +151,7 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.KubernetesRuntimeDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -168,7 +162,7 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
@@ -177,7 +171,7 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
 				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = qid
 
@@ -185,7 +179,7 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 
 			// set the cursor for the next page of results
@@ -197,20 +191,20 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// use query ID to find the materialized view name
 		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
 			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// fetch records from the materialized view based on cursor
 		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// set the query ID for the next page of results
@@ -234,11 +228,11 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -255,26 +249,26 @@ func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-definitions/{id} [GET]
 func (h Handler) GetKubernetesRuntimeDefinition(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeDefinition).GetFullyQualifiedType()
 	kubernetesRuntimeDefinitionID := c.Param("id")
 	var kubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
 	if result := h.RequestDB(c).
 		First(&kubernetesRuntimeDefinition, kubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -294,48 +288,62 @@ func (h Handler) GetKubernetesRuntimeDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-definitions/{id} [PATCH]
 func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeDefinition).GetFullyQualifiedType()
 	kubernetesRuntimeDefinitionID := c.Param("id")
 	var existingKubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
 	if result := h.RequestDB(c).First(&existingKubernetesRuntimeDefinition, kubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedKubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
 	if err := c.Bind(&updatedKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingKubernetesRuntimeDefinition.Reconciliation
+
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingKubernetesRuntimeDefinition).Updates(&updatedKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingKubernetesRuntimeDefinition).Updates(&updatedKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.KubernetesRuntimeDefinition),
+			fullyQualifiedType,
+		)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingKubernetesRuntimeDefinition.Reconciled {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -343,7 +351,7 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.KubernetesRuntimeDefinitionUpdateSubject, *notifPayload)
 	}
@@ -351,11 +359,11 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -376,70 +384,98 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-definitions/{id} [PUT]
 func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeDefinition).GetFullyQualifiedType()
 	kubernetesRuntimeDefinitionID := c.Param("id")
 	var existingKubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
 	if result := h.RequestDB(c).First(&existingKubernetesRuntimeDefinition, kubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedKubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
 	if err := c.Bind(&updatedKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedKubernetesRuntimeDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingKubernetesRuntimeDefinition.Reconciliation
 
 	// persist provided data
 	updatedKubernetesRuntimeDefinition.ID = existingKubernetesRuntimeDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.KubernetesRuntimeDefinition),
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingKubernetesRuntimeDefinition, kubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+	}
+
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
+		notifPayload, err := existingKubernetesRuntimeDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		}
+		h.JS.Publish(notif.KubernetesRuntimeDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -447,6 +483,9 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 
 // @Summary deletes a kubernetes runtime definition.
 // @Description Delete a kubernetes runtime definition by ID from the database.
+// @Description Blocking: attached object references pointing at this kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -457,21 +496,21 @@ func (h Handler) ReplaceKubernetesRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-definitions/{id} [DELETE]
 func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeDefinition).GetFullyQualifiedType()
 	kubernetesRuntimeDefinitionID := c.Param("id")
 	var kubernetesRuntimeDefinition api_v0.KubernetesRuntimeDefinition
 	if result := h.RequestDB(c).Preload("KubernetesRuntimeInstances").First(&kubernetesRuntimeDefinition, kubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check to make sure no dependent instances exist for this definition
 	if len(kubernetesRuntimeDefinition.KubernetesRuntimeInstances) != 0 {
 		err := errors.New("kubernetes runtime definition has related kubernetes runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -484,7 +523,7 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -498,9 +537,11 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&kubernetesRuntimeDefinition).Updates(&scheduledKubernetesRuntimeDefinition); result.Error != nil {
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&kubernetesRuntimeDefinition).Updates(&scheduledKubernetesRuntimeDefinition)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 		}
 		// notify controller
 		notifPayload, err := kubernetesRuntimeDefinition.NotificationPayload(
@@ -510,7 +551,7 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.KubernetesRuntimeDefinitionDeleteSubject, *notifPayload)
 	} else {
@@ -520,11 +561,13 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
 				"object with ID %d already being deleted",
 				*kubernetesRuntimeDefinition.ID,
-			)), objectType)
+			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&kubernetesRuntimeDefinition); result.Error != nil {
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&kubernetesRuntimeDefinition)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -539,10 +582,10 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 			}
 		}
 	}
@@ -550,11 +593,11 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -582,56 +625,50 @@ func (h Handler) GetKubernetesRuntimeInstanceVersions(c echo.Context) error {
 // @Param kubernetesRuntimeInstance body api_v0.KubernetesRuntimeInstance true "KubernetesRuntimeInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-instances [POST]
 func (h Handler) AddKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeInstance).GetFullyQualifiedType()
 	var kubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, kubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&kubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, kubernetesRuntimeInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// check for duplicate names
-	var existingKubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", kubernetesRuntimeInstance.Name).First(&existingKubernetesRuntimeInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&kubernetesRuntimeInstance); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&kubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.KubernetesRuntimeInstance),
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -643,7 +680,7 @@ func (h Handler) AddKubernetesRuntimeInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.KubernetesRuntimeInstanceCreateSubject, *notifPayload)
 	}
@@ -651,11 +688,11 @@ func (h Handler) AddKubernetesRuntimeInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -672,19 +709,19 @@ func (h Handler) AddKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-instances [GET]
 func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.KubernetesRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -700,7 +737,7 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.KubernetesRuntimeInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -711,7 +748,7 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
@@ -720,7 +757,7 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
 				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = qid
 
@@ -728,7 +765,7 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 
 			// set the cursor for the next page of results
@@ -740,20 +777,20 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// use query ID to find the materialized view name
 		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
 			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// fetch records from the materialized view based on cursor
 		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// set the query ID for the next page of results
@@ -777,11 +814,11 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -798,26 +835,26 @@ func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-instances/{id} [GET]
 func (h Handler) GetKubernetesRuntimeInstance(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeInstance).GetFullyQualifiedType()
 	kubernetesRuntimeInstanceID := c.Param("id")
 	var kubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
 	if result := h.RequestDB(c).
 		First(&kubernetesRuntimeInstance, kubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -837,48 +874,62 @@ func (h Handler) GetKubernetesRuntimeInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-instances/{id} [PATCH]
 func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeInstance).GetFullyQualifiedType()
 	kubernetesRuntimeInstanceID := c.Param("id")
 	var existingKubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
 	if result := h.RequestDB(c).First(&existingKubernetesRuntimeInstance, kubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedKubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
 	if err := c.Bind(&updatedKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingKubernetesRuntimeInstance.Reconciliation
+
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingKubernetesRuntimeInstance).Updates(&updatedKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingKubernetesRuntimeInstance).Updates(&updatedKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.KubernetesRuntimeInstance),
+			fullyQualifiedType,
+		)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingKubernetesRuntimeInstance.Reconciled {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -886,7 +937,7 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.KubernetesRuntimeInstanceUpdateSubject, *notifPayload)
 	}
@@ -894,11 +945,11 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -919,70 +970,98 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-instances/{id} [PUT]
 func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeInstance).GetFullyQualifiedType()
 	kubernetesRuntimeInstanceID := c.Param("id")
 	var existingKubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
 	if result := h.RequestDB(c).First(&existingKubernetesRuntimeInstance, kubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedKubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
 	if err := c.Bind(&updatedKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedKubernetesRuntimeInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingKubernetesRuntimeInstance.Reconciliation
 
 	// persist provided data
 	updatedKubernetesRuntimeInstance.ID = existingKubernetesRuntimeInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.KubernetesRuntimeInstance),
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingKubernetesRuntimeInstance, kubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+	}
+
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
+		notifPayload, err := existingKubernetesRuntimeInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		}
+		h.JS.Publish(notif.KubernetesRuntimeInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -990,6 +1069,9 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a kubernetes runtime instance.
 // @Description Delete a kubernetes runtime instance by ID from the database.
+// @Description Blocking: attached object references pointing at this kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesRuntimeInstance
 // @Accept json
 // @Produce json
@@ -1000,15 +1082,15 @@ func (h Handler) ReplaceKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-instances/{id} [DELETE]
 func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.KubernetesRuntimeInstance).GetFullyQualifiedType()
 	kubernetesRuntimeInstanceID := c.Param("id")
 	var kubernetesRuntimeInstance api_v0.KubernetesRuntimeInstance
 	if result := h.RequestDB(c).First(&kubernetesRuntimeInstance, kubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -1021,7 +1103,7 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -1035,9 +1117,11 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&kubernetesRuntimeInstance).Updates(&scheduledKubernetesRuntimeInstance); result.Error != nil {
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&kubernetesRuntimeInstance).Updates(&scheduledKubernetesRuntimeInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 		}
 		// notify controller
 		notifPayload, err := kubernetesRuntimeInstance.NotificationPayload(
@@ -1047,7 +1131,7 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.KubernetesRuntimeInstanceDeleteSubject, *notifPayload)
 	} else {
@@ -1057,11 +1141,13 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
 				"object with ID %d already being deleted",
 				*kubernetesRuntimeInstance.ID,
-			)), objectType)
+			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&kubernetesRuntimeInstance); result.Error != nil {
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&kubernetesRuntimeInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -1076,10 +1162,10 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 			}
 		}
 	}
@@ -1087,11 +1173,11 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)

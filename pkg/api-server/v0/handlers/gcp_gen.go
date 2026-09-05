@@ -39,66 +39,60 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitionVersions(c echo.Context) er
 // @Param gcpGkeKubernetesRuntimeDefinition body api_v0.GcpGkeKubernetesRuntimeDefinition true "GcpGkeKubernetesRuntimeDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions [POST]
 func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 	var gcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, gcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&gcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, gcpGkeKubernetesRuntimeDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// check for duplicate names
-	var existingGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGkeKubernetesRuntimeDefinition.Name).First(&existingGcpGkeKubernetesRuntimeDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&gcpGkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&gcpGkeKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpGkeKubernetesRuntimeDefinition),
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpGkeKubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -115,19 +109,19 @@ func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.GcpGkeKubernetesRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -143,7 +137,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.GcpGkeKubernetesRuntimeDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -154,7 +148,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
@@ -163,7 +157,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
 				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = qid
 
@@ -171,7 +165,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 
 			// set the cursor for the next page of results
@@ -183,20 +177,20 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// use query ID to find the materialized view name
 		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
 			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// fetch records from the materialized view based on cursor
 		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// set the query ID for the next page of results
@@ -220,11 +214,11 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -241,26 +235,26 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions/{id} [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var gcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if result := h.RequestDB(c).
 		First(&gcpGkeKubernetesRuntimeDefinition, gcpGkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpGkeKubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -280,54 +274,64 @@ func (h Handler) GetGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions/{id} [PATCH]
 func (h Handler) UpdateGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var existingGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if result := h.RequestDB(c).First(&existingGcpGkeKubernetesRuntimeDefinition, gcpGkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingGcpGkeKubernetesRuntimeDefinition).Updates(&updatedGcpGkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingGcpGkeKubernetesRuntimeDefinition).Updates(&updatedGcpGkeKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpGkeKubernetesRuntimeDefinition),
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGcpGkeKubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -348,70 +352,80 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions/{id} [PUT]
 func (h Handler) ReplaceGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var existingGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if result := h.RequestDB(c).First(&existingGcpGkeKubernetesRuntimeDefinition, gcpGkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedGcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedGcpGkeKubernetesRuntimeDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist provided data
 	updatedGcpGkeKubernetesRuntimeDefinition.ID = existingGcpGkeKubernetesRuntimeDefinition.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGcpGkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGcpGkeKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpGkeKubernetesRuntimeDefinition),
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingGcpGkeKubernetesRuntimeDefinition, gcpGkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGcpGkeKubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -419,6 +433,9 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeDefinition(c echo.Context) error 
 
 // @Summary deletes a gcp gke kubernetes runtime definition.
 // @Description Delete a gcp gke kubernetes runtime definition by ID from the database.
+// @Description Blocking: attached object references pointing at this gcp gke kubernetes runtime definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a gcp gke kubernetes runtime definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the gcp gke kubernetes runtime definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-gcpGkeKubernetesRuntimeDefinition
 // @Accept json
 // @Produce json
@@ -429,25 +446,27 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeDefinition(c echo.Context) error 
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions/{id} [DELETE]
 func (h Handler) DeleteGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeDefinitionID := c.Param("id")
 	var gcpGkeKubernetesRuntimeDefinition api_v0.GcpGkeKubernetesRuntimeDefinition
 	if result := h.RequestDB(c).Preload("GcpGkeKubernetesRuntimeInstances").First(&gcpGkeKubernetesRuntimeDefinition, gcpGkeKubernetesRuntimeDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances) != 0 {
 		err := errors.New("gcp gke kubernetes runtime definition has related gcp gke kubernetes runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// delete object
-	if result := h.RequestDB(c).Delete(&gcpGkeKubernetesRuntimeDefinition); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&gcpGkeKubernetesRuntimeDefinition)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -462,20 +481,20 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpGkeKubernetesRuntimeDefinition,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -503,56 +522,50 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstanceVersions(c echo.Context) erro
 // @Param gcpGkeKubernetesRuntimeInstance body api_v0.GcpGkeKubernetesRuntimeInstance true "GcpGkeKubernetesRuntimeInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances [POST]
 func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 	var gcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, gcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&gcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, gcpGkeKubernetesRuntimeInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// check for duplicate names
-	var existingGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGkeKubernetesRuntimeInstance.Name).First(&existingGcpGkeKubernetesRuntimeInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&gcpGkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&gcpGkeKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpGkeKubernetesRuntimeInstance),
+			fullyQualifiedType,
+		)
 	}
 
 	// notify controller if reconciliation is required
@@ -564,7 +577,7 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.GcpGkeKubernetesRuntimeInstanceCreateSubject, *notifPayload)
 	}
@@ -572,11 +585,11 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpGkeKubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -593,19 +606,19 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.GcpGkeKubernetesRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -621,7 +634,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.GcpGkeKubernetesRuntimeInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -632,7 +645,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
@@ -641,7 +654,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
 				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = qid
 
@@ -649,7 +662,7 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 
 			// set the cursor for the next page of results
@@ -661,20 +674,20 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// use query ID to find the materialized view name
 		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
 			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// fetch records from the materialized view based on cursor
 		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// set the query ID for the next page of results
@@ -698,11 +711,11 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -719,26 +732,26 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances/{id} [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeInstanceID := c.Param("id")
 	var gcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if result := h.RequestDB(c).
 		First(&gcpGkeKubernetesRuntimeInstance, gcpGkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpGkeKubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -758,48 +771,62 @@ func (h Handler) GetGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances/{id} [PATCH]
 func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeInstanceID := c.Param("id")
 	var existingGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if result := h.RequestDB(c).First(&existingGcpGkeKubernetesRuntimeInstance, gcpGkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
+
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingGcpGkeKubernetesRuntimeInstance).Updates(&updatedGcpGkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingGcpGkeKubernetesRuntimeInstance).Updates(&updatedGcpGkeKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpGkeKubernetesRuntimeInstance),
+			fullyQualifiedType,
+		)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingGcpGkeKubernetesRuntimeInstance.Reconciled {
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingGcpGkeKubernetesRuntimeInstance.Reconciled != nil && !*existingGcpGkeKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGcpGkeKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingGcpGkeKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -807,7 +834,7 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.GcpGkeKubernetesRuntimeInstanceUpdateSubject, *notifPayload)
 	}
@@ -815,11 +842,11 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGcpGkeKubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -840,70 +867,98 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances/{id} [PUT]
 func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeInstanceID := c.Param("id")
 	var existingGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if result := h.RequestDB(c).First(&existingGcpGkeKubernetesRuntimeInstance, gcpGkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedGcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if err := c.Bind(&updatedGcpGkeKubernetesRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedGcpGkeKubernetesRuntimeInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
+
+	// snapshot reconciliation state before replace so the notify block
+	// can skip publishing when the replace did not touch any state marker
+	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
 
 	// persist provided data
 	updatedGcpGkeKubernetesRuntimeInstance.ID = existingGcpGkeKubernetesRuntimeInstance.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGcpGkeKubernetesRuntimeInstance); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGcpGkeKubernetesRuntimeInstance)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpGkeKubernetesRuntimeInstance),
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingGcpGkeKubernetesRuntimeInstance, gcpGkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+	}
+
+	// notify controller if reconciliation is required and the update is notifiable
+	if existingGcpGkeKubernetesRuntimeInstance.Reconciled != nil && !*existingGcpGkeKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGcpGkeKubernetesRuntimeInstance.Reconciliation) {
+		notifPayload, err := existingGcpGkeKubernetesRuntimeInstance.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		}
+		h.JS.Publish(notif.GcpGkeKubernetesRuntimeInstanceUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGcpGkeKubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -911,6 +966,9 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 
 // @Summary deletes a gcp gke kubernetes runtime instance.
 // @Description Delete a gcp gke kubernetes runtime instance by ID from the database.
+// @Description Blocking: attached object references pointing at this gcp gke kubernetes runtime instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a gcp gke kubernetes runtime instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gcp gke kubernetes runtime instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gcpGkeKubernetesRuntimeInstance
 // @Accept json
 // @Produce json
@@ -921,15 +979,15 @@ func (h Handler) ReplaceGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances/{id} [DELETE]
 func (h Handler) DeleteGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
+	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 	gcpGkeKubernetesRuntimeInstanceID := c.Param("id")
 	var gcpGkeKubernetesRuntimeInstance api_v0.GcpGkeKubernetesRuntimeInstance
 	if result := h.RequestDB(c).First(&gcpGkeKubernetesRuntimeInstance, gcpGkeKubernetesRuntimeInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -942,7 +1000,7 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -956,9 +1014,11 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.RequestDB(c).Model(&gcpGkeKubernetesRuntimeInstance).Updates(&scheduledGcpGkeKubernetesRuntimeInstance); result.Error != nil {
+		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+			return db.Model(&gcpGkeKubernetesRuntimeInstance).Updates(&scheduledGcpGkeKubernetesRuntimeInstance)
+		}); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 		}
 		// notify controller
 		notifPayload, err := gcpGkeKubernetesRuntimeInstance.NotificationPayload(
@@ -968,7 +1028,7 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 		}
 		h.JS.Publish(notif.GcpGkeKubernetesRuntimeInstanceDeleteSubject, *notifPayload)
 	} else {
@@ -978,11 +1038,13 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
 				"object with ID %d already being deleted",
 				*gcpGkeKubernetesRuntimeInstance.ID,
-			)), objectType)
+			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.RequestDB(c).Delete(&gcpGkeKubernetesRuntimeInstance); result.Error != nil {
+			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+				return db.Delete(&gcpGkeKubernetesRuntimeInstance)
+			}); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -997,10 +1059,10 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 			}
 		}
 	}
@@ -1008,11 +1070,11 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpGkeKubernetesRuntimeInstance,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1040,66 +1102,60 @@ func (h Handler) GetGcpProviderVersions(c echo.Context) error {
 // @Param gcpProvider body api_v0.GcpProvider true "GcpProvider object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers [POST]
 func (h Handler) AddGcpProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpProvider
+	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 	var gcpProvider api_v0.GcpProvider
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, gcpProvider); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	if err := c.Bind(&gcpProvider); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, gcpProvider, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
-	}
-
-	// check for duplicate names
-	var existingGcpProvider api_v0.GcpProvider
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpProvider.Name).First(&existingGcpProvider)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist to DB
-	if result := h.RequestDB(c).Create(&gcpProvider); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Create(&gcpProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpProvider),
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpProvider,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -1116,19 +1172,19 @@ func (h Handler) AddGcpProvider(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers [GET]
 func (h Handler) GetGcpProviders(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpProvider
+	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
 	}
 
 	// bind filter
 	var filter api_v0.GcpProvider
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1144,7 +1200,7 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.GcpProvider{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 		}
 
 		// see if total count is greater than the limit
@@ -1155,7 +1211,7 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
@@ -1164,7 +1220,7 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
 				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 			pagination.QueryId = qid
 
@@ -1172,7 +1228,7 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 			if err != nil {
 				h.Logger.Error("handler error: error finding records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 			}
 
 			// set the cursor for the next page of results
@@ -1184,20 +1240,20 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// use query ID to find the materialized view name
 		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
 			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// fetch records from the materialized view based on cursor
 		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
 		if err != nil {
 			h.Logger.Error("handler error: error finding records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 		}
 
 		// set the query ID for the next page of results
@@ -1221,11 +1277,11 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1242,26 +1298,26 @@ func (h Handler) GetGcpProviders(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers/{id} [GET]
 func (h Handler) GetGcpProvider(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpProvider
+	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 	gcpProviderID := c.Param("id")
 	var gcpProvider api_v0.GcpProvider
 	if result := h.RequestDB(c).
 		First(&gcpProvider, gcpProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpProvider,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1281,54 +1337,64 @@ func (h Handler) GetGcpProvider(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers/{id} [PATCH]
 func (h Handler) UpdateGcpProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpProvider
+	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 	gcpProviderID := c.Param("id")
 	var existingGcpProvider api_v0.GcpProvider
 	if result := h.RequestDB(c).First(&existingGcpProvider, gcpProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpProvider); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedGcpProvider api_v0.GcpProvider
 	if err := c.Bind(&updatedGcpProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// update object in database
-	if result := h.RequestDB(c).Model(&existingGcpProvider).Updates(&updatedGcpProvider); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Model(&existingGcpProvider).Updates(&updatedGcpProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpProvider),
+			fullyQualifiedType,
+		)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGcpProvider,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1349,70 +1415,80 @@ func (h Handler) UpdateGcpProvider(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
+// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers/{id} [PUT]
 func (h Handler) ReplaceGcpProvider(c echo.Context) error {
 	objectType := api_v0.ObjectTypeGcpProvider
+	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 	gcpProviderID := c.Param("id")
 	var existingGcpProvider api_v0.GcpProvider
 	if result := h.RequestDB(c).First(&existingGcpProvider, gcpProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingGcpProvider); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// bind payload
 	var updatedGcpProvider api_v0.GcpProvider
 	if err := c.Bind(&updatedGcpProvider); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedGcpProvider, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
 	}
 
 	// persist provided data
 	updatedGcpProvider.ID = existingGcpProvider.ID
-	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGcpProvider); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedGcpProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.RespondWriteError(
+			c,
+			h.Logger,
+			result.Error,
+			new(api_v0.GcpProvider),
+			fullyQualifiedType,
+		)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingGcpProvider, gcpProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingGcpProvider,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1420,6 +1496,9 @@ func (h Handler) ReplaceGcpProvider(c echo.Context) error {
 
 // @Summary deletes a gcp provider.
 // @Description Delete a gcp provider by ID from the database.
+// @Description Blocking: attached object references pointing at this gcp provider with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
+// @Description Cascade: deleting a gcp provider also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
+// @Description Non-reconciled type: this endpoint returns after the gcp provider row and any cascading children have been removed synchronously.
 // @ID delete-v0-gcpProvider
 // @Accept json
 // @Produce json
@@ -1430,19 +1509,21 @@ func (h Handler) ReplaceGcpProvider(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers/{id} [DELETE]
 func (h Handler) DeleteGcpProvider(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpProvider
+	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 	gcpProviderID := c.Param("id")
 	var gcpProvider api_v0.GcpProvider
 	if result := h.RequestDB(c).First(&gcpProvider, gcpProviderID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	// delete object
-	if result := h.RequestDB(c).Delete(&gcpProvider); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Delete(&gcpProvider)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -1457,20 +1538,20 @@ func (h Handler) DeleteGcpProvider(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		gcpProvider,
-		objectType,
+		fullyQualifiedType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)

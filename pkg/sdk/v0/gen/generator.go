@@ -1036,9 +1036,7 @@ var allowedEmbed = map[string]bool{
 const allowedEmbedNames = "Common, Definition, Instance, or Reconciliation"
 
 // ValidateTags walks every API object's struct tags and returns a non-nil
-// error if any threeport-specific tag has an invalid value. Once the tags
-// check out it also rejects a circular foreign-key graph, so one call is the
-// single generate-time gate on the API source.
+// error if any threeport-specific tag has an invalid value.
 //
 // Validates:
 //   - relationship: kind is recognized; modifier keys are recognized;
@@ -1049,8 +1047,6 @@ const allowedEmbedNames = "Common, Definition, Instance, or Reconciliation"
 //   - persist: value matches PersistFalse (true is the default; omit the tag)
 //   - query: rejected outright; query keys derive from the lowercased field
 //     name, so an explicit override is redundant and a rename hazard
-//   - gorm on a name field: builds a unique index scoped to rows that are not
-//     soft deleted, read back through gorm's own parser
 func (g *Generator) ValidateTags() error {
 	// build the set of registered API type names so the relationship
 	// validator can verify that any `type:<TypeName>` modifier names a

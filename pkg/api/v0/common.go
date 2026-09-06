@@ -21,12 +21,12 @@ type Reconciliation struct {
 	// Indicates if object is considered to be reconciled by the object's controller.
 	Reconciled *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
-	// Used by controllers to acknowledge deletion and indicate that deletion
+	// Used by controllers to acknowledge creation and indicate that creation
 	// reconciliation has begun so that subsequent reconciliation attempts can
 	// act accordingly.
 	CreationAcknowledged *time.Time `json:",omitempty" validate:"optional"`
 
-	// Used by controllers to confirm deletion of an object.
+	// Used by controllers to confirm creation of an object.
 	CreationConfirmed *time.Time `json:",omitempty" validate:"optional"`
 
 	// Gets set to true if creation process fails.

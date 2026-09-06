@@ -87,7 +87,7 @@ type ApiObject struct {
 	// Name of the api object to manage with threeport.
 	Name *string
 
-	// Name of the api object to manage with threeport.
+	// The api versions the object is served under, e.g. v0.
 	Versions []*string
 
 	// If false, acts as an override for API objects that have a "Definition" or
@@ -118,8 +118,8 @@ type ApiObject struct {
 	// that is registered with the rest-api for reconciliation.
 	Reconcilable *bool
 
-	// Indicates whether the message will be persisted by NATS.  Set to true for
-	// sensitive information, e.g. passwords or tokens.
+	// Set to true to keep the object's notifications out of the NATS stream,
+	// e.g. for passwords or tokens.
 	DisableNotificationPersistence *bool
 
 	// Indicates whether the route should be exposed on the rest-api for the object

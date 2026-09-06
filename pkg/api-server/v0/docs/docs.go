@@ -17524,11 +17524,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17721,11 +17721,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17810,11 +17810,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17899,11 +17899,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17973,11 +17973,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18090,11 +18090,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18215,11 +18215,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18342,11 +18342,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18497,11 +18497,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18629,11 +18629,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18712,11 +18712,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18811,11 +18811,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18931,11 +18931,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19023,11 +19023,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19099,11 +19099,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19307,11 +19307,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19396,11 +19396,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19472,11 +19472,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19563,11 +19563,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19750,11 +19750,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19835,11 +19835,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19912,11 +19912,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20109,11 +20109,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20186,11 +20186,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20254,11 +20254,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20363,11 +20363,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20508,11 +20508,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20724,11 +20724,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20796,11 +20796,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20889,11 +20889,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20958,11 +20958,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
+                    "description": "Used by controllers to confirm creation of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {

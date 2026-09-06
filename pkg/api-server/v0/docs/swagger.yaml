@@ -124,12 +124,12 @@ definitions:
         type: integer
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -304,12 +304,12 @@ definitions:
         type: array
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -387,12 +387,12 @@ definitions:
         type: integer
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -477,12 +477,12 @@ definitions:
         type: string
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -552,12 +552,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -680,12 +680,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -788,12 +788,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -904,12 +904,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1041,12 +1041,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1161,12 +1161,12 @@ definitions:
         type: string
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1249,12 +1249,12 @@ definitions:
         type: array
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1348,12 +1348,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1472,12 +1472,12 @@ definitions:
         type: array
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1568,12 +1568,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1642,12 +1642,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1826,12 +1826,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1914,12 +1914,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -1991,12 +1991,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2090,12 +2090,12 @@ definitions:
         type: boolean
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2286,12 +2286,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2364,12 +2364,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2441,12 +2441,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2616,12 +2616,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2692,12 +2692,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2761,12 +2761,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -2876,12 +2876,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -3017,12 +3017,12 @@ definitions:
         type: string
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -3205,12 +3205,12 @@ definitions:
         type: integer
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -3274,12 +3274,12 @@ definitions:
     properties:
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -3363,12 +3363,12 @@ definitions:
         type: string
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.
@@ -3431,12 +3431,12 @@ definitions:
         type: integer
       CreationAcknowledged:
         description: |-
-          Used by controllers to acknowledge deletion and indicate that deletion
+          Used by controllers to acknowledge creation and indicate that creation
           reconciliation has begun so that subsequent reconciliation attempts can
           act accordingly.
         type: string
       CreationConfirmed:
-        description: Used by controllers to confirm deletion of an object.
+        description: Used by controllers to confirm creation of an object.
         type: string
       CreationFailed:
         description: Gets set to true if creation process fails.

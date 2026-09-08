@@ -1,6 +1,5 @@
-// Package migrationtest holds helpers that check a database migration chain
-// against the models the chain is meant to persist.  It imports the testing
-// package, so only test files import it.
+// Package migrationtest checks that a goose/gorm migration chain created
+// every column the models declare.
 package migrationtest
 
 import (
@@ -13,25 +12,7 @@ import (
 	gorm "gorm.io/gorm"
 )
 
-// AssertMigrationsCoverModels applies every migration registered in the
-// calling process to a fresh in-memory database, then checks the resulting
-// schema against the columns each model it is handed declares.  It reports
-// both fields left without a column and columns left without a field, so one
-// run shows the whole drift.
-//
-// The caller owns the migrations under test: they register themselves as a
-// side effect of the caller importing the package that holds them, and a
-// caller that imports none asserts nothing.  Migrations are read from the
-// caller's working directory, which for a test is the directory of the
-// package under test.
-//
-// versionTableName is where the migration tool records which migrations it
-// has applied, and it matches the name the deployed migrator sets.  The tool
-// keeps that setting and the chosen dialect in process-wide state, so this
-// must not run in parallel with anything else that migrates.
-//
-// The in-memory engine parses plain schema and rejects any grammar an engine
-// adds of its own, so a chain carrying such a statement cannot run here.
+// AssertMigrationsCoverModels applies migrations to in-memory sqlite.
 func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models []interface{}) {
 	t.Helper()
 
@@ -43,19 +24,8 @@ func AssertMigrationsCoverModels(t *testing.T, versionTableName string, models [
 	assertCoverage(t, gormDb, models, gormColumns)
 }
 
-// AssertMigrationsCoverModelsOn applies every migration registered in the
-// calling process to a database the caller supplies, then checks the resulting
-// schema against the columns each model it is handed declares.  It reports both
-// fields left without a column and columns left without a field.
-//
-// This takes a live database because some migration statements only the
-// deployed engine understands.  That database must be empty, so a migration
-// built every table the check reads rather than the caller.
-//
-// The comparison skips columns the engine hides.  A hidden column belongs to
-// the engine rather than to the schema a model declares: a table with no
-// primary key gets one, and so does a table carrying a row-level
-// time-to-live.
+// AssertMigrationsCoverModelsOn applies migrations to the caller's CockroachDB
+// and ignores hidden columns such as crdb_internal_expiration.
 func AssertMigrationsCoverModelsOn(
 	t *testing.T,
 	gormDb *gorm.DB,
@@ -68,12 +38,11 @@ func AssertMigrationsCoverModelsOn(
 	assertCoverage(t, gormDb, models, visibleColumns)
 }
 
-// applyMigrations runs every migration registered in the calling process.
+// applyMigrations runs every registered goose migration against gormDb.
+// dialect is goose's version-table dialect (postgres for CockroachDB).
 func applyMigrations(t *testing.T, gormDb *gorm.DB, dialect, versionTableName string) {
 	t.Helper()
 
-	// share one connection pool so the migrations and the assertions see
-	// the same database
 	sqlDb, err := gormDb.DB()
 	if err != nil {
 		t.Fatalf("resolve sql db: %v", err)
@@ -84,15 +53,14 @@ func applyMigrations(t *testing.T, gormDb *gorm.DB, dialect, versionTableName st
 	}
 	goose.SetTableName(versionTableName)
 
-	// the migrations read the gorm db from the context under the same key
-	// the deployed migrator sets
+	// migrations read the gorm handle off the context, not the sql.DB goose passes
 	ctx := context.WithValue(context.Background(), "gormdb", gormDb)
 	if err := goose.UpContext(ctx, sqlDb, "."); err != nil {
 		t.Fatalf("apply migrations: %v", err)
 	}
 }
 
-// assertCoverage compares each model's declared columns against the created ones.
+// assertCoverage reports fields with no column and columns with no field.
 func assertCoverage(
 	t *testing.T,
 	gormDb *gorm.DB,
@@ -102,8 +70,7 @@ func assertCoverage(
 	t.Helper()
 
 	for _, model := range models {
-		// resolve the columns the model's fields declare, which accounts
-		// for embedded structs, column overrides and excluded fields
+		// columns the model declares
 		stmt := &gorm.Statement{DB: gormDb}
 		if err := stmt.Parse(model); err != nil {
 			t.Fatalf("parse %T: %v", model, err)
@@ -113,15 +80,14 @@ func assertCoverage(
 			declared[name] = true
 		}
 
-		// a model no migration creates reads as total drift
 		if !gormDb.Migrator().HasTable(model) {
 			t.Errorf("no migration creates table %s for %T", stmt.Schema.Table, model)
 			continue
 		}
 
+		// columns the migrations created
 		created := columnsOf(t, gormDb, model, stmt.Schema.Table)
 
-		// a declared field with no column means a migration was never written
 		var missingColumns []string
 		for name := range declared {
 			if !created[name] {
@@ -129,7 +95,6 @@ func assertCoverage(
 			}
 		}
 
-		// a column with no declared field means a migration never dropped it
 		var missingFields []string
 		for name := range created {
 			if !declared[name] {
@@ -137,7 +102,6 @@ func assertCoverage(
 			}
 		}
 
-		// report both directions so one run shows the whole drift
 		sort.Strings(missingColumns)
 		sort.Strings(missingFields)
 		if len(missingColumns) > 0 {
@@ -149,7 +113,7 @@ func assertCoverage(
 	}
 }
 
-// gormColumns reads a table's columns through the driver's own migrator.
+// gormColumns returns the column names gorm reads back for model.
 func gormColumns(t *testing.T, gormDb *gorm.DB, model interface{}, _ string) map[string]bool {
 	t.Helper()
 
@@ -165,11 +129,7 @@ func gormColumns(t *testing.T, gormDb *gorm.DB, model interface{}, _ string) map
 	return created
 }
 
-// visibleColumns reads a table's columns, skipping the ones the engine hides.
-//
-// The driver's own migrator reads the same catalog without filtering, and the
-// column type it returns carries no way to ask, so this queries the catalog
-// directly.
+// visibleColumns lists columns a client sees, excluding Cockroach hidden ones.
 func visibleColumns(t *testing.T, gormDb *gorm.DB, _ interface{}, table string) map[string]bool {
 	t.Helper()
 

@@ -427,9 +427,6 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 
 // @Summary deletes a domain name definition.
 // @Description Delete a domain name definition by ID from the database.
-// @Description Blocking: attached object references pointing at this domain name definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a domain name definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Non-reconciled type: this endpoint returns after the domain name definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-domainNameDefinition
 // @Accept json
 // @Produce json
@@ -820,7 +817,8 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
+	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
 		notifPayload, err := existingDomainNameInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -932,7 +930,8 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
+	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
 		notifPayload, err := existingDomainNameInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -960,9 +959,6 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 
 // @Summary deletes a domain name instance.
 // @Description Delete a domain name instance by ID from the database.
-// @Description Blocking: attached object references pointing at this domain name instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a domain name instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the domain name instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-domainNameInstance
 // @Accept json
 // @Produce json
@@ -1393,7 +1389,8 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
+	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
 		notifPayload, err := existingGatewayDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1505,7 +1502,8 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
+	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
 		notifPayload, err := existingGatewayDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1533,9 +1531,6 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 
 // @Summary deletes a gateway definition.
 // @Description Delete a gateway definition by ID from the database.
-// @Description Blocking: attached object references pointing at this gateway definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a gateway definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gateway definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gatewayDefinition
 // @Accept json
 // @Produce json
@@ -2069,9 +2064,6 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 
 // @Summary deletes a gateway http port.
 // @Description Delete a gateway http port by ID from the database.
-// @Description Blocking: attached object references pointing at this gateway http port with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a gateway http port also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Non-reconciled type: this endpoint returns after the gateway http port row and any cascading children have been removed synchronously.
 // @ID delete-v0-gatewayHttpPort
 // @Accept json
 // @Produce json
@@ -2449,7 +2441,8 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
+	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
 		notifPayload, err := existingGatewayInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2561,7 +2554,8 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
+	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
 		notifPayload, err := existingGatewayInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2589,9 +2583,6 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 
 // @Summary deletes a gateway instance.
 // @Description Delete a gateway instance by ID from the database.
-// @Description Blocking: attached object references pointing at this gateway instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a gateway instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the gateway instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-gatewayInstance
 // @Accept json
 // @Produce json
@@ -3112,9 +3103,6 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 
 // @Summary deletes a gateway tcp port.
 // @Description Delete a gateway tcp port by ID from the database.
-// @Description Blocking: attached object references pointing at this gateway tcp port with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a gateway tcp port also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Non-reconciled type: this endpoint returns after the gateway tcp port row and any cascading children have been removed synchronously.
 // @ID delete-v0-gatewayTcpPort
 // @Accept json
 // @Produce json

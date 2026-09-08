@@ -21,38 +21,20 @@ import (
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// rejectingConstraint is the index the simulated driver error names. A test
-// asserts it stays out of the response body, so it is a string no handler
-// would produce for another reason.
+// sqlite cannot produce SQLSTATE 23505, so these tests inject a *pgconn.PgError
+// on create.
+
+// rejectingConstraint is the index name the injected error carries.
 const rejectingConstraint = "idx_test_unique_violation"
 
-// uniqueViolationCase is one create request whose write a unique index
-// rejects, and the handler that owes the client a 409 for it.
+// uniqueViolationCase is one add handler driven with a rejected write.
 type uniqueViolationCase struct {
-	name string
-
-	// source is the file defining the handler. The generated handlers all come
-	// from one template and their output is identical once the type name is
-	// substituted, so one object type stands for every generated object. The
-	// hand-written handlers are not copies of anything and each carries its
-	// own row.
-	source string
-
-	// handler is a closure rather than a method value because the secret
-	// definition handler is echo middleware and has a different shape from the
-	// plain handlers.
-	handler func(Handler, echo.Context) error
-
-	route string
-	body  string
-
-	// models are the tables the handler reads or writes. They exist so the
-	// pre-read each create handler runs first reports no row rather than a
-	// missing table, which would answer 500 before the write under test.
-	models []any
-
-	// objectType is registered with the tagged-field map the payload check
-	// reads, which answers 500 when its lookup misses.
+	name       string
+	source     string
+	handler    func(Handler, echo.Context) error
+	route      string
+	body       string
+	models     []any
 	objectType string
 	object     any
 }
@@ -84,8 +66,7 @@ var uniqueViolationCases = []uniqueViolationCase{
 		name:   "secret definition middleware",
 		source: "secret.go",
 		handler: func(h Handler, c echo.Context) error {
-			// the middleware wraps the next handler, which never runs because
-			// the write it guards fails
+			// the middleware never calls next, so it gets a no-op
 			return h.CustomAddSecretDefinition(func(echo.Context) error { return nil })(c)
 		},
 		route:      "/v0/secret-definitions",
@@ -108,11 +89,7 @@ var uniqueViolationCases = []uniqueViolationCase{
 	},
 }
 
-// TestHandlersAnswerUniqueViolationWith409 asserts the layer that sets the
-// status. A write a unique index rejected means the request conflicts with a
-// row that already exists, which the client can act on, so answering 500
-// instead tells a controller the server is at fault and it backs off and
-// retries a request that can never succeed.
+// TestHandlersAnswerUniqueViolationWith409 covers a 409 that omits the index name.
 func TestHandlersAnswerUniqueViolationWith409(t *testing.T) {
 	for _, test := range uniqueViolationCases {
 		t.Run(test.name, func(t *testing.T) {
@@ -125,23 +102,13 @@ func TestHandlersAnswerUniqueViolationWith409(t *testing.T) {
 
 			assert.Equal(t, http.StatusConflict, rec.Code, "handler defined in %s", test.source)
 
-			// the index that rejected the write is logged and not returned:
-			// index names are chosen per object and get renamed, so a client
-			// that read one would be reading something the server never
-			// promised to keep
 			assert.NotContains(t, rec.Body.String(), rejectingConstraint,
 				"the response does not name the index that rejected the write")
 		})
 	}
 }
 
-// newRejectingHandler returns a handler whose every create fails the way
-// CockroachDB fails one a unique index rejected. The driver error is injected
-// rather than provoked because sqlite reports its own error type, and the
-// classifier the handlers call reads the postgres SQLSTATE off a typed pgx
-// error. What that leaves unproven is that CockroachDB really answers that
-// SQLSTATE for a partial unique index, which needs a real server and belongs
-// in test/integration.
+// newRejectingHandler returns a handler whose creates fail with SQLSTATE 23505.
 func newRejectingHandler(t *testing.T, models []any) Handler {
 	t.Helper()
 
@@ -164,11 +131,7 @@ func newRejectingHandler(t *testing.T, models []any) Handler {
 	return Handler{DB: db, Logger: zap.NewNop()}
 }
 
-// registerValidateTags populates the tagged-field map the payload check reads,
-// for one object type. The versions package does this for every object at
-// server start, and this test cannot call it: versions reaches handlers
-// through pkg/api-server/v0 and pkg/api-server/v0/routes, so importing it from
-// an in-package test is an import cycle.
+// registerValidateTags registers obj's validate tags under objectType.
 func registerValidateTags(objectType string, obj any) {
 	taggedFields := map[string]*apiserver_lib.FieldsByTag{
 		string(api_lib.ValidateTag): {
@@ -191,17 +154,11 @@ func registerValidateTags(objectType string, obj any) {
 	}] = taggedFields[string(api_lib.ValidateTag)]
 }
 
-// newUniqueViolationRequest drives a create handler the way the router does:
-// the strict query binder and the validator registered on the echo instance,
-// the route pattern set so the payload check can read the api version, and the
-// context wrapped so a handler's assertion to the custom context succeeds.
+// newUniqueViolationRequest returns a POST context wired like the API server.
 func newUniqueViolationRequest(route, body string) (*apiserver_lib.CustomContext, *httptest.ResponseRecorder) {
 	e := echo.New()
 	e.Binder = apiserver_lib.NewQueryBinder()
 
-	// the create handlers validate the bound object against the custom tags
-	// the api types carry; without a validator echo reports that none is
-	// registered and the validation path panics on the error type
 	validate := validator.New()
 	validate.RegisterValidation("optional", apiserver_lib.IsOptional)
 	validate.RegisterValidation("association", apiserver_lib.IsAssociation)

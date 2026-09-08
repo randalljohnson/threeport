@@ -337,7 +337,8 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingDefinition.Reconciliation) {
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingDefinition.Reconciliation) {
 		notifPayload, err := existingLoggingDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -449,7 +450,8 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingDefinition.Reconciliation) {
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingDefinition.Reconciliation) {
 		notifPayload, err := existingLoggingDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -477,9 +479,6 @@ func (h Handler) ReplaceLoggingDefinition(c echo.Context) error {
 
 // @Summary deletes a logging definition.
 // @Description Delete a logging definition by ID from the database.
-// @Description Blocking: attached object references pointing at this logging definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a logging definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the logging definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-loggingDefinition
 // @Accept json
 // @Produce json
@@ -923,7 +922,8 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingInstance.Reconciliation) {
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingInstance.Reconciliation) {
 		notifPayload, err := existingLoggingInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1035,7 +1035,8 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingInstance.Reconciliation) {
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingLoggingInstance.Reconciliation) {
 		notifPayload, err := existingLoggingInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1063,9 +1064,6 @@ func (h Handler) ReplaceLoggingInstance(c echo.Context) error {
 
 // @Summary deletes a logging instance.
 // @Description Delete a logging instance by ID from the database.
-// @Description Blocking: attached object references pointing at this logging instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a logging instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the logging instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-loggingInstance
 // @Accept json
 // @Produce json
@@ -1496,7 +1494,8 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsDefinition.Reconciliation) {
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsDefinition.Reconciliation) {
 		notifPayload, err := existingMetricsDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1608,7 +1607,8 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsDefinition.Reconciliation) {
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsDefinition.Reconciliation) {
 		notifPayload, err := existingMetricsDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1636,9 +1636,6 @@ func (h Handler) ReplaceMetricsDefinition(c echo.Context) error {
 
 // @Summary deletes a metrics definition.
 // @Description Delete a metrics definition by ID from the database.
-// @Description Blocking: attached object references pointing at this metrics definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a metrics definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the metrics definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-metricsDefinition
 // @Accept json
 // @Produce json
@@ -2082,7 +2079,8 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsInstance.Reconciliation) {
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsInstance.Reconciliation) {
 		notifPayload, err := existingMetricsInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2194,7 +2192,8 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsInstance.Reconciliation) {
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMetricsInstance.Reconciliation) {
 		notifPayload, err := existingMetricsInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2222,9 +2221,6 @@ func (h Handler) ReplaceMetricsInstance(c echo.Context) error {
 
 // @Summary deletes a metrics instance.
 // @Description Delete a metrics instance by ID from the database.
-// @Description Blocking: attached object references pointing at this metrics instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a metrics instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the metrics instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-metricsInstance
 // @Accept json
 // @Produce json
@@ -2655,7 +2651,8 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2767,7 +2764,8 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2795,9 +2793,6 @@ func (h Handler) ReplaceObservabilityDashboardDefinition(c echo.Context) error {
 
 // @Summary deletes a observability dashboard definition.
 // @Description Delete a observability dashboard definition by ID from the database.
-// @Description Blocking: attached object references pointing at this observability dashboard definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a observability dashboard definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability dashboard definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityDashboardDefinition
 // @Accept json
 // @Produce json
@@ -3241,7 +3236,8 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3353,7 +3349,8 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3381,9 +3378,6 @@ func (h Handler) ReplaceObservabilityDashboardInstance(c echo.Context) error {
 
 // @Summary deletes a observability dashboard instance.
 // @Description Delete a observability dashboard instance by ID from the database.
-// @Description Blocking: attached object references pointing at this observability dashboard instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a observability dashboard instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability dashboard instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityDashboardInstance
 // @Accept json
 // @Produce json
@@ -3814,7 +3808,8 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3926,7 +3921,8 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3954,9 +3950,6 @@ func (h Handler) ReplaceObservabilityStackDefinition(c echo.Context) error {
 
 // @Summary deletes a observability stack definition.
 // @Description Delete a observability stack definition by ID from the database.
-// @Description Blocking: attached object references pointing at this observability stack definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a observability stack definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability stack definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityStackDefinition
 // @Accept json
 // @Produce json
@@ -4400,7 +4393,8 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -4512,7 +4506,8 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -4540,9 +4535,6 @@ func (h Handler) ReplaceObservabilityStackInstance(c echo.Context) error {
 
 // @Summary deletes a observability stack instance.
 // @Description Delete a observability stack instance by ID from the database.
-// @Description Blocking: attached object references pointing at this observability stack instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a observability stack instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the observability stack instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-observabilityStackInstance
 // @Accept json
 // @Produce json

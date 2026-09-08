@@ -451,8 +451,7 @@ func TestHasFieldWithTagValue_NoMatch(t *testing.T) {
 	assert.False(t, group.HasFieldWithTagValue("Foo", "persist", "false"), "tag present with wrong value")
 }
 
-// namedFixture builds a generator whose one object declares a name field the
-// way an api type does, carrying whatever gorm tag the caller is testing.
+// namedFixture builds a Generator with one named object carrying gormTag.
 func namedFixture(gormTag string) *Generator {
 	g := fixture(
 		map[string]map[string]map[string]string{
@@ -464,27 +463,12 @@ func namedFixture(gormTag string) *Generator {
 	return g
 }
 
-// TestValidateTags_AcceptsScopedUniqueNameIndex accepts the tag the api types
-// carry, which builds one unique index per table over rows that are not soft
-// deleted.
-// Example:
-//
-//	Name *string `gorm:"not null;uniqueIndex:,where:deleted_at IS NULL"`
-//
-// Expected: no error.
+// TestValidateTags_AcceptsScopedUniqueNameIndex covers the required Name gorm tag.
 func TestValidateTags_AcceptsScopedUniqueNameIndex(t *testing.T) {
 	assert.NoError(t, namedFixture(nameIndexTag).ValidateTags())
 }
 
-// TestValidateTags_RejectsUnscopedNameIndex rejects a unique index carrying no
-// predicate. A soft-deleted row stays in an index without one, so it goes on
-// holding the name until the database hard-deletes it and the client that
-// recreates the object is refused in the meantime.
-// Example:
-//
-//	Name *string `gorm:"not null;uniqueIndex"`
-//
-// Expected: error citing the field and the tag to use instead.
+// TestValidateTags_RejectsUnscopedNameIndex covers a Name index without deleted_at.
 func TestValidateTags_RejectsUnscopedNameIndex(t *testing.T) {
 	err := namedFixture("not null;uniqueIndex").ValidateTags()
 	require.Error(t, err)
@@ -492,56 +476,27 @@ func TestValidateTags_RejectsUnscopedNameIndex(t *testing.T) {
 	assert.Contains(t, err.Error(), "deleted_at IS NULL")
 }
 
-// TestValidateTags_RejectsNameFieldWithNoIndex rejects a name field carrying
-// no index at all. Nothing then stops a second object taking a name already in
-// use, since the handler runs no lookup of its own.
-// Example:
-//
-//	Name *string `gorm:"not null"`
-//
-// Expected: error citing the field.
+// TestValidateTags_RejectsNameFieldWithNoIndex covers a Name field with no index.
 func TestValidateTags_RejectsNameFieldWithNoIndex(t *testing.T) {
 	err := namedFixture("not null").ValidateTags()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Foo.Name")
 }
 
-// TestValidateTags_RejectsNameIndexMissingTheColon rejects the near miss this
-// check exists for. Dropping the colon after uniqueIndex leaves a key gorm
-// never reads, so no index is built, no error is raised, and the field reads
-// as guarded while nothing guards it.
-// Example:
-//
-//	Name *string `gorm:"not null;uniqueIndex,where:deleted_at IS NULL"`
-//
-// Expected: error citing the field.
+// TestValidateTags_RejectsNameIndexMissingTheColon covers uniqueIndex without a colon.
 func TestValidateTags_RejectsNameIndexMissingTheColon(t *testing.T) {
 	err := namedFixture("not null;uniqueIndex,where:deleted_at IS NULL").ValidateTags()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Foo.Name")
 }
 
-// TestValidateTags_AcceptsCompositeScopedNameIndex accepts a name that is
-// unique only in combination with another column, since the pair is still
-// guarded by a unique index over rows that are not soft deleted.
-// Example:
-//
-//	Name *string `gorm:"not null;uniqueIndex:idx_identity,where:deleted_at IS NULL"`
-//
-// Expected: no error.
+// TestValidateTags_AcceptsCompositeScopedNameIndex covers a named unique index.
 func TestValidateTags_AcceptsCompositeScopedNameIndex(t *testing.T) {
 	tagValue := "not null;uniqueIndex:idx_identity,where:deleted_at IS NULL"
 	assert.NoError(t, namedFixture(tagValue).ValidateTags())
 }
 
-// TestValidateTags_SkipsExemptObject confirms an object on the exemption list
-// is not asked for an index. Its name is unique within a scope the database
-// cannot express as one index over the name alone, and something else enforces
-// it.
-// Example: an object whose name is unique per owning parent, tagged only
-// `gorm:"not null"`.
-//
-// Expected: no error.
+// TestValidateTags_SkipsExemptObject covers ModuleObject, which has no name index.
 func TestValidateTags_SkipsExemptObject(t *testing.T) {
 	g := fixture(
 		map[string]map[string]map[string]string{
@@ -553,17 +508,7 @@ func TestValidateTags_SkipsExemptObject(t *testing.T) {
 	assert.NoError(t, g.ValidateTags())
 }
 
-// TestValidateTags_ResolvesNameThroughAnEmbed covers the shape a definition or
-// instance object takes: the object inherits the name field from a base type
-// rather than declaring it. The check has to follow the embed or it reads
-// every one of those objects as unguarded.
-// Example:
-//
-//	type Definition struct { Name *string `gorm:"..."` }
-//	type Foo struct { Definition }
-//
-// Expected: error citing the field, since the tag on the base type builds no
-// scoped index.
+// TestValidateTags_ResolvesNameThroughAnEmbed covers Name inherited from an embed.
 func TestValidateTags_ResolvesNameThroughAnEmbed(t *testing.T) {
 	g := fixture(
 		map[string]map[string]map[string]string{
@@ -582,13 +527,7 @@ func TestValidateTags_ResolvesNameThroughAnEmbed(t *testing.T) {
 	assert.Contains(t, err.Error(), "Foo.Name")
 }
 
-// TestValidateTags_SkipsUnresolvableNameField confirms a module's objects pass
-// through. A module reaches the base types by import, and this run never reads
-// their source, so there is no tag here to check and the object is left alone
-// rather than reported.
-// Example: an object embedding a base type declared in another repository.
-//
-// Expected: no error.
+// TestValidateTags_SkipsUnresolvableNameField covers a Name field outside the parsed tree.
 func TestValidateTags_SkipsUnresolvableNameField(t *testing.T) {
 	g := fixture(
 		map[string]map[string]map[string]string{

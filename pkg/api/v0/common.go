@@ -54,17 +54,9 @@ type Reconciliation struct {
 	InterruptReconciliation *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 }
 
-// ReconciliationStateChanged reports whether two snapshots of an object's
-// reconciliation state differ. InterruptReconciliation is not compared; it
-// gates whether a controller acts, not how far it has gotten.
-//
-// Timestamps compare by instant rather than by struct equality, which
-// reads one moment as two once a database round trip drops the monotonic
-// clock reading or changes the location pointer. That difference
-// publishes an update, wakes the reconciler, which re-stamps an
-// acknowledgement and publishes again. The two acknowledgements compare
-// on set versus unset alone, since a reconciler re-stamps them on every
-// pass and only the first stamp changes what a controller does next.
+// ReconciliationStateChanged reports whether progress markers differ.
+// Acknowledgement timestamps count as set or unset only. InterruptReconciliation
+// is ignored; it is a gate, not progress.
 func ReconciliationStateChanged(a, b Reconciliation) bool {
 	return !boolPtrEqual(a.Reconciled, b.Reconciled) ||
 		!timePtrSet(a.CreationAcknowledged, b.CreationAcknowledged) ||
@@ -75,15 +67,9 @@ func ReconciliationStateChanged(a, b Reconciliation) bool {
 		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed)
 }
 
-// ReconciliationUpdateNotifiable reports whether an update to an unreconciled
-// object should wake its controller. The gate is asymmetric on purpose.
-//
-// A write that changed no reconciliation state still notifies. That is what a
-// spec edit looks like, including an operator's retry after a failed reconcile,
-// and staying quiet strands the object, since nothing else flips a marker for
-// it. The one quiet case is a reconciler pass that moved an acknowledgement
-// timestamp and nothing else, where publishing wakes the reconciler, which
-// stamps again, which publishes again.
+// ReconciliationUpdateNotifiable reports whether an update should notify the
+// controller. Spec edits notify even when markers are unchanged. A restamped
+// acknowledgement does not.
 func ReconciliationUpdateNotifiable(a, b Reconciliation) bool {
 	if ReconciliationStateChanged(a, b) {
 		return true
@@ -91,18 +77,18 @@ func ReconciliationUpdateNotifiable(a, b Reconciliation) bool {
 	return !acknowledgementRefreshed(a, b)
 }
 
-// acknowledgementRefreshed reports whether a set acknowledgement moved.
+// acknowledgementRefreshed reports a restamped creation or deletion acknowledgement.
 func acknowledgementRefreshed(a, b Reconciliation) bool {
 	return timePtrRefreshed(a.CreationAcknowledged, b.CreationAcknowledged) ||
 		timePtrRefreshed(a.DeletionAcknowledged, b.DeletionAcknowledged)
 }
 
-// timePtrRefreshed reports whether two set pointers name different instants.
+// timePtrRefreshed reports two set pointers holding different instants.
 func timePtrRefreshed(a, b *time.Time) bool {
 	return a != nil && b != nil && !a.Equal(*b)
 }
 
-// boolPtrEqual compares two bool pointers by value, with two nils equal.
+// boolPtrEqual reports whether a and b are both unset or hold the same value.
 func boolPtrEqual(a, b *bool) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -110,7 +96,8 @@ func boolPtrEqual(a, b *bool) bool {
 	return *a == *b
 }
 
-// timePtrEqual compares two time pointers by instant, with two nils equal.
+// timePtrEqual compares instants. == on time.Time also compares location and
+// the monotonic reading, which a database round trip drops.
 func timePtrEqual(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -118,7 +105,7 @@ func timePtrEqual(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
-// timePtrSet compares two time pointers on set versus unset.
+// timePtrSet reports whether a and b are both set or both unset.
 func timePtrSet(a, b *time.Time) bool {
 	return (a == nil) == (b == nil)
 }

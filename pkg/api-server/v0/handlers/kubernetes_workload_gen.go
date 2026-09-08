@@ -337,7 +337,8 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
+	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -449,7 +450,8 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
+	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -477,9 +479,6 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a kubernetes workload definition.
 // @Description Delete a kubernetes workload definition by ID from the database.
-// @Description Blocking: attached object references pointing at this kubernetes workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a kubernetes workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload definition reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -923,7 +922,8 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
+	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1035,7 +1035,8 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
+	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1063,9 +1064,6 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a kubernetes workload instance.
 // @Description Delete a kubernetes workload instance by ID from the database.
-// @Description Blocking: attached object references pointing at this kubernetes workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a kubernetes workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the kubernetes workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-kubernetesWorkloadInstance
 // @Accept json
 // @Produce json
@@ -1586,9 +1584,6 @@ func (h Handler) ReplaceKubernetesWorkloadResourceDefinition(c echo.Context) err
 
 // @Summary deletes a kubernetes workload resource definition.
 // @Description Delete a kubernetes workload resource definition by ID from the database.
-// @Description Blocking: attached object references pointing at this kubernetes workload resource definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a kubernetes workload resource definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Non-reconciled type: this endpoint returns after the kubernetes workload resource definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-kubernetesWorkloadResourceDefinition
 // @Accept json
 // @Produce json
@@ -2056,9 +2051,6 @@ func (h Handler) ReplaceKubernetesWorkloadResourceInstance(c echo.Context) error
 
 // @Summary deletes a kubernetes workload resource instance.
 // @Description Delete a kubernetes workload resource instance by ID from the database.
-// @Description Blocking: attached object references pointing at this kubernetes workload resource instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a kubernetes workload resource instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Non-reconciled type: this endpoint returns after the kubernetes workload resource instance row and any cascading children have been removed synchronously.
 // @ID delete-v0-kubernetesWorkloadResourceInstance
 // @Accept json
 // @Produce json

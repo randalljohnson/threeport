@@ -19,16 +19,7 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// Cockroach runs the tests that need a real CockroachDB, which it starts in a
-// container itself.
-//
-// The unit tests run on sqlite and the api tests run gorm in dry-run mode, so
-// anything decided by how CockroachDB answers is out of reach of both: dry run
-// builds a statement without reading a result back, and sqlite rejects the
-// grammar. The prerequisite here is a container rather than a control plane,
-// which is why this sits outside both test:unit and test:integration.
-//
-// The suite skips itself when docker is missing.
+// Cockroach runs test/cockroach against a docker CockroachDB.
 func (Test) Cockroach() error {
 	cmd := "go"
 	args := []string{

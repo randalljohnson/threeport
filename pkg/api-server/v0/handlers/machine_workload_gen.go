@@ -427,9 +427,6 @@ func (h Handler) ReplaceMachineWorkloadDefinition(c echo.Context) error {
 
 // @Summary deletes a machine workload definition.
 // @Description Delete a machine workload definition by ID from the database.
-// @Description Blocking: attached object references pointing at this machine workload definition with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a machine workload definition also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Non-reconciled type: this endpoint returns after the machine workload definition row and any cascading children have been removed synchronously.
 // @ID delete-v0-machineWorkloadDefinition
 // @Accept json
 // @Produce json
@@ -820,7 +817,8 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
+	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -932,7 +930,8 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled && api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
+	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled &&
+		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -960,9 +959,6 @@ func (h Handler) ReplaceMachineWorkloadInstance(c echo.Context) error {
 
 // @Summary deletes a machine workload instance.
 // @Description Delete a machine workload instance by ID from the database.
-// @Description Blocking: attached object references pointing at this machine workload instance with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.
-// @Description Cascade: deleting a machine workload instance also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.
-// @Description Reconciled type: this endpoint returns after the deletion marker is written; the machine workload instance reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.
 // @ID delete-v0-machineWorkloadInstance
 // @Accept json
 // @Produce json

@@ -56,18 +56,12 @@ type Generator struct {
 	// Reconciliation). These types live in non-domain source files
 	// (common.go, class.go) so they don't appear in any ApiObjectGroup's
 	// StructTags, but their fields participate in binding via the
-	// QueryBinder's anonymous-embed recursion. ValidateTags reads from here to
-	// reach the tags on a field an api object only inherits.
+	// QueryBinder's anonymous-embed recursion. ValidateTags reads these
+	// tags to resolve the gorm tag on an inherited Name field.
 	// Shape: typeName -> fieldName -> tagKey -> tagValue.
 	EmbedTypes map[string]map[string]map[string]string
 
-	// RelationshipDependencies maps each API type to the API types its table's
-	// foreign-key columns reference, so the migration sort can order referenced
-	// tables ahead of referencing tables. Built by scanning every model source
-	// file, so it captures types whose associations do not land in any
-	// ApiObjectGroup's StructTags (route-excluded types and types split into
-	// auxiliary source files).
-	// Shape: referencingType -> []referencedType.
+	// Foreign keys each type's table holds, keyed by the type holding the key.
 	RelationshipDependencies map[string][]string
 }
 
@@ -455,10 +449,8 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 		}
 	}
 
-	//////////////// populate Generator.RelationshipDependencies ////////////////
-	// scan every model source file per version so the foreign-key dependency
-	// graph captures route-excluded types and types split into auxiliary
-	// files, which never reach any ApiObjectGroup's StructTags
+	/////////////// populate Generator.RelationshipDependencies ////////////////
+	// parse foreign keys from each API version's model source
 	g.RelationshipDependencies = map[string][]string{}
 	for version := range versionObjMap {
 		versionDeps, err := parseRelationshipDependencies(filepath.Join("pkg", "api", version))
@@ -1008,9 +1000,6 @@ func (a *ApiObjectGroup) CheckStructTagMap(
 
 // HasFieldWithTagValue reports whether any field on the named object
 // carries a struct tag with the given key set to the expected value.
-// Unlike CheckStructTagMap, which targets a single named field, this
-// search is field-agnostic — useful when codegen behavior is driven by
-// the presence of a tag anywhere on the object (e.g. persist:"false").
 func (a *ApiObjectGroup) HasFieldWithTagValue(
 	object,
 	tagKey,
@@ -1164,10 +1153,7 @@ func (g *Generator) ValidateTags() error {
 		}
 	}
 
-	// every object a client addresses by name is guarded by a unique index
-	// scoped to rows that are not soft deleted. The tag that builds one fails
-	// silently when it is written wrong, so read the index back out of gorm's
-	// own parser rather than matching the tag as text
+	// require a unique name index on undeleted rows
 	for _, group := range g.ApiObjectGroups {
 		for _, object := range group.ApiObjects {
 			if !object.NameField {
@@ -1194,45 +1180,28 @@ func (g *Generator) ValidateTags() error {
 		)
 	}
 
-	// a circular foreign-key graph has no table order gorm AutoMigrate can
-	// create, and the migration sort cannot report that itself, so catch it
-	// here while the author is still looking at the model
 	return g.ValidateRelationshipCycles()
 }
 
-// nameFieldName is the field an object a client addresses by name carries the
-// name on.
 const nameFieldName = "Name"
 
-// nameIndexTag is the gorm tag that field carries. Both the colon and the
-// comma after uniqueIndex are required and nothing goes between them: an index
-// named here takes that literal name on every table carrying the tag, and a
-// database scoping index names above the table rejects the second one, while
-// dropping the colon leaves a key gorm never reads, so no index is built and
-// nothing says so.
+// nameIndexTag is the gorm tag a Name field must carry: unique among undeleted rows.
 const nameIndexTag = "not null;uniqueIndex:,where:deleted_at IS NULL"
 
-// indexClassUnique is what gorm's schema parser calls a unique index.
 const indexClassUnique = "UNIQUE"
 
-// nameIndexExemptions are the api objects whose name is deliberately not
-// unique on its own, each with the reason it is not. The list lives here
-// rather than in the sdk configuration so that granting an exemption is a
-// change to the generator, reviewed alongside the rule it opts out of, rather
-// than a line a model author adds to a configuration file.
+// nameIndexExemptions lists objects whose name uniqueness is not a table index.
 var nameIndexExemptions = map[string]string{
 	"ModuleObject": "unique within one module api rather than globally, enforced by a create hook",
 }
 
-// resolveNameTag returns the gorm tag on the name field an api object writes
-// through, following anonymous embeds, and reports whether the field resolved
-// at all. It resolves nothing when the object reaches the field through an
-// imported base type, whose source this run never reads.
+// resolveNameTag returns the gorm tag on Name, including from an anonymous embed.
 func (g *Generator) resolveNameTag(group ApiObjectGroup, objectName string) (string, bool) {
 	if tagMap, ok := group.StructTags[objectName][nameFieldName]; ok {
 		return tagMap[string(lib.GormTag)], true
 	}
 
+	// Name often lives on Definition or Instance
 	for _, embed := range group.StructEmbeds[objectName] {
 		if tagMap, ok := g.EmbedTypes[embed][nameFieldName]; ok {
 			return tagMap[string(lib.GormTag)], true
@@ -1242,16 +1211,9 @@ func (g *Generator) resolveNameTag(group ApiObjectGroup, objectName string) (str
 	return "", false
 }
 
-// validateNameIndex reports a problem when a gorm tag builds no unique index
-// scoped to rows that are not soft deleted. Without the scope the index goes
-// on holding a name after the object carrying it is deleted, so a client that
-// deletes an object and creates it again under the same name is refused until
-// the database hard-deletes the row.
-//
-// The tag is parsed by gorm rather than matched as text, so this cannot drift
-// from the behavior it guards: a tag gorm silently ignores yields no index
-// here either, and is reported instead of shipping.
+// validateNameIndex reports a Name gorm tag that does not unique-index undeleted rows.
 func validateNameIndex(objectName, gormTag string) []string {
+	// ask gorm what the tag builds; a string match would accept tags gorm ignores
 	nameOnly := reflect.StructOf([]reflect.StructField{{
 		Name: nameFieldName,
 		Type: reflect.TypeOf((*string)(nil)),
@@ -1272,6 +1234,7 @@ func validateNameIndex(objectName, gormTag string) []string {
 		}
 	}
 
+	// unique among undeleted rows; anything else lets a soft-deleted name block reuse
 	return []string{fmt.Sprintf(
 		"%s.%s: %s:%q builds no unique index scoped to undeleted rows; use %s:%q",
 		objectName, nameFieldName, lib.GormTag, gormTag, lib.GormTag, nameIndexTag,

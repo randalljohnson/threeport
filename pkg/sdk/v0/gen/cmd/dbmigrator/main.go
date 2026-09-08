@@ -14,10 +14,7 @@ import (
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
 )
 
-// migrationTestPackage is the import path of the hand-written package that
-// holds the schema assertion the generated test calls.  It lives in this
-// project, so a module's generated test imports it from here rather than from
-// the module's own path.
+// migrationTestPackage is imported by both generated schema-drift tests.
 const migrationTestPackage = "github.com/threeport/threeport/pkg/migrationtest/v0"
 
 // GenDbMigratorMain generates source code for the DB migrator main package.
@@ -333,14 +330,8 @@ examples:
 	return nil
 }
 
-// GenDbMigratorSchemaDriftTest generates a test that checks the schema built by
-// the migrations against the columns the persisted models declare.
-//
-// Where the test lands depends on what its migration chain needs. A chain
-// carrying statements only the deployed engine understands has to run against a
-// real server, so this project's own test joins the suite that starts one. A
-// module's chain is plain schema, so its test keeps the in-memory database and
-// stays in the fast pass beside the migrator it covers.
+// GenDbMigratorSchemaDriftTest generates the test that migrations cover every model.
+// Modules use sqlite; the core uses a live CockroachDB because of row-level TTL.
 func GenDbMigratorSchemaDriftTest(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	gooseVersionTableName := "threeport_goose_db_version"
 	if gen.Module {
@@ -354,7 +345,7 @@ func GenDbMigratorSchemaDriftTest(gen *gen.Generator, sdkConfig *sdk.SdkConfig) 
 	return genSchemaDriftTestOnServer(gen, sdkConfig, gooseVersionTableName)
 }
 
-// genSchemaDriftTestInMemory writes the drift test that runs on an in-memory database.
+// genSchemaDriftTestInMemory generates the sqlite drift test next to the migrator.
 func genSchemaDriftTestInMemory(
 	gen *gen.Generator,
 	sdkConfig *sdk.SdkConfig,
@@ -365,6 +356,7 @@ func genSchemaDriftTestInMemory(
 
 	f.ImportAlias(migrationTestPackage, "migrationtest")
 
+	// emit persistedModels, then the sqlite coverage test
 	f.Comment("persistedModels returns one instance of every model the API persists.")
 	f.Func().Id("persistedModels").Params().Params(Index().Interface()).Block(
 		Return().Index().Interface().BlockFunc(func(g *Group) {
@@ -408,12 +400,7 @@ func genSchemaDriftTestInMemory(
 	return nil
 }
 
-// genSchemaDriftTestOnServer writes the drift test that runs on a real database.
-//
-// The test joins a suite that already starts a server and takes its own empty
-// database from it, so the schema it reads is the one the migrations built. It
-// imports the migration package for the registration each migration performs as
-// it loads, putting the chain in front of the migration tool.
+// genSchemaDriftTestOnServer generates the CockroachDB drift test in test/cockroach.
 func genSchemaDriftTestOnServer(
 	gen *gen.Generator,
 	sdkConfig *sdk.SdkConfig,
@@ -423,6 +410,7 @@ func genSchemaDriftTestOnServer(
 	f.HeaderComment(sdk.HeaderCommentGenNoEdit)
 
 	f.ImportAlias(migrationTestPackage, "migrationtest")
+	// blank-import migrations so goose's registry is populated
 	f.Anon(fmt.Sprintf("%s/cmd/database-migrator/migrations", gen.ModulePath))
 
 	f.Comment("persistedModels returns one instance of every model the API persists.")

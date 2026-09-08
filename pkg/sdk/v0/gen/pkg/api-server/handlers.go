@@ -135,14 +135,9 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						).Op(",").Op("*").Id("notifPayload")),
 					))
 
-					// update notifications: publish unless the write was a reconciler
-					// refreshing an acknowledgement timestamp and nothing else, which is
-					// the loop this gate exists to break. An edit to the object's spec
-					// leaves reconciliation state untouched and still has to publish, or
-					// a retry after a failed reconcile never reaches the controller
 					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and the update is notifiable")
 					notifyControllersUpdateHandler.Line()
-					notifyControllersUpdateHandler.If(Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("!=").Nil().Op("&&").Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("&&").Qual(
+					notifyControllersUpdateHandler.If(Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("!=").Nil().Op("&&").Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("&&").Line().Qual(
 						"github.com/threeport/threeport/pkg/api/v0",
 						"ReconciliationUpdateNotifiable",
 					).Call(
@@ -1960,40 +1955,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					"@Description Delete a %s by ID from the database.",
 					strcase.ToDelimited(apiObject.TypeName, ' '),
 				))
-				// blocking semantics: an incoming reference tagged
-				// relationship:requires always blocks the delete;
-				// relationship:owns and relationship:marries block it as well
-				// unless the caller is a control plane component;
-				// relationship:describes never blocks. A blocked delete returns
-				// 409 with the blockers listed in the response body.
-				f.Comment(fmt.Sprintf(
-					"@Description Blocking: attached object references pointing at this %s with relationship:requires always block the delete and return 409 listing them. References with relationship:owns or relationship:marries block the same way unless the caller is a control plane component. References with relationship:describes never block.",
-					strcase.ToDelimited(apiObject.TypeName, ' '),
-				))
-				// cascade semantics: the delete removes the attached object
-				// reference rows this object holds as the attacher, since they
-				// orphan once the row is gone. The objects those rows point at
-				// are left alone.
-				f.Comment(fmt.Sprintf(
-					"@Description Cascade: deleting a %s also removes the attached object reference rows it holds as the attacher, in the same transaction. The objects those references point at are not deleted.",
-					strcase.ToDelimited(apiObject.TypeName, ' '),
-				))
-				// reconciled vs non-reconciled semantics: reconciled types
-				// return after the deletion marker is written and the
-				// reconciler drives child cleanup asynchronously;
-				// non-reconciled types return only after the row and any
-				// cascading children are removed synchronously.
-				if apiObject.Reconciler {
-					f.Comment(fmt.Sprintf(
-						"@Description Reconciled type: this endpoint returns after the deletion marker is written; the %s reconciler performs cascade cleanup asynchronously and finalizes the row when children are removed.",
-						strcase.ToDelimited(apiObject.TypeName, ' '),
-					))
-				} else {
-					f.Comment(fmt.Sprintf(
-						"@Description Non-reconciled type: this endpoint returns after the %s row and any cascading children have been removed synchronously.",
-						strcase.ToDelimited(apiObject.TypeName, ' '),
-					))
-				}
 				f.Comment(fmt.Sprintf(
 					"@ID delete-%s-%s", objCollection.Version, strcase.ToLowerCamel(apiObject.TypeName),
 				))
@@ -2344,15 +2305,7 @@ func emitPreCheckBlockingRefs(s *Statement, objVar string, module bool) {
 	s.Line()
 }
 
-// wrapSerializationRetry wraps a database write expression in Handler.Write so
-// the generated handler re-runs it when CockroachDB aborts the transaction with
-// a serialization conflict. The wrapped call returns the *gorm.DB of the final
-// attempt, so the caller keeps inspecting result.Error as before.
-//
-// The write chain starts from the db handed to the closure rather than naming
-// the request-scoped handle itself, and Handler.Write takes the request context
-// from c. Neither can be left out of a write site that way, where before a
-// retry that ignored client cancellation was one forgotten argument away.
+// wrapSerializationRetry wraps writeChain in Handler.Write so 40001 is retried.
 func wrapSerializationRetry(module bool, writeChain *Statement) *Statement {
 	handler := Id("h")
 	if module {

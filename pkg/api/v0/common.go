@@ -22,8 +22,7 @@ type Reconciliation struct {
 	Reconciled *bool `validate:"optional" gorm:"default:false"`
 
 	// Used by controllers to acknowledge creation and indicate that creation
-	// reconciliation has begun so that subsequent reconciliation attempts can
-	// act accordingly.
+	// reconciliation has begun. Change detection compares only nil versus set.
 	CreationAcknowledged *time.Time `validate:"optional"`
 
 	// Used by controllers to confirm creation of an object.
@@ -37,15 +36,14 @@ type Reconciliation struct {
 	DeletionScheduled *time.Time `validate:"optional"`
 
 	// Used by controllers to acknowledge deletion and indicate that deletion
-	// reconciliation has begun so that subsequent reconciliation attempts can
-	// act accordingly.
+	// reconciliation has begun. Change detection compares only nil versus set.
 	DeletionAcknowledged *time.Time `validate:"optional"`
 
 	// Used by controllers to confirm deletion of an object.
 	DeletionConfirmed *time.Time `validate:"optional"`
 
 	// Gets set to true if deletion process fails.
-	DeletionFailed *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
+	DeletionFailed *bool `validate:"optional" gorm:"default:false"`
 
 	// InterruptReconciliation is used by the controller to indicated that future
 	// reconcilation should be interrupted.  Useful in cases where there is a
@@ -106,6 +104,7 @@ func timePtrEqual(a, b *time.Time) bool {
 }
 
 // timePtrSet reports whether a and b are both set or both unset.
+// A liveness re-stamp is not a state change.
 func timePtrSet(a, b *time.Time) bool {
 	return (a == nil) == (b == nil)
 }

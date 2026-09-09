@@ -45,12 +45,11 @@ type LifecycleConfig struct {
 	PersistRetryDelay time.Duration
 }
 
-// defaultSemaphoreCapacity is the fallback concurrency cap applied when
-// PULUMI_CONCURRENCY is unset, unparseable, or out of range.
+// defaultSemaphoreCapacity is the process-wide worker pool size when
+// PULUMI_CONCURRENCY is unset or not an integer.
 const defaultSemaphoreCapacity = 20
 
-// maxSemaphoreCapacity is the upper bound enforced on PULUMI_CONCURRENCY;
-// values above this are clamped down with a warning log.
+// maxSemaphoreCapacity is the upper bound applied to PULUMI_CONCURRENCY.
 const maxSemaphoreCapacity = 100
 
 // defaultLifecycleConfig is the production configuration.
@@ -73,25 +72,19 @@ var lifecycleMu sync.RWMutex
 // state machine.
 var lifecycleConfig = defaultLifecycleConfig
 
-// infraSemaphore caps the total number of concurrent infrastructure
-// operations across every stack, guarding overall memory use when many
-// distinct stacks reconcile at once. The capacity is initialized in init
-// from lifecycleConfig.SemaphoreCapacity so PULUMI_CONCURRENCY overrides
-// apply before any operation runs.
+// infraSemaphore is the process-wide worker pool for infrastructure
+// operations across every stack.
 var infraSemaphore chan struct{}
 
-// init reads the PULUMI_CONCURRENCY override, applies it to
-// lifecycleConfig, and sizes infraSemaphore to match.
+// init sizes the worker pool from PULUMI_CONCURRENCY.
 func init() {
-	// PULUMI_CONCURRENCY caps how many concurrent pulumi stack operations may run per controller instance.
+	// set worker pool size from PULUMI_CONCURRENCY
 	lifecycleConfig.SemaphoreCapacity = resolveSemaphoreCapacity()
 	infraSemaphore = make(chan struct{}, lifecycleConfig.SemaphoreCapacity)
 }
 
-// resolveSemaphoreCapacity reads PULUMI_CONCURRENCY and returns a valid
-// concurrency cap. An unset or unparseable value falls back to the
-// default; a value below 1 is raised to 1 with a warning; a value above
-// maxSemaphoreCapacity is clamped down with a warning.
+// resolveSemaphoreCapacity returns the worker pool size from PULUMI_CONCURRENCY.
+// Unset or unparseable values use the default; values are clamped to [1, 100].
 func resolveSemaphoreCapacity() int {
 	raw := os.Getenv("PULUMI_CONCURRENCY")
 	if raw == "" {
@@ -113,34 +106,23 @@ func resolveSemaphoreCapacity() int {
 	return parsed
 }
 
-// stackLocksMu guards stackLocks and its reference counts. The map is
-// small, only holds entries for keys currently being operated on, and is
-// pruned when a key's reference count drops to zero so a long-running
-// controller does not accumulate stale entries.
+// stackLocksMu guards the map of in-flight stack locks.
 var stackLocksMu sync.Mutex
 
-// stackLocks holds one entry per stack key that has at least one active
-// or waiting operation. Serializing acquisition on a per-key mutex
-// prevents two operations on the same stack from launching concurrent
-// deploys, which would race on the local pulumi state file and on the
-// cloud backend's own stack lock.
+// stackLocks records the exclusive lock held for each in-flight stack key.
+// Two operations on one key would race on the local state file and on
+// Pulumi's stack lock.
 var stackLocks = make(map[string]*stackLock)
 
-// stackLock is the per-stack serialization primitive plus a reference
-// count so the entry can be removed from stackLocks once the last waiter
-// releases it.
+// stackLock is the in-process exclusive lock for one infrastructure stack.
+// A second acquire for the same key fails immediately rather than blocking.
 type stackLock struct {
 	mu       sync.Mutex
 	refCount int
 }
 
-// tryAcquireStackLock atomically checks whether any operation is
-// currently in flight for the given stack; if none, creates the entry
-// and holds the lock in a single critical section so callers never
-// block. Returns (nil, false) when another operation already owns the
-// stack; the caller should treat that the same as a full-pool
-// rejection and requeue. Every successful acquire must be paired with
-// releaseStackLock so the entry is pruned.
+// tryAcquireStackLock takes the exclusive in-process lock for key.
+// It returns false without waiting when the key is already held.
 func tryAcquireStackLock(key string) (*stackLock, bool) {
 	stackLocksMu.Lock()
 	defer stackLocksMu.Unlock()
@@ -153,9 +135,8 @@ func tryAcquireStackLock(key string) (*stackLock, bool) {
 	return sl, true
 }
 
-// releaseStackLock releases the per-key mutex and removes the entry
-// from stackLocks so a long-running controller does not accumulate
-// dead entries for stacks it once operated on.
+// releaseStackLock drops the exclusive lock for key and forgets it
+// when no references remain.
 func releaseStackLock(key string, sl *stackLock) {
 	sl.mu.Unlock()
 
@@ -287,11 +268,8 @@ type ReconciliationSnapshot struct {
 // provider implements this interface; the lifecycle handler does everything
 // else (ack/confirm checks, stale detection, goroutine wiring).
 type InfraLifecycleProvider interface {
-	// StackKey returns a stable identifier for the backing infrastructure
-	// stack. The lifecycle handler serializes create and delete operations
-	// per key so two reconciles for the same stack cannot run concurrent
-	// deploys and race on shared state (pulumi state file, cloud API rate
-	// limits, or state-lock contention).
+	// StackKey returns a stable identity used to serialize operations
+	// on one stack.
 	StackKey() string
 
 	// GetReconciliation fetches the latest reconciliation state and resource
@@ -380,12 +358,7 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		}
 
 		if complete {
-			// re-fetch immediately before the post-creation work so a
-			// confirmation that landed since the first fetch (a concurrent
-			// reconcile or another replica) short-circuits here. The
-			// post-creation work is not idempotent: it mints a fresh
-			// connection token and flips the runtime instance back to
-			// unreconciled, so it must run at most once per confirmation.
+			// re-check confirmation so a confirmed create does not write another connection token
 			confirmSnap, err := p.GetReconciliation()
 			if err != nil {
 				return 0, fmt.Errorf("failed to re-check reconciliation before confirmation: %w", err)
@@ -400,9 +373,7 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 				return 0, fmt.Errorf("failed to build infra for create confirmation: %w", err)
 			}
 
-			// perform provider-specific post-creation work, then confirm
-			// creation as the very next call so the crash window between the
-			// two is as narrow as possible
+			// run post-creation work immediately before confirmation
 			if err := p.OnCreateConfirmed(infra); err != nil {
 				return 0, fmt.Errorf("failed to run post-creation work: %w", err)
 			}
@@ -422,16 +393,7 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		}
 	}
 
-	// one of the following is true:
-	// 1. creation has not been acknowledged — new create request
-	// 2. creation has previously failed — time to retry
-	// 3. the last acknowledgement is stale — creation was interrupted
-
-	// check if deletion was scheduled before acknowledging creation. The
-	// acknowledgement must come after this check: a fresh acknowledgement
-	// written ahead of a scheduled delete would trip the delete handler's
-	// cross-replica guard and stall the delete for the full stale-ack
-	// window.
+	// check deletion status before ack; a fresh ack would stall the delete
 	snap, err = p.GetReconciliation()
 	if err != nil {
 		return 0, fmt.Errorf("failed to check deletion status before create: %w", err)
@@ -476,6 +438,11 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 			// short-circuit if a concurrent path already confirmed
 			if latestSnap.CreationConfirmed != nil {
 				return nil
+			}
+
+			// publish create notification
+			if err := p.PublishCreateNotification(); err != nil {
+				return fmt.Errorf("failed to publish create notification: %w", err)
 			}
 
 			// confirmation runs inline here so Reconciled flips as soon
@@ -548,9 +515,7 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		return 60, nil
 	}
 
-	// check if previously acknowledged and not failed; a failed destroy
-	// falls through to re-acknowledge and re-launch immediately rather than
-	// waiting for the acknowledgement to go stale
+	// check if acknowledged and not failed; a failed destroy re-launches now
 	if snap.DeletionAcknowledged != nil && !snap.DeletionFailed {
 		// re-fetch to check if inventory has been cleared
 		latestSnap, err := p.GetReconciliation()
@@ -594,11 +559,6 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		}
 	}
 
-	// one of the following is true:
-	// 1. deletion has not been acknowledged: new delete request
-	// 2. deletion has previously failed: time to retry
-	// 3. the last acknowledgement is stale: deletion was interrupted
-
 	// acknowledge deletion
 	if err := p.AckDeletion(); err != nil {
 		return 0, fmt.Errorf("failed to acknowledge deletion: %w", err)
@@ -627,9 +587,7 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 				log.Error(err, "failed to clear resource inventory after deletion")
 			}
 
-			// publish notification; return the error so the caller triggers
-			// persistFailure and requeues, otherwise downstream subscribers
-			// never fire and the teardown chain stalls until an unrelated event
+			// publish delete notification
 			if err := p.PublishDeleteNotification(); err != nil {
 				return fmt.Errorf("failed to publish delete notification: %w", err)
 			}
@@ -657,9 +615,8 @@ type infraCallbacks struct {
 	// SaveState persists intermediate state to the API for crash recovery.
 	SaveState func(state *datatypes.JSON) error
 
-	// PersistFailure marks the operation as failed in the API so the
-	// reconciler knows to retry promptly. Create operations set
-	// CreationFailed; delete operations set DeletionFailed.
+	// PersistFailure marks the operation failed in the API so the next
+	// reconcile retries.
 	PersistFailure func() error
 
 	// OnSuccess is called after successful infrastructure create or delete.
@@ -670,8 +627,8 @@ type infraCallbacks struct {
 // infraConfig contains all parameters needed to launch an infrastructure
 // create or delete operation in a background goroutine.
 type infraConfig struct {
-	// StackKey identifies the backing stack for per-key serialization.
-	// Two operations sharing a key cannot launch concurrent deploys.
+	// StackKey is the identity used to serialize operations on one stack.
+	// Two operations sharing a key cannot run at once in this process.
 	StackKey string
 
 	// Infra is the provider's infrastructure object that implements InfraProvider.
@@ -695,28 +652,17 @@ func checkStaleAck(ackTimestamp time.Time) bool {
 	return duration > currentConfig().StaleAckThreshold
 }
 
-// launchInfraCreate tries the per-stack lock non-blockingly, then the
-// global cap, and only launches when both succeed. A second call for
-// the same stack while its deploy is still running is rejected the same
-// as a full pool and requeued at 30, so the reconciler never blocks and
-// two reconciles cannot race concurrent deploys on the same stack.
-// Returns a requeue delay for the reconciler.
+// launchInfraCreate acquires a per-stack lock and a worker-pool slot, then
+// starts the create in the background. Contention requeues in 30 seconds.
 func launchInfraCreate(config infraConfig) (int64, error) {
-	// reject non-blockingly if the stack already has an operation in
-	// flight; the running goroutine will release the lock when it
-	// finishes and the next reconcile pass can pick it up. The log is
-	// at debug level so a poll-heavy reconciler does not spam it once
-	// per rejected reconcile
+	// acquire the per-stack lock without waiting
 	sl, ok := tryAcquireStackLock(config.StackKey)
 	if !ok {
 		config.Log.V(1).Info("stack operation already in flight, requeuing")
 		return 30, nil
 	}
 
-	// acquire the global concurrency cap; capture the channel once so the
-	// release lands on the same channel even if a test swaps the global.
-	// On rejection, release the per-stack lock here since no goroutine will
-	// pick up its release
+	// hold this channel so the release matches the acquire
 	sem := currentSemaphore()
 	select {
 	case sem <- struct{}{}:
@@ -727,9 +673,7 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 		return 30, nil
 	}
 
-	// launch creation in background goroutine; the goroutine releases the
-	// per-stack lock when the deploy returns, so a queued caller waiting on
-	// the same key unblocks only after this deploy is done
+	// run create in the background
 	go func() {
 		defer releaseStackLock(config.StackKey, sl)
 		defer func() { <-sem }()
@@ -745,26 +689,17 @@ func launchInfraCreate(config infraConfig) (int64, error) {
 	return 120, nil
 }
 
-// launchInfraDelete tries the per-stack lock non-blockingly, then the
-// global cap, and only launches when both succeed. A second call for
-// the same stack while its destroy is still running is rejected the
-// same as a full pool and requeued at 30, so the reconciler never
-// blocks and two reconciles cannot race concurrent destroys on the
-// same stack. Returns a requeue delay for the reconciler.
+// launchInfraDelete acquires a per-stack lock and a worker-pool slot, then
+// starts the delete in the background. Contention requeues in 30 seconds.
 func launchInfraDelete(config infraConfig) (int64, error) {
-	// reject non-blockingly if the stack already has an operation in
-	// flight; the running goroutine will release the lock when it
-	// finishes and the next reconcile pass can pick it up
+	// acquire the per-stack lock without waiting
 	sl, ok := tryAcquireStackLock(config.StackKey)
 	if !ok {
 		config.Log.Info("stack operation already in flight, requeuing")
 		return 30, nil
 	}
 
-	// acquire the global concurrency cap; capture the channel once so the
-	// release lands on the same channel even if a test swaps the global.
-	// On rejection, release the per-stack lock here since no goroutine will
-	// pick up its release
+	// hold this channel so the release matches the acquire
 	sem := currentSemaphore()
 	select {
 	case sem <- struct{}{}:
@@ -775,9 +710,7 @@ func launchInfraDelete(config infraConfig) (int64, error) {
 		return 30, nil
 	}
 
-	// launch deletion in background goroutine; the goroutine releases the
-	// per-stack lock when the destroy returns, so a queued caller waiting on
-	// the same key unblocks only after this destroy is done
+	// run delete in the background
 	go func() {
 		defer releaseStackLock(config.StackKey, sl)
 		defer func() { <-sem }()
@@ -875,11 +808,7 @@ func executeInfraCreate(config infraConfig) {
 			}
 		}
 
-		// classify the error: a transient error is expected to clear on
-		// the next reconcile pass, so leave CreationFailed unset and let
-		// the natural requeue re-fire. Flipping CreationFailed=true on a
-		// transient error widens the reconciler into a permanent-failure
-		// path that short-circuits subsequent reconciles.
+		// leave the failed flag unset so the next pass does not re-launch
 		if isTransientPulumiError(err) {
 			config.Log.Info("treating create error as transient; deferring to next reconcile pass")
 			return
@@ -904,12 +833,10 @@ func executeInfraCreate(config infraConfig) {
 		return
 	}
 
-	// call provider-specific success handler; a failure here (e.g. inability
-	// to publish the create notification) means downstream subscribers never
-	// fire, so mark the operation failed to trigger a prompt requeue rather
-	// than stalling until an unrelated event nudges the object
+	// run create success callbacks; a failure marks the operation failed
 	if err := config.Callbacks.OnSuccess(stateJSON); err != nil {
 		config.Log.Error(err, "failed to execute success callback")
+		// mark the operation failed so the next reconcile retries
 		persistFailure(config.Callbacks.PersistFailure, config.Log)
 	}
 }
@@ -969,33 +896,18 @@ func executeInfraDelete(config infraConfig) {
 			}
 		}
 
-		// persist the failure so the next reconciliation retries promptly
-		// instead of waiting for the acknowledgement to go stale
 		persistFailure(config.Callbacks.PersistFailure, config.Log)
 		return
 	}
 
-	// call provider-specific success handler; a failure here (e.g. inability
-	// to publish the delete notification) means the teardown chain never
-	// fires, so mark the operation failed to trigger a prompt requeue rather
-	// than stalling until an unrelated event nudges the object
+	// run delete success callbacks; a failure marks the operation failed
 	if err := config.Callbacks.OnSuccess(nil); err != nil {
 		config.Log.Error(err, "failed to execute delete success callback")
 		persistFailure(config.Callbacks.PersistFailure, config.Log)
 	}
 }
 
-// streamState watches the state file via fsnotify and pushes changes to
-// the API. On every Write/Create event it reads the file and compares
-// its bytes against the last bytes it successfully saved; equal reads
-// skip the API call. Only writes that actually change the state file
-// trigger a PATCH, which keeps the persisted state in tight sync with
-// the file without triggering an API PATCH per fsnotify tick during a
-// pulumi run. Pulumi rewrites its state file many times with unchanged
-// content and each redundant PATCH republishes an update notification
-// that wakes the reconciler; skipping the equal writes breaks that
-// self-triggering loop while adding no polling cost. Only called for
-// providers that implement StreamableProvider.
+// streamState watches the provider's state file and persists complete JSON for crash recovery.
 func streamState(
 	provider StreamableProvider,
 	saveState func(state *datatypes.JSON) error,
@@ -1030,9 +942,7 @@ func streamState(
 
 	stateFileName := filepath.Base(stateFilePath)
 
-	// lastSaved holds the bytes we most recently pushed via saveState.
-	// This goroutine is the only writer for this stack's state field so
-	// the cache is authoritative without polling the API.
+	// lastSaved holds the last uploaded payload so unchanged writes are skipped
 	var lastSaved []byte
 
 	for {
@@ -1069,12 +979,7 @@ func streamState(
 				continue
 			}
 
-			// skip the save when the file bytes match the last bytes
-			// we already persisted from this goroutine; pulumi
-			// rewrites the state file many times per resource op with
-			// identical content, and each unnecessary save
-			// republishes an update notification that wakes the
-			// reconciler
+			// skip a write that matches the last uploaded payload
 			if bytes.Equal([]byte(*state), lastSaved) {
 				continue
 			}
@@ -1159,14 +1064,8 @@ func persistFailure(
 	)
 }
 
-// verifyState checks the integrity of a state JSON object to confirm it is a
-// recognizable, well-formed deployment record. It assumes Pulumi-stack-backed
-// state and inspects the two on-disk Pulumi schemas (checkpoint and
-// deployment); a backend with a different state layout would need its own
-// verification. A stack whose resource list is present but empty is treated as
-// a legitimately empty stack and passes, so a deployment that creates no
-// resources does not retry forever; only state that matches neither schema is
-// rejected.
+// verifyState accepts Pulumi checkpoint and deployment JSON.
+// An empty resource list passes so a stack that created nothing does not retry forever.
 func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 	if state == nil {
 		return fmt.Errorf("state is nil")
@@ -1181,12 +1080,7 @@ func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 		return fmt.Errorf("state is not valid JSON: %w", err)
 	}
 
-	// look for a resources list in either Pulumi schema:
-	// - checkpoint format: checkpoint.latest.resources
-	// - deployment format: deployment.resources
-	// recognizedSchema records whether the state carried a resources list at
-	// all, distinguishing a legitimately empty stack from state that does not
-	// match a known Pulumi layout.
+	// recognizedSchema distinguishes an empty stack from an unknown layout
 	recognizedSchema := false
 	resourceCount := 0
 	if checkpoint, ok := parsed["checkpoint"].(map[string]interface{}); ok {
@@ -1206,8 +1100,7 @@ func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 		}
 	}
 
-	// state that matches neither schema is unrecognized and rejected; an empty
-	// resource list under a recognized schema is a valid empty stack
+	// reject JSON that is not a Pulumi stack snapshot
 	if !recognizedSchema {
 		return fmt.Errorf("state does not match a known Pulumi stack schema")
 	}

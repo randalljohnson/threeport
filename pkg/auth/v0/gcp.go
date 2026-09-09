@@ -111,19 +111,8 @@ func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	return nil
 }
 
-// validateServiceAccountCredentials confirms the service account JSON parses
-// into GCP credentials, so malformed JSON or an unsupported credential type
-// fails here with a clear error rather than deep inside the first cloud call.
-// It is the same parse the per-call client options perform, so anything it
-// accepts the clients accept. Note that it does not reach the private key:
-// a well-formed document holding a corrupt key still fails later, at the
-// first token request.
-//
-// It deliberately stores nothing. Credentials reach the Google SDK as a
-// per-call option built from this same JSON, so two concurrent operations for
-// different service accounts stay independent. Writing the key to a temp file
-// and exporting GOOGLE_APPLICATION_CREDENTIALS would reintroduce exactly the
-// process-global both operations raced on.
+// validateServiceAccountCredentials parses service account JSON. A well-formed
+// document with a corrupt key still fails later, at the first token request.
 func validateServiceAccountCredentials(ctx context.Context, credentialsJSON string) error {
 	if _, err := google.CredentialsFromJSON(ctx, []byte(credentialsJSON), GcpOAuthScopes...); err != nil {
 		return fmt.Errorf("failed to parse service account credentials: %w", err)
@@ -309,10 +298,9 @@ func saveADCCredentials(token *oauth2.Token) error {
 	return nil
 }
 
-// getADCPath returns the standard well-known path for Application Default
-// Credentials. It intentionally ignores GOOGLE_APPLICATION_CREDENTIALS: that
-// env var points at a key file the operator chose, and overwriting it with
-// OAuth user credentials would silently destroy that key.
+// getADCPath returns the well-known gcloud Application Default Credentials
+// file path. It ignores GOOGLE_APPLICATION_CREDENTIALS. Following that env
+// var would write authorized_user JSON over an operator-chosen key file.
 func getADCPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

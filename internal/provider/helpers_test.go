@@ -63,9 +63,7 @@ func TestCheckStaleAck_Boundary(t *testing.T) {
 	}
 }
 
-// TestVerifyState_NilEmptyInvalid covers the three early-reject branches
-// of state verification: nil pointer, zero-length bytes, and bytes that
-// fail JSON parsing.
+// TestVerifyState_NilEmptyInvalid rejects nil, empty, and non-JSON state.
 func TestVerifyState_NilEmptyInvalid(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -113,9 +111,8 @@ func TestVerifyState_DeploymentFormat(t *testing.T) {
 	assert.NoError(t, verifyState(state, newTestLogger()))
 }
 
-// TestVerifyState_UnrecognizedSchema_Rejected asserts that valid JSON
-// carrying neither Pulumi schema (no checkpoint.latest.resources and no
-// deployment.resources list) is rejected as unrecognized state.
+// TestVerifyState_UnrecognizedSchema_Rejected rejects JSON that is not a
+// Pulumi snapshot, including a resources field that is not a list.
 func TestVerifyState_UnrecognizedSchema_Rejected(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -143,10 +140,8 @@ func TestVerifyState_UnrecognizedSchema_Rejected(t *testing.T) {
 	}
 }
 
-// TestVerifyState_EmptyStack_Accepted asserts the zero-resource guard: a
-// well-formed Pulumi stack whose resource list is present but empty is a
-// legitimately empty stack and passes verification, so a deployment that
-// creates no resources is not persisted as failed and retried forever.
+// TestVerifyState_EmptyStack_Accepted accepts checkpoint and deployment
+// snapshots whose resource lists are present but empty.
 func TestVerifyState_EmptyStack_Accepted(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -259,49 +254,55 @@ func TestHasExistingState_Table(t *testing.T) {
 	}
 }
 
-// TestPersistFailure_SucceedsFirstTry covers the immediate-return branch:
-// a persist function that succeeds on its first call is invoked exactly
-// once and the retry delay is never waited out.
+// TestPersistFailure_SucceedsFirstTry covers a successful first persist
+// returning without waiting the retry delay.
 func TestPersistFailure_SucceedsFirstTry(t *testing.T) {
+	// set a long retry delay so a wait would be visible
 	config := testLifecycleConfig()
 	config.PersistRetries = 3
 	config.PersistRetryDelay = 10 * time.Second
 	restore := setLifecycleConfig(config)
 	t.Cleanup(restore)
 
+	// persist succeeds on the first call
 	calls := 0
 	persist := func() error {
 		calls++
 		return nil
 	}
 
+	// run persistFailure and time it
 	start := time.Now()
 	persistFailure(persist, newTestLogger())
 	elapsed := time.Since(start)
 
+	// one call, no delay
 	assert.Equal(t, 1, calls)
 	assert.Less(t, elapsed, time.Second,
 		"first-try success must return without waiting the retry delay")
 }
 
-// TestPersistFailure_Exhaustion covers the retry-exhaustion branch: a
-// persist function that always errors is retried up to the configured
-// count and the call returns normally afterward.
+// TestPersistFailure_Exhaustion covers a failing persist exhausting the
+// retry budget.
 func TestPersistFailure_Exhaustion(t *testing.T) {
+	// set three retries with a millisecond delay
 	config := testLifecycleConfig()
 	config.PersistRetries = 3
 	config.PersistRetryDelay = time.Millisecond
 	restore := setLifecycleConfig(config)
 	t.Cleanup(restore)
 
+	// persist fails on every call
 	calls := 0
 	persist := func() error {
 		calls++
 		return errors.New("persist always fails")
 	}
 
+	// run persistFailure to exhaustion
 	persistFailure(persist, newTestLogger())
 
+	// three attempts, no fourth
 	assert.Equal(t, 3, calls)
 }
 
@@ -317,12 +318,8 @@ func TestDefaultLifecycleConfig_ProductionValues(t *testing.T) {
 	assert.Equal(t, 10*time.Second, defaultLifecycleConfig.PersistRetryDelay)
 }
 
-// TestInfraSemaphore_CapacityMatchesActiveConfig proves the pool that gates
-// concurrent operations and the tunable that documents it are one value. Two
-// independent literals would let a capacity change land in the config and
-// never reach the pool. The comparison is against the active config rather
-// than the defaults, because an environment override changes both together
-// and asserting on the defaults would fail whenever one is set.
+// TestInfraSemaphore_CapacityMatchesActiveConfig asserts the semaphore
+// capacity matches the active config rather than the defaults.
 func TestInfraSemaphore_CapacityMatchesActiveConfig(t *testing.T) {
 	assert.Equal(t, currentConfig().SemaphoreCapacity, cap(currentSemaphore()))
 }

@@ -44,8 +44,8 @@ func newOkeLifecycleProvider(
 	}
 }
 
-// StackKey returns the runtime instance name so per-stack serialization
-// keys off the same identifier that names the pulumi stack on disk.
+// StackKey returns the runtime instance name used to serialize operations on one stack.
+// That name also identifies the Pulumi stack on disk.
 func (o *okeLifecycle) StackKey() string {
 	if o.instance == nil || o.instance.Name == nil {
 		return ""

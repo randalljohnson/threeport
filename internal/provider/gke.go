@@ -157,12 +157,8 @@ func (i *KubernetesRuntimeInfraGKE) DestroyInfra() error {
 // pulumiProgram defines the Pulumi resources for the GKE stack.
 func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
-		// thread service account credentials directly into the GCP provider
 
-		// for this stack rather than relying on a process-global env var.
-		// Two concurrent GKE creates for different service accounts each get
-		// their own provider credentials, matching how the OKE provider
-		// threads its config provider per stack.
+		// thread this stack's credentials into the GCP provider
 		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
@@ -382,10 +378,7 @@ func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, e
 
 	ctx := context.Background()
 
-	// create GKE cluster manager client; service account
-	// credentials are threaded per call so concurrent connects
-	// for different accounts do not race a shared process-global,
-	// falling back to Application Default Credentials when unset
+	// create cluster manager client
 	clusterManagerClient, err := container.NewClusterManagerClient(ctx, i.gcpClientOptions()...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cluster manager client: %w", err)
@@ -413,13 +406,7 @@ func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, e
 		return nil, fmt.Errorf("failed to decode CA certificate: %w", err)
 	}
 
-	// get an access token for authentication
-	// TODO: Implement token refresh mechanism for long-running operations
-	// The token has a limited lifetime (typically 1 hour)
-	//
-	// derive the token source from this instance's service account
-	// credentials when set so the token belongs to the right account,
-	// falling back to Application Default Credentials when unset
+	// get access token for authentication
 	tokenSource, err := i.tokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token source: %w", err)
@@ -497,9 +484,7 @@ func (i *KubernetesRuntimeInfraGKE) SetStackState(state *datatypes.JSON) error {
 func (i *KubernetesRuntimeInfraGKE) configureWorkloadIdentityBindingPostCreate() error {
 	ctx := context.Background()
 
-	// Create IAM service client with this instance's service account
-	// credentials threaded per call so the post-create binding runs against
-	// the right account even while another create is in flight
+	// create IAM service client
 	iamService, err := gcpiam.NewService(ctx, i.gcpClientOptions(gcpoption.WithScopes(gcpiam.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM service client: %w", err)
@@ -585,12 +570,8 @@ func (i *KubernetesRuntimeInfraGKE) loadGCPConfigFromFile() error {
 	return nil
 }
 
-// gcpClientOptions returns the client options for GCP SDK clients built on
-// behalf of this instance. When ServiceAccountCredentials is set, the JSON key
-// is threaded in per call so that two concurrent operations for different
-// service accounts authenticate independently rather than racing a shared
-// process-global credentials env var. Base options (scopes, endpoints) are
-// preserved ahead of the credentials option.
+// gcpClientOptions returns client options that attach this instance's credentials
+// JSON when set, otherwise ADC.
 func (i *KubernetesRuntimeInfraGKE) gcpClientOptions(base ...gcpoption.ClientOption) []gcpoption.ClientOption {
 	if i.ServiceAccountCredentials == "" {
 		return base
@@ -598,11 +579,8 @@ func (i *KubernetesRuntimeInfraGKE) gcpClientOptions(base ...gcpoption.ClientOpt
 	return append(base, gcpoption.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
 }
 
-// tokenSource returns an OAuth2 token source for the given scopes scoped to
-// this instance's service account credentials when set, falling back to
-// Application Default Credentials when unset. Threading the credentials per
-// call keeps two concurrent connects for different accounts from minting a
-// token against whichever credentials a shared global last held.
+// tokenSource returns an OAuth2 token source from this instance's service account
+// JSON when set, otherwise ADC.
 func (i *KubernetesRuntimeInfraGKE) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
 	if i.ServiceAccountCredentials == "" {
 		return google.DefaultTokenSource(ctx, scopes...)

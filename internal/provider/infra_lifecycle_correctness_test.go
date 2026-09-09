@@ -19,22 +19,18 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// GKE credential threading must be per call, never a process-global.
-//
-// Two concurrent GKE creates for different service accounts must each
-// authenticate against their own credentials. The fix threads the service
-// account JSON into the Pulumi provider and every GCP SDK client per call
-// instead of writing GOOGLE_APPLICATION_CREDENTIALS, which two goroutines
-// would race.
+// GKE credential threading is per instance, never process-global. Two
+// concurrent creates for different service accounts authenticate with
+// their own JSON; a process-global credential would race across them.
 
-// serviceAccountJSON builds a well-formed GCP service_account credentials
-// JSON with a throwaway RSA key and the given client email. google's
-// CredentialsFromJSON parses the key at construction time, so the email it
-// reports proves which credentials a token source was built from.
+// serviceAccountJSON returns a GCP service account key JSON with
+// clientEmail in the client_email field.
 func serviceAccountJSON(t *testing.T, clientEmail string) string {
 	t.Helper()
+	// generate an RSA private key
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
+	// encode the key as PKCS8 PEM
 	keyPEM := pem.EncodeToMemory(&pem.Block{
 		Type: "PRIVATE KEY",
 		Bytes: func() []byte {
@@ -43,6 +39,7 @@ func serviceAccountJSON(t *testing.T, clientEmail string) string {
 			return der
 		}(),
 	})
+	// fill the service account key document
 	creds := map[string]string{
 		"type":                        "service_account",
 		"project_id":                  "test-project",
@@ -54,14 +51,13 @@ func serviceAccountJSON(t *testing.T, clientEmail string) string {
 		"auth_uri":                    "https://accounts.google.com/o/oauth2/auth",
 		"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
 	}
+	// marshal the document to JSON
 	b, err := json.Marshal(creds)
 	require.NoError(t, err)
 	return string(b)
 }
 
-// emailFromCredentialsJSON extracts the client_email recorded in a parsed
-// credentials object, used to assert which service account a token source
-// was bound to.
+// emailFromCredentialsJSON returns the client_email field from credentials JSON.
 func emailFromCredentialsJSON(t *testing.T, raw []byte) string {
 	t.Helper()
 	var parsed struct {
@@ -71,72 +67,75 @@ func emailFromCredentialsJSON(t *testing.T, raw []byte) string {
 	return parsed.ClientEmail
 }
 
-// TestGKEClientOptions_ThreadsPerInstanceCredentials asserts gcpClientOptions
-// appends a credentials option only when the instance carries service account
-// credentials, leaving the base options untouched otherwise. The per-instance
-// append is what keeps two concurrent creates from sharing one credential
-// source.
+// TestGKEClientOptions_ThreadsPerInstanceCredentials covers that service
+// account JSON threads one credentials option and empty threads none.
 func TestGKEClientOptions_ThreadsPerInstanceCredentials(t *testing.T) {
+	// build an instance with service account JSON and one without
 	withCreds := &KubernetesRuntimeInfraGKE{
 		ServiceAccountCredentials: serviceAccountJSON(t, "a@test-project.iam.gserviceaccount.com"),
 	}
 	withoutCreds := &KubernetesRuntimeInfraGKE{}
 
+	// collect options from the instance with credentials
 	base := withCreds.gcpClientOptions()
 	assert.Len(t, base, 1, "an instance with credentials threads one credentials option")
 
+	// collect options from the instance without credentials
 	none := withoutCreds.gcpClientOptions()
 	assert.Empty(t, none, "an instance without credentials threads no credentials option and falls back to ADC")
 }
 
-// TestGKETokenSource_ConcurrentCredentialsDoNotBleed asserts two GKE
-// instances with distinct service account credentials, building token sources
-// concurrently, each bind to their own service account. A shared
-// process-global would let one goroutine's credentials overwrite the other's;
-// per-call threading keeps them isolated.
+// TestGKETokenSource_ConcurrentCredentialsDoNotBleed covers concurrent token
+// source builds from two instances with distinct service account JSON.
 func TestGKETokenSource_ConcurrentCredentialsDoNotBleed(t *testing.T) {
 	const (
 		emailA = "account-a@test-project.iam.gserviceaccount.com"
 		emailB = "account-b@test-project.iam.gserviceaccount.com"
 	)
+	// build two instances with distinct service account emails
 	instanceA := &KubernetesRuntimeInfraGKE{ServiceAccountCredentials: serviceAccountJSON(t, emailA)}
 	instanceB := &KubernetesRuntimeInfraGKE{ServiceAccountCredentials: serviceAccountJSON(t, emailB)}
 
 	const scope = "https://www.googleapis.com/auth/cloud-platform"
 	ctx := context.Background()
 
-	// run both builds concurrently many times so a process-global bleed
-	// would surface as a mismatched email under the race detector
+	// run both token source builds concurrently
 	const rounds = 50
 	var wg sync.WaitGroup
 	errs := make(chan error, rounds*2)
 
 	build := func(inst *KubernetesRuntimeInfraGKE, wantEmail string) {
 		defer wg.Done()
+		// build the instance token source
 		ts, err := inst.tokenSource(ctx, scope)
 		if err != nil {
 			errs <- fmt.Errorf("token source build failed: %w", err)
 			return
 		}
+		// parse the instance JSON independently
 		creds, err := google.CredentialsFromJSON(ctx, []byte(inst.ServiceAccountCredentials), scope)
 		if err != nil {
 			errs <- fmt.Errorf("credentials parse failed: %w", err)
 			return
 		}
+		// reject a client_email that does not match this instance
 		if got := emailFromCredentialsJSON(t, creds.JSON); got != wantEmail {
 			errs <- fmt.Errorf("credentials bled: got %q want %q", got, wantEmail)
 			return
 		}
+		// reject a nil token source
 		if ts == nil {
 			errs <- fmt.Errorf("nil token source for %s", wantEmail)
 		}
 	}
 
+	// launch one paired build per round
 	for i := 0; i < rounds; i++ {
 		wg.Add(2)
 		go build(instanceA, emailA)
 		go build(instanceB, emailB)
 	}
+	// wait for every build then drain errors
 	wg.Wait()
 	close(errs)
 
@@ -145,31 +144,23 @@ func TestGKETokenSource_ConcurrentCredentialsDoNotBleed(t *testing.T) {
 	}
 }
 
-// The create complete branch must confirm at most once.
-//
-// OnCreateConfirmed mints a fresh connection token and flips the runtime
-// instance back to unreconciled; re-entering the branch after a crash must
-// not repeat that side effect once creation is already confirmed.
+// Re-entry after CreationConfirmed is set skips post-creation work and
+// confirmation. Post-creation work writes a connection token and sets
+// the runtime instance unreconciled.
 
-// TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce asserts that
-// re-entering the complete branch after a confirmation already landed runs no
-// further confirmation work. The second reconcile sees CreationConfirmed on
-// the re-check fetch and short-circuits, so OnCreateConfirmed and
-// ConfirmCreation each fire exactly once across both passes.
+// TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce covers
+// complete-create re-entry running post-creation work and confirmation once.
 func TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce(t *testing.T) {
 	acked := util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 
-	// first reconcile: acked, complete, not yet confirmed on either fetch.
-	// second reconcile: the confirmation written by the first pass is now
-	// visible, so the branch must not run the post-creation work again.
 	fl := newFakeLifecycle(
-		// pass 1, initial fetch: acked, not confirmed
+		// pass 1 initial fetch: acked, not confirmed
 		&ReconciliationSnapshot{CreationAcknowledged: acked},
-		// pass 1, pre-confirm re-check: still not confirmed, do the work
+		// pass 1 pre-confirm re-check: still not confirmed, do the work
 		&ReconciliationSnapshot{CreationAcknowledged: acked},
-		// pass 2, initial fetch: still not confirmed at the top-level guard
+		// pass 2 initial fetch: still unconfirmed at the top-level guard
 		&ReconciliationSnapshot{CreationAcknowledged: acked},
-		// pass 2, pre-confirm re-check: confirmation now visible, skip work
+		// pass 2 pre-confirm re-check: confirmation visible, skip the work
 		&ReconciliationSnapshot{
 			CreationAcknowledged: acked,
 			CreationConfirmed:    util.Ptr(time.Date(2026, 1, 1, 0, 5, 0, 0, time.UTC)),
@@ -178,15 +169,14 @@ func TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce(t *testing.T) {
 	fl.setCreateComplete(true)
 	fl.setInfra(newFakeInfra())
 
-	// pass 1: runs the confirmation work once
+	// run the complete-create path once
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), requeue)
 	assert.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
 	assert.Equal(t, 1, fl.callCount("ConfirmCreation"))
 
-	// pass 2: the re-check sees confirmation and short-circuits, so no
-	// second token mint or reconciled flip
+	// re-enter: re-check sees confirmation and skips a second token write
 	requeue, err = HandleInfraCreate(fl, newTestLogger())
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), requeue)
@@ -195,21 +185,15 @@ func TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce(t *testing.T) {
 	assert.Equal(t, 1, fl.callCount("BuildInfra"), "infra must be built once across re-entry")
 }
 
-// A delete racing a just-started create must not stall.
-//
-// When the pre-acknowledge deletion check sees a delete already scheduled,
-// the create must abort before writing a fresh CreationAcknowledged. A fresh
-// ack would trip the delete handler's cross-replica guard and requeue the
-// delete every 60s for the full stale-ack window.
+// A delete racing a create that has not yet acknowledged must not stall.
+// Create aborts before writing a fresh acknowledgement; a fresh ack would
+// trip the delete cross-replica guard and requeue every 60s until stale.
 
-// TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck asserts that a delete
-// arriving in the window between the handler deciding to create and
-// acknowledging it leaves no fresh acknowledgement behind. The handler aborts
-// at the pre-acknowledge check, so AckCreation never fires and the delete
-// handler's cross-replica guard has nothing to stall on.
+// TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck covers a create that
+// observes a scheduled delete and writes no ack, so delete can launch.
 func TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck(t *testing.T) {
 	fl := newFakeLifecycle(
-		// initial fetch: brand new create request, nothing acked
+		// initial fetch: new create, nothing acked
 		&ReconciliationSnapshot{},
 		// pre-acknowledge re-check: a delete landed in the race window
 		&ReconciliationSnapshot{
@@ -219,8 +203,10 @@ func TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck(t *testing.T) {
 	fi := newFakeInfra()
 	fl.setInfra(fi)
 
+	// run create against the scheduled delete
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// create must abort without ack, build, or a deploy goroutine
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), requeue)
 	assert.Equal(t, 0, fl.callCount("AckCreation"), "no fresh acknowledgement may be written when a delete is already scheduled")
@@ -228,10 +214,7 @@ func TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck(t *testing.T) {
 	assert.Equal(t, 0, fi.deployCallCount(), "the create goroutine must not launch")
 	assert.Equal(t, int64(0), inFlightCount())
 
-	// the absent fresh ack means the delete handler does not hit the
-	// cross-replica guard: with no CreationAcknowledged it proceeds to
-	// acknowledge and launch the destroy rather than requeueing for the
-	// stale window
+	// with no create ack, delete acknowledges and launches instead of requeueing
 	dfi := newFakeInfra()
 	dfi.setDestroy(infraBlock, nil)
 	cfg := testLifecycleConfig()
@@ -239,16 +222,19 @@ func TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck(t *testing.T) {
 	restoreCfg := setLifecycleConfig(cfg)
 	t.Cleanup(restoreCfg)
 
+	// run delete with only DeletionScheduled set, no create ack
 	dl := newFakeLifecycle(&ReconciliationSnapshot{
 		DeletionScheduled: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	})
 	dl.setInfra(dfi)
 
 	dRequeue, dErr := HandleInfraDelete(dl, newTestLogger())
+	// delete launches instead of requeueing on the cross-replica guard
 	require.NoError(t, dErr)
 	assert.Equal(t, int64(300), dRequeue, "delete proceeds to launch rather than requeueing at 60s")
 	assert.Equal(t, 1, dl.callCount("AckDeletion"), "delete acknowledges instead of stalling on the cross-replica guard")
 
+	// wait for the destroy goroutine, then drain it
 	require.Eventually(t, func() bool {
 		return dfi.destroyCallCount() == 1
 	}, 5*time.Second, 5*time.Millisecond, "destroy goroutine never launched")

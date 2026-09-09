@@ -68,11 +68,9 @@ func TestNewPulumiWorkspace_WithStateDirRoot(t *testing.T) {
 	assert.True(t, info.IsDir())
 }
 
-// TestNewPulumiWorkspace_DefaultRoot covers the fallback branch of state dir
-// resolution: without the state dir root option, the state dir resolves
-// under the home-dir runtime state path. The home dir is redirected to a
-// temp dir so the side-effecting mkdir never touches the real home dir;
-// the assertions check the prefix and suffix structure of the path.
+// TestNewPulumiWorkspace_DefaultRoot covers the constructor with no
+// root option: the state file path resolves under
+// ~/.threeport/pulumi-state/<name> and stays inside the redirected home.
 func TestNewPulumiWorkspace_DefaultRoot(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -121,11 +119,9 @@ func TestGetStateFilePath_EmptyName(t *testing.T) {
 	assert.Empty(t, entries)
 }
 
-// TestSetStackState_CheckpointRoundTrip covers the checkpoint-format branch
-// of state restoration: JSON with a top-level "checkpoint" key, and no
-// top-level "deployment" key, bypasses the backend import and is written
-// directly to the state file, landing on disk byte-identical and reading
-// back unchanged.
+// TestSetStackState_CheckpointRoundTrip covers checkpoint-format
+// restore: the bytes write directly to the state file unchanged and
+// read back identically.
 func TestSetStackState_CheckpointRoundTrip(t *testing.T) {
 	requirePulumiCLI(t)
 
@@ -189,12 +185,9 @@ func TestSetStackState_AtomicTempThenRename(t *testing.T) {
 	require.NoError(t, os.Remove(path+".tmp"))
 }
 
-// TestSetStackState_ExportFormatRequiresBackend covers the export-format
-// branch of state restoration: JSON with a top-level "deployment" key is
-// routed through the backend stack import, which converts it to checkpoint
-// format on disk, and a subsequent state export returns deployment-format
-// JSON. This needs a real pulumi backend, so the test skips when the CLI
-// is unavailable.
+// TestSetStackState_ExportFormatRequiresBackend covers export-format
+// restore: backend import converts the payload to checkpoint format on
+// disk, and a later export returns deployment-format JSON.
 func TestSetStackState_ExportFormatRequiresBackend(t *testing.T) {
 	requirePulumiCLI(t)
 

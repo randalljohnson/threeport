@@ -11,26 +11,43 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// peakWatcher samples inFlightCount in a tight loop and records the
-// highest value seen, so a test can assert the semaphore cap was never
-// exceeded at any instant rather than only at the sampling points.
+// peakWatcher samples inFlightCount and records the highest value it saw.
+// Sampling can only miss a spike, never invent one, so a peak above the cap
+// is proof the cap broke while a peak at or below it is corroborating
+// evidence rather than a guarantee. The semaphore is what enforces the cap.
 type peakWatcher struct {
+	// peak is the highest in-flight count any sample observed.
 	peak int64
+
+	// stop closes to end the sampling loop.
 	stop chan struct{}
+
+	// done closes once the sampling goroutine has returned.
 	done chan struct{}
 }
 
+// peakSampleInterval paces the sampling loop. Without it the watcher pins a
+// core for the length of the test and competes with the goroutines it is
+// measuring, which on a two-core runner changes the result it reports.
+const peakSampleInterval = 100 * time.Microsecond
+
+// startPeakWatcher launches the sampling goroutine and returns the watcher
+// it samples into.
 func startPeakWatcher() *peakWatcher {
 	w := &peakWatcher{stop: make(chan struct{}), done: make(chan struct{})}
 	go func() {
 		defer close(w.done)
+		ticker := time.NewTicker(peakSampleInterval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-w.stop:
 				return
-			default:
+			case <-ticker.C:
 				cur := inFlightCount()
 				for {
 					old := atomic.LoadInt64(&w.peak)
@@ -44,6 +61,8 @@ func startPeakWatcher() *peakWatcher {
 	return w
 }
 
+// stopAndPeak stops the sampling goroutine, waits for it to exit, and
+// returns the highest in-flight count recorded.
 func (w *peakWatcher) stopAndPeak() int64 {
 	close(w.stop)
 	<-w.done
@@ -108,9 +127,19 @@ func TestReconcilerLoop_2000Instances_SemaphoreCapped(t *testing.T) {
 		}
 	}
 
-	// the k blocked deploys should now hold every slot
-	require.Eventually(t, func() bool { return inFlightCount() == int64(k) }, 5*time.Second, time.Millisecond,
-		"expected exactly %d blocked operations, got %d", k, inFlightCount())
+	// the k blocked deploys should now hold every slot. the observed count
+	// is recorded by the condition and reported after the wait: passing
+	// inFlightCount() as a format argument reports the value from before
+	// the wait started, which is always zero here. the store is atomic
+	// because testify runs the condition on its own goroutine
+	var lastCount atomic.Int64
+	reached := assert.Eventually(t, func() bool {
+		c := inFlightCount()
+		lastCount.Store(c)
+		return c == int64(k)
+	}, 5*time.Second, time.Millisecond)
+	require.True(t, reached,
+		"expected exactly %d blocked operations, last saw %d", k, lastCount.Load())
 
 	peak := watcher.stopAndPeak()
 	assert.LessOrEqual(t, peak, int64(k), "concurrently executing operations must never exceed the semaphore capacity")
@@ -148,7 +177,7 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 		fi := newFakeInfra()
 		fi.setDestroy(infraSucceed, nil)
 		fl := newFakeLifecycle(&ReconciliationSnapshot{
-			DeletionScheduled: timePtr(deleteTestBase.Add(-time.Minute)),
+			DeletionScheduled: util.Ptr(deleteTestBase.Add(-time.Minute)),
 		})
 		fl.setInfra(fi)
 		deleteFls[i] = fl
@@ -157,17 +186,30 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 	watcher := startPeakWatcher()
 	log := newTestLogger()
 
+	// the driver takes a stop channel and collects its own error rather
+	// than calling t.Errorf: on the timeout path below the test goroutine
+	// has already finished, and logging from a goroutine after its test
+	// completes panics the whole binary
+	stop := make(chan struct{})
+	defer close(stop)
+
 	done := make(chan struct{})
+	var driverErr error
 	go func() {
 		defer close(done)
 		for pass := 0; pass < 10; pass++ {
 			for i := 0; i < creates; i++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
 				if _, err := HandleInfraCreate(createFls[i], log); err != nil {
-					t.Errorf("create handler errored: %v", err)
+					driverErr = fmt.Errorf("create handler errored: %w", err)
 					return
 				}
 				if _, err := HandleInfraDelete(deleteFls[i], log); err != nil {
-					t.Errorf("delete handler errored: %v", err)
+					driverErr = fmt.Errorf("delete handler errored: %w", err)
 					return
 				}
 			}
@@ -176,6 +218,7 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 
 	select {
 	case <-done:
+		require.NoError(t, driverErr)
 	case <-time.After(60 * time.Second):
 		t.Fatal("mixed reconciler loop deadlocked or made no progress within 60s")
 	}
@@ -190,8 +233,7 @@ func TestReconcilerLoop_2000CreateAndDelete_Mixed(t *testing.T) {
 // exported constructor with a shared temp root and asserts each resolves
 // to a distinct state file path, then writes to all of them concurrently
 // to prove the per-instance directories never collide. The writes go
-// straight to the resolved paths so the test needs no Pulumi backend; that
-// is the isolation invariant the machine provider depends on.
+// straight to the resolved paths so the test needs no Pulumi backend.
 func TestPerInstanceStateDirIsolation(t *testing.T) {
 	const n = 100
 	root := t.TempDir()
@@ -207,17 +249,26 @@ func TestPerInstanceStateDirIsolation(t *testing.T) {
 		paths[i] = p
 	}
 
+	// each goroutine reports through assert rather than require: require
+	// calls t.FailNow, which stops only the goroutine it runs on, so the
+	// read-back loop below would then fail on a file nobody wrote and bury
+	// the real cause
 	var wg sync.WaitGroup
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			require.NoError(t, os.MkdirAll(filepath.Dir(paths[i]), 0o755))
+			if !assert.NoError(t, os.MkdirAll(filepath.Dir(paths[i]), 0755)) {
+				return
+			}
 			content := fmt.Sprintf("state-for-inst-%d", i)
-			require.NoError(t, os.WriteFile(paths[i], []byte(content), 0o644))
+			assert.NoError(t, os.WriteFile(paths[i], []byte(content), 0644))
 		}(i)
 	}
 	wg.Wait()
+	if t.Failed() {
+		t.Fatal("concurrent state file writes failed; skipping read-back")
+	}
 
 	for i := 0; i < n; i++ {
 		got, err := os.ReadFile(paths[i])

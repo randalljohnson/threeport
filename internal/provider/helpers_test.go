@@ -22,7 +22,7 @@ func testLifecycleConfig() LifecycleConfig {
 	}
 }
 
-// TestCheckStaleAck_Boundary pins the strict greater-than comparison in
+// TestCheckStaleAck_Boundary asserts the strict greater-than comparison in
 // stale ack detection: an ack aged exactly at the threshold is not yet
 // stale, only ages strictly beyond the threshold are.
 func TestCheckStaleAck_Boundary(t *testing.T) {
@@ -63,7 +63,7 @@ func TestCheckStaleAck_Boundary(t *testing.T) {
 	}
 }
 
-// TestVerifyState_NilEmptyInvalid pins the three early-reject branches
+// TestVerifyState_NilEmptyInvalid asserts the three early-reject branches
 // of state verification: nil pointer, zero-length bytes, and bytes that
 // fail JSON parsing.
 func TestVerifyState_NilEmptyInvalid(t *testing.T) {
@@ -97,7 +97,7 @@ func TestVerifyState_NilEmptyInvalid(t *testing.T) {
 	}
 }
 
-// TestVerifyState_CheckpointFormat_CountsResources pins that resources
+// TestVerifyState_CheckpointFormat_CountsResources asserts that resources
 // nested under checkpoint.latest.resources are counted and a non-empty
 // list passes verification.
 func TestVerifyState_CheckpointFormat_CountsResources(t *testing.T) {
@@ -105,7 +105,7 @@ func TestVerifyState_CheckpointFormat_CountsResources(t *testing.T) {
 	assert.NoError(t, verifyState(state, newTestLogger()))
 }
 
-// TestVerifyState_DeploymentFormat pins that resources under
+// TestVerifyState_DeploymentFormat asserts that resources under
 // deployment.resources are counted and a non-empty list passes
 // verification.
 func TestVerifyState_DeploymentFormat(t *testing.T) {
@@ -113,7 +113,7 @@ func TestVerifyState_DeploymentFormat(t *testing.T) {
 	assert.NoError(t, verifyState(state, newTestLogger()))
 }
 
-// TestVerifyState_NoResources pins the no-resources rejection branch:
+// TestVerifyState_NoResources asserts the no-resources rejection branch:
 // valid JSON whose checkpoint and deployment resource lists are empty
 // or missing fails verification.
 func TestVerifyState_NoResources(t *testing.T) {
@@ -147,7 +147,7 @@ func TestVerifyState_NoResources(t *testing.T) {
 	}
 }
 
-// TestInventoryCleared_Table pins which inventory values count as
+// TestInventoryCleared_Table asserts which inventory values count as
 // cleared: nil, zero-length, empty object, and JSON null are cleared;
 // an object with content is not.
 func TestInventoryCleared_Table(t *testing.T) {
@@ -190,7 +190,7 @@ func TestInventoryCleared_Table(t *testing.T) {
 	}
 }
 
-// TestHasExistingState_Table pins which state values count as restorable
+// TestHasExistingState_Table asserts which state values count as restorable
 // existing state: nil, zero-length, empty object, and JSON null do not;
 // an object with content does.
 func TestHasExistingState_Table(t *testing.T) {
@@ -233,7 +233,7 @@ func TestHasExistingState_Table(t *testing.T) {
 	}
 }
 
-// TestPersistFailure_SucceedsFirstTry pins the immediate-return branch:
+// TestPersistFailure_SucceedsFirstTry asserts the immediate-return branch:
 // a persist function that succeeds on its first call is invoked exactly
 // once and the retry delay is never waited out.
 func TestPersistFailure_SucceedsFirstTry(t *testing.T) {
@@ -258,7 +258,7 @@ func TestPersistFailure_SucceedsFirstTry(t *testing.T) {
 		"first-try success must return without waiting the retry delay")
 }
 
-// TestPersistFailure_Exhaustion pins the retry-exhaustion branch: a
+// TestPersistFailure_Exhaustion asserts the retry-exhaustion branch: a
 // persist function that always errors is retried up to the configured
 // count and the call returns normally afterward.
 func TestPersistFailure_Exhaustion(t *testing.T) {
@@ -277,4 +277,101 @@ func TestPersistFailure_Exhaustion(t *testing.T) {
 	persistFailure(persist, newTestLogger())
 
 	assert.Equal(t, 3, calls)
+}
+
+// TestDefaultLifecycleConfig_ProductionValues asserts the tunables the control
+// plane actually runs on. Changing any of them changes provisioning timing
+// or capacity in production, so the change has to be deliberate enough to
+// update this test alongside it.
+func TestDefaultLifecycleConfig_ProductionValues(t *testing.T) {
+	assert.Equal(t, 240*time.Second, defaultLifecycleConfig.StaleAckThreshold)
+	assert.Equal(t, 60*time.Second, defaultLifecycleConfig.RefreshInterval)
+	assert.Equal(t, 5, defaultLifecycleConfig.SemaphoreCapacity)
+	assert.Equal(t, 30, defaultLifecycleConfig.PersistRetries)
+	assert.Equal(t, 10*time.Second, defaultLifecycleConfig.PersistRetryDelay)
+}
+
+// TestInfraSemaphore_CapacityMatchesDefaultConfig proves the pool that gates
+// concurrent operations and the tunable that documents it are one value. Two
+// independent literals would let a capacity change land in the config and
+// never reach the pool.
+func TestInfraSemaphore_CapacityMatchesDefaultConfig(t *testing.T) {
+	assert.Equal(t, defaultLifecycleConfig.SemaphoreCapacity, cap(currentSemaphore()))
+}
+
+// TestCheckStaleAck_RealClock exercises the clock the control plane runs on.
+// Every other stale ack test injects a fake, so without this the default
+// clock is never called by the suite.
+func TestCheckStaleAck_RealClock(t *testing.T) {
+	restoreClock := setLifecycleClock(realClock{})
+	t.Cleanup(restoreClock)
+
+	cfg := testLifecycleConfig()
+	restoreConfig := setLifecycleConfig(cfg)
+	t.Cleanup(restoreConfig)
+
+	assert.False(
+		t,
+		checkStaleAck(time.Now().UTC()),
+		"an ack taken just now is not stale",
+	)
+	assert.True(
+		t,
+		checkStaleAck(time.Now().UTC().Add(-cfg.StaleAckThreshold-time.Second)),
+		"an ack older than the threshold is stale",
+	)
+}
+
+// TestCheckStaleAck_AdvancingClock walks one acknowledgement across the
+// threshold to prove the check reads the clock on every call rather than
+// caching the first read.
+func TestCheckStaleAck_AdvancingClock(t *testing.T) {
+	clk := newFakeClock(time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
+	restoreClock := setLifecycleClock(clk)
+	t.Cleanup(restoreClock)
+
+	cfg := testLifecycleConfig()
+	restoreConfig := setLifecycleConfig(cfg)
+	t.Cleanup(restoreConfig)
+
+	ack := clk.Now()
+	assert.False(t, checkStaleAck(ack), "a fresh ack is not stale")
+
+	clk.Advance(cfg.StaleAckThreshold)
+	assert.False(t, checkStaleAck(ack), "an ack aged exactly to the threshold is not stale")
+
+	clk.Advance(time.Second)
+	assert.True(t, checkStaleAck(ack), "an ack aged past the threshold is stale")
+}
+
+// TestSetLifecycleConfig_ZeroFieldsFallBackToDefaults covers the guard on
+// the config seam. A zero value is not a setting: a zero refresh interval
+// spins the ack-refresh loop against the API, a zero capacity requeues
+// every instance forever, and a zero retry count skips the persist call
+// the caller asked for.
+func TestSetLifecycleConfig_ZeroFieldsFallBackToDefaults(t *testing.T) {
+	restore := setLifecycleConfig(LifecycleConfig{})
+	t.Cleanup(restore)
+
+	assert.Equal(t, defaultLifecycleConfig, currentConfig())
+	assert.Equal(t, defaultLifecycleConfig.SemaphoreCapacity, cap(currentSemaphore()))
+}
+
+// TestSetLifecycleConfig_SetFieldsSurvive covers the other half of the
+// guard: a field the caller set is left alone, and only the unset ones
+// take a default.
+func TestSetLifecycleConfig_SetFieldsSurvive(t *testing.T) {
+	restore := setLifecycleConfig(LifecycleConfig{
+		StaleAckThreshold: time.Second,
+		SemaphoreCapacity: 2,
+	})
+	t.Cleanup(restore)
+
+	got := currentConfig()
+	assert.Equal(t, time.Second, got.StaleAckThreshold)
+	assert.Equal(t, 2, got.SemaphoreCapacity)
+	assert.Equal(t, 2, cap(currentSemaphore()))
+	assert.Equal(t, defaultLifecycleConfig.RefreshInterval, got.RefreshInterval)
+	assert.Equal(t, defaultLifecycleConfig.PersistRetries, got.PersistRetries)
+	assert.Equal(t, defaultLifecycleConfig.PersistRetryDelay, got.PersistRetryDelay)
 }

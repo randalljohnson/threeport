@@ -11,10 +11,9 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// createTestConfig returns lifecycle tunables for create handler tests:
-// production stale threshold, a refresh interval long enough that the
-// ack refresher never ticks, a single semaphore slot, and fast persist
-// retries so failure paths drain quickly.
+// createTestConfig returns the production 240s stale-ack threshold, a
+// one-hour refresh so the ack refresher does not tick, a semaphore of
+// size 1, one persist attempt, and a 1ms delay.
 func createTestConfig() LifecycleConfig {
 	return LifecycleConfig{
 		StaleAckThreshold: 240 * time.Second,
@@ -25,32 +24,39 @@ func createTestConfig() LifecycleConfig {
 	}
 }
 
-// waitForCreateCond polls cond until it returns true or a generous
-// deadline passes, then fails the test. Used only to drain background
-// goroutines, never to assert timing-dependent logic.
+// waitForCreateCond fatals if cond is still false after 10 seconds.
 func waitForCreateCond(t *testing.T, desc string, cond func() bool) {
+	// register as a test helper
 	t.Helper()
+	// bound the wait at 10 seconds
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
+		// return once the condition holds
 		if cond() {
 			return
 		}
+		// wait 1ms between polls
 		time.Sleep(time.Millisecond)
 	}
+	// fail the test with the caller's wait description
 	t.Fatalf("timed out waiting for %s", desc)
 }
 
-// TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn covers a confirmed
-// create returning immediately with no ack, build, or confirmation.
+// TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn covers a create
+// whose creation is already confirmed.
 func TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn(t *testing.T) {
+	// set a confirmed creation timestamp
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		CreationConfirmed: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	})
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert a clean return with no requeue
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), requeue)
+	// assert later create steps were not reached
 	assert.Equal(t, 1, fl.callCount("GetReconciliation"))
 	assert.Equal(t, 0, fl.callCount("IsCreateComplete"))
 	assert.Equal(t, 0, fl.callCount("AckCreation"))
@@ -59,8 +65,9 @@ func TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 }
 
 // TestHandleInfraCreate_AckedComplete_ConfirmsInOrder covers an
-// acknowledged complete create running post-creation work then confirmation.
+// acknowledged create that has already finished.
 func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
+	// acknowledge creation, leave it not failed, and mark it complete
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		CreationAcknowledged: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	})
@@ -68,8 +75,10 @@ func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
 	fi := newFakeInfra()
 	fl.setInfra(fi)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert confirmation ran with no requeue
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), requeue)
 	assert.Equal(t, 1, fl.callCount("IsCreateComplete"))
@@ -77,15 +86,16 @@ func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
 	assert.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
 	assert.Equal(t, 1, fl.callCount("ConfirmCreation"))
 
-	// the confirm path never re-acks or deploys
+	// assert no re-ack and no deploy
 	assert.Equal(t, 0, fl.callCount("AckCreation"))
 	assert.Equal(t, 0, fi.deployCallCount())
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
 // TestHandleInfraCreate_OnCreateConfirmedError_Propagates covers a
-// post-creation failure returning the error without confirming.
+// post-creation failure that stops confirmation.
 func TestHandleInfraCreate_OnCreateConfirmedError_Propagates(t *testing.T) {
+	// fail post-creation work on an otherwise complete create
 	errPostCreate := errors.New("post-creation work failed")
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		CreationAcknowledged: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
@@ -93,8 +103,10 @@ func TestHandleInfraCreate_OnCreateConfirmedError_Propagates(t *testing.T) {
 	fl.setCreateComplete(true)
 	fl.setErr("OnCreateConfirmed", errPostCreate)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert the post-creation error is wrapped and confirmation is skipped
 	require.Error(t, err)
 	assert.ErrorIs(t, err, errPostCreate)
 	assert.Contains(t, err.Error(), "failed to run post-creation work")
@@ -103,24 +115,27 @@ func TestHandleInfraCreate_OnCreateConfirmedError_Propagates(t *testing.T) {
 	assert.Equal(t, 0, fl.callCount("ConfirmCreation"))
 }
 
-// TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120 covers an
-// incomplete create with a fresh ack requeueing at 120 seconds.
+// TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120 covers
+// an in-progress create whose acknowledgement is still fresh.
 func TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120(t *testing.T) {
+	// install create-test lifecycle config
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
 
+	// freeze the clock at the acknowledgement time
 	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	restoreClock := setLifecycleClock(newFakeClock(base))
 	t.Cleanup(restoreClock)
 
-	// acked at the clock's current time: zero elapsed, well inside the
-	// stale threshold
+	// acknowledge creation at the same instant, still incomplete
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		CreationAcknowledged: util.Ptr(base),
 	})
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert a 120s requeue and no relaunch
 	require.NoError(t, err)
 	assert.Equal(t, int64(120), requeue)
 	assert.Equal(t, 1, fl.callCount("IsCreateComplete"))
@@ -129,17 +144,19 @@ func TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120(t *testing.T) {
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
-// TestHandleInfraCreate_StaleAck_Relaunches covers a stale incomplete
-// ack re-acknowledging and launching create.
+// TestHandleInfraCreate_StaleAck_Relaunches covers an in-progress create
+// whose acknowledgement is older than the stale threshold.
 func TestHandleInfraCreate_StaleAck_Relaunches(t *testing.T) {
+	// install create-test lifecycle config
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
 
-	// clock sits one second past the stale threshold relative to the ack
+	// freeze the clock 241s after acknowledgement, past the 240s threshold
 	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	restoreClock := setLifecycleClock(newFakeClock(base.Add(241 * time.Second)))
 	t.Cleanup(restoreClock)
 
+	// block deploy so the test can observe the relaunch
 	fi := newFakeInfra()
 	fi.setDeploy(infraBlock, nil)
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
@@ -147,64 +164,74 @@ func TestHandleInfraCreate_StaleAck_Relaunches(t *testing.T) {
 	})
 	fl.setInfra(fi)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert a 120s requeue and a fresh acknowledgement
 	require.NoError(t, err)
 	assert.Equal(t, int64(120), requeue)
 	assert.Equal(t, 1, fl.callCount("AckCreation"))
 	assert.Equal(t, 1, fl.callCount("BuildInfra"))
 
-	// confirm the goroutine launched, then drain it
+	// wait for the deploy goroutine to start
 	waitForCreateCond(t, "deploy launch", func() bool {
 		return fi.deployCallCount() == 1
 	})
+	// unblock deploy and wait for in-flight work to drain
 	fi.releaseDeploy()
 	waitForCreateCond(t, "in-flight drain", func() bool {
 		return inFlightCount() == 0
 	})
 }
 
-// TestHandleInfraCreate_NewRequest_AcksBuildsLaunches covers an unacked
-// create acknowledging, building, and launching.
+// TestHandleInfraCreate_NewRequest_AcksBuildsLaunches covers a create
+// with no acknowledgement yet.
 func TestHandleInfraCreate_NewRequest_AcksBuildsLaunches(t *testing.T) {
+	// install create-test lifecycle config
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
 
+	// block deploy so the test can observe the launch
 	fi := newFakeInfra()
 	fi.setDeploy(infraBlock, nil)
 	fl := newFakeLifecycle()
 	fl.setInfra(fi)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert acknowledgement, infra build, and a 120s requeue
 	require.NoError(t, err)
 	assert.Equal(t, int64(120), requeue)
 	assert.Equal(t, 1, fl.callCount("AckCreation"))
 	assert.Equal(t, 1, fl.callCount("BuildInfra"))
 
-	// initial fetch plus the pre-launch deletion-scheduled check; deploy
-	// is still blocked, so the success callback has not fetched yet
+	// assert two fetches: initial plus pre-launch, success path not yet run
 	assert.Equal(t, 2, fl.callCount("GetReconciliation"))
 
-	// confirm the goroutine launched, then drain it
+	// wait for the deploy goroutine to start
 	waitForCreateCond(t, "deploy launch", func() bool {
 		return fi.deployCallCount() == 1
 	})
+	// unblock deploy and wait for in-flight work to drain
 	fi.releaseDeploy()
 	waitForCreateCond(t, "in-flight drain", func() bool {
 		return inFlightCount() == 0
 	})
 }
 
-// TestHandleInfraCreate_AckCreationError covers an acknowledgement write
-// failure returning the error without launching.
+// TestHandleInfraCreate_AckCreationError covers a failed creation
+// acknowledgement.
 func TestHandleInfraCreate_AckCreationError(t *testing.T) {
+	// fail acknowledgement on a new create
 	errAck := errors.New("ack write failed")
 	fl := newFakeLifecycle()
 	fl.setErr("AckCreation", errAck)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert the ack error is wrapped and deploy is not launched
 	require.Error(t, err)
 	assert.ErrorIs(t, err, errAck)
 	assert.Contains(t, err.Error(), "failed to acknowledge creation")
@@ -214,8 +241,9 @@ func TestHandleInfraCreate_AckCreationError(t *testing.T) {
 }
 
 // TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts covers a
-// scheduled delete aborting create before ack so delete is not stalled.
+// deletion scheduled after acknowledgement and before deploy.
 func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
+	// serve a new-request snapshot, then one with deletion scheduled
 	fi := newFakeInfra()
 	fl := newFakeLifecycle(
 		&ReconciliationSnapshot{},
@@ -225,8 +253,10 @@ func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
 	)
 	fl.setInfra(fi)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert ack and build ran, then create aborted without deploy
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), requeue)
 	assert.Equal(t, 0, fl.callCount("AckCreation"))
@@ -237,16 +267,17 @@ func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
 }
 
 // TestHandleInfraCreate_DeletionScheduledDuringInfra_SuppressesNotification
-// covers a mid-create delete saving outputs and skipping the notification.
+// covers a deletion scheduled while deploy is running.
 func TestHandleInfraCreate_DeletionScheduledDuringInfra_SuppressesNotification(t *testing.T) {
+	// install create-test lifecycle config
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
 
+	// block deploy so the test can observe the launch
 	fi := newFakeInfra()
 	fi.setDeploy(infraBlock, nil)
 
-	// snapshots: initial fetch sees a new create, the pre-launch check is
-	// clear, and the success-callback fetch sees deletion scheduled
+	// serve new-request, pre-launch clear, then success-path deletion snapshots
 	fl := newFakeLifecycle(
 		&ReconciliationSnapshot{},
 		&ReconciliationSnapshot{},
@@ -256,35 +287,41 @@ func TestHandleInfraCreate_DeletionScheduledDuringInfra_SuppressesNotification(t
 	)
 	fl.setInfra(fi)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert a 120s requeue after launch
 	require.NoError(t, err)
 	assert.Equal(t, int64(120), requeue)
 
-	// let the deploy finish so the success callback runs, then drain
+	// wait for the deploy goroutine to start
 	waitForCreateCond(t, "deploy launch", func() bool {
 		return fi.deployCallCount() == 1
 	})
+	// let deploy finish so the success path runs, then drain
 	fi.releaseDeploy()
 	waitForCreateCond(t, "in-flight drain", func() bool {
 		return inFlightCount() == 0
 	})
 
-	// outputs saved, notification suppressed
+	// assert outputs were saved and the create notification was skipped
 	assert.Equal(t, 1, fl.callCount("SaveCreateOutputs"))
 	assert.Equal(t, validStackState(), fl.createOutputs())
 	assert.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestHandleInfraCreate_GetReconciliationError_FirstFetch covers an
-// initial reconciliation fetch failure returning the error.
+// TestHandleInfraCreate_GetReconciliationError_FirstFetch covers a
+// reconciliation fetch that fails on the first call.
 func TestHandleInfraCreate_GetReconciliationError_FirstFetch(t *testing.T) {
+	// fail the first reconciliation fetch
 	errFetch := errors.New("api unavailable")
 	fl := newFakeLifecycle()
 	fl.setErr("GetReconciliation", errFetch)
 
+	// run the create handler
 	requeue, err := HandleInfraCreate(fl, newTestLogger())
 
+	// assert the fetch error is wrapped and later steps were not reached
 	require.Error(t, err)
 	assert.ErrorIs(t, err, errFetch)
 	assert.Contains(t, err.Error(), "failed to get reconciliation state")

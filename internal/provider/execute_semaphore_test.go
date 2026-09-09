@@ -281,7 +281,7 @@ func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	require.Equal(t, 2, fl.callCount("BuildInfra"))
 	require.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
 	require.Equal(t, 1, fl.callCount("ConfirmCreation"))
-	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
+	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
 }
 
 // TestExecuteInfraCreate_NonStreamable_NoWatcher covers a non-streamable
@@ -315,7 +315,7 @@ func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 	require.Equal(t, 2, fl.callCount("BuildInfra"))
 	require.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
 	require.Equal(t, 1, fl.callCount("ConfirmCreation"))
-	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
+	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
 
 	// check stack state was not restored and state was not streamed
 	require.Equal(t, 0, fi.setStackStateCallCount())

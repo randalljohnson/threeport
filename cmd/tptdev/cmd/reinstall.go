@@ -131,7 +131,7 @@ change.`,
 		// so reinstall picks up images built by 'tptdev build' without requiring
 		// --tag every invocation; matches the build command's default.
 		if cliArgs.ControlPlaneImageTag == "" {
-			tag, err := util.ResolveImageTag(version.GetVersion())
+			tag, err := util.ResolveImageTag(cliArgs.ThreeportPath, version.GetVersion())
 			if err != nil {
 				cli.Error(fmt.Sprintf("failed to resolve default image tag: %s\nspecify a tag explicitly with --tag/-t", err), nil)
 				os.Exit(1)

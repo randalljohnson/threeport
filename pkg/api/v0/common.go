@@ -54,7 +54,8 @@ type Reconciliation struct {
 
 // ReconciliationStateChanged reports whether progress markers differ.
 // Acknowledgement timestamps count as set or unset only. InterruptReconciliation
-// is ignored; it is a gate, not progress.
+// is ignored; it is a gate, not progress. CreationFailed and DeletionFailed
+// compare by value.
 func ReconciliationStateChanged(a, b Reconciliation) bool {
 	return !boolPtrEqual(a.Reconciled, b.Reconciled) ||
 		!timePtrSet(a.CreationAcknowledged, b.CreationAcknowledged) ||
@@ -62,7 +63,8 @@ func ReconciliationStateChanged(a, b Reconciliation) bool {
 		!boolPtrEqual(a.CreationFailed, b.CreationFailed) ||
 		!timePtrEqual(a.DeletionScheduled, b.DeletionScheduled) ||
 		!timePtrSet(a.DeletionAcknowledged, b.DeletionAcknowledged) ||
-		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed)
+		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed) ||
+		!boolPtrEqual(a.DeletionFailed, b.DeletionFailed)
 }
 
 // ReconciliationUpdateNotifiable reports whether an update should notify the

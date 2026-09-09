@@ -333,13 +333,15 @@ func (o *okeLifecycle) ConfirmCreation() error {
 	return err
 }
 
-// AckDeletion sets DeletionAcknowledged in the API.
+// AckDeletion sets DeletionAcknowledged and clears DeletionFailed.
 func (o *okeLifecycle) AckDeletion() error {
 	timestamp := time.Now().UTC()
+	deletionFailed := false
 	ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
 		Common: v0.Common{ID: &o.instanceID},
 		Reconciliation: v0.Reconciliation{
 			DeletionAcknowledged: &timestamp,
+			DeletionFailed:       &deletionFailed,
 		},
 	}
 	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(

@@ -505,9 +505,9 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		return 60, nil
 	}
 
-	// check if acknowledged and not failed; a failed destroy re-launches now
-	if snap.DeletionAcknowledged != nil && !snap.DeletionFailed {
-		// re-fetch to check if inventory has been cleared
+	// confirm when inventory is already cleared, including after a
+	// failed destroy whose success path later cleared it
+	if snap.DeletionAcknowledged != nil {
 		latestSnap, err := p.GetReconciliation()
 		if err != nil {
 			return 0, fmt.Errorf("failed to check deletion status: %w", err)
@@ -540,10 +540,12 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 			return 0, nil
 		}
 
-		// resources not yet destroyed — check if ack is stale
-		if checkStaleAck(*snap.DeletionAcknowledged) {
+		// resources not yet destroyed: a failed destroy relaunches now,
+		// a stale ack relaunches, and a fresh ack waits
+		if snap.DeletionFailed {
+			log.Info("previous deletion failed, re-launching delete goroutine")
+		} else if checkStaleAck(*snap.DeletionAcknowledged) {
 			log.Info("deletion acknowledgement is stale, re-launching delete goroutine")
-			// fall through to re-launch
 		} else {
 			return 60, nil
 		}
@@ -704,7 +706,6 @@ func launchInfraDelete(config infraConfig) (int64, error) {
 	go func() {
 		defer releaseStackLock(config.StackKey, sl)
 		defer func() { <-sem }()
-		// recover a panic without marking the operation failed
 		defer func() {
 			if r := recover(); r != nil {
 				config.Log.Error(fmt.Errorf("panic: %v", r), "recovered panic in infrastructure delete goroutine")

@@ -289,13 +289,15 @@ func (g *gkeLifecycle) ConfirmCreation() error {
 	return err
 }
 
-// AckDeletion sets DeletionAcknowledged in the API.
+// AckDeletion sets DeletionAcknowledged and clears DeletionFailed.
 func (g *gkeLifecycle) AckDeletion() error {
 	timestamp := time.Now().UTC()
+	deletionFailed := false
 	ackUpdate := v0.GcpGkeKubernetesRuntimeInstance{
 		Common: v0.Common{ID: &g.instanceID},
 		Reconciliation: v0.Reconciliation{
 			DeletionAcknowledged: &timestamp,
+			DeletionFailed:       &deletionFailed,
 		},
 	}
 	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)

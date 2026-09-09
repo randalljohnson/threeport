@@ -192,6 +192,32 @@ func TestHandleInfraDelete_AckedInventoryCleared_Confirms(t *testing.T) {
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
+// TestHandleInfraDelete_AckedInventoryClearedButDeletionFailed_Confirms
+// covers a failed destroy whose inventory is already cleared.
+func TestHandleInfraDelete_AckedInventoryClearedButDeletionFailed_Confirms(t *testing.T) {
+	// set up an acknowledged failed delete with inventory "{}"
+	fl := newFakeLifecycle(&ReconciliationSnapshot{
+		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
+		DeletionAcknowledged: util.Ptr(deleteTestBase.Add(-time.Minute)),
+		DeletionFailed:       true,
+		ResourceInventory:    jsonPtr("{}"),
+	})
+
+	// run delete
+	requeue, err := HandleInfraDelete(fl, newTestLogger())
+
+	// confirm deletion without launching another destroy
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), requeue)
+	assert.Equal(t, 2, fl.callCount("GetReconciliation"))
+	assert.Equal(t, 1, fl.callCount("RefreshDeletionAck"))
+	assert.Equal(t, 1, fl.callCount("BuildInfra"))
+	assert.Equal(t, 1, fl.callCount("OnDeleteConfirmed"))
+	assert.Equal(t, 1, fl.callCount("ConfirmDeletion"))
+	assert.Equal(t, 0, fl.callCount("AckDeletion"))
+	assert.Equal(t, int64(0), inFlightCount())
+}
+
 // TestHandleInfraDelete_OnDeleteConfirmedError_Requeue60 covers a
 // post-deletion cleanup error that requeues without confirming.
 func TestHandleInfraDelete_OnDeleteConfirmedError_Requeue60(t *testing.T) {

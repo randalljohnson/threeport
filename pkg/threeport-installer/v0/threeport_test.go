@@ -4,9 +4,7 @@ import (
 	"testing"
 )
 
-// TestDefaultControlPlaneTierForProvider asserts that only the local
-// provider defaults to a droppable tier, so an install that reaches
-// real infrastructure is never disposable by default.
+// TestDefaultControlPlaneTierForProvider covers kind mapping to development and other providers to production.
 func TestDefaultControlPlaneTierForProvider(t *testing.T) {
 	tests := []struct {
 		infraProvider string

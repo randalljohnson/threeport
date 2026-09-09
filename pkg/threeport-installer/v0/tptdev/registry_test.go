@@ -6,9 +6,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 )
 
-// TestRegistryNeedsStart covers every state the Docker daemon reports for a
-// container, so a state needing an unpause or a recreate is never mistaken for
-// one a start call resolves.
+// TestRegistryNeedsStart covers when an existing registry container should be started.
 func TestRegistryNeedsStart(t *testing.T) {
 	tests := []struct {
 		name   string

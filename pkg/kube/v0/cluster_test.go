@@ -13,28 +13,28 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// testEncryptionKey is a 32 byte AES key in the base64 form the encryption
-// helpers expect. The credentials it protects in these tests are fabricated.
+// testEncryptionKey is a 32-byte AES-256 key, base64-encoded for the
+// encryption helpers.
 var testEncryptionKey = util.Base64Encode("0123456789abcdef0123456789abcdef")
 
-// okeRuntimeApiServer is a threeport API stand-in for the three lookups that
-// building an OKE token generator makes: the runtime's definition, the OKE
-// runtime instance behind it, and the OCI provider holding the credentials the
-// token is signed with.
+// okeRuntimeApiServer is a threeport API stub that answers the runtime
+// definition, OKE instance, and OCI provider lookups used to mint a per-request token.
 type okeRuntimeApiServer struct {
 	definitionRequests int
 }
 
-// serve starts the stand-in and returns the client and address to reach it at.
-// The address carries no scheme because GetResponse prepends one itself.
+// serve starts the stub and returns a client and the host:port address the
+// client library expects.
 func (s *okeRuntimeApiServer) serve(t *testing.T) (*http.Client, string) {
 	t.Helper()
 
+	// encrypt the OCI provider key the way the API stores it
 	privateKey, err := encryption.Encrypt(testEncryptionKey, "oci-api-signing-key")
 	if err != nil {
 		t.Fatalf("failed to encrypt the test provider key: %v", err)
 	}
 
+	// serve the runtime definition, OKE instance, and provider
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -78,10 +78,11 @@ func (s *okeRuntimeApiServer) serve(t *testing.T) (*http.Client, string) {
 	}))
 	t.Cleanup(server.Close)
 
+	// strip the scheme; the client library prepends one itself
 	return &http.Client{}, strings.TrimPrefix(server.URL, "http://")
 }
 
-// write sends a threeport API response carrying the supplied objects.
+// write encodes objects as a threeport API success response.
 func (s *okeRuntimeApiServer) write(t *testing.T, w http.ResponseWriter, data []apiserver_lib.Object) {
 	t.Helper()
 
@@ -91,11 +92,8 @@ func (s *okeRuntimeApiServer) write(t *testing.T, w http.ResponseWriter, data []
 	}
 }
 
-// testTokenMintingRuntime returns a kubernetes runtime instance for a cluster
-// on a provider that mints kube API tokens per request, carrying a client
-// certificate and key as well. A real record on such a provider carries no
-// certificate, but a rebuilt one can, and the certificate must not be what
-// the client authenticates with.
+// testTokenMintingRuntime returns a runtime with a definition ID and a client
+// certificate both set. A live OKE record has no certificate.
 func testTokenMintingRuntime() *v0.KubernetesRuntimeInstance {
 	id := uint(1)
 	definitionId := uint(2)
@@ -116,19 +114,15 @@ func testTokenMintingRuntime() *v0.KubernetesRuntimeInstance {
 	}
 }
 
-// TestGetRestConfigMintsTokenInsteadOfUsingCertificate asserts that a runtime
-// on a token-minting provider authenticates with a per-request token, and that
-// a certificate stored on the record does not divert it onto the certificate
-// path.
-//
-// This is the branch a local cluster can never reach. Kind records a client
-// certificate and no infra provider that mints, so it takes the certificate
-// path every time, and a green run against it says nothing about whether the
-// minting path still works.
+// TestGetRestConfigMintsTokenInsteadOfUsingCertificate covers an OKE runtime
+// authenticating with a per-request token rather than its stored certificate.
+// Kind never takes this path, so a green kind run does not cover it.
 func TestGetRestConfigMintsTokenInsteadOfUsingCertificate(t *testing.T) {
+	// stand up an OKE threeport API stub
 	apiServer := &okeRuntimeApiServer{}
 	apiClient, apiAddr := apiServer.serve(t)
 
+	// build a rest config for a runtime that also has a client certificate
 	restConfig, err := GetRestConfig(
 		testTokenMintingRuntime(),
 		false,
@@ -140,20 +134,17 @@ func TestGetRestConfigMintsTokenInsteadOfUsingCertificate(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// the provider is read off the runtime's definition, which is what
-	// selects the minting path in the first place
+	// check the runtime definition was looked up once
 	if apiServer.definitionRequests != 1 {
 		t.Errorf("expected the runtime definition to be looked up once, got %d", apiServer.definitionRequests)
 	}
 
-	// a per-request token is injected by the transport, not carried on
-	// the config, so a config with no transport wrapper is not minting
+	// check a wrapped transport is set for per-request minting
 	if restConfig.WrapTransport == nil {
 		t.Error("expected the rest config to mint a token per request through a wrapped transport")
 	}
 
-	// the certificate on the record must not be what authenticates:
-	// each caller has to reach the kube API as its own identity
+	// check the stored client certificate is unused
 	if len(restConfig.TLSClientConfig.CertData) > 0 {
 		t.Errorf("expected no client certificate on the rest config, got %s", restConfig.TLSClientConfig.CertData)
 	}
@@ -161,22 +152,21 @@ func TestGetRestConfigMintsTokenInsteadOfUsingCertificate(t *testing.T) {
 		t.Error("expected no client key on the rest config")
 	}
 
-	// a single bearer token baked into the config is the other way to
-	// get this wrong: it would authenticate every caller as one identity
+	// check no static bearer token is stored on the config
 	if restConfig.BearerToken != "" {
 		t.Errorf("expected no static bearer token on the rest config, got %s", restConfig.BearerToken)
 	}
 
+	// check the runtime's CA certificate is carried over
 	if got := string(restConfig.TLSClientConfig.CAData); got != "kube-ca-cert" {
 		t.Errorf("expected the runtime's CA certificate to be carried over, got %s", got)
 	}
 }
 
-// TestGetRestConfigUsesCertificateWithoutTokenMintingProvider asserts that a
-// runtime whose definition names no minting provider still authenticates with
-// its client certificate. This is the path a local cluster takes, and it is
-// the one that must not change when the minting path does.
+// TestGetRestConfigUsesCertificateWithoutTokenMintingProvider covers a kind
+// runtime authenticating with its stored client certificate.
 func TestGetRestConfigUsesCertificateWithoutTokenMintingProvider(t *testing.T) {
+	// stand up a kind threeport API stub
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		infraProvider := v0.KubernetesRuntimeInfraProviderKind
 		w.Header().Set("Content-Type", "application/json")
@@ -191,6 +181,7 @@ func TestGetRestConfigUsesCertificateWithoutTokenMintingProvider(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
+	// pass an empty encryption key so the stored certificate key is used as-is
 	restConfig, err := GetRestConfig(
 		testTokenMintingRuntime(),
 		false,
@@ -202,9 +193,12 @@ func TestGetRestConfigUsesCertificateWithoutTokenMintingProvider(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
+	// check no per-request token minting is configured
 	if restConfig.WrapTransport != nil {
 		t.Error("expected no per-request token minting for a provider that has none")
 	}
+
+	// check the stored client certificate is used
 	if got := string(restConfig.TLSClientConfig.CertData); got != "kube-client-cert" {
 		t.Errorf("expected the client certificate to authenticate, got %s", got)
 	}
@@ -213,17 +207,19 @@ func TestGetRestConfigUsesCertificateWithoutTokenMintingProvider(t *testing.T) {
 	}
 }
 
-// TestGetRestConfigRefusesRuntimeWithNoCredential asserts that a runtime
-// carrying no certificate pair, no token, and no minting provider is refused
-// rather than returned as a config that cannot authenticate. Anything that
-// writes a runtime record without one of the three fails here.
+// TestGetRestConfigRefusesRuntimeWithNoCredential covers a runtime with no
+// definition ID, certificate, or connection token being refused.
 func TestGetRestConfigRefusesRuntimeWithNoCredential(t *testing.T) {
+	// drop the definition ID and client certificate; the fixture has no token
 	runtime := testTokenMintingRuntime()
 	runtime.KubernetesRuntimeDefinitionID = nil
 	runtime.Certificate = nil
 	runtime.CertificateKey = nil
 
+	// ask for a rest config
 	_, err := GetRestConfig(runtime, false, &http.Client{}, "", "")
+
+	// check the runtime is refused
 	if err == nil {
 		t.Fatal("expected a runtime with no credential to be refused, got nil error")
 	}

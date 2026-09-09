@@ -22,33 +22,27 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// deploymentGVR is reused by the scale-down and verify phases (which
-// target Deployments by name or by label).
+// A reinstall deletes installer-managed resources that are not labeled
+// persistent, then re-runs the install path. Emptying the database or
+// message broker is issued against the running services so their volumes
+// survive, and is refused unless the namespace records a development tier.
+
 var deploymentGVR = schema.GroupVersionResource{
 	Group:    "apps",
 	Version:  "v1",
 	Resource: "deployments",
 }
 
-// deleteTarget pairs a GVR with whether it's namespace-scoped. Cluster
-// -scoped kinds (ClusterRole, ClusterRoleBinding) skip the .Namespace
-// call on the dynamic client.
+// deleteTarget is a Kubernetes resource kind to list and delete during reinstall.
+// Cluster-scoped kinds are listed without a namespace.
 type deleteTarget struct {
 	gvr        schema.GroupVersionResource
 	namespaced bool
 }
 
-// deleteTargets is the closed set of kinds the reinstall delete phase
-// walks. Each kind that the installer can create is listed here;
-// resources whose loss is unrecoverable (cascade-delete, data,
-// external state) are deliberately excluded:
-//
-//	customresourcedefinitions - cascade-deletes every cr of that type
-//	namespaces                - cascade-deletes everything in the ns
-//	persistentvolumeclaims    - data loss
-//	statefulsets              - the persistent label protects cockroach
-//	                            and nats specifically; no other
-//	                            installer-managed statefulset exists
+// deleteTargets is the installer-managed resource kinds reinstall deletes.
+// CRDs, namespaces, volume claims, and stateful sets are omitted so
+// custom resources, the control plane namespace, and stored data survive.
 var deleteTargets = []deleteTarget{
 	{gvr: deploymentGVR, namespaced: true},
 	{gvr: schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}, namespaced: true},
@@ -61,85 +55,53 @@ var deleteTargets = []deleteTarget{
 	{gvr: schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterrolebindings"}, namespaced: false},
 }
 
-// restApiDeploymentReadyTimeout caps how long Reinstall will wait for
-// the rest-api deployment to roll back to ready after install.
+// restApiDeploymentReadyTimeout is the time allowed for the rest-api
+// deployment to report a ready replica after reinstall.
 const restApiDeploymentReadyTimeout = 5 * time.Minute
 
-// dropDatabaseJobName is the one-off job that issues the drop against
-// the running database. The name is fixed, so a job left behind by an
-// interrupted run is replaced instead of accumulating alongside it.
 const dropDatabaseJobName = "threeport-drop-database"
 
-// dropDatabaseJobBackoffLimit is how many times kubernetes replaces the
-// drop job's pod before it reports the job failed. Retries cover a
-// database still finishing its own startup when the job first runs.
+// dropDatabaseJobBackoffLimit is the number of pod retries before the
+// database drop job is treated as failed.
 const dropDatabaseJobBackoffLimit = 3
 
-// dropMessageBrokerJobName is the one-off job that removes the message
-// broker's streams. Fixed for the same reason the database drop job's
-// name is fixed.
 const dropMessageBrokerJobName = "threeport-drop-message-broker"
 
-// dropMessageBrokerJobBackoffLimit is how many times kubernetes replaces
-// the broker drop job's pod before it reports the job failed. Retries
-// cover a broker still electing its leader when the job first runs.
+// dropMessageBrokerJobBackoffLimit is the number of pod retries before the
+// message broker drop job is treated as failed.
 const dropMessageBrokerJobBackoffLimit = 3
 
-// dbRootCertsMountPath is where the drop job mounts the database's root
-// credentials. The cockroach client reads the whole directory, so the
-// three files the secret holds are named the way it expects.
+// dbRootCertsMountPath is the directory the cockroach client reads for certificates.
+// The secret's keys must use the filenames that client expects.
 const dbRootCertsMountPath = "/cockroach/cockroach-certs"
 
-// dbRootCertsFileMode makes the mounted credentials readable only by
-// the user running the job. The cockroach client refuses a client key
-// that anyone else can read.
+// dbRootCertsFileMode is the owner-only permission the cockroach client requires on key files.
 const dbRootCertsFileMode = 0600
 
-// jobGVR is the kind the database drop creates. It appears in no delete
-// target list: the drop removes its own job.
 var jobGVR = schema.GroupVersionResource{
 	Group:    "batch",
 	Version:  "v1",
 	Resource: "jobs",
 }
 
-// ErrControlPlaneNotDevelopment reports that an operation restricted to
-// development control planes was attempted against one installed at a
-// different tier, or against one whose tier cannot be established.
+// ErrControlPlaneNotDevelopment is returned when a drop is refused because the
+// control plane is not installed at the development tier, or its tier is unknown.
 var ErrControlPlaneNotDevelopment = errors.New("control plane is not installed at the development tier")
 
-// DropDatabase drops the control plane's schema, so the next install
-// recreates the database empty and the migrations run from scratch. The
-// data is not recoverable afterward.
-//
-// Only a control plane installed at the development tier may be
-// dropped. The tier is read from the namespace in the target cluster
-// rather than taken from the caller, so pointing a development command
-// at a production cluster is refused by that cluster's own record of
-// how it was installed. A namespace carrying no tier is refused too,
-// which covers control planes installed before the tier was recorded.
-//
-// The drop is issued as SQL against the running database rather than by
-// deleting the database's kubernetes resources, so everything outside
-// the schema survives: the volume holding the data directory, the
-// database's own certificates, the certificate authority, the message
-// broker's data, and the api's external endpoint. Nobody has to
-// re-issue or re-download credentials afterward, and no volume has to
-// be reprovisioned.
-//
-// Control plane deployments are scaled to zero first, so no component
-// is writing to the schema while it is being dropped. The install that
-// follows brings them back.
+// DropDatabase empties the control plane database on a development installation.
+// The drop is issued as SQL against the running database so its volume and certificates survive.
 func (cpi *ControlPlaneInstaller) DropDatabase(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) error {
 	namespace := cpi.Opts.Namespace
 
+	// read the installed control plane tier
 	tier, err := cpi.getInstalledTier(kubeClient, mapper)
 	if err != nil {
 		return err
 	}
+	// refuse a non-development control plane
 	if tier != ControlPlaneTierDev {
 		return fmt.Errorf(
 			"%w: namespace %s reports tier %q, refusing to drop its database",
@@ -147,12 +109,12 @@ func (cpi *ControlPlaneInstaller) DropDatabase(
 		)
 	}
 
-	// quiesce the control plane first so nothing is mid-write when its
-	// tables go away
+	// scale the control plane to zero so nothing is mid-write during the drop
 	if err := cpi.scaleDownDeployments(kubeClient, namespace); err != nil {
 		return fmt.Errorf("failed to scale control plane down before the drop: %w", err)
 	}
 
+	// run the database drop job
 	if err := cpi.runDropDatabaseJob(kubeClient, namespace); err != nil {
 		return err
 	}
@@ -162,38 +124,20 @@ func (cpi *ControlPlaneInstaller) DropDatabase(
 	return nil
 }
 
-// DropMessageBrokerState removes every stream the message broker holds,
-// which takes their consumers and any undelivered notifications with
-// them. The next install recreates the streams, and each controller
-// recreates its own consumer and lock bucket as it starts.
-//
-// This belongs with the database drop rather than beside it as a choice.
-// The broker's streams carry notifications naming rows by identifier and
-// its key-value buckets carry reconciliation locks keyed the same way,
-// so dropping the database without dropping the broker leaves messages
-// and locks pointing at rows that no longer exist. Worse, a durable
-// consumer keeps whatever configuration it was created with: a delivery
-// limit set by an older release survives every later install, and
-// nothing reports the divergence, so an object can stop being reconciled
-// with no record of anything having given up.
-//
-// The caller quiesces the control plane before calling this, which the
-// database drop already does, so no controller is holding a lock or
-// mid-delivery while the streams go away.
-//
-// The removal is issued with the broker's own command line client over
-// the network, so the volume holding the broker's data directory
-// survives and no volume has to be reprovisioned.
+// DropMessageBrokerState removes every stream on a development installation's message broker.
+// Key-value buckets are streams too, so one pass also clears reconciliation locks.
 func (cpi *ControlPlaneInstaller) DropMessageBrokerState(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) error {
 	namespace := cpi.Opts.Namespace
 
+	// read the installed control plane tier
 	tier, err := cpi.getInstalledTier(kubeClient, mapper)
 	if err != nil {
 		return err
 	}
+	// refuse a non-development control plane
 	if tier != ControlPlaneTierDev {
 		return fmt.Errorf(
 			"%w: namespace %s reports tier %q, refusing to drop its message broker state",
@@ -201,6 +145,7 @@ func (cpi *ControlPlaneInstaller) DropMessageBrokerState(
 		)
 	}
 
+	// run the message broker drop job
 	if err := cpi.runDropMessageBrokerJob(kubeClient, namespace); err != nil {
 		return err
 	}
@@ -210,25 +155,19 @@ func (cpi *ControlPlaneInstaller) DropMessageBrokerState(
 	return nil
 }
 
-// runDropMessageBrokerJob removes every stream from a one-off job in the
-// control plane namespace, waits for it to report success, and removes
-// it. Key-value buckets are streams too, so listing by name reaches the
-// reconciliation lock buckets alongside the notification streams and one
-// pass clears both.
+// runDropMessageBrokerJob removes every nats stream from a one-off job, waits, then deletes it.
 func (cpi *ControlPlaneInstaller) runDropMessageBrokerJob(
 	kubeClient dynamic.Interface,
 	namespace string,
 ) error {
-	// clear a job left behind by an interrupted run: a job's pod
-	// template is immutable, so creating over one is refused
+	// clear a leftover drop job whose pod template is immutable
 	if err := cpi.deleteDropJob(
 		kubeClient, namespace, dropMessageBrokerJobName, "message broker",
 	); err != nil {
 		return err
 	}
 
-	// remove each stream by name. an empty broker yields an empty list
-	// and the loop does nothing, so a repeat run is not an error
+	// remove every nats stream including key-value buckets
 	script := "set -e; for stream in $(nats stream ls --names); do nats stream rm \"$stream\" --force; done"
 	fmt.Println("Info: removing every message broker stream and key-value bucket")
 
@@ -264,44 +203,35 @@ func (cpi *ControlPlaneInstaller) runDropMessageBrokerJob(
 		},
 	}
 
+	// create the drop job
 	if _, err := kubeClient.Resource(jobGVR).Namespace(namespace).Create(
 		context.Background(), job, metav1.CreateOptions{},
 	); err != nil {
 		return fmt.Errorf("failed to create message broker drop job %s: %w", dropMessageBrokerJobName, err)
 	}
 
+	// wait for the drop job to complete
 	if err := cpi.waitForDropJob(
 		kubeClient, namespace, dropMessageBrokerJobName, dropMessageBrokerJobBackoffLimit, "message broker",
 	); err != nil {
 		return err
 	}
 
-	// the job's pod holds the only record of what the drop reported, so
-	// it is cleared only once the job has reported success
+	// delete the job after it succeeds
 	return cpi.deleteDropJob(kubeClient, namespace, dropMessageBrokerJobName, "message broker")
 }
 
-// runDropDatabaseJob issues the drop from a one-off job in the control
-// plane namespace, waits for it to report success, and removes it. The
-// job runs the cockroach client against the running database with the
-// same root credentials the installer already keeps in the cluster for
-// database initialization.
+// runDropDatabaseJob issues the drop from a one-off job, waits, then deletes it.
 func (cpi *ControlPlaneInstaller) runDropDatabaseJob(
 	kubeClient dynamic.Interface,
 	namespace string,
 ) error {
-	// clear a job left behind by an interrupted run: a job's pod
-	// template is immutable, so creating over one is refused
+	// clear a leftover drop job whose pod template is immutable
 	if err := cpi.deleteDropJob(kubeClient, namespace, dropDatabaseJobName, "database"); err != nil {
 		return err
 	}
 
-	// a paused schema change holds the drop open indefinitely, because the
-	// drop waits for an in-flight change that will never resume. migrations
-	// interrupted by an earlier drop leave exactly that behind, so clear any
-	// before issuing the drop rather than waiting out a deadline that cannot
-	// be met. the cancel is scoped to paused jobs, so a schema change that is
-	// genuinely running is left to finish.
+	// cancel paused schema changes before the drop
 	statement := fmt.Sprintf(
 		"CANCEL JOBS (SELECT job_id FROM [SHOW JOBS] WHERE status = 'paused' AND job_type = 'NEW SCHEMA CHANGE'); DROP DATABASE IF EXISTS %s CASCADE",
 		database.ThreeportDatabaseName,
@@ -357,28 +287,26 @@ func (cpi *ControlPlaneInstaller) runDropDatabaseJob(
 		},
 	}
 
+	// create the drop job
 	if _, err := kubeClient.Resource(jobGVR).Namespace(namespace).Create(
 		context.Background(), job, metav1.CreateOptions{},
 	); err != nil {
 		return fmt.Errorf("failed to create database drop job %s: %w", dropDatabaseJobName, err)
 	}
 
+	// wait for the drop job to complete
 	if err := cpi.waitForDropJob(
 		kubeClient, namespace, dropDatabaseJobName, dropDatabaseJobBackoffLimit, "database",
 	); err != nil {
 		return err
 	}
 
-	// the job's pod holds the only record of what the drop reported, so
-	// it is cleared only once the job has reported success
+	// delete the job after it succeeds
 	return cpi.deleteDropJob(kubeClient, namespace, dropDatabaseJobName, "database")
 }
 
-// waitForDropJob polls a drop job until it reports one successful
-// completion, or reports that its pod has failed as many times as the
-// job allows. A job that has exhausted its retries will not recover, so
-// it is reported straight away rather than waited out. The subject names
-// what is being dropped, so the caller's failure reads in its own terms.
+// waitForDropJob polls a drop job until a pod succeeds or the job exceeds its backoff.
+// Exhausted retries are reported immediately because the job will not recover.
 func (cpi *ControlPlaneInstaller) waitForDropJob(
 	kubeClient dynamic.Interface,
 	namespace string,
@@ -388,7 +316,7 @@ func (cpi *ControlPlaneInstaller) waitForDropJob(
 ) error {
 	var jobFailed error
 
-	// 3s poll x 60 attempts = 3 minute aggregate deadline.
+	// poll until the job succeeds or exhausts its retries
 	if err := util.Retry(60, 3, func() error {
 		job, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
 			context.Background(), jobName, metav1.GetOptions{},
@@ -397,6 +325,7 @@ func (cpi *ControlPlaneInstaller) waitForDropJob(
 			return fmt.Errorf("failed to read %s drop job status: %w", subject, err)
 		}
 
+		// stop polling a job that has exhausted its retries
 		failed, _, _ := util.NestedInt64OrFloat64(job.Object, "status", "failed")
 		if failed > backoffLimit {
 			jobFailed = fmt.Errorf(
@@ -406,6 +335,7 @@ func (cpi *ControlPlaneInstaller) waitForDropJob(
 			return nil
 		}
 
+		// succeed once a pod has completed
 		succeeded, _, _ := util.NestedInt64OrFloat64(job.Object, "status", "succeeded")
 		if succeeded > 0 {
 			return nil
@@ -419,9 +349,7 @@ func (cpi *ControlPlaneInstaller) waitForDropJob(
 	return jobFailed
 }
 
-// deleteDropJob removes a drop job and waits for it to leave the api.
-// The delete cascades to the job's pod, so a completed pod does not
-// linger in the control plane namespace.
+// deleteDropJob deletes a drop job in the foreground and waits until its name is free.
 func (cpi *ControlPlaneInstaller) deleteDropJob(
 	kubeClient dynamic.Interface,
 	namespace string,
@@ -431,13 +359,14 @@ func (cpi *ControlPlaneInstaller) deleteDropJob(
 	deletePolicy := metav1.DeletePropagationForeground
 	deleteOpts := metav1.DeleteOptions{PropagationPolicy: &deletePolicy}
 
+	// delete the job and its pods in the foreground
 	if err := kubeClient.Resource(jobGVR).Namespace(namespace).Delete(
 		context.Background(), jobName, deleteOpts,
 	); err != nil && !k8serrors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete %s drop job %s: %w", subject, jobName, err)
 	}
 
-	// 3s poll x 20 attempts = 1 minute aggregate deadline.
+	// wait until the job name is gone so it can be reused
 	if err := util.Retry(20, 3, func() error {
 		_, err := kubeClient.Resource(jobGVR).Namespace(namespace).Get(
 			context.Background(), jobName, metav1.GetOptions{},
@@ -457,14 +386,13 @@ func (cpi *ControlPlaneInstaller) deleteDropJob(
 	return nil
 }
 
-// getInstalledTier reads the tier a control plane was installed with
-// from its namespace. It reports an error when the namespace is absent
-// or carries no tier, so a caller gating a destructive operation on the
-// result never proceeds on a missing value.
+// getInstalledTier returns the control plane tier recorded on the namespace.
+// An absent tier is an error so a drop never proceeds on a missing value.
 func (cpi *ControlPlaneInstaller) getInstalledTier(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) (ControlPlaneTier, error) {
+	// read the control plane namespace
 	namespace, err := kube.GetResource(
 		"", "v1", "Namespace",
 		"", cpi.Opts.Namespace,
@@ -474,6 +402,7 @@ func (cpi *ControlPlaneInstaller) getInstalledTier(
 		return "", fmt.Errorf("failed to read control plane namespace %s: %w", cpi.Opts.Namespace, err)
 	}
 
+	// refuse a namespace that records no tier
 	tier := namespace.GetLabels()[LabelTier]
 	if tier == "" {
 		return "", fmt.Errorf(
@@ -485,21 +414,8 @@ func (cpi *ControlPlaneInstaller) getInstalledTier(
 	return ControlPlaneTier(tier), nil
 }
 
-// Reinstall deletes every installer-managed stateless resource in the
-// control plane namespace and then re-runs the install path so the
-// pods come back with fresh images and specs. Designed for dev
-// environments only; production-safe upgrades are a separate flow.
-//
-// The control plane's stateful side - cockroachdb, nats, the
-// certificate authority, the external load balancer - is preserved by
-// the persistent label that those resources carry, so dev users keep
-// their database contents and the api endpoint's public ip across
-// reinstalls.
-//
-// Phases: delete -> install -> verify. The delete step scales control
-// plane deployments to zero before issuing deletes so in-cluster
-// reconcilers (the controllers) don't race by recreating resources we
-// just deleted.
+// Reinstall deletes installer-managed stateless resources and re-runs the install path.
+// Resources labeled persistent keep their data and the api endpoint across the reinstall.
 func (cpi *ControlPlaneInstaller) Reinstall(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
@@ -507,44 +423,40 @@ func (cpi *ControlPlaneInstaller) Reinstall(
 ) error {
 	ns := cpi.Opts.Namespace
 
+	// delete installer-managed stateless resources
 	if err := cpi.deleteForReinstall(kubeClient, ns); err != nil {
 		return fmt.Errorf("failed to delete control plane resources: %w", err)
 	}
 
-	// install uses CreateOrUpdate so resources that survived the delete
-	// phase (api-ca, api-cert, persistent statefulsets) are patched in
-	// place. set the flag explicitly in case the installer was
-	// constructed for a fresh install path.
+	// set create-or-update so install can reapply resources that still exist
 	cpi.Opts.CreateOrUpdateKubeResources = true
 
-	// dependencies first - encryption-key, nats config, crdb config,
-	// api load balancer service. existence guards on the encryption
-	// secret and db cert secret keep their content intact across this
-	// install; the empty arguments below only matter for fresh installs,
-	// which reinstall doesn't run.
 	fmt.Println("Info: installing threeport control plane dependencies (nats, crdb, encryption-key, api load balancer)")
+	// install control plane dependencies
 	if err := cpi.InstallThreeportControlPlaneDependencies(kubeClient, mapper, "", nil); err != nil {
 		return fmt.Errorf("failed to install control plane dependencies: %w", err)
 	}
 
-	// api-ca and api-cert secrets carry the persistent label and survive the delete; no re-issue needed.
-
 	fmt.Println("Info: installing threeport api deployment")
+	// install the api deployment
 	if err := cpi.UpdateThreeportAPIDeployment(kubeClient, mapper, nil); err != nil {
 		return fmt.Errorf("failed to install threeport api deployment: %w", err)
 	}
 
 	fmt.Printf("Info: installing %d threeport controller(s)\n", len(cpi.Opts.ControllerList))
+	// install controllers
 	if err := cpi.InstallThreeportControllers(kubeClient, mapper, authConfig); err != nil {
 		return fmt.Errorf("failed to install threeport controllers: %w", err)
 	}
 
 	fmt.Println("Info: installing threeport agent")
+	// install the agent
 	if err := cpi.InstallThreeportAgent(kubeClient, mapper, authConfig); err != nil {
 		return fmt.Errorf("failed to install threeport agent: %w", err)
 	}
 
 	fmt.Printf("Info: waiting for rest-api deployment to become ready (timeout %s)\n", restApiDeploymentReadyTimeout)
+	// wait for the rest-api to become ready
 	if err := cpi.waitForRestAPIReady(kubeClient, ns, restApiDeploymentReadyTimeout); err != nil {
 		return fmt.Errorf("rest-api did not become ready after reinstall: %w", err)
 	}
@@ -552,47 +464,31 @@ func (cpi *ControlPlaneInstaller) Reinstall(
 	return nil
 }
 
-// deleteForReinstall performs the combined delete phase: scale every
-// installer-managed Deployment to zero, wait for pods to drain, then
-// foreground-cascade delete every stateless resource matching the
-// managed-by label, then wait for the api to report empty across every
-// kind.
-//
-// Reinstall covers any change to deployment spec, including fields
-// that are immutable on a running deployment (volume mounts, selectors,
-// init containers) - not just the image-swap that `strategy: Recreate`
-// handles. Scale to 0 + foreground-cascade delete + recreate means the
-// new pods come up against the fresh spec without trying to patch
-// through any in-place restriction. Stateful resources (CRDB data,
-// NATS data, the CA, rest-api external IP) are deliberately excluded
-// from the delete.
+// deleteForReinstall deletes installer-managed resources that are not labeled persistent.
+// Deleting and recreating covers spec fields that cannot be patched on a running deployment.
 func (cpi *ControlPlaneInstaller) deleteForReinstall(
 	kubeClient dynamic.Interface,
 	namespace string,
 ) error {
+	// select installer-managed resources that are not marked persistent
 	selector := fmt.Sprintf(
 		"%s=%s,%s!=%s",
 		LabelManagedBy, LabelManagedByValue,
 		LabelPersistent, LabelPersistentValue,
 	)
 
+	// scale deployments to zero so the control plane stops driving state
 	if err := cpi.scaleDownDeployments(kubeClient, namespace); err != nil {
 		return err
 	}
 
-	// foreground-cascade delete the stateless resource set. foreground
-	// holds the owner in the api until its dependents are gone, so the
-	// install step that follows doesn't collide with a still-terminating
-	// same-named object.
 	fmt.Println("Info: deleting installer-managed stateless resources across deployments, configmaps, secrets, services, serviceaccounts, roles, rolebindings, clusterroles, clusterrolebindings")
 	deletePolicy := metav1.DeletePropagationForeground
 	deleteOpts := metav1.DeleteOptions{PropagationPolicy: &deletePolicy}
 
+	// delete matching resources in the foreground so dependents are gone before install
 	count := 0
 	for _, target := range deleteTargets {
-		// cluster-scoped resources (clusterroles, clusterrolebindings)
-		// skip the namespace call; namespaced resources pin to the
-		// control plane namespace.
 		var ri dynamic.ResourceInterface
 		if target.namespaced {
 			ri = kubeClient.Resource(target.gvr).Namespace(namespace)
@@ -621,16 +517,7 @@ func (cpi *ControlPlaneInstaller) deleteForReinstall(
 	}
 	fmt.Printf("Info: deleted %d stateless resource(s)\n", count)
 
-	// k8s Delete is async: the call returns once the deletion is
-	// initiated, not once the object is gone. wait until the label
-	// selector returns empty across every kind so the install step
-	// doesn't collide with a still-terminating same-named object.
-	//
-	// Stuck-mode shape: a single resource hung in termination
-	// (finalizer not cleared, SIGTERM handler hanging on in-flight
-	// reconcile, unresponsive node) holds the deadline. Many concurrent
-	// fast-terminating resources is the expected case, not the worst
-	// case.
+	// wait until every matching resource has left the api
 	var sample string
 	if err := util.Retry(60, 3, func() error {
 		pending := 0
@@ -664,16 +551,13 @@ func (cpi *ControlPlaneInstaller) deleteForReinstall(
 	return nil
 }
 
-// scaleDownDeployments scales every installer-managed Deployment in the
-// namespace to zero and waits for their pods to drain. Both callers
-// need the control plane to stop driving state before they act on it:
-// the reinstall so in-cluster reconcilers don't recreate resources it
-// just deleted, and the database drop so no component is writing to a
-// schema being dropped.
+// scaleDownDeployments sets installer-managed non-persistent deployments to zero replicas.
+// The control plane must stop driving state before resources are deleted or the schema is dropped.
 func (cpi *ControlPlaneInstaller) scaleDownDeployments(
 	kubeClient dynamic.Interface,
 	namespace string,
 ) error {
+	// select installer-managed deployments that are not marked persistent
 	selector := fmt.Sprintf(
 		"%s=%s,%s!=%s",
 		LabelManagedBy, LabelManagedByValue,
@@ -681,12 +565,14 @@ func (cpi *ControlPlaneInstaller) scaleDownDeployments(
 	)
 
 	fmt.Println("Info: scaling all control plane deployments to 0 and waiting for pods to terminate")
+	// list installer-managed non-persistent deployments
 	deployList, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
 		context.Background(), metav1.ListOptions{LabelSelector: selector},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to list control plane deployments: %w", err)
 	}
+	// scale each matching deployment to zero
 	patch := []byte(`{"spec":{"replicas":0}}`)
 	for _, dep := range deployList.Items {
 		name := dep.GetName()
@@ -702,7 +588,7 @@ func (cpi *ControlPlaneInstaller) scaleDownDeployments(
 		}
 	}
 
-	// 3s poll x 60 attempts = 3 minute aggregate deadline.
+	// wait until no ready replicas remain
 	if err := util.Retry(60, 3, func() error {
 		current, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
 			context.Background(), metav1.ListOptions{LabelSelector: selector},
@@ -728,15 +614,13 @@ func (cpi *ControlPlaneInstaller) scaleDownDeployments(
 	return nil
 }
 
-// waitForRestAPIReady polls the rest-api deployment until its ready
-// replicas reach 1, or returns an error at the deadline.
+// waitForRestAPIReady polls the rest-api deployment until it reports a ready replica.
 func (cpi *ControlPlaneInstaller) waitForRestAPIReady(
 	kubeClient dynamic.Interface,
 	namespace string,
 	timeout time.Duration,
 ) error {
 	name := cpi.Opts.RestApiInfo.ServiceResourceName
-	// 3s poll x ceil(timeout / 3s) attempts.
 	attemptsMax := int(timeout / (3 * time.Second))
 	return util.Retry(attemptsMax, 3, func() error {
 		dep, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).Get(
@@ -755,16 +639,13 @@ func (cpi *ControlPlaneInstaller) waitForRestAPIReady(
 	})
 }
 
-// LoadAuthConfigFromCluster reads the persistent api-ca Secret and
-// rebuilds an AuthConfig backed by its cert and private key. Reinstall
-// passes the returned config into the install functions so any new
-// controller added since the last install gets a cert signed by the
-// cluster's existing CA, without rotating it. Existing controllers'
-// cert secrets survive the delete and aren't re-issued.
+// LoadAuthConfigFromCluster reconstructs the control plane CA from the api-ca secret.
+// The returned config signs new certificates without rotating that CA.
 func (cpi *ControlPlaneInstaller) LoadAuthConfigFromCluster(
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) (*auth.AuthConfig, error) {
+	// load the api-ca secret
 	secret, err := kube.GetResource(
 		"", "v1", "Secret",
 		cpi.Opts.Namespace, ThreeportApiCaSecret,
@@ -774,8 +655,6 @@ func (cpi *ControlPlaneInstaller) LoadAuthConfigFromCluster(
 		return nil, fmt.Errorf("failed to load api-ca secret: %w", err)
 	}
 
-	// kube secrets store values base64-encoded under data; decode each
-	// to get the underlying PEM bytes the cert/key parsers expect.
 	caB64, _, err := unstructured.NestedString(secret.Object, "data", "tls.crt")
 	if err != nil || caB64 == "" {
 		return nil, fmt.Errorf("api-ca secret missing data.tls.crt")
@@ -785,6 +664,7 @@ func (cpi *ControlPlaneInstaller) LoadAuthConfigFromCluster(
 		return nil, fmt.Errorf("api-ca secret missing data.tls.key")
 	}
 
+	// decode the base64-encoded kubernetes secret data
 	caPem, err := base64.StdEncoding.DecodeString(caB64)
 	if err != nil {
 		return nil, fmt.Errorf("failed to base64-decode ca cert: %w", err)
@@ -794,6 +674,7 @@ func (cpi *ControlPlaneInstaller) LoadAuthConfigFromCluster(
 		return nil, fmt.Errorf("failed to base64-decode ca key: %w", err)
 	}
 
+	// parse the ca certificate
 	caBlock, _ := pem.Decode(caPem)
 	if caBlock == nil {
 		return nil, fmt.Errorf("ca cert pem block missing")
@@ -803,6 +684,7 @@ func (cpi *ControlPlaneInstaller) LoadAuthConfigFromCluster(
 		return nil, fmt.Errorf("failed to parse ca cert: %w", err)
 	}
 
+	// parse the pkcs1 ca private key
 	keyBlock, _ := pem.Decode(keyPem)
 	if keyBlock == nil {
 		return nil, fmt.Errorf("ca key pem block missing")

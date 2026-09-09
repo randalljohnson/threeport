@@ -130,15 +130,8 @@ func (cfg *ThreeportConfig) CheckThreeportControlPlaneExists(createThreeportCont
 	return err == nil
 }
 
-// ValidateControlPlaneName reports an error when the config holds no control
-// plane by the given name, listing the names it does hold. Commands that act
-// on a running control plane call it before they act, so a name that resolves
-// to nothing is refused up front rather than partway through.
-//
-// The name that matters is the control plane's, which is not the name of the
-// cluster hosting it, and the two are easy to confuse. An unrecognized name
-// often means the caller supplied the cluster's, so the error says so and
-// shows what the config actually knows.
+// ValidateControlPlaneName returns nil when name is a ControlPlanes entry.
+// A cluster name is refused so a caller cannot pass a kube context as a control plane.
 func (cfg *ThreeportConfig) ValidateControlPlaneName(name string) error {
 	if cfg.CheckThreeportControlPlaneExists(name) {
 		return nil

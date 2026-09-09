@@ -7,8 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestEmitCiTeardownPrunesNamedVolumes covers leftover named volumes on the
-// shared dind hostPath, which prune without --all leaves behind.
+// TestEmitCiTeardownPrunesNamedVolumes covers named-volume prune in generated Ci.Teardown.
 func TestEmitCiTeardownPrunesNamedVolumes(t *testing.T) {
 	f := NewFile("main")
 	emitCiTeardownFunc(f)

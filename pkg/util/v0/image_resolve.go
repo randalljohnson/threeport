@@ -145,24 +145,13 @@ func warnIfDirtyOnce(repoDir string) {
 	})
 }
 
-// ImageWithoutTag returns an image reference stripped of its tag, so a caller
-// replacing the tag keeps the registry and repository it was already pulling
-// from.
-//
-// The tag is the text after the final colon, and only when that colon follows
-// the final slash. A registry carries its port as "host:port" ahead of the
-// first slash, so an untagged reference like "localhost:5001/rest-api" has a
-// colon that is part of the host, and cutting at it would leave "localhost"
-// and point every deployment at a registry that does not exist.
-//
-// A digest reference pins content rather than a tag, so it is returned
-// unchanged and the caller's replacement is a no-op rather than a silent
-// downgrade from a digest to a tag.
+// ImageWithoutTag returns the image reference with a :tag stripped. A digest is left alone.
 func ImageWithoutTag(image string) string {
 	if strings.Contains(image, "@") {
 		return image
 	}
 
+	// a colon after the last slash is a tag, not a registry port
 	colon := strings.LastIndex(image, ":")
 	if colon < 0 || colon < strings.LastIndex(image, "/") {
 		return image

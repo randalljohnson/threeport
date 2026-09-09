@@ -19,8 +19,7 @@ import (
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 )
 
-// upApis holds the --apis flag value: a comma-separated list of
-// sdk-config ApiObjectGroup names whose controllers to install.
+// upApis is the --apis value: comma-separated sdk-config API object group names, or none.
 var upApis string
 
 // UpCmd represents the create threeport command
@@ -85,8 +84,7 @@ control planes if they are used to create or are created by another control plan
 			cliArgs.ClusterName = provider.ThreeportRuntimeName(cliArgs.ControlPlaneName)
 		}
 
-		// derive the tier from the provider when not named explicitly:
-		// a local cluster is disposable, a cloud one is not
+		// default the tier from the provider when the flag is empty
 		if cliArgs.Tier == "" {
 			cliArgs.Tier = threeport.DefaultControlPlaneTierForProvider(cliArgs.InfraProvider)
 		}
@@ -112,14 +110,9 @@ control planes if they are used to create or are created by another control plan
 			os.Exit(1)
 		}
 
-		// narrow the controller list when --apis is set so the install
-		// brings up only the requested apis' controllers alongside the
-		// rest-api and agent.
+		// limit the install to the named API groups, or skip optional controllers
 		switch {
 		case upApis == "none":
-			// install zero optional controllers; the rest-api,
-			// database-migrator, agent, and datastore dependencies are
-			// installed separately and remain unaffected.
 			cli.Info("installing zero optional controllers")
 			cpi.Opts.ControllerList = nil
 		case upApis != "":

@@ -115,9 +115,7 @@ func GenPkg(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	}
 
 	//////////////////////////// pkg/installer /////////////////////////////////
-	// emit the sorted list of API object group names; emitted for both
-	// threeport-core and module contexts so installer code can iterate
-	// the group set without re-parsing the SDK config
+	// generate sdk-config API object group names so a module installer can select a subset of controllers
 	if err := installer.GenApiObjectGroupNames(generator, sdkConfig); err != nil {
 		return fmt.Errorf("failed to generate API object group names: %w", err)
 	}

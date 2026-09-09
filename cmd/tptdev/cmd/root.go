@@ -37,10 +37,9 @@ func init() {
 		cli.InitConfig(rootCmd, cliArgs.CfgFile)
 		cli.InitArgs(cliArgs)
 
+		// pin kind and the development tier; tptdev never exposes these as flags
 		cliArgs.InfraProvider = "kind"
 		cliArgs.DevEnvironment = true
-		// tptdev only ever installs local dev control planes, so the
-		// tier is fixed rather than exposed as a flag
 		cliArgs.Tier = installer.ControlPlaneTierDev
 	})
 }

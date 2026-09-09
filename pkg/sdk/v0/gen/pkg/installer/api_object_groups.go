@@ -13,11 +13,9 @@ import (
 	"github.com/threeport/threeport/pkg/sdk/v0/util"
 )
 
-// GenApiObjectGroupNames emits a deterministic, sorted list of API object
-// group names declared in the SDK config so downstream installer code can
-// iterate over the group set without re-parsing the config.
+// GenApiObjectGroupNames writes the sorted sdk-config API object group names to a generated file.
 func GenApiObjectGroupNames(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
-	// collect group names from the SDK config
+	// collect group names from the sdk config
 	var names []string
 	for _, group := range sdkConfig.ApiObjectGroups {
 		if group == nil || group.Name == nil {
@@ -37,8 +35,7 @@ func GenApiObjectGroupNames(generator *gen.Generator, sdkConfig *sdk.SdkConfig) 
 		v.Line()
 	})
 
-	// modules write to the module installer package; threeport-core writes
-	// to the threeport-installer package
+	// modules write under pkg/installer; threeport-core writes under pkg/threeport-installer
 	var genFilepath string
 	if generator.Module {
 		genFilepath = filepath.Join(

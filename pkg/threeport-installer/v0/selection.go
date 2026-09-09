@@ -12,9 +12,11 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// ParseApis splits a comma-separated --apis flag value into a clean
-// slice, trimming whitespace from each entry and dropping empty
-// fragments produced by leading or trailing commas.
+// An API object group name such as kubernetes_workload maps onto
+// the controller name kubernetes-workload-controller. Reinstall
+// with no groups keeps only the controllers already installed.
+
+// ParseApis splits a comma-separated list of API object group names.
 func ParseApis(value string) []string {
 	if value == "" {
 		return nil
@@ -30,14 +32,8 @@ func ParseApis(value string) []string {
 	return out
 }
 
-// SelectControllersByGroup filters allControllers down to those whose
-// component name corresponds to one of the requested sdk-config
-// ApiObjectGroup names. Group names follow sdk-config.yaml exactly
-// (e.g. "kubernetes_workload", "gateway"); the convention
-// "<group>-controller" with underscores converted to dashes maps a
-// group to its component name. An empty groupNames slice returns
-// allControllers unchanged. Unknown group names produce an error
-// listing the valid choices.
+// SelectControllersByGroup returns the controllers for the named
+// API object groups. An empty list returns allControllers unchanged.
 func SelectControllersByGroup(
 	groupNames []string,
 	allControllers []*v0.ControlPlaneComponent,
@@ -46,13 +42,13 @@ func SelectControllersByGroup(
 		return allControllers, nil
 	}
 
-	// build name lookup once so each requested group is resolved in
-	// constant time.
+	// index controllers by name
 	byName := make(map[string]*v0.ControlPlaneComponent, len(allControllers))
 	for _, controller := range allControllers {
 		byName[controller.Name] = controller
 	}
 
+	// select controllers in group-name order
 	selected := make([]*v0.ControlPlaneComponent, 0, len(groupNames))
 	for _, groupName := range groupNames {
 		controllerName := controllerNameForGroup(groupName)
@@ -70,18 +66,15 @@ func SelectControllersByGroup(
 	return selected, nil
 }
 
-// DetectInstalledControllerNames returns the component names of the
-// controller Deployments currently present in the control plane
-// namespace. Uses the installer's managed-by label so it only counts
-// installer-managed deployments. The rest-api and agent deployments
-// are excluded because they aren't group-scoped controllers and are
-// reapplied on every install path.
+// DetectInstalledControllerNames returns the names of installer-managed
+// deployments in namespace, omitting the API server and agent.
 func DetectInstalledControllerNames(
 	kubeClient dynamic.Interface,
 	namespace string,
 ) ([]string, error) {
 	selector := fmt.Sprintf("%s=%s", LabelManagedBy, LabelManagedByValue)
 
+	// list installer-managed deployments
 	list, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
 		context.Background(),
 		metav1.ListOptions{LabelSelector: selector},
@@ -96,37 +89,35 @@ func DetectInstalledControllerNames(
 	names := make([]string, 0, len(list.Items))
 	for _, item := range list.Items {
 		deployName := item.GetName()
+		// skip the API server and agent, which are not group-scoped controllers
 		if deployName == ThreeportAPIServiceResourceName || deployName == ThreeportAgentDeployName {
 			continue
 		}
-		// installer deploys controllers as threeport-<name>; strip the
-		// prefix to recover the component name in ControllerList.
+		// strip the threeport- prefix to match controller names
 		stripped := strings.TrimPrefix(deployName, "threeport-")
 		names = append(names, stripped)
 	}
 
+	// sort the names
 	sort.Strings(names)
 	return names, nil
 }
 
-// SelectControllersForReinstall picks the controller subset for a
-// reinstall. When explicitGroups is non-empty, it defers to
-// SelectControllersByGroup. Otherwise it auto-detects from the
-// cluster's installer-managed deployments and filters allControllers
-// to that set. The detected return value reports which path was
-// taken so callers can log it.
+// SelectControllersForReinstall returns the controllers to reinstall.
+// An empty group list detects the installed set from the cluster.
 func SelectControllersForReinstall(
 	kubeClient dynamic.Interface,
 	namespace string,
 	explicitGroups []string,
 	allControllers []*v0.ControlPlaneComponent,
 ) ([]*v0.ControlPlaneComponent, []string, bool, error) {
-	// explicit groups path: --apis-supplied set, trust user selection
 	if len(explicitGroups) > 0 {
+		// select controllers for explicitGroups
 		selected, err := SelectControllersByGroup(explicitGroups, allControllers)
 		if err != nil {
 			return nil, nil, false, err
 		}
+		// collect selected controller names
 		names := make([]string, 0, len(selected))
 		for _, controller := range selected {
 			names = append(names, controller.Name)
@@ -134,18 +125,19 @@ func SelectControllersForReinstall(
 		return selected, names, false, nil
 	}
 
-	// auto-detect path: mirror what is currently installed in the cluster
+	// detect installed controller names from the cluster
 	detectedNames, err := DetectInstalledControllerNames(kubeClient, namespace)
 	if err != nil {
 		return nil, nil, true, fmt.Errorf("failed to detect installed controllers: %w", err)
 	}
 
+	// index detected names
 	wanted := make(map[string]struct{}, len(detectedNames))
 	for _, name := range detectedNames {
 		wanted[name] = struct{}{}
 	}
 
-	// intersect with allControllers to preserve canonical install order
+	// keep installed controllers in allControllers order
 	selected := make([]*v0.ControlPlaneComponent, 0, len(detectedNames))
 	selectedNames := make([]string, 0, len(detectedNames))
 	for _, controller := range allControllers {
@@ -158,11 +150,7 @@ func SelectControllersForReinstall(
 	return selected, selectedNames, true, nil
 }
 
-// controllerNameForGroup maps an sdk-config ApiObjectGroup name to
-// its controller component name, mirroring the convention in
-// pkg/sdk/v0/gen/generator.go: append "-controller" and convert
-// underscores to dashes.
+// controllerNameForGroup maps an API object group name onto a controller name.
 func controllerNameForGroup(groupName string) string {
 	return strings.ReplaceAll(fmt.Sprintf("%s-controller", groupName), "_", "-")
 }
-

@@ -14,44 +14,38 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// ModuleDeploymentScale records the replica count a module deployment
-// carried before it was scaled down, so the same count can be put back
-// once whatever required it to stop is finished.
+// Module tables share the control plane database, so a drop of that
+// database wipes module schema. The records that name those module
+// deployments live in the same database and must be read first. The
+// deployments are scaled to zero before the drop so they stop writing,
+// then scaled back so the module APIs recreate schema and re-register.
+
+// ModuleDeploymentScale is a recorded replica count for one module
+// deployment, used to restore that count after a scale to zero.
 type ModuleDeploymentScale struct {
 	Namespace string
 	Name      string
 	Replicas  int64
 }
 
-// DiscoverModuleNamespaces returns the namespaces holding the modules
-// registered with this control plane, read from the control plane's own
-// registry rather than from any convention the module has to follow.
-//
-// Every module registers its controllers on startup, and records each
-// one's deployment qualified by the namespace it runs in. That makes the
-// registry the authoritative answer to which namespaces belong to
-// modules, and it stays correct for a module this code has never heard
-// of. The core control plane registers itself the same way and is
-// skipped, along with its own namespace, so a module installed beside
-// the control plane is never returned as if it were separate.
-//
-// The registry lives in the database, so a caller that is about to
-// destroy the database has to ask first and hold the answer.
+// DiscoverModuleNamespaces returns the unique namespaces of registered
+// non-core module controllers, omitting the control plane namespace.
 func (cpi *ControlPlaneInstaller) DiscoverModuleNamespaces(
 	apiClient *http.Client,
 	apiEndpoint string,
 ) ([]string, error) {
+	// get registered module APIs
 	moduleApis, err := client.GetModuleApis(apiClient, apiEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get registered module APIs: %w", err)
 	}
 
 	var namespaces []string
+	// exclude the control plane namespace
 	seen := map[string]bool{cpi.Opts.Namespace: true}
 
 	for _, moduleApi := range *moduleApis {
-		// the core API registers itself in the same table; its
-		// controllers are the ones the reinstall already manages
+		// skip the core threeport API
 		if moduleApi.Core != nil && *moduleApi.Core {
 			continue
 		}
@@ -59,6 +53,7 @@ func (cpi *ControlPlaneInstaller) DiscoverModuleNamespaces(
 			continue
 		}
 
+		// get controllers registered by this module API
 		controllers, err := client.GetModuleControllersByQueryString(
 			apiClient,
 			apiEndpoint,
@@ -75,7 +70,7 @@ func (cpi *ControlPlaneInstaller) DiscoverModuleNamespaces(
 			if controller.DeploymentName == nil {
 				continue
 			}
-			// the deployment is recorded as namespace/name
+			// parse namespace from namespace/name
 			namespace, _, qualified := strings.Cut(*controller.DeploymentName, "/")
 			if !qualified || namespace == "" {
 				continue
@@ -91,22 +86,15 @@ func (cpi *ControlPlaneInstaller) DiscoverModuleNamespaces(
 	return namespaces, nil
 }
 
-// ScaleDownModules scales every deployment in the given namespaces to
-// zero, waits for their pods to drain, and returns the replica counts
-// they were running at. Pass the result to RestoreModuleScale to put
-// them back.
-//
-// Every deployment in the namespace is scaled, not only the controllers
-// the registry names. A module's own API server is not registered as a
-// controller, and it is the component that reads and writes most, so a
-// sweep limited to registered controllers would leave running exactly
-// what most needs to stop.
+// ScaleDownModules scales every deployment in each module namespace to
+// zero replicas, waits until none are ready, and returns the prior counts.
 func (cpi *ControlPlaneInstaller) ScaleDownModules(
 	kubeClient dynamic.Interface,
 	namespaces []string,
 ) ([]ModuleDeploymentScale, error) {
 	var scales []ModuleDeploymentScale
 
+	// scale each running deployment to zero and record its replica count
 	for _, namespace := range namespaces {
 		deployList, err := kubeClient.Resource(deploymentGVR).Namespace(namespace).List(
 			context.Background(), metav1.ListOptions{},
@@ -118,8 +106,7 @@ func (cpi *ControlPlaneInstaller) ScaleDownModules(
 		for _, deployment := range deployList.Items {
 			name := deployment.GetName()
 			replicas, _, _ := util.NestedInt64OrFloat64(deployment.Object, "spec", "replicas")
-			// a deployment already at zero is left out of the record, so
-			// restoring never starts something that was deliberately down
+			// skip deployments already at zero so they stay out of the record
 			if replicas == 0 {
 				continue
 			}
@@ -141,7 +128,7 @@ func (cpi *ControlPlaneInstaller) ScaleDownModules(
 
 	fmt.Printf("Info: scaled %d module deployment(s) to 0 across %s\n", len(scales), strings.Join(namespaces, ", "))
 
-	// 3s poll x 60 attempts = 3 minute aggregate deadline.
+	// wait until no ready replicas remain
 	if err := util.Retry(60, 3, func() error {
 		pending := 0
 		for _, namespace := range namespaces {
@@ -169,15 +156,8 @@ func (cpi *ControlPlaneInstaller) ScaleDownModules(
 	return scales, nil
 }
 
-// RestoreModuleScale returns each recorded deployment to the replica
-// count it was running at. It does not wait for the pods to become
-// ready: a module brought back after its schema was dropped runs its own
-// migrations on startup, which takes as long as it takes and reports
-// itself through the module's own status.
-//
-// A deployment that has since been removed is skipped rather than
-// treated as a failure, so a module uninstalled while the control plane
-// was down does not block the ones that are still there.
+// RestoreModuleScale restores each recorded deployment to its original
+// replica count. It does not wait for the pods to become ready.
 func (cpi *ControlPlaneInstaller) RestoreModuleScale(
 	kubeClient dynamic.Interface,
 	scales []ModuleDeploymentScale,
@@ -199,8 +179,8 @@ func (cpi *ControlPlaneInstaller) RestoreModuleScale(
 	return nil
 }
 
-// setDeploymentReplicas patches a deployment's replica count, treating a
-// deployment that is no longer there as nothing to do.
+// setDeploymentReplicas patches a deployment's replica count and
+// treats a missing deployment as nothing to do.
 func (cpi *ControlPlaneInstaller) setDeploymentReplicas(
 	kubeClient dynamic.Interface,
 	namespace string,

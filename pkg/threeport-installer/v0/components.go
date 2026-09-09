@@ -375,6 +375,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAPITLS(
 	serverAltNames ...string,
 ) error {
 	if authConfig != nil {
+		// generate server certificate
 		serverCertificate, serverPrivateKey, err := auth.GenerateCertificate(
 			authConfig.CAConfig,
 			&authConfig.CAPrivateKey,
@@ -387,11 +388,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAPITLS(
 			return fmt.Errorf("failed to generate server certificate and private key: %w", err)
 		}
 
-		// the api ca and api-cert carry the persistent label, so
-		// CreateOrUpdateKubeResource skips them when they already
-		// exist - reinstall keeps the cluster's CA fingerprint and
-		// the api's server identity stable, even though we redundantly
-		// generated a fresh cert above (cheap, dev-only path).
+		// keep the API CA fingerprint and server identity across reinstall
 		var apiCa = cpi.getTLSSecret(ThreeportApiCaSecret, authConfig.CAPemEncoded, authConfig.CAPrivateKeyPemEncoded)
 		if err := cpi.CreateOrUpdateKubeResource(apiCa, kubeClient, mapper); err != nil {
 			return fmt.Errorf("failed to create API server ca secret: %w", err)
@@ -457,13 +454,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 			continue
 		}
 
-		// if auth is enabled, sign a client cert per controller. the
-		// per-controller `<name>-ca` and `<name>-cert` Secrets carry
-		// the persistent label, so CreateOrUpdateKubeResource skips
-		// them when they already exist. only new controllers (added
-		// since the last install) actually land a fresh cert; the
-		// generate step above is cheap and redundant for the existing
-		// ones.
+		// generate controller client certs and keep existing ones across reinstall
 		if authConfig != nil {
 			certificate, privateKey, err := auth.GenerateCertificate(
 				authConfig.CAConfig,
@@ -625,21 +616,16 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 }
 
 // CreateOrUpdateKubeResource creates or updates a Kubernetes resource.
-// Resources marked with the persistent label are create-only: the call
-// becomes a no-op when the resource already exists, so a reinstall (or
-// any reapply) can never mutate it. This protects against value drift
-// (e.g. the encryption-key being clobbered with an empty string) and
-// spec drift (e.g. a LoadBalancer Service being demoted to NodePort
-// because cliArgs defaults didn't match the original install).
+// It does not update an existing persistent resource.
 func (cpi *ControlPlaneInstaller) CreateOrUpdateKubeResource(
 	resource *unstructured.Unstructured,
 	kubeClient dynamic.Interface,
 	mapper *meta.RESTMapper,
 ) error {
-	// stamp the installer-managed label so reinstall and similar
-	// label-scoped operations can find every resource we create
+	// stamp the installer-managed label so reinstall can find it
 	setManagedByLabel(resource)
 
+	// skip update of an existing persistent resource
 	if isPersistent(resource) {
 		group, version := splitAPIVersion(resource.GetAPIVersion())
 		existing, err := kube.GetResource(
@@ -670,16 +656,13 @@ func (cpi *ControlPlaneInstaller) CreateOrUpdateKubeResource(
 	return nil
 }
 
-// isPersistent reports whether the resource carries the persistent
-// opt-out label that gates both the destructive sweep and the
-// in-place reapply.
+// isPersistent reports whether the resource carries the persistent label.
 func isPersistent(resource *unstructured.Unstructured) bool {
 	return resource.GetLabels()[LabelPersistent] == LabelPersistentValue
 }
 
-// splitAPIVersion splits a kubernetes apiVersion into its group and
-// version parts. Core resources (apiVersion "v1") return an empty
-// group; grouped resources (apiVersion "apps/v1") return both halves.
+// splitAPIVersion splits a Kubernetes apiVersion into group and version.
+// A core type such as v1 has no slash; it returns an empty group.
 func splitAPIVersion(apiVersion string) (group, version string) {
 	if idx := strings.IndexByte(apiVersion, '/'); idx >= 0 {
 		return apiVersion[:idx], apiVersion[idx+1:]
@@ -687,9 +670,7 @@ func splitAPIVersion(apiVersion string) (group, version string) {
 	return "", apiVersion
 }
 
-// setManagedByLabel adds the installer's managed-by label to a
-// resource's top-level metadata.labels without touching any other
-// labels already set on the resource.
+// setManagedByLabel adds the installer managed-by label to the resource.
 func setManagedByLabel(resource *unstructured.Unstructured) {
 	labels := resource.GetLabels()
 	if labels == nil {
@@ -702,9 +683,7 @@ func setManagedByLabel(resource *unstructured.Unstructured) {
 	resource.SetLabels(labels)
 }
 
-// setPersistent opts a resource out of destructive sweeps. Apply to
-// stateful objects whose loss would break the control plane (database
-// data, certificate authority, external load balancer ip).
+// setPersistent labels the resource so reinstall leaves it in place.
 func setPersistent(resource *unstructured.Unstructured) {
 	labels := resource.GetLabels()
 	if labels == nil {
@@ -750,11 +729,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportAgent(
 	authConfig *auth.AuthConfig,
 ) error {
 
-	// if auth is enabled, sign agent client cert. agent-ca and
-	// agent-cert carry the persistent label, so the create-only rule
-	// in CreateOrUpdateKubeResource skips them on reinstall - the
-	// agent's identity stays stable. cert generation above is
-	// redundant work on a reinstall but cheap.
+	// generate the agent's client cert and keep it across reinstall
 	if authConfig != nil {
 		agentCertificate, agentPrivateKey, err := auth.GenerateCertificate(
 			authConfig.CAConfig,
@@ -1858,10 +1833,7 @@ func (cpi *ControlPlaneInstaller) getSecretVols(name string, mountPath string) (
 
 }
 
-// getTLSSecret returns a Kubernetes secret for the given certificate and private key.
-// getTLSSecret returns a TLS secret marked persistent. Identities
-// don't need to churn across reinstalls, so every cert the installer
-// stamps out stays put.
+// getTLSSecret returns a TLS secret labeled persistent so identities stay across reinstall.
 func (cpi *ControlPlaneInstaller) getTLSSecret(name string, certificate string, privateKey string) *unstructured.Unstructured {
 
 	secret := &unstructured.Unstructured{

@@ -16,8 +16,7 @@ import (
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
 
-// upApis holds the --apis flag value: a comma-separated list of
-// sdk-config ApiObjectGroup names whose controllers to install.
+// upApis is the --apis value: comma-separated sdk-config API object group names.
 var upApis string
 
 // upCmd represents the up command
@@ -36,9 +35,7 @@ var upCmd = &cobra.Command{
 		}
 		cpi.Opts.Debug = cliArgs.Debug
 
-		// narrow the controller list when --apis is set so the install
-		// brings up only the requested apis' controllers alongside the
-		// rest-api and agent.
+		// limit the install to the named API groups
 		if upApis != "" {
 			selected, err := installer.SelectControllersByGroup(
 				installer.ParseApis(upApis),

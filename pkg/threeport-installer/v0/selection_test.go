@@ -7,8 +7,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
-// testControllers returns a small representative list of controllers
-// covering single-word, underscored, and dashed group names.
+// testControllers returns controllers covering the group-to-controller name mapping.
 func testControllers() []*v0.ControlPlaneComponent {
 	return []*v0.ControlPlaneComponent{
 		{Name: "kubernetes-workload-controller"},
@@ -18,11 +17,10 @@ func testControllers() []*v0.ControlPlaneComponent {
 	}
 }
 
-// TestSelectControllersByGroup exercises the pure filter helper
-// across the cases callers depend on: empty input passthrough,
-// single and multi group selection, unknown group rejection, and
-// a known group missing from the controller list.
+// TestSelectControllersByGroup covers matching API object groups to
+// controllers, including empty input and a group with no match.
 func TestSelectControllersByGroup(t *testing.T) {
+	// seed the controller list
 	allControllers := testControllers()
 
 	tests := []struct {
@@ -83,8 +81,10 @@ func TestSelectControllersByGroup(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// select controllers by group
 			got, err := SelectControllersByGroup(tc.groupNames, tc.controllers)
 			if tc.wantErrSub != "" {
+				// check the unknown-group error
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil", tc.wantErrSub)
 				}
@@ -93,6 +93,7 @@ func TestSelectControllersByGroup(t *testing.T) {
 				}
 				return
 			}
+			// check selected controller names in order
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -108,14 +109,17 @@ func TestSelectControllersByGroup(t *testing.T) {
 	}
 }
 
-// TestSelectControllersByGroupErrorListsValidNames confirms the error
-// path enumerates the inferred group-name set so users can correct
-// a typo without spelunking the source.
+// TestSelectControllersByGroupErrorListsValidNames covers an unknown group
+// error listing the valid API object group names.
 func TestSelectControllersByGroupErrorListsValidNames(t *testing.T) {
+	// select with an unknown group
 	_, err := SelectControllersByGroup([]string{"bogus"}, testControllers())
+
+	// check the unknown group returns an error
 	if err == nil {
 		t.Fatal("expected error for unknown group, got nil")
 	}
+	// check the error lists valid group names
 	for _, expected := range []string{"aws", "gateway", "kubernetes_runtime", "kubernetes_workload"} {
 		if !strings.Contains(err.Error(), expected) {
 			t.Errorf("error %q missing expected group %q", err.Error(), expected)

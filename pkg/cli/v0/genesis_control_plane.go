@@ -35,10 +35,7 @@ import (
 var ErrThreeportConfigAlreadyExists = errors.New("threeport config already contains deployed control planes")
 
 // localRuntimeLocation is the location recorded for a kubernetes runtime that
-// has no region to derive one from. A cloud install maps the region it runs in
-// to a location; a local cluster has no region, and a rebuild from the local
-// threeport config has no region either, because the config never records the
-// location the install used.
+// has no region to derive one from. Rebuilds use it too: the config never stores location.
 const localRuntimeLocation = "Local"
 
 // GenesisControlPlaneCLIArgs is the set of control plane arguments passed to one of
@@ -150,10 +147,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	if a.ControlPlaneImageTag != "" {
 		cpi.SetAllImageTags(a.ControlPlaneImageTag)
 	} else if a.ControlPlaneImageRepo == threeport.DevImageNamespace && os.Getenv("GITHUB_ACTIONS") == "" {
-		// local dev against the local registry: match the sha-suffixed tag the
-		// local image build produced so the deployment references the exact
-		// commit built rather than the mutable base tag. gated on being outside
-		// CI so the CI install path keeps its existing tag behavior unchanged.
+		// match the local-dev image tag so the deploy names the commit built
 		devTag, err := util.ResolveImageTag(a.ThreeportPath, version.GetVersion())
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve dev image tag: %w", err)
@@ -1219,9 +1213,7 @@ func ValidateCreateGenesisControlPlaneFlags(
 	controlPlaneOnly bool,
 	clusterName string,
 ) error {
-	// validate tier is one of the recognized values so a typo can't
-	// silently produce a control plane the drop-database guard treats as
-	// untrusted
+	// validate control plane tier
 	if tier != threeport.ControlPlaneTierDev && tier != threeport.ControlPlaneTierProd {
 		return fmt.Errorf(
 			"invalid tier value '%s' - must be one of [%s, %s]",
@@ -1368,15 +1360,8 @@ func runtimeInstanceName(opts threeport.Options) string {
 	return provider.ThreeportRuntimeName(opts.ControlPlaneName)
 }
 
-// ensureBootstrapKubernetesRuntime looks up the bootstrap kubernetes
-// runtime definition and instance by name and creates whichever is
-// missing. Under --control-plane-only, tptctl installs onto a cluster
-// that already exists, so on a repeat run the definition and instance
-// records may already be present from a prior invocation; a plain
-// create would collide on the unique name. Returning the existing
-// records when found lets the caller proceed without failing on the
-// duplicate, and falling through to create when not found covers the
-// first-run case where nothing has been registered yet.
+// ensureBootstrapKubernetesRuntime looks up the kubernetes runtime definition
+// and instance by name and creates whichever is missing.
 func ensureBootstrapKubernetesRuntime(
 	apiClient *http.Client,
 	apiEndpoint string,
@@ -1423,10 +1408,8 @@ func ensureBootstrapKubernetesRuntime(
 	return def, inst, nil
 }
 
-// WaitForThreeportAPI polls the threeport API's version endpoint until it
-// answers or the wait times out. A rest-api deployment reporting ready does
-// not prove the endpoint is reachable, so callers that write to the API right
-// after an install or reinstall wait here first.
+// WaitForThreeportAPI polls the version endpoint until the threeport API
+// answers. A ready rest-api deployment does not prove the endpoint is reachable.
 func WaitForThreeportAPI(apiClient *http.Client, apiEndpoint string) error {
 	attemptsMax := 60
 	waitDurationSeconds := 5
@@ -1455,17 +1438,8 @@ func WaitForThreeportAPI(apiClient *http.Client, apiEndpoint string) error {
 	return nil
 }
 
-// EnsureBootstrapObjects restores the threeport API records a control plane
-// needs in order to accept work, creating only the ones that are missing.
-// Those records are written once, by the genesis install, through the API
-// rather than as Kubernetes resources. A reinstall that drops the database
-// therefore removes them while leaving the Kubernetes resources and the local
-// threeport config untouched, and the control plane comes back with no default
-// kubernetes runtime to place workloads on and no instance of itself to
-// recognize itself by.
-//
-// Every value is rebuilt from the local threeport config, which is the only
-// record of the original install that survives a database drop.
+// EnsureBootstrapObjects restores the kubernetes runtime and control plane
+// records the API needs in order to accept work, creating only those missing.
 func EnsureBootstrapObjects(cpi *threeport.ControlPlaneInstaller) error {
 	threeportConfig, requestedControlPlane, err := GetThreeportConfig(cpi.Opts.ControlPlaneName)
 	if err != nil {
@@ -1522,33 +1496,8 @@ func EnsureBootstrapObjects(cpi *threeport.ControlPlaneInstaller) error {
 }
 
 // bootstrapKubernetesRuntimeInstance rebuilds the kubernetes runtime instance
-// for the cluster hosting the control plane from the kube connection info the
-// threeport config recorded at install time. The config holds that info base64
-// encoded while the API stores it decoded, so each value is decoded on the way
-// through.
-//
-// A local cluster records a client certificate and key, and the rebuilt record
-// carries them over. A cloud install records neither, and on GKE and OKE the
-// running control plane needs neither: both mint a kube API token per request
-// from the runtime's infra provider instead of reading one off this record.
-//
-// The install-time token is carried over when there is no certificate pair, so
-// the record always holds some credential. Per-request minting is not
-// something every reader of this record does, and one that doesn't looks here:
-// a token it can try, even an expired one, beats nothing to try at all. It is
-// written without an expiration, matching what the threeport config records,
-// so nothing treats it as refreshable.
-//
-// EKS is refused instead. It is the one provider with no per-request minting,
-// so the token would be the only credential the record ever has, and the
-// refresh path that would replace it only runs against an expiration the
-// config does not record.
-//
-// The location is recorded as Local on every provider, because the config does
-// not record the one the install derived from its region. On a cloud runtime
-// that is not the real location, and the features that map a location back to
-// a provider region, gateway and secret among them, will read the wrong region
-// from it.
+// from the threeport config. EKS is refused; it has no per-request token minting
+// and the config does not store the expiration a refresh needs.
 func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.KubernetesRuntimeInstance, error) {
 	if controlPlaneConfig.Provider == v0.KubernetesRuntimeInfraProviderEKS {
 		return nil, fmt.Errorf(
@@ -1557,6 +1506,7 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 		)
 	}
 
+	// decode kube API credentials; the config stores them base64 encoded
 	caCertificate, err := util.Base64Decode(controlPlaneConfig.KubeAPI.CACertificate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode kubernetes API CA certificate: %w", err)
@@ -1594,10 +1544,7 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 		Location:                  &location,
 	}
 
-	// a certificate without its key, or the reverse, authenticates to nothing,
-	// so the pair is carried over only when the config holds both. the token
-	// is the fallback for a config that holds no usable pair, which is every
-	// cloud install
+	// use the certificate pair when both are present, otherwise the connection token
 	switch {
 	case certificate != "" && key != "":
 		kubernetesRuntimeInstance.Certificate = &certificate
@@ -1610,9 +1557,7 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 }
 
 // ensureBootstrapControlPlane looks up the control plane definition and
-// instance for the running control plane and creates whichever is missing. The
-// instance is the one marked as self, which is how the control plane finds its
-// own record when reconciling control planes it manages.
+// instance and creates whichever is missing.
 func ensureBootstrapControlPlane(
 	apiClient *http.Client,
 	cpi *threeport.ControlPlaneInstaller,
@@ -1663,8 +1608,7 @@ func ensureBootstrapControlPlane(
 		return fmt.Errorf("failed to look up control plane instance by name: %w", err)
 	}
 
-	// the certs are held base64 encoded in both the config and the API, so
-	// they carry over as they are
+	// copy certs as they are; both the config and the API store them base64 encoded
 	var caCert *string
 	var clientCert *string
 	var clientKey *string
@@ -1679,8 +1623,7 @@ func ensureBootstrapControlPlane(
 		}
 	}
 
-	// record the components that were installed, which under a reinstall is
-	// the controller subset that was reapplied rather than the full list
+	// record the installed controllers plus the rest api and agent
 	componentList := make([]*v0.ControlPlaneComponent, 0, len(cpi.Opts.ControllerList)+2)
 	componentList = append(componentList, cpi.Opts.ControllerList...)
 	componentList = append(componentList, cpi.Opts.RestApiInfo)

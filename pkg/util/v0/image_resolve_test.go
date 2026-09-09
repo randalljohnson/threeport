@@ -280,10 +280,7 @@ func TestJoinImageTagJoinsVersionAndSha(t *testing.T) {
 	}
 }
 
-// TestImageWithoutTag covers the reference shapes a control plane deployment
-// carries. The ported-registry case is the one that decides the function: a
-// naive cut at the first colon leaves the registry host alone and points every
-// deployment at an image that does not exist.
+// TestImageWithoutTag covers stripping a :tag while leaving a digest and a registry port.
 func TestImageWithoutTag(t *testing.T) {
 	tests := []struct {
 		name  string

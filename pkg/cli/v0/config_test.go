@@ -5,11 +5,7 @@ import (
 	"testing"
 )
 
-// TestValidateControlPlaneName asserts that a name the config knows is
-// accepted, and that every name it does not know is refused with a message
-// showing what the config holds. Callers validate before they act, so the
-// refusal has to be complete here: a name that gets past this is not rejected
-// until something downstream tries to resolve it.
+// TestValidateControlPlaneName covers accepting a known control plane and refusing a cluster name or empty name.
 func TestValidateControlPlaneName(t *testing.T) {
 	populated := &ThreeportConfig{
 		ControlPlanes: []ControlPlane{
@@ -32,8 +28,6 @@ func TestValidateControlPlaneName(t *testing.T) {
 			controlPlan: "sxalable-dev",
 		},
 		{
-			// the cluster hosting a control plane carries a different
-			// name, and supplying it is the mistake this catches
 			name:        "the cluster name is refused and the control planes are listed",
 			config:      populated,
 			controlPlan: "sxalable-dev-threeport",
@@ -48,8 +42,6 @@ func TestValidateControlPlaneName(t *testing.T) {
 			wantInErr:   []string{"dev-0", "sxalable-dev"},
 		},
 		{
-			// listing the available names is no help when there are
-			// none, so an empty config says that instead
 			name:        "an empty config says it holds nothing",
 			config:      &ThreeportConfig{},
 			controlPlan: "dev-0",

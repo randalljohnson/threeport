@@ -26,22 +26,13 @@ func (Ci) Env() error {
 	return nil
 }
 
-// Teardown removes what an integration job leaves behind so the next run on
-// the same node starts against an empty dind. It is gated on CI=true, so
-// running `mage ci:teardown` locally does nothing and a developer keeps their
-// kind clusters, tptctl config, and registry.
-//
-// Order matters. Graceful control-plane teardown comes first, while tptctl can
-// still reach its own state files. Then every kind cluster is force-deleted:
-// `--all` catches whatever this run created, and kind cluster names have
-// drifted across releases. Then any threeport-* control-plane container with a
-// restart-on-failure policy is removed by hand, because kind stops those with
-// docker stop and docker's restart policy resurrects them when the next dind
-// starts against the shared /opt/dind-storage hostPath. That was the observed
-// "cluster already exists" failure on repeated self-hosted runs. Then networks,
-// named volumes, and stopped containers are reaped. Not `docker system prune
-// -a`, which wipes the roughly 13 GB image layer cache the shared hostPath
-// exists to preserve.
+// Teardown removes leftover kind clusters, containers, networks, and volumes
+// so the next integration job on the same node does not inherit this run's
+// dind state. It is a no-op unless CI=true, so a local run keeps the
+// developer's clusters, tptctl config, and registry. Leftover kind node
+// containers persist in the shared dind hostPath and come back when the next
+// dind starts, so they are removed by hand. It does not run docker system
+// prune -a, which would wipe the image layers the hostPath exists to preserve.
 func (Ci) Teardown() error {
 	if os.Getenv("CI") != "true" {
 		fmt.Println("ci:teardown: not running in CI, skipping")
@@ -73,10 +64,9 @@ func (Ci) Teardown() error {
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=buildx_buildkit_" | xargs -r docker rm -f`)
 
-	// reap kind networks and stopped-container metadata. the auto-restart
-	// failure latches onto a network and a mount point that outlive the
-	// container that owned them. prune volumes further down, after the
-	// containers that hold those volumes have been removed.
+	// reap unused networks and stopped containers. leftover networks outlive
+	// the containers that owned them. prune volumes after remaining container
+	// removals below
 	teardownStep("docker", "network", "prune", "-f")
 	teardownStep("docker", "container", "prune", "-f")
 
@@ -94,9 +84,9 @@ func (Ci) Teardown() error {
 	}
 
 	// prune volumes last, including the named volumes buildx leaves. prune
-	// without --all leaves those. prune also skips a volume a running
-	// container still holds, so run it after the container removals above
-	// or each run leaves registry storage and the next run adds its own.
+	// without --all leaves those. prune also skips a volume any container
+	// still holds, so run it after the container removals above or leftover
+	// registry storage accumulates run after run
 	teardownStep("docker", "volume", "prune", "-af")
 
 	return nil

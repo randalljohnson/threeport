@@ -17,13 +17,13 @@ type Event struct {
 	Note *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_events_dedup,where:deleted_at IS NULL"`
 
 	// The number of times this event has occurred.
-	Count *uint `json:",omitempty" validate:"required" gorm:"not null"`
+	Count *uint `validate:"required" gorm:"not null"`
 
 	// Time when this Event was first observed.
-	EventTime *time.Time `json:",omitempty" validate:"required" gorm:"not null"`
+	EventTime *time.Time `validate:"required" gorm:"not null"`
 
 	// The time at which the most recent occurrence of this event was recorded.
-	LastObservedTime *time.Time `json:",omitempty" validate:"required" gorm:"not null"`
+	LastObservedTime *time.Time `validate:"required" gorm:"not null"`
 
 	// Type of this event (Normal, Warning), new types could be added in the future.
 	Type *string `json:",omitempty" validate:"required" gorm:"not null;uniqueIndex:idx_events_dedup,where:deleted_at IS NULL"`

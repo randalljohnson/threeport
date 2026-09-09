@@ -110,6 +110,7 @@ func (h Handler) AddGcpGceMachineRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gce-machine-runtime-definitions [GET]
 func (h Handler) GetGcpGceMachineRuntimeDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpGceMachineRuntimeDefinition
 	fullyQualifiedType := new(api_v0.GcpGceMachineRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -604,6 +605,7 @@ func (h Handler) AddGcpGceMachineRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gce-machine-runtime-instances [GET]
 func (h Handler) GetGcpGceMachineRuntimeInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpGceMachineRuntimeInstance
 	fullyQualifiedType := new(api_v0.GcpGceMachineRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1162,6 +1164,7 @@ func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
 	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1656,6 +1659,7 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
 	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -2214,6 +2218,7 @@ func (h Handler) AddGcpProvider(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers [GET]
 func (h Handler) GetGcpProviders(c echo.Context) error {
+	objectType := api_v0.ObjectTypeGcpProvider
 	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 
 	// get pagination parameters

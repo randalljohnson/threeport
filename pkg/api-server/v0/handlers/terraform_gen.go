@@ -124,6 +124,7 @@ func (h Handler) AddTerraformDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/terraform-definitions [GET]
 func (h Handler) GetTerraformDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeTerraformDefinition
 	fullyQualifiedType := new(api_v0.TerraformDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -709,6 +710,7 @@ func (h Handler) AddTerraformInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/terraform-instances [GET]
 func (h Handler) GetTerraformInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeTerraformInstance
 	fullyQualifiedType := new(api_v0.TerraformInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

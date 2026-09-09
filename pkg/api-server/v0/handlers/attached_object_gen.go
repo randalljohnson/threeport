@@ -105,6 +105,7 @@ func (h Handler) AddAttachedObjectReference(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/attached-object-references [GET]
 func (h Handler) GetAttachedObjectReferences(c echo.Context) error {
+	objectType := api_v0.ObjectTypeAttachedObjectReference
 	fullyQualifiedType := new(api_v0.AttachedObjectReference).GetFullyQualifiedType()
 
 	// get pagination parameters

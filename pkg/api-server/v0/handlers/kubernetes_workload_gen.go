@@ -124,6 +124,7 @@ func (h Handler) AddKubernetesWorkloadDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-definitions [GET]
 func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeKubernetesWorkloadDefinition
 	fullyQualifiedType := new(api_v0.KubernetesWorkloadDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -709,6 +710,7 @@ func (h Handler) AddKubernetesWorkloadInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-instances [GET]
 func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeKubernetesWorkloadInstance
 	fullyQualifiedType := new(api_v0.KubernetesWorkloadInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1267,6 +1269,7 @@ func (h Handler) AddKubernetesWorkloadResourceDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-definitions [GET]
 func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceDefinition
 	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1734,6 +1737,7 @@ func (h Handler) AddKubernetesWorkloadResourceInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-instances [GET]
 func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceInstance
 	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

@@ -44,23 +44,15 @@ func GenDbMigratorMigration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error 
 		),
 		Line(),
 
-		Comment("create a table for each model that has none"),
-		For(
-			List(Id("_"), Id("model")).Op(":=").Range().Id(
-				fmt.Sprintf("dbInterfaces%s", migrationVersion),
-			).Call(),
+		Comment("create missing tables"),
+		If(
+			Err().Op(":=").Id("createMissingTables").Call(
+				Id("gormDb"),
+				Id(fmt.Sprintf("dbInterfaces%s", migrationVersion)).Call(),
+			),
+			Err().Op("!=").Nil(),
 		).Block(
-			If(Id("gormDb").Dot("Migrator").Call().Dot("HasTable").Call(Id("model"))).Block(
-				Continue(),
-			),
-			If(Err().Op(":=").Id("gormDb").Dot("Migrator").Call().Dot("CreateTable").Call(
-				Id("model"),
-			),
-				Err().Op("!=").Nil()).Block(
-				Return(Qual("fmt", "Errorf").Call(
-					Lit("failed to create table for %T: %w"), Id("model"), Err(),
-				)),
-			),
+			Return(Err()),
 		),
 		Line(),
 
@@ -78,14 +70,14 @@ func GenDbMigratorMigration(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error 
 		),
 		Line(),
 
-		Id("tablesToDrop").Op(":=").Id(fmt.Sprintf("dbInterfaces%s", migrationVersion)).Call(),
-		For(List(Id("_"), Id("table")).Op(":=").Range().Id("tablesToDrop")).Block(
-			If(Err().Op(":=").Id("gormDb").Dot("Migrator").Call().Dot("DropTable").Call(
-				Id("table"),
+		If(
+			Err().Op(":=").Id("dropTables").Call(
+				Id("gormDb"),
+				Id(fmt.Sprintf("dbInterfaces%s", migrationVersion)).Call(),
 			),
-				Err().Op("!=").Nil()).Block(
-				Return(Qual("fmt", "Errorf").Call(Lit("could not drop table with gorm db: %w"), Err())),
-			),
+			Err().Op("!=").Nil(),
+		).Block(
+			Return(Err()),
 		),
 		Line(),
 

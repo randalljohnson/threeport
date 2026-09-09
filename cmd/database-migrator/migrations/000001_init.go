@@ -29,14 +29,9 @@ func Up000001(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// create a table for each model that has none
-	for _, model := range dbInterfaces000001() {
-		if gormDb.Migrator().HasTable(model) {
-			continue
-		}
-		if err := gormDb.Migrator().CreateTable(model); err != nil {
-			return fmt.Errorf("failed to create table for %T: %w", model, err)
-		}
+	// create missing tables
+	if err := createMissingTables(gormDb, dbInterfaces000001()); err != nil {
+		return err
 	}
 
 	// uniform row-level time-to-live on events
@@ -74,11 +69,8 @@ func Down000001(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	tablesToDrop := dbInterfaces000001()
-	for _, table := range tablesToDrop {
-		if err := gormDb.Migrator().DropTable(table); err != nil {
-			return fmt.Errorf("could not drop table with gorm db: %w", err)
-		}
+	if err := dropTables(gormDb, dbInterfaces000001()); err != nil {
+		return err
 	}
 
 	return nil

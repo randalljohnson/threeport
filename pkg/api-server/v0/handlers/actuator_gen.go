@@ -105,6 +105,7 @@ func (h Handler) AddProfile(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/profiles [GET]
 func (h Handler) GetProfiles(c echo.Context) error {
+	objectType := api_v0.ObjectTypeProfile
 	fullyQualifiedType := new(api_v0.Profile).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -572,6 +573,7 @@ func (h Handler) AddTier(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/tiers [GET]
 func (h Handler) GetTiers(c echo.Context) error {
+	objectType := api_v0.ObjectTypeTier
 	fullyQualifiedType := new(api_v0.Tier).GetFullyQualifiedType()
 
 	// get pagination parameters

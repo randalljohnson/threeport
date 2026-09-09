@@ -105,6 +105,7 @@ func (h Handler) AddModuleApi(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-apis [GET]
 func (h Handler) GetModuleApis(c echo.Context) error {
+	objectType := api_v0.ObjectTypeModuleApi
 	fullyQualifiedType := new(api_v0.ModuleApi).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -572,6 +573,7 @@ func (h Handler) AddModuleApiRoute(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-api-routes [GET]
 func (h Handler) GetModuleApiRoutes(c echo.Context) error {
+	objectType := api_v0.ObjectTypeModuleApiRoute
 	fullyQualifiedType := new(api_v0.ModuleApiRoute).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1039,6 +1041,7 @@ func (h Handler) AddModuleController(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-controllers [GET]
 func (h Handler) GetModuleControllers(c echo.Context) error {
+	objectType := api_v0.ObjectTypeModuleController
 	fullyQualifiedType := new(api_v0.ModuleController).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1506,6 +1509,7 @@ func (h Handler) AddModuleObject(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects [GET]
 func (h Handler) GetModuleObjects(c echo.Context) error {
+	objectType := api_v0.ObjectTypeModuleObject
 	fullyQualifiedType := new(api_v0.ModuleObject).GetFullyQualifiedType()
 
 	// get pagination parameters

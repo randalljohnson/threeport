@@ -124,6 +124,7 @@ func (h Handler) AddSecretDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/secret-definitions [GET]
 func (h Handler) GetSecretDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeSecretDefinition
 	fullyQualifiedType := new(api_v0.SecretDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -709,6 +710,7 @@ func (h Handler) AddSecretInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/secret-instances [GET]
 func (h Handler) GetSecretInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeSecretInstance
 	fullyQualifiedType := new(api_v0.SecretInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

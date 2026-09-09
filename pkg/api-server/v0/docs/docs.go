@@ -17394,6 +17394,9 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "datatypes.JSON": {
+            "type": "object"
+        },
         "v0.ApiObjectVersions": {
             "type": "object",
             "required": [
@@ -17450,139 +17453,10 @@ const docTemplate = `{
             }
         },
         "v0.AwsEksKubernetesRuntimeDefinition": {
-            "type": "object",
-            "required": [
-                "DefaultNodeGroupInitialSize",
-                "DefaultNodeGroupInstanceType",
-                "DefaultNodeGroupMaximumSize",
-                "DefaultNodeGroupMinimumSize",
-                "KubernetesRuntimeDefinitionID",
-                "Name",
-                "ZoneCount"
-            ],
-            "properties": {
-                "AwsEksKubernetesRuntimeInstances": {
-                    "description": "The AWS EKS kubernetes runtime instances derived from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
-                    }
-                },
-                "DefaultNodeGroupInitialSize": {
-                    "description": "The number of nodes in the default initial node group.",
-                    "type": "integer"
-                },
-                "DefaultNodeGroupInstanceType": {
-                    "description": "The AWS instance type for the default initial node group.",
-                    "type": "string"
-                },
-                "DefaultNodeGroupMaximumSize": {
-                    "description": "The maximum number of nodes the default initial node group should have.",
-                    "type": "integer"
-                },
-                "DefaultNodeGroupMinimumSize": {
-                    "description": "The minimum number of nodes the default initial node group should have.",
-                    "type": "integer"
-                },
-                "KubernetesRuntimeDefinitionID": {
-                    "description": "The kubernetes runtime definition for an EKS cluster in AWS.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                },
-                "ZoneCount": {
-                    "description": "The number of zones the cluster should span for availability.",
-                    "type": "integer"
-                }
-            }
+            "type": "object"
         },
         "v0.AwsEksKubernetesRuntimeInstance": {
-            "type": "object",
-            "required": [
-                "AwsEksKubernetesRuntimeDefinitionID",
-                "AwsProviderID",
-                "KubernetesRuntimeInstanceID",
-                "Name"
-            ],
-            "properties": {
-                "AwsEksKubernetesRuntimeDefinitionID": {
-                    "description": "The definition that configures this instance.",
-                    "type": "integer"
-                },
-                "AwsProviderID": {
-                    "description": "The AWS provider in which the EKS cluster is provisioned.",
-                    "type": "integer"
-                },
-                "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
-                    "type": "boolean"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "KubernetesRuntimeInstanceID": {
-                    "description": "The kubernetes runtime instance associated with the AWS EKS cluster.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name the instance",
-                    "type": "string"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "Region": {
-                    "description": "The AWS region in which the cluster is provisioned.",
-                    "type": "string"
-                },
-                "ResourceInventory": {
-                    "description": "An inventory of all AWS resources for the EKS cluster.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "Status": {
-                    "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                }
-            }
+            "type": "object"
         },
         "v0.AwsProvider": {
             "type": "object",
@@ -17642,24 +17516,27 @@ const docTemplate = `{
             "properties": {
                 "AdditionalEnvRef": {
                     "description": "The additional env reference to be added to the environment variables of the component.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "AdditionalVolumeMounts": {
                     "description": "The additional volume mounts to be added to the deployment spec of the component.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "AdditionalVolumes": {
                     "description": "The additional volumes to be added to the deployment spec of the component.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "BinaryName": {
                     "description": "The binary name of the component.",
@@ -18407,10 +18284,11 @@ const docTemplate = `{
                 },
                 "ResourceInventory": {
                     "description": "An inventory of all GCP resources backing this VM.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "SSHKey": {
                     "description": "The generated SSH private key, surfaced once after provisioning.",
@@ -18554,10 +18432,11 @@ const docTemplate = `{
                 },
                 "ResourceInventory": {
                     "description": "An inventory of all GCP resources for the GKE cluster.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
@@ -18614,10 +18493,7 @@ const docTemplate = `{
                     "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
                     "type": "array",
                     "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
+                        "$ref": "#/definitions/datatypes.JSON"
                     }
                 },
                 "Chart": {
@@ -18705,10 +18581,7 @@ const docTemplate = `{
                     "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
                     "type": "array",
                     "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
+                        "$ref": "#/definitions/datatypes.JSON"
                     }
                 },
                 "CreationAcknowledged": {
@@ -19168,10 +19041,11 @@ const docTemplate = `{
             "properties": {
                 "JSONDefinition": {
                     "description": "The individual manifest in JSON format.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "KubernetesWorkloadDefinitionID": {
                     "description": "The kubernetes workload definition this resource belongs to.",
@@ -19188,10 +19062,11 @@ const docTemplate = `{
             "properties": {
                 "JSONDefinition": {
                     "description": "The individual manifest in JSON format.  This field is a superset of\nKubernetesWorkloadResourceDefinition.JSONDefinition in that it has\nnamespace management and other configuration — such as resource\nallocation management — added.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "KubernetesWorkloadInstanceID": {
                     "description": "The kubernetes workload instance this resource belongs to.",
@@ -19207,10 +19082,11 @@ const docTemplate = `{
                 },
                 "RuntimeDefinition": {
                     "description": "The JSON definition of a Kubernetes resource as stored in etcd in the\nkubernetes runtime.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "ScheduledForDeletion": {
                     "description": "Whether another controller has scheduled this resource for deletion",
@@ -19650,10 +19526,11 @@ const docTemplate = `{
                 },
                 "ResourceInventory": {
                     "description": "An inventory of all provider resources backing this machine, used for\ncrash recovery and deprovisioning.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "SSHKey": {
                     "description": "The SSH private key for authenticating to the machine.",
@@ -20565,10 +20442,11 @@ const docTemplate = `{
                 },
                 "ResourceInventory": {
                     "description": "An inventory of all OCI resources for the OKE cluster.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
@@ -20737,10 +20615,11 @@ const docTemplate = `{
                 },
                 "Data": {
                     "description": "The secret value to be stored in the provider.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSON"
+                        }
+                    ]
                 },
                 "DeletionAcknowledged": {
                     "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",

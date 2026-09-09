@@ -45,7 +45,9 @@ func (h Handler) AddModuleApiRouteWithModuleObjectReferences(c echo.Context) err
 	}
 
 	// persist to DB
-	if result := h.DB.Omit("ModuleObjects.*").Create(&moduleApiRoute); result.Error != nil {
+	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
+		return db.Omit("ModuleObjects.*").Create(&moduleApiRoute)
+	}); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
@@ -143,6 +145,7 @@ func (h Handler) fetchModuleObjectPage(
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects-with-module-api-routes [GET]
 func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
+	objectType := api_v0.ObjectTypeModuleObject
 	fullyQualifiedType := new(api_v0.ModuleObject).GetFullyQualifiedType()
 
 	// get pagination parameters

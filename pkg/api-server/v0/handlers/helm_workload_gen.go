@@ -124,6 +124,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions [GET]
 func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	fullyQualifiedType := new(api_v0.HelmWorkloadDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -709,6 +710,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances [GET]
 func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	fullyQualifiedType := new(api_v0.HelmWorkloadInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

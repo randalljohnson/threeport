@@ -124,6 +124,7 @@ func (h Handler) AddMachineRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-runtime-definitions [GET]
 func (h Handler) GetMachineRuntimeDefinitions(c echo.Context) error {
+	objectType := api_v0.ObjectTypeMachineRuntimeDefinition
 	fullyQualifiedType := new(api_v0.MachineRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -709,6 +710,7 @@ func (h Handler) AddMachineRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-runtime-instances [GET]
 func (h Handler) GetMachineRuntimeInstances(c echo.Context) error {
+	objectType := api_v0.ObjectTypeMachineRuntimeInstance
 	fullyQualifiedType := new(api_v0.MachineRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

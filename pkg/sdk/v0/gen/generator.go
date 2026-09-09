@@ -1095,27 +1095,6 @@ func (g *Generator) ValidateTags() error {
 						lib.ValidateRequired, lib.ValidateOptional, lib.ValidateOptionalAssociation,
 					))
 				}
-				// every validate-tagged field must carry json:",omitempty".
-				// the field-name part is dropped (Go default is the field
-				// name itself); the omitempty matters for partial PATCH
-				// payloads. Without it, a nil-pointer required field would
-				// serialize as JSON null and the PayloadCheck null-on-required
-				// guard would reject the request, even when the caller never
-				// meant to touch that field. Required, optional, and
-				// optional-association all follow the same rule.
-				validateValue := tagMap[string(lib.ValidateTag)]
-				if validateValue == string(lib.ValidateRequired) ||
-					validateValue == string(lib.ValidateOptional) ||
-					validateValue == string(lib.ValidateOptionalAssociation) {
-					j, ok := tagMap[string(lib.JsonTag)]
-					if !ok || !strings.Contains(j, lib.JsonOmitempty) {
-						problems = append(problems, fmt.Sprintf(
-							"%s.%s: %s:%q field requires json:%q",
-							objectName, fieldName,
-							lib.ValidateTag, validateValue, ","+lib.JsonOmitempty,
-						))
-					}
-				}
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise
 				// and likely indicates a misunderstanding
@@ -1159,9 +1138,6 @@ func (g *Generator) ValidateTags() error {
 			if !object.NameField {
 				continue
 			}
-			if _, exempt := nameIndexExemptions[object.TypeName]; exempt {
-				continue
-			}
 			gormTag, resolved := g.resolveNameTag(group, object.TypeName)
 			if !resolved {
 				continue
@@ -1189,11 +1165,6 @@ const nameFieldName = "Name"
 const nameIndexTag = "not null;uniqueIndex:,where:deleted_at IS NULL"
 
 const indexClassUnique = "UNIQUE"
-
-// nameIndexExemptions lists objects whose name uniqueness is not a table index.
-var nameIndexExemptions = map[string]string{
-	"ModuleObject": "unique within one module api rather than globally, enforced by a create hook",
-}
 
 // resolveNameTag returns the gorm tag on Name, including from an anonymous embed.
 func (g *Generator) resolveNameTag(group ApiObjectGroup, objectName string) (string, bool) {

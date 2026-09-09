@@ -1259,6 +1259,11 @@ func emitCiTeardownFunc(f *File) {
 		If(Err().Op(":=").Parens(Id("Dev").Values()).Dot("LocalRegistryDown").Call().Op(";").Err().Op("!=").Nil()).Block(
 			Qual("fmt", "Printf").Call(Lit("ci:teardown: remove local registry: %v\n"), Err()),
 		),
+		Comment("remove leftover buildkit builders so prune can drop their volumes"),
+		Id("teardownStep").Call(Lit("sh"), Lit("-c"),
+			Lit(`docker ps -aq --filter "name=buildx_buildkit_" | xargs -r docker rm -f`)),
+		Comment("prune unused volumes, including the named volumes buildx leaves"),
+		Id("teardownStep").Call(Lit("docker"), Lit("volume"), Lit("prune"), Lit("-af")),
 		Comment("reclaim dangling images, stopped containers, and build cache"),
 		Id("teardownStep").Call(Lit("docker"), Lit("system"), Lit("prune"), Lit("-f")),
 		Return(Nil()),

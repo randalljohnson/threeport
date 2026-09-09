@@ -39,8 +39,8 @@ func (Ci) Env() error {
 // them via docker stop; docker's own restart-on-failure resurrects them
 // when the next dind starts against the shared /opt/dind-storage hostPath,
 // which was the observed "cluster already exists" failure mode on repeated
-// self-hosted runs). Then reap networks, anonymous volumes, and stopped
-// containers. NOT `docker system prune -a` — that wipes the ~13 GB image
+// self-hosted runs). Then reap networks, unused named volumes, and stopped
+// containers. Not `docker system prune -a`, which wipes the ~13 GB image
 // layer cache the shared hostPath is designed to preserve.
 func (Ci) Teardown() error {
 	if os.Getenv("CI") != "true" {
@@ -66,11 +66,14 @@ func (Ci) Teardown() error {
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=threeport-" | xargs -r docker rm -f`)
 
-	// Reap kind networks + anonymous volumes + stopped-container metadata.
+	// remove leftover buildkit builders so prune can drop their volumes
+	teardownStep("sh", "-c",
+		`docker ps -aq --filter "name=buildx_buildkit_" | xargs -r docker rm -f`)
+
+	// Reap kind networks + stopped-container metadata.
 	// These are what the "auto-restart" bug latches onto: even after the
 	// container is gone, its network and mount point can persist.
 	teardownStep("docker", "network", "prune", "-f")
-	teardownStep("docker", "volume", "prune", "-f")
 	teardownStep("docker", "container", "prune", "-f")
 
 	// Force-remove any leftover tptctl config; a failed run leaves tptctl
@@ -85,6 +88,11 @@ func (Ci) Teardown() error {
 	if err := (Dev{}).LocalRegistryDown(); err != nil {
 		fmt.Printf("ci:teardown: remove local registry: %v\n", err)
 	}
+
+	// prune volumes last, including the named volumes buildx leaves.
+	// prune without --all leaves those. if you prune before removing the
+	// containers above, prune skips any volume a container still holds.
+	teardownStep("docker", "volume", "prune", "-af")
 
 	return nil
 }

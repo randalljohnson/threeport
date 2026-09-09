@@ -140,5 +140,5 @@ type GcpGceMachineRuntimeInstance struct {
 	MachineRuntimeInstanceID *uint `json:",omitempty" validate:"required" gorm:"not null" relationship:"marries"`
 
 	// An inventory of all GCP resources backing this VM.
-	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
+	ResourceInventory *datatypes.JSON `validate:"optional"`
 }

@@ -55,12 +55,12 @@ type MachineRuntimeInstance struct {
 	// deleted instance is available to a new one right away. CockroachDB
 	// treats every NULL as distinct in a unique index, so any number of
 	// instances may hold no hostname while they wait on provisioning.
-	Hostname *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL"`
+	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is
 	// provisioned.
-	SSHUser *string `json:",omitempty" validate:"optional"`
+	SSHUser *string `validate:"optional"`
 
 	// The SSH private key for authenticating to the machine.
 	SSHKey *string `validate:"optional" encrypt:"true"`

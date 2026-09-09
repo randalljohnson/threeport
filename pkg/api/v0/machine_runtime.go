@@ -20,7 +20,7 @@ type MachineRuntimeDefinition struct {
 
 	// The associated machine runtime instances that are deployed from this
 	// definition.
-	MachineRuntimeInstances []*MachineRuntimeInstance `json:",omitempty" validate:"optional,association"`
+	MachineRuntimeInstances []*MachineRuntimeInstance `validate:"optional,association"`
 }
 
 // MachineRuntimeInstance is a machine that serves as a runtime for workloads.
@@ -41,25 +41,25 @@ type MachineRuntimeInstance struct {
 	// deleted instance is available to a new one right away. CockroachDB
 	// treats every NULL as distinct in a unique index, so any number of
 	// instances may hold no hostname while they wait on provisioning.
-	Hostname *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL"`
+	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is
 	// provisioned.
-	SSHUser *string `json:",omitempty" validate:"optional"`
+	SSHUser *string `validate:"optional"`
 
 	// The SSH private key for authenticating to the machine.
-	SSHKey *string `json:",omitempty" validate:"optional" encrypt:"true"`
+	SSHKey *string `validate:"optional" encrypt:"true"`
 
 	// The SSH password for authenticating to the machine.
-	SSHPassword *string `json:",omitempty" validate:"optional" encrypt:"true"`
+	SSHPassword *string `validate:"optional" encrypt:"true"`
 
 	// The SSH port on the machine.
-	Port *int `json:",omitempty" validate:"optional" gorm:"default:22"`
+	Port *int `validate:"optional" gorm:"default:22"`
 
 	// The remote machine's SSH public host key, used to verify identity on
 	// connection. If not provided, captured on first connection.
-	HostKey *string `json:",omitempty" validate:"optional"`
+	HostKey *string `validate:"optional"`
 
 	// The provider region in which the machine is provisioned.
 	Region *string `json:",omitempty" validate:"optional"`
@@ -78,8 +78,8 @@ type MachineRuntimeInstance struct {
 
 	// The machine runtime definition for this instance.  Optional because
 	// imported machines may not have an associated definition.
-	MachineRuntimeDefinitionID *uint `json:",omitempty" validate:"optional" relationship:"requires"`
+	MachineRuntimeDefinitionID *uint `validate:"optional" relationship:"requires"`
 
 	// The associated machine workload instances running on this machine runtime.
-	MachineWorkloadInstances []*MachineWorkloadInstance `json:",omitempty" validate:"optional,association"`
+	MachineWorkloadInstances []*MachineWorkloadInstance `validate:"optional,association"`
 }

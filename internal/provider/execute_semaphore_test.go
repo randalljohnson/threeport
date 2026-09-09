@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"gorm.io/datatypes"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // compile-time interface satisfaction check for the order recorder.
@@ -38,14 +40,14 @@ func waitForSemaphoreDrain(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
-		if inFlightCount() == 0 && len(infraSemaphore) == 0 {
+		if inFlightCount() == 0 && len(currentSemaphore()) == 0 {
 			return
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
 	t.Errorf(
 		"lifecycle goroutines did not drain: inFlight=%d, heldSlots=%d",
-		inFlightCount(), len(infraSemaphore),
+		inFlightCount(), len(currentSemaphore()),
 	)
 }
 
@@ -99,7 +101,7 @@ func (o *orderRecordingInfra) DeployInfra() error {
 	return o.fakeRefreshableInfra.DeployInfra()
 }
 
-// TestSemaphoreBackpressure_Requeue30 pins the non-blocking semaphore
+// TestSemaphoreBackpressure_Requeue30 asserts the non-blocking semaphore
 // acquire: with capacity 2 and blocking deploys, the first two creates
 // get slots and requeue at 120, the next three get (30, nil) without
 // launching a goroutine, and slots freed by completed deploys can be
@@ -161,7 +163,7 @@ func TestSemaphoreBackpressure_Requeue30(t *testing.T) {
 	require.Equal(t, int64(120), requeue)
 }
 
-// TestSemaphoreReleaseOnPanic pins the create launch goroutine's recover
+// TestSemaphoreReleaseOnPanic asserts the create launch goroutine's recover
 // path: a panicking deploy is recovered, the failure is persisted via
 // SetCreationFailed, and the semaphore slot is released so a subsequent
 // create can acquire it.
@@ -192,7 +194,7 @@ func TestSemaphoreReleaseOnPanic(t *testing.T) {
 	require.Equal(t, int64(120), requeue)
 }
 
-// TestSemaphoreReleaseOnPanic_Delete pins the delete launch goroutine's
+// TestSemaphoreReleaseOnPanic_Delete asserts the delete launch goroutine's
 // recover path: a panicking destroy is recovered without persisting any
 // failure (the delete path has no PersistFailure callback, it only logs),
 // and the semaphore slot is released for a subsequent delete.
@@ -203,7 +205,7 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	fi := newFakeInfra()
 	fi.setDestroy(infraPanic, nil)
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 	})
 	fl.setInfra(fi)
 
@@ -211,7 +213,7 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(300), requeue)
 
-	// the test process surviving the panic plus a clean drain pins the
+	// the test process surviving the panic plus a clean drain confirms the
 	// recover; the delete path persists nothing on panic
 	waitForSemaphoreDrain(t)
 	require.Equal(t, 1, fi.destroyCallCount())
@@ -221,14 +223,14 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	// with capacity 1, a successful follow-up launch proves the panicking
 	// goroutine released its slot
 	fl2 := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 	})
 	requeue, err = HandleInfraDelete(fl2, log)
 	require.NoError(t, err)
 	require.Equal(t, int64(300), requeue)
 }
 
-// TestExecuteInfraCreate_RestoreThenRefreshThenDeploy pins the create
+// TestExecuteInfraCreate_RestoreThenRefreshThenDeploy asserts the create
 // goroutine's sequencing when existing state is present on a refreshable
 // provider: state is restored first, then refreshed against cloud
 // reality, then deployed.
@@ -263,7 +265,7 @@ func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraCreate_NonStreamable_NoWatcher pins that a provider
+// TestExecuteInfraCreate_NonStreamable_NoWatcher asserts that a provider
 // without streaming support runs the create to success with no state
 // watcher: SaveState is the watcher's only writer on the success path,
 // so its count staying at zero proves no watcher streamed state.
@@ -293,7 +295,7 @@ func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 	require.Equal(t, 0, fl.callCount("SaveState"))
 }
 
-// TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure pins
+// TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure asserts
 // the deploy failure branch: partial state is captured via GetStackState
 // and saved for retry restoration, then the failure is persisted via
 // SetCreationFailed, and the success callbacks never run.
@@ -325,7 +327,7 @@ func TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure(t *testi
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraCreate_VerifyStateFails_PersistsFailure pins the state
+// TestExecuteInfraCreate_VerifyStateFails_PersistsFailure asserts the state
 // verification gate: a successful deploy whose captured state contains no
 // resources fails verification, persists the failure, and never invokes
 // the success callback.
@@ -354,7 +356,7 @@ func TestExecuteInfraCreate_VerifyStateFails_PersistsFailure(t *testing.T) {
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore pins the
+// TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore asserts the
 // delete goroutine's corrupt-state guard: invalid existing state JSON
 // skips the restore entirely but the destroy still proceeds and the
 // success callbacks run.
@@ -364,7 +366,7 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 
 	fi := newFakeInfra()
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 		ResourceInventory: jsonPtr(`{"deployment":{"resources":[`),
 	})
 	fl.setInfra(fi)
@@ -384,7 +386,7 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 	require.Equal(t, 1, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestExecuteInfraDelete_DestroyError_CapturesRemainingState pins the
+// TestExecuteInfraDelete_DestroyError_CapturesRemainingState asserts the
 // destroy failure branch: remaining state is captured via GetStackState
 // and saved so retries know which resources remain, and the success
 // callbacks never run.
@@ -396,7 +398,7 @@ func TestExecuteInfraDelete_DestroyError_CapturesRemainingState(t *testing.T) {
 	fi := newFakeInfra()
 	fi.setDestroy(infraError, errDestroy)
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
-		DeletionScheduled: timePtr(time.Now().UTC()),
+		DeletionScheduled: util.Ptr(time.Now().UTC()),
 	})
 	fl.setInfra(fi)
 
@@ -416,4 +418,85 @@ func TestExecuteInfraDelete_DestroyError_CapturesRemainingState(t *testing.T) {
 	// success callbacks skipped
 	require.Equal(t, 0, fl.callCount("ClearInventory"))
 	require.Equal(t, 0, fl.callCount("PublishDeleteNotification"))
+}
+
+// TestExecuteInfraCreate_RestoreError_PersistsFailureWithoutDeploying
+// covers the restore failure branch of the create goroutine. A retry whose
+// stored inventory cannot be loaded back into the provider must not deploy,
+// because deploying without the previous state would build a second copy of
+// resources the first attempt already created.
+func TestExecuteInfraCreate_RestoreError_PersistsFailureWithoutDeploying(t *testing.T) {
+	configureSemaphoreTest(t, 1)
+	log := newTestLogger()
+
+	fi := newFakeInfra()
+	fi.setSetStackStateErr(errors.New("state blob is corrupt"))
+	fl := newFakeLifecycle(&ReconciliationSnapshot{
+		ResourceInventory: validStackState(),
+	})
+	fl.setInfra(fi)
+
+	requeue, err := HandleInfraCreate(fl, log)
+	require.NoError(t, err)
+	require.Equal(t, int64(120), requeue)
+
+	waitForSemaphoreDrain(t)
+
+	require.Equal(t, 1, fi.setStackStateCallCount(), "the restore is attempted once")
+	require.Equal(t, 0, fi.deployCallCount(), "a failed restore must not deploy")
+	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
+	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
+	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
+}
+
+// TestExecuteInfraCreate_RefreshError_PersistsFailureWithoutDeploying
+// covers the create side of the refresh policy. Create treats a failed
+// refresh as fatal, because deploying against state that does not match
+// cloud reality can duplicate or orphan resources.
+func TestExecuteInfraCreate_RefreshError_PersistsFailureWithoutDeploying(t *testing.T) {
+	configureSemaphoreTest(t, 1)
+	log := newTestLogger()
+
+	ri := newFakeRefreshableInfra()
+	ri.setRefreshErr(errors.New("refresh could not reach the cloud provider"))
+	fl := newFakeLifecycle(&ReconciliationSnapshot{
+		ResourceInventory: validStackState(),
+	})
+	fl.setInfra(ri)
+
+	requeue, err := HandleInfraCreate(fl, log)
+	require.NoError(t, err)
+	require.Equal(t, int64(120), requeue)
+
+	waitForSemaphoreDrain(t)
+
+	require.Equal(t, 1, ri.refreshCallCount())
+	require.Equal(t, 0, ri.deployCallCount(), "a failed refresh must not deploy on create")
+	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
+	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
+}
+
+// TestExecuteInfraDelete_RefreshError_StillDestroys covers the delete side
+// of the same refresh policy, which is the opposite of create. Delete logs
+// a failed refresh and destroys anyway, because refusing to destroy would
+// strand the cloud resources the caller asked to remove.
+func TestExecuteInfraDelete_RefreshError_StillDestroys(t *testing.T) {
+	configureSemaphoreTest(t, 1)
+	log := newTestLogger()
+
+	ri := newFakeRefreshableInfra()
+	ri.setRefreshErr(errors.New("refresh could not reach the cloud provider"))
+	fl := newFakeLifecycle(&ReconciliationSnapshot{
+		DeletionScheduled: util.Ptr(deleteTestBase.Add(-time.Hour)),
+		ResourceInventory: validStackState(),
+	})
+	fl.setInfra(ri)
+
+	_, err := HandleInfraDelete(fl, log)
+	require.NoError(t, err)
+
+	waitForSemaphoreDrain(t)
+
+	require.Equal(t, 1, ri.refreshCallCount())
+	require.Equal(t, 1, ri.destroyCallCount(), "a failed refresh must not block the destroy")
 }

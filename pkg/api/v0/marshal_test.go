@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/datatypes"
 
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -87,4 +88,23 @@ func TestMarshalObject_EmptyAssociationSliceIsSent(t *testing.T) {
 	var gotNil map[string]any
 	require.NoError(t, json.Unmarshal(marshaledNil, &gotNil))
 	assert.NotContains(t, gotNil, "KubernetesWorkloadInstances", "a nil association slice is still omitted")
+}
+
+// TestMarshalObject_EmptyJSONObjectIsSent covers json v2 omitempty dropping a
+// non-nil *datatypes.JSON pointing at {}. OmitZeroStructFields keeps it,
+// because the pointer itself is non-nil.
+func TestMarshalObject_EmptyJSONObjectIsSent(t *testing.T) {
+	empty := datatypes.JSON([]byte("{}"))
+	payload := GcpGceMachineRuntimeInstance{
+		ResourceInventory: &empty,
+	}
+
+	marshaled, err := util.MarshalObject(payload)
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(marshaled, &got))
+
+	require.Contains(t, got, "ResourceInventory", "an explicitly emptied JSON object must reach the api server")
+	assert.Equal(t, map[string]any{}, got["ResourceInventory"])
 }

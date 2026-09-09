@@ -771,6 +771,10 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingMachineWorkloadInstance.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingMachineWorkloadInstance).Updates(&updatedMachineWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -784,8 +788,8 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingMachineWorkloadInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

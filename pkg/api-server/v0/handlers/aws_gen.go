@@ -771,6 +771,10 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingAwsEksKubernetesRuntimeInstance.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingAwsEksKubernetesRuntimeInstance).Updates(&updatedAwsEksKubernetesRuntimeInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -784,8 +788,8 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingAwsEksKubernetesRuntimeInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingAwsEksKubernetesRuntimeInstance.Reconciled != nil && !*existingAwsEksKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingAwsEksKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingAwsEksKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

@@ -314,6 +314,10 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingLoggingDefinition.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingLoggingDefinition).Updates(&updatedLoggingDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -327,8 +331,8 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingLoggingDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingDefinition.Reconciled != nil && !*existingLoggingDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingDefinition.Reconciliation) {
 		notifPayload, err := existingLoggingDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -850,6 +854,10 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingLoggingInstance.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingLoggingInstance).Updates(&updatedLoggingInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -863,8 +871,8 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingLoggingInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingLoggingInstance.Reconciled != nil && !*existingLoggingInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingLoggingInstance.Reconciliation) {
 		notifPayload, err := existingLoggingInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1380,6 +1388,10 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingMetricsDefinition.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingMetricsDefinition).Updates(&updatedMetricsDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -1393,8 +1405,8 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingMetricsDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsDefinition.Reconciled != nil && !*existingMetricsDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsDefinition.Reconciliation) {
 		notifPayload, err := existingMetricsDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -1916,6 +1928,10 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingMetricsInstance.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingMetricsInstance).Updates(&updatedMetricsInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -1929,8 +1945,8 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingMetricsInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingMetricsInstance.Reconciled != nil && !*existingMetricsInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingMetricsInstance.Reconciliation) {
 		notifPayload, err := existingMetricsInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2446,6 +2462,10 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardDefinition.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingObservabilityDashboardDefinition).Updates(&updatedObservabilityDashboardDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -2459,8 +2479,8 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityDashboardDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardDefinition.Reconciled != nil && !*existingObservabilityDashboardDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -2982,6 +3002,10 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityDashboardInstance.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingObservabilityDashboardInstance).Updates(&updatedObservabilityDashboardInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -2995,8 +3019,8 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityDashboardInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityDashboardInstance.Reconciled != nil && !*existingObservabilityDashboardInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityDashboardInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityDashboardInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -3512,6 +3536,10 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityStackDefinition.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingObservabilityStackDefinition).Updates(&updatedObservabilityStackDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -3525,8 +3553,8 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityStackDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackDefinition.Reconciled != nil && !*existingObservabilityStackDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackDefinition.Reconciliation) {
 		notifPayload, err := existingObservabilityStackDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -4048,6 +4076,10 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingObservabilityStackInstance.Reconciliation
+
 	// update object in database
 	if result := h.RequestDB(c).Model(&existingObservabilityStackInstance).Updates(&updatedObservabilityStackInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
@@ -4061,8 +4093,8 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingObservabilityStackInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingObservabilityStackInstance.Reconciled != nil && !*existingObservabilityStackInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingObservabilityStackInstance.Reconciliation) {
 		notifPayload, err := existingObservabilityStackInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

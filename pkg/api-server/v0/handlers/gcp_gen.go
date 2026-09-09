@@ -110,7 +110,6 @@ func (h Handler) AddGcpGceMachineRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gce-machine-runtime-definitions [GET]
 func (h Handler) GetGcpGceMachineRuntimeDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGceMachineRuntimeDefinition
 	fullyQualifiedType := new(api_v0.GcpGceMachineRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -605,7 +604,6 @@ func (h Handler) AddGcpGceMachineRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gce-machine-runtime-instances [GET]
 func (h Handler) GetGcpGceMachineRuntimeInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGceMachineRuntimeInstance
 	fullyQualifiedType := new(api_v0.GcpGceMachineRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

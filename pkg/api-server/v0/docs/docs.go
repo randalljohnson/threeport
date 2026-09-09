@@ -17598,7 +17598,7 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17610,7 +17610,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -17687,7 +17687,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17706,7 +17706,7 @@ const docTemplate = `{
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -17776,7 +17776,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17788,7 +17788,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -17850,7 +17850,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17862,7 +17862,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -17967,7 +17967,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17979,7 +17979,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18092,7 +18092,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18104,7 +18104,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18219,7 +18219,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18231,7 +18231,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18375,7 +18375,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18387,7 +18387,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18505,7 +18505,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18517,7 +18517,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18585,7 +18585,7 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18597,7 +18597,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18684,7 +18684,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18696,7 +18696,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18804,7 +18804,7 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18820,7 +18820,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18896,7 +18896,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18908,7 +18908,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -18972,7 +18972,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18984,7 +18984,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19183,7 +19183,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19195,7 +19195,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19272,7 +19272,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19284,7 +19284,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19348,7 +19348,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19360,7 +19360,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19439,7 +19439,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19451,7 +19451,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19627,7 +19627,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19639,7 +19639,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19712,7 +19712,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19724,7 +19724,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19789,7 +19789,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19801,7 +19801,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -19986,7 +19986,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19998,7 +19998,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20063,7 +20063,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20075,7 +20075,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20131,7 +20131,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20143,7 +20143,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20240,7 +20240,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20252,7 +20252,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20385,7 +20385,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20397,7 +20397,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20602,7 +20602,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20622,7 +20622,7 @@ const docTemplate = `{
                     ]
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20675,7 +20675,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20687,7 +20687,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20768,7 +20768,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20780,7 +20780,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
@@ -20837,7 +20837,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20849,7 +20849,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun. Change detection compares only nil versus set.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {

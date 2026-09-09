@@ -183,8 +183,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -195,8 +194,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -266,8 +264,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -287,8 +284,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -356,8 +352,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -368,8 +363,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -431,8 +425,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -443,8 +436,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -559,8 +551,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -571,8 +562,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -667,8 +657,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -679,8 +668,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -783,8 +771,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -795,8 +782,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -919,8 +905,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -931,8 +916,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1036,8 +1020,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1048,8 +1031,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1122,8 +1104,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1134,8 +1115,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1221,8 +1201,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1233,8 +1212,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1345,8 +1323,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1362,8 +1339,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1441,8 +1417,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1453,8 +1428,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1515,8 +1489,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1527,8 +1500,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1696,8 +1668,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1708,8 +1679,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1784,8 +1754,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1796,8 +1765,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1861,8 +1829,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1873,8 +1840,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -1960,8 +1926,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1972,8 +1937,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2155,8 +2119,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2167,8 +2130,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2233,8 +2195,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2245,8 +2206,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2310,8 +2270,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2322,8 +2281,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2485,8 +2443,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2497,8 +2454,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2561,8 +2517,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2573,8 +2528,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2630,8 +2584,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2642,8 +2595,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2745,8 +2697,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2757,8 +2708,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -2886,8 +2836,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2898,8 +2847,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -3071,8 +3019,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3087,8 +3034,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -3139,8 +3085,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3151,8 +3096,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -3228,8 +3172,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3240,8 +3183,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.
@@ -3296,8 +3238,7 @@ definitions:
       CreationAcknowledged:
         description: |-
           Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3308,8 +3249,7 @@ definitions:
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
-          reconciliation has begun so that subsequent reconciliation attempts can
-          act accordingly.
+          reconciliation has begun. Change detection compares only nil versus set.
         type: string
       DeletionConfirmed:
         description: Used by controllers to confirm deletion of an object.

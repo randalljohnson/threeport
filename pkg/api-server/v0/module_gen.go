@@ -2496,7 +2496,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 	///////////////////////////////////////////////////////////////////////////////
 	// registering object ModuleApi
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("ModuleApi represents an API server for a Threeport module. The (Name, ApiNamespace) pair is unique."),
+		Description: util.Ptr("Most API types unique-index Name among undeleted rows. The types here do not all follow that: ModuleApi is unique on (Name, ApiNamespace), ModuleObject on (Name, Version, ModuleApiID) so two versions of the same object can coexist on one module API. ModuleController unique-indexes Name alone, like most types."),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("ModuleApi"),
 		Version:     util.Ptr("v0"),
